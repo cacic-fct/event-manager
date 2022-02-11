@@ -1,0 +1,88 @@
+ion-radio {
+  display: none;
+}
+
+.hcal {
+  font-size: 20px;
+  font-family: 'HelveticaNeue-Light', 'Helvetica Neue Light', 'Helvetica Neue',
+    Helvetica, arial, sans-serif;
+  background: #fff;
+  position: relative;
+}
+
+.hcal,
+.hcal > .hcal-header,
+.hcal > .hcal-body,
+.hcal > .hcal-body > .hcal-body-row {
+  width: 100%;
+}
+
+.hcal .hcal-header {
+  background-color: #f8f8f8;
+  height: 100%;
+  padding-top: 30px;
+  border-bottom: 1px solid #ddd;
+  text-align: center;
+}
+
+.hcal .hcal-header-days {
+  font-size: 12px;
+}
+
+.hcal .hcal-header-days,
+.hcal .hcal-header-dates {
+  display: -webkit-flex;
+  display: flex;
+}
+
+.hcal .hcal-header-dates {
+  margin-top: 3px;
+}
+
+.hcal .hcal-header-date {
+  color: #333;
+}
+
+.hcal .hcal-header-day,
+.hcal .hcal-header-date {
+  width: 15%;
+  text-align: center;
+  padding-bottom: 5px;
+}
+
+.hcal .hcal-header-date-inner {
+  display: inline-block;
+  border-radius: 200px;
+  background: transparent;
+  width: 38px;
+  height: 38px;
+  text-align: center;
+  padding-top: 6px;
+  cursor: pointer;
+}
+
+.hcal .hcal-header-date-inner.active {
+  background: #fc3d39;
+  color: #fff;
+  font-weight: 600;
+}
+
+.hcal .hcal-header-today {
+  margin-top: 10px;
+  font-size: 15px;
+  padding-bottom: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hcal .hcal-header-date {
+    color: #fff;
+  }
+
+  .hcal .hcal-header {
+    background-color: #000;
+    border-bottom: 1px solid #989898;
+  }
+  .hcal {
+    background: #000;
+  }
+}
