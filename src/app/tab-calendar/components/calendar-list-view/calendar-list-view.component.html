@@ -1,0 +1,61 @@
+<ion-content>
+  <ion-list
+    style="max-width: 1600px; display: block"
+    class="margin-horizontal-auto">
+    <ng-container>
+      <div *ngIf="items$ | async; let items; else: loading">
+        <ng-container *ngFor="let item of items; index as i">
+          <ion-list-header
+            mode="ios"
+            *ngIf="i == 0 || !monthCompare(items[i - 1].date, items[i].date)">
+            <ion-label>{{
+              formatMonth(getDateFromTimestamp(item.date))
+            }}</ion-label>
+          </ion-list-header>
+
+          <ion-item-divider
+            mode="ios"
+            sticky="true"
+            *ngIf="i == 0 || !dayCompare(items[i - 1].date, items[i].date)">
+            <ion-label>
+              {{ formatDate(getDateFromTimestamp(item.date)) }}
+            </ion-label>
+          </ion-item-divider>
+          <ion-item
+            (click)="openItem(item)"
+            style="cursor: pointer"
+            [style.--background]="courses[item.course].color + '25'">
+            <img
+              [src]="getEmoji(item.icon)"
+              class="twemoji"
+              slot="start"
+              aria-hidden="true"
+              loading="lazy" />
+
+            <ion-label>
+              <h2 class="ion-text-wrap">{{ item.name }}</h2>
+              <h3>{{ item.shortDescription }}</h3>
+              <p>{{ courses[item.course].name }}</p>
+            </ion-label>
+            <div slot="end">
+              <h4 style="font-weight: 400">
+                {{ getDateFromTimestamp(item.date) | date: 'HH:mm' }}
+              </h4>
+            </div>
+          </ion-item>
+        </ng-container>
+
+        <h1 *ngIf="items.length === 0" class="ion-text-center">
+          Nenhum evento encontrado
+        </h1>
+      </div>
+
+      <ng-template #loading>
+        <ion-spinner
+          name="lines-small"
+          class="margin-horizontal-auto"
+          style="display: block"></ion-spinner>
+      </ng-template>
+    </ng-container>
+  </ion-list>
+</ion-content>

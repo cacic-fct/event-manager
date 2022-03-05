@@ -8,5 +8,8 @@ import { Component } from '@angular/core';
 export class TabInfoPage {
   constructor() {}
 
+  userData: any; // Save logged in user data
+  firstName: string;
+
   ngOnInit() {}
 }

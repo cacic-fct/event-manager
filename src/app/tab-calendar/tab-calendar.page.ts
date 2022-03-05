@@ -1,9 +1,23 @@
+import { Router } from '@angular/router';
 import { Component } from '@angular/core';
-import { KeyValue } from '@angular/common';
+import { KeyValue, formatDate } from '@angular/common';
 
-// Angular firebase
-import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { Observable } from 'rxjs';
+import { CoursesService } from 'src/app/shared/services/courses.service';
+
+import { RemoteConfigService } from '../shared/services/remote-config.service';
+
+import {
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  subDays,
+  isSameDay,
+  getDate,
+  format,
+  isSameWeek,
+} from 'date-fns';
+import { ModalController } from '@ionic/angular';
+import { FilterModalPage } from './components/filter-modal/filter-modal.page';
 
 @Component({
   selector: 'app-tab-calendar',
@@ -11,15 +25,18 @@ import { Observable } from 'rxjs';
   styleUrls: ['tab-calendar.page.scss'],
 })
 export class TabCalendarPage {
-  constructor(firestore: AngularFirestore) {
-    this.items = firestore.collection('events').valueChanges();
-  }
+  remoteConfig = RemoteConfigService;
+  // Selected calendar date
+  active: string;
+  fullDate: string;
+  itemView: boolean = true;
+  selectedFilter: Array<string> = [];
+  // Today's date
+  today = new Date();
 
-  items: Observable<any[]>;
   dow1Char = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
-  // Selected calendar date
-  active = '';
+  courses = CoursesService.courses;
 
   // List of days of week and date
   dowList = {
@@ -32,109 +49,119 @@ export class TabCalendarPage {
     saturday: { date: Date },
   };
 
-  filter() {}
+  // This is sunday in the calendar
+  // Get startofWeek based on today's date
+  calendarBaseDate = startOfWeek(this.today, {
+    weekStartsOn: 0,
+  });
 
-  originalOrder = (
-    a: KeyValue<string, {}>,
-    b: KeyValue<string, Date>
-  ): number => {
+  // Get end of week from today
+  calendarEndDate = endOfWeek(this.today, {
+    weekStartsOn: 0,
+  });
+
+  constructor(private modalController: ModalController, public router: Router) {
+    if (localStorage.getItem('isUnesp') === null) {
+      this.router.navigate(['/vinculo']);
+    }
+    if (localStorage.getItem('isUnesp') === 'false') {
+      this.itemView = true;
+    }
+    this.active = format(this.today, 'eeee').toLowerCase();
+    this.generateCalendarData();
+  }
+
+  ngOnInit() {
+    this.remoteConfig;
+  }
+
+  originalOrder = (a: KeyValue<any, any>, b: KeyValue<any, any>): number => {
     return 0;
   };
 
-  ngAfterViewInit() {
-    this.generateCalendar();
+  prevWeek(): void {
+    this.calendarBaseDate = subDays(this.calendarBaseDate, 7);
+    this.generateCalendarData();
+  }
+
+  nextWeek(): void {
+    this.calendarBaseDate = addDays(this.calendarBaseDate, 7);
+    this.generateCalendarData();
+  }
+
+  todayClick(): number {
+    if (isSameDay(this.today, this.dowList[this.active].date)) {
+      return 1;
+    }
+
+    this.calendarBaseDate = startOfWeek(this.today, {
+      weekStartsOn: 0,
+    });
+    this.generateCalendarData();
+  }
+
+  dateSelector(): void {
+    // If calendarBaseDate is from this week
+    if (isSameWeek(this.calendarBaseDate, this.today)) {
+      // Dateclick today's date
+      this.dateClick(format(this.today, 'eeee').toLowerCase());
+    } else {
+      this.dateClick('sunday');
+    }
+    this.fullDate = this.formatDate();
   }
 
   // On click, set active class to clicked element
-  dateClick(string) {
-    if (string.target.id === this.active) {
-      return 0;
-    }
-
-    // Remove active class from active element
-    document.getElementById(this.active).classList.remove('active');
-
-    // Set active to clicked element
-    this.active = string.target.id;
-
-    // Add active class to clicked element
-    string.target.classList.add('active');
-
-    this.refreshDateFull();
+  dateClick(string: string): void {
+    this.active = string;
+    this.fullDate = this.formatDate();
   }
 
-  refreshDateFull() {
-    // Set element date-full innerHTML to day of week of active date
-    let dowstring = this.dowList[this.active].date.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-    });
+  formatDate(): string {
+    let formated = formatDate(
+      this.dowList[this.active]?.date,
+      "EEEE, dd 'de' MMMM 'de' yyyy",
+      'pt-BR'
+    );
 
-    // Capitalize first letter of dowstring
-    dowstring = dowstring.charAt(0).toUpperCase() + dowstring.slice(1);
-
-    let dowday = this.dowList[this.active].date.toLocaleDateString('pt-BR', {
-      day: 'numeric',
-    });
-    let dowmonth = this.dowList[this.active].date.toLocaleDateString('pt-BR', {
-      month: 'long',
-    });
-    let dowyear = this.dowList[this.active].date.toLocaleDateString('pt-BR', {
-      year: 'numeric',
-    });
-
-    document.getElementById('date-full').innerHTML =
-      dowstring + ', ' + dowday + ' de ' + dowmonth + ' de ' + dowyear;
-    document.getElementById(this.active).innerHTML;
+    formated = formated.charAt(0).toUpperCase() + formated.slice(1);
+    return formated;
   }
 
-  generateCalendar() {
-    // This is sunday in the calendar
-    // Use '/' as date separators due to Safari inconsistencies
-    // YYYY/MM/DD 00:00:00
-    let calendarBaseDate = new Date('2022/02/06 00:00:00');
-
-    // Add one day to date
-    function addOneDay(date) {
-      date.setDate(date.getDate() + 1);
-      return date;
-    }
-
-    // Get only day from date
-    function getDay(date) {
-      return date.getDate();
-    }
-
-    let today = new Date();
-
-    // YYYY/MM/DD
-    let todayISO = today.toISOString().slice(0, 10);
-
+  generateCalendarData(): void {
+    let i = 0;
     for (let dow in this.dowList) {
-      // Get element in DOM
-      let dowElement = document.getElementById(dow);
+      this.dowList[dow].date = addDays(this.calendarBaseDate, i);
+      i++;
+    }
+    this.dateSelector();
+  }
 
-      // Insert calendarBaseDate in dowList object
-      this.dowList[dow].date = new Date(calendarBaseDate);
+  getDayFromDate(date: Date): number {
+    return getDate(date);
+  }
 
-      // Insert date in inner html
-      dowElement.innerHTML = getDay(calendarBaseDate);
+  async filter() {
+    const modal = await this.modalController.create({
+      component: FilterModalPage,
+      componentProps: {
+        selectedFilter: this.selectedFilter,
+      },
+      backdropDismiss: false,
+      swipeToClose: false,
+    });
 
-      // If today matches YYYY-MM-DD calendarBaseDate, set class to active
-      if (todayISO == calendarBaseDate.toISOString().slice(0, 10)) {
-        dowElement.classList.add('active');
-        this.active = dow;
+    modal.onDidDismiss().then((selectedFilter) => {
+      if (selectedFilter) {
+        // ... changes reference and triggers ngOnChanges
+        this.selectedFilter = [...selectedFilter.data.selectedFilter];
+        return true;
       }
-
-      // Add one day to calendarBaseDate
-      calendarBaseDate = addOneDay(calendarBaseDate);
-    }
-
-    // If not active, set monday as active
-    if (this.active === '') {
-      document.getElementById('monday').classList.add('active');
-    }
-
-    // refreshDatefull() pass this.dowList
-    this.refreshDateFull.bind(this)();
+      return false;
+    });
+    return await modal.present();
+  }
+  viewToggle() {
+    this.itemView = !this.itemView;
   }
 }

@@ -1,0 +1,38 @@
+name: CD
+on:
+  push:
+    tags:
+      - "*"
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Build
+        run: npm run build -- --configuration=production
+
+      - name: Deploy
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_FCT_APP }}'
+          channelId: live
+          projectId: fct-pp
+      
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: |
+            [Changelog](https://github.com/cacic-fct/fct-app/blob/main/Changelog.md)
+          draft: false
+          prerelease: false

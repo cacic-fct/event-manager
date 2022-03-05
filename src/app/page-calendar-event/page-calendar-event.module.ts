@@ -8,12 +8,15 @@ import { PageCalendarEventPageRoutingModule } from './page-calendar-event-routin
 
 import { PageCalendarEventPage } from './page-calendar-event.page';
 
+import { SafeModule } from '../shared/pipes/safe.module';
+
 @NgModule({
   imports: [
     CommonModule,
     FormsModule,
     IonicModule,
     PageCalendarEventPageRoutingModule,
+    SafeModule,
   ],
   declarations: [PageCalendarEventPage],
 })

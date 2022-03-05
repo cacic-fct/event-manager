@@ -1,13 +1,10 @@
-ion-radio {
-  display: none;
-}
-
 .hcal {
   font-size: 20px;
   font-family: 'HelveticaNeue-Light', 'Helvetica Neue Light', 'Helvetica Neue',
-    Helvetica, arial, sans-serif;
-  background: #fff;
+    Helvetica, 'Roboto', arial, sans-serif;
   position: relative;
+  max-width: 1600px;
+  display: block;
 }
 
 .hcal,
@@ -18,7 +15,6 @@ ion-radio {
 }
 
 .hcal .hcal-header {
-  background-color: #f8f8f8;
   height: 100%;
   padding-top: 30px;
   border-bottom: 1px solid #ddd;
@@ -79,10 +75,18 @@ ion-radio {
   }
 
   .hcal .hcal-header {
-    background-color: #000;
     border-bottom: 1px solid #989898;
   }
-  .hcal {
-    background: #000;
+}
+
+.btn-active {
+  --background: #fc3d39;
+  --border-radius: 5px;
+  --color: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .btn-active {
+    --color: #000;
   }
 }

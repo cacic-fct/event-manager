@@ -1,0 +1,42 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Personalize a sua experiência</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-content>
+    <!-- Customize your experience prompt. Yes or no -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <h2>Você possui vínculo com a FCT-Unesp?</h2>
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>É aluno, professor ou funcionário do câmpus?</p>
+        <p>
+          Você poderá alterar a sua resposta nas configurações do aplicativo.
+        </p>
+      </ion-card-content>
+      <ion-row>
+        <ion-col>
+          <ion-button
+            expand="block"
+            color="primary"
+            (click)="registerAnswer('true')">
+            Sim, sou da Unesp</ion-button
+          >
+        </ion-col>
+        <ion-col>
+          <ion-button
+            expand="block"
+            color="danger"
+            (click)="registerAnswer('false')"
+            >Não tenho vínculo com a Unesp</ion-button
+          >
+        </ion-col>
+      </ion-row>
+    </ion-card>
+  </ion-content>
+</ion-content>

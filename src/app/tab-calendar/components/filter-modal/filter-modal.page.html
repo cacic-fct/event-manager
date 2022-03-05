@@ -1,0 +1,27 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="dismissModal()">Fechar</ion-button>
+    </ion-buttons>
+    <ion-title>Filtro</ion-title>
+
+    <ion-buttons slot="end">
+      <ion-button (click)="uncheckAll()">Limpar</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+  <ion-list>
+    <ion-list-header>Cursos</ion-list-header>
+    <ng-container *ngFor="let course of courses | keyvalue">
+      <ion-item>
+        <ion-label>{{ course.value.name }}</ion-label>
+        <ion-checkbox
+          slot="start"
+          class="course"
+          [id]="course.key"
+          (click)="checkBoxClick(course.key)"></ion-checkbox>
+      </ion-item>
+    </ng-container>
+  </ion-list>
+</ion-content>

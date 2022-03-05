@@ -26,5 +26,9 @@
 @import '~@ionic/angular/css/flex-utils.css';
 
 /* Map */
-@import '~leaflet/dist/leaflet.css';
-@import '~leaflet-easybutton/src/easy-button.css';
+@import '~ol/ol.css';
+
+.margin-horizontal-auto {
+  margin-left: auto;
+  margin-right: auto;
+}

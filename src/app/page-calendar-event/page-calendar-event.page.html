@@ -1,89 +1,68 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>page-calendar-event</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Evento</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
-  <ion-grid>
-    <ion-row>
-      <ion-col>
-        <ion-row>
-          <ion-col
-            size-xs="12"
-            size-sm="12"
-            size-md="12"
-            size-lg="12"
-            size-xl="12">
-            <svg width="90" height="90">
-              <image
-                xlink:href="https://raw.githubusercontent.com/twitter/twemoji/master/assets/svg/1f5fa.svg"
-                width="90"
-                height="90" />
-            </svg>
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <!-- event title-->
-          <ion-col
-            size-xs="12"
-            size-sm="12"
-            size-md="12"
-            size-lg="12"
-            size-xl="12">
-            <h1>Integração com veteranos</h1>
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <!-- event subtitle -->
-          <ion-col
-            size-xs="12"
-            size-sm="12"
-            size-md="12"
-            size-lg="12"
-            size-xl="12">
-            <h2>Engenharia cartográfica</h2>
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <!-- event date -->
-          <ion-col
-            size-xs="12"
-            size-sm="12"
-            size-md="12"
-            size-lg="12"
-            size-xl="12">
-            <h3>Terça-feira, 1 de março de 2022</h3>
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <!-- event hour -->
-          <ion-col
-            size-xs="12"
-            size-sm="12"
-            size-md="12"
-            size-lg="12"
-            size-xl="12">
-            <h4>16:00 - 17:00</h4>
-          </ion-col>
-        </ion-row>
-      </ion-col>
-    </ion-row>
+  <div class="margin-horizontal-auto content-container ion-padding">
+    <img
+      class="margin-horizontal-auto"
+      style="width: 72px; height: 72px; display: block; padding: 10px"
+      [src]="getEmoji(item.icon) "
+      (click)="presentToast()" />
 
-    <!-- event description -->
-    <ion-row>
-      <ion-col size-xs="12" size-sm="12" size-md="12" size-lg="12" size-xl="12">
-        <h2>Sobre</h2>
-        <p>Waaaaaa</p>
-      </ion-col>
-    </ion-row>
+    <div class="ion-text-center">
+      <h1 style="margin: 0">{{ item?.name }}</h1>
+      <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">
+        {{ item?.shortDescription }}
+      </h5>
+      <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">
+        {{ getCourse() }}
+      </h5>
+      <h4 style="margin: 0; font-weight: 400">
+        <!-- prettier-ignore -->
+        {{ toUppercase(getDateFromTimestamp(item?.date) | date: "EEEE, dd 'de' MMMM 'de' y") }}
+      </h4>
+      <h3 style="margin: 0; font-weight: 400">
+        {{ getDateFromTimestamp(item?.date) | date: 'HH:mm' }}
+      </h3>
+    </div>
 
-    <!-- event map -->
-    <ion-row>
-      <ion-col size-xs="12" size-sm="12" size-md="12" size-lg="12" size-xl="12">
-        <h2>Localização</h2>
-        <div id="map">MAPAAA</div>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
+    <div *ngIf="item?.description">
+      <h2>Sobre</h2>
+      <p>{{ item?.description }}</p>
+    </div>
+
+    <div *ngIf="item?.location">
+      <h2>Localização</h2>
+
+      <div *ngIf="item?.location.description">
+        <ion-item lines="none">
+          <ion-icon name="pin" slot="start"></ion-icon>
+          <ion-label>{{ item?.location.description }}</ion-label>
+        </ion-item>
+      </div>
+
+      <div
+        id="ol-map"
+        class="map-container"
+        *ngIf="item?.location.lat && item?.location.lng"></div>
+    </div>
+
+    <div *ngIf="item?.youtubeCode">
+      <h2>Transmissão do evento</h2>
+      <iframe
+        width="400"
+        height="225"
+        [src]="'https://www.youtube-nocookie.com/embed/' + item?.youtubeCode | safe: 'resourceUrl'"
+        title="YouTube"
+        frameborder="0"
+        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+        allowfullscreen></iframe>
+    </div>
+  </div>
 </ion-content>

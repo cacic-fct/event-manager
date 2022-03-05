@@ -8,10 +8,39 @@ const routes: Routes = [
       import('./tabs/tabs.module').then((m) => m.TabsPageModule),
   },
   {
-    path: 'event',
+    path: 'calendario/evento/:id',
     loadChildren: () =>
       import('./page-calendar-event/page-calendar-event.module').then(
         (m) => m.PageCalendarEventPageModule
+      ),
+  },
+  {
+    path: 'about',
+    loadChildren: () =>
+      import('./page-about/page-about.module').then(
+        (m) => m.PageAboutPageModule
+      ),
+  },
+
+  {
+    path: 'licenses',
+    loadChildren: () =>
+      import('./page-licenses/page-licenses.module').then(
+        (m) => m.PageLegalPageModule
+      ),
+  },
+  {
+    path: 'vinculo',
+    loadChildren: () =>
+      import('./customize-experience/customize-experience.module').then(
+        (m) => m.CustomizeExperiencePageModule
+      ),
+  },
+  {
+    path: 'settings',
+    loadChildren: () =>
+      import('./page-settings/page-settings.module').then(
+        (m) => m.PageSettingsPageModule
       ),
   },
 ];

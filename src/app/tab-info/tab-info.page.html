@@ -8,6 +8,13 @@
 
 <ion-content [fullscreen]="true">
   <ion-card>
+    <ion-item href="https://fct.unesp.br" target="_blank">
+      <ion-icon
+        name="school-outline"
+        slot="start"
+        aria-hidden="true"></ion-icon>
+      <ion-label>Site da FCT-Unesp</ion-label>
+    </ion-item>
     <ion-item
       href="https://cacic-fct.web.app/manual-do-calouro"
       target="_blank">
@@ -17,8 +24,12 @@
   </ion-card>
 
   <ion-card>
+    <ion-item [routerLink]="['/settings']">
+      <ion-icon name="cog-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Configurações</ion-label>
+    </ion-item>
     <ion-item
-      href="mailto:cacic.fct@gmail.com?subject=Contato%20sobre%20o%20aplicativo%20da%20Ingressada">
+      href="mailto:cacic.fct@gmail.com?subject=Contato%20sobre%20o%20aplicativo%20FCT%20App">
       <ion-icon name="code-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label class="ion-text-wrap"
         >Contato com os desenvolvedores</ion-label

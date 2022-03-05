@@ -1,29 +1,47 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import Map from 'ol/Map';
+import View from 'ol/View';
+import TileLayer from 'ol/layer/Tile';
+import OSM from 'ol/source/OSM';
+import { useGeographic } from 'ol/proj';
+import { Control, defaults as defaultControls } from 'ol/control';
 
-import * as L from 'leaflet';
-import 'leaflet-easybutton';
+useGeographic();
 
 @Component({
   selector: 'app-tab-map',
   templateUrl: 'tab-map.page.html',
   styleUrls: ['tab-map.page.scss'],
 })
-export class TabMapPage {
-  private map: L.Map;
+export class TabMapPage implements OnInit {
+  public map: Map;
 
   constructor() {}
 
   ngOnInit() {}
 
   ionViewWillEnter() {
-    this.leafletMap();
+    // Openlayers button
+    this.map = new Map({
+      view: new View({
+        center: [-51.40775, -22.12103],
+        zoom: 18,
+        maxZoom: 19,
+        projection: 'EPSG:3857',
+      }),
+      layers: [
+        new TileLayer({
+          source: new OSM(),
+        }),
+      ],
+      target: 'ol-map',
+    });
   }
 
   ionViewWillLeave() {
     // Remove map on leave
-    //this.map.remove();
   }
-
+  /*
   leafletMap() {
     let home = {
       lat: -22.12103,
@@ -43,5 +61,5 @@ export class TabMapPage {
     }).addTo(this.map);
 
     L.map('mapId').invalidateSize();
-  }
+  }*/
 }

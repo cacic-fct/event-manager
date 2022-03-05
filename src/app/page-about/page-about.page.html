@@ -1,0 +1,61 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Sobre este app</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-grid class="ion-padding ion-text-center" style="max-width: 700px">
+    <ion-row>
+      <ion-col>
+        <img src="assets/icon/favicon.png" alt="Logo" style="width: 64px" />
+      </ion-col>
+    </ion-row>
+    <ion-row>
+      <ion-col>
+        <h5 style="margin: 0">{{globalConstants.appName}}</h5>
+        <h5 style="margin: 0">Versão: {{globalConstants.appVersion}}</h5>
+        <p style="font-size: 1em; margin: 5px 0 0 0">
+          Copyright (c) Centro Acadêmico de Ciência da Computação da FCT-Unesp
+        </p>
+      </ion-col>
+    </ion-row>
+    <ion-row>
+      <ion-col>
+        <p style="margin: 0">
+          Este aplicativo web é uma realização dos seus
+          <a
+            href="https://github.com/cacic-fct/fct-app/contributors"
+            target="_blank"
+            style="color: inherit"
+            >contribuidores</a
+          >
+          e do Centro Acadêmico de Ciência da Computação (CACiC) – Chapa
+          Margaret Hamilton (2021&nbsp;–&nbsp;2022).
+        </p>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <div style="text-align: center">
+    <p color="medium" style="text-decoration: underline; cursor: pointer">
+      <a style="color: inherit" href="https://github.com/cacic-fct/fct-app"
+        >Código-fonte</a
+      >
+    </p>
+    <p color="medium" style="text-decoration: underline; cursor: pointer">
+      <a style="color: inherit" href="https://cacic-fct.web.app/privacidade"
+        >Política de privacidade</a
+      >
+    </p>
+    <p
+      color="medium"
+      style="text-decoration: underline; cursor: pointer"
+      [routerLink]="['../licenses']">
+      Licenças
+    </p>
+  </div>
+</ion-content>

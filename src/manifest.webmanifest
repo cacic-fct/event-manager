@@ -1,0 +1,24 @@
+{
+  "name": "FCT App",
+  "short_name": "FCT App",
+  "theme_color": "#009fe0",
+  "background_color": "#000000",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "scope": "./",
+  "start_url": "./",
+  "icons": [
+    {
+      "src": "/assets/icon/192.webp",
+      "type": "image/webp",
+      "sizes": "192x192",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/assets/icon/512.webp",
+      "type": "image/webp",
+      "sizes": "512x512",
+      "purpose": "maskable any"
+    }
+  ]
+}
