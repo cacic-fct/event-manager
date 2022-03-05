@@ -21,6 +21,10 @@ export class CustomizeExperiencePage implements OnInit {
     );
 
     // Navigate to calendario page
-    this.router.navigate(['/calendario']);
+    // this.router.navigate(['/calendario']);
+    //
+    // Location redirect cuz calendar doesn't listen to localStorage changes
+    // TODO: Fix this
+    window.location.href = '/calendario';
   }
 }
