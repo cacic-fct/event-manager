@@ -53,6 +53,12 @@
         *ngIf="item?.location.lat && item?.location.lng"></div>
     </div>
 
+    <div *ngIf="item?.url">
+      <ion-button expand="block" color="primary" [href]="item?.url"
+        >Acompanhe o evento</ion-button
+      >
+    </div>
+
     <div *ngIf="item?.youtubeCode">
       <h2>Transmissão do evento</h2>
       <iframe
