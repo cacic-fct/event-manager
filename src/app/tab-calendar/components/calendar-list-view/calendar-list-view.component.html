@@ -4,6 +4,14 @@
     class="margin-horizontal-auto">
     <ng-container>
       <div *ngIf="items$ | async; let items; else: loading">
+        <ion-button
+          (click)="loadOlderEvents()"
+          expand="block"
+          [disabled]="loadOlderCount > 3"
+          style="max-width: 600px; display: block"
+          class="margin-horizontal-auto">
+          <ion-label> Mostrar eventos antigos </ion-label>
+        </ion-button>
         <ng-container *ngFor="let item of items; index as i">
           <ion-list-header
             mode="ios"

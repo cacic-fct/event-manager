@@ -4,9 +4,15 @@ import { CoursesService } from 'src/app/shared/services/courses.service';
 
 import { parse } from 'twemoji-parser';
 
-import { fromUnixTime, isSameDay, isSameMonth } from 'date-fns';
+import {
+  fromUnixTime,
+  isSameDay,
+  isSameMonth,
+  startOfWeek,
+  sub,
+} from 'date-fns';
 
-import { NavController } from '@ionic/angular';
+import { NavController, ToastController } from '@ionic/angular';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { switchMap } from 'rxjs/operators';
 import { formatDate } from '@angular/common';
@@ -25,23 +31,37 @@ export class CalendarListViewComponent implements OnChanges {
   @Input() filter: Array<string>;
 
   courseFilter$: BehaviorSubject<Array<string> | null>;
+  dateFilter$: BehaviorSubject<Date | null>;
   isUnesp$: BehaviorSubject<string | null>;
   isUnespObs: Observable<any>;
+  loadOlderCount: number = 0;
 
   items$: Observable<EventItem[]>;
+
+  baseDate: Date = startOfWeek(
+    sub(new Date(), {
+      weeks: 2,
+    })
+  );
 
   constructor(
     firestore: AngularFirestore,
     private navCtrl: NavController,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private toastController: ToastController
   ) {
+    this.dateFilter$ = new BehaviorSubject(null);
     this.courseFilter$ = new BehaviorSubject(null);
+    this.dateFilter$.next(this.baseDate);
 
-    this.items$ = combineLatest([this.courseFilter$]).pipe(
-      switchMap(([filter]) => {
+    this.items$ = combineLatest([this.courseFilter$, this.dateFilter$]).pipe(
+      switchMap(([filter, date]) => {
         return firestore
           .collection<EventItem>('events', (ref) => {
             let query: any = ref;
+            if (date) {
+              query = query.where('date', '>=', this.baseDate);
+            }
             if (filter.length > 0) {
               query = query.where('course', 'in', filter);
             }
@@ -96,5 +116,24 @@ export class CalendarListViewComponent implements OnChanges {
 
     formated = formated.charAt(0).toUpperCase() + formated.slice(1);
     return formated;
+  }
+
+  loadOlderEvents() {
+    this.loadOlderCount += 1;
+    this.presentToast();
+    this.baseDate = sub(this.baseDate, { weeks: 1 });
+    this.dateFilter$.next(this.baseDate);
+  }
+
+  async presentToast() {
+    const toast = await this.toastController.create({
+      header: 'Procurando por eventos mais antigos...',
+      message: 'De até ' + (this.loadOlderCount + 2) + ' semanas atrás',
+      icon: 'search',
+      position: 'bottom',
+      duration: 500,
+      buttons: [],
+    });
+    await toast.present();
   }
 }
