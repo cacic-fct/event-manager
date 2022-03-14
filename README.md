@@ -1,6 +1,6 @@
 # FCT App
 
-O "FCT App" facilitar a vida dos alunos da FCT, com o acesso aos eventos do câmpus. Tem alto potencial de expansão. 
+O "FCT App" facilita a vida dos alunos da FCT, com o acesso aos eventos do câmpus. Tem alto potencial de expansão. 
 
 ## Contribuindo
 Todos podem contribuir com o "FCT App" através de *pull requests*, *discussions* e *issues*.  
