@@ -8,6 +8,7 @@ import {
   fromUnixTime,
   isSameDay,
   isSameMonth,
+  startOfDay,
   startOfWeek,
   sub,
 } from 'date-fns';
@@ -38,11 +39,7 @@ export class CalendarListViewComponent implements OnChanges {
 
   items$: Observable<EventItem[]>;
 
-  baseDate: Date = startOfWeek(
-    sub(new Date(), {
-      weeks: 2,
-    })
-  );
+  baseDate: Date = startOfDay(new Date());
 
   constructor(
     firestore: AngularFirestore,
@@ -119,6 +116,10 @@ export class CalendarListViewComponent implements OnChanges {
   }
 
   loadOlderEvents() {
+    if (this.loadOlderCount == 0) {
+      this.baseDate = startOfWeek(this.baseDate);
+    }
+
     this.loadOlderCount += 1;
     this.presentToast();
     this.baseDate = sub(this.baseDate, { weeks: 1 });
@@ -128,7 +129,11 @@ export class CalendarListViewComponent implements OnChanges {
   async presentToast() {
     const toast = await this.toastController.create({
       header: 'Procurando por eventos mais antigos...',
-      message: 'De até ' + (this.loadOlderCount + 2) + ' semanas atrás',
+      message:
+        'De até ' +
+        this.loadOlderCount +
+        (this.loadOlderCount == 1 ? ' semana ' : ' semanas ') +
+        'atrás',
       icon: 'search',
       position: 'bottom',
       duration: 500,
