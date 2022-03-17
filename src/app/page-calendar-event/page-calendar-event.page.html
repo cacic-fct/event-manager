@@ -53,9 +53,9 @@
         *ngIf="item?.location.lat && item?.location.lng"></div>
     </div>
 
-    <div *ngIf="item?.url">
-      <ion-button expand="block" color="primary" [href]="item?.url"
-        >Acompanhe o evento</ion-button
+    <div *ngIf="item?.button">
+      <ion-button expand="block" color="primary" [href]="item?.button.url"
+        >{{ item.button.text ? item.button.text : 'Acompanhe o evento' }}</ion-button
       >
     </div>
 
