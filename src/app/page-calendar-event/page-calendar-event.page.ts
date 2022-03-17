@@ -108,7 +108,10 @@ export class PageCalendarEventPage implements OnInit {
   }*/
 
   getCourse(): string {
-    return this.courses[this.item.course].name;
+    if (this.courses[this.item.course]) {
+      return this.courses[this.item.course].name;
+    }
+    return '';
   }
 
   getDateFromTimestamp(timestamp: any): Date {
