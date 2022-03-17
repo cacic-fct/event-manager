@@ -6,7 +6,9 @@
       *ngFor="let item of items"
       (click)="openItem(item)"
       style="cursor: pointer"
-      [style.--background]="courses[item.course]?.color + '25'">
+      [style.--background]="
+        courses[item.course] ? courses[item.course].color + '25' : undefined
+      ">
       <img
         [src]="getEmoji(item.icon)"
         class="twemoji"
@@ -17,7 +19,7 @@
       <ion-label>
         <h2 class="ion-text-wrap">{{ item.name }}</h2>
         <h3 class="ion-text-wrap">{{ item.shortDescription }}</h3>
-        <p>
+        <p *ngIf="courses[item.course]">
           {{ courses[item.course].name }}
         </p>
       </ion-label>
