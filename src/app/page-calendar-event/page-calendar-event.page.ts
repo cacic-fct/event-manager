@@ -13,10 +13,14 @@ import { parse } from 'twemoji-parser';
 
 import Map from 'ol/Map';
 import View from 'ol/View';
-import TileLayer from 'ol/layer/Tile';
+import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
 import OSM from 'ol/source/OSM';
-import { useGeographic } from 'ol/proj';
+import Feature from 'ol/Feature';
+import { Icon, Style } from 'ol/style';
+import { fromLonLat, useGeographic } from 'ol/proj';
 import { Control, defaults as defaultControls } from 'ol/control';
+import Point from 'ol/geom/Point';
+import VectorSource from 'ol/source/Vector';
 
 @Component({
   selector: 'app-page-calendar-event',
@@ -44,68 +48,53 @@ export class PageCalendarEventPage implements OnInit {
   }
 
   ionViewWillEnter() {
+    useGeographic();
+    const iconStyle = new Style({
+      image: new Icon({
+        anchor: [0.5, 1],
+        scale: 0.5,
+        anchorXUnits: 'fraction',
+        anchorYUnits: 'fraction',
+        src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+      }),
+    });
+
+    let iconFeature = new Feature({
+      geometry: new Point([this.item.location?.lon, this.item.location?.lat]),
+      name: this.item?.name,
+    });
+
+    iconFeature.setStyle(iconStyle);
+
+    const vectorSource = new VectorSource({
+      features: [iconFeature],
+    });
+
+    const vectorLayer = new VectorLayer({
+      source: vectorSource,
+    });
+
+    const rasterLayer = new TileLayer({
+      source: new OSM(),
+    });
+
     this.map = new Map({
       view: new View({
-        center: [-51.40775, -22.12103],
+        center: [this.item.location?.lon, this.item.location?.lat],
         zoom: 18,
         maxZoom: 19,
         projection: 'EPSG:3857',
       }),
-      layers: [
-        new TileLayer({
-          source: new OSM(),
-        }),
-      ],
+      layers: [rasterLayer, vectorLayer],
       target: 'ol-map',
     });
   }
-  /*
-  ionViewWillEnter() {
-    if (this.item.location?.lat && this.item.location?.lng) {
-      this.leafletMap();
-    }
-  }
 
   ionViewWillLeave() {
-    if (this.map) {
-      this.map.off();
-      this.map.remove();
-    }
+    // Remove map on leave
+    this.map.setTarget(null);
+    this.map = null;
   }
-
-  leafletMap() {
-    let home = {
-      lat: this.item.location.lat,
-      lng: this.item.location.lng,
-      zoom: 18,
-    };
-
-    let icon = new L.Icon({
-      iconUrl:
-        'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-      shadowUrl:
-        'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    });
-
-    this.map = L.map('mapId').setView([home.lat, home.lng], home.zoom);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:
-        '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(this.map);
-
-    L.easyButton('<ion-icon name="locate"></ion-icon>', () => {
-      this.map.setView([home.lat, home.lng], home.zoom);
-    }).addTo(this.map);
-
-    L.marker([home.lat, home.lng], { icon: icon }).addTo(this.map);
-
-    L.map('mapId').invalidateSize();
-  }*/
 
   getCourse(): string {
     if (this.courses[this.item.course]) {

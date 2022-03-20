@@ -21,7 +21,11 @@ export class TabMapPage implements OnInit {
   ngOnInit() {}
 
   ionViewWillEnter() {
-    // Openlayers button
+    useGeographic();
+    const rasterLayer = new TileLayer({
+      source: new OSM(),
+    });
+
     this.map = new Map({
       view: new View({
         center: [-51.40775, -22.12103],
@@ -29,37 +33,8 @@ export class TabMapPage implements OnInit {
         maxZoom: 19,
         projection: 'EPSG:3857',
       }),
-      layers: [
-        new TileLayer({
-          source: new OSM(),
-        }),
-      ],
-      target: 'ol-map',
+      layers: [rasterLayer],
+      target: 'ol-map-tab',
     });
   }
-
-  ionViewWillLeave() {
-    // Remove map on leave
-  }
-  /*
-  leafletMap() {
-    let home = {
-      lat: -22.12103,
-      lng: -51.40775,
-      zoom: 18,
-    };
-
-    this.map = L.map('mapId').setView([home.lat, home.lng], home.zoom);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:
-        '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(this.map);
-
-    L.easyButton('<ion-icon name="school"></ion-icon>', () => {
-      this.map.setView([home.lat, home.lng], home.zoom);
-    }).addTo(this.map);
-
-    L.map('mapId').invalidateSize();
-  }*/
 }

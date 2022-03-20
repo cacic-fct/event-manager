@@ -50,12 +50,13 @@
       <div
         id="ol-map"
         class="map-container"
-        *ngIf="item?.location.lat && item?.location.lng"></div>
+        *ngIf="item?.location.lat && item?.location.lon"></div>
     </div>
 
     <div *ngIf="item?.button">
       <ion-button expand="block" color="primary" [href]="item?.button.url"
-        >{{ item.button.text ? item.button.text : 'Acompanhe o evento' }}</ion-button
+        >{{ item.button.text ? item.button.text : 'Acompanhe o evento'
+        }}</ion-button
       >
     </div>
 
