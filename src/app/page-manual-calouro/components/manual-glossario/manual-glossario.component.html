@@ -1,0 +1,11 @@
+<div class="bg-light-green text-black padding-vertical-10">
+  <div class="markdown-container ion-text-justify ion-padding-horizontal">
+    <!-- prettier-ignore -->
+    <markdown ngPreserveWhitespaces>
+    # Glossário
+    <ng-container *ngFor="let d of dictionary">
+    - **{{ d.term }}**: {{ d.definition }}
+    </ng-container>
+  </markdown>
+  </div>
+</div>

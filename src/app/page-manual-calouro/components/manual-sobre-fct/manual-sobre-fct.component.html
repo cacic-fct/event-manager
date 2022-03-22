@@ -1,0 +1,64 @@
+<div
+  class="bg-light-blue text-black padding-vertical-10"
+  style="padding-top: 5px">
+  <div class="markdown-container ion-text-justify ion-padding-horizontal">
+    <markdown
+      [src]="
+        'https://cdn.jsdelivr.net/gh/cacic-fct/manual-do-calouro@main/sections/sobre-fct.md'
+      ">
+    </markdown>
+  </div>
+</div>
+
+<div class="timeline-container" style="background-color: #212121">
+  <span class="sr-only">{{ timelineDescription }}</span>
+  <ion-img
+    class="timeline margin-horizontal-auto"
+    src="assets/manual-do-calouro/sobre-timeline.webp"
+    aria-hidden="true"></ion-img>
+</div>
+
+<div class="bg-light-blue text-black padding-vertical-10">
+  <div class="markdown-container ion-text-justify ion-padding-horizontal">
+    <markdown
+      [src]="
+        'https://cdn.jsdelivr.net/gh/cacic-fct/manual-do-calouro@main/sections/cursos.md'
+      ">
+    </markdown>
+    <div class="flex-container ion-text-center">
+      <div class="flex-items" *ngFor="let c of cursos">
+        <h1>{{ c.nome }}</h1>
+        <p>
+          {{ c.duracao }}&nbsp;anos, {{ c.periodo }}, {{ c.vagas }}&nbsp;vagas
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div
+  style="width: 100%; padding-top: 32px; padding-bottom: 32px"
+  class="bg-grey">
+  <div class="markdown-container">
+    <div class="bg-grey ion-padding-horizontal">
+      <object
+        class="margin-horizontal-auto"
+        role="img"
+        data="assets/manual-do-calouro/cursos-balburdia.svg"
+        type="image/svg+xml"
+        aria-label="Na universidade pública, não fazemos balbúrdia, fazemos ciência"
+        style="max-width: 800px"></object>
+    </div>
+    <!-- Imagens dos cursos podem ser colocadas aqui -->
+  </div>
+</div>
+
+<div class="bg-light-blue text-black padding-vertical-10">
+  <div class="markdown-container ion-text-justify ion-padding-horizontal">
+    <markdown
+      [src]="
+        'https://cdn.jsdelivr.net/gh/cacic-fct/manual-do-calouro@main/sections/entidades.md'
+      ">
+    </markdown>
+  </div>
+</div>

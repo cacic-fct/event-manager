@@ -43,6 +43,20 @@ const routes: Routes = [
         (m) => m.PageSettingsPageModule
       ),
   },
+  {
+    path: 'manual-do-calouro',
+    loadChildren: () =>
+      import('./page-manual-calouro/page-manual-calouro.module').then(
+        (m) => m.PageManualCalouroPageModule
+      ),
+  },
+  {
+    path: 'calouros',
+    loadChildren: () =>
+      import('./page-calouros/page-calouros.module').then(
+        (m) => m.PageCalourosPageModule
+      ),
+  },
 ];
 @NgModule({
   imports: [
