@@ -11,7 +11,13 @@ import Overlay from 'ol/Overlay';
   providedIn: 'root',
 })
 export class MarkerService {
-  layers: Array<string> = ['mercados', 'compras'];
+  layers: Array<string> = [
+    'mercados',
+    'compras',
+    'hospitais',
+    'farmacias',
+    'autoridades',
+  ];
 
   mercadosIcon = new Style({
     image: new Icon({
@@ -33,6 +39,36 @@ export class MarkerService {
     }),
   });
 
+  hospitaisIcon = new Style({
+    image: new Icon({
+      anchor: [0.5, 1],
+      scale: 0.5,
+      anchorXUnits: 'fraction',
+      anchorYUnits: 'fraction',
+      src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    }),
+  });
+
+  farmaciasIcon = new Style({
+    image: new Icon({
+      anchor: [0.5, 1],
+      scale: 0.5,
+      anchorXUnits: 'fraction',
+      anchorYUnits: 'fraction',
+      src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+    }),
+  });
+
+  autoridadesIcon = new Style({
+    image: new Icon({
+      anchor: [0.5, 1],
+      scale: 0.5,
+      anchorXUnits: 'fraction',
+      anchorYUnits: 'fraction',
+      src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+    }),
+  });
+
   mercadosStyle = {
     color: '#2A81CB',
   };
@@ -41,7 +77,7 @@ export class MarkerService {
     color: '#FFD326',
   };
 
-  constructor(private http: HttpClient) {}
+  constructor() {}
 
   // For each layer create a geojson layer with markers and polygons.
   // Mercados style is mercadosIcon and mercadosStyle.
@@ -62,10 +98,17 @@ export class MarkerService {
       const vectorLayer = new VectorLayer({
         source: vectorSource,
         style: (feature) => {
-          if (layer === 'mercados') {
-            return this.mercadosIcon;
-          } else {
-            return this.comprasIcon;
+          switch (layer) {
+            case 'mercados':
+              return this.mercadosIcon;
+            case 'compras':
+              return this.comprasIcon;
+            case 'hospitais':
+              return this.hospitaisIcon;
+            case 'farmacias':
+              return this.farmaciasIcon;
+            case 'autoridades':
+              return this.autoridadesIcon;
           }
         },
       });
