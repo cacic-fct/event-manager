@@ -27,7 +27,7 @@ export class PageManualCalouroPage implements OnInit, AfterViewInit {
     this.map = new Map({
       view: new View({
         center: [-51.40775, -22.12103],
-        zoom: 18,
+        zoom: 15,
         maxZoom: 19,
         projection: 'EPSG:3857',
       }),
