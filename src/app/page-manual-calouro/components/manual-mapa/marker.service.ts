@@ -79,11 +79,6 @@ export class MarkerService {
 
   constructor() {}
 
-  // For each layer create a geojson layer with markers and polygons.
-  // Mercados style is mercadosIcon and mercadosStyle.
-  // Compras style is comprasIcon and comprasStyle.
-  // bindPopup of markers and polygons to "<b>feature.properties.name</b><br>feature.properties.description"
-
   makeGroceriesMarkers(map: Map): void {
     // For each layer create a geojson layer with markers and polygons.
     // Mercados style is mercadosIcon and mercadosStyle.
@@ -113,15 +108,50 @@ export class MarkerService {
         },
       });
 
-      // popup overlay
-      const popup = new Overlay({
-        element: document.getElementById('popup'),
-        autoPan: true,
+      const popup = document.getElementById('popup');
+      const popupOverlay = new Overlay({
+        element: popup,
+        /*autoPan: true,
         autoPanAnimation: {
           duration: 250,
-        },
+        },*/
       });
-      map.addOverlay(popup);
+
+      map.addOverlay(popupOverlay);
+
+      map.on('singleclick', (event) => {
+        map.forEachFeatureAtPixel(
+          event.pixel,
+          (feature) => {
+            popup.innerHTML = `<b>${feature.get('name')}</b><br>${
+              feature.get('description') || ''
+            }
+          ${
+            feature.get('maps')
+              ? `<br><a href="https://goo.gl/maps/${feature.get(
+                  'maps'
+                )}" target="_blank">Mais informações</a>`
+              : ''
+          }
+          `;
+            popup.hidden = false;
+            popupOverlay.setPosition(event.coordinate);
+          },
+          { hitTolerance: 6 }
+        );
+      });
+
+      map.on('movestart', () => {
+        popup.hidden = true;
+      });
+
+      map.on('pointermove', function (e) {
+        const pixel = map.getEventPixel(e.originalEvent);
+        const hit = map.hasFeatureAtPixel(pixel);
+        const target: any = map.getTarget();
+        const element = document.getElementById(target);
+        element.style.cursor = hit ? 'pointer' : '';
+      });
 
       map.addLayer(vectorLayer);
     });

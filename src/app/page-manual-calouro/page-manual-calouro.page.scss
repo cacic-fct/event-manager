@@ -70,3 +70,15 @@
 .bg-beige {
   background-color: #ffebda;
 }
+
+.popup {
+  border-radius: 5px;
+  border: 1px solid #808080;
+  background-color: #ffffffee;
+  padding: 2px;
+  display: block;
+  color: #000;
+  max-width: 200px;
+  min-height: 50px;
+  padding: 10px 15px;
+}
