@@ -54,7 +54,7 @@
     </div>
 
     <div *ngIf="item?.button">
-      <ion-button expand="block" color="primary" [href]="item?.button.url"
+      <ion-button expand="block" color="primary" [href]="item?.button.url" target="_blank"
         >{{ item.button.text ? item.button.text : 'Acompanhe o evento'
         }}</ion-button
       >
