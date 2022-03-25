@@ -2,7 +2,7 @@ import Map from 'ol/Map';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import GeoJSON from 'ol/format/GeoJSON';
-import { Icon, Style } from 'ol/style';
+import { Fill, Icon, Stroke, Style } from 'ol/style';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
 import VectorSource from 'ol/source/Vector';
 import Overlay from 'ol/Overlay';
@@ -27,6 +27,10 @@ export class MarkerService {
       anchorYUnits: 'fraction',
       src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
     }),
+    stroke: new Stroke({
+      color: '#3274A3',
+      width: 7,
+    }),
   });
 
   comprasIcon = new Style({
@@ -36,6 +40,10 @@ export class MarkerService {
       anchorXUnits: 'fraction',
       anchorYUnits: 'fraction',
       src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+    }),
+    stroke: new Stroke({
+      color: '#C1A32D',
+      width: 7,
     }),
   });
 
@@ -47,6 +55,10 @@ export class MarkerService {
       anchorYUnits: 'fraction',
       src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
     }),
+    stroke: new Stroke({
+      color: '#982E40',
+      width: 7,
+    }),
   });
 
   farmaciasIcon = new Style({
@@ -56,6 +68,10 @@ export class MarkerService {
       anchorXUnits: 'fraction',
       anchorYUnits: 'fraction',
       src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+    }),
+    stroke: new Stroke({
+      color: '#98652E',
+      width: 7,
     }),
   });
 
@@ -67,15 +83,11 @@ export class MarkerService {
       anchorYUnits: 'fraction',
       src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
     }),
+    stroke: new Stroke({
+      color: '#6B6B6B',
+      width: 7,
+    }),
   });
-
-  mercadosStyle = {
-    color: '#2A81CB',
-  };
-
-  comprasStyle = {
-    color: '#FFD326',
-  };
 
   constructor() {}
 
