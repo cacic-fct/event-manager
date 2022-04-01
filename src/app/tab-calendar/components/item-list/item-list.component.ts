@@ -65,12 +65,6 @@ export class ItemListComponent implements OnChanges {
     this.courseFilter$.next(this.filter);
   }
 
-  public openItem(item: any): void {
-    this.navCtrl.navigateForward(['calendario/evento', item.id], {
-      state: { item: item },
-    });
-  }
-
   getDateFromTimestamp(timestamp: any): Date {
     return fromUnixTime(timestamp);
   }

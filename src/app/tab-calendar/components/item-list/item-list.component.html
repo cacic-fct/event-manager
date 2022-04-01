@@ -4,11 +4,11 @@
   <ng-container *ngIf="items$ | async; let items; else: loading">
     <ion-item
       *ngFor="let item of items"
-      (click)="openItem(item)"
       style="cursor: pointer"
       [style.--background]="
         courses[item.course] ? courses[item.course].color + '25' : undefined
-      ">
+      "
+      [routerLink]="['/evento', item.id]">
       <img
         [src]="getEmoji(item.icon)"
         class="twemoji"

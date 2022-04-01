@@ -22,6 +22,14 @@ import { Control, defaults as defaultControls } from 'ol/control';
 import Point from 'ol/geom/Point';
 import VectorSource from 'ol/source/Vector';
 
+import {
+  AngularFirestore,
+  AngularFirestoreDocument,
+} from '@angular/fire/compat/firestore';
+
+import { EventItem } from '../shared/services/event';
+import { first, Observable } from 'rxjs';
+
 @Component({
   selector: 'app-page-calendar-event',
   templateUrl: './page-calendar-event.page.html',
@@ -29,76 +37,88 @@ import VectorSource from 'ol/source/Vector';
 })
 export class PageCalendarEventPage implements OnInit {
   courses = CoursesService.courses;
-
-  item: any;
+  item: EventItem;
+  item$: Observable<EventItem>;
   map: Map;
 
   constructor(
     private toastController: ToastController,
     private clipboardService: ClipboardService,
     private router: Router,
-    private sanitizer: DomSanitizer
-  ) {}
-
-  ngOnInit() {
-    this.item = history.state.item;
-    if (this.item === undefined) {
-      this.router.navigate(['/calendario']);
-    }
+    private sanitizer: DomSanitizer,
+    private afs: AngularFirestore
+  ) {
+    const id = this.router.url.split('/')[3];
+    this.item$ = this.afs
+      .doc<EventItem>(`events/${id}`)
+      .valueChanges({ idField: 'id' });
   }
 
+  ngOnInit() {}
+
   ionViewWillEnter() {
-    useGeographic();
-    const iconStyle = new Style({
-      image: new Icon({
-        anchor: [0.5, 1],
-        scale: 0.5,
-        anchorXUnits: 'fraction',
-        anchorYUnits: 'fraction',
-        src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-      }),
-    });
+    // first() unsubscribes after the first value is emitted
+    // This is necessary because the map would be created multiple times otherwise
+    this.item$.pipe(first()).subscribe((item) => {
+      this.item = item;
+      if (!item.location) {
+        return;
+      }
 
-    let iconFeature = new Feature({
-      geometry: new Point([this.item.location?.lon, this.item.location?.lat]),
-      name: this.item?.name,
-    });
+      useGeographic();
+      const iconStyle = new Style({
+        image: new Icon({
+          anchor: [0.5, 1],
+          scale: 0.5,
+          anchorXUnits: 'fraction',
+          anchorYUnits: 'fraction',
+          src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        }),
+      });
 
-    iconFeature.setStyle(iconStyle);
+      let iconFeature = new Feature({
+        geometry: new Point([this.item?.location.lon, this.item.location?.lat]),
+        name: this.item?.name,
+      });
 
-    const vectorSource = new VectorSource({
-      features: [iconFeature],
-    });
+      iconFeature.setStyle(iconStyle);
 
-    const vectorLayer = new VectorLayer({
-      source: vectorSource,
-    });
+      const vectorSource = new VectorSource({
+        features: [iconFeature],
+      });
 
-    const rasterLayer = new TileLayer({
-      source: new OSM(),
-    });
+      const vectorLayer = new VectorLayer({
+        source: vectorSource,
+      });
 
-    this.map = new Map({
-      view: new View({
-        center: [this.item.location?.lon, this.item.location?.lat],
-        zoom: 18,
-        maxZoom: 19,
-        projection: 'EPSG:3857',
-      }),
-      layers: [rasterLayer, vectorLayer],
-      target: 'ol-map',
+      const rasterLayer = new TileLayer({
+        source: new OSM(),
+      });
+
+      this.map = new Map({
+        view: new View({
+          center: [this.item.location?.lon, this.item.location?.lat],
+          zoom: 18,
+          maxZoom: 19,
+          projection: 'EPSG:3857',
+        }),
+        layers: [rasterLayer, vectorLayer],
+        target: 'ol-map',
+      });
     });
   }
 
   ionViewWillLeave() {
-    // Remove map on leave
-    this.map.setTarget(null);
-    this.map = null;
+    // Remove map on leave if it exists
+    if (this.map) {
+      this.map.setTarget(null);
+      this.map = null;
+    }
   }
 
-  getCourse(): string {
-    if (this.courses[this.item.course]) {
-      return this.courses[this.item.course].name;
+  getCourse(course: string): string {
+    if (this.courses[course]) {
+      return this.courses[course].name;
     }
     return '';
   }
