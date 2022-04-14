@@ -25,8 +25,6 @@
         >
       </ion-col>
     </ion-row>
-    <ion-button (click)="authService.anonAuth()"> Login </ion-button>
-    <ion-button (click)="authService.SignOut()"> Sign Out </ion-button>
     <ion-row style="margin-top: 40px">
       <ion-col class="ion-text-center">
         <div>
@@ -110,7 +108,7 @@
           </svg>
           <p style="font-size: 0.75em" class="ion-padding-horizontal">
             Ao continuar, você está concordando com a nossa
-            <a href="">Política de Privacidade</a>.
+            <a routerLink="/privacidade">Política de Privacidade</a>.
           </p>
         </div>
       </ion-col>

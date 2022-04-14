@@ -1,4 +1,8 @@
 import { Component } from '@angular/core';
+import { AngularFireAuth } from '@angular/fire/compat/auth';
+
+import { AuthService } from '../shared/services/auth.service';
+import firebase from 'firebase/compat/app';
 
 @Component({
   selector: 'app-tab3',
@@ -6,10 +10,17 @@ import { Component } from '@angular/core';
   styleUrls: ['tab-info.page.scss'],
 })
 export class TabInfoPage {
-  constructor() {}
+  constructor(public authService: AuthService, public auth: AngularFireAuth) {}
 
-  userData: any; // Save logged in user data
+  userData: firebase.User;
   firstName: string;
 
-  ngOnInit() {}
+  ngOnInit() {
+    this.auth.user.subscribe((user) => {
+      if (user) {
+        this.userData = user;
+        this.firstName = this.userData.displayName.split(' ')[0];
+      }
+    });
+  }
 }

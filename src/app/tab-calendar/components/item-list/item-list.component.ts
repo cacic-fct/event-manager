@@ -11,6 +11,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { parse } from 'twemoji-parser';
 
 import { EventItem } from 'src/app/shared/services/event';
+import { trace } from '@angular/fire/compat/performance';
 
 @Component({
   selector: 'app-item-list',
@@ -49,13 +50,11 @@ export class ItemListComponent implements OnChanges {
             if (filter.length > 0) {
               query = query.where('course', 'in', filter);
             }
-            if (localStorage.getItem('isUnesp') !== 'true') {
-              query = query.where('public', '==', true);
-            }
 
             return query.orderBy('date', 'asc');
           })
-          .valueChanges({ idField: 'id' });
+          .valueChanges({ idField: 'id' })
+          .pipe(trace('firestore'));
       })
     );
   }
@@ -74,13 +73,5 @@ export class ItemListComponent implements OnChanges {
       return this.sanitizer.bypassSecurityTrustResourceUrl(parse('❔')[0].url);
     }
     return this.sanitizer.bypassSecurityTrustResourceUrl(parse(emoji)[0].url);
-  }
-
-  // Emoji to codepoint
-  getEmojiCode(emoji: string): string {
-    if (emoji === undefined) {
-      return '❔'.codePointAt(0).toString(16);
-    }
-    return emoji.codePointAt(0).toString(16);
   }
 }

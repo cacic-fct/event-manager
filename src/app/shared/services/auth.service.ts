@@ -9,10 +9,12 @@ import firebase from 'firebase/compat/app';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { ModalController } from '@ionic/angular';
+import { GlobalConstantsService } from './global-constants.service';
 
 @Injectable()
 export class AuthService {
-  userData: any;
+  userData: firebase.User;
+  dataVersion = GlobalConstantsService.userDataVersion;
 
   constructor(
     public auth: AngularFireAuth,
@@ -21,15 +23,15 @@ export class AuthService {
     public ngZone: NgZone,
     public modalController: ModalController
   ) {
-    this.auth.useEmulator('http://localhost:8124');
+    //  this.auth.useEmulator('http://localhost:8124');
     this.auth.authState.subscribe((user) => {
       if (user) {
         this.userData = user;
         localStorage.setItem('user', JSON.stringify(this.userData));
         JSON.parse(localStorage.getItem('user'));
+        this.CompareUserdataVersion(this.userData);
       } else {
-        localStorage.setItem('user', null);
-        JSON.parse(localStorage.getItem('user'));
+        localStorage.removeItem('user');
       }
     });
   }
@@ -37,11 +39,10 @@ export class AuthService {
   async SignOut() {
     await this.auth.signOut();
     localStorage.removeItem('user');
-    this.router.navigate(['login']);
   }
 
   GoogleAuth() {
-    return this.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    return this.AuthLogin(new firebase.auth.GoogleAuthProvider());
   }
 
   anonAuth() {
@@ -59,9 +60,6 @@ export class AuthService {
     this.auth.useDeviceLanguage();
     try {
       const result = await this.auth.signInWithPopup(provider);
-      this.ngZone.run(() => {
-        this.router.navigate(['tabs']);
-      });
       this.SetUserData(result.user);
     } catch (error) {
       console.error('Login failed');
@@ -72,16 +70,26 @@ export class AuthService {
     const userRef: AngularFirestoreDocument<any> = this.afs.doc(
       `users/${user.uid}`
     );
-    const userData: User = {
+    const userData = {
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
       photoURL: user.photoURL,
-      dataVersion: '',
     };
     return userRef.set(userData, {
       merge: true,
     });
+  }
+
+  CompareUserdataVersion(user: firebase.User) {
+    this.afs
+      .doc<User>(`users/${user.uid}`)
+      .valueChanges()
+      .subscribe((data) => {
+        if (data.dataVersion && data.dataVersion !== this.dataVersion) {
+          this.router.navigate(['/register']);
+        }
+      });
   }
 
   async isLoggedIn(): Promise<boolean> {

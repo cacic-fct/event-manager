@@ -1,0 +1,41 @@
+<ion-list
+  style="max-width: 1600px; display: block"
+  class="margin-horizontal-auto">
+  <ng-container *ngIf="items$ | async; let items; else: loading">
+    <ion-item
+      *ngFor="let item of items"
+      style="cursor: pointer"
+      [style.--background]="
+        courses[item.course] ? courses[item.course].color + '25' : undefined
+      "
+      [routerLink]="['./scanner', item.id]">
+      <img
+        [src]="getEmoji(item.icon)"
+        class="twemoji"
+        slot="start"
+        aria-hidden="true"
+        loading="lazy" />
+
+      <ion-label>
+        <h2 class="ion-text-wrap">{{ item.name }}</h2>
+        <h3 class="ion-text-wrap">{{ item.shortDescription }}</h3>
+        <p *ngIf="courses[item.course]">{{ courses[item.course].name }}</p>
+      </ion-label>
+      <div slot="end">
+        <h4 style="font-weight: 400">
+          {{ getDateFromTimestamp(item.date) | date: 'HH:mm' }}
+        </h4>
+      </div>
+    </ion-item>
+    <h1 *ngIf="items.length === 0" class="ion-text-center">
+      Nenhum evento encontrado
+    </h1>
+  </ng-container>
+
+  <ng-template #loading>
+    <ion-spinner
+      name="lines-small"
+      class="margin-horizontal-auto"
+      style="display: block"></ion-spinner>
+  </ng-template>
+</ion-list>

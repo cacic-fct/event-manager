@@ -1,0 +1,54 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Registre-se</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-grid style="margin-top: 30px; max-width: 500px; overflow: scroll">
+    <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
+      <ion-item>
+        <ion-label class="ion-text-wrap">Nome completo</ion-label>
+        <ion-input type="text" value="{{userData.displayName}}" readonly>
+        </ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label class="ion-text-wrap">E-mail institucional</ion-label>
+        <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label class="ion-text-wrap">Registro acadêmico</ion-label>
+        <ion-input
+          formControlName="academicID"
+          inputmode="numeric"
+          type="text"
+          placeholder="RA"
+          maxlength="9"
+          [value]="dataForm.value.academicID">
+        </ion-input>
+      </ion-item>
+
+      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+        Poderemos entrar em contato para confirmar ou complementar estas
+        informações.
+      </p>
+      <ion-button
+        style="margin-top: 30px"
+        expand="block"
+        id="continue-button"
+        type="submit"
+        >Continuar
+      </ion-button>
+    </form>
+  </ion-grid>
+  <swal
+    #mySwal
+    title="Dados registrados"
+    icon="success"
+    [heightAuto]="false"
+    [showCancelButton]="false"
+    [showCloseButton]="false"
+    [showConfirmButton]="false"></swal>
+</ion-content>

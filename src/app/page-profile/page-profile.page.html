@@ -1,0 +1,25 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/menu"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Seu perfil</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-card>
+    <div class="ion-text-center">
+      <ion-avatar class="margin-horizontal-auto">
+        <img [src]="user.photoURL" />
+      </ion-avatar>
+      <h2 class="margin-horizontal-auto">{{user.displayName}}</h2>
+      <p class="margin-horizontal-auto">{{user.email}}</p>
+      <ngx-kjua
+        class="qr-code"
+        [text]="'uid:' + user.uid"
+        [renderAsync]="true"
+        [render]="'svg'"></ngx-kjua>
+    </div>
+  </ion-card>
+</ion-content>

@@ -1,6 +1,6 @@
 <ion-tabs>
   <ion-tab-bar slot="bottom" id="tabBar">
-    <ion-tab-button [hidden]="!true" tab="calendario">
+    <ion-tab-button tab="calendario">
       <ion-icon name="calendar"></ion-icon>
       <ion-label>Calendário</ion-label>
     </ion-tab-button>
@@ -10,9 +10,14 @@
       <ion-label>Mapa</ion-label>
     </ion-tab-button>
 
-    <ion-tab-button href="/manual-do-calouro">
+    <ion-tab-button *ngIf="this.manual$ | async" href="/manual-do-calouro">
       <ion-icon name="book-outline"></ion-icon>
       <ion-label>Manual do calouro</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button tab="area-restrita" *ngIf="isAdmin">
+      <ion-icon name="hand-right-outline"></ion-icon>
+      <ion-label>Área restrita</ion-label>
     </ion-tab-button>
 
     <ion-tab-button tab="menu">

@@ -12,4 +12,23 @@ export class CoursesService {
       color: '#51aaf2',
     },
   };
+
+  getCourse(course: string): string {
+    if (course === undefined) {
+      return 'RA inválido';
+    }
+
+    if (course.length === 9) {
+      course = course.slice(2, 4);
+    }
+
+    if (course.length === 2) {
+      if (CoursesService.courses[course] === undefined) {
+        return 'Curso não cadastrado ou RA inválido';
+      }
+      return CoursesService.courses[course].name;
+    }
+
+    return 'RA inválido';
+  }
 }

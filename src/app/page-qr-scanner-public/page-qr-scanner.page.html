@@ -1,0 +1,49 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Escanear QR Code</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <h2 *ngIf="hasPermission === false">
+    Você não concedeu permissão para acessar a câmera.
+  </h2>
+
+  <p *ngIf="hasDevices === undefined">
+    Verifique se o app tem permissão para acessar a câmera e se o dispositivo
+    está conectado.
+  </p>
+
+  <h2 *ngIf="hasDevices === false">
+    Nenhuma câmera foi detectada. Verifique se o dispositivo está conectado e se
+    o app tem permissão para acessar a câmera.
+  </h2>
+
+  <div *ngIf="showScanner">
+    <zxing-scanner
+      [formats]="allowedFormats"
+      (permissionResponse)="onHasPermission($event)"
+      (camerasFound)="onCamerasFound($event)"
+      (scanSuccess)="onCodeResult($event)"
+      [torch]="torchEnabled"
+      [(device)]="currentDevice"
+    >
+    </zxing-scanner>
+  </div>
+</ion-content>
+
+<ion-footer>
+  <ion-toolbar>
+    <ion-buttons slot="primary">
+      <ion-button (click)="toggleTorch()" *ngIf="torchAvailable | async">
+        <ion-icon name="flash-outline"></ion-icon>
+      </ion-button>
+      <ion-button (click)="changeCamera()">
+        <ion-icon name="camera-reverse-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-footer>

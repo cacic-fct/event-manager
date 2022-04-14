@@ -11,6 +11,8 @@ import {
   AngularFireAnalyticsModule,
   ScreenTrackingService,
   UserTrackingService,
+  APP_NAME,
+  APP_VERSION,
 } from '@angular/fire/compat/analytics';
 import { AngularFirestoreModule } from '@angular/fire/compat/firestore';
 import {
@@ -19,9 +21,10 @@ import {
 } from '@angular/fire/compat/performance';
 import {
   AngularFireRemoteConfigModule,
-  DEFAULTS,
-  SETTINGS,
+  DEFAULTS as REMOTE_CONFIG_DEFAULTS,
+  SETTINGS as REMOTE_CONFIG_SETTING,
 } from '@angular/fire/compat/remote-config';
+import { AngularFireFunctionsModule } from '@angular/fire/compat/functions';
 
 import { environment } from '../environments/environment';
 
@@ -37,6 +40,24 @@ import { ServiceWorkerModule } from '@angular/service-worker';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 
+// Alerts
+import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
+
+// QR Code
+import { NgxKjuaModule } from 'ngx-kjua';
+
+import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
+
+import {
+  provideAppCheck,
+  initializeAppCheck,
+  ReCaptchaV3Provider,
+} from '@angular/fire/app-check';
+
+import { GlobalConstantsService } from './shared/services/global-constants.service';
+
+import { CoursesService } from './shared/services/courses.service';
+
 @NgModule({
   declarations: [AppComponent],
   entryComponents: [],
@@ -49,12 +70,23 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
     AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
     AngularFireRemoteConfigModule,
     AngularFirePerformanceModule,
+    AngularFireFunctionsModule,
     ServiceWorkerModule.register('ngsw-worker.js', {
       enabled: environment.production,
       registrationStrategy: 'registerImmediately',
     }),
     HttpClientModule,
     MarkdownModule.forRoot({ loader: HttpClient }),
+    SweetAlert2Module.forRoot(),
+    NgxKjuaModule,
+    provideAppCheck(() => {
+      const provider = new ReCaptchaV3Provider(environment.recaptcha3SiteKey);
+      return initializeAppCheck(undefined, {
+        provider,
+        isTokenAutoRefreshEnabled: true,
+      });
+    }),
+    provideFirebaseApp(() => initializeApp(environment.firebase)),
   ],
   providers: [
     ScreenTrackingService,
@@ -63,12 +95,15 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     {
-      provide: SETTINGS,
+      provide: REMOTE_CONFIG_SETTING,
       useFactory: () =>
         isDevMode() ? { minimumFetchIntervalMillis: 10_000 } : {},
     },
+    { provide: APP_VERSION, useValue: GlobalConstantsService.appVersion },
+    { provide: APP_NAME, useValue: GlobalConstantsService.appName },
     AuthService,
     RemoteConfigService,
+    CoursesService,
   ],
   bootstrap: [AppComponent],
 })

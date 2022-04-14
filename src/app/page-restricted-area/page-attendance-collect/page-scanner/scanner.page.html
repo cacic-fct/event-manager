@@ -1,0 +1,98 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Coletar presença</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button
+        defaultHref="area-restrita/coletar-presenca"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="ion-padding-horizontal">
+    <h2 *ngIf="hasPermission === false">
+      Você não concedeu permissão para acessar a câmera.
+    </h2>
+
+    <p *ngIf="hasDevices === undefined">
+      Verifique se o app tem permissão para acessar a câmera e se o dispositivo
+      está conectado.
+    </p>
+
+    <h2 *ngIf="hasDevices === false">
+      Nenhuma câmera foi detectada. Verifique se o dispositivo está conectado e
+      se o app tem permissão para acessar a câmera.
+    </h2>
+  </div>
+
+  <div *ngIf="showScanner">
+    <zxing-scanner
+      [formats]="allowedFormats"
+      (permissionResponse)="onHasPermission($event)"
+      (camerasFound)="onCamerasFound($event)"
+      (scanSuccess)="onCodeResult($event)"
+      [torch]="torchEnabled"
+      [(device)]="currentDevice"
+      class="scanner"
+      #scanner>
+    </zxing-scanner>
+  </div>
+  <div>
+    <ion-list
+      style="max-width: 1600px; display: block; overflow-y: scroll"
+      class="margin-horizontal-auto"
+      id="item">
+      <ng-container *ngIf="(items$) as items; else: loading">
+        <div class="ion-padding-horizontal">
+          <h3 style="margin-bottom: 0">{{ event.name }}</h3>
+          <h4 style="margin: 0">{{ event.shortDescription }}</h4>
+          <h5 style="margin-top: 0">
+            {{ getDateFromTimestamp(event.date) | date: "dd/MM/y - HH:mm" }}
+          </h5>
+          <p>
+            <b>Scans desta sessão:</b> {{ attendanceSessionScans }}
+            <br />
+            <b>Total de scans:</b> {{items.length}}
+          </p>
+        </div>
+        <ion-item *ngFor="let item of items">
+          <ion-label>
+            <ng-container *ngIf="(item.user | async) as user">
+              <h2 class="ion-text-wrap">{{ user.displayName }}</h2>
+              <h3 class="ion-text-wrap">
+                {{ courses.getCourse(user.academicID) }} | {{ user.academicID }}
+              </h3>
+            </ng-container>
+            <h3 class="ion-text-wrap">
+              {{ getDateFromTimestamp(item.time) | date: "HH:mm:ss - dd/MM/y" }}
+            </h3>
+          </ion-label>
+        </ion-item>
+
+        <h1 *ngIf="items.length === 0" class="ion-text-center">
+          Nenhum usuário encontrado
+        </h1>
+      </ng-container>
+
+      <ng-template #loading>
+        <ion-spinner
+          name="lines-small"
+          class="margin-horizontal-auto"
+          style="display: block"></ion-spinner>
+      </ng-template>
+    </ion-list>
+  </div>
+</ion-content>
+
+<ion-footer>
+  <ion-toolbar>
+    <ion-buttons slot="primary">
+      <ion-button (click)="toggleTorch()" *ngIf="torchAvailable | async">
+        <ion-icon name="flash-outline"></ion-icon>
+      </ion-button>
+      <ion-button (click)="changeCamera()">
+        <ion-icon name="camera-reverse-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-footer>

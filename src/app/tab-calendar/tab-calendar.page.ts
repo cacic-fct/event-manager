@@ -4,8 +4,6 @@ import { KeyValue, formatDate } from '@angular/common';
 
 import { CoursesService } from 'src/app/shared/services/courses.service';
 
-import { RemoteConfigService } from '../shared/services/remote-config.service';
-
 import {
   startOfWeek,
   endOfWeek,
@@ -18,6 +16,13 @@ import {
 } from 'date-fns';
 import { ModalController } from '@ionic/angular';
 import { FilterModalPage } from './components/filter-modal/filter-modal.page';
+import {
+  AngularFireRemoteConfig,
+  filterFresh,
+  mapToObject,
+  scanToObject,
+} from '@angular/fire/compat/remote-config';
+import { ToastController } from '@ionic/angular';
 
 @Component({
   selector: 'app-tab-calendar',
@@ -25,16 +30,15 @@ import { FilterModalPage } from './components/filter-modal/filter-modal.page';
   styleUrls: ['tab-calendar.page.scss'],
 })
 export class TabCalendarPage {
-  remoteConfig = RemoteConfigService;
   // Selected calendar date
   active: string;
   fullDate: string;
   itemView: boolean = true;
-  selectedFilter: Array<string> = [];
+  selectedFilter: string[] = [];
   // Today's date
-  today = new Date();
+  today: Date = new Date();
 
-  dow1Char = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  dow1Char: string[] = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
   courses = CoursesService.courses;
 
@@ -51,28 +55,39 @@ export class TabCalendarPage {
 
   // This is sunday in the calendar
   // Get startofWeek based on today's date
-  calendarBaseDate = startOfWeek(this.today, {
+  calendarBaseDate: Date = startOfWeek(this.today, {
     weekStartsOn: 0,
   });
 
   // Get end of week from today
-  calendarEndDate = endOfWeek(this.today, {
+  calendarEndDate: Date = endOfWeek(this.today, {
     weekStartsOn: 0,
   });
 
-  constructor(private modalController: ModalController, public router: Router) {
-    if (localStorage.getItem('isUnesp') === null) {
-      this.router.navigate(['/vinculo']);
-    }
-    if (localStorage.getItem('isUnesp') === 'false') {
-      this.itemView = true;
-    }
+  constructor(
+    private modalController: ModalController,
+    public router: Router,
+    public remoteConfig: AngularFireRemoteConfig,
+    public toastController: ToastController
+  ) {
+    this.remoteConfig.booleans.calendarItemViewDefault.subscribe((value) => {
+      this.itemView = value;
+    });
+
     this.active = format(this.today, 'eeee').toLowerCase();
     this.generateCalendarData();
   }
 
-  ngOnInit() {
-    this.remoteConfig;
+  ngOnInit() {}
+
+  ionViewDidEnter() {
+    if (
+      localStorage.getItem('user') === null &&
+      sessionStorage.getItem('calendarLoginToast') !== 'true'
+    ) {
+      sessionStorage.setItem('calendarLoginToast', 'true');
+      this.presentToast();
+    }
   }
 
   originalOrder = (a: KeyValue<any, any>, b: KeyValue<any, any>): number => {
@@ -163,5 +178,28 @@ export class TabCalendarPage {
   }
   viewToggle() {
     this.itemView = !this.itemView;
+  }
+
+  async presentToast() {
+    const toast = await this.toastController.create({
+      header: 'Você tem vínculo com a Unesp?',
+      message: 'Faça login no menu para visualizar todos os eventos',
+      position: 'bottom',
+      buttons: [
+        {
+          side: 'end',
+          text: 'Menu',
+          handler: () => {
+            this.router.navigate(['/menu']);
+          },
+        },
+        {
+          side: 'end',
+          text: 'Fechar',
+          role: 'cancel',
+        },
+      ],
+    });
+    await toast.present();
   }
 }
