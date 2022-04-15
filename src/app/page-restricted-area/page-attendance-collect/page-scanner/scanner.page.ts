@@ -27,7 +27,7 @@ export class ScannerPage implements OnInit {
   qrResultString: string;
   deviceIndex: number = -1;
   showScanner = true;
-  items$: attendance[];
+  attendanceCollection: attendance[];
   id: string;
   event: EventItem;
 
@@ -55,7 +55,7 @@ export class ScannerPage implements OnInit {
       })
       .valueChanges({ idField: 'id' })
       .subscribe((items: any[]) => {
-        this.items$ = items.map((item) => {
+        this.attendanceCollection = items.map((item) => {
           return {
             ...item,
             user: this.afs
@@ -84,8 +84,6 @@ export class ScannerPage implements OnInit {
   }
 
   onCodeResult(resultString: string) {
-    console.log(resultString);
-
     if (resultString.startsWith('uid:')) {
       resultString = resultString.substring(4);
       this.afs
@@ -101,11 +99,11 @@ export class ScannerPage implements OnInit {
               .collection(`events/${this.id}/attendance`)
               .doc(resultString)
               .set({
-                uid: resultString,
                 time: new Date(),
               });
             this.toastSucess();
             this.attendanceSessionScans++;
+            return true;
           }
         });
     } else {
@@ -164,5 +162,5 @@ export class ScannerPage implements OnInit {
 interface attendance {
   user: Observable<User>;
   time: string | number | Date;
-  uid: string;
+  id?: string;
 }

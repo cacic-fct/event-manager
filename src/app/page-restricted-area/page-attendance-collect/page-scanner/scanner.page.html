@@ -40,9 +40,9 @@
   <div>
     <ion-list
       style="max-width: 1600px; display: block; overflow-y: scroll"
-      class="margin-horizontal-auto"
-      id="item">
-      <ng-container *ngIf="(items$) as items; else: loading">
+      class="margin-horizontal-auto">
+      <ng-container
+        *ngIf="attendanceCollection as attendancePeople; else: loading">
         <div class="ion-padding-horizontal">
           <h3 style="margin-bottom: 0">{{ event.name }}</h3>
           <h4 style="margin: 0">{{ event.shortDescription }}</h4>
@@ -52,24 +52,25 @@
           <p>
             <b>Scans desta sessão:</b> {{ attendanceSessionScans }}
             <br />
-            <b>Total de scans:</b> {{items.length}}
+            <b>Total de scans:</b> {{attendancePeople.length}}
           </p>
         </div>
-        <ion-item *ngFor="let item of items">
+        <ion-item *ngFor="let attendancePerson of attendancePeople">
           <ion-label>
-            <ng-container *ngIf="(item.user | async) as user">
+            <ng-container *ngIf="(attendancePerson.user | async) as user">
               <h2 class="ion-text-wrap">{{ user.displayName }}</h2>
               <h3 class="ion-text-wrap">
                 {{ courses.getCourse(user.academicID) }} | {{ user.academicID }}
               </h3>
             </ng-container>
             <h3 class="ion-text-wrap">
-              {{ getDateFromTimestamp(item.time) | date: "HH:mm:ss - dd/MM/y" }}
+              {{ getDateFromTimestamp(attendancePerson.time) | date: "HH:mm:ss -
+              dd/MM/y" }}
             </h3>
           </ion-label>
         </ion-item>
 
-        <h1 *ngIf="items.length === 0" class="ion-text-center">
+        <h1 *ngIf="attendancePeople.length === 0" class="ion-text-center">
           Nenhum usuário encontrado
         </h1>
       </ng-container>
