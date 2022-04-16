@@ -119,6 +119,10 @@ export class CalendarListViewComponent implements OnChanges {
       this.baseDate = startOfWeek(this.baseDate);
     }
 
+    if (this.loadOlderCount > 3) {
+      return;
+    }
+
     this.loadOlderCount += 1;
     this.presentToast();
     this.baseDate = sub(this.baseDate, { weeks: 1 });

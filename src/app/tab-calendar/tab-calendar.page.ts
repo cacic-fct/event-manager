@@ -35,12 +35,16 @@ export class TabCalendarPage {
   fullDate: string;
   itemView: boolean = true;
   selectedFilter: string[] = [];
+
   // Today's date
   today: Date = new Date();
 
   dow1Char: string[] = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
   courses = CoursesService.courses;
+
+  // Limit button clicks
+  weekClicks: number = 0;
 
   // List of days of week and date
   dowList = {
@@ -95,11 +99,19 @@ export class TabCalendarPage {
   };
 
   prevWeek(): void {
+    if (this.weekClicks < -3) {
+      return;
+    }
+    this.weekClicks--;
     this.calendarBaseDate = subDays(this.calendarBaseDate, 7);
     this.generateCalendarData();
   }
 
   nextWeek(): void {
+    if (this.weekClicks > 3) {
+      return;
+    }
+    this.weekClicks++;
     this.calendarBaseDate = addDays(this.calendarBaseDate, 7);
     this.generateCalendarData();
   }
@@ -108,6 +120,7 @@ export class TabCalendarPage {
     if (isSameDay(this.today, this.dowList[this.active].date)) {
       return 1;
     }
+    this.weekClicks = 0;
 
     this.calendarBaseDate = startOfWeek(this.today, {
       weekStartsOn: 0,

@@ -15,13 +15,19 @@
       </ion-button>
     </ion-buttons>
     <ion-buttons slot="primary" *ngIf="!this.itemView">
-      <ion-button (click)="prevWeek()" aria-label="Semana anterior">
+      <ion-button
+        (click)="prevWeek()"
+        [disabled]="weekClicks < -3"
+        aria-label="Semana anterior">
         <ion-icon name="chevron-back"></ion-icon>
       </ion-button>
       <ion-button (click)="todayClick()" aria-label="Ir para a data de hoje">
         <ion-icon name="today-outline"></ion-icon>
       </ion-button>
-      <ion-button (click)="nextWeek()" aria-label="Próxima semana">
+      <ion-button
+        (click)="nextWeek()"
+        [disabled]="weekClicks > 3"
+        aria-label="Próxima semana">
         <ion-icon name="chevron-forward"></ion-icon>
       </ion-button>
     </ion-buttons>
