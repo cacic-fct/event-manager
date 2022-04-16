@@ -15,10 +15,7 @@ import {
   APP_VERSION,
 } from '@angular/fire/compat/analytics';
 import { AngularFirestoreModule } from '@angular/fire/compat/firestore';
-import {
-  AngularFirePerformanceModule,
-  PerformanceMonitoringService,
-} from '@angular/fire/compat/performance';
+import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@angular/fire/compat/performance';
 import {
   AngularFireRemoteConfigModule,
   DEFAULTS as REMOTE_CONFIG_DEFAULTS,
@@ -48,11 +45,7 @@ import { NgxKjuaModule } from 'ngx-kjua';
 
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 
-import {
-  provideAppCheck,
-  initializeAppCheck,
-  ReCaptchaV3Provider,
-} from '@angular/fire/app-check';
+import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 
 import { GlobalConstantsService } from './shared/services/global-constants.service';
 
@@ -97,7 +90,9 @@ import { CoursesService } from './shared/services/courses.service';
     {
       provide: REMOTE_CONFIG_SETTING,
       useFactory: () =>
-        isDevMode() ? { minimumFetchIntervalMillis: 10_000 } : {},
+        isDevMode()
+          ? { minimumFetchIntervalMillis: 10_000, fetchTimeoutMillis: 60_000 }
+          : { minimumFetchIntervalMillis: 43_200_000, fetchTimeoutMillis: 60_000 },
     },
     { provide: APP_VERSION, useValue: GlobalConstantsService.appVersion },
     { provide: APP_NAME, useValue: GlobalConstantsService.appName },
