@@ -9,6 +9,8 @@ import { User } from 'src/app/shared/services/user';
 import { fromUnixTime } from 'date-fns';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
+import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+@UntilDestroy()
 @Component({
   selector: 'app-list',
   templateUrl: './list.page.html',
@@ -29,6 +31,7 @@ export class ListPage implements OnInit {
       .collection('events')
       .doc(this.eventID)
       .get()
+      .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((document) => {
         if (!document.exists) {
           this.router.navigate(['area-restrita/coletar-presenca']);
@@ -43,6 +46,7 @@ export class ListPage implements OnInit {
       .collection('events')
       .doc<EventItem>(this.eventID)
       .valueChanges()
+      .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((event) => {
         this.event = event;
       });
@@ -52,6 +56,7 @@ export class ListPage implements OnInit {
         return ref.orderBy('time', 'desc');
       })
       .valueChanges({ idField: 'id' })
+      .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((items: any[]) => {
         this.attendanceCollection = items.map((item) => {
           return {
@@ -72,6 +77,7 @@ export class ListPage implements OnInit {
     this.afs
       .collection<User>('users')
       .valueChanges({ idfield: 'id' })
+      .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((users) => {
         const csv = [];
         const headers = ['Nome', 'RA', 'Email', 'Data_locale', 'Data_iso'];

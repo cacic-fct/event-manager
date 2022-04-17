@@ -12,6 +12,8 @@ import { trace } from '@angular/fire/compat/performance';
 import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
+import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+@UntilDestroy()
 @Component({
   selector: 'app-scanner',
   templateUrl: './scanner.page.html',
@@ -54,6 +56,7 @@ export class ScannerPage implements OnInit {
       .collection('events')
       .doc(this.eventID)
       .get()
+      .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((document) => {
         if (!document.exists) {
           this.router.navigate(['area-restrita/coletar-presenca']);
@@ -68,6 +71,7 @@ export class ScannerPage implements OnInit {
       .collection('events')
       .doc<EventItem>(this.eventID)
       .valueChanges()
+      .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((event) => {
         this.event = event;
       });
@@ -77,6 +81,7 @@ export class ScannerPage implements OnInit {
         return ref.orderBy('time', 'desc');
       })
       .valueChanges({ idField: 'id' })
+      .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((items: any[]) => {
         this.attendanceCollection = items.map((item) => {
           return {
@@ -109,6 +114,7 @@ export class ScannerPage implements OnInit {
         .collection<attendance>(`events/${this.eventID}/attendance`)
         .doc(resultString)
         .get()
+        .pipe(untilDestroyed(this), trace('firestore'))
         .subscribe((document) => {
           if (document.exists) {
             this.backdropColor('duplicate');

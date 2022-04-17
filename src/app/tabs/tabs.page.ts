@@ -1,14 +1,11 @@
 import { Component } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { trace } from '@angular/fire/compat/performance';
-import {
-  AngularFireRemoteConfig,
-  filterFresh,
-  mapToObject,
-  scanToObject,
-} from '@angular/fire/compat/remote-config';
+import { AngularFireRemoteConfig, filterFresh, mapToObject, scanToObject } from '@angular/fire/compat/remote-config';
 import { first, Observable } from 'rxjs';
 
+import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+@UntilDestroy()
 @Component({
   selector: 'app-tabs',
   templateUrl: 'tabs.page.html',
@@ -18,11 +15,8 @@ export class TabsPage {
   isAdmin: boolean = false;
   readonly manual$: Observable<boolean>;
 
-  constructor(
-    public auth: AngularFireAuth,
-    public remoteConfig: AngularFireRemoteConfig
-  ) {
-    this.auth.idTokenResult.subscribe((idTokenResult) => {
+  constructor(public auth: AngularFireAuth, public remoteConfig: AngularFireRemoteConfig) {
+    this.auth.idTokenResult.pipe(untilDestroyed(this)).subscribe((idTokenResult) => {
       if (idTokenResult === null) {
         this.isAdmin = false;
         return;

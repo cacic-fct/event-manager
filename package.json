@@ -22,6 +22,7 @@
     "@angular/router": "~13.2.5",
     "@angular/service-worker": "^13.2.5",
     "@ionic/angular": "^6.0.10",
+    "@ngneat/until-destroy": "^9.0.2",
     "@sweetalert2/ngx-sweetalert2": "^11.0.0",
     "@types/twemoji-parser": "^13.1.1",
     "@zxing/ngx-scanner": "^3.5.0",

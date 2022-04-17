@@ -5,23 +5,19 @@ import { Router } from '@angular/router';
 import { AuthService } from '../shared/services/auth.service';
 import { AlertController } from '@ionic/angular';
 
-import {
-  FormGroup,
-  FormBuilder,
-  Validators,
-  FormControl,
-} from '@angular/forms';
+import { FormGroup, FormBuilder, Validators, FormControl } from '@angular/forms';
 
-import {
-  AngularFirestore,
-  AngularFirestoreDocument,
-} from '@angular/fire/compat/firestore';
+import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { textHeights } from 'ol/render/canvas';
 import { User } from '../shared/services/user';
 
 import { GlobalConstantsService } from '../shared/services/global-constants.service';
 
+import { trace } from '@angular/fire/compat/performance';
+
+import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+@UntilDestroy()
 @Component({
   selector: 'app-page-register',
   templateUrl: './page-register.page.html',
@@ -54,6 +50,7 @@ export class PageRegisterPage implements OnInit {
       .collection('users')
       .doc<User>(this.userData.uid)
       .valueChanges()
+      .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((user) => {
         this.dataForm.value.academicID = user.academicID;
       });
@@ -66,9 +63,7 @@ export class PageRegisterPage implements OnInit {
     this.dataForm = this.formBuilder.group({
       // Validator doesn't update when value changes programatically
       // https://github.com/angular/angular/issues/30616
-      academicID: [
-        '' /*[Validators.required, Validators.pattern('^[0-9]{9}$')]*/,
-      ],
+      academicID: ['' /*[Validators.required, Validators.pattern('^[0-9]{9}$')]*/],
     });
   }
 
@@ -76,9 +71,7 @@ export class PageRegisterPage implements OnInit {
     if (!this.dataForm.valid) {
       return;
     }
-    const userRef: AngularFirestoreDocument<any> = this.afs.doc(
-      `users/${this.userData.uid}`
-    );
+    const userRef: AngularFirestoreDocument<any> = this.afs.doc(`users/${this.userData.uid}`);
     const user = {
       academicID: this.dataForm.value.academicID,
       dataVersion: this.dataVersion,

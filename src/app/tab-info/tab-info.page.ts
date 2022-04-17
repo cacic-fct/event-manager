@@ -4,6 +4,8 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AuthService } from '../shared/services/auth.service';
 import firebase from 'firebase/compat/app';
 
+import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+@UntilDestroy()
 @Component({
   selector: 'app-tab3',
   templateUrl: 'tab-info.page.html',
@@ -16,7 +18,7 @@ export class TabInfoPage {
   firstName: string;
 
   ngOnInit() {
-    this.auth.user.subscribe((user) => {
+    this.auth.user.pipe(untilDestroyed(this)).subscribe((user) => {
       if (user) {
         this.userData = user;
         this.firstName = this.userData.displayName.split(' ')[0];
