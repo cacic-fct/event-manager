@@ -108,7 +108,7 @@ export class ScannerPage implements OnInit {
   }
 
   onCodeResult(resultString: string) {
-    if (resultString.startsWith('uid:')) {
+    if (resultString.startsWith('uid:') && resultString.length === 32) {
       resultString = resultString.substring(4);
       this.afs
         .collection<attendance>(`events/${this.eventID}/attendance`)

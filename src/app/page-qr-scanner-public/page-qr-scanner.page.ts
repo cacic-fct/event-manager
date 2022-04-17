@@ -73,7 +73,7 @@ export class PageQrScannerPage implements OnInit {
   }
 
   onCodeResult(resultString: string) {
-    if (resultString.startsWith('uid:')) {
+    if (resultString.startsWith('uid:') && resultString.length === 32) {
       //this.presentModal(resultString.substring(4));
     } else {
       this.toastInvalid();
