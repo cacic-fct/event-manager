@@ -4,14 +4,7 @@ import { CoursesService } from 'src/app/shared/services/courses.service';
 
 import { parse } from 'twemoji-parser';
 
-import {
-  fromUnixTime,
-  isSameDay,
-  isSameMonth,
-  startOfDay,
-  startOfWeek,
-  sub,
-} from 'date-fns';
+import { fromUnixTime, isSameDay, isSameMonth, startOfDay, startOfWeek, sub } from 'date-fns';
 
 import { NavController, ToastController } from '@ionic/angular';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
@@ -132,16 +125,12 @@ export class CalendarListViewComponent implements OnChanges {
   async presentToast() {
     const toast = await this.toastController.create({
       header: 'Procurando por eventos mais antigos...',
-      message:
-        'De até ' +
-        this.loadOlderCount +
-        (this.loadOlderCount == 1 ? ' semana ' : ' semanas ') +
-        'atrás',
+      message: 'De até ' + this.loadOlderCount + (this.loadOlderCount == 1 ? ' semana ' : ' semanas ') + 'atrás',
       icon: 'search',
       position: 'bottom',
       duration: 500,
       buttons: [],
     });
-    await toast.present();
+    toast.present();
   }
 }

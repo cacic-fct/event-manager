@@ -1,0 +1,44 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Lista de presença</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/area-restrita/coletar-presenca"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ng-container *ngIf="attendanceCollection as attendancePeople; else: loading">
+    <div class="ion-padding">
+      <h3 style="margin-bottom: 0">{{ event.name }}</h3>
+      <h4 style="margin: 0">{{ event.shortDescription }}</h4>
+      <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.date) | date: "dd/MM/y - HH:mm" }}</h5>
+      <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
+    </div>
+    <div class="ion-padding-horizontal">
+      <p><b>Total de scans para este evento:</b> {{attendancePeople.length}}</p>
+    </div>
+    <ion-item *ngFor="let attendancePerson of attendancePeople">
+      <ion-label>
+        <ng-container *ngIf="(attendancePerson.user | async) as user">
+          <h2 class="ion-text-wrap">{{ user.displayName }}</h2>
+          <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+        </ng-container>
+        <h3 class="ion-text-wrap">{{ getDateFromTimestamp(attendancePerson.time) | date: "HH:mm:ss - dd/MM/y" }}</h3>
+      </ion-label>
+    </ion-item>
+  </ng-container>
+
+  <ng-template #loading>
+    <ion-spinner name="lines-small" class="margin-horizontal-auto" style="display: block"></ion-spinner>
+  </ng-template>
+</ion-content>
+
+<swal
+  #mySwal
+  title="Evento inexistente"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false"></swal>

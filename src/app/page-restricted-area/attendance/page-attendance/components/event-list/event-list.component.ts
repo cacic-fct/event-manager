@@ -21,6 +21,7 @@ import { trace } from '@angular/fire/compat/performance';
 export class EventListComponent implements OnChanges {
   courses = CoursesService.courses;
 
+  @Input() redirection: string;
   @Input() date: Date;
   @Input() filter: Array<string>;
 

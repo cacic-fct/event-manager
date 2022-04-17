@@ -11,16 +11,12 @@ const routes: Routes = [
   {
     path: 'coletar-presenca',
     loadChildren: () =>
-      import('./page-attendance-collect/page-attendance-collect.module').then(
-        (m) => m.PageAttendanceCollectPageModule
-      ),
+      import('./attendance/page-attendance/page-attendance.module').then((m) => m.PageAttendanceCollectPageModule),
   },
   {
     path: 'gerenciar-admins',
     loadChildren: () =>
-      import('./page-manage-admins/page-manage-admins.module').then(
-        (m) => m.PageManageAdminsPageModule
-      ),
+      import('./page-manage-admins/page-manage-admins.module').then((m) => m.PageManageAdminsPageModule),
   },
 ];
 

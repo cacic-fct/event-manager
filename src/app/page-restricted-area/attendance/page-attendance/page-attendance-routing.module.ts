@@ -1,17 +1,20 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
 
-import { PageAttendanceCollectPage } from './page-attendance-collect.page';
+import { PageAttendancePage } from './page-attendance.page';
 
 const routes: Routes = [
   {
     path: '',
-    component: PageAttendanceCollectPage,
+    component: PageAttendancePage,
   },
   {
     path: 'scanner/:id',
-    loadChildren: () =>
-      import('./page-scanner/scanner.module').then((m) => m.ScannerPageModule),
+    loadChildren: () => import('../page-scanner/scanner.module').then((m) => m.ScannerPageModule),
+  },
+  {
+    path: 'list/:id',
+    loadChildren: () => import('../page-list/list.module').then((m) => m.ListPageModule),
   },
 ];
 

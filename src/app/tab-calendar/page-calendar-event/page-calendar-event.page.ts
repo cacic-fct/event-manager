@@ -22,10 +22,7 @@ import { Control, defaults as defaultControls } from 'ol/control';
 import Point from 'ol/geom/Point';
 import VectorSource from 'ol/source/Vector';
 
-import {
-  AngularFirestore,
-  AngularFirestoreDocument,
-} from '@angular/fire/compat/firestore';
+import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 
 import { EventItem } from '../../shared/services/event';
 import { first, Observable } from 'rxjs';
@@ -50,10 +47,7 @@ export class PageCalendarEventPage implements OnInit {
     private afs: AngularFirestore
   ) {
     const id = this.router.url.split('/')[3];
-    this.item$ = this.afs
-      .doc<EventItem>(`events/${id}`)
-      .valueChanges({ idField: 'id' })
-      .pipe(trace('firestore'));
+    this.item$ = this.afs.doc<EventItem>(`events/${id}`).valueChanges({ idField: 'id' }).pipe(trace('firestore'));
   }
 
   ngOnInit() {}
@@ -155,7 +149,7 @@ export class PageCalendarEventPage implements OnInit {
         },
       ],
     });
-    await toast.present();
+    toast.present();
   }
 
   getEmoji(emoji: string): any {

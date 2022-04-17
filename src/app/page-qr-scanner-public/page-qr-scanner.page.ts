@@ -99,6 +99,6 @@ export class PageQrScannerPage implements OnInit {
       position: 'top',
       duration: 2000,
     });
-    await toast.present();
+    toast.present();
   }
 }

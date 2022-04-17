@@ -1,0 +1,19 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Presenças</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/area-restrita/coletar-presenca"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-datetime
+    [value]="dateValue"
+    #datePicker
+    presentation="date"
+    localte="pt-BR"
+    class="margin-horizontal-auto"
+    (ionChange)="updateDate(datePicker.value)"></ion-datetime>
+  <app-event-list [date]="dateDate" [redirection]="'scanner'"> </app-event-list>
+</ion-content>

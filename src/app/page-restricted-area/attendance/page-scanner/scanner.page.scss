@@ -1,0 +1,28 @@
+:host zxing-scanner::ng-deep video {
+  max-height: 400px;
+  width: 100vw;
+  object-fit: contain;
+}
+
+ion-backdrop {
+  opacity: 0;
+  visibility: hidden;
+  transition: background-color 1s, opacity 1s, visibility 1s;
+}
+
+.success {
+  background-color: #00ff00;
+}
+
+.duplicate {
+  background-color: #ffff00;
+}
+
+.invalid {
+  background-color: #ff0000;
+}
+
+.backdropvisible {
+  opacity: 0.5;
+  visibility: visible;
+}
