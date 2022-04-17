@@ -22,7 +22,7 @@ import { Control, defaults as defaultControls } from 'ol/control';
 import Point from 'ol/geom/Point';
 import VectorSource from 'ol/source/Vector';
 
-import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
 
 import { EventItem } from '../../shared/services/event';
 import { first, Observable } from 'rxjs';

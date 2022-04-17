@@ -1,8 +1,7 @@
 import { Component } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
-import { trace } from '@angular/fire/compat/performance';
-import { AngularFireRemoteConfig, filterFresh, mapToObject, scanToObject } from '@angular/fire/compat/remote-config';
-import { first, Observable } from 'rxjs';
+import { AngularFireRemoteConfig } from '@angular/fire/compat/remote-config';
+import { Observable } from 'rxjs';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 @UntilDestroy()

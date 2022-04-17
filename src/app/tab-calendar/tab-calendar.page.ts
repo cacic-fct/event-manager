@@ -7,7 +7,7 @@ import { CoursesService } from 'src/app/shared/services/courses.service';
 import { startOfWeek, endOfWeek, addDays, subDays, isSameDay, getDate, format, isSameWeek } from 'date-fns';
 import { ModalController } from '@ionic/angular';
 import { FilterModalPage } from './components/filter-modal/filter-modal.page';
-import { AngularFireRemoteConfig, filterFresh, mapToObject, scanToObject } from '@angular/fire/compat/remote-config';
+import { AngularFireRemoteConfig } from '@angular/fire/compat/remote-config';
 import { ToastController } from '@ionic/angular';
 import { trace } from '@angular/fire/compat/performance';
 
