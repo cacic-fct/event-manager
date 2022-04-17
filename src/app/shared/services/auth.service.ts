@@ -1,9 +1,6 @@
 import { Injectable, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
-import {
-  AngularFirestore,
-  AngularFirestoreDocument,
-} from '@angular/fire/compat/firestore';
+import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { User } from '../services/user';
 import firebase from 'firebase/compat/app';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
@@ -67,9 +64,7 @@ export class AuthService {
   }
 
   SetUserData(user: firebase.User) {
-    const userRef: AngularFirestoreDocument<any> = this.afs.doc(
-      `users/${user.uid}`
-    );
+    const userRef: AngularFirestoreDocument<any> = this.afs.doc(`users/${user.uid}`);
     const userData = {
       uid: user.uid,
       email: user.email,
@@ -86,7 +81,7 @@ export class AuthService {
       .doc<User>(`users/${user.uid}`)
       .valueChanges()
       .subscribe((data) => {
-        if (data.dataVersion && data.dataVersion !== this.dataVersion) {
+        if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
           this.router.navigate(['/register']);
         }
       });
