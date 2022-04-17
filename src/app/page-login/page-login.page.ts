@@ -9,15 +9,7 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
   styleUrls: ['./page-login.page.scss'],
 })
 export class PageLoginPage implements OnInit {
-  constructor(
-    public authService: AuthService,
-    public auth: AngularFireAuth,
-    public router: Router
-  ) {
-    /*if (this.authService.isLoggedIn()) {
-      this.router.navigate(['tabs']);
-    }*/
-  }
+  constructor(public authService: AuthService, public auth: AngularFireAuth, public router: Router) {}
 
   ngOnInit() {}
 }

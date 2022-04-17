@@ -86,8 +86,4 @@ export class AuthService {
         }
       });
   }
-
-  async isLoggedIn(): Promise<boolean> {
-    return this.auth.authState !== null;
-  }
 }
