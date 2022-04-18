@@ -104,7 +104,10 @@ import {
     { provide: USE_DEVICE_LANGUAGE, useValue: true },
     { provide: APP_VERSION, useValue: GlobalConstantsService.appVersion },
     { provide: APP_NAME, useValue: GlobalConstantsService.appName },
-    { provide: USE_AUTH_EMULATOR, useValue: environment.useEmulators ? ['http://localhost:9099'] : undefined },
+    {
+      provide: USE_AUTH_EMULATOR,
+      useValue: environment.useEmulators ? ['http://localhost:9099', { disableWarnings: true }] : undefined,
+    },
     { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
 
     AuthService,
