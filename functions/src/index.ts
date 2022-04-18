@@ -27,7 +27,7 @@ exports.addAdminRole = functions.https.onCall((data, context) => {
     .getUserByEmail(data.email)
     .then((user) => {
       return getAuth().setCustomUserClaims(user.uid, {
-        role: 100,
+        role: 1000,
       });
     })
     .then(() => {

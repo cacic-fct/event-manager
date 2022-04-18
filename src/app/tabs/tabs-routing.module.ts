@@ -13,7 +13,7 @@ import { customClaims } from '@angular/fire/compat/auth-guard';
 const adminOnly = () =>
   pipe(
     customClaims,
-    map((claims) => claims.role === 100)
+    map((claims) => claims.role === 1000)
   );
 
 const routes: Routes = [

@@ -22,7 +22,7 @@ export class TabsPage {
       }
 
       const claims = idTokenResult.claims;
-      if (claims.role === 100) {
+      if (claims.role === 1000) {
         this.isAdmin = true;
       }
     });
