@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
-import { BehaviorSubject, map, Observable, take } from 'rxjs';
+import { BehaviorSubject, first, map, Observable, take } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
@@ -114,20 +114,35 @@ export class ScannerPage implements OnInit {
         .collection<attendance>(`events/${this.eventID}/attendance`)
         .doc(resultString)
         .get()
-        .pipe(untilDestroyed(this), trace('firestore'))
+        .pipe(first(), trace('firestore'))
         .subscribe((document) => {
+          // If document with user uid already exists
           if (document.exists) {
             this.backdropColor('duplicate');
             this.toastDuplicate();
             return false;
           } else {
-            this.afs.collection(`events/${this.eventID}/attendance`).doc(resultString).set({
-              time: new Date(),
-            });
-            this.toastSucess();
-            this.backdropColor('success');
-            this.attendanceSessionScans++;
-            return true;
+            // Check if user uid exists
+            this.afs
+              .collection('users')
+              .doc(resultString)
+              .get()
+              .pipe(first(), trace('firestore'))
+              .subscribe((user) => {
+                if (user.exists) {
+                  this.afs.collection(`events/${this.eventID}/attendance`).doc(resultString).set({
+                    time: new Date(),
+                  });
+                  this.toastSucess();
+                  this.backdropColor('success');
+                  this.attendanceSessionScans++;
+                  return true;
+                } else {
+                  this.backdropColor('invalid');
+                  this.toastInvalid();
+                  return false;
+                }
+              });
           }
         });
     } else {
