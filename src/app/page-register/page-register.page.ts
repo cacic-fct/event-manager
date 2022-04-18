@@ -86,14 +86,6 @@ export class PageRegisterPage implements OnInit {
       merge: true,
     });
 
-    userRef
-      .collection('private')
-      .doc('academic')
-      .valueChanges()
-      .subscribe((user) => {
-        console.log(user);
-      });
-
     userRef.collection('private').doc('academic').set(userPrivateAcademic, {
       merge: true,
     });
