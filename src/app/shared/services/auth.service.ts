@@ -20,7 +20,6 @@ export class AuthService {
     public ngZone: NgZone,
     public modalController: ModalController
   ) {
-    //  this.auth.useEmulator('http://localhost:8124');
     this.auth.authState.subscribe((user) => {
       if (user) {
         this.userData = user;

@@ -84,5 +84,6 @@ baseline.json
 .firebase
 *-debug.log
 .runtimeconfig.json
+firestore.rules
 
 .eslintcache

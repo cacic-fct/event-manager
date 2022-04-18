@@ -14,7 +14,7 @@ import {
   APP_NAME,
   APP_VERSION,
 } from '@angular/fire/compat/analytics';
-import { AngularFirestoreModule } from '@angular/fire/compat/firestore';
+import { AngularFirestoreModule, USE_EMULATOR as USE_FIRESTORE_EMULATOR } from '@angular/fire/compat/firestore';
 import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@angular/fire/compat/performance';
 import {
   AngularFireRemoteConfigModule,
@@ -51,6 +51,12 @@ import { GlobalConstantsService } from './shared/services/global-constants.servi
 
 import { CoursesService } from './shared/services/courses.service';
 
+import {
+  AngularFireAuthModule,
+  USE_DEVICE_LANGUAGE,
+  USE_EMULATOR as USE_AUTH_EMULATOR,
+} from '@angular/fire/compat/auth';
+
 @NgModule({
   declarations: [AppComponent],
   entryComponents: [],
@@ -58,6 +64,7 @@ import { CoursesService } from './shared/services/courses.service';
     BrowserModule,
     IonicModule.forRoot(),
     AppRoutingModule,
+    AngularFireAuthModule,
     AngularFireModule.initializeApp(environment.firebase),
     AngularFireAnalyticsModule,
     AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
@@ -94,8 +101,12 @@ import { CoursesService } from './shared/services/courses.service';
           ? { minimumFetchIntervalMillis: 10_000, fetchTimeoutMillis: 60_000 }
           : { minimumFetchIntervalMillis: 43_200_000, fetchTimeoutMillis: 60_000 },
     },
+    { provide: USE_DEVICE_LANGUAGE, useValue: true },
     { provide: APP_VERSION, useValue: GlobalConstantsService.appVersion },
     { provide: APP_NAME, useValue: GlobalConstantsService.appName },
+    { provide: USE_AUTH_EMULATOR, useValue: environment.useEmulators ? ['http://localhost:9099'] : undefined },
+    { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
+
     AuthService,
     RemoteConfigService,
     CoursesService,
