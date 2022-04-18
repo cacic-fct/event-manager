@@ -22,6 +22,10 @@ exports.addAdminRole = functions.https.onCall((data, context) => {
     );
   }
 
+  if (context.auth.token.role !== 1000) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by an admin.');
+  }
+
   // Get user and add custom claim (admin)
   return getAuth()
     .getUserByEmail(data.email)
@@ -52,6 +56,10 @@ exports.removeAdminRole = functions.https.onCall((data, context) => {
       'failed-precondition',
       'The function must be called from an App Check verified app.'
     );
+  }
+
+  if (context.auth.token.role !== 1000) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by an admin.');
   }
 
   const whitelist = ['renan.yudi@unesp.br', 'willian.murayama@unesp.br', 'gc.tomiasi@unesp.br'];
