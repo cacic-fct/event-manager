@@ -14,11 +14,12 @@
         <p *ngIf="courses[item.course]" class="ion-text-wrap">{{ courses[item.course].name }}</p>
       </ion-label>
       <div slot="end">
-        <ion-button size="large" [routerLink]="['scanner', item.id]">
-          <ion-icon name="qr-code-outline"></ion-icon>
+        <ion-button fill="clear" size="large" [routerLink]="['scanner', item.id]">
+          <ion-icon name="qr-code-outline" slot="start"></ion-icon>
         </ion-button>
-        <ion-button size="large" [routerLink]="['list', item.id]">
-          <ion-icon name="list-outline"></ion-icon>
+        <br />
+        <ion-button fill="clear" size="large" [routerLink]="['list', item.id]">
+          <ion-icon name="list-outline" slot="start"></ion-icon>
         </ion-button>
       </div>
     </ion-item>
@@ -26,6 +27,6 @@
   </ng-container>
 
   <ng-template #loading>
-    <ion-spinner name="lines-small" class="margin-horizontal-auto" style="display: block"></ion-spinner>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
   </ng-template>
 </ion-list>

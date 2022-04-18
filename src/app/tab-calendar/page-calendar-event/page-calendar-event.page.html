@@ -18,19 +18,13 @@
 
       <div class="ion-text-center">
         <h1 style="margin: 0">{{ items?.name }}</h1>
-        <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">
-          {{ items?.shortDescription }}
-        </h5>
-        <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">
-          {{ getCourse(items.course) }}
-        </h5>
+        <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ items?.shortDescription }}</h5>
+        <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ getCourse(items.course) }}</h5>
         <h4 style="margin: 0; font-weight: 400">
           <!-- prettier-ignore -->
           {{ toUppercase(getDateFromTimestamp(items?.date) | date: "EEEE, dd 'de' MMMM 'de' y") }}
         </h4>
-        <h3 style="margin: 0; font-weight: 400">
-          {{ getDateFromTimestamp(items?.date) | date: 'HH:mm' }}
-        </h3>
+        <h3 style="margin: 0; font-weight: 400">{{ getDateFromTimestamp(items?.date) | date: 'HH:mm' }}</h3>
       </div>
 
       <div *ngIf="items?.description">
@@ -48,20 +42,12 @@
           </ion-item>
         </div>
 
-        <div
-          id="ol-map"
-          class="map-container"
-          *ngIf="items?.location.lat && items?.location.lon"></div>
+        <div id="ol-map" class="map-container" *ngIf="items?.location.lat && items?.location.lon"></div>
       </div>
 
       <div *ngIf="items?.button">
-        <ion-button
-          expand="block"
-          color="primary"
-          [href]="items?.button.url"
-          target="_blank"
-          >{{ items.button.text ? items.button.text : 'Acompanhe o evento'
-          }}</ion-button
+        <ion-button expand="block" color="primary" [href]="items?.button.url" target="_blank"
+          >{{ items.button.text ? items.button.text : 'Acompanhe o evento' }}</ion-button
         >
       </div>
 
@@ -79,9 +65,6 @@
     </div>
   </ng-container>
   <ng-template #loading>
-    <ion-spinner
-      name="lines-small"
-      class="margin-horizontal-auto"
-      style="display: block"></ion-spinner>
+    <ion-spinner name="lines-small" class="margin-horizontal-auto" style="display: block"></ion-spinner>
   </ng-template>
 </ion-content>
