@@ -2,14 +2,19 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { TabsPage } from './tabs.page';
 
-import {
-  AngularFireAuthGuard,
-  hasCustomClaim,
-} from '@angular/fire/compat/auth-guard';
+import { AngularFireAuthGuard, hasCustomClaim } from '@angular/fire/compat/auth-guard';
 
 import { canActivate } from '@angular/fire/compat/auth-guard';
 
-const adminOnly = () => hasCustomClaim('admin');
+import { pipe } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { customClaims } from '@angular/fire/compat/auth-guard';
+
+const adminOnly = () =>
+  pipe(
+    customClaims,
+    map((claims) => claims.role === 100)
+  );
 
 const routes: Routes = [
   {
@@ -23,29 +28,20 @@ const routes: Routes = [
       },
       {
         path: 'calendario',
-        loadChildren: () =>
-          import('../tab-calendar/tab-calendar.module').then(
-            (m) => m.TabCalendarPageModule
-          ),
+        loadChildren: () => import('../tab-calendar/tab-calendar.module').then((m) => m.TabCalendarPageModule),
       },
       {
         path: 'mapa',
-        loadChildren: () =>
-          import('../tab-map/tab-map.module').then((m) => m.TabMapPageModule),
+        loadChildren: () => import('../tab-map/tab-map.module').then((m) => m.TabMapPageModule),
       },
       {
         path: 'menu',
-        loadChildren: () =>
-          import('../tab-info/tab-info.module').then(
-            (m) => m.TabInfoPageModule
-          ),
+        loadChildren: () => import('../tab-info/tab-info.module').then((m) => m.TabInfoPageModule),
       },
       {
         path: 'area-restrita',
         loadChildren: () =>
-          import('../page-restricted-area/page-restricted-area.module').then(
-            (m) => m.PageRestrictedAreaPageModule
-          ),
+          import('../page-restricted-area/page-restricted-area.module').then((m) => m.PageRestrictedAreaPageModule),
         ...canActivate(adminOnly),
       },
     ],
