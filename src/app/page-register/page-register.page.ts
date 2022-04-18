@@ -49,8 +49,6 @@ export class PageRegisterPage implements OnInit {
     this.afs
       .collection('users')
       .doc<User>(this.userData.uid)
-      .collection('private')
-      .doc('academic')
       .valueChanges()
       .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((user) => {
@@ -73,23 +71,14 @@ export class PageRegisterPage implements OnInit {
     if (!this.dataForm.valid) {
       return;
     }
-    const userRef: AngularFirestoreDocument<any> = this.afs.collection('users').doc(this.userData.uid);
+    const userRef: AngularFirestoreDocument<any> = this.afs.doc(`users/${this.userData.uid}`);
     const user = {
+      academicID: this.dataForm.value.academicID,
       dataVersion: this.dataVersion,
     };
-
-    const userPrivateAcademic = {
-      academicID: this.dataForm.value.academicID,
-    };
-
     userRef.set(user, {
       merge: true,
     });
-
-    userRef.collection('private').doc('academic').set(userPrivateAcademic, {
-      merge: true,
-    });
-
     this.mySwal.fire();
     // Fake delay to let animation finish
     setTimeout(() => {
