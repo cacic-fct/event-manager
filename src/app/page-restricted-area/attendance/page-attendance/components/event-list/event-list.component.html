@@ -12,16 +12,16 @@
           {{ getDateFromTimestamp(item.date) | date: 'HH:mm' }}
         </h4>
         <p *ngIf="courses[item.course]" class="ion-text-wrap">{{ courses[item.course].name }}</p>
+        <ion-button fill="clear" [routerLink]="['scanner', item.id]">
+          <ion-icon name="qr-code-outline" slot="start"></ion-icon>
+          <p slot="end">Escanear</p>
+        </ion-button>
+
+        <ion-button fill="clear" [routerLink]="['list', item.id]">
+          <ion-icon name="list-outline" slot="start"></ion-icon>
+          <p slot="end">Listar</p>
+        </ion-button>
       </ion-label>
-      <div slot="end">
-        <ion-button fill="clear" size="large" [routerLink]="['scanner', item.id]">
-          <ion-icon name="qr-code-outline"></ion-icon>
-        </ion-button>
-        <br />
-        <ion-button fill="clear" size="large" [routerLink]="['list', item.id]">
-          <ion-icon name="list-outline"></ion-icon>
-        </ion-button>
-      </div>
     </ion-item>
     <h1 *ngIf="items.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
   </ng-container>
