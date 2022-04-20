@@ -1,13 +1,8 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 
 import { AngularFireFunctions } from '@angular/fire/compat/functions';
 
-import {
-  FormGroup,
-  FormBuilder,
-  Validators,
-  FormControl,
-} from '@angular/forms';
+import { FormGroup, FormControl } from '@angular/forms';
 import { ToastController } from '@ionic/angular';
 
 import { first } from 'rxjs/operators';
@@ -26,10 +21,7 @@ export class PageManageAdminsPage implements OnInit {
     adminEmail: new FormControl(''),
   });
 
-  constructor(
-    private fns: AngularFireFunctions,
-    public toastController: ToastController
-  ) {}
+  constructor(private fns: AngularFireFunctions, public toastController: ToastController) {}
 
   ngOnInit() {}
 

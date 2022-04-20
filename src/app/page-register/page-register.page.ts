@@ -5,11 +5,11 @@ import { Router } from '@angular/router';
 import { AuthService } from '../shared/services/auth.service';
 import { AlertController } from '@ionic/angular';
 
-import { FormGroup, FormBuilder, Validators, FormControl } from '@angular/forms';
+import { FormGroup, FormBuilder, FormControl } from '@angular/forms';
 
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
-import { textHeights } from 'ol/render/canvas';
+
 import { User } from '../shared/services/user';
 
 import { GlobalConstantsService } from '../shared/services/global-constants.service';

@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
-import { BehaviorSubject, first, map, Observable, take } from 'rxjs';
+import { BehaviorSubject, first, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';

@@ -1,6 +1,5 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { PageCalendarEventPage } from './page-calendar-event/page-calendar-event.page';
 import { TabCalendarPage } from './tab-calendar.page';
 
 const routes: Routes = [
@@ -10,17 +9,12 @@ const routes: Routes = [
   },
   {
     path: 'filter-modal',
-    loadChildren: () =>
-      import('./components/filter-modal/filter-modal.module').then(
-        (m) => m.FilterModalPageModule
-      ),
+    loadChildren: () => import('./components/filter-modal/filter-modal.module').then((m) => m.FilterModalPageModule),
   },
   {
     path: 'evento/:id',
     loadChildren: () =>
-      import('./page-calendar-event/page-calendar-event.module').then(
-        (m) => m.PageCalendarEventPageModule
-      ),
+      import('./page-calendar-event/page-calendar-event.module').then((m) => m.PageCalendarEventPageModule),
   },
 ];
 

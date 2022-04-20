@@ -2,8 +2,6 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { TabsPage } from './tabs.page';
 
-import { AngularFireAuthGuard, hasCustomClaim } from '@angular/fire/compat/auth-guard';
-
 import { canActivate } from '@angular/fire/compat/auth-guard';
 
 import { pipe } from 'rxjs';
