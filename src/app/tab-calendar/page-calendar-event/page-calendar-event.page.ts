@@ -68,7 +68,7 @@ export class PageCalendarEventPage implements OnInit {
           scale: 0.5,
           anchorXUnits: 'fraction',
           anchorYUnits: 'fraction',
-          src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+          src: 'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-2x-blue.png',
         }),
       });
 

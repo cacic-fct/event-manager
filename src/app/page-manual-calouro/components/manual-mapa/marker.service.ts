@@ -18,7 +18,7 @@ export class MarkerService {
       scale: 0.5,
       anchorXUnits: 'fraction',
       anchorYUnits: 'fraction',
-      src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+      src: 'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-2x-blue.png',
     }),
     stroke: new Stroke({
       color: '#3274A3',
@@ -32,7 +32,7 @@ export class MarkerService {
       scale: 0.5,
       anchorXUnits: 'fraction',
       anchorYUnits: 'fraction',
-      src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+      src: 'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-2x-gold.png',
     }),
     stroke: new Stroke({
       color: '#C1A32D',
@@ -46,7 +46,7 @@ export class MarkerService {
       scale: 0.5,
       anchorXUnits: 'fraction',
       anchorYUnits: 'fraction',
-      src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+      src: 'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-2x-red.png',
     }),
     stroke: new Stroke({
       color: '#982E40',
@@ -60,7 +60,7 @@ export class MarkerService {
       scale: 0.5,
       anchorXUnits: 'fraction',
       anchorYUnits: 'fraction',
-      src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+      src: 'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-2x-orange.png',
     }),
     stroke: new Stroke({
       color: '#98652E',
@@ -74,7 +74,7 @@ export class MarkerService {
       scale: 0.5,
       anchorXUnits: 'fraction',
       anchorYUnits: 'fraction',
-      src: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+      src: 'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-2x-grey.png',
     }),
     stroke: new Stroke({
       color: '#6B6B6B',
