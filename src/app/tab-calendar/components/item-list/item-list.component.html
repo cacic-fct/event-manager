@@ -24,28 +24,6 @@
   </ng-container>
 
   <ng-template #loading>
-    <ion-list>
-      <ion-item *ngFor="let number of [0, 1]">
-        <ion-thumbnail slot="start">
-          <ion-skeleton-text></ion-skeleton-text>
-        </ion-thumbnail>
-        <ion-label>
-          <h3>
-            <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
-          </h3>
-          <p>
-            <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
-          </p>
-          <p>
-            <ion-skeleton-text animated style="width: 30%"></ion-skeleton-text>
-          </p>
-        </ion-label>
-        <div slot="end">
-          <h4>
-            <ion-skeleton-text animated style="width: 50px"></ion-skeleton-text>
-          </h4>
-        </div>
-      </ion-item>
-    </ion-list>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
   </ng-template>
 </ion-list>

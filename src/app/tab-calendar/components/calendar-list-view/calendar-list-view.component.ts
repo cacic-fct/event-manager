@@ -128,7 +128,7 @@ export class CalendarListViewComponent implements OnChanges {
       message: 'De até ' + this.loadOlderCount + (this.loadOlderCount == 1 ? ' semana ' : ' semanas ') + 'atrás',
       icon: 'search',
       position: 'bottom',
-      duration: 500,
+      duration: 1000,
       buttons: [],
     });
     toast.present();
