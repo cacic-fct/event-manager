@@ -17,6 +17,7 @@ import { GlobalConstantsService } from '../shared/services/global-constants.serv
 import { trace } from '@angular/fire/compat/performance';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+import { AngularFireAuth } from '@angular/fire/compat/auth';
 @UntilDestroy()
 @Component({
   selector: 'app-page-register',
@@ -40,7 +41,8 @@ export class PageRegisterPage implements OnInit {
     public alertController: AlertController,
     public formBuilder: FormBuilder,
     public afs: AngularFirestore,
-    public router: Router
+    public router: Router,
+    public auth: AngularFireAuth
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
   }
@@ -71,19 +73,21 @@ export class PageRegisterPage implements OnInit {
     if (!this.dataForm.valid) {
       return;
     }
-    const userRef: AngularFirestoreDocument<any> = this.afs.doc(`users/${this.userData.uid}`);
-    const user = {
-      academicID: this.dataForm.value.academicID,
-      dataVersion: this.dataVersion,
-    };
-    userRef.set(user, {
-      merge: true,
+    this.auth.authState.subscribe((user) => {
+      const userRef: AngularFirestoreDocument<any> = this.afs.doc(`users/${user.uid}`);
+      const userData = {
+        academicID: this.dataForm.value.academicID,
+        dataVersion: this.dataVersion,
+      };
+      userRef.set(userData, {
+        merge: true,
+      });
+      this.mySwal.fire();
+      // Fake delay to let animation finish
+      setTimeout(() => {
+        this.mySwal.close();
+        this.router.navigate(['/menu']);
+      }, 1500);
     });
-    this.mySwal.fire();
-    // Fake delay to let animation finish
-    setTimeout(() => {
-      this.mySwal.close();
-      this.router.navigate(['/menu']);
-    }, 1500);
   }
 }
