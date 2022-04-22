@@ -80,7 +80,7 @@ export class AuthService {
       .doc<User>(`users/${user.uid}`)
       .valueChanges()
       .subscribe((data) => {
-        if (data === undefined) {
+        if (data === undefined || data?.academicID === undefined) {
           return;
         }
         if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
