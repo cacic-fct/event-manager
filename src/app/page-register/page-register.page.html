@@ -9,8 +9,7 @@
     <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
       <ion-item>
         <ion-label class="ion-text-wrap">Nome completo</ion-label>
-        <ion-input type="text" value="{{userData.displayName}}" readonly>
-        </ion-input>
+        <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
       </ion-item>
 
       <ion-item>
@@ -26,21 +25,15 @@
           type="text"
           placeholder="RA"
           maxlength="9"
+          required="true"
           [value]="dataForm.value.academicID">
         </ion-input>
       </ion-item>
 
       <p style="font-size: 0.75em" class="ion-padding-horizontal">
-        Poderemos entrar em contato para confirmar ou complementar estas
-        informações.
+        Poderemos entrar em contato para confirmar ou complementar estas informações.
       </p>
-      <ion-button
-        style="margin-top: 30px"
-        expand="block"
-        id="continue-button"
-        type="submit"
-        >Continuar
-      </ion-button>
+      <ion-button style="margin-top: 30px" expand="block" id="continue-button" type="submit">Continuar </ion-button>
     </form>
   </ion-grid>
   <swal
