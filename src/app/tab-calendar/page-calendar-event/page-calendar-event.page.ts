@@ -152,6 +152,25 @@ export class PageCalendarEventPage implements OnInit {
     toast.present();
   }
 
+  async presentToastShare() {
+    const toast = await this.toastController.create({
+      header: 'Compartilhar',
+      message: 'Link copiado para a área de transferência',
+      icon: 'copy',
+      position: 'bottom',
+      duration: 2000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+    this.clipboardService.copy('https://fct-pp.web.app' + this.router.url);
+    toast.present();
+  }
+
   getEmoji(emoji: string): any {
     if (emoji === undefined) {
       return this.sanitizer.bypassSecurityTrustResourceUrl(parse('❔')[0].url);
