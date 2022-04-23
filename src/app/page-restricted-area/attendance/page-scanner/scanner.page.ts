@@ -44,6 +44,8 @@ export class ScannerPage implements OnInit {
 
   attendanceSessionScans: number = 0;
 
+  audioSuccess: HTMLAudioElement;
+
   constructor(
     private afs: AngularFirestore,
     private router: Router,
@@ -90,6 +92,10 @@ export class ScannerPage implements OnInit {
           };
         });
       });
+
+    this.audioSuccess = new Audio();
+    this.audioSuccess.src = 'assets/sounds/scanner-beep.mp3';
+    this.audioSuccess.load();
   }
 
   ngOnInit() {}
@@ -133,6 +139,7 @@ export class ScannerPage implements OnInit {
                   this.afs.collection(`events/${this.eventID}/attendance`).doc(resultString).set({
                     time: new Date(),
                   });
+                  this.audioSuccess.play();
                   this.toastSucess();
                   this.backdropColor('success');
                   this.attendanceSessionScans++;
