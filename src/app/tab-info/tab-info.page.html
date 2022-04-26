@@ -2,18 +2,22 @@
   <ion-toolbar>
     <ng-content *ngIf="auth.authState | async; then signout_button; else login_button"></ng-content>
     <ng-template #signout_button>
-      <ion-title slot="start"> Olá, {{ firstName }}! </ion-title>
-      <ion-button slot="end" fill="clear" (click)="authService.SignOut()">
-        <ion-icon slot="start" name="log-in-outline"></ion-icon>
-        Sair
-      </ion-button></ng-template
-    >
+      <ion-buttons slot="primary">
+        <ion-button fill="clear" (click)="authService.SignOut()">
+          <ion-icon slot="start" name="log-in-outline"></ion-icon>
+          Sair
+        </ion-button>
+      </ion-buttons>
+      <ion-title> Olá, {{ firstName }}! </ion-title>
+    </ng-template>
     <ng-template #login_button>
-      <ion-title slot="start"> Menu </ion-title>
-      <ion-button slot="end" fill="clear" (click)="authService.GoogleAuth()">
-        <ion-icon slot="start" name="log-out-outline"></ion-icon>
-        Login
-      </ion-button>
+      <ion-buttons slot="primary">
+        <ion-button fill="clear" (click)="authService.GoogleAuth()">
+          <ion-icon slot="start" name="log-out-outline"></ion-icon>
+          Login
+        </ion-button>
+      </ion-buttons>
+      <ion-title> Menu </ion-title>
     </ng-template>
   </ion-toolbar>
 </ion-header>
