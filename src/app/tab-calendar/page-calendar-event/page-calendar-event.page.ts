@@ -154,8 +154,8 @@ export class PageCalendarEventPage implements OnInit {
 
   async presentToastShare() {
     const toast = await this.toastController.create({
-      header: 'Compartilhar',
-      message: 'Link copiado para a área de transferência',
+      header: 'Compartilhar evento',
+      message: 'Link copiado para a área de transferência.',
       icon: 'copy',
       position: 'bottom',
       duration: 2000,
