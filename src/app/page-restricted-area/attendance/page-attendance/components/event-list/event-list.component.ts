@@ -1,8 +1,8 @@
 import { BehaviorSubject, combineLatest, Observable } from 'rxjs';
-import { Component, Input, OnChanges, OnInit } from '@angular/core';
+import { Component, Input, OnChanges } from '@angular/core';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 
-import { startOfDay, endOfDay, fromUnixTime, getDate } from 'date-fns';
+import { startOfDay, endOfDay, fromUnixTime } from 'date-fns';
 
 import { NavController } from '@ionic/angular';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
@@ -29,11 +29,7 @@ export class EventListComponent implements OnChanges {
 
   items$: Observable<EventItem[]>;
 
-  constructor(
-    firestore: AngularFirestore,
-    private navCtrl: NavController,
-    private sanitizer: DomSanitizer
-  ) {
+  constructor(firestore: AngularFirestore, private navCtrl: NavController, private sanitizer: DomSanitizer) {
     this.dateFilter$ = new BehaviorSubject(null);
 
     this.items$ = combineLatest([this.dateFilter$]).pipe(
@@ -42,9 +38,7 @@ export class EventListComponent implements OnChanges {
           .collection<EventItem>('events', (ref) => {
             let query: any = ref;
             if (date) {
-              query = query
-                .where('date', '>=', startOfDay(date))
-                .where('date', '<=', endOfDay(date));
+              query = query.where('date', '>=', startOfDay(date)).where('date', '<=', endOfDay(date));
             }
             return query.orderBy('date', 'asc');
           })
