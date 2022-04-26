@@ -38,7 +38,7 @@
       <div *ngIf="items?.location">
         <h2>Localização</h2>
 
-        <div *ngIf="items?.location.description">
+        <div *ngIf="items?.location.description" class="ion-padding-bottom">
           <ion-item lines="none">
             <ion-icon name="pin" slot="start"></ion-icon>
             <ion-label>{{ items?.location.description }}</ion-label>
@@ -48,7 +48,7 @@
         <div id="ol-map" class="map-container" *ngIf="items?.location.lat && items?.location.lon"></div>
       </div>
 
-      <div *ngIf="items?.button">
+      <div *ngIf="items?.button" class="ion-padding-vertical">
         <ion-button expand="block" color="primary" [href]="items?.button.url" target="_blank"
           >{{ items.button.text ? items.button.text : 'Acompanhe o evento' }}</ion-button
         >
