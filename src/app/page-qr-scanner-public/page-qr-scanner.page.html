@@ -8,18 +8,15 @@
 </ion-header>
 
 <ion-content>
-  <h2 *ngIf="hasPermission === false">
-    Você não concedeu permissão para acessar a câmera.
-  </h2>
+  <h2 *ngIf="hasPermission === false">Você não concedeu permissão para acessar a câmera.</h2>
 
   <p *ngIf="hasDevices === undefined">
-    Verifique se o app tem permissão para acessar a câmera e se o dispositivo
-    está conectado.
+    Verifique se o app tem permissão para acessar a câmera e se o dispositivo está conectado.
   </p>
 
   <h2 *ngIf="hasDevices === false">
-    Nenhuma câmera foi detectada. Verifique se o dispositivo está conectado e se
-    o app tem permissão para acessar a câmera.
+    Nenhuma câmera foi detectada. Verifique se o dispositivo está conectado e se o app tem permissão para acessar a
+    câmera.
   </h2>
 
   <div *ngIf="showScanner">
@@ -29,8 +26,7 @@
       (camerasFound)="onCamerasFound($event)"
       (scanSuccess)="onCodeResult($event)"
       [torch]="torchEnabled"
-      [(device)]="currentDevice"
-    >
+      [(device)]="currentDevice">
     </zxing-scanner>
   </div>
 </ion-content>
