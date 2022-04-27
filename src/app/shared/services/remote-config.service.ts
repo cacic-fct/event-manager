@@ -1,9 +1,5 @@
 import { Injectable } from '@angular/core';
-import {
-  AngularFireRemoteConfig,
-  filterFresh,
-  scanToObject,
-} from '@angular/fire/compat/remote-config';
+import { AngularFireRemoteConfig, filterFresh, scanToObject } from '@angular/fire/compat/remote-config';
 import { first } from 'rxjs/operators';
 
 @Injectable()
@@ -18,6 +14,7 @@ export class RemoteConfigService {
         calendarItemViewDefault: false,
         mapTabEnabled: true,
         manualTabEnabled: false,
+        registerPrompt: true,
       })
     );
   }

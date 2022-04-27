@@ -7,6 +7,7 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { ModalController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
+import { AngularFireRemoteConfig } from '@angular/fire/compat/remote-config';
 
 @Injectable()
 export class AuthService {
@@ -18,7 +19,8 @@ export class AuthService {
     public router: Router,
     public afs: AngularFirestore,
     public ngZone: NgZone,
-    public modalController: ModalController
+    public modalController: ModalController,
+    public remoteConfig: AngularFireRemoteConfig
   ) {
     this.auth.authState.subscribe((user) => {
       if (user) {
@@ -76,16 +78,20 @@ export class AuthService {
   }
 
   CompareUserdataVersion(user: firebase.User) {
-    this.afs
-      .doc<User>(`users/${user.uid}`)
-      .valueChanges()
-      .subscribe((data) => {
-        if (data === undefined) {
-          return;
-        }
-        if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
-          this.router.navigate(['/register']);
-        }
-      });
+    this.remoteConfig.booleans.registerPrompt.subscribe((registerPrompt) => {
+      if (registerPrompt) {
+        this.afs
+          .doc<User>(`users/${user.uid}`)
+          .valueChanges()
+          .subscribe((data) => {
+            if (data === undefined) {
+              return;
+            }
+            if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
+              this.router.navigate(['/register']);
+            }
+          });
+      }
+    });
   }
 }
