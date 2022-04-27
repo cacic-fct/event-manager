@@ -8,6 +8,8 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { ModalController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
 import { AngularFireRemoteConfig } from '@angular/fire/compat/remote-config';
+import { first } from 'rxjs';
+import { trace } from '@angular/fire/compat/performance';
 
 @Injectable()
 export class AuthService {
@@ -78,7 +80,7 @@ export class AuthService {
   }
 
   CompareUserdataVersion(user: firebase.User) {
-    this.remoteConfig.booleans.registerPrompt.subscribe((registerPrompt) => {
+    this.remoteConfig.booleans.registerPrompt.pipe(first(), trace('remoteconfig')).subscribe((registerPrompt) => {
       if (registerPrompt) {
         this.afs
           .doc<User>(`users/${user.uid}`)
