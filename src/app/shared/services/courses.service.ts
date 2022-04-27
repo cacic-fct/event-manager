@@ -15,7 +15,7 @@ export class CoursesService {
 
   getCourse(course: string): string {
     if (course === undefined) {
-      return 'RA inválido';
+      return 'Curso ou RA inválido';
     }
 
     if (course.length === 9) {
@@ -29,6 +29,6 @@ export class CoursesService {
       return CoursesService.courses[course].name;
     }
 
-    return 'RA inválido';
+    return 'Curso ou RA inválido';
   }
 }
