@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { Observable } from 'rxjs';
+import { first, Observable } from 'rxjs';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
@@ -77,7 +77,7 @@ export class ListPage implements OnInit {
     this.afs
       .collection<User>('users')
       .valueChanges({ idfield: 'id' })
-      .pipe(untilDestroyed(this), trace('firestore'))
+      .pipe(first(), trace('firestore'))
       .subscribe((users) => {
         const csv = [];
         const headers = ['Nome', 'RA', 'Email', 'Data_locale', 'Data_iso'];
