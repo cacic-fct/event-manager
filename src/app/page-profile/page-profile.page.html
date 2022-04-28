@@ -27,7 +27,12 @@
       class="qr-code ion-text-center"
       [text]="'uid:' + user.uid"
       [renderAsync]="true"
-      render="svg"
-      fill="'#000'"></ngx-kjua>
+      render="image"
+      ecLevel="H"
+      [minVersion]="7"
+      fill="#000"
+      [size]="320"
+      [quiet]="2"
+      back="#fff"></ngx-kjua>
   </ion-card>
 </ion-content>

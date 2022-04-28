@@ -5,7 +5,7 @@ import { User } from '../services/user';
 import firebase from 'firebase/compat/app';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
-import { ModalController } from '@ionic/angular';
+import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
 import { AngularFireRemoteConfig } from '@angular/fire/compat/remote-config';
 import { first } from 'rxjs';
@@ -22,7 +22,8 @@ export class AuthService {
     public afs: AngularFirestore,
     public ngZone: NgZone,
     public modalController: ModalController,
-    public remoteConfig: AngularFireRemoteConfig
+    public remoteConfig: AngularFireRemoteConfig,
+    public toastController: ToastController
   ) {
     this.auth.authState.subscribe((user) => {
       if (user) {
@@ -52,7 +53,7 @@ export class AuthService {
         console.log('Signed in');
       })
       .catch((error) => {
-        console.log('error');
+        console.error(error);
       });
   }
 
@@ -63,7 +64,28 @@ export class AuthService {
       this.SetUserData(result.user);
     } catch (error) {
       console.error('Login failed');
+      console.error(error);
+      this.toastLoginFailed();
+      this.SignOut();
     }
+  }
+
+  async toastLoginFailed() {
+    const toast = await this.toastController.create({
+      header: 'Houve um erro no seu login',
+      message: 'Verifique a sua conexão e faça login novamente.',
+      icon: 'close-circle',
+      position: 'bottom',
+      duration: 5000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+    toast.present();
   }
 
   SetUserData(user: firebase.User) {

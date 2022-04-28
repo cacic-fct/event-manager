@@ -116,6 +116,7 @@ export class ScannerPage implements OnInit {
   onCodeResult(resultString: string) {
     if (resultString.startsWith('uid:') && resultString.length === 32) {
       resultString = resultString.substring(4);
+      console.log(resultString);
       this.afs
         .collection<attendance>(`events/${this.eventID}/attendance`)
         .doc(resultString)
@@ -188,19 +189,36 @@ export class ScannerPage implements OnInit {
   async toastDuplicate() {
     const toast = await this.toastController.create({
       header: 'Já escaneado',
+      message:
+        'Confira se o nome do usuário está na lista. Se não estiver, confira a sua conexão com a internet e recarregue a página.',
       icon: 'copy',
       position: 'top',
-      duration: 2000,
+      duration: 5000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
     });
     toast.present();
   }
 
   async toastInvalid() {
     const toast = await this.toastController.create({
-      header: 'QR Code incompatível',
+      header: 'QR Code incompatível ou perfil não encontrado no banco de dados',
+      message: 'Solicite que o usuário faça logoff e login novamente ou insira os dados manualmente.',
       icon: 'close-circle',
       position: 'top',
-      duration: 2000,
+      duration: 5000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
     });
     toast.present();
   }
