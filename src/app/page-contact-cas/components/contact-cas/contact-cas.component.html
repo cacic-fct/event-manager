@@ -1,0 +1,37 @@
+<div class="flex-card">
+  <ion-card class="card-item" *ngFor="let centrosAcademicos of contacts">
+    <ion-card-header>
+      <ion-card-title>{{ centrosAcademicos.course }}</ion-card-title>
+      <ion-card-subtitle>{{ centrosAcademicos.acronym }}</ion-card-subtitle>
+    </ion-card-header>
+    <ion-card-content>
+      <div style="margin-left: -15px">
+        <ng-container *ngFor="let socialmedia of socialMedia | keyvalue">
+          <ion-button
+            *ngIf="centrosAcademicos.social[socialmedia.key]"
+            [href]="socialmedia.value + centrosAcademicos.social[socialmedia.key]"
+            target="_blank"
+            attr.aria-label="{{ socialmedia.key }} de {{ centrosAcademicos.course }} "
+            fill="clear">
+            <ion-icon [name]="'logo-' + socialmedia.key"></ion-icon>
+          </ion-button>
+        </ng-container>
+        <ion-button
+          *ngIf="centrosAcademicos.email"
+          href="mailto:{{ centrosAcademicos.email }}"
+          attr.aria-label="E-mail do Centro Acadêmico do curso de {{ centrosAcademicos.course }}"
+          fill="clear">
+          <ion-icon name="mail-outline"></ion-icon>
+        </ion-button>
+        <ion-button
+          *ngIf="centrosAcademicos.website"
+          [href]="centrosAcademicos.website"
+          target="_blank"
+          attr.aria-label="Website do Centro Acadêmico do curso de {{ centrosAcademicos.course }}"
+          fill="clear">
+          <ion-icon name="globe-outline"></ion-icon>
+        </ion-button>
+      </div>
+    </ion-card-content>
+  </ion-card>
+</div>
