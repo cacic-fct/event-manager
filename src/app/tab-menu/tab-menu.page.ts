@@ -8,10 +8,10 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 @UntilDestroy()
 @Component({
   selector: 'app-tab3',
-  templateUrl: 'tab-info.page.html',
-  styleUrls: ['tab-info.page.scss'],
+  templateUrl: 'tab-menu.page.html',
+  styleUrls: ['tab-menu.page.scss'],
 })
-export class TabInfoPage {
+export class TabMenuPage {
   constructor(public authService: AuthService, public auth: AngularFireAuth) {}
 
   userData: firebase.User;

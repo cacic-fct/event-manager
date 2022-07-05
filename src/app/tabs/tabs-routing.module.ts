@@ -34,7 +34,7 @@ const routes: Routes = [
       },
       {
         path: 'menu',
-        loadChildren: () => import('../tab-info/tab-info.module').then((m) => m.TabInfoPageModule),
+        loadChildren: () => import('../tab-menu/tab-menu.module').then((m) => m.TabMenuPageModule),
       },
       {
         path: 'area-restrita',
