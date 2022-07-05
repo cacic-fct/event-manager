@@ -23,16 +23,6 @@
         </ion-card-title>
       </div>
     </ion-card-header>
-    <ngx-kjua
-      class="qr-code ion-text-center"
-      [text]="'uid:' + user.uid"
-      [renderAsync]="true"
-      render="image"
-      ecLevel="H"
-      [minVersion]="7"
-      fill="#000"
-      [size]="320"
-      [quiet]="2"
-      back="#fff"></ngx-kjua>
+    <qr-code class="qr-code ion-text-center" [value]="'uid:' + user.uid" size="320" errorCorrectionLevel="H"></qr-code>
   </ion-card>
 </ion-content>
