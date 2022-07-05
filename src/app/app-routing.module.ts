@@ -47,12 +47,8 @@ const routes: Routes = [
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {
-    path: 'contato/cas',
+    path: 'entidades',
     loadChildren: () => import('./page-contact-cas/page-contact-cas.module').then((m) => m.PageContactCasPageModule),
-  },
-  {
-    path: 'contato/ejs',
-    loadChildren: () => import('./page-contact-ejs/page-contact-ejs.module').then((m) => m.PageContactEjsPageModule),
   },
 ];
 @NgModule({
