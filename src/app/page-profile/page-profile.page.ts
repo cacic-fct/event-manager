@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
-import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-@UntilDestroy()
+import { first } from 'rxjs';
+
 @Component({
   selector: 'app-page-profile',
   templateUrl: './page-profile.page.html',
@@ -16,7 +16,7 @@ export class PageProfilePage implements OnInit {
   ngOnInit() {
     this.user = JSON.parse(localStorage.getItem('user'));
 
-    this.auth.user.pipe(untilDestroyed(this)).subscribe((user) => {
+    this.auth.user.pipe(first()).subscribe((user) => {
       if (user) {
         this.uid = user.uid;
       }
