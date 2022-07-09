@@ -243,6 +243,6 @@ export class ScannerPage implements OnInit {
 
 interface attendance {
   user: Observable<User>;
-  time: string | number | Date;
+  time: Timestamp;
   id?: string;
 }
