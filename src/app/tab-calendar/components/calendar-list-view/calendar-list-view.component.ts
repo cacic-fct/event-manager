@@ -15,6 +15,8 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { EventItem } from 'src/app/shared/services/event';
 import { trace } from '@angular/fire/compat/performance';
 
+import { Timestamp } from '@firebase/firestore-types';
+
 @Component({
   selector: 'app-calendar-list-view',
   templateUrl: './calendar-list-view.component.html',
@@ -74,8 +76,8 @@ export class CalendarListViewComponent implements OnChanges {
     });
   }
 
-  getDateFromTimestamp(timestamp: any): Date {
-    return fromUnixTime(parseInt(timestamp.seconds));
+  getDateFromTimestamp(timestamp: Timestamp): Date {
+    return fromUnixTime(parseInt(timestamp.seconds.toString()));
   }
 
   getEmoji(emoji: string): any {
@@ -85,12 +87,12 @@ export class CalendarListViewComponent implements OnChanges {
     return this.sanitizer.bypassSecurityTrustResourceUrl(parse(emoji)[0].url);
   }
 
-  dayCompare(date1: any, date2: any) {
-    return isSameDay(fromUnixTime(date1), fromUnixTime(date2));
+  dayCompare(date1: Timestamp, date2: Timestamp): boolean {
+    return isSameDay(fromUnixTime(date1.seconds), fromUnixTime(date2.seconds));
   }
 
-  monthCompare(date1: any, date2: any) {
-    return isSameMonth(fromUnixTime(date1), fromUnixTime(date2));
+  monthCompare(date1: Timestamp, date2: Timestamp): boolean {
+    return isSameMonth(fromUnixTime(date1.seconds), fromUnixTime(date2.seconds));
   }
 
   formatDate(date: Date): string {

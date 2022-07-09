@@ -28,6 +28,8 @@ import { EventItem } from '../../shared/services/event';
 import { first, Observable } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 
+import { Timestamp } from '@firebase/firestore-types';
+
 @Component({
   selector: 'app-page-calendar-event',
   templateUrl: './page-calendar-event.page.html',
@@ -119,7 +121,7 @@ export class PageCalendarEventPage implements OnInit {
     return '';
   }
 
-  getDateFromTimestamp(timestamp: any): Date {
+  getDateFromTimestamp(timestamp: Timestamp): Date {
     return fromUnixTime(timestamp.seconds);
   }
 

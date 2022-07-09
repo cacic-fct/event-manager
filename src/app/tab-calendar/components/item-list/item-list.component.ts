@@ -13,6 +13,8 @@ import { parse } from 'twemoji-parser';
 import { EventItem } from 'src/app/shared/services/event';
 import { trace } from '@angular/fire/compat/performance';
 
+import { Timestamp } from '@firebase/firestore-types';
+
 @Component({
   selector: 'app-item-list',
   templateUrl: './item-list.component.html',
@@ -58,8 +60,8 @@ export class ItemListComponent implements OnChanges {
     this.courseFilter$.next(this.filter);
   }
 
-  getDateFromTimestamp(timestamp: any): Date {
-    return fromUnixTime(timestamp);
+  getDateFromTimestamp(timestamp: Timestamp): Date {
+    return fromUnixTime(timestamp.seconds);
   }
 
   getEmoji(emoji: string): any {

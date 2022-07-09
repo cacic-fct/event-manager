@@ -13,6 +13,8 @@ import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+
+import { Timestamp } from '@firebase/firestore-types';
 @UntilDestroy()
 @Component({
   selector: 'app-scanner',
@@ -172,7 +174,7 @@ export class ScannerPage implements OnInit {
     this.hasPermission = has;
   }
 
-  getDateFromTimestamp(timestamp: any): Date {
+  getDateFromTimestamp(timestamp: Timestamp): Date {
     return fromUnixTime(timestamp.seconds);
   }
 

@@ -9,6 +9,8 @@ import { User } from 'src/app/shared/services/user';
 import { fromUnixTime } from 'date-fns';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
+import { Timestamp } from '@firebase/firestore-types';
+
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 @UntilDestroy()
 @Component({
@@ -69,7 +71,7 @@ export class ListPage implements OnInit {
 
   ngOnInit() {}
 
-  getDateFromTimestamp(timestamp: any): Date {
+  getDateFromTimestamp(timestamp: Timestamp): Date {
     return fromUnixTime(timestamp.seconds);
   }
 
