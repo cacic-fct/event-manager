@@ -28,7 +28,6 @@
     "@types/twemoji-parser": "^13.1.1",
     "@zxing/ngx-scanner": "^3.6.2",
     "date-fns": "^2.29.1",
-    "kjua-svg": "^1.13.1",
     "ng-qrcode": "^7.0.0",
     "ngx-clipboard": "^15.1.0",
     "ngx-markdown": "^14.0.1",
