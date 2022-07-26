@@ -23,14 +23,14 @@
           <ion-icon name="hammer-outline" slot="start" aria-hidden="true"></ion-icon>
           <ion-label class="ion-text-wrap">Opções avançadas</ion-label>
         </ion-item>
-        <ion-text color="danger" class="ion-padding-horizontal">
-          <strong>
-            <ion-icon name="warning-outline" slot="start" aria-hidden="true"></ion-icon>
-            <ion-label> Somente utilize estas opções se você souber o que está fazendo</ion-label>
-          </strong>
-        </ion-text>
 
         <ion-list slot="content">
+          <ion-text color="danger" class="ion-padding-horizontal">
+            <strong>
+              <ion-icon name="warning-outline" slot="start" aria-hidden="true"></ion-icon>
+              <ion-label> Somente utilize estas opções se você souber o que está fazendo</ion-label>
+            </strong>
+          </ion-text>
           <ion-item class="ion-padding-start" (click)="updateServiceWorker()" button="true">
             <ion-icon name="refresh-outline" slot="start" aria-hidden="true"></ion-icon>
             <ion-label class="ion-text-wrap">Forçar atualização do Service Worker</ion-label>
