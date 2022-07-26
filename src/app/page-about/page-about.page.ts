@@ -1,5 +1,4 @@
 import { Component, OnInit } from '@angular/core';
-
 import { GlobalConstantsService } from '../shared/services/global-constants.service';
 
 @Component({
@@ -9,7 +8,6 @@ import { GlobalConstantsService } from '../shared/services/global-constants.serv
 })
 export class PageAboutPage implements OnInit {
   globalConstants = GlobalConstantsService;
-
   constructor() {}
 
   ngOnInit() {}

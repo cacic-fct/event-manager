@@ -8,6 +8,10 @@ const routes: Routes = [
     path: '',
     component: PageAboutPage,
   },
+  {
+    path: 'suporte',
+    loadChildren: () => import('./page-support/page-support.module').then((m) => m.PageSupportPageModule),
+  },
 ];
 
 @NgModule({
