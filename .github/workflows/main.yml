@@ -1,29 +1,35 @@
-name: CD
-on:
-  push:
-    tags:
-      - "*"
+name: main
+
+on: [push, pull_request]
+
 jobs:
-  build_and_deploy:
+  build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Install packages
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build for production
         run: npm run build -- --configuration=production
 
-      - name: Deploy
+  deploy:
+    if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_FCT_PP }}'
           channelId: live
           projectId: fct-pp
-      
+
       - name: Create release
         id: create_release
         uses: actions/create-release@v1.0.1
