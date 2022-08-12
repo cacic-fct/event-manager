@@ -36,12 +36,12 @@ exports.addAdminRole = functions.https.onCall((data, context) => {
     })
     .then(() => {
       return {
-        message: `Success! ${data.email} has been made an admin`,
+        message: `${data.email} has been made an admin`,
       };
     })
     .catch((error) => {
       return {
-        message: `An error occured: ${error}`,
+        message: `${error}`,
       };
     });
 });
