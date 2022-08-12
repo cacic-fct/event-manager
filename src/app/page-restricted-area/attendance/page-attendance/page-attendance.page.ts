@@ -13,7 +13,10 @@ export class PageAttendancePage implements OnInit {
 
   ngOnInit() {}
 
-  updateDate(date: string) {
+  updateDate(date: string | string[]): void {
+    if (typeof date !== 'string') {
+      return;
+    }
     this.dateValue = date;
     this.dateDate = parseISO(date);
   }
