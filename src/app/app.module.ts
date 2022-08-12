@@ -21,7 +21,7 @@ import {
   DEFAULTS as REMOTE_CONFIG_DEFAULTS,
   SETTINGS as REMOTE_CONFIG_SETTING,
 } from '@angular/fire/compat/remote-config';
-import { AngularFireFunctionsModule } from '@angular/fire/compat/functions';
+import { AngularFireFunctionsModule, USE_EMULATOR as USE_FUNCTIONS_EMULATOR } from '@angular/fire/compat/functions';
 
 import { environment } from '../environments/environment';
 
@@ -105,6 +105,7 @@ import {
       useValue: environment.useEmulators ? ['http://localhost:9099', { disableWarnings: true }] : undefined,
     },
     { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
+    { provide: USE_FUNCTIONS_EMULATOR, useValue: environment.useEmulators ? ['localhost', 5001] : undefined },
 
     AuthService,
     RemoteConfigService,
