@@ -118,7 +118,72 @@ exports.removeAdminRole = functions.https.onCall((data, context) => {
     })
     .catch((error) => {
       return {
-        message: `An error occured: ${error}`,
+        message: `An error has occured: ${error}`,
       };
+    });
+});
+
+exports.getUserUid = functions.https.onCall((data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
+  }
+
+  if (context.app == undefined) {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'The function must be called from an App Check verified app.'
+    );
+  }
+
+  if (context.auth.token.role !== 1000) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by an admin.');
+  }
+
+  if (data.string === '') {
+    return { message: 'Invalid argument: A string must be provided.' };
+  }
+
+  if (data.string.includes('@')) {
+    return getAuth()
+      .getUserByEmail(data.string)
+      .then((user) => {
+        return {
+          uid: user.uid,
+        };
+      })
+      .catch((error) => {
+        return { message: `${error}` };
+      });
+  }
+  // Remove spaces from the string
+  data.string = data.string.replace(/\s/g, '');
+
+  // Check if input has only one '+' and numbers
+  const isNumeric: boolean = data.string.match(/^\+?\d+$/) ? true : false;
+
+  // Check if string only has numbers
+  if (!isNumeric) {
+    return { message: 'Invalid argument: Invalid input' };
+  }
+
+  if (data.string.length < 11 || data.string.length > 14) {
+    return { message: 'Invalid argument: Invalid input' };
+  }
+
+  if (data.string.length === 11) {
+    data.string = `+55${data.string}`;
+  } else if (data.string.length === 13) {
+    data.string = `+${data.string}`;
+  }
+
+  return getAuth()
+    .getUserByPhoneNumber(data.string)
+    .then((user) => {
+      return {
+        uid: user.uid,
+      };
+    })
+    .catch((error) => {
+      return { message: `${error}` };
     });
 });

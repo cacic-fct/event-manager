@@ -42,11 +42,23 @@
           <h3 style="margin-bottom: 0">{{ event.name }}</h3>
           <h4 style="margin: 0">{{ event.shortDescription }}</h4>
           <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.date) | date: "dd/MM/y - HH:mm" }}</h5>
+
           <p>
             <b>Scans desta sessão:</b> {{ attendanceSessionScans }}
             <br />
-            <b>Total de scans:</b> {{attendancePeople.length}}
+            <b>Total de presentes:</b> {{attendancePeople.length}}
           </p>
+
+          <ion-item>
+            <ion-label position="stacked">Inserção manual de presença</ion-label>
+            <ion-textarea
+              type="text"
+              placeholder="Celular com DDD (somente números) ou e-mail do cadastro"
+              [(ngModel)]="manualInput"></ion-textarea>
+            <ion-button fill="clear" slot="end" (click)="manualAttendance()">
+              <ion-icon slot="icon-only" name="send-outline"></ion-icon>
+            </ion-button>
+          </ion-item>
         </div>
         <ion-item *ngFor="let attendancePerson of attendancePeople">
           <ion-label>
