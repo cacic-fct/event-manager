@@ -24,7 +24,7 @@
 
 <ion-content [fullscreen]="true">
   <ion-card *ngIf="auth.authState | async">
-    <ion-item routerLink="/profile">
+    <ion-item routerLink="/profile" lines="none">
       <ion-icon name="person-circle-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Meu perfil</ion-label>
     </ion-item>
@@ -42,7 +42,7 @@
       <ion-icon name="book-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Manual do calouro</ion-label>
     </ion-item>
-    <ion-item [routerLink]="['/calouros']">
+    <ion-item [routerLink]="['/calouros']" lines="none">
       <ion-icon name="people-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Página do calouro</ion-label>
     </ion-item>
@@ -53,14 +53,14 @@
       <ion-icon name="school-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Site da FCT-Unesp</ion-label>
     </ion-item>
-    <ion-item [routerLink]="['/entidades']">
+    <ion-item [routerLink]="['/entidades']" lines="none">
       <ion-icon name="people-circle-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Entidades estudantis</ion-label>
     </ion-item>
   </ion-card>
 
   <ion-card>
-    <ion-item [routerLink]="['/about']">
+    <ion-item [routerLink]="['/about']" lines="none">
       <ion-icon name="information-circle-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Sobre este app</ion-label>
     </ion-item>
