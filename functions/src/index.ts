@@ -49,7 +49,7 @@ exports.addAdminRole = functions.https.onCall((data, context) => {
             admins: adminArray,
           });
         } else {
-          // If array doesn't exist, create it
+          // If document or array don't exist, create them
           document.set({
             admins: [data.email],
           });

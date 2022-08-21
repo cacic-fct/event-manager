@@ -41,9 +41,6 @@ export class PageManageAdminsPage implements OnInit {
     toast.present();
   }
 
-  // TODO: Write user additions and removals to Firestore claims/admin
-  // claims/admin stores every admin on the app so they can be listed
-
   addAdmin() {
     const addAdminRole = this.fns.httpsCallable('addAdminRole');
     addAdminRole({ email: this.addAdminForm.value.adminEmail })
