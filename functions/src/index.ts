@@ -41,7 +41,7 @@ exports.addAdminRole = functions.https.onCall((data, context) => {
 
       // Get admin array from document
       document.get().then((doc) => {
-        if (doc.exists) {
+        if (doc.exists && doc.data()?.admins) {
           // Add user email to array
           const adminArray = doc.data()?.admins;
           adminArray.push(data.email);
