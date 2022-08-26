@@ -10,6 +10,7 @@ const routes: Routes = [
   },
   {
     path: 'suporte',
+    title: 'Suporte',
     loadChildren: () => import('./page-support/page-support.module').then((m) => m.PageSupportPageModule),
   },
 ];

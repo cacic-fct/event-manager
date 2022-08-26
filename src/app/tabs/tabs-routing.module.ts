@@ -26,18 +26,22 @@ const routes: Routes = [
       },
       {
         path: 'calendario',
+        title: 'Calendário de eventos',
         loadChildren: () => import('../tab-calendar/tab-calendar.module').then((m) => m.TabCalendarPageModule),
       },
       {
         path: 'mapa',
+        title: 'Mapa',
         loadChildren: () => import('../tab-map/tab-map.module').then((m) => m.TabMapPageModule),
       },
       {
         path: 'menu',
+        title: 'Menu',
         loadChildren: () => import('../tab-menu/tab-menu.module').then((m) => m.TabMenuPageModule),
       },
       {
         path: 'area-restrita',
+        title: 'Área restrita',
         loadChildren: () =>
           import('../page-restricted-area/page-restricted-area.module').then((m) => m.PageRestrictedAreaPageModule),
         ...canActivate(adminOnly),

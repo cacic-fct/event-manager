@@ -13,6 +13,7 @@ const routes: Routes = [
   },
   {
     path: 'evento/:id',
+    title: 'Informações do evento',
     loadChildren: () =>
       import('./page-calendar-event/page-calendar-event.module').then((m) => m.PageCalendarEventPageModule),
   },

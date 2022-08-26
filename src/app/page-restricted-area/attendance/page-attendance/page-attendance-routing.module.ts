@@ -10,10 +10,12 @@ const routes: Routes = [
   },
   {
     path: 'scanner/:id',
+    title: 'Escanear presenças',
     loadChildren: () => import('../page-scanner/scanner.module').then((m) => m.ScannerPageModule),
   },
   {
     path: 'list/:id',
+    title: 'Lista de presença',
     loadChildren: () => import('../page-list/list.module').then((m) => m.ListPageModule),
   },
 ];
