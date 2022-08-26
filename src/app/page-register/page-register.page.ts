@@ -73,7 +73,7 @@ export class PageRegisterPage implements OnInit {
     if (!this.dataForm.valid) {
       return;
     }
-    this.auth.authState.subscribe((user) => {
+    this.auth.authState.pipe(trace('auth')).subscribe((user) => {
       const userRef: AngularFirestoreDocument<any> = this.afs.doc(`users/${user.uid}`);
       const userData = {
         academicID: this.dataForm.value.academicID,

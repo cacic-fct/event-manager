@@ -27,7 +27,7 @@ export class AuthService {
     public toastController: ToastController,
     private fns: AngularFireFunctions
   ) {
-    this.auth.authState.subscribe((user) => {
+    this.auth.authState.pipe(trace('auth')).subscribe((user) => {
       if (user) {
         this.userData = user;
         localStorage.setItem('user', JSON.stringify(this.userData));
@@ -109,6 +109,7 @@ export class AuthService {
         this.afs
           .doc<User>(`users/${user.uid}`)
           .valueChanges()
+          .pipe(trace('firestore'))
           .subscribe((data) => {
             if (data === undefined) {
               return;

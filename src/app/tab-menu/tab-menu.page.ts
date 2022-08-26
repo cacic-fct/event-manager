@@ -4,6 +4,8 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AuthService } from '../shared/services/auth.service';
 import firebase from 'firebase/compat/app';
 
+import { trace } from '@angular/fire/compat/performance';
+
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 @UntilDestroy()
 @Component({
@@ -18,7 +20,7 @@ export class TabMenuPage {
   firstName: string;
 
   ngOnInit() {
-    this.auth.user.pipe(untilDestroyed(this)).subscribe((user) => {
+    this.auth.user.pipe(untilDestroyed(this), trace('auth')).subscribe((user) => {
       if (user) {
         this.userData = user;
         this.firstName = this.userData.displayName.split(' ')[0];

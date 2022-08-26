@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { first } from 'rxjs';
+import { trace } from '@angular/fire/compat/performance';
 
 @Component({
   selector: 'app-page-profile',
@@ -16,7 +17,7 @@ export class PageProfilePage implements OnInit {
   ngOnInit() {
     this.user = JSON.parse(localStorage.getItem('user'));
 
-    this.auth.user.pipe(first()).subscribe((user) => {
+    this.auth.user.pipe(first(), trace('auth')).subscribe((user) => {
       if (user) {
         this.uid = user.uid;
       }
