@@ -1,5 +1,4 @@
 import { Component, OnInit } from '@angular/core';
-import { GlobalConstantsService } from '../../shared/services/global-constants.service';
 
 @Component({
   selector: 'app-page-support',

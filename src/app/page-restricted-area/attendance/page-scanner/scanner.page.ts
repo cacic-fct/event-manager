@@ -1,6 +1,6 @@
 import { Component, Input, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
-import { BehaviorSubject, catchError, first, isObservable, Observable, of } from 'rxjs';
+import { BehaviorSubject, first, isObservable, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
@@ -15,7 +15,6 @@ import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
 import { Timestamp } from '@firebase/firestore-types';
-import { AngularFireFunctions } from '@angular/fire/compat/functions';
 import { AuthService } from 'src/app/shared/services/auth.service';
 @UntilDestroy()
 @Component({
