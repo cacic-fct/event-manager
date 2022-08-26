@@ -19,8 +19,8 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: public
-          path: public/
+          name: www
+          path: www/
 
   deploy:
     if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
@@ -34,8 +34,8 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
-          name: public
-          path: public/
+          name: www
+          path: www/
 
       - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
