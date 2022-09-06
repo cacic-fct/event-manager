@@ -127,7 +127,7 @@ export class AuthService {
     manualInput = manualInput.replace(/\s/g, '');
 
     // Check if input has only one '+' and numbers
-    const isNumeric: boolean = manualInput.match(/^\+?\d+$/) ? true : false;
+    const isNumeric: boolean = /^\+?\d+$/.test(manualInput);
 
     // If string doesn't include "@" and isn't numeric only or is empty, return false
     if ((!manualInput.includes('@') && !isNumeric) || manualInput === '') {

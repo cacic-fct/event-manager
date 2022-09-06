@@ -159,7 +159,7 @@ exports.getUserUid = functions.https.onCall((data, context) => {
   data.string = data.string.replace(/\s/g, '');
 
   // Check if input has only one '+' and numbers
-  const isNumeric: boolean = data.string.match(/^\+?\d+$/) ? true : false;
+  const isNumeric: boolean = /^\+?\d+$/.test(data.string);
 
   // Check if string only has numbers
   if (!isNumeric) {
