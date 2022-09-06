@@ -51,7 +51,7 @@
 
       <div *ngIf="items?.button" class="ion-padding-vertical">
         <ion-button expand="block" color="primary" [href]="items?.button.url" target="_blank"
-          >{{ items.button.text ? items.button.text : 'Acompanhe o evento' }}</ion-button
+          >{{ items.button.text || 'Acompanhe o evento' }}</ion-button
         >
       </div>
 
