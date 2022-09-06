@@ -1,0 +1,105 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Eventos</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ng-container *ngIf="majorEvents$ | async; let majorEventsList; else loading">
+    <h1 *ngIf="majorEventsList.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
+
+    <div *ngIf="majorEventsList.length > 0" class="event-container">
+      <ng-container *ngFor="let event of majorEventsList">
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>{{event.name}}</ion-card-title>
+          </ion-card-header>
+
+          <ion-card-content *ngIf="event.description">
+            <p class="ion-text-justify event-description">{{event.description}}</p>
+          </ion-card-content>
+
+          <div class="card-section ion-padding-horizontal">
+            <div class="card-label">
+              <ion-icon name="calendar-outline"></ion-icon>
+              Datas
+            </div>
+
+            <ion-item lines="none">
+              Evento
+              <span slot="end">
+                {{ getDateFromTimestamp(event.dateStart) | date: 'dd/MM' }} {{ event.dateEnd && '- ' +
+                (getDateFromTimestamp(event.dateEnd) | date: 'dd/MM') }}
+              </span>
+            </ion-item>
+
+            <ion-item lines="none" *ngIf="event.subscriptionDateStart && event.subscriptionDateEnd">
+              Inscrição
+              <span slot="end">
+                {{ getDateFromTimestamp(event.subscriptionDateStart) | date: 'dd/MM' }} {{ event.subscriptionDateEnd &&
+                '- ' + (getDateFromTimestamp(event.subscriptionDateEnd) | date: 'dd/MM') }}
+              </span>
+            </ion-item>
+          </div>
+
+          <div class="card-section ion-padding-horizontal" *ngIf="event.price">
+            <div class="card-label">
+              <ion-icon name="wallet-outline"></ion-icon>
+              Valores
+            </div>
+
+            <ng-container *ngIf="event.price.isFree; else notFree">
+              <ion-item lines="none">
+                <ion-label>Gratuito</ion-label>
+              </ion-item>
+            </ng-container>
+
+            <ng-template #notFree>
+              <ng-container *ngIf="event.price.priceSingle; then singlePrice else multiPrice"> </ng-container>
+            </ng-template>
+
+            <ng-template #singlePrice>
+              <ion-item lines="none">
+                Preço único
+                <span slot="end">{{ (100 / 100) | currency:'BRL' }}</span>
+              </ion-item>
+            </ng-template>
+
+            <ng-template #multiPrice>
+              <ion-item lines="none" *ngIf="event.price?.priceStudents">
+                Alunos da Unesp
+                <span slot="end">{{ (event.price.priceStudents / 100) | currency:'BRL' }}</span>
+              </ion-item>
+
+              <ion-item lines="none" *ngIf="event.price?.priceOtherStudents ">
+                Alunos
+                <span slot="end">{{ (event.price.priceOtherStudents / 100) | currency:'BRL' }}</span>
+              </ion-item>
+
+              <ion-item lines="none" *ngIf="event.price?.priceOtherStudents">
+                Professores
+                <span slot="end">{{ (event.price.priceProfessors / 100) | currency:'BRL' }}</span>
+              </ion-item>
+            </ng-template>
+          </div>
+
+          <!-- TODO: Fazer botão de inscrição funcionar -->
+          <div class="ion-padding">
+            <ion-button
+              *ngIf="(event.subscriptionDateStart && event.subscriptionDateEnd) && isTodayBetweenDates(getDateFromTimestamp(event.subscriptionDateStart), getDateFromTimestamp(event.subscriptionDateEnd))">
+              Inscreva-se
+            </ion-button>
+
+            <ion-button *ngIf="event.button?.url" [href]="event.button.url" fill="clear" target="_blank">
+              {{ event.button.text || 'Saiba mais' }}
+            </ion-button>
+          </div>
+        </ion-card>
+      </ng-container>
+    </div>
+  </ng-container>
+
+  <ng-template #loading>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  </ng-template>
+</ion-content>
