@@ -15,7 +15,7 @@ import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
 import { Timestamp } from '@firebase/firestore-types';
-import { AuthService } from 'src/app/shared/services/auth.service';
+import { AuthService, GetUserUIDResponse } from 'src/app/shared/services/auth.service';
 @UntilDestroy()
 @Component({
   selector: 'app-scanner',
@@ -197,7 +197,7 @@ export class ScannerPage implements OnInit {
     }
 
     if (isObservable(response)) {
-      response.pipe(first()).subscribe((response) => {
+      response.pipe(first()).subscribe((response: GetUserUIDResponse) => {
         // If cloud function returns a message, it's an error
         if (response.message) {
           this.backdropColor('invalid');
