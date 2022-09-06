@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { AlertController } from '@ionic/angular';
 
 @Component({
   selector: 'app-page-support',
@@ -6,18 +7,66 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./page-support.page.scss'],
 })
 export class PageSupportPage implements OnInit {
-  hasServiceWorker: boolean = false;
+  serviceWorkerActive: boolean = false;
 
-  constructor() {
+  constructor(private alertController: AlertController) {
+    // If browser supports service worker
     if ('serviceWorker' in navigator) {
-      this.hasServiceWorker = true;
+      // If service worker is "activated" or "activating"
+      if (navigator.serviceWorker.controller) {
+        this.serviceWorkerActive = true;
+      }
     }
   }
 
   ngOnInit() {}
 
+  async alertUpdate() {
+    const alert = await this.alertController.create({
+      header: 'Atualizar o aplicativo',
+      message: 'Tem certeza que deseja continuar?',
+      buttons: [
+        {
+          text: 'Sim',
+          role: 'confirm',
+          handler: () => {
+            this.updateServiceWorker();
+          },
+        },
+        {
+          text: 'Não',
+          role: 'cancel',
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
+  async alertUnregister() {
+    const alert = await this.alertController.create({
+      header: 'Deseja cancelar o registro?',
+      message: 'Ao continuar, uma grande quantidade de dados será consumida',
+      buttons: [
+        {
+          text: 'Sim',
+          role: 'confirm',
+          handler: () => {
+            this.unregisterServiceWorker();
+          },
+        },
+        {
+          text: 'Não',
+          role: 'cancel',
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
   updateServiceWorker() {
-    if (this.hasServiceWorker) {
+    if (this.serviceWorkerActive) {
       navigator.serviceWorker
         .getRegistrations()
         .then((registrations) => {
@@ -32,7 +81,7 @@ export class PageSupportPage implements OnInit {
   }
 
   unregisterServiceWorker() {
-    if (this.hasServiceWorker) {
+    if (this.serviceWorkerActive) {
       navigator.serviceWorker
         .getRegistrations()
         .then((registrations) => {
