@@ -80,10 +80,13 @@ baseline.json
 .husky/_
 
 .angular
+
 # Firebase
 .firebase
 *-debug.log
 .runtimeconfig.json
 firestore.rules
+storage.rules
+emulator-data/
 
 .eslintcache
