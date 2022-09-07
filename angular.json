@@ -40,7 +40,7 @@
             "scripts": [],
             "aot": false,
             "vendorChunk": true,
-            "extractLicenses": false,
+            "extractLicenses": true,
             "buildOptimizer": false,
             "sourceMap": true,
             "optimization": false,

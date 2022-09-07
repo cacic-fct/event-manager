@@ -10,16 +10,10 @@ import { PageLicensesPage } from './page-licenses.page';
 
 import { MarkdownModule } from 'ngx-markdown';
 
-import { PageLicensesTableComponent } from './page-licenses-table/page-licenses-table.component';
+import { DisplayLicensesComponent } from './display-licenses/display-licenses.component';
 
 @NgModule({
-  imports: [
-    CommonModule,
-    FormsModule,
-    IonicModule,
-    PageLegalPageRoutingModule,
-    MarkdownModule.forChild(),
-  ],
-  declarations: [PageLicensesPage, PageLicensesTableComponent],
+  imports: [CommonModule, FormsModule, IonicModule, PageLegalPageRoutingModule, MarkdownModule.forChild()],
+  declarations: [PageLicensesPage, DisplayLicensesComponent],
 })
 export class PageLegalPageModule {}
