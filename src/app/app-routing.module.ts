@@ -12,13 +12,28 @@ const routes: Routes = [
     loadChildren: () => import('./tabs/tabs.module').then((m) => m.TabsPageModule),
   },
   {
-    path: 'about',
+    path: 'sobre',
     data: { preload: true },
     title: 'Sobre',
     loadChildren: () => import('./page-about/page-about.module').then((m) => m.PageAboutPageModule),
   },
   {
+    path: 'about',
+    redirectTo: 'sobre',
+    pathMatch: 'full',
+  },
+  {
+    path: 'humans.txt',
+    redirectTo: 'sobre',
+    pathMatch: 'full',
+  },
+  {
     path: 'licenses',
+    redirectTo: 'sobre/licencas',
+    pathMatch: 'full',
+  },
+  {
+    path: 'sobre/licencas',
     title: 'Licenças',
     loadChildren: () => import('./page-about/page-licenses/page-licenses.module').then((m) => m.PageLegalPageModule),
   },
