@@ -8,6 +8,8 @@ import { GlobalConstantsService } from '../shared/services/global-constants.serv
 })
 export class PageAboutPage implements OnInit {
   globalConstants = GlobalConstantsService;
+  currentYear: number = new Date().getFullYear();
+
   constructor() {}
 
   ngOnInit() {}
