@@ -1,3 +1,4 @@
+import { FilterModalPage } from './components/filter-modal/filter-modal.page';
 import { CalendarListViewComponent } from './components/calendar-list-view/calendar-list-view.component';
 import { IonicModule } from '@ionic/angular';
 import { NgModule } from '@angular/core';
@@ -9,12 +10,7 @@ import { TabCalendarPageRoutingModule } from './tab-calendar-routing.module';
 import { ItemListComponent } from './components/item-list/item-list.component';
 
 @NgModule({
-  imports: [
-    IonicModule,
-    CommonModule,
-    FormsModule,
-    TabCalendarPageRoutingModule,
-  ],
-  declarations: [TabCalendarPage, ItemListComponent, CalendarListViewComponent],
+  imports: [IonicModule, CommonModule, FormsModule, TabCalendarPageRoutingModule],
+  declarations: [TabCalendarPage, ItemListComponent, CalendarListViewComponent, FilterModalPage],
 })
 export class TabCalendarPageModule {}
