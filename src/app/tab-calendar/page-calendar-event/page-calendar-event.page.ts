@@ -65,7 +65,7 @@ export class PageCalendarEventPage implements OnInit {
     this.item$.pipe(first()).subscribe((item) => {
       this.item = item;
 
-      if (item.location.lat && item.location.lon) {
+      if (item.location?.lat && item.location?.lon) {
         useGeographic();
         const iconStyle = new Style({
           image: new Icon({
@@ -84,8 +84,8 @@ export class PageCalendarEventPage implements OnInit {
         );
 
         let iconFeature = new Feature({
-          geometry: new Point([this.item?.location.lon, this.item.location?.lat]),
-          name: this.item?.name,
+          geometry: new Point([item.location.lon, item.location.lat]),
+          name: item.name,
         });
 
         iconFeature.setStyle(iconStyle);
@@ -104,7 +104,7 @@ export class PageCalendarEventPage implements OnInit {
 
         this.map = new Map({
           view: new View({
-            center: [this.item.location?.lon, this.item.location?.lat],
+            center: [item.location.lon, item.location.lat],
             zoom: 18,
             maxZoom: 19,
             projection: 'EPSG:3857',
