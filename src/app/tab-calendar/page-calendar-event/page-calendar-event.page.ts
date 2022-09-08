@@ -1,11 +1,10 @@
-import { HttpClient } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 
 import { CoursesService } from '../../shared/services/courses.service';
 
 import { ToastController } from '@ionic/angular';
 
-import { format, fromUnixTime } from 'date-fns';
+import { fromUnixTime } from 'date-fns';
 import { ClipboardService } from 'ngx-clipboard';
 import { Router } from '@angular/router';
 
@@ -19,14 +18,13 @@ import OSM from 'ol/source/OSM';
 import Feature from 'ol/Feature';
 import { Icon, Style } from 'ol/style';
 import { fromLonLat, useGeographic } from 'ol/proj';
-import { Control, defaults as defaultControls } from 'ol/control';
 import Point from 'ol/geom/Point';
 import VectorSource from 'ol/source/Vector';
 
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 
 import { EventItem } from '../../shared/services/event';
-import { first, map, Observable, ReplaySubject, share } from 'rxjs';
+import { first, Observable } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 
 import { Timestamp } from '@firebase/firestore-types';
@@ -63,8 +61,6 @@ export class PageCalendarEventPage implements OnInit {
     // first() unsubscribes after the first value is emitted
     // This is necessary because the map would be created multiple times otherwise
     this.item$.pipe(first()).subscribe((item) => {
-      this.item = item;
-
       if (item.location?.lat && item.location?.lon) {
         useGeographic();
         const iconStyle = new Style({
