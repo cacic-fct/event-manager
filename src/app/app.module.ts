@@ -16,11 +16,9 @@ import {
 } from '@angular/fire/compat/analytics';
 import { AngularFirestoreModule, USE_EMULATOR as USE_FIRESTORE_EMULATOR } from '@angular/fire/compat/firestore';
 import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@angular/fire/compat/performance';
-import {
-  AngularFireRemoteConfigModule,
-  DEFAULTS as REMOTE_CONFIG_DEFAULTS,
-  SETTINGS as REMOTE_CONFIG_SETTING,
-} from '@angular/fire/compat/remote-config';
+
+import { getRemoteConfig, provideRemoteConfig } from '@angular/fire/remote-config';
+
 import { AngularFireFunctionsModule, USE_EMULATOR as USE_FUNCTIONS_EMULATOR } from '@angular/fire/compat/functions';
 
 import { environment } from '../environments/environment';
@@ -65,7 +63,6 @@ import {
     AngularFireModule.initializeApp(environment.firebase),
     AngularFireAnalyticsModule,
     AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
-    AngularFireRemoteConfigModule,
     AngularFirePerformanceModule,
     AngularFireFunctionsModule,
     ServiceWorkerModule.register('ngsw-worker.js', {
@@ -82,6 +79,29 @@ import {
         isTokenAutoRefreshEnabled: true,
       });
     }),
+
+    provideRemoteConfig(() => {
+      const remoteConfig = getRemoteConfig();
+
+      if (isDevMode()) {
+        remoteConfig.settings.minimumFetchIntervalMillis = 10_000;
+        remoteConfig.settings.fetchTimeoutMillis = 60_000;
+      } else {
+        remoteConfig.settings.minimumFetchIntervalMillis = 43_200_000;
+        remoteConfig.settings.fetchTimeoutMillis = 60_000;
+      }
+
+      remoteConfig.defaultConfig = {
+        calendarItemViewDefault: true,
+        mapTabEnabled: true,
+        manualTabEnabled: false,
+        eventsTabEnabled: true,
+        registerPrompt: true,
+      };
+
+      return remoteConfig;
+    }),
+
     provideFirebaseApp(() => initializeApp(environment.firebase)),
   ],
   providers: [
@@ -90,13 +110,6 @@ import {
     PerformanceMonitoringService,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     { provide: LOCALE_ID, useValue: 'pt-BR' },
-    {
-      provide: REMOTE_CONFIG_SETTING,
-      useFactory: () =>
-        isDevMode()
-          ? { minimumFetchIntervalMillis: 10_000, fetchTimeoutMillis: 60_000 }
-          : { minimumFetchIntervalMillis: 43_200_000, fetchTimeoutMillis: 60_000 },
-    },
     { provide: USE_DEVICE_LANGUAGE, useValue: true },
     { provide: APP_VERSION, useValue: GlobalConstantsService.appVersion },
     { provide: APP_NAME, useValue: GlobalConstantsService.appName },

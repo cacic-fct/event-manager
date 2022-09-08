@@ -5,12 +5,12 @@
       <ion-label>Calendário</ion-label>
     </ion-tab-button>
 
-    <ion-tab-button tab="eventos">
+    <ion-tab-button *ngIf="this.events$ | async" tab="eventos">
       <ion-icon name="albums"></ion-icon>
       <ion-label>Eventos</ion-label>
     </ion-tab-button>
 
-    <ion-tab-button tab="mapa">
+    <ion-tab-button *ngIf="this.map$ | async" tab="mapa">
       <ion-icon name="map"></ion-icon>
       <ion-label>Mapa</ion-label>
     </ion-tab-button>
@@ -20,7 +20,7 @@
       <ion-label>Manual do calouro</ion-label>
     </ion-tab-button>
 
-    <ion-tab-button tab="area-restrita" *ngIf="isAdmin">
+    <ion-tab-button tab="area-restrita" *ngIf="isAdmin$ | async">
       <ion-icon name="hand-right-outline"></ion-icon>
       <ion-label>Área restrita</ion-label>
     </ion-tab-button>
