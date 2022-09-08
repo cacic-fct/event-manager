@@ -30,6 +30,7 @@ registerLocaleData(localePt);
 
 import { AuthService } from './shared/services/auth.service';
 import { RemoteConfigService } from './shared/services/remote-config.service';
+import { WeatherService } from 'src/app/shared/services/weather.service';
 
 import { ServiceWorkerModule } from '@angular/service-worker';
 import { MarkdownModule } from 'ngx-markdown';
@@ -123,6 +124,7 @@ import {
     AuthService,
     RemoteConfigService,
     CoursesService,
+    WeatherService,
   ],
   bootstrap: [AppComponent],
 })
