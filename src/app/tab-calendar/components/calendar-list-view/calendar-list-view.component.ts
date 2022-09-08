@@ -81,7 +81,7 @@ export class CalendarListViewComponent implements OnChanges {
   }
 
   getEmoji(emoji: string): any {
-    if (emoji === undefined) {
+    if (emoji === undefined || !/^\p{Emoji}$/u.test('emoji')) {
       return this.sanitizer.bypassSecurityTrustResourceUrl(parse('❔')[0].url);
     }
     return this.sanitizer.bypassSecurityTrustResourceUrl(parse(emoji)[0].url);
