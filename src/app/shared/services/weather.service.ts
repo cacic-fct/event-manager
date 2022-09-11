@@ -7,9 +7,9 @@ import { add } from 'date-fns';
 @Injectable()
 export class WeatherService {
   public static weatherCodes = {
-    0: { icon: 'sunny', text: 'Céu limpo' },
-    1: { icon: 'sunny', text: 'Céu predominantemente limpo' },
-    2: { icon: 'partly-sunny', text: 'Predominantemente nublado' },
+    0: { icon: 'sunny', icon_night: 'moon', text: 'Céu limpo' },
+    1: { icon: 'sunny', icon_night: 'moon', text: 'Céu predominantemente limpo' },
+    2: { icon: 'partly-sunny', icon_night: 'cloudy-night', text: 'Predominantemente nublado' },
     3: { icon: 'cloudy', text: 'Nublado' },
     45: { icon: 'cloudy', text: 'Neblina' },
     48: { icon: 'cloudy', text: 'Neblina' },
@@ -61,6 +61,10 @@ export class WeatherService {
         const eventDateHour = date.getHours();
         const temperature = Math.floor(data.hourly.temperature_2m[eventDateHour]);
         const weather = this.getWeatherInfo(data.hourly.weathercode[eventDateHour]);
+
+        if (date.getHours() >= 18) {
+          return { temperature: temperature, icon: weather.icon_night || weather.icon, text: weather.text };
+        }
 
         return { temperature: temperature, icon: weather.icon, text: weather.text };
       })
