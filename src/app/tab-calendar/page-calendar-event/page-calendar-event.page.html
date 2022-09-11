@@ -31,7 +31,7 @@
         <h3 style="margin: 0; font-weight: 400">{{ getDateFromTimestamp(items?.date) | date: 'HH:mm' }}</h3>
 
         <div class="weather-container">
-          <ng-container *ngIf="(weather | async) as weatherInfo; then weatherAttribution">
+          <ng-container *ngIf="(weather | async) as weatherInfo;">
             <ng-container *ngIf="!weatherInfo.error">
               <ion-icon class="weather-icon" [name]="weatherInfo.icon"></ion-icon>
               <span class="weather-text">{{ weatherInfo.temperature }}°C – {{ weatherInfo.text }}</span>
@@ -76,13 +76,12 @@
           allowfullscreen></iframe>
       </div>
     </div>
-    <ng-template #weatherAttribution>
-      <div class="ion-text-center weather-attribution">
-        <ion-text color="medium">
-          <a href="https://open-meteo.com/" target="_blank">Weather data by Open-Meteo.com</a>
-        </ion-text>
-      </div>
-    </ng-template>
+
+    <div class="ion-text-center weather-attribution" *ngIf="weather | async">
+      <ion-text color="medium">
+        <a href="https://open-meteo.com/" target="_blank">Weather data by Open-Meteo.com</a>
+      </ion-text>
+    </div>
   </ng-container>
   <ng-template #loading>
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
