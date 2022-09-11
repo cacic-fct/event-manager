@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
-import { first } from 'rxjs';
+import { first, map, Observable } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 
 @Component({
@@ -11,16 +11,11 @@ import { trace } from '@angular/fire/compat/performance';
 })
 export class PageProfilePage implements OnInit {
   user: any;
-  uid: string;
+  uid: Observable<string>;
   constructor(public auth: AngularFireAuth) {}
 
   ngOnInit() {
     this.user = JSON.parse(localStorage.getItem('user'));
-
-    this.auth.user.pipe(first(), trace('auth')).subscribe((user) => {
-      if (user) {
-        this.uid = user.uid;
-      }
-    });
+    this.uid = this.auth.user.pipe(first(), trace('auth')).pipe(map((user) => user.uid));
   }
 }

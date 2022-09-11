@@ -23,6 +23,10 @@
         </ion-card-title>
       </div>
     </ion-card-header>
-    <qr-code class="qr-code ion-text-center" [value]="'uid:' + uid" size="320" errorCorrectionLevel="H"></qr-code>
+    <qr-code
+      class="qr-code ion-text-center"
+      [value]="'uid:' + (uid | async)"
+      size="320"
+      errorCorrectionLevel="H"></qr-code>
   </ion-card>
 </ion-content>
