@@ -2,25 +2,29 @@ import { Timestamp } from '@firebase/firestore-types';
 
 export interface MajorEventItem {
   name: string;
-  icon: string;
   course: string;
-  dateStart: Timestamp;
-  dateEnd?: Timestamp;
-  subscriptionDateStart?: Timestamp;
-  subscriptionDateEnd?: Timestamp;
+  eventStartDate: Timestamp;
+  eventEndDate?: Timestamp;
+  subscriptionStartDate?: Timestamp;
+  subscriptionEndDate?: Timestamp;
+  maxCourses: number;
+  maxLectures: number;
   price: {
-    priceStudents?: number;
-    priceOtherStudents?: number;
-    priceProfessors?: number;
-    priceSingle?: number;
+    students?: number;
+    otherStudents?: number;
+    professors?: number;
+    single?: number;
     isFree?: boolean;
   };
-  accountChavePix?: string;
-  accountBank?: string;
-  accountName?: string;
-  accountDocument?: string;
-  accountAgency?: string;
-  accountNumber?: string;
+  paymentInfo?: {
+    chavePix?: string;
+    bankName?: string;
+    name?: string;
+    document?: string;
+    agency?: string;
+    accountNumber?: string;
+    additionalPaymentInformation?: string;
+  };
   description?: string;
   button?: {
     text?: string;
@@ -28,6 +32,6 @@ export interface MajorEventItem {
   };
   public: boolean;
   createdBy: string;
-  createdOn: Timestamp;
-  id: string;
+  createdOn: Timestamp | Date;
+  id?: string;
 }

@@ -28,16 +28,16 @@
             <ion-item lines="none">
               Evento
               <span slot="end">
-                {{ getDateFromTimestamp(event.dateStart) | date: 'dd/MM' }} {{ event.dateEnd && '- ' +
-                (getDateFromTimestamp(event.dateEnd) | date: 'dd/MM') }}
+                {{ getDateFromTimestamp(event.eventStartDate) | date: 'dd/MM' }} {{ event.eventEndDate && '- ' +
+                (getDateFromTimestamp(event.eventEndDate) | date: 'dd/MM') }}
               </span>
             </ion-item>
 
-            <ion-item lines="none" *ngIf="event.subscriptionDateStart && event.subscriptionDateEnd">
+            <ion-item lines="none" *ngIf="event.subscriptionStartDate && event.subscriptionEndDate">
               Inscrição
               <span slot="end">
-                {{ getDateFromTimestamp(event.subscriptionDateStart) | date: 'dd/MM' }} {{ event.subscriptionDateEnd &&
-                '- ' + (getDateFromTimestamp(event.subscriptionDateEnd) | date: 'dd/MM') }}
+                {{ getDateFromTimestamp(event.subscriptionStartDate) | date: 'dd/MM' }} {{ event.subscriptionEndDate &&
+                '- ' + (getDateFromTimestamp(event.subscriptionEndDate) | date: 'dd/MM') }}
               </span>
             </ion-item>
           </div>
@@ -55,30 +55,30 @@
             </ng-container>
 
             <ng-template #notFree>
-              <ng-container *ngIf="event.price.priceSingle; then singlePrice else multiPrice"> </ng-container>
+              <ng-container *ngIf="event.price.single; then singlePrice else multiPrice"> </ng-container>
             </ng-template>
 
             <ng-template #singlePrice>
               <ion-item lines="none">
                 Preço único
-                <span slot="end">{{ (event.price.priceSingle / 100) | currency:'BRL' }}</span>
+                <span slot="end">{{ (event.price.single / 100) | currency:'BRL' }}</span>
               </ion-item>
             </ng-template>
 
             <ng-template #multiPrice>
-              <ion-item lines="none" *ngIf="event.price.priceStudents">
+              <ion-item lines="none" *ngIf="event.price.students">
                 Alunos da Unesp
-                <span slot="end">{{ (event.price.priceStudents / 100) | currency:'BRL' }}</span>
+                <span slot="end">{{ (event.price.students / 100) | currency:'BRL' }}</span>
               </ion-item>
 
-              <ion-item lines="none" *ngIf="event.price.priceOtherStudents">
+              <ion-item lines="none" *ngIf="event.price.otherStudents">
                 Alunos
-                <span slot="end">{{ (event.price.priceOtherStudents / 100) | currency:'BRL' }}</span>
+                <span slot="end">{{ (event.price.otherStudents / 100) | currency:'BRL' }}</span>
               </ion-item>
 
-              <ion-item lines="none" *ngIf="event.price.priceOtherStudents">
+              <ion-item lines="none" *ngIf="event.price.otherStudents">
                 Professores
-                <span slot="end">{{ (event.price.priceProfessors / 100) | currency:'BRL' }}</span>
+                <span slot="end">{{ (event.price.professors / 100) | currency:'BRL' }}</span>
               </ion-item>
             </ng-template>
           </div>
@@ -86,7 +86,7 @@
           <!-- TODO: Fazer botão de inscrição funcionar -->
           <div class="ion-padding">
             <ion-button
-              *ngIf="(event.subscriptionDateStart && event.subscriptionDateEnd) && isTodayBetweenDates(getDateFromTimestamp(event.subscriptionDateStart), getDateFromTimestamp(event.subscriptionDateEnd))">
+              *ngIf="(event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(getDateFromTimestamp(event.subscriptionStartDate), getDateFromTimestamp(event.subscriptionEndDate))">
               Inscreva-se
             </ion-button>
 
