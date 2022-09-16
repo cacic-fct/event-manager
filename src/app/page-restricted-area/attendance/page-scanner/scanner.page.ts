@@ -41,7 +41,7 @@ export class ScannerPage implements OnInit {
 
   attendanceCollection: attendance[];
   eventID: string;
-  event: EventItem;
+  event$: Observable<EventItem>;
 
   _backdropVisibleSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   backdropVisible$: Observable<boolean> = this._backdropVisibleSubject.asObservable();
@@ -78,14 +78,7 @@ export class ScannerPage implements OnInit {
         }
       });
 
-    this.afs
-      .collection('events')
-      .doc<EventItem>(this.eventID)
-      .valueChanges()
-      .pipe(untilDestroyed(this), trace('firestore'))
-      .subscribe((event) => {
-        this.event = event;
-      });
+    this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges().pipe(trace('firestore'));
 
     // Get attendance list
     this.afs

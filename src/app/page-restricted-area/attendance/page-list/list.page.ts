@@ -24,7 +24,7 @@ export class ListPage implements OnInit {
 
   attendanceCollection: attendance[];
   eventID: string;
-  event: EventItem;
+  event$: Observable<EventItem>;
 
   constructor(
     private afs: AngularFirestore,
@@ -51,14 +51,7 @@ export class ListPage implements OnInit {
         }
       });
 
-    this.afs
-      .collection('events')
-      .doc<EventItem>(this.eventID)
-      .valueChanges()
-      .pipe(untilDestroyed(this), trace('firestore'))
-      .subscribe((event) => {
-        this.event = event;
-      });
+    this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges().pipe(trace('firestore'));
 
     this.afs
       .collection<any>(`events/${this.eventID}/attendance`, (ref) => {
@@ -109,11 +102,13 @@ export class ListPage implements OnInit {
           csv.push(row);
         });
 
-        const csvString = csv.map((row) => row.join(',')).join('\n');
-        const a = document.createElement('a');
-        a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
-        a.download = `${this.event.name}_${this.getDateFromTimestamp(this.event.date).toISOString()}.csv`;
-        a.click();
+        this.event$.pipe(first()).subscribe((event) => {
+          const csvString = csv.map((row) => row.join(',')).join('\n');
+          const a = document.createElement('a');
+          a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
+          a.download = `${event.name}_${this.getDateFromTimestamp(event.date).toISOString()}.csv`;
+          a.click();
+        });
       });
   }
 }

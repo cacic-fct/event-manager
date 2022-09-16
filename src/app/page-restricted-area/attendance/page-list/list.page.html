@@ -9,7 +9,7 @@
 
 <ion-content>
   <ng-container *ngIf="attendanceCollection as attendancePeople; else: loading">
-    <div class="ion-padding">
+    <div class="ion-padding" *ngIf="event$ | async; let event">
       <h3 style="margin-bottom: 0">{{ event.name }}</h3>
       <h4 style="margin: 0">{{ event.shortDescription }}</h4>
       <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.date) | date: "dd/MM/y - HH:mm" }}</h5>
