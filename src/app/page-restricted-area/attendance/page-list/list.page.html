@@ -8,7 +8,7 @@
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="attendanceCollection as attendancePeople; else: loading">
+  <ng-container *ngIf="attendanceCollection$ | async as attendancePeople; else: loading">
     <div class="ion-padding" *ngIf="event$ | async; let event">
       <h3 style="margin-bottom: 0">{{ event.name }}</h3>
       <h4 style="margin: 0">{{ event.shortDescription }}</h4>

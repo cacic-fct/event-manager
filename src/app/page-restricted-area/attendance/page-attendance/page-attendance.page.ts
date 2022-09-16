@@ -1,5 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { parseISO } from 'date-fns';
+import { Observable } from 'rxjs';
+
+import { Timestamp } from '@firebase/firestore-types';
+import { User } from 'src/app/shared/services/user';
 
 @Component({
   selector: 'app-page-attendance-collect',
@@ -20,4 +24,10 @@ export class PageAttendancePage implements OnInit {
     this.dateValue = date;
     this.dateDate = parseISO(date);
   }
+}
+
+export interface Attendance {
+  user: Observable<User>;
+  time: Timestamp;
+  id?: string;
 }

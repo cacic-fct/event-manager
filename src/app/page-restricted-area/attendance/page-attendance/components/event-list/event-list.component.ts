@@ -4,7 +4,6 @@ import { CoursesService } from 'src/app/shared/services/courses.service';
 
 import { startOfDay, endOfDay, fromUnixTime } from 'date-fns';
 
-import { NavController } from '@ionic/angular';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { switchMap } from 'rxjs/operators';
 import { DomSanitizer } from '@angular/platform-browser';

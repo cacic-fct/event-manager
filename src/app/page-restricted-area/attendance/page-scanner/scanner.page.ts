@@ -1,6 +1,6 @@
 import { Component, Input, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
-import { BehaviorSubject, first, isObservable, Observable } from 'rxjs';
+import { BehaviorSubject, first, isObservable, map, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
@@ -16,6 +16,9 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
 import { Timestamp } from '@firebase/firestore-types';
 import { AuthService, GetUserUIDResponse } from 'src/app/shared/services/auth.service';
+
+import { Attendance } from '../page-attendance/page-attendance.page';
+
 @UntilDestroy()
 @Component({
   selector: 'app-scanner',
@@ -39,7 +42,7 @@ export class ScannerPage implements OnInit {
   deviceIndex: number = -1;
   showScanner = true;
 
-  attendanceCollection: attendance[];
+  attendanceCollection$: Observable<Attendance[]>;
   eventID: string;
   event$: Observable<EventItem>;
 
@@ -81,20 +84,23 @@ export class ScannerPage implements OnInit {
     this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges().pipe(trace('firestore'));
 
     // Get attendance list
-    this.afs
-      .collection<any>(`events/${this.eventID}/attendance`, (ref) => {
+    this.attendanceCollection$ = this.afs
+      .collection<Attendance>(`events/${this.eventID}/attendance`, (ref) => {
         return ref.orderBy('time', 'desc');
       })
       .valueChanges({ idField: 'id' })
-      .pipe(untilDestroyed(this), trace('firestore'))
-      .subscribe((items: any[]) => {
-        this.attendanceCollection = items.map((item) => {
-          return {
-            ...item,
-            user: this.afs.collection('users').doc<User>(item.id).valueChanges().pipe(trace('firestore')),
-          };
-        });
-      });
+      .pipe(
+        untilDestroyed(this),
+        trace('firestore'),
+        map((attendance) => {
+          return attendance.map((item) => {
+            return {
+              ...item,
+              user: this.afs.collection('users').doc<User>(item.id).valueChanges().pipe(trace('firestore'), first()),
+            };
+          });
+        })
+      );
 
     // Load audio asset (beep)
     this.audioSuccess = new Audio();
@@ -120,7 +126,7 @@ export class ScannerPage implements OnInit {
       resultString = resultString.substring(4);
       console.log(resultString);
       this.afs
-        .collection<attendance>(`events/${this.eventID}/attendance`)
+        .collection<Attendance>(`events/${this.eventID}/attendance`)
         .doc(resultString)
         .get()
         .pipe(first(), trace('firestore'))
@@ -201,7 +207,7 @@ export class ScannerPage implements OnInit {
         } else {
           const uid = response.uid;
           this.afs
-            .collection<attendance>(`events/${this.eventID}/attendance`)
+            .collection<Attendance>(`events/${this.eventID}/attendance`)
             .doc(uid)
             .get()
             .pipe(first(), trace('firestore'))
@@ -211,31 +217,30 @@ export class ScannerPage implements OnInit {
                 this.backdropColor('duplicate');
                 this.toastDuplicate();
                 return false;
-              } else {
-                // Check if user uid exists in user list
-                this.afs
-                  .collection('users')
-                  .doc(uid)
-                  .get()
-                  .pipe(first(), trace('firestore'))
-                  .subscribe((user) => {
-                    // If user uid exists, register attendance
-                    if (user.exists) {
-                      this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
-                        time: new Date(),
-                      });
-                      this.audioSuccess.play();
-                      this.toastSucess();
-                      this.backdropColor('success');
-                      this.attendanceSessionScans++;
-                      return true;
-                    } else {
-                      this.backdropColor('invalid');
-                      this.toastInvalid();
-                      return false;
-                    }
-                  });
               }
+              // Check if user uid exists in user list
+              this.afs
+                .collection('users')
+                .doc(uid)
+                .get()
+                .pipe(first(), trace('firestore'))
+                .subscribe((user) => {
+                  // If user uid exists, register attendance
+                  if (user.exists) {
+                    this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
+                      time: new Date(),
+                    });
+                    this.audioSuccess.play();
+                    this.toastSucess();
+                    this.backdropColor('success');
+                    this.attendanceSessionScans++;
+                    return true;
+                  } else {
+                    this.backdropColor('invalid');
+                    this.toastInvalid();
+                    return false;
+                  }
+                });
             });
         }
       });
@@ -321,9 +326,4 @@ export class ScannerPage implements OnInit {
     // Remove backdrop class
     document.querySelector('ion-backdrop').classList.remove(color);
   }
-}
-
-interface attendance {
-  user: Observable<User>;
-  time: Timestamp;
 }
