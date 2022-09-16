@@ -1,0 +1,80 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/area-restrita"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Gerenciar grandes eventos</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-item>
+    <ion-datetime-button datetime="dateSelector" class="margin-horizontal-auto"></ion-datetime-button>
+  </ion-item>
+
+  <ng-container *ngIf="majorEvents$ | async; let majorEventsList; else loading">
+    <ion-list>
+      <h1 *ngIf="majorEventsList.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
+
+      <div class="event-container">
+        <ion-item *ngFor="let item of majorEventsList">
+          <ion-grid>
+            <ion-row>
+              <ion-col>
+                <ion-label>
+                  <h1 class="ion-text-wrap">{{item.name}}</h1>
+                  <h4 class="date-item" *ngIf="item.subscriptionStartDate && item.subscriptionEndDate">
+                    Inscrições: {{getDateFromTimestamp(item.subscriptionStartDate) | date: 'dd/MM'}} -
+                    {{getDateFromTimestamp(item.subscriptionEndDate) | date: 'dd/MM'}}
+                  </h4>
+                  <h4 class="date-item" *ngIf="item.eventStartDate && item.eventEndDate">
+                    Data do evento: {{ getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM' }} - {{
+                    getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM' }}
+                  </h4>
+                  <p class="ion-text-wrap" *ngIf="item.course">{{courses.getCourse(item.course)}}</p>
+                </ion-label>
+              </ion-col>
+              <ion-col>
+                <!-- <ion-row>
+                  <ion-button fill="clear">
+                    <ion-icon name="pencil-outline" slot="start"></ion-icon>
+                    <p slot="end">Editar evento</p>
+                  </ion-button>
+                </ion-row> -->
+                <ion-row>
+                  <ion-button fill="clear">
+                    <ion-icon name="people-outline" slot="start"></ion-icon>
+                    <p slot="end">Gerenciar inscritos</p>
+                  </ion-button>
+                </ion-row>
+                <ion-row>
+                  <ion-button fill="clear">
+                    <ion-icon name="wallet-outline" slot="start"></ion-icon>
+                    <p slot="end" class="ion-text-wrap">Validar comprovantes</p>
+                  </ion-button>
+                </ion-row>
+              </ion-col>
+            </ion-row>
+          </ion-grid>
+        </ion-item>
+      </div>
+    </ion-list>
+  </ng-container>
+  <ng-template #loading>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  </ng-template>
+</ion-content>
+
+<ion-modal [keepContentsMounted]="true">
+  <ng-template>
+    <ion-datetime
+      [(ngModel)]="currentMonth"
+      id="dateSelector"
+      presentation="month-year"
+      showDefaultButtons="true"
+      min="2022-03-01T00:00:00"
+      [max]="getLimitDate()"
+      (ionChange)="onMonthChange()">
+    </ion-datetime>
+  </ng-template>
+</ion-modal>
