@@ -1,7 +1,6 @@
 import { Router } from '@angular/router';
 import { Component } from '@angular/core';
 import { KeyValue, formatDate } from '@angular/common';
-import { Observable } from 'rxjs';
 
 import { CoursesService } from 'src/app/shared/services/courses.service';
 

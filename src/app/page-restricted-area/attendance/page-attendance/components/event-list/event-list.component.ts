@@ -31,7 +31,7 @@ export class EventListComponent implements OnInit, OnChanges {
 
   items$: Observable<EventItem[]>;
 
-  constructor(private afs: AngularFirestore, private navCtrl: NavController, private sanitizer: DomSanitizer) {}
+  constructor(private afs: AngularFirestore, private sanitizer: DomSanitizer) {}
 
   ngOnInit() {
     this.dateFilter$ = new BehaviorSubject(null);
