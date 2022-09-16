@@ -9,12 +9,12 @@ const routes: Routes = [
     component: PageAttendancePage,
   },
   {
-    path: 'scanner/:id',
+    path: 'scanner/:eventID',
     title: 'Escanear presenças',
     loadChildren: () => import('../page-scanner/scanner.module').then((m) => m.ScannerPageModule),
   },
   {
-    path: 'list/:id',
+    path: 'list/:eventID',
     title: 'Lista de presença',
     loadChildren: () => import('../page-list/list.module').then((m) => m.ListPageModule),
   },

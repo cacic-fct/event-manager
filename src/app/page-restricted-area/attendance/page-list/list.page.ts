@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { first, Observable } from 'rxjs';
@@ -26,8 +26,13 @@ export class ListPage implements OnInit {
   eventID: string;
   event: EventItem;
 
-  constructor(private afs: AngularFirestore, private router: Router, public courses: CoursesService) {
-    this.eventID = this.router.url.split('/')[4];
+  constructor(
+    private afs: AngularFirestore,
+    private router: Router,
+    private route: ActivatedRoute,
+    public courses: CoursesService
+  ) {
+    this.eventID = this.route.snapshot.params.eventID;
 
     this.afs
       .collection('events')

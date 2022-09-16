@@ -6,7 +6,7 @@ import { ToastController } from '@ionic/angular';
 
 import { fromUnixTime } from 'date-fns';
 import { ClipboardService } from 'ngx-clipboard';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { DomSanitizer } from '@angular/platform-browser';
 import { parse } from 'twemoji-parser';
@@ -47,11 +47,12 @@ export class PageCalendarEventPage implements OnInit {
     private toastController: ToastController,
     private clipboardService: ClipboardService,
     private router: Router,
+    private route: ActivatedRoute,
     private sanitizer: DomSanitizer,
     private afs: AngularFirestore,
     private weatherService: WeatherService
   ) {
-    const id = this.router.url.split('/')[3];
+    const id = this.route.snapshot.params.eventID;
     this.item$ = this.afs.doc<EventItem>(`events/${id}`).valueChanges({ idField: 'id' }).pipe(trace('firestore'));
   }
 

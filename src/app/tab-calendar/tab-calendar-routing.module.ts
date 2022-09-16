@@ -8,7 +8,7 @@ const routes: Routes = [
     component: TabCalendarPage,
   },
   {
-    path: 'evento/:id',
+    path: 'evento/:eventID',
     title: 'Informações do evento',
     loadChildren: () =>
       import('./page-calendar-event/page-calendar-event.module').then((m) => m.PageCalendarEventPageModule),

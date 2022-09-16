@@ -2,7 +2,7 @@ import { Component, Input, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
 import { BehaviorSubject, first, isObservable, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
 import { User } from 'src/app/shared/services/user';
 
@@ -53,11 +53,12 @@ export class ScannerPage implements OnInit {
   constructor(
     private afs: AngularFirestore,
     private router: Router,
+    private route: ActivatedRoute,
     public courses: CoursesService,
     private toastController: ToastController,
     private authService: AuthService
   ) {
-    this.eventID = this.router.url.split('/')[4];
+    this.eventID = this.route.snapshot.params.eventID;
 
     // If eventID is not valid, redirect
     this.afs
