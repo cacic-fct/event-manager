@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { startOfMonth, endOfMonth, parseISO, fromUnixTime, addYears } from 'date-fns';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { BehaviorSubject, combineLatest, Observable, switchMap } from 'rxjs';
@@ -12,13 +12,15 @@ import { CoursesService } from 'src/app/shared/services/courses.service';
   templateUrl: './page-manage-major-events.page.html',
   styleUrls: ['./page-manage-major-events.page.scss'],
 })
-export class PageManageMajorEventsPage {
+export class PageManageMajorEventsPage implements OnInit {
   today: Date = new Date();
   currentMonth: string = this.today.toISOString();
   currentMonth$: BehaviorSubject<string | null> = new BehaviorSubject(this.currentMonth);
   majorEvents$: Observable<MajorEventItem[]>;
 
-  constructor(private afs: AngularFirestore, public courses: CoursesService) {
+  constructor(private afs: AngularFirestore, public courses: CoursesService) {}
+
+  ngOnInit() {
     this.majorEvents$ = combineLatest([this.currentMonth$]).pipe(
       switchMap(([date]) => {
         return this.afs

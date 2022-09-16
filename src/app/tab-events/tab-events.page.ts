@@ -17,7 +17,9 @@ export class TabEventsPage {
   majorEvents$: Observable<MajorEventItem[]>;
   today: Date = new Date();
 
-  constructor(public afs: AngularFirestore, public auth: AngularFireAuth) {
+  constructor(public afs: AngularFirestore, public auth: AngularFireAuth) {}
+
+  ngOnInit() {
     this.majorEvents$ = this.afs
       .collection<MajorEventItem>('majorEvents', (ref) => {
         return ref.orderBy('dateStart', 'asc');
@@ -25,8 +27,6 @@ export class TabEventsPage {
       .valueChanges({ idField: 'id' })
       .pipe(trace('firestore'));
   }
-
-  ngOnInit() {}
 
   getDateFromTimestamp(timestamp: Timestamp): Date {
     return fromUnixTime(timestamp.seconds);

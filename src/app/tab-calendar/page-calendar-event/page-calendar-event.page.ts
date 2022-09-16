@@ -51,12 +51,12 @@ export class PageCalendarEventPage implements OnInit {
     private sanitizer: DomSanitizer,
     private afs: AngularFirestore,
     private weatherService: WeatherService
-  ) {
+  ) {}
+
+  ngOnInit() {
     const id = this.route.snapshot.params.eventID;
     this.item$ = this.afs.doc<EventItem>(`events/${id}`).valueChanges({ idField: 'id' }).pipe(trace('firestore'));
   }
-
-  ngOnInit() {}
 
   ionViewWillEnter() {
     // first() unsubscribes after the first value is emitted

@@ -1,5 +1,5 @@
 import { BehaviorSubject, combineLatest, Observable } from 'rxjs';
-import { Component, Input, OnChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnInit } from '@angular/core';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 
 import { parse } from 'twemoji-parser';
@@ -22,13 +22,13 @@ import { Timestamp } from '@firebase/firestore-types';
   templateUrl: './calendar-list-view.component.html',
   styleUrls: ['./calendar-list-view.component.scss'],
 })
-export class CalendarListViewComponent implements OnChanges {
+export class CalendarListViewComponent implements OnInit, OnChanges {
   courses = CoursesService.courses;
 
   @Input() filter: Array<string>;
 
-  courseFilter$: BehaviorSubject<Array<string> | null>;
-  dateFilter$: BehaviorSubject<Date | null>;
+  courseFilter$: BehaviorSubject<Array<string> | null> = new BehaviorSubject(null);
+  dateFilter$: BehaviorSubject<Date | null> = new BehaviorSubject(null);
 
   loadOlderCount: number = 0;
 
@@ -37,18 +37,18 @@ export class CalendarListViewComponent implements OnChanges {
   baseDate: Date = startOfDay(new Date());
 
   constructor(
-    firestore: AngularFirestore,
+    private afs: AngularFirestore,
     private navCtrl: NavController,
     private sanitizer: DomSanitizer,
     private toastController: ToastController
-  ) {
-    this.dateFilter$ = new BehaviorSubject(null);
-    this.courseFilter$ = new BehaviorSubject(null);
+  ) {}
+
+  ngOnInit() {
     this.dateFilter$.next(this.baseDate);
 
     this.items$ = combineLatest([this.courseFilter$, this.dateFilter$]).pipe(
       switchMap(([filter, date]) => {
-        return firestore
+        return this.afs
           .collection<EventItem>('events', (ref) => {
             let query: any = ref;
             if (date) {

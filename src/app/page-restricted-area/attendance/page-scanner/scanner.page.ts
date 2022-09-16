@@ -57,7 +57,9 @@ export class ScannerPage implements OnInit {
     public courses: CoursesService,
     private toastController: ToastController,
     private authService: AuthService
-  ) {
+  ) {}
+
+  ngOnInit() {
     this.eventID = this.route.snapshot.params.eventID;
 
     // If eventID is not valid, redirect
@@ -106,8 +108,6 @@ export class ScannerPage implements OnInit {
     this.audioSuccess.src = 'assets/sounds/scanner-beep.mp3';
     this.audioSuccess.load();
   }
-
-  ngOnInit() {}
 
   changeCamera(): void {
     this.deviceIndex++;

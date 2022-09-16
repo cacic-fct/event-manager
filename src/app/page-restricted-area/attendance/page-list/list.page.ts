@@ -33,7 +33,9 @@ export class ListPage implements OnInit {
     public courses: CoursesService
   ) {
     this.eventID = this.route.snapshot.params.eventID;
+  }
 
+  ngOnInit() {
     this.afs
       .collection('events')
       .doc(this.eventID)
@@ -73,8 +75,6 @@ export class ListPage implements OnInit {
         });
       });
   }
-
-  ngOnInit() {}
 
   getDateFromTimestamp(timestamp: Timestamp): Date {
     return fromUnixTime(timestamp.seconds);

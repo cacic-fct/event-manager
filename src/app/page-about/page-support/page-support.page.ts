@@ -9,7 +9,9 @@ import { AlertController } from '@ionic/angular';
 export class PageSupportPage implements OnInit {
   serviceWorkerActive: boolean = false;
 
-  constructor(private alertController: AlertController) {
+  constructor(private alertController: AlertController) {}
+
+  ngOnInit() {
     // If browser supports service worker
     if ('serviceWorker' in navigator) {
       // If service worker is "activated" or "activating"
@@ -18,8 +20,6 @@ export class PageSupportPage implements OnInit {
       }
     }
   }
-
-  ngOnInit() {}
 
   async alertUpdate() {
     const alert = await this.alertController.create({
