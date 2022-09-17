@@ -12,16 +12,16 @@
       <ng-container *ngFor="let item of items; index as i">
         <ion-list-header
           mode="ios"
-          *ngIf="i == 0 || !monthCompare(items[i - 1].eventDateStart, items[i].eventDateStart)">
-          <ion-label>{{ formatMonth(getDateFromTimestamp(item.eventDateStart)) }}</ion-label>
+          *ngIf="i == 0 || !monthCompare(items[i - 1].eventStartDate, items[i].eventStartDate)">
+          <ion-label>{{ formatMonth(getDateFromTimestamp(item.eventStartDate)) }}</ion-label>
         </ion-list-header>
 
         <ion-item-divider
           mode="ios"
           sticky="true"
-          *ngIf="i == 0 || !dayCompare(items[i - 1].eventDateStart, items[i].eventDateStart)">
+          *ngIf="i == 0 || !dayCompare(items[i - 1].eventStartDate, items[i].eventStartDate)">
           <ion-label>
-            {{ formatDate(getDateFromTimestamp(item.eventDateStart)) }}
+            {{ formatDate(getDateFromTimestamp(item.eventStartDate)) }}
           </ion-label>
         </ion-item-divider>
         <ion-item
@@ -39,7 +39,7 @@
           </ion-label>
           <div slot="end">
             <h4 style="font-weight: 400">
-              {{ getDateFromTimestamp(item.eventDateStart) | date: 'HH:mm' }}
+              {{ getDateFromTimestamp(item.eventStartDate) | date: 'HH:mm' }}
             </h4>
           </div>
         </ion-item>

@@ -112,7 +112,7 @@ export class ListPage implements OnInit {
             const csvString = csv.map((row) => row.join(',')).join('\n');
             const a = document.createElement('a');
             a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
-            a.download = `${event.name}_${this.getDateFromTimestamp(event.eventDateStart).toISOString()}.csv`;
+            a.download = `${event.name}_${this.getDateFromTimestamp(event.eventStartDate).toISOString()}.csv`;
             a.click();
           });
         });

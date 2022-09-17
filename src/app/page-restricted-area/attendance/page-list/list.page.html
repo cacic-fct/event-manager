@@ -12,7 +12,7 @@
     <div class="ion-padding" *ngIf="event$ | async; let event">
       <h3 style="margin-bottom: 0">{{ event.name }}</h3>
       <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-      <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.eventDateStart) | date: "dd/MM/y - HH:mm" }}</h5>
+      <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}</h5>
       <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
     </div>
     <div class="ion-padding-horizontal">

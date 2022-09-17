@@ -42,10 +42,10 @@ export class EventListComponent implements OnInit, OnChanges {
             let query: any = ref;
             if (date) {
               query = query
-                .where('eventDateStart', '>=', startOfDay(date))
-                .where('eventDateStart', '<=', endOfDay(date));
+                .where('eventStartDate', '>=', startOfDay(date))
+                .where('eventStartDate', '<=', endOfDay(date));
             }
-            return query.orderBy('eventDateStart', 'asc');
+            return query.orderBy('eventStartDate', 'asc');
           })
           .valueChanges({ idField: 'id' })
           .pipe(trace('firestore'));
