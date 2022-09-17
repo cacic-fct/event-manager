@@ -75,7 +75,7 @@ export class PageCalendarEventPage implements OnInit {
         });
 
         this.weather = this.weatherService.getWeather(
-          this.getDateFromTimestamp(item.date),
+          this.getDateFromTimestamp(item.eventDateStart),
           item.location.lat,
           item.location.lon
         );

@@ -9,7 +9,7 @@
         <h2 class="ion-text-wrap">{{ item.name }}</h2>
         <h3 class="ion-text-wrap">{{ item.shortDescription }}</h3>
         <h4 style="font-weight: 400">
-          {{ getDateFromTimestamp(item.date) | date: 'HH:mm' }}
+          {{ getDateFromTimestamp(item.eventDateStart) | date: 'HH:mm' }}
         </h4>
         <p *ngIf="courses[item.course]" class="ion-text-wrap">{{ courses[item.course].name }}</p>
         <ion-button fill="clear" [routerLink]="['scanner', item.id]">

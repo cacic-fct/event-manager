@@ -10,13 +10,18 @@
         <ion-label> Mostrar eventos mais antigos </ion-label>
       </ion-button>
       <ng-container *ngFor="let item of items; index as i">
-        <ion-list-header mode="ios" *ngIf="i == 0 || !monthCompare(items[i - 1].date, items[i].date)">
-          <ion-label>{{ formatMonth(getDateFromTimestamp(item.date)) }}</ion-label>
+        <ion-list-header
+          mode="ios"
+          *ngIf="i == 0 || !monthCompare(items[i - 1].eventDateStart, items[i].eventDateStart)">
+          <ion-label>{{ formatMonth(getDateFromTimestamp(item.eventDateStart)) }}</ion-label>
         </ion-list-header>
 
-        <ion-item-divider mode="ios" sticky="true" *ngIf="i == 0 || !dayCompare(items[i - 1].date, items[i].date)">
+        <ion-item-divider
+          mode="ios"
+          sticky="true"
+          *ngIf="i == 0 || !dayCompare(items[i - 1].eventDateStart, items[i].eventDateStart)">
           <ion-label>
-            {{ formatDate(getDateFromTimestamp(item.date)) }}
+            {{ formatDate(getDateFromTimestamp(item.eventDateStart)) }}
           </ion-label>
         </ion-item-divider>
         <ion-item
@@ -34,7 +39,7 @@
           </ion-label>
           <div slot="end">
             <h4 style="font-weight: 400">
-              {{ getDateFromTimestamp(item.date) | date: 'HH:mm' }}
+              {{ getDateFromTimestamp(item.eventDateStart) | date: 'HH:mm' }}
             </h4>
           </div>
         </ion-item>

@@ -26,9 +26,9 @@
         <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ getCourse(items.course) }}</h5>
         <h4 style="margin: 0; font-weight: 400">
           <!-- prettier-ignore -->
-          {{ toUppercase(getDateFromTimestamp(items?.date) | date: "EEEE, dd 'de' MMMM 'de' y") }}
+          {{ toUppercase(getDateFromTimestamp(items?.eventDateStart) | date: "EEEE, dd 'de' MMMM 'de' y") }}
         </h4>
-        <h3 style="margin: 0; font-weight: 400">{{ getDateFromTimestamp(items?.date) | date: 'HH:mm' }}</h3>
+        <h3 style="margin: 0; font-weight: 400">{{ getDateFromTimestamp(items?.eventDateStart) | date: 'HH:mm' }}</h3>
 
         <div class="weather-container">
           <ng-container *ngIf="(weather | async) as weatherInfo;">

@@ -52,13 +52,13 @@ export class CalendarListViewComponent implements OnInit, OnChanges {
           .collection<EventItem>('events', (ref) => {
             let query: any = ref;
             if (date) {
-              query = query.where('date', '>=', this.baseDate);
+              query = query.where('eventDateStart', '>=', this.baseDate);
             }
             if (filter.length > 0) {
               query = query.where('course', 'in', filter);
             }
 
-            return query.orderBy('date', 'asc');
+            return query.orderBy('eventDateStart', 'asc');
           })
           .valueChanges({ idField: 'id' })
           .pipe(trace('firestore'));
