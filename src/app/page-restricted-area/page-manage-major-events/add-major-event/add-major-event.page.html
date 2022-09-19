@@ -1,0 +1,297 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Adicionar grande evento</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/area-restrita"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
+    <ng-container>
+      <ion-card-header>
+        <ion-card-title>Informações do evento</ion-card-title>
+      </ion-card-header>
+
+      <ion-item>
+        <ion-label position="floating">Curso</ion-label>
+        <ion-select interface="popover" formControlName="course">
+          <ng-container *ngFor="let course of courses | keyvalue">
+            <ion-select-option slot="start" class="course" [value]="course.key">
+              {{ course.value.name }}
+            </ion-select-option>
+          </ng-container>
+        </ion-select>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating">Nome do evento</ion-label>
+        <ion-input formControlName="name"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating">Descrição do evento</ion-label>
+        <ion-input formControlName="description"></ion-input>
+      </ion-item>
+    </ng-container>
+
+    <ng-container>
+      <ion-card-header>
+        <ion-card-title>Data do evento</ion-card-title>
+      </ion-card-header>
+
+      <ion-item>
+        <ion-label class="ion-text-wrap">Data do início do evento</ion-label>
+        <ion-datetime-button datetime="eventStartDate"></ion-datetime-button>
+      </ion-item>
+
+      <ion-item>
+        <ion-label class="ion-text-wrap">Data do fim do evento</ion-label>
+        <ion-datetime-button datetime="eventEndDate"></ion-datetime-button>
+      </ion-item>
+    </ng-container>
+
+    <ng-container>
+      <ion-card-header>
+        <ion-card-title>Inscrições</ion-card-title>
+      </ion-card-header>
+      <ion-item>
+        <ion-label class="ion-text-wrap">Data do início das inscrições</ion-label>
+
+        <ion-datetime-button datetime="subscriptionStartDate"></ion-datetime-button>
+      </ion-item>
+
+      <ion-item>
+        <ion-label class="ion-text-wrap">Data do fim das inscrições</ion-label>
+        <ion-datetime-button datetime="subscriptionEndDate"></ion-datetime-button>
+      </ion-item>
+
+      <ion-item>
+        <ion-label class="ion-text-wrap" position="floating">Limite de minicursos para inscrição (opcional)</ion-label>
+        <ion-input
+          formControlName="maxCourses"
+          inputmode="numeric"
+          (keypress)="inputNumbersOnly($event)"
+          placeholder="Somente números"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label class="ion-text-wrap" position="floating">Limite de palestras para inscrição (opcional)</ion-label>
+        <ion-input
+          formControlName="maxLectures"
+          inputmode="numeric"
+          (keypress)="inputNumbersOnly($event)"
+          placeholder="Somente números"></ion-input>
+      </ion-item>
+    </ng-container>
+
+    <ion-card-header>
+      <ion-card-title>Preço</ion-card-title>
+    </ion-card-header>
+
+    <ion-item>
+      <ion-label class="ion-text-wrap">Evento pago</ion-label>
+      <ion-toggle
+        slot="end"
+        [checked]="isEventPaid"
+        (ionChange)="isEventPaidChange()"
+        formControlName="isEventPaidForm"></ion-toggle>
+    </ion-item>
+
+    <ng-container *ngIf="(isEventPaid$ | async);">
+      <ion-item>
+        <ion-label class="ion-text-wrap">Diferenciar preço por tipo de inscrição</ion-label>
+        <ion-toggle slot="end" [checked]="priceDifferentiate" (ionChange)="priceDifferentiateChange()"></ion-toggle>
+      </ion-item>
+
+      <ng-container *ngIf="(priceDifferentiate$ | async); else noPriceDifferentiation">
+        <ion-item>
+          <ion-label position="floating">Aluno da Unesp</ion-label>
+          <ion-input
+            formControlName="priceStudents"
+            inputmode="decimal"
+            (ionInput)="validatePrice($event, 'priceStudents')"
+            (ionInput)="inputCurrency($event)"
+            replaceCommaWithPeriod></ion-input>
+          <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceStudents | currency: 'BRL'}}</p></ion-text>
+        </ion-item>
+        <ion-item>
+          <ion-label class="ion-text-nowrap" position="floating"> Aluno de outras IES </ion-label>
+          <ion-input
+            formControlName="priceOtherStudents"
+            inputmode="decimal"
+            (ionInput)="validatePrice($event, 'priceOtherStudents')"
+            (ionInput)="inputCurrency($event)"
+            replaceCommaWithPeriod></ion-input>
+          <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceOtherStudents | currency: 'BRL'}}</p></ion-text>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Professores e profissionais</ion-label>
+          <ion-input
+            formControlName="priceProfessors"
+            inputmode="decimal"
+            (ionInput)="validatePrice($event, 'priceProfessors')"
+            (ionInput)="inputCurrency($event)"
+            replaceCommaWithPeriod></ion-input>
+          <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceProfessors | currency: 'BRL'}}</p></ion-text>
+        </ion-item>
+      </ng-container>
+      <ng-template #noPriceDifferentiation>
+        <ion-item>
+          <ion-label position="floating">Preço único</ion-label>
+          <ion-input
+            formControlName="priceSingle"
+            inputmode="decimal"
+            (ionInput)="validatePrice($event, 'priceSingle')"
+            (ionInput)="inputCurrency($event)"
+            replaceCommaWithPeriod></ion-input>
+          <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceSingle | currency: 'BRL'}}</p></ion-text>
+        </ion-item>
+      </ng-template>
+      <ion-card-header>
+        <ion-card-title>Informações de pagamento</ion-card-title>
+      </ion-card-header>
+      <ion-item>
+        <ion-label position="floating">Nome completo do beneficiário</ion-label>
+        <ion-input formControlName="accountName"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label position="floating">CPF ou CNPJ</ion-label>
+        <ion-input
+          formControlName="document"
+          placeholder="Somente números"
+          inputmode="numeric"
+          maxlength="14"
+          (keypress)="inputNumbersOnly($event)"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label position="floating">Instituição bancária</ion-label>
+        <ion-input formControlName="bankName" placeholder="Inclua o número e nome extenso do banco"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label position="floating">Agência - Sem dígito verificador</ion-label>
+        <ion-input
+          formControlName="agency"
+          placeholder="XXXX"
+          maxLength="4"
+          inputmode="numeric"
+          (keypress)="inputNumbersOnly($event)"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label position="floating">Conta - Com dígito verificador</ion-label>
+        <ion-input
+          formControlName="accountNumber"
+          placeholder="XXXX-X"
+          (keypress)="inputNumbersAndDashOnly($event)"
+          (ionInput)="validateAccountNumber($event)"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label position="floating">Chave Pix</ion-label>
+        <ion-input formControlName="chavePix"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating">Informações adicionais (opcional)</ion-label>
+        <ion-textarea formControlName="additionalPaymentInformation"></ion-textarea>
+      </ion-item>
+    </ng-container>
+
+    <ion-card-header>
+      <ion-card-title>Botão (opcional)</ion-card-title>
+    </ion-card-header>
+
+    <ion-item>
+      <ion-label position="floating">Texto (opcional)</ion-label>
+      <ion-input formControlName="buttonText" placeholder="Saiba mais"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="floating">Link</ion-label>
+      <ion-input formControlName="buttonUrl"></ion-input>
+    </ion-item>
+
+    <ion-card-header>
+      <ion-card-title>Outras informações (opcional)</ion-card-title>
+    </ion-card-header>
+
+    <ion-item>
+      <ion-label>Evento aberto ao público</ion-label>
+      <ion-toggle slot="end" formControlName="public" checked="on"></ion-toggle>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Criador do evento</ion-label>
+      <ion-input value="{{ userData.displayName }}" color="medium" readonly> </ion-input>
+    </ion-item>
+    <div class="ion-padding-bottom">
+      <ion-button class="ion-padding" type="submit" [disabled]="!dataForm.valid"> Criar evento </ion-button>
+      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+        Ao continuar, seu nome será gravado junto ao evento.
+      </p>
+    </div>
+  </form>
+</ion-content>
+
+<ion-modal [keepContentsMounted]="true">
+  <ng-template [formGroup]="dataForm">
+    <ion-datetime
+      id="eventStartDate"
+      formControlName="eventStartDate"
+      presentation="date-time"
+      showDefaultButtons="true">
+      <span slot="title">Selecione a data do início do evento</span>
+    </ion-datetime>
+  </ng-template>
+</ion-modal>
+
+<ion-modal [keepContentsMounted]="true">
+  <ng-template [formGroup]="dataForm">
+    <ion-datetime id="eventEndDate" formControlName="eventEndDate" presentation="date-time" showDefaultButtons="true">
+      <span slot="title">Selecione a data do fim do evento</span>
+    </ion-datetime>
+  </ng-template>
+</ion-modal>
+
+<ion-modal [keepContentsMounted]="true">
+  <ng-template [formGroup]="dataForm">
+    <ion-datetime
+      formControlName="subscriptionStartDate"
+      id="subscriptionStartDate"
+      presentation="date-time"
+      showDefaultButtons="true">
+      <span slot="title">Selecione a data do início das inscrições</span>
+    </ion-datetime>
+  </ng-template>
+</ion-modal>
+
+<ion-modal [keepContentsMounted]="true">
+  <ng-template [formGroup]="dataForm">
+    <ion-datetime
+      formControlName="subscriptionEndDate"
+      id="subscriptionEndDate"
+      presentation="date-time"
+      showDefaultButtons="true">
+      <span slot="title">Selecione a data do fim das inscrições</span>
+    </ion-datetime>
+  </ng-template>
+</ion-modal>
+
+<swal
+  #successSwal
+  title="Evento criado com sucesso"
+  icon="success"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false"></swal>
+
+<swal
+  #errorSwal
+  title="Ocorreu um erro ao criar o evento"
+  text="Verifique a sua conexão à internet e tente novamente"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="true"></swal>

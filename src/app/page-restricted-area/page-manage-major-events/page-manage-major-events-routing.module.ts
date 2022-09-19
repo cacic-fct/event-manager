@@ -8,6 +8,10 @@ const routes: Routes = [
     path: '',
     component: PageManageMajorEventsPage,
   },
+  {
+    path: 'adicionar',
+    loadChildren: () => import('./add-major-event/add-major-event.module').then((m) => m.AddMajorEventPageModule),
+  },
 ];
 
 @NgModule({

@@ -61,24 +61,24 @@
             <ng-template #singlePrice>
               <ion-item lines="none">
                 Preço único
-                <span slot="end">{{ (event.price.single / 100) | currency:'BRL' }}</span>
+                <span slot="end">{{ event.price.single | currency:'BRL' }}</span>
               </ion-item>
             </ng-template>
 
             <ng-template #multiPrice>
               <ion-item lines="none" *ngIf="event.price.students">
                 Alunos da Unesp
-                <span slot="end">{{ (event.price.students / 100) | currency:'BRL' }}</span>
+                <span slot="end">{{ event.price.students | currency:'BRL' }}</span>
               </ion-item>
 
               <ion-item lines="none" *ngIf="event.price.otherStudents">
                 Alunos
-                <span slot="end">{{ (event.price.otherStudents / 100) | currency:'BRL' }}</span>
+                <span slot="end">{{ event.price.otherStudents | currency:'BRL' }}</span>
               </ion-item>
 
               <ion-item lines="none" *ngIf="event.price.otherStudents">
                 Professores
-                <span slot="end">{{ (event.price.professors / 100) | currency:'BRL' }}</span>
+                <span slot="end">{{ event.price.professors | currency:'BRL' }}</span>
               </ion-item>
             </ng-template>
           </div>
