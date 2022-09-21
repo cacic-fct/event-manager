@@ -88,7 +88,7 @@ export class AddEventPage implements OnInit {
         public: '',
         button: this.formBuilder.group({
           text: '',
-          url: '', // TODO: Verificar se URL inicia-se com http:// ou https://. Caso não, adicionar "https://"
+          url: '',
         }),
         inMajorEvent: ['none', Validators.required],
         eventType: ['none', Validators.required],
