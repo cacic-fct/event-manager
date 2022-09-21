@@ -118,7 +118,8 @@ export class AddMajorEventPage implements OnInit {
       let buttonUrl = this.dataForm.get('buttonUrl').value;
 
       if (buttonUrl) {
-        if (!buttonUrl.test('^https?://(.*)')) {
+        const pattern = /^((http|https):\/\/)/;
+        if (!pattern.test(buttonUrl)) {
           this.dataForm.setValue({ ...this.dataForm.value, buttonUrl: 'https://' + buttonUrl });
         }
       }
