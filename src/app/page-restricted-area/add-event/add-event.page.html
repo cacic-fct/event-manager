@@ -1,35 +1,233 @@
 <ion-header>
   <ion-toolbar>
     <ion-title>Adicionar evento</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/area-restrita"></ion-back-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
-  <ion-item>
-    <ion-label>Nome do evento</ion-label>
-    <ion-input></ion-input>
-  </ion-item>
-  <ion-item>
-    <ion-label>Descrição do evento</ion-label>
-    <ion-input></ion-input>
-  </ion-item>
-  <ion-item>
-    <ion-label>Emoji do evento</ion-label>
-    <ion-input></ion-input>
-  </ion-item>
-  <ion-item>
-    <ion-label>Data do evento</ion-label>
-    <ion-input></ion-input>
-  </ion-item>
-  <ion-item>
-    <ion-label>Latitude</ion-label>
-    <ion-input></ion-input>
-  </ion-item>
+  <form [formGroup]="dataForm">
+    <ion-card-header>
+      <ion-card-title>Informações do evento</ion-card-title>
+    </ion-card-header>
 
-  <ion-item>
-    <ion-label>Longitude</ion-label>
-    <ion-input></ion-input>
-  </ion-item>
+    <ion-item>
+      <ion-label position="floating">Curso</ion-label>
+      <ion-select interface="popover" formControlName="course">
+        <ng-container *ngFor="let course of courses | keyvalue">
+          <ion-select-option slot="start" class="course" [value]="course.key">
+            {{ course.value.name }}
+          </ion-select-option>
+        </ng-container>
+      </ion-select>
+    </ion-item>
 
-  <ion-button> Criar evento </ion-button>
+    <ion-item>
+      <ion-label position="floating">Nome do evento</ion-label>
+      <ion-input formControlName="name"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="floating">Descrição curta do evento</ion-label>
+      <ion-input formControlName="shortDescription"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="floating">Descrição do evento</ion-label>
+      <ion-input formControlName="description"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="floating">Emoji do evento</ion-label>
+      <ion-input formControlName="icon"> </ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label class="ion-text-wrap">Data do evento</ion-label>
+      <ion-datetime-button datetime="eventDate"></ion-datetime-button>
+    </ion-item>
+
+    <ion-item>
+      <ion-label class="ion-text-wrap">Fim do evento</ion-label>
+      <ion-toggle
+        formControlName="hasDateEndForm"
+        [checked]="hasDateEnd"
+        (ionChange)="hasDateEndChange()"
+        formControlName="hasDateEndForm"></ion-toggle>
+      <ion-datetime-button
+        [disabled]="!this.dataForm.value.hasDateEndForm"
+        datetime="eventDateEnd"></ion-datetime-button>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="floating">Pertence ao grande evento</ion-label>
+      <ion-select interface="popover" formControlName="inMajorEvent">
+        <ion-select-option slot="start" value="none">Nenhum</ion-select-option>
+        <ng-container *ngIf="majorEventsData$ | async; let items; else: loadingMajorEventsList">
+          <ng-container *ngFor="let mEvent of items">
+            <ion-select-option slot="start" [value]="mEvent.id"> {{ mEvent.name }} </ion-select-option>
+          </ng-container>
+        </ng-container>
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="floating">Tipo de evento</ion-label>
+      <ion-select interface="popover" formControlName="eventType">
+        <ion-select-option slot="start" value="minicurso">Minicurso</ion-select-option>
+        <ion-select-option slot="start" value="palestra">Palestra</ion-select-option>
+        <ion-select-option slot="start" value="none">Nenhum</ion-select-option>
+      </ion-select>
+    </ion-item>
+
+    <ng-template #loadingMajorEventsList>
+      <ion-select-option slot="start" value="none" disabled>Carregando eventos...</ion-select-option>
+    </ng-template>
+
+    <ion-card-header>
+      <ion-card-title>Localização (opcional)</ion-card-title>
+    </ion-card-header>
+
+    <ion-item>
+      <ion-label position="floating">Predefinição</ion-label>
+      <ion-select (ionChange)="placeChange($event)" interface="popover" placeholder="Personalizado" #selectPlace>
+        <ng-container *ngFor="let places of places | keyvalue">
+          <ion-select-option slot="start" [value]="places.key"> {{ places.value.name }} </ion-select-option>
+        </ng-container>
+      </ion-select>
+    </ion-item>
+
+    <ng-container formGroupName="location">
+      <ion-item>
+        <ion-label position="floating">Endereço ou descrição</ion-label>
+        <ion-input formControlName="description" (ionInput)="placeInputKeyDown()"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating">Latitude</ion-label>
+        <ion-input formControlName="lat"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating">Longitude</ion-label>
+        <ion-input formControlName="lon"></ion-input>
+      </ion-item>
+    </ng-container>
+
+    <ion-card-header>
+      <ion-card-title>Botão (opcional)</ion-card-title>
+    </ion-card-header>
+
+    <ng-container formGroupName="button">
+      <ion-item>
+        <ion-label position="floating">Texto (opcional)</ion-label>
+        <ion-input formControlName="text"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating">Link</ion-label>
+        <ion-input formControlName="url"></ion-input>
+      </ion-item>
+    </ng-container>
+
+    <ion-card-header>
+      <ion-card-title>Outras informações (opcional)</ion-card-title>
+    </ion-card-header>
+
+    <ion-item>
+      <ion-label position="floating">Código do YouTube</ion-label>
+      <ion-input formControlName="youtubeCode" placeholder="Código do vídeo no YouTube"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label>Coletar presença para este evento</ion-label>
+      <ion-toggle
+        slot="end"
+        formControlName="collectPresenceForm"
+        [checked]="collectPresence"
+        (ionChange)="collectPresenceChange()"></ion-toggle>
+    </ion-item>
+
+    <ng-container *ngIf="(collectPresence$ | async);">
+      <ion-item>
+        <ion-label>Emite certificado de participação</ion-label>
+        <ion-toggle slot="end" formControlName="issueCertificate" checked="off"></ion-toggle>
+      </ion-item>
+
+      <!-- <ion-item>
+        <ion-label>Coleta dupla de presença</ion-label>
+        <ion-toggle slot="end" formControlName="doublePresence" checked="off"></ion-toggle>
+      </ion-item> -->
+    </ng-container>
+
+    <ion-item>
+      <ion-label>Evento aberto ao público</ion-label>
+      <ion-toggle slot="end" formControlName="public" checked="off"></ion-toggle>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Criador do evento</ion-label>
+      <ion-input value="{{ userData.displayName }}" color="medium" readonly> </ion-input>
+    </ion-item>
+
+    <div class="ion-padding-bottom">
+      <ion-button class="ion-padding" type="submit" (click)="onSubmit()" [disabled]="!dataForm.valid">
+        Criar evento
+      </ion-button>
+      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+        Ao continuar, seu nome será gravado junto ao evento.
+      </p>
+    </div>
+
+    <ion-modal [keepContentsMounted]="true">
+      <ng-template>
+        <ion-datetime
+          id="eventDate"
+          presentation="date-time"
+          showDefaultButtons="true"
+          formControlName="eventStartDate">
+          <span slot="title">Selecione a data do evento</span>
+        </ion-datetime>
+      </ng-template>
+    </ion-modal>
+
+    <ion-modal [keepContentsMounted]="true">
+      <ng-template>
+        <ion-datetime id="eventDateEnd" presentation="time" showDefaultButtons="true" formControlName="eventEndDate">
+          <span slot="title">Selecione a hora de término do evento</span>
+        </ion-datetime>
+      </ng-template>
+    </ion-modal>
+  </form>
 </ion-content>
+
+<swal
+  #successSwal
+  title="Evento criado com sucesso"
+  icon="success"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false"></swal>
+
+<swal
+  #errorSwal
+  title="Ocorreu um erro ao criar o evento"
+  text="Verifique a sua conexão à internet e tente novamente"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="true"></swal>
+
+<swal
+  #errorMajorEventSwal
+  title="Ocorreu um erro"
+  text="Não foi possível registrar o evento na lista eventos pertencentes a um grande evento. Não tente criar o evento novamente, entre em contato com um administrador"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="true"></swal>

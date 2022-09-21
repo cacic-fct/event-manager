@@ -24,6 +24,7 @@
         <h1 style="margin: 0">{{ items?.name }}</h1>
         <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ items?.shortDescription }}</h5>
         <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ getCourse(items.course) }}</h5>
+        <!-- TODO: Exibir data de término de um evento -->
         <h4 style="margin: 0; font-weight: 400">
           <!-- prettier-ignore -->
           {{ toUppercase(getDateFromTimestamp(items?.eventStartDate) | date: "EEEE, dd 'de' MMMM 'de' y") }}
