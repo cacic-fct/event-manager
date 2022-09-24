@@ -83,44 +83,51 @@ exports.removeAdminRole = functions.https.onCall((data, context) => {
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called by an admin.');
   }
 
-  const whitelist = ['renan.yudi@unesp.br', 'willian.murayama@unesp.br', 'gc.tomiasi@unesp.br'];
+  const remoteConfig = admin.remoteConfig();
 
-  if (whitelist.includes(data.email)) {
-    throw new functions.https.HttpsError('failed-precondition', 'You cannot remove this user.');
-  }
+  // Get whitelist array as string from remote config
+  return remoteConfig.getTemplate().then((template) => {
+    // @ts-ignore
+    const whitelist: string = template.parameters.adminWhitelist.defaultValue?.value;
 
-  return getAuth()
-    .getUserByEmail(data.email)
-    .then((user) => {
-      return getAuth().setCustomUserClaims(user.uid, {
-        role: undefined,
+    // Check if email is included in whitelist array
+    if (whitelist.includes(data.email)) {
+      throw new functions.https.HttpsError('failed-precondition', 'You cannot remove this user.');
+    }
+
+    return getAuth()
+      .getUserByEmail(data.email)
+      .then((user) => {
+        return getAuth().setCustomUserClaims(user.uid, {
+          role: undefined,
+        });
+      })
+      .then(() => {
+        const firestore = admin.firestore();
+        const document = firestore.doc('claims/admin');
+
+        // Get admin array from document
+        document.get().then((doc) => {
+          const admins = doc.data()?.admins;
+          if (admins === undefined) {
+            return;
+          }
+          // Remove admin from array
+          admins.splice(admins.indexOf(data.email), 1);
+          // Update document with new array
+          return document.update({ admins });
+        });
+
+        return {
+          message: `Success! ${data.email} has been demoted from admin`,
+        };
+      })
+      .catch((error) => {
+        return {
+          message: `An error has occured: ${error}`,
+        };
       });
-    })
-    .then(() => {
-      const firestore = admin.firestore();
-      const document = firestore.doc('claims/admin');
-
-      // Get admin array from document
-      document.get().then((doc) => {
-        const admins = doc.data()?.admins;
-        if (admins === undefined) {
-          return;
-        }
-        // Remove admin from array
-        admins.splice(admins.indexOf(data.email), 1);
-        // Update document with new array
-        return document.update({ admins });
-      });
-
-      return {
-        message: `Success! ${data.email} has been demoted from admin`,
-      };
-    })
-    .catch((error) => {
-      return {
-        message: `An error has occured: ${error}`,
-      };
-    });
+  });
 });
 
 exports.getUserUid = functions.https.onCall((data, context) => {
