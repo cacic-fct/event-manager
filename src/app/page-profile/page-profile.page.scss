@@ -1,5 +1,17 @@
 .qr-code {
-  padding: 20px 10px;
+  padding: 10px 10px 20px 10px;
   background-color: #fff;
   display: block;
+  overflow: scroll;
+}
+
+.info-text {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.info-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 3px;
 }

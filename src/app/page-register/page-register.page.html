@@ -7,33 +7,113 @@
 <ion-content>
   <ion-grid style="margin-top: 30px; max-width: 500px; overflow: scroll">
     <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
+      <ng-container *ngIf="isUnesp$ | async; else notUnesp">
+        <ion-item>
+          <ion-label class="ion-text-wrap">Nome completo</ion-label>
+          <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label class="ion-text-wrap">E-mail</ion-label>
+          <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label class="ion-text-wrap">Eu sou</ion-label>
+          <ion-select
+            formControlName="associateStatus"
+            interface="popover"
+            placeholder="Selecione seu vínculo"
+            (ionChange)="selectionChange($event)">
+            <ion-select-option value="undergraduate">Aluno da graduação</ion-select-option>
+            <ion-select-option value="graduate">Aluno da pós-graduação</ion-select-option>
+            <ion-select-option value="professor">Professor</ion-select-option>
+            <ion-select-option value="adjunctprofessor">Professor substituto</ion-select-option>
+            <!-- TODO: servidor técnico-administrativo muito longo, está sendo cortado -->
+            <ion-select-option value="employee">Servidor técnico-administrativo</ion-select-option>
+            <ion-select-option value="other">Outro</ion-select-option>
+          </ion-select>
+        </ion-item>
+        <ion-item *ngIf="  isUndergraduate$ | async">
+          <ion-label class="ion-text-wrap">Registro acadêmico</ion-label>
+          <ion-input
+            formControlName="academicID"
+            inputmode="numeric"
+            type="text"
+            placeholder="RA"
+            minlength="9"
+            maxlength="9"
+            required="true">
+          </ion-input>
+        </ion-item>
+      </ng-container>
+
+      <ng-template #notUnesp>
+        <ion-item>
+          <ion-label class="ion-text-wrap">Nome da conta</ion-label>
+          <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label class="ion-text-wrap">Nome completo</ion-label>
+          <ion-input type="text" value="{{userData.fullName}}" formControlName="fullName" placeholder="Sem abreviações">
+          </ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label class="ion-text-wrap">E-mail</ion-label>
+          <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
+        </ion-item>
+      </ng-template>
+
       <ion-item>
-        <ion-label class="ion-text-wrap">Nome completo</ion-label>
-        <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
+        <ion-label class="ion-text-wrap">CPF</ion-label>
+        <ion-input formControlName="cpf" inputmode="numeric" maxlength="14" (ionChange)="formatCPF()"> </ion-input>
       </ion-item>
 
       <ion-item>
-        <ion-label class="ion-text-wrap">E-mail institucional</ion-label>
-        <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
-      </ion-item>
-
-      <ion-item>
-        <ion-label class="ion-text-wrap">Registro acadêmico</ion-label>
+        <ion-label class="ion-text-wrap">Celular</ion-label>
         <ion-input
-          formControlName="academicID"
+          formControlName="phone"
           inputmode="numeric"
-          type="text"
-          placeholder="RA"
-          maxlength="9"
-          required="true"
-          [value]="dataForm.value.academicID">
+          type="tel"
+          autocomplete="tel"
+          placeholder="DDD e número"
+          maxlength="13"
+          (ionChange)="formatPhone()">
         </ion-input>
       </ion-item>
 
-      <p style="font-size: 0.75em" class="ion-padding-horizontal">
-        Poderemos entrar em contato para confirmar ou complementar estas informações.
+      <p *ngIf="isUnesp$ | async" style="font-size: 0.75em" class="ion-padding-horizontal">
+        Para não perder o acesso à sua conta quando o seu e-mail institucional for desativado, vincule o seu e-mail
+        pessoal nas configurações do perfil.
       </p>
-      <ion-button style="margin-top: 30px" expand="block" id="continue-button" type="submit">Continuar </ion-button>
+
+      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+        Poderemos entrar em contato para confirmar ou complementar estas informações ou para informar sobre eventuais
+        problemas com pagamentos.
+      </p>
+
+      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+        Utilizamos o seu nome completo e CPF apenas para a geração de certificados de participação.
+      </p>
+
+      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+        Se você não possui CPF ou um número de celular,
+        <a style="cursor: pointer" (click)="mailto()">entre em contato com o CACiC</a>.
+      </p>
+
+      <ion-row>
+        <div id="recaptcha-container"></div>
+      </ion-row>
+
+      <ion-button
+        style="margin-top: 30px"
+        expand="block"
+        id="continue-button"
+        type="submit"
+        [disabled]="!this.dataForm.valid">
+        Continuar
+      </ion-button>
     </form>
   </ion-grid>
   <swal

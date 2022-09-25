@@ -1,0 +1,58 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Verificação de celular</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-grid style="max-width: 500px">
+    <ion-row>
+      <ion-col size-xs="12" size-sm="12" size-md="12" size-lg="12" size-xl="12">
+        <p>Um código de verificação foi enviado para <b>{{phone}}</b>.</p>
+      </ion-col>
+    </ion-row>
+    <ion-row>
+      <ion-col size-xs="12" size-sm="12" size-md="12" size-lg="12" size-xl="12">
+        <ion-item>
+          <ion-label position="floating">Código de verificação</ion-label>
+          <ion-input
+            [(ngModel)]="verificationCode"
+            (ionChange)="verificationCodeChange()"
+            inputmode="numeric"
+            autofocus="true"
+            type="text"
+            maxlength="6"
+            minlength="6"></ion-input>
+        </ion-item>
+
+        <ion-text color="danger" *ngIf="invalidCode"><p>Código inválido</p></ion-text>
+        <ion-text color="danger" *ngIf="phoneAlreadyRegistered"
+          ><p>Este número de celular pertence a outro usuário</p>
+          <p>
+            <b
+              ><a style="cursor: pointer" (click)="mailto()"
+                >Clique aqui para entrar em contato com o CACiC para obter mais informações</a
+              >
+            </b>
+          </p></ion-text
+        >
+      </ion-col>
+    </ion-row>
+    <ion-row>
+      <ion-col size-xs="12" size-sm="12" size-md="12" size-lg="12" size-xl="12">
+        <ion-button expand="block" (click)="verifyPhone()" [disabled]="phoneAlreadyRegistered">Verificar</ion-button>
+      </ion-col>
+    </ion-row>
+    <ion-row>
+      <ion-col size-xs="12" size-sm="12" size-md="12" size-lg="12" size-xl="12">
+        <ion-button expand="block" (click)="linkOrUpdatePhone()" [disabled]="cooldown || phoneAlreadyRegistered"
+          >Reenviar SMS</ion-button
+        >
+      </ion-col>
+    </ion-row>
+
+    <ion-row>
+      <div id="recaptcha-container"></div>
+    </ion-row>
+  </ion-grid>
+</ion-content>

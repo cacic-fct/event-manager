@@ -1,3 +1,4 @@
+import { User } from 'src/app/shared/services/user';
 import { Component, OnInit, ViewChild } from '@angular/core';
 
 import { Router } from '@angular/router';
@@ -5,19 +6,27 @@ import { Router } from '@angular/router';
 import { AuthService } from '../shared/services/auth.service';
 import { AlertController } from '@ionic/angular';
 
-import { FormGroup, FormBuilder, FormControl } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormControl, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
-
-import { User } from '../shared/services/user';
 
 import { GlobalConstantsService } from '../shared/services/global-constants.service';
 
 import { trace } from '@angular/fire/compat/performance';
 
-import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+import { Mailto, NgxMailtoService } from 'ngx-mailto';
+
 import { AngularFireAuth } from '@angular/fire/compat/auth';
+
+import { first, Observable, BehaviorSubject } from 'rxjs';
+
+import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+import { UserTrackingService } from '@angular/fire/compat/analytics';
+import { WindowService } from '../shared/services/window.service';
+
+import firebase from 'firebase/compat/app';
+
 @UntilDestroy()
 @Component({
   selector: 'app-page-register',
@@ -27,14 +36,17 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 export class PageRegisterPage implements OnInit {
   @ViewChild('mySwal')
   private mySwal: SwalComponent;
+  windowRef: any;
 
   dataVersion: string = GlobalConstantsService.userDataVersion;
   userData: any;
-  dataForm: FormGroup = new FormGroup({
-    academicID: new FormControl(''),
-    dob: new FormControl(''),
-    phone: new FormControl(''),
-  });
+  dataForm: FormGroup;
+  isUnesp: boolean = false;
+  _isUnespSubject: BehaviorSubject<boolean> = new BehaviorSubject(this.isUnesp);
+  isUnesp$: Observable<boolean> = this._isUnespSubject.asObservable();
+  isUndergraduate: boolean = false;
+  _isUndergraduate: BehaviorSubject<boolean> = new BehaviorSubject(this.isUndergraduate);
+  isUndergraduate$: Observable<boolean> = this._isUndergraduate.asObservable();
 
   constructor(
     public authService: AuthService,
@@ -42,9 +54,19 @@ export class PageRegisterPage implements OnInit {
     public formBuilder: FormBuilder,
     public afs: AngularFirestore,
     public router: Router,
-    public auth: AngularFireAuth
+    public auth: AngularFireAuth,
+    private mailtoService: NgxMailtoService,
+    private win: WindowService
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
+
+    this.dataForm = this.formBuilder.group({
+      academicID: [''],
+      phone: ['', Validators.required],
+      cpf: ['', this.validarCPF],
+      fullName: '',
+      associateStatus: [''],
+    });
   }
 
   ngOnInit() {
@@ -52,20 +74,30 @@ export class PageRegisterPage implements OnInit {
       .collection('users')
       .doc<User>(this.userData.uid)
       .valueChanges()
-      .pipe(untilDestroyed(this), trace('firestore'))
+      .pipe(first(), trace('firestore'))
       .subscribe((user) => {
-        this.dataForm.value.academicID = user.academicID;
+        if (user.email.includes('@unesp.br')) {
+          this.isUnesp = true;
+          this._isUnespSubject.next(true);
+          this.dataForm.controls.associateStatus.addValidators([Validators.required]);
+          this.dataForm.controls.associateStatus.setValue(user.associateStatus);
+          if (user.associateStatus === 'undergraduate') {
+            this.isUndergraduate = true;
+            this._isUndergraduate.next(true);
+
+            this.dataForm.controls.academicID.setValue(user.academicID);
+            this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
+          }
+        } else {
+          this.dataForm.controls.fullName.setValue(user.fullName);
+        }
+        this.dataForm.controls.phone.setValue(user.phone);
+        this.dataForm.controls.cpf.setValue(user.cpf);
       });
-    this.userData.uid.replace(/%20/g, ' ') +
-      '%0D%0Anome%3A%20' +
-      this.userData.displayName.replace(/%20/g, ' ') +
-      '%0D%0Ae-mail%20institucional%3A%20' +
-      this.userData.email.replace(/%20/g, ' ') +
-      '%0D%0A';
-    this.dataForm = this.formBuilder.group({
-      // Validator doesn't update when value changes programatically
-      // https://github.com/angular/angular/issues/30616
-      academicID: ['' /*[Validators.required, Validators.pattern('^[0-9]{9}$')]*/],
+
+    this.windowRef = this.win.windowRef;
+    this.windowRef.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+      size: 'invisible',
     });
   }
 
@@ -73,21 +105,124 @@ export class PageRegisterPage implements OnInit {
     if (!this.dataForm.valid) {
       return;
     }
-    this.auth.authState.pipe(trace('auth')).subscribe((user) => {
-      const userRef: AngularFirestoreDocument<any> = this.afs.doc(`users/${user.uid}`);
-      const userData = {
-        academicID: this.dataForm.value.academicID,
-        dataVersion: this.dataVersion,
-      };
-      userRef.set(userData, {
-        merge: true,
+
+    this.afs
+      .collection('users')
+      .doc<User>(this.userData.uid)
+      .valueChanges()
+      .pipe(first())
+      .subscribe(async (user) => {
+        if (user.phone && user.phone === this.dataForm.value.phone) {
+          this.submitUserData(user);
+          return;
+        }
+
+        this.authService.verifyPhoneModal(this.dataForm.value.phone).then((response) => {
+          if (response) {
+            this.submitUserData(user);
+          }
+          return;
+        });
       });
-      this.mySwal.fire();
-      // Fake delay to let animation finish
-      setTimeout(() => {
-        this.mySwal.close();
-        this.router.navigate(['/menu']);
-      }, 1500);
+  }
+
+  submitUserData(user: User) {
+    const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
+    const userData = {
+      fullName: this.isUnesp ? this.userData.displayName : this.dataForm.value.fullName,
+      associateStatus: this.isUnesp ? this.dataForm.value.associateStatus : 'external',
+      academicID: this.isUnesp && this.isUndergraduate ? this.dataForm.value.academicID : null,
+      phone: this.dataForm.value.phone,
+      dataVersion: this.dataVersion,
+      cpf: this.dataForm.value.cpf,
+    };
+    userRef.set(userData, {
+      merge: true,
     });
+
+    this.mySwal.fire();
+    // Fake delay to let animation finish
+    setTimeout(() => {
+      this.mySwal.close();
+      this.router.navigate(['/menu']);
+    }, 1500);
+  }
+
+  formatPhone() {
+    // Format phoneNumber value to '00 00000-0000'
+    let phoneNumber = this.dataForm.value.phone;
+    phoneNumber = phoneNumber.replace(/\D/g, '');
+    phoneNumber = phoneNumber.replace(/^(\d{2})(\d)/g, '$1 $2');
+    phoneNumber = phoneNumber.replace(/(\d)(\d{4})$/, '$1-$2');
+    this.dataForm.controls.phone.setValue(phoneNumber);
+  }
+
+  formatCPF() {
+    // Format cpf value to '000.000.000-00'
+    let cpf = this.dataForm.value.cpf;
+    cpf = cpf.replace(/\D/g, '');
+    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+    cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    this.dataForm.controls.cpf.setValue(cpf);
+  }
+
+  validarCPF = (control: AbstractControl): ValidationErrors | null => {
+    const cpf = control.value;
+
+    if (this.validateCPF(cpf)) {
+      return null;
+    }
+    return { error: 'CPF inválido' };
+  };
+
+  validateCPF(cpf: string): boolean {
+    if (!cpf) {
+      return false;
+    }
+
+    // Remove . and -
+    cpf = cpf.replace(/\.|-/g, '');
+
+    // If CPF is 000.000.000-00, 111.111.111-11, etc, return false
+    if (/^(.)\1*$/.test(cpf)) {
+      return false;
+    }
+
+    let sum: number = 0;
+    let rest: number;
+    for (let i = 1; i <= 9; i++) sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    rest = (sum * 10) % 11;
+    if (rest == 10 || rest == 11) rest = 0;
+    if (rest != parseInt(cpf.substring(9, 10))) return false;
+    sum = 0;
+    for (let i = 1; i <= 10; i++) sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    rest = (sum * 10) % 11;
+    if (rest == 10 || rest == 11) rest = 0;
+    if (rest != parseInt(cpf.substring(10, 11))) return false;
+    return true;
+  }
+
+  mailto(): void {
+    const mailto: Mailto = {
+      receiver: 'cacic.fct@gmail.com',
+      subject: '[FCT-App] Validar meu cadastro',
+      body: `Olá!\nEu não possuo (ESPECIFIQUE: CPF/celular), vocês poderiam validar o meu cadastro?\n\n=== Não apague os dados abaixo ===\nE-mail: ${this.userData.email}\nuid: ${this.userData.uid}\n`,
+    };
+    this.mailtoService.open(mailto);
+  }
+
+  selectionChange(event) {
+    if (event.target.value === 'undergraduate') {
+      this.isUndergraduate = true;
+      this._isUndergraduate.next(true);
+      this.dataForm.controls.academicID.setValidators([Validators.required, Validators.pattern('^[0-9]{9}$')]);
+      this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
+    } else {
+      this.isUndergraduate = false;
+      this._isUndergraduate.next(false);
+      this.dataForm.controls.academicID.clearValidators();
+      this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
+    }
   }
 }

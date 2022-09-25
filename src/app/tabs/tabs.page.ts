@@ -20,9 +20,11 @@ export class TabsPage {
 
   constructor(public auth: AngularFireAuth, private remoteConfig: RemoteConfig) {
     this.auth.idTokenResult.pipe(untilDestroyed(this)).subscribe((idTokenResult) => {
-      const claims = idTokenResult.claims;
-      if (claims.role === 1000) {
-        this._isAdmin.next(true);
+      if (idTokenResult) {
+        const claims = idTokenResult.claims;
+        if (claims.role === 1000) {
+          this._isAdmin.next(true);
+        }
       }
     });
 

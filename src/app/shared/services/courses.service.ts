@@ -31,4 +31,23 @@ export class CoursesService {
 
     return 'Curso ou RA inválido';
   }
+
+  getAssociateStatus(associateStatus: string): string {
+    switch (associateStatus) {
+      case 'undergraduate':
+        return 'Aluno da graduação';
+      case 'graduate':
+        return 'Aluno da pós-graduação';
+      case 'professor':
+        return 'Professor';
+      case 'adjunctProfessor':
+        return 'Professor substituto';
+      case 'employee':
+        return 'Servidor técnico-administrativo';
+      case 'other':
+        return 'Outro vínculo com a Unesp';
+      default:
+        return 'Vínculo inválido';
+    }
+  }
 }

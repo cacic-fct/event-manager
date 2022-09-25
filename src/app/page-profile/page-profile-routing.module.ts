@@ -8,6 +8,10 @@ const routes: Routes = [
     path: '',
     component: PageProfilePage,
   },
+  {
+    path: 'settings',
+    loadChildren: () => import('./page-settings/page-settings.module').then((m) => m.PageSettingsPageModule),
+  },
 ];
 
 @NgModule({

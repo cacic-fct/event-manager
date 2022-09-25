@@ -10,6 +10,8 @@ import { PageRegisterPage } from './page-register.page';
 
 import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 
+import { PageVerifyPhonePageModule } from '../page-verify-phone/page-verify-phone.module';
+
 @NgModule({
   imports: [
     CommonModule,
@@ -18,6 +20,7 @@ import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
     IonicModule,
     PageRegisterPageRoutingModule,
     SweetAlert2Module,
+    PageVerifyPhonePageModule,
   ],
   declarations: [PageRegisterPage],
 })

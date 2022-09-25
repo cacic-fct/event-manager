@@ -12,9 +12,9 @@
     </ng-template>
     <ng-template #login_button>
       <ion-buttons slot="primary">
-        <ion-button fill="clear" (click)="authService.GoogleAuth()">
+        <ion-button fill="clear" [routerLink]="'/login'">
           <ion-icon slot="start" name="log-out-outline"></ion-icon>
-          Login
+          Entrar
         </ion-button>
       </ion-buttons>
       <ion-title> Menu </ion-title>

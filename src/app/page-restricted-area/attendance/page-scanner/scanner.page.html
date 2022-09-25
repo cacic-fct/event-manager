@@ -64,7 +64,13 @@
           <ion-label>
             <ng-container *ngIf="(attendancePerson.user | async) as user">
               <h2 class="ion-text-wrap">{{ user.displayName }}</h2>
-              <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+              <ng-container *ngIf="user.academicID; else notUnesp">
+                <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+              </ng-container>
+
+              <ng-template #notUnesp>
+                <h3 class="ion-text-wrap" *ngIf="user.academicID">Usuário externo</h3>
+              </ng-template>
             </ng-container>
             <h3 class="ion-text-wrap">
               {{ getDateFromTimestamp(attendancePerson.time) | date: "HH:mm:ss - dd/MM/y" }}
