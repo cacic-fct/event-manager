@@ -30,6 +30,7 @@
     "date-fns": "^2.29.3",
     "ng-qrcode": "^7.0.0",
     "ngx-clipboard": "^15.1.0",
+    "ngx-image-compress": "^13.1.13",
     "ngx-mailto": "^2.0.0",
     "ngx-markdown": "^14.0.1",
     "ol": "^7.1.0",

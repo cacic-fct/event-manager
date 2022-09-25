@@ -1,0 +1,137 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <!-- TODO: Alterar -->
+      <ion-back-button defaultHref="/pagamentos"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Realizar pagamento</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ng-container *ngIf="majorEvent$ | async as majorEvent; else: loading">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{majorEvent.name}}</ion-card-title>
+        <!-- prettier-ignore -->
+        <ion-card-subtitle *ngIf="userSubscription$ | async as userInfo">
+          {{ enrollmentTypes.getEnrollmentType(userInfo.subscriptionType) }} - {{ userInfo.payment.price | currency: 'BRL' }}
+        </ion-card-subtitle>
+        <!-- prettier-ignore -->
+        <ion-card-subtitle>
+          Efetue o pagamento até {{ getDateFromTimestamp(majorEvent.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }} 
+        </ion-card-subtitle>
+        <ion-card-content>
+          <h2>Dados para o pagamento</h2>
+          <div>
+            <p><b>Beneficiário</b> {{ majorEvent.paymentInfo.name }}</p>
+            <p *ngIf="majorEvent.paymentInfo.chavePix"><b>Chave Pix</b> {{majorEvent.paymentInfo.chavePix}}</p>
+            <p><b>CPF/CNPJ</b> {{ majorEvent.paymentInfo.document }}</p>
+          </div>
+          <br />
+          <div>
+            <p><b>Instituição bancária</b> {{majorEvent.paymentInfo.bankName}}</p>
+            <p><b>Agência</b> {{ majorEvent.paymentInfo.agency }}</p>
+            <p><b>Conta</b> {{ majorEvent.paymentInfo.accountNumber }}</p>
+          </div>
+          <br />
+          <div *ngIf="majorEvent.paymentInfo.additionalPaymentInformation" class="pre-wrap">
+            {{ majorEvent.paymentInfo.additionalPaymentInformation }}
+          </div>
+        </ion-card-content>
+      </ion-card-header>
+
+      <ion-grid *ngIf="majorEvent.paymentInfo.chavePix">
+        <ion-row>
+          <ion-col>
+            <ion-button (click)="copyPixToClipboard(majorEvent.paymentInfo.chavePix)">
+              <ion-icon slot="start" name="copy"></ion-icon>
+              Copiar chave Pix
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card>
+    <ion-card>
+      <!-- <ng-container>
+     TODO:
+       <p class="ion-padding-horizontal">Você já enviou um comprovante.</p>
+      <br />
+      <ion-button (click)="viewReceipt()">
+        <ion-icon slot="start" name="eye"></ion-icon>
+        Visualizar comprovante
+      </ion-button>
+    </ng-container>-->
+
+      <ng-container *ngIf="uploadPercent | async as countValue">
+        <ion-progress-bar [value]="countValue / 100"></ion-progress-bar>
+      </ng-container>
+
+      <input type="file" class="file-input" accept="image/png, image/jpeg, image/webp" #fileUpload />
+
+      <div *ngIf="!downloadURL; else uploadSucessful">
+        <!-- prettier-ignore -->
+        <p class="ion-padding-horizontal">
+          {{ rawFile ? ("Enviando… (" + (uploadPercent | async | number: '1.0-0') + "%") + ")" : "Nenhuma imagem selecionada."}}
+        </p>
+        <ion-grid>
+          <ion-row>
+            <ion-col>
+              <ion-button (click)="compressFile()">
+                <ion-icon slot="start" name="cloud-upload"></ion-icon>
+                Enviar comprovante
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </div>
+      <ng-template #uploadSucessful>
+        <ion-progress-bar value="1"></ion-progress-bar>
+        <h3 class="ion-padding-horizontal">Comprovante enviado</h3>
+        <div class="img-container">
+          <img *ngIf="downloadURL" class="ion-padding" src="{{rawFile}}" />
+        </div>
+      </ng-template>
+    </ion-card>
+  </ng-container>
+</ion-content>
+
+<ng-template #loading>
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
+</ng-template>
+
+<swal
+  #eventNotFound
+  title="Evento inexistente"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false"></swal>
+
+<swal
+  #eventNotFound
+  title="Inscrição não encontrada"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false"></swal>
+
+<swal
+  #expired
+  title="Fora da data de pagamento"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false"></swal>
+
+<swal
+  #alreadyPaid
+  title="Pagamento já efetuado"
+  icon="warning"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false"></swal>

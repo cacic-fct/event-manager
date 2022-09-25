@@ -1,3 +1,4 @@
+import { EnrollmentTypesService } from './shared/services/enrollment-types.service';
 import { isDevMode, NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { RouteReuseStrategy } from '@angular/router';
@@ -24,6 +25,7 @@ import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@ang
 import { getRemoteConfig, provideRemoteConfig } from '@angular/fire/remote-config';
 
 import { AngularFireFunctionsModule, USE_EMULATOR as USE_FUNCTIONS_EMULATOR } from '@angular/fire/compat/functions';
+import { AngularFireStorageModule, USE_EMULATOR as USE_STORAGE_EMULATOR } from '@angular/fire/compat/storage';
 
 import { environment } from '../environments/environment';
 
@@ -125,11 +127,13 @@ import {
     },
     { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
     { provide: USE_FUNCTIONS_EMULATOR, useValue: environment.useEmulators ? ['localhost', 5001] : undefined },
+    { provide: USE_STORAGE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 9199] : undefined },
 
     AuthService,
     RemoteConfigService,
     CoursesService,
     WeatherService,
+    EnrollmentTypesService,
   ],
   bootstrap: [AppComponent],
 })
