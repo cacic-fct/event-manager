@@ -6,6 +6,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { format, parseISO, addHours } from 'date-fns';
+import * as firestore from 'firebase/firestore';
 
 import { BehaviorSubject, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
@@ -112,7 +113,7 @@ export class AddMajorEventPage implements OnInit {
           };
         }
       } else {
-        price.isFree = true;
+        price = { isFree: true };
       }
 
       let buttonUrl = this.dataForm.get('buttonUrl').value;
@@ -131,22 +132,26 @@ export class AddMajorEventPage implements OnInit {
             course: this.dataForm.get('course').value,
             name: this.dataForm.get('name').value,
             description: this.dataForm.get('description').value,
-            eventStartDate: this.dataForm.get('eventStartDate').value,
-            eventEndDate: this.dataForm.get('eventEndDate').value,
-            maxCourses: this.dataForm.get('maxCourses').value,
-            maxLectures: this.dataForm.get('maxLectures').value,
-            subscriptionStartDate: this.dataForm.get('subscriptionStartDate').value,
-            subscriptionEndDate: this.dataForm.get('subscriptionEndDate').value,
+            eventStartDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventStartDate').value)),
+            eventEndDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventEndDate').value)),
+            maxCourses: this.dataForm.get('maxCourses').value || null,
+            maxLectures: this.dataForm.get('maxLectures').value || null,
+            subscriptionStartDate: firestore.Timestamp.fromDate(
+              new Date(this.dataForm.get('subscriptionStartDate').value)
+            ),
+            subscriptionEndDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('subscriptionEndDate').value)),
             price: price,
-            paymentInfo: {
-              chavePix: this.dataForm.get('chavePix').value,
-              bankName: this.dataForm.get('bankName').value,
-              name: this.dataForm.get('accountName').value,
-              document: this.dataForm.get('document').value,
-              agency: this.dataForm.get('agency').value,
-              accountNumber: this.dataForm.get('accountNumber').value,
-              additionalPaymentInformation: this.dataForm.get('additionalPaymentInformation').value,
-            },
+            paymentInfo: this.isEventPaid
+              ? {
+                  chavePix: this.dataForm.get('chavePix').value,
+                  bankName: this.dataForm.get('bankName').value,
+                  name: this.dataForm.get('accountName').value,
+                  document: this.dataForm.get('document').value,
+                  agency: this.dataForm.get('agency').value,
+                  accountNumber: this.dataForm.get('accountNumber').value,
+                  additionalPaymentInformation: this.dataForm.get('additionalPaymentInformation').value,
+                }
+              : null,
             public: this.dataForm.get('public').value,
             button: this.dataForm.get('buttonUrl').value
               ? {
