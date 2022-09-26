@@ -94,6 +94,7 @@ export class AddEventPage implements OnInit {
         eventType: ['none', Validators.required],
         hasDateEndForm: this.hasDateEnd,
         issueCertificate: false,
+        slotsAvailable: '0',
         // doublePresence: false,
         collectPresenceForm: this.collectPresence,
       },
@@ -172,6 +173,9 @@ export class AddEventPage implements OnInit {
               collectPresence: this.dataForm.get('collectPresenceForm').value,
               createdBy: user.uid,
               createdOn: firestore.Timestamp.fromDate(new Date()),
+              slotsAvailable:
+                this.dataForm.get('slotsAvailable').value !== '0' ? this.dataForm.get('slotsAvailable').value : null,
+              numberOfSubscriptions: 0,
             })
             .then((res) => {
               if (majorEvent) {

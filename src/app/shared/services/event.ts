@@ -4,6 +4,8 @@ export interface EventItem {
   name: string;
   icon: string;
   course: string;
+  slotsAvailable?: number;
+  numberOfSubscriptions?: number;
   eventStartDate: Timestamp;
   eventEndDate: Timestamp;
   location?: {
