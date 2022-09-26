@@ -232,11 +232,11 @@ export class AddMajorEventPage implements OnInit {
     }
   }
 
-  inputNumbersAndDashOnly(event) {
-    const pattern = /\d|-/;
+  inputBankAccountNumber(event) {
+    const pattern = /\d|-|x|X/;
     const inputChar = String.fromCharCode(event.charCode);
     if (!pattern.test(inputChar)) {
-      // Not a number or dash, prevent input
+      // Not a number, dash or x, prevent input
       event.preventDefault();
     }
   }
