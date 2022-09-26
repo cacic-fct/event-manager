@@ -134,8 +134,8 @@ export class AddMajorEventPage implements OnInit {
             description: this.dataForm.get('description').value,
             eventStartDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventStartDate').value)),
             eventEndDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventEndDate').value)),
-            maxCourses: this.dataForm.get('maxCourses').value || null,
-            maxLectures: this.dataForm.get('maxLectures').value || null,
+            maxCourses: Number.parseInt(this.dataForm.get('maxCourses').value) || null,
+            maxLectures: Number.parseInt(this.dataForm.get('maxLectures').value) || null,
             subscriptionStartDate: firestore.Timestamp.fromDate(
               new Date(this.dataForm.get('subscriptionStartDate').value)
             ),
