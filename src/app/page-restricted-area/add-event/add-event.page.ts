@@ -140,6 +140,22 @@ export class AddEventPage implements OnInit {
             }
           }
 
+          let location;
+
+          if (
+            !this.dataForm.get('location.description').value &&
+            !this.dataForm.get('location.lat').value &&
+            !this.dataForm.get('location.lon').value
+          ) {
+            location = null;
+          } else {
+            location = {
+              description: this.dataForm.get('location.description').value,
+              lat: this.dataForm.get('location.lat').value,
+              lon: this.dataForm.get('location.lon').value,
+            };
+          }
+
           this.afs
             .collection<EventItem>('events')
             .add({
@@ -150,11 +166,7 @@ export class AddEventPage implements OnInit {
               description: this.dataForm.get('description').value,
               eventStartDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventStartDate').value)),
               eventEndDate: dateEnd,
-              location: {
-                description: this.dataForm.get('location.description').value,
-                lat: this.dataForm.get('location.lat').value,
-                lon: this.dataForm.get('location.lon').value,
-              },
+              location: location,
               youtubeCode: this.dataForm.get('youtubeCode').value,
               // TODO: Verificar se public está funcionando
               public: this.dataForm.get('public').value,
