@@ -36,9 +36,8 @@ export class AuthService {
         localStorage.setItem('user', JSON.stringify(this.userData));
         JSON.parse(localStorage.getItem('user'));
 
-        getStringChanges(this.remoteConfig, 'professors')
-          .pipe(first())
-          .subscribe((professors) => {
+        getStringChanges(this.remoteConfig, 'professors').subscribe((professors) => {
+          if (professors) {
             const professorsList: string[] = JSON.parse(professors);
             if (professorsList.includes(user.email)) {
               this.auth.idTokenResult.pipe(first()).subscribe((idTokenResult) => {
@@ -64,7 +63,8 @@ export class AuthService {
               // Not a professor
               this.CompareUserdataVersion(this.userData);
             }
-          });
+          }
+        });
       } else {
         localStorage.removeItem('user');
       }
