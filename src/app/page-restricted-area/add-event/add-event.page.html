@@ -192,7 +192,8 @@
           id="eventDate"
           presentation="date-time"
           showDefaultButtons="true"
-          formControlName="eventStartDate">
+          formControlName="eventStartDate"
+          (ionChange)="onDateStartChange()">
           <span slot="title">Selecione a data do evento</span>
         </ion-datetime>
       </ng-template>

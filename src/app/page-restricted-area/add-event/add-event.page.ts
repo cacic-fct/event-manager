@@ -3,7 +3,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventItem, MajorEventsService } from 'src/app/shared/services/majorEvents.service';
-import { addSeconds, format, parseISO } from 'date-fns';
+import { format, getDayOfYear, isEqual, parseISO, setDayOfYear, subMilliseconds } from 'date-fns';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
 import { BehaviorSubject, first, Observable } from 'rxjs';
@@ -42,6 +42,8 @@ export class AddEventPage implements OnInit {
   dataForm: FormGroup;
 
   userData: any;
+
+  tzoffset = new Date().getTimezoneOffset() * 60_000;
   constructor(
     public formBuilder: FormBuilder,
     private modalController: ModalController,
@@ -54,12 +56,8 @@ export class AddEventPage implements OnInit {
   }
 
   ngOnInit() {
-    const tzoffset = new Date().getTimezoneOffset() * 60000;
-    const dateISO: string = new Date(Date.now() - tzoffset).toISOString().slice(0, -1);
-    // TODO: Um evento deve terminar no mesmo dia, considerar a possibilidade do usuário criar um evento às 23:59:59
-    const dateISOHourOffset: string = addSeconds(new Date(Date.now() - tzoffset), 1)
-      .toISOString()
-      .slice(0, -1);
+    const dateISO: string = new Date(Date.now() - this.tzoffset).toISOString().slice(0, -1);
+    const dateISOHourOffset: string = new Date(Date.now() - this.tzoffset).toISOString().slice(0, -1);
     this.dataForm = this.formBuilder.group(
       {
         course: ['', Validators.required],
@@ -262,9 +260,10 @@ export class AddEventPage implements OnInit {
 
   validatorDateEnd(control: AbstractControl): { [key: string]: boolean } | null {
     if (control.get('hasDateEndForm').value) {
-      let dateStart = parseISO(control.get('eventStartDate').value);
-      let dateEnd = parseISO(control.get('eventEndDate').value);
-      if (dateEnd < dateStart) return { dateRange: true };
+      const dateStart = parseISO(control.get('eventStartDate').value);
+      const dateEnd = parseISO(control.get('eventEndDate').value);
+
+      if (dateEnd < dateStart || isEqual(dateStart, dateEnd)) return { dateRange: true };
     }
 
     return null;
@@ -304,5 +303,13 @@ export class AddEventPage implements OnInit {
 
   placeInputKeyDown() {
     this.selectPlace.value = undefined;
+  }
+
+  onDateStartChange() {
+    const newTime = setDayOfYear(
+      parseISO(this.dataForm.get('eventEndDate').value),
+      getDayOfYear(parseISO(this.dataForm.get('eventStartDate').value))
+    );
+    this.dataForm.get('eventEndDate').setValue(subMilliseconds(newTime, this.tzoffset).toISOString().slice(0, -1));
   }
 }
