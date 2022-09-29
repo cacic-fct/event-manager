@@ -93,7 +93,7 @@ export class PageSubscriptionPage implements OnInit {
       });
 
     // Check if user is already subscribed
-    this.auth.user.pipe(first()).subscribe((user) => {
+    this.auth.user.pipe(first(), trace('auth')).subscribe((user) => {
       if (user) {
         this.afs
           .doc<MajorEventSubscription>(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
