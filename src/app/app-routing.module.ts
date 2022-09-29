@@ -79,6 +79,13 @@ const routes: Routes = [
     title: 'Entidades estudantis',
     loadChildren: () => import('./page-contact-cas/page-contact-cas.module').then((m) => m.PageContactCasPageModule),
   },
+  {
+    path: 'eventos/inscrever/:eventID',
+    title: 'Inscrição',
+    loadChildren: () =>
+      import('./page-subscription/page-subscription.module').then((m) => m.PageSubscriptionPageModule),
+    ...canActivate(redirectUnauthorizedToLogin),
+  },
   // TODO: Colocar dentro de minhas-inscricoes
   {
     path: 'pagar/:eventID',

@@ -78,3 +78,14 @@
 .no-margin-bottom {
   margin-bottom: 0;
 }
+
+// https://github.com/ionic-team/ionic-framework/issues/17269
+.alert-tappable.alert-radio {
+  height: auto;
+  contain: content;
+}
+
+.alert-radio-label.sc-ion-alert-md,
+.alert-radio-label.sc-ion-alert-ios {
+  white-space: normal;
+}

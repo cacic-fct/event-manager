@@ -195,6 +195,15 @@ exports.getUserUid = functions.https.onCall((data, context) => {
     });
 });
 
+
+exports.createSubscription = functions.firestore.document(`events/{eventId}/subscriptions/{userId}`).onCreate(async (snap, context) => {
+  const eventId: string = context.params.eventId;
+  const eventSnap = await admin.firestore().collection('events').doc(eventId).get();
+  let numberOfSubscriptions: number =  eventSnap.data()?.numberOfSubscriptions;
+  numberOfSubscriptions = numberOfSubscriptions ? numberOfSubscriptions + 1 : 1;
+  await eventSnap.ref.update({ numberOfSubscriptions });
+});
+
 exports.addProfessorRole = functions.https.onCall((data, context) => {
   if (context.app == undefined) {
     throw new functions.https.HttpsError(

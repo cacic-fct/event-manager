@@ -1,0 +1,137 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Confirmar inscrição</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="event-container">
+    <ng-container *ngIf="majorEvent$ | async as majorEvent; else loading">
+      <ion-card-header>
+        <ion-card-title>{{ majorEvent.name }}</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content *ngIf="majorEvent.description">
+        <p class="ion-text-justify event-description">{{ majorEvent.description }}</p>
+      </ion-card-content>
+
+      <div class="card-section ion-padding-horizontal">
+        <div class="card-label">
+          <ion-icon name="calendar-outline" aria-hidden="true"></ion-icon>
+          Datas
+        </div>
+
+        <ion-item lines="none">
+          Evento
+          <span slot="end">
+            {{ getDateFromTimestamp(majorEvent.eventStartDate) | date: 'dd/MM' }}
+            {{ majorEvent.eventEndDate && '- ' + (getDateFromTimestamp(majorEvent.eventEndDate) | date: 'dd/MM') }}
+          </span>
+        </ion-item>
+
+        <ion-item lines="none" *ngIf="majorEvent.subscriptionStartDate && majorEvent.subscriptionEndDate">
+          Inscrição
+          <span slot="end">
+            {{ getDateFromTimestamp(majorEvent.subscriptionStartDate) | date: 'dd/MM' }}
+            {{
+              majorEvent.subscriptionEndDate &&
+                '- ' + (getDateFromTimestamp(majorEvent.subscriptionEndDate) | date: 'dd/MM')
+            }}
+          </span>
+        </ion-item>
+      </div>
+
+      <div class="card-section ion-padding-horizontal" *ngIf="majorEvent.price">
+        <div class="card-label">
+          <ion-icon name="wallet-outline" aria-hidden="true"></ion-icon>
+          Valores
+        </div>
+
+        <ng-container *ngIf="majorEvent.price.isFree; else notFree">
+          <ion-item lines="none">
+            <ion-label>Gratuito</ion-label>
+          </ion-item>
+        </ng-container>
+
+        <ng-template #notFree>
+          <ng-container *ngIf="majorEvent.price.single; then singlePrice; else multiPrice"> </ng-container>
+        </ng-template>
+
+        <ng-template #singlePrice>
+          <ion-item lines="none">
+            Preço único
+            <span slot="end">{{ majorEvent.price.single | currency: 'BRL' }}</span>
+          </ion-item>
+        </ng-template>
+
+        <ng-template #multiPrice>
+          <ion-item lines="none" *ngIf="subscriptionType === '0' && majorEvent.price.students">
+            {{ enrollmentTypes.getEnrollmentType(0) }}
+            <span slot="end">{{ majorEvent.price.students | currency: 'BRL' }}</span>
+          </ion-item>
+
+          <ion-item lines="none" *ngIf="subscriptionType === '1' && majorEvent.price.otherStudents">
+            {{ enrollmentTypes.getEnrollmentType(1) }}
+            <span slot="end">{{ majorEvent.price.otherStudents | currency: 'BRL' }}</span>
+          </ion-item>
+
+          <ion-item lines="none" *ngIf="subscriptionType === '2' && majorEvent.price.professors">
+            {{ enrollmentTypes.getEnrollmentType(2) }}
+            <span slot="end">{{ majorEvent.price.professors | currency: 'BRL' }}</span>
+          </ion-item>
+        </ng-template>
+      </div>
+
+      <div class="card-section ion-padding-horizontal">
+        <p>
+          {{ minicursosCount | number: '2.0-0' }} de {{ majorEvent.maxCourses | number: '2.0-0' }} minicursos
+          selecionados
+        </p>
+        <p>
+          {{ palestrasCount | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }} palestras
+          selecionados
+        </p>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="eventsSelected as eventsArray">
+      <ng-container *ngFor="let event of eventsArray; index as i">
+        <ion-item-divider
+          mode="ios"
+          sticky="true"
+          *ngIf="i == 0 || !dayCompare(eventsArray[i - 1].eventStartDate, event.eventStartDate)">
+          <ion-label> {{ formatDate(getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
+        </ion-item-divider>
+
+        <ion-list>
+          <ion-item>
+            <img [src]="getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
+            <ion-label>
+              <h3>{{ event.name }}</h3>
+              <h4>
+                {{ getDateFromTimestamp(event.eventStartDate) | date: 'HH:mm' }}
+                {{ event.eventEndDate && ' às ' + (getDateFromTimestamp(event.eventEndDate) | date: 'HH:mm') }}
+              </h4>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </ng-container>
+    </ng-container>
+
+    <ion-button (click)="onSubmit()" style="margin-top: 12px; margin-bottom: 24px">Confirmar</ion-button>
+  </div>
+
+  <ng-template #loading>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  </ng-template>
+</ion-content>
+
+<swal
+  #errorSwal
+  title="Ocorreu um erro ao criar a inscrição"
+  text="Verifique a sua conexão à internet e tente novamente"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="true"></swal>

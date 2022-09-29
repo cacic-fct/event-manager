@@ -3,11 +3,12 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { Timestamp } from '@firebase/firestore-types';
+import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { compareAsc, fromUnixTime } from 'date-fns';
-import { Observable } from 'rxjs';
+import { map, Observable, switchMap } from 'rxjs';
 
 import { MajorEventItem } from '../shared/services/major-event';
-
+@UntilDestroy()
 @Component({
   selector: 'app-tab-events',
   templateUrl: 'tab-events.page.html',
@@ -22,11 +23,28 @@ export class TabEventsPage {
   ngOnInit() {
     this.majorEvents$ = this.afs
       .collection<MajorEventItem>('majorEvents', (ref) => {
-        return ref.orderBy('dateStart', 'asc');
+        return ref.orderBy('eventStartDate', 'asc');
       })
       .valueChanges({ idField: 'id' })
       .pipe(trace('firestore'));
   }
+
+  // checkIfSubscribed(eventID: string) {
+  //   return this.auth.user.pipe(
+  //     untilDestroyed(this),
+  //     switchMap((user) => {
+  //       if (user) {
+  //         return this.afs
+  //           .collection('users')
+  //           .doc(user.uid)
+  //           .collection('subscriptions')
+  //           .doc(eventID)
+  //           .valueChanges()
+  //           .pipe(untilDestroyed(this));
+  //       }
+  //     })
+  //   );
+  // }
 
   getDateFromTimestamp(timestamp: Timestamp): Date {
     return fromUnixTime(timestamp.seconds);

@@ -83,10 +83,10 @@
             </ng-template>
           </div>
 
-          <!-- TODO: Fazer botão de inscrição funcionar -->
           <div class="ion-padding">
             <ion-button
-              *ngIf="(event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(getDateFromTimestamp(event.subscriptionStartDate), getDateFromTimestamp(event.subscriptionEndDate))">
+              *ngIf="(event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(getDateFromTimestamp(event.subscriptionStartDate), getDateFromTimestamp(event.subscriptionEndDate))"
+              [routerLink]="['inscrever',event.id]">
               Inscreva-se
             </ion-button>
 
