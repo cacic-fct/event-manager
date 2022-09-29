@@ -55,7 +55,7 @@ export interface MajorEventItem {
   public: boolean;
   createdBy: string;
   events: string[];
-  createdOn: Timestamp | Date;
+  createdOn: Timestamp;
   id?: string;
 }
 
