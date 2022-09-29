@@ -350,7 +350,7 @@ export class PageSubscriptionPage implements OnInit {
                       .collection(`users/${user.uid}/majorEventSubscriptions`)
                       .doc(this.majorEventID)
                       .set({
-                        reference: `majorEvents/${this.majorEventID}/subscriptions/${user.uid}`,
+                        reference: this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`).ref,
                       })
                       .then(() => {
                         this.successSwal.fire();
