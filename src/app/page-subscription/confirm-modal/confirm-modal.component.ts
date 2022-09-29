@@ -5,7 +5,7 @@ import { Timestamp } from '@firebase/firestore-types';
 import { formatDate } from '@angular/common';
 import { fromUnixTime, isSameDay } from 'date-fns';
 
-import { MajorEventItem } from '../../shared/services/major-event';
+import { MajorEventItem } from '../../shared/services/major-event.service';
 import { EventItem } from '../../shared/services/event';
 import { ModalController } from '@ionic/angular';
 import { Observable } from 'rxjs';

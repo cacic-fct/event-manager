@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { startOfMonth, endOfMonth, parseISO, fromUnixTime, addYears } from 'date-fns';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { BehaviorSubject, combineLatest, Observable, switchMap } from 'rxjs';
-import { MajorEventItem } from 'src/app/shared/services/major-event';
+import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { Timestamp } from '@firebase/firestore-types';
 import { trace } from '@angular/fire/compat/performance';
 import { CoursesService } from 'src/app/shared/services/courses.service';

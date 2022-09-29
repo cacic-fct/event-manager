@@ -2,7 +2,7 @@ import { IonSelect, ModalController } from '@ionic/angular';
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { CoursesService } from 'src/app/shared/services/courses.service';
-import { MajorEventItem, MajorEventsService } from 'src/app/shared/services/majorEvents.service';
+import { MajorEventItem, MajorEventsService } from 'src/app/shared/services/major-event.service';
 import { format, getDayOfYear, isEqual, parseISO, setDayOfYear, subMilliseconds } from 'date-fns';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';

@@ -11,7 +11,7 @@ import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firest
 import { trace } from '@angular/fire/compat/performance';
 import { fromUnixTime } from 'date-fns';
 
-import { MajorEventItem } from 'src/app/shared/services/major-event';
+import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { ClipboardService } from 'ngx-clipboard';
 import { Timestamp } from 'firebase/firestore';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';

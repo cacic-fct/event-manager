@@ -7,7 +7,7 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { compareAsc, fromUnixTime } from 'date-fns';
 import { map, Observable, switchMap } from 'rxjs';
 
-import { MajorEventItem } from '../shared/services/major-event';
+import { MajorEventItem } from '../shared/services/major-event.service';
 @UntilDestroy()
 @Component({
   selector: 'app-tab-events',

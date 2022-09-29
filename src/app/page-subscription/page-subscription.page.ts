@@ -1,4 +1,4 @@
-import { MajorEventSubscription } from './../shared/services/major-event';
+import { MajorEventSubscription } from '../shared/services/major-event.service';
 import { EnrollmentTypesService } from './../shared/services/enrollment-types.service';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { Component, OnInit, ViewChild } from '@angular/core';
@@ -11,7 +11,7 @@ import { formatDate } from '@angular/common';
 import { fromUnixTime, isSameDay, compareAsc } from 'date-fns';
 import { combineLatest, first, map, Observable, switchMap } from 'rxjs';
 
-import { MajorEventItem } from '../shared/services/major-event';
+import { MajorEventItem } from '../shared/services/major-event.service';
 import { EventItem } from '../shared/services/event';
 import { ModalController, ToastController } from '@ionic/angular';
 

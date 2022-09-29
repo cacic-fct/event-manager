@@ -10,7 +10,7 @@ import * as firestore from 'firebase/firestore';
 
 import { BehaviorSubject, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { MajorEventItem } from 'src/app/shared/services/major-event';
+import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 
 import { ConfirmModalComponent } from './components/confirm-modal/confirm-modal.component';
 
