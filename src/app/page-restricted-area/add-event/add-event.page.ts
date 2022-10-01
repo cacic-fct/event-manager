@@ -31,9 +31,9 @@ export class AddEventPage implements OnInit {
   places = PlacesService.places;
   majorEventsData$: Observable<MajorEventItem[]>;
 
-  collectPresence: boolean = false;
-  _collectPresenceSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(this.collectPresence);
-  collectPresence$: Observable<boolean> = this._collectPresenceSubject.asObservable();
+  collectAttendance: boolean = false;
+  _collectAttendanceSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(this.collectAttendance);
+  collectAttendance$: Observable<boolean> = this._collectAttendanceSubject.asObservable();
 
   hasDateEnd: boolean = false;
   _hasDateEndSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(this.hasDateEnd);
@@ -94,7 +94,7 @@ export class AddEventPage implements OnInit {
         issueCertificate: false,
         slotsAvailable: '0',
         // doublePresence: false,
-        collectPresenceForm: this.collectPresence,
+        collectAttendanceForm: this.collectAttendance,
       },
       {
         validators: [this.validatorLatLong, this.validatorButton, this.validatorDateEnd],
@@ -180,7 +180,7 @@ export class AddEventPage implements OnInit {
               eventType: this.dataForm.get('eventType').value,
               issueCertificate: this.dataForm.get('issueCertificate').value,
               // doublePresence: this.dataForm.get('doublePresence').value,
-              collectPresence: this.dataForm.get('collectPresenceForm').value,
+              collectAttendance: this.dataForm.get('collectAttendanceForm').value,
               createdBy: user.uid,
               createdOn: firestore.Timestamp.fromDate(new Date()),
               slotsAvailable:
@@ -303,9 +303,9 @@ export class AddEventPage implements OnInit {
     this.dataForm.get('location').get('lon').setValue(this.places[ev.detail.value].lon);
   }
 
-  collectPresenceChange() {
-    this.collectPresence = !this.collectPresence;
-    this._collectPresenceSubject.next(this.collectPresence);
+  collectAttendanceChange() {
+    this.collectAttendance = !this.collectAttendance;
+    this._collectAttendanceSubject.next(this.collectAttendance);
   }
 
   hasDateEndChange() {

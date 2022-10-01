@@ -145,12 +145,12 @@
       <ion-label>Coletar presença para este evento</ion-label>
       <ion-toggle
         slot="end"
-        formControlName="collectPresenceForm"
-        [checked]="collectPresence"
-        (ionChange)="collectPresenceChange()"></ion-toggle>
+        formControlName="collectAttendanceForm"
+        [checked]="collectAttendance"
+        (ionChange)="collectAttendanceChange()"></ion-toggle>
     </ion-item>
 
-    <ng-container *ngIf="(collectPresence$ | async);">
+    <ng-container *ngIf="(collectAttendance$ | async);">
       <ion-item>
         <ion-label>Emite certificado de participação</ion-label>
         <ion-toggle slot="end" formControlName="issueCertificate" checked="off"></ion-toggle>
