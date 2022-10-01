@@ -92,7 +92,10 @@ export class PageRegisterPage implements OnInit {
           this.dataForm.controls.fullName.setValue(user.fullName);
         }
         this.dataForm.controls.phone.setValue(user.phone);
-        this.dataForm.controls.cpf.setValue(user.cpf);
+        if (user.cpf) {
+          this.dataForm.controls.cpf.setValue(user.cpf);
+          this.dataForm.controls.cpf.disable();
+        }
       });
 
     this.windowRef = this.win.windowRef;
