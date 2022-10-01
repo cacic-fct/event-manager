@@ -167,7 +167,6 @@ export class AuthService {
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
-      fullName: user.email.includes('@unesp.br') ? user.displayName : '',
       photoURL: user.photoURL,
     };
     return userRef.set(userData, {
