@@ -6,7 +6,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { format, parseISO, addHours } from 'date-fns';
-import * as firestore from 'firebase/firestore';
+import { Timestamp } from '@firebase/firestore';
 
 import { BehaviorSubject, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
@@ -103,13 +103,13 @@ export class AddMajorEventPage implements OnInit {
       if (this.isEventPaid) {
         if (this.priceDifferentiate) {
           price = {
-            students: this.dataForm.get('priceStudents').value,
-            otherStudents: this.dataForm.get('priceOtherStudents').value,
-            professors: this.dataForm.get('priceProfessors').value,
+            students: Number.parseFloat(this.dataForm.get('priceStudents').value) || 0,
+            otherStudents: Number.parseFloat(this.dataForm.get('priceOtherStudents').value) || 0,
+            professors: Number.parseFloat(this.dataForm.get('priceProfessors').value) || 0,
           };
         } else {
           price = {
-            single: this.dataForm.get('priceSingle').value,
+            single: Number.parseFloat(this.dataForm.get('priceSingle').value) || 0,
           };
         }
       } else {
@@ -127,19 +127,17 @@ export class AddMajorEventPage implements OnInit {
 
       this.auth.user.subscribe((user) => {
         this.afs
-          .collection('majorEvents')
+          .collection<MajorEventItem>('majorEvents')
           .add({
-            course: this.dataForm.get('course').value,
             name: this.dataForm.get('name').value,
+            course: this.dataForm.get('course').value,
             description: this.dataForm.get('description').value,
-            eventStartDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventStartDate').value)),
-            eventEndDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventEndDate').value)),
+            eventStartDate: Timestamp.fromDate(new Date(this.dataForm.get('eventStartDate').value)),
+            eventEndDate: Timestamp.fromDate(new Date(this.dataForm.get('eventEndDate').value)),
+            subscriptionStartDate: Timestamp.fromDate(new Date(this.dataForm.get('subscriptionStartDate').value)),
+            subscriptionEndDate: Timestamp.fromDate(new Date(this.dataForm.get('subscriptionEndDate').value)),
             maxCourses: Number.parseInt(this.dataForm.get('maxCourses').value) || null,
             maxLectures: Number.parseInt(this.dataForm.get('maxLectures').value) || null,
-            subscriptionStartDate: firestore.Timestamp.fromDate(
-              new Date(this.dataForm.get('subscriptionStartDate').value)
-            ),
-            subscriptionEndDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('subscriptionEndDate').value)),
             price: price,
             paymentInfo: this.isEventPaid
               ? {
@@ -152,15 +150,16 @@ export class AddMajorEventPage implements OnInit {
                   additionalPaymentInformation: this.dataForm.get('additionalPaymentInformation').value,
                 }
               : null,
-            public: this.dataForm.get('public').value,
             button: this.dataForm.get('buttonUrl').value
               ? {
                   text: this.dataForm.get('buttonText').value,
                   url: this.dataForm.get('buttonUrl').value,
                 }
-              : undefined,
+              : null,
+            public: this.dataForm.get('public').value === '' || false,
             createdBy: user.uid,
-            createdOn: new Date(),
+            createdOn: Timestamp.fromDate(new Date()),
+            events: [],
           })
           .then(() => {
             this.successSwal.fire();
@@ -372,7 +371,7 @@ export class AddMajorEventPage implements OnInit {
   validateAccountNumber(event) {
     const cleanAccount = event.target.value
       // Remove anything that isn't valid in a number or dash
-      .replace(/[^\d-]/g, '')
+      .replace(/[^\d-xX]/g, '')
       // Remove all dashes unless it is the last one
       .replace(/-(?=.*-)/g, '');
     this.dataForm.get('accountNumber').setValue(cleanAccount);

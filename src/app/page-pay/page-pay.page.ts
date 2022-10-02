@@ -13,7 +13,7 @@ import { fromUnixTime } from 'date-fns';
 
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { ClipboardService } from 'ngx-clipboard';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp } from '@firebase/firestore';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
 import { EnrollmentTypesService } from '../shared/services/enrollment-types.service';

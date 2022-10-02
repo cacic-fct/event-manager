@@ -25,12 +25,13 @@ export class MajorEventsService {
 export interface MajorEventItem {
   name: string;
   course: string;
+  description?: string;
   eventStartDate: Timestamp;
   eventEndDate?: Timestamp;
   subscriptionStartDate?: Timestamp;
   subscriptionEndDate?: Timestamp;
-  maxCourses: number;
-  maxLectures: number;
+  maxCourses?: number;
+  maxLectures?: number;
   price: {
     students?: number;
     otherStudents?: number;
@@ -46,16 +47,15 @@ export interface MajorEventItem {
     agency?: string;
     accountNumber?: string;
     additionalPaymentInformation?: string;
-  };
-  description?: string;
+  } | null;
   button?: {
     text?: string;
     url: string;
-  };
+  } | null;
   public: boolean;
   createdBy: string;
-  events: string[];
   createdOn: Timestamp;
+  events: string[];
   id?: string;
 }
 
@@ -65,7 +65,7 @@ export interface MajorEventSubscription {
     status: number;
     time: Timestamp;
     error?: string;
-    price: number;
+    price?: number;
     author: string;
   };
   subscriptionType: number;

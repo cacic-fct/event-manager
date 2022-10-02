@@ -14,7 +14,7 @@ import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
-import { Timestamp } from '@firebase/firestore-types';
+import { Timestamp } from '@firebase/firestore';
 import { AuthService, GetUserUIDResponse } from 'src/app/shared/services/auth.service';
 
 import { Attendance } from '../page-attendance/page-attendance.page';
@@ -145,9 +145,12 @@ export class ScannerPage implements OnInit {
               .pipe(first(), trace('firestore'))
               .subscribe((user) => {
                 if (user.exists) {
-                  this.afs.collection(`events/${this.eventID}/attendance`).doc(resultString).set({
-                    time: new Date(),
-                  });
+                  this.afs
+                    .collection(`events/${this.eventID}/attendance`)
+                    .doc(resultString)
+                    .set({
+                      time: Timestamp.fromDate(new Date()),
+                    });
                   this.audioSuccess.play();
                   this.toastSucess();
                   this.backdropColor('success');
@@ -227,9 +230,12 @@ export class ScannerPage implements OnInit {
                 .subscribe((user) => {
                   // If user uid exists, register attendance
                   if (user.exists) {
-                    this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
-                      time: new Date(),
-                    });
+                    this.afs
+                      .collection(`events/${this.eventID}/attendance`)
+                      .doc(uid)
+                      .set({
+                        time: Timestamp.fromDate(new Date()),
+                      });
                     this.audioSuccess.play();
                     this.toastSucess();
                     this.backdropColor('success');

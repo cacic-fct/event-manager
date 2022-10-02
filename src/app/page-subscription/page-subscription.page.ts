@@ -5,7 +5,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
-import * as firestore from 'firebase/firestore';
+import * as firestore from '@firebase/firestore';
 import { Timestamp } from '@firebase/firestore-types';
 import { formatDate } from '@angular/common';
 import { fromUnixTime, isSameDay, compareAsc } from 'date-fns';
@@ -334,7 +334,7 @@ export class PageSubscriptionPage implements OnInit {
 
                 this.afs
                   .collection(`majorEvents/${this.majorEventID}/subscriptions`)
-                  .doc(user.uid)
+                  .doc<MajorEventSubscription>(user.uid)
                   .set({
                     subscriptionType: Number.parseInt(this.opSelected),
                     subscribedToEvents: eventsSelectedID,

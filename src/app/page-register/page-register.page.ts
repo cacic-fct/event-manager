@@ -131,7 +131,7 @@ export class PageRegisterPage implements OnInit {
 
   submitUserData(user: User) {
     const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
-    const userData = {
+    const userData: User = {
       fullName: this.isUnesp ? this.userData.displayName : this.dataForm.value.fullName,
       associateStatus: this.isUnesp ? this.dataForm.value.associateStatus : 'external',
       academicID: this.isUnesp && this.isUndergraduate ? this.dataForm.value.academicID : null,

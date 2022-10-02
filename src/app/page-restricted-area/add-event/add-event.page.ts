@@ -7,10 +7,11 @@ import { format, getDayOfYear, isEqual, parseISO, setDayOfYear, subMilliseconds 
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
 import { BehaviorSubject, first, Observable } from 'rxjs';
-import * as firestore from 'firebase/firestore';
+import * as firestore from '@firebase/firestore';
+import { Timestamp } from '@firebase/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { EventItem } from './../../shared/services/event';
-import { Timestamp } from '@firebase/firestore-types';
+import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
 import { ConfirmModalPage } from './confirm-modal/confirm-modal.page';
@@ -92,7 +93,7 @@ export class AddEventPage implements OnInit {
         eventType: ['none', Validators.required],
         hasDateEndForm: this.hasDateEnd,
         issueCertificate: false,
-        slotsAvailable: '0',
+        slotsAvailable: '',
         // doublePresence: false,
         collectAttendanceForm: this.collectAttendance,
       },
@@ -120,10 +121,10 @@ export class AddEventPage implements OnInit {
             majorEvent = null;
           }
 
-          let dateEnd: Timestamp | null;
+          let dateEnd: TimestampType | null;
 
           if (this.hasDateEnd) {
-            dateEnd = firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventEndDate').value));
+            dateEnd = Timestamp.fromDate(new Date(this.dataForm.get('eventEndDate').value));
           } else {
             dateEnd = null;
           }
@@ -167,9 +168,9 @@ export class AddEventPage implements OnInit {
               eventStartDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventStartDate').value)),
               eventEndDate: dateEnd,
               location: location,
-              youtubeCode: this.dataForm.get('youtubeCode').value,
+              youtubeCode: this.dataForm.get('youtubeCode').value || null,
               // TODO: Verificar se public está funcionando
-              public: this.dataForm.get('public').value,
+              public: this.dataForm.get('public').value === '' || false,
               button: this.dataForm.get('button').get('url').value
                 ? {
                     text: this.dataForm.get('button').get('text').value,
@@ -178,13 +179,12 @@ export class AddEventPage implements OnInit {
                 : null,
               inMajorEvent: majorEvent,
               eventType: this.dataForm.get('eventType').value,
-              issueCertificate: this.dataForm.get('issueCertificate').value,
+              issueCertificate: this.dataForm.get('issueCertificate').value === '' || false,
               // doublePresence: this.dataForm.get('doublePresence').value,
-              collectAttendance: this.dataForm.get('collectAttendanceForm').value,
+              collectAttendance: this.dataForm.get('collectAttendanceForm').value === '' || false,
               createdBy: user.uid,
-              createdOn: firestore.Timestamp.fromDate(new Date()),
-              slotsAvailable:
-                this.dataForm.get('slotsAvailable').value !== '0' ? this.dataForm.get('slotsAvailable').value : null,
+              createdOn: Timestamp.fromDate(new Date()),
+              slotsAvailable: Number.parseInt(this.dataForm.get('slotsAvailable').value) || 0,
               numberOfSubscriptions: 0,
             })
             .then((res) => {
