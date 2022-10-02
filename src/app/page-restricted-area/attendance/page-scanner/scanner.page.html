@@ -38,7 +38,7 @@
   <div>
     <ion-list style="max-width: 1600px; display: block; overflow-y: scroll" class="margin-horizontal-auto">
       <ng-container *ngIf="attendanceCollection$ | async as attendancePeople; else: loading">
-        <div *ngIf="event$ | async; let event" class="ion-padding-horizontal">
+        <div *ngIf="event$ | async as event" class="ion-padding-horizontal">
           <h3 style="margin-bottom: 0">{{ event.name }}</h3>
           <h4 style="margin: 0">{{ event.shortDescription }}</h4>
           <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}</h5>

@@ -15,6 +15,7 @@ import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
 import { Timestamp } from '@firebase/firestore';
+import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { AuthService, GetUserUIDResponse } from 'src/app/shared/services/auth.service';
 
 import { Attendance } from '../page-attendance/page-attendance.page';
@@ -183,7 +184,7 @@ export class ScannerPage implements OnInit {
     this.hasPermission = has;
   }
 
-  getDateFromTimestamp(timestamp: Timestamp): Date {
+  getDateFromTimestamp(timestamp: TimestampType): Date {
     return fromUnixTime(timestamp.seconds);
   }
 
