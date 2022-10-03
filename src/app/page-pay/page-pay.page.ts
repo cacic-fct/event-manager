@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { Observable } from 'rxjs';
-import { finalize, first } from 'rxjs/operators';
+import { finalize, take } from 'rxjs/operators';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { DataUrl, NgxImageCompressService } from 'ngx-image-compress';
 import { ToastController } from '@ionic/angular';
@@ -81,7 +81,7 @@ export class PagePayPage implements OnInit {
         }
       });
 
-    this.auth.user.pipe(first()).subscribe((user) => {
+    this.auth.user.pipe(take(1)).subscribe((user) => {
       if (user) {
         this.uid = user.uid;
         this.afs

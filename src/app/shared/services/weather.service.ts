@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { format } from 'date-fns';
-import { catchError, first, map, Observable, retry, throwError } from 'rxjs';
+import { catchError, take, map, Observable, retry, throwError } from 'rxjs';
 import { add } from 'date-fns';
 
 @Injectable()
@@ -51,7 +51,7 @@ export class WeatherService {
     );
 
     return req.pipe(
-      first(),
+      take(1),
       retry(3),
       catchError((err) => {
         return this.handleError(err);

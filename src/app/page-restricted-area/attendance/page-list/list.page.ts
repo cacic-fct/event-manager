@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { first, map, Observable } from 'rxjs';
+import { take, map, Observable } from 'rxjs';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
@@ -67,7 +67,7 @@ export class ListPage implements OnInit {
           return attendance.map((item) => {
             return {
               ...item,
-              user: this.afs.collection('users').doc<User>(item.id).valueChanges().pipe(trace('firestore'), first()),
+              user: this.afs.collection('users').doc<User>(item.id).valueChanges().pipe(trace('firestore'), take(1)),
             };
           });
         })
@@ -82,12 +82,12 @@ export class ListPage implements OnInit {
     this.afs
       .collection<User>('users')
       .valueChanges({ idfield: 'id' })
-      .pipe(first(), trace('firestore'))
+      .pipe(take(1), trace('firestore'))
       .subscribe((users) => {
         const csv = [];
         const headers = ['Nome', 'RA', 'Email', 'Data_locale', 'Data_iso'];
         csv.push(headers);
-        this.attendanceCollection$.pipe(first()).subscribe((attendanceCol) => {
+        this.attendanceCollection$.pipe(take(1)).subscribe((attendanceCol) => {
           attendanceCol.forEach((attendance) => {
             const user = users.find((user) => user.uid === attendance.id);
             const row = [
@@ -108,7 +108,7 @@ export class ListPage implements OnInit {
             csv.push(row);
           });
 
-          this.event$.pipe(first()).subscribe((event) => {
+          this.event$.pipe(take(1)).subscribe((event) => {
             const csvString = csv.map((row) => row.join(',')).join('\n');
             const a = document.createElement('a');
             a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));

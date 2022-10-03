@@ -19,7 +19,7 @@ import { Mailto, NgxMailtoService } from 'ngx-mailto';
 
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
-import { first, Observable, BehaviorSubject } from 'rxjs';
+import { take, Observable, BehaviorSubject } from 'rxjs';
 
 import { WindowService } from '../shared/services/window.service';
 
@@ -71,7 +71,7 @@ export class PageRegisterPage implements OnInit {
       .collection('users')
       .doc<User>(this.userData.uid)
       .valueChanges()
-      .pipe(first(), trace('firestore'))
+      .pipe(take(1), trace('firestore'))
       .subscribe((user) => {
         if (user.email.includes('@unesp.br')) {
           this.isUnesp = true;
@@ -110,7 +110,7 @@ export class PageRegisterPage implements OnInit {
       .collection('users')
       .doc<User>(this.userData.uid)
       .valueChanges()
-      .pipe(first())
+      .pipe(take(1))
       .subscribe(async (user) => {
         if (user.phone && user.phone === this.dataForm.value.phone) {
           this.submitUserData(user);

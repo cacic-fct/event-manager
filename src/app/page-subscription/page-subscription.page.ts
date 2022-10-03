@@ -9,7 +9,7 @@ import * as firestore from '@firebase/firestore';
 import { Timestamp } from '@firebase/firestore-types';
 import { formatDate } from '@angular/common';
 import { fromUnixTime, isSameDay, compareAsc } from 'date-fns';
-import { combineLatest, first, map, Observable, switchMap } from 'rxjs';
+import { combineLatest, take, map, Observable, switchMap } from 'rxjs';
 
 import { MajorEventItem } from '../shared/services/major-event.service';
 import { EventItem } from '../shared/services/event';
@@ -93,12 +93,12 @@ export class PageSubscriptionPage implements OnInit {
       });
 
     // Check if user is already subscribed
-    this.auth.user.pipe(first(), trace('auth')).subscribe((user) => {
+    this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
       if (user) {
         this.afs
           .doc<MajorEventSubscription>(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
           .valueChanges({ idField: 'id' })
-          .pipe(first(), trace('firestore'))
+          .pipe(take(1), trace('firestore'))
           .subscribe((subscription) => {
             if (subscription) {
               if (subscription.payment.status !== 4) {
@@ -131,7 +131,7 @@ export class PageSubscriptionPage implements OnInit {
           this.afs
             .doc<EventItem>(`events/${event}`)
             .valueChanges({ idField: 'id' })
-            .pipe(first(), trace('firestore'))
+            .pipe(take(1), trace('firestore'))
             .subscribe((eventItem) => {
               // If slots not available, disable
               if (eventItem.slotsAvailable <= 0) {
@@ -141,7 +141,7 @@ export class PageSubscriptionPage implements OnInit {
               }
 
               // If user is already subscribed, select
-              this.auth.user.pipe(first(), trace('auth')).subscribe((user) => {
+              this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
                 if (user) {
                   this.afs
                     .doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
@@ -316,7 +316,7 @@ export class PageSubscriptionPage implements OnInit {
         return;
       }
 
-      this.majorEvent$.pipe(first()).subscribe((majorEvent) => {
+      this.majorEvent$.pipe(take(1)).subscribe((majorEvent) => {
         let price;
         switch (this.opSelected) {
           case '0':
@@ -330,12 +330,12 @@ export class PageSubscriptionPage implements OnInit {
             break;
         }
 
-        this.auth.user.pipe(first()).subscribe((user) => {
+        this.auth.user.pipe(take(1)).subscribe((user) => {
           if (user) {
             this.afs
               .doc<Subscription>(`users/${user.uid}/majorEventSubscriptions/${this.majorEventID}`)
               .valueChanges({ idField: 'id' })
-              .pipe(first(), trace('firestore'))
+              .pipe(take(1), trace('firestore'))
               .subscribe((subscription) => {
                 if (!subscription.reference) {
                   // Merge eventsSelected arrays

@@ -6,7 +6,7 @@ import { MajorEventItem, MajorEventsService } from 'src/app/shared/services/majo
 import { format, getDayOfYear, isEqual, parseISO, setDayOfYear, subMilliseconds } from 'date-fns';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
-import { BehaviorSubject, first, Observable } from 'rxjs';
+import { BehaviorSubject, take, Observable } from 'rxjs';
 import * as firestore from '@firebase/firestore';
 import { Timestamp } from '@firebase/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
@@ -115,7 +115,7 @@ export class AddEventPage implements OnInit {
     }
     this.openConfirmModal().then((response) => {
       if (response) {
-        this.auth.user.pipe(first()).subscribe((user) => {
+        this.auth.user.pipe(take(1)).subscribe((user) => {
           let majorEvent = this.dataForm.get('inMajorEvent').value;
           if (majorEvent === 'none') {
             majorEvent = null;

@@ -4,7 +4,7 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { Timestamp } from '@firebase/firestore-types';
 import { compareAsc, fromUnixTime } from 'date-fns';
-import { first, map, Observable } from 'rxjs';
+import { take, map, Observable } from 'rxjs';
 
 import { MajorEventItem } from '../shared/services/major-event.service';
 
@@ -24,7 +24,7 @@ export class TabEventsPage {
   constructor(public afs: AngularFirestore, public auth: AngularFireAuth) {}
 
   ngOnInit() {
-    this.auth.user.pipe(first()).subscribe((user) => {
+    this.auth.user.pipe(take(1)).subscribe((user) => {
       this.majorEvents$ = this.afs
         .collection<MajorEventItem>('majorEvents', (ref) => {
           return ref.orderBy('eventStartDate', 'asc');

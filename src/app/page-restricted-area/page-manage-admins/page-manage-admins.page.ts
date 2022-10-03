@@ -5,7 +5,7 @@ import { AngularFireFunctions } from '@angular/fire/compat/functions';
 import { FormGroup, FormControl } from '@angular/forms';
 import { ToastController } from '@ionic/angular';
 
-import { first } from 'rxjs/operators';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-page-manage-admins',
@@ -44,7 +44,7 @@ export class PageManageAdminsPage implements OnInit {
   addAdmin() {
     const addAdminRole = this.fns.httpsCallable('addAdminRole');
     addAdminRole({ email: this.addAdminForm.value.adminEmail })
-      .pipe(first())
+      .pipe(take(1))
       .subscribe((res) => {
         this.successToast();
         this.addAdminForm.reset();
@@ -54,7 +54,7 @@ export class PageManageAdminsPage implements OnInit {
   removeAdmin() {
     const removeAdminRole = this.fns.httpsCallable('removeAdminRole');
     removeAdminRole({ email: this.removeAdminForm.value.adminEmail })
-      .pipe(first())
+      .pipe(take(1))
       .subscribe((res) => {
         this.successToast();
         this.removeAdminForm.reset();

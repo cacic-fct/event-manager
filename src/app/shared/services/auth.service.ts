@@ -7,7 +7,7 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
-import { first, Observable } from 'rxjs';
+import { take, Observable } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { PageVerifyPhonePage } from 'src/app/page-verify-phone/page-verify-phone.page';
 
@@ -40,7 +40,7 @@ export class AuthService {
           if (professors) {
             const professorsList: string[] = JSON.parse(professors);
             if (professorsList.includes(user.email)) {
-              this.auth.idTokenResult.pipe(first()).subscribe((idTokenResult) => {
+              this.auth.idTokenResult.pipe(take(1)).subscribe((idTokenResult) => {
                 const claims = idTokenResult.claims;
                 if (!claims.role || claims.role < 3000) {
                   const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
@@ -53,7 +53,7 @@ export class AuthService {
 
                   const addProfessor = this.fns.httpsCallable('addProfessorRole');
                   addProfessor({ email: user.email })
-                    .pipe(first())
+                    .pipe(take(1))
                     .subscribe(() => {
                       this.professorRoleSuccess();
                     });
@@ -176,7 +176,7 @@ export class AuthService {
 
   private CompareUserdataVersion(user: firebase.User) {
     getBooleanChanges(this.remoteConfig, 'registerPrompt')
-      .pipe(first(), trace('remoteconfig'))
+      .pipe(take(1), trace('remoteconfig'))
       .subscribe((registerPrompt) => {
         if (registerPrompt) {
           this.afs

@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { CoursesService } from '../shared/services/courses.service';
 
-import { first, Observable, BehaviorSubject } from 'rxjs';
+import { take, Observable, BehaviorSubject } from 'rxjs';
 import { User } from '../shared/services/user';
 import { trace } from '@angular/fire/compat/performance';
 
@@ -33,7 +33,7 @@ export class PageProfilePage implements OnInit {
   }
 
   ngOnInit() {
-    this.user$ = this.auth.user.pipe(first(), trace('auth'));
+    this.user$ = this.auth.user.pipe(take(1), trace('auth'));
 
     this.user$.subscribe((user) => {
       user.getIdTokenResult().then((idTokenResult) => {
@@ -43,7 +43,7 @@ export class PageProfilePage implements OnInit {
       });
 
       if (user) {
-        this.userFirestore$ = this.afs.doc<User>(`users/${user.uid}`).valueChanges().pipe(first(), trace('firestore'));
+        this.userFirestore$ = this.afs.doc<User>(`users/${user.uid}`).valueChanges().pipe(take(1), trace('firestore'));
       }
     });
   }

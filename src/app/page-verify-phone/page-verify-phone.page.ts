@@ -5,7 +5,7 @@ import firebase from 'firebase/compat/app';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { WindowService } from '../shared/services/window.service';
 
-import { timer, first } from 'rxjs';
+import { timer, take } from 'rxjs';
 
 import { ModalController } from '@ionic/angular';
 
@@ -54,12 +54,12 @@ export class PageVerifyPhonePage implements OnInit {
 
     this.setTimer();
 
-    this.auth.authState.pipe(first()).subscribe((userState) => {
+    this.auth.authState.pipe(take(1)).subscribe((userState) => {
       this.afs
         .collection('users')
         .doc<User>(userState.uid)
         .valueChanges()
-        .pipe(first())
+        .pipe(take(1))
         .subscribe((user) => {
           if (user.phone) {
             this.updatePhone = true;
@@ -102,7 +102,7 @@ export class PageVerifyPhonePage implements OnInit {
     const fullPhoneNumber = '+55 ' + phone;
     const appVerifier = this.windowRef.recaptchaVerifier;
 
-    this.auth.authState.pipe(first()).subscribe((user) => {
+    this.auth.authState.pipe(take(1)).subscribe((user) => {
       if (user) {
         authFirebase
           .linkWithPhoneNumber(user, fullPhoneNumber, appVerifier)
@@ -151,7 +151,7 @@ export class PageVerifyPhonePage implements OnInit {
         this.verificationCode
       );
 
-      this.auth.authState.pipe(first()).subscribe((user) => {
+      this.auth.authState.pipe(take(1)).subscribe((user) => {
         user
           .updatePhoneNumber(phoneCredential)
           .then(() => {
