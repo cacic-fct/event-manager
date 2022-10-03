@@ -13,8 +13,8 @@
 </ion-header>
 
 <ion-content>
-  <ion-card *ngIf="user$ | async as user; else error">
-    <ng-container *ngIf="userFirestore$ | async as userFirestore; else error">
+  <ion-card *ngIf="user$ | async as user; else loading">
+    <ng-container *ngIf="userFirestore$ | async as userFirestore; else loading">
       <div class="ion-text-center ion-padding-horizontal ion-padding-top">
         <ion-avatar class="margin-horizontal-auto">
           <img [src]="user.photoURL" />
@@ -56,6 +56,43 @@
   </ion-card>
 </ion-content>
 
-<ng-template #error>
-  <h1><ion-text color="danger">Ocorreu um erro ao mostrar as suas informações</ion-text></h1>
+<ng-template #loading>
+  <ion-card>
+    <ng-container>
+      <div class="ion-text-center ion-padding-horizontal ion-padding-top">
+        <ion-avatar class="margin-horizontal-auto">
+          <ion-skeleton-text [animated]="true"></ion-skeleton-text>
+        </ion-avatar>
+        <ion-card-title>
+          <h2>
+            <ion-skeleton-text
+              class="margin-horizontal-auto"
+              [animated]="true"
+              style="width: 200px; height: 24px"></ion-skeleton-text>
+          </h2>
+
+          <p class="no-margin-bottom">
+            <ion-skeleton-text
+              class="margin-horizontal-auto"
+              [animated]="true"
+              style="width: 250px; height: 20px"></ion-skeleton-text>
+          </p>
+
+          <p style="margin: auto 0">
+            <ion-skeleton-text
+              [animated]="true"
+              class="margin-horizontal-auto"
+              style="width: 300px; height: 20px"></ion-skeleton-text>
+          </p>
+        </ion-card-title>
+      </div>
+
+      <div class="qr-code ion-text-center" style="height: 353.3px">
+        <ion-skeleton-text
+          [animated]="false"
+          class="margin-horizontal-auto"
+          style="width: 320px; height: 100%"></ion-skeleton-text>
+      </div>
+    </ng-container>
+  </ion-card>
 </ng-template>

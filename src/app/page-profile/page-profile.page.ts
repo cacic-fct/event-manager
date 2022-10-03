@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { CoursesService } from '../shared/services/courses.service';
 
-import { first, Observable, map, BehaviorSubject } from 'rxjs';
+import { first, Observable, BehaviorSubject } from 'rxjs';
 import { User } from '../shared/services/user';
 import { trace } from '@angular/fire/compat/performance';
 
