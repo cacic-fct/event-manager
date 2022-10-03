@@ -24,7 +24,7 @@
 
 <ion-content [fullscreen]="true">
   <ion-card *ngIf="auth.authState | async">
-    <ion-item routerLink="/profile" lines="none">
+    <ion-item routerLink="/profile">
       <ion-icon name="person-circle-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Meu perfil</ion-label>
     </ion-item>
@@ -35,6 +35,10 @@
         aria-hidden="true"></ion-icon>
       <ion-label>Leitor de QR Code</ion-label>
     </ion-item>-->
+    <ion-item routerLink="/inscricoes" lines="none">
+      <ion-icon name="albums-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Minhas inscrições</ion-label>
+    </ion-item>
   </ion-card>
 
   <ion-card>

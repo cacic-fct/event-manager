@@ -1,0 +1,253 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/menu"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Minhas inscrições</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ng-container *ngIf="subscriptions$ | async as subscriptions; else loading">
+    <h1 *ngIf="subscriptions.length === 0" class="ion-text-center">Nenhuma inscrição encontrada</h1>
+
+    <ion-list *ngFor="let subscription of subscriptions">
+      <ng-container *ngIf="subscription.majorEvent | async as majorEventData">
+        <ng-container *ngIf="subscription.userData | async as subscriptionData">
+          <ng-container [ngSwitch]="getCardType(majorEventData, subscriptionData)">
+            <div *ngSwitchCase="-1">
+              <ng-container
+                *ngTemplateOutlet="pastEvent; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+              </ng-container>
+            </div>
+            <div *ngSwitchCase="0">
+              <ng-container
+                *ngTemplateOutlet="waitingPayment; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+              </ng-container>
+            </div>
+            <div *ngSwitchCase="1">
+              <ng-container
+                *ngTemplateOutlet="waitingConfirmation; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+              </ng-container>
+            </div>
+            <div *ngSwitchCase="2">
+              <ng-container
+                *ngTemplateOutlet="paymentConfirmed; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+              </ng-container>
+            </div>
+            <div *ngSwitchCase="3">
+              <ng-container
+                *ngTemplateOutlet="paymentError; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+              </ng-container>
+            </div>
+            <div *ngSwitchCase="4">
+              <ng-container
+                *ngTemplateOutlet="eventFull; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+              </ng-container>
+            </div>
+          </ng-container>
+        </ng-container>
+      </ng-container>
+    </ion-list>
+  </ng-container>
+
+  <ng-template
+    #ionCardHeader
+    let-title="title"
+    let-subType="subType"
+    let-price="price"
+    let-color="color"
+    let-majorEventData="majorEventData">
+    <ion-card-header>
+      <ion-card-title [color]="color">{{majorEventData.name.toUpperCase()}} </ion-card-title>
+
+      <ion-card-subtitle [color]="color">
+        <p>{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
+        <!-- prettier-ignore -->
+        <p>
+          Data do evento: {{ getDateFromTimestamp(majorEventData.eventStartDate) | date: 'dd/MM/yyyy' }} – {{ getDateFromTimestamp(majorEventData.eventEndDate) | date: 'dd/MM/yyyy' }}
+        </p>
+        <!-- prettier-ignore -->
+        <p>
+          Período de inscrições: {{ getDateFromTimestamp(majorEventData.subscriptionStartDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }} – {{ getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }}
+        </p>
+      </ion-card-subtitle>
+
+      <ion-card-subtitle [color]="color"> </ion-card-subtitle>
+
+      <!-- prettier-ignore -->
+      <ion-card-subtitle [color]="color"> 
+
+      </ion-card-subtitle>
+    </ion-card-header>
+  </ng-template>
+
+  <ng-template #outOfDate>
+    <ion-card-content> Fora do período de pagamento. </ion-card-content>
+  </ng-template>
+
+  <ng-template #waitingPayment let-majorEventData="majorEventData" let-subscriptionData="subscriptionData">
+    <ion-card>
+      <ng-container
+        *ngTemplateOutlet="ionCardHeader; context: {majorEventData: majorEventData, subType: subscriptionData.subscriptionType, price: subscriptionData.payment.price, color: ''}">
+      </ng-container>
+      <ng-container *ngIf="isInSubscriptionPeriod(majorEventData.subscriptionEndDate); else outOfDate">
+        <!-- prettier-ignore -->
+        <ion-card-content>
+          Aguardando o pagamento e envio do comprovante <br />
+
+          Efetue o pagamento e envio do comprovante até {{ getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }}
+        </ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col>
+              <ion-button [routerLink]="['pagar', majorEventData.id]">
+                <ion-icon slot="start" name="cash"></ion-icon>
+                Efetuar pagamento
+              </ion-button>
+              <ion-button [routerLink]="['pagar', majorEventData.id]">
+                <ion-icon slot="start" name="paper-plane"></ion-icon>
+                Enviar comprovante
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ng-container>
+    </ion-card>
+  </ng-template>
+
+  <ng-template #waitingConfirmation let-majorEventData="majorEventData" let-subscriptionData="subscriptionData">
+    <ion-card>
+      <ng-container
+        *ngTemplateOutlet="ionCardHeader; context: {majorEventData: majorEventData, subType: subscriptionData.subscriptionType, price: subscriptionData.payment.price, color: ''}">
+      </ng-container>
+
+      <ion-card-content>
+        Comprovante enviado em {{getDateFromTimestamp(subscriptionData.payment.time) | date: 'dd/MM/yyyy — HH:mm'}}
+        <br />
+        Aguardando a confirmação do pagamento pelos organizadores do evento
+      </ion-card-content>
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-button disabled="">
+              <ion-icon slot="start" name="time"></ion-icon>
+              Aguardando confirmação
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card>
+  </ng-template>
+
+  <ng-template #paymentConfirmed let-majorEventData="majorEventData" let-subscriptionData="subscriptionData">
+    <ion-card>
+      <ng-container
+        *ngTemplateOutlet="ionCardHeader; context: {majorEventData: majorEventData, subType: subscriptionData.subscriptionType, price: subscriptionData.payment.price, color: ''}">
+      </ng-container>
+
+      <ion-card-content>
+        Inscrição realizada
+        <br />
+        Pagamento confirmado em {{getDateFromTimestamp(subscriptionData.payment.time) | date: 'dd/MM/yyyy — HH:mm'}}
+
+        <ion-grid>
+          <ion-row>
+            <ion-col>
+              <ion-button disabled="">
+                <ion-icon slot="start" name="checkmark"></ion-icon>
+                Inscrito
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+  </ng-template>
+
+  <ng-template #paymentError let-majorEventData="majorEventData" let-subscriptionData="subscriptionData">
+    <ion-card>
+      <ng-container
+        *ngTemplateOutlet="ionCardHeader; context: {majorEventData: majorEventData, subType: subscriptionData.subscriptionType, price: subscriptionData.payment.price, color: 'danger'}">
+      </ng-container>
+      <ion-card-content>
+        <ion-text color="danger">
+          <b>Erro no pagamento:</b>
+          {{ subscriptionData.payment.error || 'Não foi possível confirmar o pagamento. Tente novamente.' }}
+        </ion-text>
+      </ion-card-content>
+
+      <ng-container *ngIf="isInSubscriptionPeriod(majorEventData.subscriptionEndDate); else outOfDate">
+        <ion-grid>
+          <ion-row>
+            <ion-col>
+              <ion-button color="danger" [routerLink]="['pagar', majorEventData.id]">
+                <ion-icon slot="start" name="paper-plane"></ion-icon>
+                Reenviar comprovante
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ng-container>
+    </ion-card>
+  </ng-template>
+
+  <ng-template #eventFull let-majorEventData="majorEventData" let-subscriptionData="subscriptionData">
+    <ion-card>
+      <ng-container
+        *ngTemplateOutlet="ionCardHeader; context: {majorEventData: majorEventData, subType: subscriptionData.subscriptionType, price: subscriptionData.payment.price, color: 'danger'}">
+      </ng-container>
+
+      <ion-card-content>
+        <ion-text color="danger">
+          <b>Não foi possível concluir a sua inscrição</b>
+          <br />
+          Não há mais vagas disponíveis no evento selecionado.
+          <br />
+          Para continuar, altere a sua inscrição.
+        </ion-text>
+      </ion-card-content>
+
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-button color="danger" [routerLink]="['/eventos/inscrever', majorEventData.id]">
+              <ion-icon slot="start" name="pencil-outline"></ion-icon>
+              Alterar inscrição
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card>
+  </ng-template>
+
+  <ng-template #pastEvent let-majorEventData="majorEventData" let-subscriptionData="subscriptionData">
+    <ion-card>
+      <ng-container
+        *ngTemplateOutlet="ionCardHeader; context: {majorEventData: majorEventData, subType: subscriptionData.subscriptionType, price: subscriptionData.payment.price, color: 'medium'}">
+      </ng-container>
+
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-button color="secondary">
+              <!-- #TODO: Redirect to a page where the users can get theirs certificates -->
+              <ion-icon slot="start" name="document-text-outline"></ion-icon>
+              Listar certificados
+            </ion-button>
+            <ng-container *ngIf="majorEventData.button && majorEventData.button.url">
+              <ion-button color="secondary" [href]="majorEventData.button.url" target="_blank">
+                <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
+                Mais informações
+              </ion-button>
+            </ng-container>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card>
+  </ng-template>
+
+  <ng-template #loading>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  </ng-template>
+</ion-content>

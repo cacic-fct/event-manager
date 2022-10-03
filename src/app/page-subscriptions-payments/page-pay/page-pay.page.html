@@ -2,7 +2,7 @@
   <ion-toolbar>
     <ion-buttons slot="start">
       <!-- TODO: Alterar -->
-      <ion-back-button defaultHref="/pagamentos"></ion-back-button>
+      <ion-back-button defaultHref="/inscricoes"></ion-back-button>
     </ion-buttons>
     <ion-title>Realizar pagamento</ion-title>
   </ion-toolbar>
@@ -19,7 +19,7 @@
         </ion-card-subtitle>
         <!-- prettier-ignore -->
         <ion-card-subtitle>
-          Efetue o pagamento até {{ getDateFromTimestamp(majorEvent.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }} 
+          Efetue o pagamento e envio do comprovante até {{ getDateFromTimestamp(majorEvent.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }} 
         </ion-card-subtitle>
         <ion-card-content>
           <h2>Dados para o pagamento</h2>

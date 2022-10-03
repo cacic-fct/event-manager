@@ -86,10 +86,12 @@ const routes: Routes = [
       import('./page-subscription/page-subscription.module').then((m) => m.PageSubscriptionPageModule),
     ...canActivate(redirectUnauthorizedToLogin),
   },
-  // TODO: Colocar dentro de minhas-inscricoes
   {
-    path: 'pagar/:eventID',
-    loadChildren: () => import('./page-pay/page-pay.module').then((m) => m.PagePayPageModule),
+    path: 'inscricoes',
+    title: 'Minhas inscrições',
+    loadChildren: () =>
+      import('./page-subscriptions-payments/page-subscriptions.module').then((m) => m.PageSubscriptionsPageModule),
+    ...canActivate(redirectUnauthorizedToLogin),
   },
   {
     path: 'page-debug',
