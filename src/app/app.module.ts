@@ -70,6 +70,7 @@ import {
     AngularFireModule.initializeApp(environment.firebase),
     AngularFireAnalyticsModule,
     AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
+    AngularFireStorageModule,
     AngularFirePerformanceModule,
     AngularFireFunctionsModule,
     ServiceWorkerModule.register('ngsw-worker.js', {
@@ -117,7 +118,7 @@ import {
     PerformanceMonitoringService,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     { provide: LOCALE_ID, useValue: 'pt-BR' },
-    { provide: FIRESTORE_SETTINGS, useValue: { ignoreUndefinedProperties: true } },
+    { provide: FIRESTORE_SETTINGS, useValue: { ignoreUndefinedProperties: true, merge: true } },
     { provide: USE_DEVICE_LANGUAGE, useValue: true },
     { provide: APP_VERSION, useValue: GlobalConstantsService.appVersion },
     { provide: APP_NAME, useValue: GlobalConstantsService.appName },
