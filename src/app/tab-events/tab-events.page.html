@@ -5,7 +5,7 @@
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="majorEvents$ | async; let majorEventsList; else loading">
+  <ng-container *ngIf="majorEvents$ | async as majorEventsList; else loading">
     <h1 *ngIf="majorEventsList.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
 
     <div *ngIf="majorEventsList.length > 0" class="event-container">
@@ -84,12 +84,15 @@
           </div>
 
           <div class="ion-padding">
-            <ion-button
-              *ngIf="(event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(getDateFromTimestamp(event.subscriptionStartDate), getDateFromTimestamp(event.subscriptionEndDate))"
-              [routerLink]="['inscrever',event.id]">
-              Inscreva-se
-            </ion-button>
-
+            <ng-container
+              *ngIf="(event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(getDateFromTimestamp(event.subscriptionStartDate), getDateFromTimestamp(event.subscriptionEndDate))">
+              <ng-container *ngIf="event.isSubscribed | async as isSubscribed; else notSubscribed">
+                <ion-button *ngIf="isSubscribed" disabled=""> Inscrito </ion-button>
+              </ng-container>
+              <ng-template #notSubscribed>
+                <ion-button [routerLink]="['inscrever', event.id]"> Inscreva-se </ion-button>
+              </ng-template>
+            </ng-container>
             <ion-button *ngIf="event.button?.url" [href]="event.button.url" fill="clear" target="_blank">
               {{ event.button.text || 'Saiba mais' }}
             </ion-button>

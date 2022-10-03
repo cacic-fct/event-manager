@@ -3,48 +3,55 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { Timestamp } from '@firebase/firestore-types';
-import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { compareAsc, fromUnixTime } from 'date-fns';
-import { map, Observable, switchMap } from 'rxjs';
+import { first, map, Observable } from 'rxjs';
 
 import { MajorEventItem } from '../shared/services/major-event.service';
-@UntilDestroy()
+
 @Component({
   selector: 'app-tab-events',
   templateUrl: 'tab-events.page.html',
   styleUrls: ['tab-events.page.scss'],
 })
 export class TabEventsPage {
-  majorEvents$: Observable<MajorEventItem[]>;
+  majorEvents$: Observable<
+    (MajorEventItem & {
+      isSubscribed: Observable<boolean>;
+    })[]
+  >;
   today: Date = new Date();
 
   constructor(public afs: AngularFirestore, public auth: AngularFireAuth) {}
 
   ngOnInit() {
-    this.majorEvents$ = this.afs
-      .collection<MajorEventItem>('majorEvents', (ref) => {
-        return ref.orderBy('eventStartDate', 'asc');
-      })
-      .valueChanges({ idField: 'id' })
-      .pipe(trace('firestore'));
+    this.auth.user.pipe(first()).subscribe((user) => {
+      this.majorEvents$ = this.afs
+        .collection<MajorEventItem>('majorEvents', (ref) => {
+          return ref.orderBy('eventStartDate', 'asc');
+        })
+        .valueChanges({ idField: 'id' })
+        .pipe(
+          trace('firestore'),
+          map((event) => {
+            return event.map((event) => {
+              return {
+                ...event,
+                isSubscribed: user
+                  ? this.afs
+                      .doc(`users/${user.uid}/majorEventSubscriptions/${event.id}`)
+                      .get()
+                      .pipe(
+                        map((doc) => {
+                          return doc.exists;
+                        })
+                      )
+                  : null,
+              };
+            });
+          })
+        );
+    });
   }
-
-  // checkIfSubscribed(eventID: string) {
-  //   return this.auth.user.pipe(
-  //     untilDestroyed(this),
-  //     switchMap((user) => {
-  //       if (user) {
-  //         return this.afs
-  //           .collection('users')
-  //           .doc(user.uid)
-  //           .collection('subscriptions')
-  //           .doc(eventID)
-  //           .valueChanges()
-  //           .pipe(untilDestroyed(this));
-  //       }
-  //     })
-  //   );
-  // }
 
   getDateFromTimestamp(timestamp: Timestamp): Date {
     return fromUnixTime(timestamp.seconds);
