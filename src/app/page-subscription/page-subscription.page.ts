@@ -216,15 +216,19 @@ export class PageSubscriptionPage implements OnInit {
             }
 
             return;
+
+          case 'palestra':
+            if (this.eventsSelected['palestra'].length < this.maxLectures) {
+              this.eventsSelected['palestra'].push(event);
+            }
+            return;
+
           default:
             if (!(name in this.eventsSelected)) {
               this.eventsSelected[name] = [];
             }
 
-            if (this.eventsSelected[name].length < this.maxLectures) {
-              this.eventsSelected[name].push(event);
-            }
-
+            this.eventsSelected[name].push(event);
             return;
         }
       } else {
