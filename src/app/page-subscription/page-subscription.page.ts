@@ -374,7 +374,7 @@ export class PageSubscriptionPage implements OnInit {
                           this.successSwal.fire();
                           setTimeout(() => {
                             this.successSwal.close();
-                            this.router.navigate(['/eventos'], { replaceUrl: true });
+                            this.router.navigate(['/inscricoes/pagar', this.majorEventID], { replaceUrl: true });
                           }, 2000);
                         });
                     })
