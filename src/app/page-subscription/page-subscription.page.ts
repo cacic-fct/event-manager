@@ -194,44 +194,51 @@ export class PageSubscriptionPage implements OnInit {
     const checked: boolean = e.currentTarget.checked;
     const name: string = e.currentTarget.name;
 
-    if (this.eventsSelected[name]) {
-      if (checked) {
-        switch (name) {
-          case 'minicurso':
-            if (this.eventsSelected['minicurso'].length - this.eventGroupMinicursoCount < this.maxCourses) {
-              this.eventsSelected['minicurso'].push(event);
-            }
-
-            if (!this.groupInSelection && event.eventGroup) {
-              this.groupInSelection = true;
-              event.eventGroup.forEach((eventFromGroup) => {
-                if (eventFromGroup === event.id) {
-                  return;
-                }
-
-                this.eventGroupMinicursoCount++;
-                this.dataForm.get(eventFromGroup).setValue(true);
-              });
-              this.groupInSelection = false;
-            }
-
+    if (checked) {
+      switch (name) {
+        case 'minicurso':
+          if (this.eventsSelected['minicurso'].length - this.eventGroupMinicursoCount < this.maxCourses) {
+            this.eventsSelected['minicurso'].push(event);
+          } else {
+            this.dataForm.get(event.id).setValue(false);
+            this.presentLimitReachedToast('minicursos', this.maxCourses.toString());
             return;
+          }
 
-          case 'palestra':
-            if (this.eventsSelected['palestra'].length < this.maxLectures) {
-              this.eventsSelected['palestra'].push(event);
-            }
-            return;
+          if (!this.groupInSelection && event.eventGroup) {
+            this.groupInSelection = true;
+            event.eventGroup.forEach((eventFromGroup) => {
+              if (eventFromGroup === event.id) {
+                return;
+              }
 
-          default:
-            if (!(name in this.eventsSelected)) {
-              this.eventsSelected[name] = [];
-            }
+              this.eventGroupMinicursoCount++;
+              this.dataForm.get(eventFromGroup).setValue(true);
+            });
+            this.groupInSelection = false;
+          }
 
-            this.eventsSelected[name].push(event);
-            return;
-        }
-      } else {
+          return;
+
+        case 'palestra':
+          if (this.eventsSelected['palestra'].length < this.maxLectures) {
+            this.eventsSelected['palestra'].push(event);
+          } else {
+            this.dataForm.get(event.id).setValue(false);
+            this.presentLimitReachedToast('palestras', this.maxLectures.toString());
+          }
+          return;
+
+        default:
+          if (!(name in this.eventsSelected)) {
+            this.eventsSelected[name] = [];
+          }
+
+          this.eventsSelected[name].push(event);
+          return;
+      }
+    } else {
+      if (this.eventsSelected[name].some((e) => e.id === event.id)) {
         switch (name) {
           case 'minicurso':
             this.eventsSelected['minicurso'] = this.eventsSelected['minicurso'].filter((e) => e.id !== event.id);
