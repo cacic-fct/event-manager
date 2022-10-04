@@ -228,7 +228,6 @@ export class PagePayPage implements OnInit {
         this.toastSuccess();
         setTimeout(() => {
           this.toastController.dismiss();
-          this.router.navigate(['/inscricoes'], { replaceUrl: true });
         }, 1500);
       })
       .catch((err) => {
