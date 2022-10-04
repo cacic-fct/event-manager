@@ -41,9 +41,9 @@ export class PageSubscriptionsPage implements OnInit {
               return subscriptions.map((subscription) => {
                 return {
                   id: subscription.id,
-                  userData: subscription.reference.get().then((doc) => {
-                    return doc.data();
-                  }),
+                  userData: this.afs
+                    .doc<MajorEventSubscription>(`majorEvents/${subscription.id}/subscriptions/${user.uid}`)
+                    .valueChanges(),
                   majorEvent: this.afs
                     .doc<MajorEventItem>(`majorEvents/${subscription.id}`)
                     .valueChanges({ idField: 'id' }),
@@ -85,6 +85,6 @@ export class PageSubscriptionsPage implements OnInit {
 interface Subscription {
   id?: string;
   reference?: DocumentReference<MajorEventSubscription>;
-  userData?: Promise<MajorEventSubscription>;
+  userData?: Observable<MajorEventSubscription>;
   majorEvent?: Observable<MajorEventItem>;
 }

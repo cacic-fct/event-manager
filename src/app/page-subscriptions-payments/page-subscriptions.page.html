@@ -150,18 +150,18 @@
         Inscrição realizada
         <br />
         Pagamento confirmado em {{getDateFromTimestamp(subscriptionData.payment.time) | date: 'dd/MM/yyyy — HH:mm'}}
-
-        <ion-grid>
-          <ion-row>
-            <ion-col>
-              <ion-button disabled="">
-                <ion-icon slot="start" name="checkmark"></ion-icon>
-                Inscrito
-              </ion-button>
-            </ion-col>
-          </ion-row>
-        </ion-grid>
       </ion-card-content>
+
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-button disabled="">
+              <ion-icon slot="start" name="checkmark"></ion-icon>
+              Inscrito
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
     </ion-card>
   </ng-template>
 
