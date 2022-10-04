@@ -1,7 +1,7 @@
 <ion-header>
   <ion-toolbar>
     <ion-title>Confirmar inscrição</ion-title>
-    <ion-buttons slot="start">
+    <ion-buttons style="max-width: 100px" slot="end">
       <ion-button (click)="closeModal()">Cancelar</ion-button>
     </ion-buttons>
   </ion-toolbar>
@@ -105,7 +105,6 @@
           *ngIf="i == 0 || !dayCompare(eventsArray[i - 1].eventStartDate, event.eventStartDate)">
           <ion-label> {{ formatDate(getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
         </ion-item-divider>
-
         <ion-list>
           <ion-item>
             <img [src]="getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
