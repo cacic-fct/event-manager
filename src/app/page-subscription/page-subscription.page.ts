@@ -197,6 +197,12 @@ export class PageSubscriptionPage implements OnInit {
     const name: string = e.currentTarget.name;
 
     if (checked) {
+      if (event.slotsAvailable <= 0) {
+        this.dataForm.get(event.id).setValue(false);
+        this.dataForm.get(event.id).disable();
+        return;
+      }
+
       switch (name) {
         case 'minicurso':
           if (this.eventsSelected['minicurso'].length - this.eventGroupMinicursoCount < this.maxCourses) {
