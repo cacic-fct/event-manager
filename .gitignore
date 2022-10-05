@@ -90,4 +90,6 @@ emulator-data
 firebase-export-*
 storage.rules
 
+# ASDF
+.tool-versions
 .eslintcache

@@ -1,0 +1,109 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Comprovantes de {{ eventName$ | async }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
+    <h4 *ngIf="subscriptions.length == 0">Não há nenhuma aprovação pendente.</h4>
+    <ng-container *ngFor="let subscription of subscriptions">
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title
+            >{{ subscription.userDisplayName$ | async }} - {{ subscription.payment.price |
+            currency:'BRL':'symbol':'1.2-2' }}</ion-card-title
+          >
+          <ion-card-subtitle>
+            Se inscreveu em: {{ getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
+            <br />
+            Última alteração na inscrição: {{ getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm'
+            }}
+          </ion-card-subtitle>
+        </ion-card-header>
+        <ion-card-content>
+          <ng-container *ngIf="subscription.subEventsInfo.length != 0">
+            <ng-container *ngFor="let subEventInfo$ of subscription.subEventsInfo">
+              <ng-container *ngIf="subEventInfo$ | async as subEventInfo; else: loading">
+                <ion-text [color]="subEventInfo.availableSlots? '' : 'danger'">
+                  <p>{{ subEventInfo.name }}: {{ subEventInfo.availableSlots }} vagas disponíveis.</p>
+                </ion-text>
+              </ng-container>
+            </ng-container>
+          </ng-container>
+          <div class="img-container">
+            <img [src]="imgURL(subscription.id) | getDownloadURL" />
+          </div>
+        </ion-card-content>
+      </ion-card>
+    </ng-container>
+    <ion-fab *ngIf="subscriptions.length > 0" vertical="bottom" horizontal="end" slot="fixed">
+      <ion-fab-button>
+        <ion-icon name="add"></ion-icon>
+      </ion-fab-button>
+      <ion-fab-list side="top">
+        <ion-fab-button color="success" (click)="confirm()">
+          <ion-icon name="checkmark"></ion-icon>
+        </ion-fab-button>
+      </ion-fab-list>
+      <ion-fab-list side="start">
+        <ion-fab-button color="danger" (click)="refuseModal.present()">
+          <ion-icon name="close"></ion-icon>
+        </ion-fab-button>
+      </ion-fab-list>
+    </ion-fab>
+  </ng-container>
+</ion-content>
+
+<ng-template #loading>
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
+</ng-template>
+
+<!-- Modal de recusa -->
+<ion-modal #refuseModal>
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-button (click)="refuseModal.dismiss()">Cancelar</ion-button>
+        </ion-buttons>
+        <ion-title>Recusar comprovante de pagamento</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="refuse()" [strong]="true" [disabled]="this.refuseForm.invalid">Confirmar</ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <form [formGroup]="refuseForm" (ngSubmit)="refuse()">
+        <ion-radio-group formControlName="radioGroup">
+          <ion-item>
+            <ion-label>Erro no comprovante</ion-label>
+            <ion-radio slot="start" value="invalidReceipt"></ion-radio>
+          </ion-item>
+
+          <ion-item>
+            <ion-label>Não há mais vagas</ion-label>
+            <ion-radio slot="start" value="noSlots"></ion-radio>
+          </ion-item>
+        </ion-radio-group>
+        <ng-container *ngIf="refuseForm.get('radioGroup').value == 'invalidReceipt'">
+          <ion-item>
+            <ion-label position="floating">Motivo da recusa</ion-label>
+            <ion-input formControlName="errorMessage"></ion-input>
+          </ion-item>
+        </ng-container>
+      </form>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- Confirmação do comprovante gera um alert de confirmação -->
+<swal
+  #swalConfirm
+  title="Comprovante validado"
+  icon="success"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false">
+</swal>

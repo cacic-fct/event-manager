@@ -73,6 +73,7 @@ import {
     AngularFireStorageModule,
     AngularFirePerformanceModule,
     AngularFireFunctionsModule,
+    AngularFireStorageModule,
     ServiceWorkerModule.register('ngsw-worker.js', {
       enabled: environment.production,
       registrationStrategy: 'registerImmediately',

@@ -12,6 +12,11 @@ const routes: Routes = [
     path: 'adicionar',
     loadChildren: () => import('./add-major-event/add-major-event.module').then((m) => m.AddMajorEventPageModule),
   },
+  {
+    path: 'validar-comprovante/:eventId',
+    title: 'Validar comprovante',
+    loadChildren: () => import('./validate-receipt/validate-receipt.module').then((m) => m.ValidateReceiptPageModule),
+  },
 ];
 
 @NgModule({
