@@ -136,9 +136,7 @@ export class PageRegisterPage implements OnInit {
       dataVersion: this.dataVersion,
       cpf: this.dataForm.value.cpf,
     };
-    userRef.set(userData, {
-      merge: true,
-    });
+    userRef.update(userData);
 
     this.mySwal.fire();
     // Fake delay to let animation finish
@@ -160,6 +158,9 @@ export class PageRegisterPage implements OnInit {
   formatCPF() {
     // Format cpf value to '000.000.000-00'
     let cpf = this.dataForm.value.cpf;
+    if (!cpf) {
+      return;
+    }
     cpf = cpf.replace(/\D/g, '');
     cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
     cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
