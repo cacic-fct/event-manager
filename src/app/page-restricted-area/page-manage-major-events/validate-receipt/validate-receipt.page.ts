@@ -1,16 +1,17 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { ActivatedRoute } from '@angular/router';
-import { Timestamp } from '@firebase/firestore-types';
+import { Timestamp } from '@firebase/firestore';
+import { increment } from '@angular/fire/firestore';
+import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { fromUnixTime } from 'date-fns';
-import { Observable, map, first, take } from 'rxjs';
+import { Observable, map, take } from 'rxjs';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { User } from 'src/app/shared/services/user';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { trace } from '@angular/fire/compat/performance';
 import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
-import * as firestore from 'firebase/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { AlertController, IonModal } from '@ionic/angular';
@@ -98,7 +99,7 @@ export class ValidateReceiptPage implements OnInit {
       );
   }
 
-  getDateFromTimestamp(timestamp: Timestamp): Date {
+  getDateFromTimestamp(timestamp: TimestampType): Date {
     return fromUnixTime(timestamp.seconds);
   }
 
@@ -112,9 +113,29 @@ export class ValidateReceiptPage implements OnInit {
           this.subscriptionsQuery.doc(docId).update({
             // @ts-ignore
             'payment.status': 2, // Novo status: pagamento aprovado
-            'payment.time': firestore.Timestamp.fromDate(new Date()), // Momento da mudança
+            'payment.time': Timestamp.fromDate(new Date()), // Momento da mudança
             'payment.author': user.uid, // Autor da mudança
           });
+
+          // For every event the user subscribed to, decrement the available slots
+          this.subscriptionsQuery
+            .doc(docId)
+            .valueChanges()
+            .pipe(take(1))
+            .subscribe((sub) => {
+              sub.subscribedToEvents.forEach((eventID) => {
+                this.afs
+                  .collection('events')
+                  .doc<EventItem>(eventID)
+                  .update({
+                    // @ts-ignore
+                    slotsAvailable: increment(-1),
+                    // @ts-ignore
+                    numberOfSubscriptions: increment(1),
+                  });
+              });
+            });
+
           this.swalConfirm.fire();
           setTimeout(() => {
             this.swalConfirm.close();
@@ -141,7 +162,7 @@ export class ValidateReceiptPage implements OnInit {
             this.subscriptionsQuery.doc(docId).update({
               // @ts-ignore
               'payment.status': 3, // Novo status: erro personalizado
-              'payment.time': firestore.Timestamp.fromDate(new Date()),
+              'payment.time': Timestamp.fromDate(new Date()),
               'payment.author': user.uid,
               'payment.error': this.refuseForm.get('errorMessage').value,
             });
@@ -173,7 +194,7 @@ export class ValidateReceiptPage implements OnInit {
             this.subscriptionsQuery.doc(docId).update({
               // @ts-ignore
               'payment.status': 4,
-              'payment.time': firestore.Timestamp.fromDate(new Date()),
+              'payment.time': Timestamp.fromDate(new Date()),
               'payment.author': user.uid,
             });
             this.refuseModal.dismiss();
@@ -271,10 +292,10 @@ export class ValidateReceiptPage implements OnInit {
 interface Subscription {
   id: string;
   userDisplayName$: Observable<string>;
-  time: Timestamp;
+  time: TimestampType;
   payment: {
     status: number;
-    time: Timestamp;
+    time: TimestampType;
     error?: string;
     price?: number;
     author?: string;
