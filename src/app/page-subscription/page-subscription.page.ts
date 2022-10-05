@@ -154,8 +154,10 @@ export class PageSubscriptionPage implements OnInit {
                       .subscribe((document) => {
                         if (document.exists) {
                           const subscription = document.data() as MajorEventSubscription;
-                          if (subscription.subscribedToEvents.includes(eventItem.id)) {
+                          if (subscription.subscribedToEvents.includes(eventItem.id) && eventItem.slotsAvailable > 0) {
                             this.dataForm.get(eventItem.id).setValue(true);
+                          } else {
+                            this.dataForm.get(eventItem.id).setValue(false);
                           }
                         }
                       });
