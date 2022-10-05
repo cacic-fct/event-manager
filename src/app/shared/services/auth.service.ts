@@ -1,5 +1,5 @@
 import { Injectable, NgZone } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { User } from '../services/user';
 import firebase from 'firebase/compat/app';
@@ -28,7 +28,8 @@ export class AuthService {
     public modalController: ModalController,
     private remoteConfig: RemoteConfig,
     public toastController: ToastController,
-    private fns: AngularFireFunctions
+    private fns: AngularFireFunctions,
+    private route: ActivatedRoute
   ) {
     this.auth.authState.pipe(trace('auth')).subscribe((user) => {
       if (user) {
@@ -98,7 +99,16 @@ export class AuthService {
     try {
       this.auth.signInWithPopup(provider).then((result) => {
         this.SetUserData(result.user);
-        this.router.navigate(['/menu']);
+
+        this.route.queryParams.subscribe((params) => {
+          const redirect = params['redirect'];
+
+          if (redirect) {
+            this.router.navigate([redirect]);
+          } else {
+            this.router.navigate(['menu']);
+          }
+        });
       });
     } catch (error) {
       console.error('Login failed');
