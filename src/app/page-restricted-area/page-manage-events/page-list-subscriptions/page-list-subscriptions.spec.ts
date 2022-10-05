@@ -1,19 +1,18 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { IonicModule } from '@ionic/angular';
+import { PageListSubscriptions } from './page-list-subscriptions';
 
-import { EventListComponent } from './event-list.component';
-
-describe('EventListComponent', () => {
-  let component: EventListComponent;
-  let fixture: ComponentFixture<EventListComponent>;
+describe('PageListSubscriptionsComponent', () => {
+  let component: PageListSubscriptions;
+  let fixture: ComponentFixture<PageListSubscriptions>;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [ EventListComponent ],
-      imports: [IonicModule.forRoot()]
+      declarations: [PageListSubscriptions],
+      imports: [IonicModule.forRoot()],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(EventListComponent);
+    fixture = TestBed.createComponent(PageListSubscriptions);
     component = fixture.componentInstance;
     fixture.detectChanges();
   }));

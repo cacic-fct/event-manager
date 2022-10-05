@@ -8,12 +8,14 @@ import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
 import { fromUnixTime } from 'date-fns';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
-
 import { Timestamp } from '@firebase/firestore-types';
-
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
-import { Attendance } from '../page-attendance/page-attendance.page';
+interface Attendance {
+  user: Observable<User>;
+  time: Timestamp;
+  id?: string;
+}
 
 @UntilDestroy()
 @Component({

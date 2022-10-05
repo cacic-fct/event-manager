@@ -117,7 +117,7 @@ export class ValidateReceiptPage implements OnInit {
             'payment.author': user.uid, // Autor da mudança
           });
 
-          // For every event the user subscribed to, decrement the available slots
+          // For every event the user subscribed to, decrement the available slots and create a new subscription
           this.subscriptionsQuery
             .doc(docId)
             .valueChanges()
@@ -132,6 +132,15 @@ export class ValidateReceiptPage implements OnInit {
                     slotsAvailable: increment(-1),
                     // @ts-ignore
                     numberOfSubscriptions: increment(1),
+                  });
+
+                this.afs
+                  .collection('events')
+                  .doc<EventItem>(eventID)
+                  .collection('subscriptions')
+                  .doc(user.uid)
+                  .set({
+                    time: Timestamp.fromDate(new Date()),
                   });
               });
             });

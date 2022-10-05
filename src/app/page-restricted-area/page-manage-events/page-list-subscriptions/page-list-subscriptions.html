@@ -1,0 +1,51 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Lista de inscritos</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/area-restrita/gerenciar-eventos"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
+    <div class="ion-padding" *ngIf="event$ | async; let event">
+      <h3 style="margin-bottom: 0">{{ event.name }}</h3>
+      <h4 style="margin: 0">{{ event.shortDescription }}</h4>
+      <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}</h5>
+      <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
+    </div>
+    <div class="ion-padding-horizontal">
+      <p><b>Total de inscritos para este evento:</b> {{subscriptions.length}}</p>
+    </div>
+    <ion-item *ngFor="let subscriptionItem of subscriptions">
+      <ion-label>
+        <ng-container *ngIf="(subscriptionItem.user | async) as user">
+          <h2 class="ion-text-wrap">{{ user.displayName }}</h2>
+          <ng-container *ngIf="user.academicID; else notUnesp">
+            <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+          </ng-container>
+
+          <ng-template #notUnesp>
+            <h3 class="ion-text-wrap" *ngIf="user.academicID">Sem RA definido</h3>
+          </ng-template>
+        </ng-container>
+        <h3 class="ion-text-wrap">{{ getDateFromTimestamp(subscriptionItem.time) | date: "HH:mm:ss - dd/MM/y" }}</h3>
+      </ion-label>
+    </ion-item>
+  </ng-container>
+
+  <ng-template #loading>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  </ng-template>
+</ion-content>
+
+<swal
+  #mySwal
+  title="Evento inexistente"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false">
+</swal>

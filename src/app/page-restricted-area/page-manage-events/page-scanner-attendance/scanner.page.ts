@@ -5,20 +5,22 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
 import { User } from 'src/app/shared/services/user';
-
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { fromUnixTime } from 'date-fns';
 import { trace } from '@angular/fire/compat/performance';
 import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
-
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
 import { Timestamp } from '@firebase/firestore';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { AuthService, GetUserUIDResponse } from 'src/app/shared/services/auth.service';
 
-import { Attendance } from '../page-attendance/page-attendance.page';
+interface Attendance {
+  user: Observable<User>;
+  time: Timestamp;
+  id?: string;
+}
 
 @UntilDestroy()
 @Component({
@@ -97,7 +99,11 @@ export class ScannerPage implements OnInit {
           return attendance.map((item) => {
             return {
               ...item,
-              user: this.afs.collection('users').doc<User>(item.id).valueChanges().pipe(trace('firestore'), take(1)),
+              user: this.afs
+                .collection('users')
+                .doc<User>(item.id)
+                .get()
+                .pipe(map((document) => document.data())),
             };
           });
         })

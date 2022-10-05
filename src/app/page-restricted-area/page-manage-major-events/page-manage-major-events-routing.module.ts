@@ -17,6 +17,12 @@ const routes: Routes = [
     title: 'Validar comprovante',
     loadChildren: () => import('./validate-receipt/validate-receipt.module').then((m) => m.ValidateReceiptPageModule),
   },
+  {
+    path: 'listar-inscritos/:eventID',
+    title: 'Listar inscritos',
+    loadChildren: () =>
+      import('./page-list-subscriptions/page-list-subscriptions.module').then((m) => m.PageListSubscriptionsModule),
+  },
 ];
 
 @NgModule({

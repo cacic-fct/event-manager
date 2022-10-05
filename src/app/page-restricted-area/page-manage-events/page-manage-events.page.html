@@ -3,7 +3,7 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/area-restrita"></ion-back-button>
     </ion-buttons>
-    <ion-title>Gerenciar grandes eventos</ion-title>
+    <ion-title>Gerenciar eventos</ion-title>
     <ion-buttons slot="primary">
       <ion-button [routerLink]="'adicionar'">
         <ion-icon slot="icon-only" name="add"></ion-icon>
@@ -17,45 +17,44 @@
     <ion-datetime-button datetime="dateSelector" class="margin-horizontal-auto"></ion-datetime-button>
   </ion-item>
 
-  <ng-container *ngIf="majorEvents$ | async; let majorEventsList; else loading">
+  <ng-container *ngIf="events$ | async as eventList; else loading">
     <ion-list>
-      <h1 *ngIf="majorEventsList.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
+      <h1 *ngIf="eventList.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
 
       <div class="event-container">
-        <ion-item *ngFor="let item of majorEventsList">
+        <ion-item *ngFor="let item of eventList">
           <ion-grid>
             <ion-row>
               <ion-col>
                 <ion-label>
                   <h1 class="ion-text-wrap">{{item.name}}</h1>
-                  <h4 class="date-item" *ngIf="item.subscriptionStartDate && item.subscriptionEndDate">
-                    Inscrições: {{getDateFromTimestamp(item.subscriptionStartDate) | date: 'dd/MM'}} -
-                    {{getDateFromTimestamp(item.subscriptionEndDate) | date: 'dd/MM'}}
-                  </h4>
                   <h4 class="date-item" *ngIf="item.eventStartDate && item.eventEndDate">
-                    Data do evento: {{ getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM' }} - {{
-                    getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM' }}
+                    Data do evento: {{ getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM HH:mm' }} - {{
+                    getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM HH:mm' }}
                   </h4>
                   <p class="ion-text-wrap" *ngIf="item.course">{{courses.getCourse(item.course)}}</p>
+                  <p class="ion-text-wrap" *ngIf="item.inMajorEventName">
+                    Faz parte de um grande evento: {{ item.inMajorEventName | async }}
+                  </p>
                 </ion-label>
               </ion-col>
               <ion-col>
-                <!-- <ion-row>
-                  <ion-button fill="clear">
-                    <ion-icon name="pencil-outline" slot="start"></ion-icon>
-                    <p slot="end">Editar evento</p>
-                  </ion-button>
-                </ion-row> -->
                 <ion-row>
-                  <ion-button fill="clear" [routerLink]="['listar-inscritos', item.id]">
-                    <ion-icon name="people-outline" slot="start"></ion-icon>
-                    <p slot="end">Gerenciar inscritos</p>
+                  <ion-button [routerLink]="['./listar-inscritos', item.id]" fill="clear">
+                    <ion-icon name="list-outline" slot="start"></ion-icon>
+                    <p slot="end">Listar inscritos</p>
                   </ion-button>
                 </ion-row>
                 <ion-row>
-                  <ion-button fill="clear" [routerLink]="['validar-comprovante', item.id]">
-                    <ion-icon name="wallet-outline" slot="start"></ion-icon>
-                    <p slot="end" class="ion-text-wrap">Validar comprovantes</p>
+                  <ion-button [routerLink]="['./coletar-presencas', item.id]" fill="clear">
+                    <ion-icon name="qr-code-outline" slot="start" aria-hidden="true"></ion-icon>
+                    <p slot="end">Coleta de presenças</p>
+                  </ion-button>
+                </ion-row>
+                <ion-row>
+                  <ion-button [routerLink]="['./listar-presencas', item.id]" fill="clear">
+                    <ion-icon name="list-outline" slot="start" aria-hidden="true"></ion-icon>
+                    <p slot="end">Listagem de presenças</p>
                   </ion-button>
                 </ion-row>
               </ion-col>
