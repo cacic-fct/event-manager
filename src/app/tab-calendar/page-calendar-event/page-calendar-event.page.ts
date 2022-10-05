@@ -181,7 +181,7 @@ export class PageCalendarEventPage implements OnInit {
   }
 
   getEmoji(emoji: string): any {
-    if (emoji === undefined || !/^\p{Emoji}|\p{Emoji_Modifier}|$/u.test('emoji')) {
+    if (emoji === undefined || !/^\p{Emoji}|\p{Emoji_Modifier}$/u.test(emoji)) {
       // TODO: validar apenas 1 emoji
       return this.sanitizer.bypassSecurityTrustResourceUrl(parse('❔')[0].url);
     }

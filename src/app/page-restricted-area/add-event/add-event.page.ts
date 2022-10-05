@@ -62,7 +62,7 @@ export class AddEventPage implements OnInit {
     this.dataForm = this.formBuilder.group(
       {
         course: ['', Validators.required],
-        icon: ['', [Validators.required, Validators.pattern(/^\p{Emoji}|\p{Emoji_Modifier}|$/u)]], // TODO: validar apenas 1 emoji
+        icon: ['', [Validators.required, Validators.pattern(/^\p{Emoji}|\p{Emoji_Modifier}$/u)]], // TODO: validar apenas 1 emoji
         name: ['', Validators.required],
         shortDescription: ['', Validators.maxLength(80)],
         description: '',
