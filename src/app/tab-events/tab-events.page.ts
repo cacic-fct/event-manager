@@ -7,6 +7,7 @@ import { compareAsc, fromUnixTime } from 'date-fns';
 import { take, map, Observable } from 'rxjs';
 
 import { MajorEventItem } from '../shared/services/major-event.service';
+import { MajorEventSubscription } from './../shared/services/major-event.service';
 
 @Component({
   selector: 'app-tab-events',
@@ -42,6 +43,12 @@ export class TabEventsPage {
                       .get()
                       .pipe(
                         map((doc) => {
+                          if (doc.exists) {
+                            const data = doc.data() as MajorEventSubscription;
+                            if (data.payment?.status === 4) {
+                              return false;
+                            }
+                          }
                           return doc.exists;
                         })
                       )
