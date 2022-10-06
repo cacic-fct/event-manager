@@ -95,7 +95,7 @@ export class PageListSubscriptions implements OnInit {
           subscriptions.forEach((item) => {
             const user = users.find((user) => user.uid === item.id);
             const row = [
-              user.displayName,
+              user.fullName,
               user.academicID,
               user.email,
               this.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {

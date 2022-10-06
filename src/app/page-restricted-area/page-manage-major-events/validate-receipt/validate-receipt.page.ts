@@ -81,7 +81,7 @@ export class ValidateReceiptPage implements OnInit {
       .valueChanges()
       .pipe(
         take(1),
-        map((user) => user.displayName)
+        map((user) => user.fullName)
       );
   }
 
