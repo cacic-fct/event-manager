@@ -260,7 +260,6 @@ export class PagePayPage implements OnInit {
       message: 'O arquivo escolhido é muito grande. Tente novamente com um arquivo menor.',
       icon: 'close-circle',
       position: 'bottom',
-      duration: 5000,
       buttons: [
         {
           side: 'end',
@@ -275,11 +274,10 @@ export class PagePayPage implements OnInit {
   async toastSuccess() {
     const toast = await this.toastController.create({
       header: 'Comprovante enviado',
-      message:
-        'O comprovante foi enviado com sucesso! Acompanhe o status do pagamento através da seção "Minhas Inscrições"',
+      message: 'Acompanhe o status do pagamento através da página "minhas inscrições"',
       icon: 'checkmark-circle',
       position: 'bottom',
-      duration: 5000,
+      duration: 7000,
       buttons: [
         {
           side: 'end',
