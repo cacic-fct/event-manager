@@ -53,11 +53,7 @@ export class AuthService {
                   });
 
                   const addProfessor = this.fns.httpsCallable('addProfessorRole');
-                  addProfessor({ email: user.email })
-                    .pipe(take(1))
-                    .subscribe(() => {
-                      this.professorRoleSuccess();
-                    });
+                  addProfessor({ email: user.email }).pipe(take(1)).subscribe();
                 }
               });
             } else {
@@ -143,23 +139,6 @@ export class AuthService {
       icon: 'close-circle',
       position: 'bottom',
       duration: 5000,
-      buttons: [
-        {
-          side: 'end',
-          text: 'OK',
-          role: 'cancel',
-        },
-      ],
-    });
-    toast.present();
-  }
-
-  private async professorRoleSuccess() {
-    const toast = await this.toastController.create({
-      header: 'Professor adicionado',
-      icon: 'checkmark-circle',
-      position: 'bottom',
-      duration: 3000,
       buttons: [
         {
           side: 'end',
