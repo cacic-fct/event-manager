@@ -23,7 +23,7 @@ import { AlertController, IonModal } from '@ionic/angular';
   styleUrls: ['./validate-receipt.page.scss'],
 })
 export class ValidateReceiptPage implements OnInit {
-  public eventId: string;
+  private majorEventID: string;
   public eventName$: Observable<string>;
   private subscriptionsQuery: AngularFirestoreCollection<Subscription>;
   public subscriptions$: Observable<Subscription[]>;
@@ -41,8 +41,8 @@ export class ValidateReceiptPage implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.eventId = this.route.snapshot.paramMap.get('eventId');
-    const eventRef = this.afs.collection('majorEvents').doc<MajorEventItem>(this.eventId);
+    this.majorEventID = this.route.snapshot.paramMap.get('eventId');
+    const eventRef = this.afs.collection('majorEvents').doc<MajorEventItem>(this.majorEventID);
     this.eventName$ = eventRef.valueChanges().pipe(map((event) => event.name));
     this.subscriptionsQuery = eventRef.collection<Subscription>('subscriptions', (ref) =>
       ref.where('payment.status', '==', 1).orderBy('time').limit(1)
@@ -58,7 +58,7 @@ export class ValidateReceiptPage implements OnInit {
         }))
       )
     );
-    this.imgBaseHref = [this.eventId, 'payment-receipts'].join('/');
+    this.imgBaseHref = [this.majorEventID, 'payment-receipts'].join('/');
     this.refuseForm = this.formBuilder.group(
       {
         errorMessage: '',
@@ -142,6 +142,20 @@ export class ValidateReceiptPage implements OnInit {
                   .set({
                     time: Timestamp.fromDate(new Date()),
                   });
+
+                this.afs
+                  .collection('users')
+                  .doc<User>(subscriberID)
+                  .collection('eventSubscriptions')
+                  .doc(eventID)
+                  .set({
+                    reference: this.afs
+                      .collection('events')
+                      .doc<EventItem>(eventID)
+                      .collection('subscriptions')
+                      .doc(eventID).ref,
+                    belongsToMajorEvent: this.majorEventID,
+                  });
               });
             });
 
@@ -179,7 +193,7 @@ export class ValidateReceiptPage implements OnInit {
             this.refuseModal.dismiss();
 
             this.afs
-              .doc(`majorEvents/${this.eventId}`)
+              .doc(`majorEvents/${this.majorEventID}`)
               .get()
               .pipe(take(1), trace('firestore'))
               .subscribe((doc) => {
@@ -209,7 +223,7 @@ export class ValidateReceiptPage implements OnInit {
             this.refuseModal.dismiss();
 
             this.afs
-              .doc(`majorEvents/${this.eventId}`)
+              .doc(`majorEvents/${this.majorEventID}`)
               .get()
               .pipe(take(1), trace('firestore'))
               .subscribe((doc) => {
@@ -246,7 +260,7 @@ export class ValidateReceiptPage implements OnInit {
             let formattedPhone = phone.replace(/\D/g, '');
             formattedPhone = formattedPhone.replace(/^(\d{2})(\d)/g, '55$1$2');
 
-            const text: string = `Olá, ${name}! O seu comprovante de pagamento do evento "${event}" foi recusado.%0aA justificativa é "${message}".%0a%0aRealize o envio novamente pelo link:%0ahttps://fct-pp.web.app/inscricoes/pagar/${this.eventId}?utm_source=whatsapp&utm_medium=message&utm_campaign=payment_error`;
+            const text: string = `Olá, ${name}! O seu comprovante de pagamento do evento "${event}" foi recusado.%0aA justificativa é "${message}".%0a%0aRealize o envio novamente pelo link:%0ahttps://fct-pp.web.app/inscricoes/pagar/${this.majorEventID}?utm_source=whatsapp&utm_medium=message&utm_campaign=payment_error`;
 
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
@@ -275,7 +289,7 @@ export class ValidateReceiptPage implements OnInit {
             let formattedPhone = phone.replace(/\D/g, '');
             formattedPhone = formattedPhone.replace(/^(\d{2})(\d)/g, '55$1$2');
 
-            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aNão há mais vagas em uma das atividades selecionadas.%0a%0aVocê precisa editar a sua inscrição pelo link:%0ahttps://fct-pp.web.app/eventos/inscrever/${this.eventId}?utm_source=whatsapp&utm_medium=message&utm_campaign=no_slots`;
+            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aNão há mais vagas em uma das atividades selecionadas.%0a%0aVocê precisa editar a sua inscrição pelo link:%0ahttps://fct-pp.web.app/eventos/inscrever/${this.majorEventID}?utm_source=whatsapp&utm_medium=message&utm_campaign=no_slots`;
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
           },
