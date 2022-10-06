@@ -21,7 +21,7 @@
     <ion-item *ngFor="let subscriptionItem of subscriptions">
       <ion-label>
         <ng-container *ngIf="(subscriptionItem.user | async) as user">
-          <h2 class="ion-text-wrap">{{ user.displayName }}</h2>
+          <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
           <ng-container *ngIf="user.academicID; else notUnesp">
             <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
           </ng-container>
