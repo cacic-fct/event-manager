@@ -11,7 +11,6 @@ import { trace } from '@angular/fire/compat/performance';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { fromUnixTime } from 'date-fns';
 import { EnrollmentTypesService } from '../shared/services/enrollment-types.service';
-import { MoreInfoModalComponent } from './components/more-info-modal/more-info-modal.component';
 import { Router } from '@angular/router';
 @UntilDestroy()
 @Component({
