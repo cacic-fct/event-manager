@@ -10,14 +10,20 @@
       <ion-label>
         <h2 class="ion-text-wrap">{{ item.name }}</h2>
         <h3 class="ion-text-wrap">{{ item.shortDescription }}</h3>
-        <p *ngIf="courses[item.course]">
+        <p *ngIf="courses[item.course]" class="ion-text-wrap">
           {{ courses[item.course].name }}
         </p>
       </ion-label>
       <div slot="end">
-        <h4 style="font-weight: 400">
+        <h4 style="font-weight: 400; margin: 5px 0 0 0">
           {{ getDateFromTimestamp(item.eventStartDate) | date: 'HH:mm' }}
         </h4>
+        <p style="font-size: 10px; margin: 0" class="ion-text-center">–</p>
+        <ng-container *ngIf="item.eventEndDate">
+          <h4 style="font-weight: 400; margin: 0 0 5px 0">
+            {{ getDateFromTimestamp(item.eventEndDate) | date: 'HH:mm' }}
+          </h4>
+        </ng-container>
       </div>
     </ion-item>
     <h1 *ngIf="items.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>

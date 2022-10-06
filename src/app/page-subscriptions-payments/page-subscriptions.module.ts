@@ -9,12 +9,7 @@ import { PageSubscriptionsPageRoutingModule } from './page-subscriptions-routing
 import { PageSubscriptionsPage } from './page-subscriptions.page';
 
 @NgModule({
-  imports: [
-    CommonModule,
-    FormsModule,
-    IonicModule,
-    PageSubscriptionsPageRoutingModule
-  ],
-  declarations: [PageSubscriptionsPage]
+  imports: [CommonModule, FormsModule, IonicModule, PageSubscriptionsPageRoutingModule],
+  declarations: [PageSubscriptionsPage],
 })
 export class PageSubscriptionsPageModule {}

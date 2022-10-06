@@ -109,6 +109,10 @@
                 <ion-icon slot="start" name="paper-plane"></ion-icon>
                 Enviar comprovante
               </ion-button>
+              <ion-button [routerLink]="['detalhes', majorEventData.id]">
+                <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
+                Mais detalhes
+              </ion-button>
             </ion-col>
           </ion-row>
         </ion-grid>
@@ -134,6 +138,10 @@
               <ion-icon slot="start" name="time"></ion-icon>
               Aguardando confirmação
             </ion-button>
+            <ion-button [routerLink]="['detalhes', majorEventData.id]">
+              <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
+              Mais detalhes
+            </ion-button>
           </ion-col>
         </ion-row>
       </ion-grid>
@@ -158,6 +166,10 @@
             <ion-button disabled="">
               <ion-icon slot="start" name="checkmark"></ion-icon>
               Inscrito
+            </ion-button>
+            <ion-button [routerLink]="['detalhes', majorEventData.id]">
+              <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
+              Mais detalhes
             </ion-button>
           </ion-col>
         </ion-row>

@@ -42,6 +42,7 @@ export class PageCalendarEventPage implements OnInit {
   map: Map;
   weather: Observable<WeatherInfo>;
   weatherFailed: boolean = false;
+  eventID: string;
 
   constructor(
     private toastController: ToastController,
@@ -54,8 +55,11 @@ export class PageCalendarEventPage implements OnInit {
   ) {}
 
   ngOnInit() {
-    const id = this.route.snapshot.params.eventID;
-    this.item$ = this.afs.doc<EventItem>(`events/${id}`).valueChanges({ idField: 'id' }).pipe(trace('firestore'));
+    this.eventID = this.route.snapshot.params.eventID;
+    this.item$ = this.afs
+      .doc<EventItem>(`events/${this.eventID}`)
+      .valueChanges({ idField: 'id' })
+      .pipe(trace('firestore'));
   }
 
   ionViewWillEnter() {
@@ -139,7 +143,7 @@ export class PageCalendarEventPage implements OnInit {
   async presentToast() {
     const toast = await this.toastController.create({
       header: 'ID do evento',
-      message: this.item.id,
+      message: this.eventID,
       icon: 'information-circle',
       position: 'bottom',
       duration: 5000,
@@ -148,7 +152,7 @@ export class PageCalendarEventPage implements OnInit {
           side: 'end',
           text: 'Copiar',
           handler: () => {
-            this.clipboardService.copy(this.item.id);
+            this.clipboardService.copy(this.eventID);
           },
         },
         {

@@ -1,7 +1,7 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/"></ion-back-button>
+      <ion-back-button defaultHref="/calendario"></ion-back-button>
     </ion-buttons>
     <ion-title>Evento</ion-title>
     <ion-buttons slot="primary">
@@ -29,7 +29,12 @@
           <!-- prettier-ignore -->
           {{ toUppercase(getDateFromTimestamp(items?.eventStartDate) | date: "EEEE, dd 'de' MMMM 'de' y") }}
         </h4>
-        <h3 style="margin: 0; font-weight: 400">{{ getDateFromTimestamp(items?.eventStartDate) | date: 'HH:mm' }}</h3>
+        <h3 style="margin: 0; font-weight: 400">
+          {{ getDateFromTimestamp(items?.eventStartDate) | date: 'HH:mm' }}
+          <ng-container *ngIf="items?.eventEndDate">
+            - {{ getDateFromTimestamp(items?.eventEndDate) | date: 'HH:mm' }}
+          </ng-container>
+        </h3>
 
         <div class="weather-container">
           <ng-container *ngIf="(weather | async) as weatherInfo;">

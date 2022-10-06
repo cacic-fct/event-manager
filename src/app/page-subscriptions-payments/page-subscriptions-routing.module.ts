@@ -12,6 +12,10 @@ const routes: Routes = [
     path: 'pagar/:eventID',
     loadChildren: () => import('./page-pay/page-pay.module').then((m) => m.PagePayPageModule),
   },
+  {
+    path: 'detalhes/:majorEventID',
+    loadChildren: () => import('./page-more-info/page-more-info.module').then((m) => m.PageMoreInfoPageModule),
+  },
 ];
 
 @NgModule({

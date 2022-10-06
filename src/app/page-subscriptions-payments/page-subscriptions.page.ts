@@ -1,9 +1,9 @@
+import { ModalController } from '@ionic/angular';
 import { Timestamp } from '@firebase/firestore-types';
-import { Router } from '@angular/router';
 import { MajorEventItem, MajorEventSubscription } from '../shared/services/major-event.service';
 import { Component, OnInit } from '@angular/core';
-import { BehaviorSubject, combineLatest, map, Observable, switchMap } from 'rxjs';
-import { AngularFirestore, DocumentReference, DocumentSnapshot } from '@angular/fire/compat/firestore';
+import { map, Observable } from 'rxjs';
+import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { trace } from '@angular/fire/compat/performance';
@@ -11,6 +11,8 @@ import { trace } from '@angular/fire/compat/performance';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { fromUnixTime } from 'date-fns';
 import { EnrollmentTypesService } from '../shared/services/enrollment-types.service';
+import { MoreInfoModalComponent } from './components/more-info-modal/more-info-modal.component';
+import { Router } from '@angular/router';
 @UntilDestroy()
 @Component({
   selector: 'app-page-subscriptions',
@@ -25,7 +27,8 @@ export class PageSubscriptionsPage implements OnInit {
   constructor(
     public afs: AngularFirestore,
     public auth: AngularFireAuth,
-    public enrollmentTypes: EnrollmentTypesService
+    public enrollmentTypes: EnrollmentTypesService,
+    private router: Router
   ) {}
 
   ngOnInit() {
