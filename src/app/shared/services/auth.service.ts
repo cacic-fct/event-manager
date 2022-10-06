@@ -100,7 +100,7 @@ export class AuthService {
       this.auth.signInWithPopup(provider).then((result) => {
         this.SetUserData(result.user);
 
-        this.route.queryParams.subscribe((params) => {
+        this.route.queryParams.pipe(take(1)).subscribe((params) => {
           const redirect = params['redirect'];
 
           if (redirect) {
