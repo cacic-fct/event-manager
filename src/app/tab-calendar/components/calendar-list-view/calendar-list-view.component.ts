@@ -25,9 +25,13 @@ import { Timestamp } from '@firebase/firestore-types';
 export class CalendarListViewComponent implements OnInit, OnChanges {
   courses = CoursesService.courses;
 
-  @Input() filter: Array<string>;
+  @Input() filter: {
+    courses: Array<string>;
+  };
 
-  courseFilter$: BehaviorSubject<Array<string> | null> = new BehaviorSubject(null);
+  courseFilter$: BehaviorSubject<{
+    courses: Array<string>;
+  } | null> = new BehaviorSubject(null);
   dateFilter$: BehaviorSubject<Date | null> = new BehaviorSubject(null);
 
   loadOlderCount: number = 0;
@@ -54,8 +58,8 @@ export class CalendarListViewComponent implements OnInit, OnChanges {
             if (date) {
               query = query.where('eventStartDate', '>=', this.baseDate);
             }
-            if (filter.length > 0) {
-              query = query.where('course', 'in', filter);
+            if (filter['courses'].length > 0) {
+              query = query.where('course', 'in', filter['courses']);
             }
 
             return query.orderBy('eventStartDate', 'asc');

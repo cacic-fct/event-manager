@@ -13,15 +13,16 @@ export class FilterModalPage implements OnInit, AfterViewInit {
 
   constructor(private modalController: ModalController) {}
 
-  @Input() selectedFilter: Array<string>;
+  @Input() selectedFilter: {
+    courses: Array<string>;
+  };
 
   ngAfterViewInit() {
-    const elements: HTMLCollectionOf<any> =
-      document.getElementsByClassName('course');
+    const elements: HTMLCollectionOf<any> = document.getElementsByClassName('course');
 
     for (let i = 0; i < elements.length; i++) {
       // Check checkboxes that have id matching selectedFilter
-      if (this.selectedFilter.includes(elements[i].id)) {
+      if (this.selectedFilter['courses'].includes(elements[i].id)) {
         elements[i].checked = true;
       }
     }
@@ -29,24 +30,25 @@ export class FilterModalPage implements OnInit, AfterViewInit {
 
   ngOnInit() {}
 
-  checkBoxClick(coursekey: string) {
+  checkBoxClickCourse(coursekey: string) {
+    let coursesArray = this.selectedFilter['courses'];
     // Add coursekey to array if not present. If present, remove it
-    if (this.selectedFilter.includes(coursekey)) {
-      this.selectedFilter.splice(this.selectedFilter.indexOf(coursekey), 1);
+    if (coursesArray.includes(coursekey)) {
+      coursesArray.splice(coursesArray.indexOf(coursekey), 1);
     } else {
-      this.selectedFilter.push(coursekey);
+      coursesArray.push(coursekey);
     }
+    this.selectedFilter['courses'] = coursesArray;
   }
   uncheckAll() {
     // Get elements with course.key id
-    const elements: HTMLCollectionOf<any> =
-      document.getElementsByClassName('course');
+    const elements: HTMLCollectionOf<any> = document.getElementsByClassName('course');
     // Uncheck all elements
     for (let i = 0; i < elements.length; i++) {
       elements[i].checked = false;
     }
-    // Clear array
-    this.selectedFilter = [];
+    // Clear all selectedFilter keys
+    this.selectedFilter['courses'] = [];
   }
 
   dismissModal() {

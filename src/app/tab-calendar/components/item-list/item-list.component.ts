@@ -1,3 +1,4 @@
+import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { BehaviorSubject, combineLatest, Observable } from 'rxjs';
 import { Component, Input, OnChanges, OnInit } from '@angular/core';
 import { CoursesService } from 'src/app/shared/services/courses.service';
@@ -23,14 +24,18 @@ export class ItemListComponent implements OnInit, OnChanges {
   courses = CoursesService.courses;
 
   @Input() date: Date;
-  @Input() filter: Array<string>;
+  @Input() filter: {
+    courses: Array<string>;
+  };
 
   dateFilter$: BehaviorSubject<Date | null> = new BehaviorSubject(null);
-  courseFilter$: BehaviorSubject<Array<string> | null> = new BehaviorSubject(null);
+  courseFilter$: BehaviorSubject<{
+    courses: Array<string>;
+  } | null> = new BehaviorSubject(null);
 
   items$: Observable<EventItem[]>;
 
-  constructor(private afs: AngularFirestore, private sanitizer: DomSanitizer) {}
+  constructor(private afs: AngularFirestore, private sanitizer: DomSanitizer, private auth: AngularFireAuth) {}
 
   ngOnInit() {
     this.items$ = combineLatest([this.dateFilter$, this.courseFilter$]).pipe(
@@ -43,8 +48,8 @@ export class ItemListComponent implements OnInit, OnChanges {
                 .where('eventStartDate', '>=', startOfDay(date))
                 .where('eventStartDate', '<=', endOfDay(date));
             }
-            if (filter.length > 0) {
-              query = query.where('course', 'in', filter);
+            if (filter['courses'].length > 0) {
+              query = query.where('course', 'in', filter['courses']);
             }
 
             return query.orderBy('eventStartDate', 'asc');

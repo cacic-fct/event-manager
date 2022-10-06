@@ -1,33 +1,21 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="secondary">
-      <ion-button
-        icon-only
-        [ngClass]="{'btn-active': selectedFilter.length > 0}"
-        (click)="filter()">
+      <ion-button icon-only [ngClass]="{'btn-active': selectedFilter['courses'].length > 0}" (click)="filter()">
         <ion-icon name="filter"></ion-icon>
       </ion-button>
-      <ion-button
-        icon-only
-        [ngClass]="{'btn-active': this.itemView}"
-        (click)="viewToggle()">
+      <ion-button icon-only [ngClass]="{'btn-active': this.itemView}" (click)="viewToggle()">
         <ion-icon name="list"></ion-icon>
       </ion-button>
     </ion-buttons>
     <ion-buttons slot="primary" *ngIf="!this.itemView">
-      <ion-button
-        (click)="prevWeek()"
-        [disabled]="weekClicks < -3"
-        aria-label="Semana anterior">
+      <ion-button (click)="prevWeek()" [disabled]="weekClicks < -3" aria-label="Semana anterior">
         <ion-icon name="chevron-back"></ion-icon>
       </ion-button>
       <ion-button (click)="todayClick()" aria-label="Ir para a data de hoje">
         <ion-icon name="today-outline"></ion-icon>
       </ion-button>
-      <ion-button
-        (click)="nextWeek()"
-        [disabled]="weekClicks > 3"
-        aria-label="Próxima semana">
+      <ion-button (click)="nextWeek()" [disabled]="weekClicks > 3" aria-label="Próxima semana">
         <ion-icon name="chevron-forward"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -40,15 +28,11 @@
     <div class="hcal-header">
       <!-- Days of week -->
       <div class="hcal-header-days" aria-hidden="true">
-        <div class="hcal-header-day" *ngFor="let dow1Char of dow1Char">
-          {{ dow1Char }}
-        </div>
+        <div class="hcal-header-day" *ngFor="let dow1Char of dow1Char">{{ dow1Char }}</div>
       </div>
       <!-- Day number -->
       <div class="hcal-header-dates">
-        <a
-          class="hcal-header-date"
-          *ngFor="let dowhtml of dowList | keyvalue: originalOrder">
+        <a class="hcal-header-date" *ngFor="let dowhtml of dowList | keyvalue: originalOrder">
           <div
             [ngClass]="{'active' : active === dowhtml.key}"
             class="hcal-header-date-inner"
@@ -64,11 +48,7 @@
     </div>
   </div>
 
-  <app-item-list
-    [date]="dowList[active]?.date"
-    [filter]="selectedFilter"
-    *ngIf="!this.itemView"></app-item-list>
+  <app-item-list [date]="dowList[active]?.date" [filter]="selectedFilter" *ngIf="!this.itemView"></app-item-list>
 
-  <app-calendar-list-view [filter]="selectedFilter" *ngIf="this.itemView">
-  </app-calendar-list-view>
+  <app-calendar-list-view [filter]="selectedFilter" *ngIf="this.itemView"> </app-calendar-list-view>
 </ion-content>

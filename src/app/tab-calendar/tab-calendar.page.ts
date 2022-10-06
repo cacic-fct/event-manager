@@ -23,7 +23,11 @@ export class TabCalendarPage {
   active: string;
   fullDate: string;
   itemView: boolean = true;
-  selectedFilter: string[] = [];
+  selectedFilter: {
+    courses: Array<string>;
+  } = {
+    courses: [],
+  };
 
   // Today's date
   today: Date = new Date();
@@ -166,7 +170,7 @@ export class TabCalendarPage {
     modal.onDidDismiss().then((selectedFilter) => {
       if (selectedFilter) {
         // ... changes reference and triggers ngOnChanges
-        this.selectedFilter = [...selectedFilter.data.selectedFilter];
+        this.selectedFilter = { ...selectedFilter.data.selectedFilter };
         return true;
       }
       return false;

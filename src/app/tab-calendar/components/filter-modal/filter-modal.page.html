@@ -16,7 +16,11 @@
     <ng-container *ngFor="let course of courses | keyvalue: originalOrder">
       <ion-item>
         <ion-label>{{ course.value.name }}</ion-label>
-        <ion-checkbox slot="start" class="course" [id]="course.key" (click)="checkBoxClick(course.key)"></ion-checkbox>
+        <ion-checkbox
+          slot="start"
+          class="course"
+          [id]="course.key"
+          (click)="checkBoxClickCourse(course.key)"></ion-checkbox>
       </ion-item>
     </ng-container>
   </ion-list>
