@@ -104,22 +104,22 @@ export class ValidateReceiptPage implements OnInit {
   }
 
   confirm() {
-    this.auth.user.pipe(take(1)).subscribe((user) => {
+    this.auth.user.pipe(take(1)).subscribe((adminUser) => {
       this.subscriptionsQuery
         .get()
         .pipe(take(1), trace('firestore'))
         .subscribe((col) => {
-          const docId = col.docs[0].id;
-          this.subscriptionsQuery.doc(docId).update({
+          const subscriberID = col.docs[0].id;
+          this.subscriptionsQuery.doc(subscriberID).update({
             // @ts-ignore
             'payment.status': 2, // Novo status: pagamento aprovado
             'payment.time': Timestamp.fromDate(new Date()), // Momento da mudança
-            'payment.author': user.uid, // Autor da mudança
+            'payment.author': adminUser.uid, // Autor da mudança
           });
 
           // For every event the user subscribed to, decrement the available slots and create a new subscription
           this.subscriptionsQuery
-            .doc(docId)
+            .doc(subscriberID)
             .valueChanges()
             .pipe(take(1))
             .subscribe((sub) => {
@@ -138,7 +138,7 @@ export class ValidateReceiptPage implements OnInit {
                   .collection('events')
                   .doc<EventItem>(eventID)
                   .collection('subscriptions')
-                  .doc(user.uid)
+                  .doc(subscriberID)
                   .set({
                     time: Timestamp.fromDate(new Date()),
                   });
