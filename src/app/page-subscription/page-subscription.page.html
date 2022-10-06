@@ -100,6 +100,14 @@
         <p *ngIf="majorEvent.maxLectures && majorEvent.maxLectures > 0">
           {{ eventsSelected['palestra'].length | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }}
           palestras selecionados
+
+        <p>
+          <ion-text color="danger">
+            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+            <span class="alert-text ion-text-wrap">
+              Verifique se não há choque de horário entre os eventos selecionados
+            </span>
+          </ion-text>
         </p>
       </div>
 
