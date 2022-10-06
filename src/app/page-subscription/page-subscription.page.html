@@ -84,7 +84,7 @@
       </div>
 
       <div class="card-section ion-padding-horizontal">
-        <ion-item>
+        <ion-item *ngIf="!majorEvent.price.single">
           <ion-label>Tipo de inscrição</ion-label>
           <ion-select placeholder="Selecionar" [(ngModel)]="opSelected" [disabled]="disableEnrollmentTypeSelection">
             <ion-select-option value="0">{{ enrollmentTypes.getEnrollmentType(0) }}</ion-select-option>
@@ -97,9 +97,10 @@
         <p *ngIf="majorEvent.maxCourses && majorEvent.maxCourses > 0">
           {{ eventsSelected['minicurso'].length - this.eventGroupMinicursoCount| number: '2.0-0' }} de {{ majorEvent.maxCourses | number: '2.0-0' }} minicursos selecionados
         </p>
-        <p *ngIf="majorEvent.maxLectures && majorEvent.maxLectures > 0">
+        <!-- <p *ngIf="majorEvent.maxLectures && majorEvent.maxLectures > 0">
           {{ eventsSelected['palestra'].length | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }}
           palestras selecionados
+        </p> -->
 
         <p>
           <ion-text color="danger">
@@ -122,7 +123,7 @@
             </ion-item-divider>
 
             <ion-list>
-              <ion-item>
+              <ion-item [style.display]="event.eventType === 'palestra' ? 'none' : ''">
                 <img [src]="getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
                 <ion-label>
                   <h3 class="ion-text-wrap">{{ event.name }}</h3>
@@ -155,10 +156,9 @@
   <ng-template #loadingSpinner>
     <ion-spinner name="dots" style="margin: 0 auto; display: block"></ion-spinner>
   </ng-template>
+  <!-- TODO: Se houver mais de um tipo de inscrição, desabilitar fab quando a seleção for indefinida-->
   <ion-fab vertical="bottom" horizontal="end" slot="fixed">
-    <ion-fab-button
-      (click)="onSubmit()"
-      [disabled]="eventsSelected['minicurso'].length + eventsSelected['palestra'].length === 0 || opSelected === undefined">
+    <ion-fab-button (click)="onSubmit()" [disabled]="eventsSelected['minicurso'].length === 0">
       <ion-icon name="checkmark"></ion-icon>
     </ion-fab-button>
   </ion-fab>

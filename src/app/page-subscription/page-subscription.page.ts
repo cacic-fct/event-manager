@@ -114,7 +114,9 @@ export class PageSubscriptionPage implements OnInit {
                 }, 1000);
               } else {
                 this.disableEnrollmentTypeSelection = true;
-                this.opSelected = subscription.subscriptionType.toString();
+                if (subscription.subscriptionType) {
+                  this.opSelected = subscription.subscriptionType.toString();
+                }
               }
             }
           });
@@ -152,6 +154,12 @@ export class PageSubscriptionPage implements OnInit {
                       .doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
                       .get()
                       .subscribe((document) => {
+                        // TODO: Remove me. This is for secompp22 only
+                        if (eventItem.eventType === 'palestra') {
+                          this.dataForm.get(eventItem.id).setValue(true);
+                        }
+                        ///
+
                         if (document.exists) {
                           const subscription = document.data() as MajorEventSubscription;
                           if (subscription.subscribedToEvents.includes(eventItem.id) && eventItem.slotsAvailable > 0) {
@@ -322,10 +330,7 @@ export class PageSubscriptionPage implements OnInit {
   }
 
   onSubmit() {
-    if (
-      this.eventsSelected['minicurso'].length + this.eventsSelected['palestra'].length === 0 ||
-      this.opSelected === undefined
-    ) {
+    if (this.eventsSelected['minicurso'].length + this.eventsSelected['palestra'].length === 0) {
       return;
     }
 

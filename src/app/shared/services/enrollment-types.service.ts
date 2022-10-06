@@ -4,7 +4,7 @@ export class EnrollmentTypesService {
       name: 'Aluno da Unesp',
     },
     1: {
-      name: 'Outros alunos',
+      name: 'Alunos de outras instituições',
     },
     2: {
       name: 'Professores e profissionais',
