@@ -40,9 +40,14 @@ export class AuthService {
         getStringChanges(this.remoteConfig, 'professors').subscribe((professors) => {
           if (professors) {
             const professorsList: string[] = JSON.parse(professors);
+
+            // Check if user email matches a professor email.
+            // Professors are exempt from the register prompt
             if (professorsList.includes(user.email)) {
               this.auth.idTokenResult.pipe(take(1)).subscribe((idTokenResult) => {
                 const claims = idTokenResult.claims;
+
+                // If role is not set, set it to professor (3000)
                 if (!claims.role || claims.role < 3000) {
                   const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
                   const userData: User = {
