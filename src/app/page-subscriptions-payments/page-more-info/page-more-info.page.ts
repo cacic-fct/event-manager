@@ -76,9 +76,6 @@ export class PageMoreInfoPage implements OnInit {
           });
 
         this.majorEventSubscription$ = query.valueChanges({ idField: 'id' }).pipe(trace('firestore'), take(1));
-        this.majorEventSubscription$.subscribe((data) => {
-          console.log(data);
-        });
       }
     });
   }
