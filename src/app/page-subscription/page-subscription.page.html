@@ -143,20 +143,14 @@
                   <!-- <p>Conflito de horário com "item 2"</p>-->
                 </ion-label>
 
-                <ion-button
-                  *ngIf="event.description"
-                  slot="end"
-                  color="primary"
-                  fill="clear"
-                  (click)="showEventInfo(event)">
+                <ion-button *ngIf="event.description" color="primary" fill="clear" (click)="showEventInfo(event)">
                   <ion-icon name="information-circle-outline" aria-hidden="true" slot="start"></ion-icon>
-                  <p slot="end">Descrição</p>
+                  <p slot="end">INFO</p>
                 </ion-button>
 
                 <ion-checkbox
                   name="{{event.eventType}}"
                   [formControlName]="event.id"
-                  slot="end"
                   (ionChange)="countCheckeds($event, event)"></ion-checkbox>
               </ion-item>
             </ion-list>
