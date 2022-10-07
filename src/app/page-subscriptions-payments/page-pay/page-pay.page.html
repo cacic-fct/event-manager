@@ -13,10 +13,15 @@
     <ion-card>
       <ion-card-header>
         <ion-card-title>{{majorEvent.name}}</ion-card-title>
-        <!-- prettier-ignore -->
-        <ion-card-subtitle *ngIf="userSubscription$ | async as userInfo">
-          {{ enrollmentTypes.getEnrollmentType(userInfo.subscriptionType) }} - {{ userInfo.payment.price | currency: 'BRL' }}
-        </ion-card-subtitle>
+        <ng-container *ngIf="userSubscription$ | async as userInfo">
+          <!-- prettier-ignore -->
+          <ion-card-subtitle *ngIf="userInfo.subscriptionType">
+            {{ enrollmentTypes.getEnrollmentType(userInfo.subscriptionType) }} - {{ userInfo.payment.price | currency: 'BRL' }}
+          </ion-card-subtitle>
+          <ion-card-subtitle *ngIf="!userInfo.subscriptionType">
+            Preço único - {{ userInfo.payment.price | currency: 'BRL' }}
+          </ion-card-subtitle>
+        </ng-container>
         <!-- prettier-ignore -->
         <ion-card-subtitle>
           Efetue o pagamento e envio do comprovante até {{ getDateFromTimestamp(majorEvent.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }} 
