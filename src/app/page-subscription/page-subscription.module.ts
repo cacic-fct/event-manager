@@ -6,6 +6,7 @@ import { PageSubscriptionPage } from './page-subscription.page';
 
 import { PageSubscriptionPageRoutingModule } from './page-subscription-routing.module';
 import { ConfirmModalComponent } from './confirm-modal/confirm-modal.component';
+import { InfoModalComponent } from './info-modal/info-modal.component';
 import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 
 @NgModule({
@@ -17,6 +18,6 @@ import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
     PageSubscriptionPageRoutingModule,
     SweetAlert2Module,
   ],
-  declarations: [PageSubscriptionPage, ConfirmModalComponent],
+  declarations: [PageSubscriptionPage, ConfirmModalComponent, InfoModalComponent],
 })
 export class PageSubscriptionPageModule {}

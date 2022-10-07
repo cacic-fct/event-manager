@@ -105,6 +105,12 @@
         <p>
           <ion-text color="danger">
             <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+            <span class="alert-text ion-text-wrap"> Verifique os pré-requisitos nas descrições dos eventos </span>
+          </ion-text>
+        </p>
+        <p>
+          <ion-text color="danger">
+            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
             <span class="alert-text ion-text-wrap">
               Verifique se não há choque de horário entre os eventos selecionados
             </span>
@@ -136,6 +142,17 @@
                   <p>Sua posição na fila: {{ event.numberOfSubscriptions + 1 | number: '1.0-0' }}</p>
                   <!-- <p>Conflito de horário com "item 2"</p>-->
                 </ion-label>
+
+                <ion-button
+                  *ngIf="event.description"
+                  slot="end"
+                  color="primary"
+                  fill="clear"
+                  (click)="showEventInfo(event)">
+                  <ion-icon name="information-circle-outline" aria-hidden="true" slot="start"></ion-icon>
+                  <p slot="end">Descrição</p>
+                </ion-button>
+
                 <ion-checkbox
                   name="{{event.eventType}}"
                   [formControlName]="event.id"
