@@ -62,7 +62,7 @@
       <ion-card-title [color]="color">{{majorEventData.name.toUpperCase()}} </ion-card-title>
 
       <ion-card-subtitle [color]="color">
-        <p>{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
+        <p *ngIf="subType">{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
         <!-- prettier-ignore -->
         <p>
           Data do evento: {{ getDateFromTimestamp(majorEventData.eventStartDate) | date: 'dd/MM/yyyy' }} – {{ getDateFromTimestamp(majorEventData.eventEndDate) | date: 'dd/MM/yyyy' }}
