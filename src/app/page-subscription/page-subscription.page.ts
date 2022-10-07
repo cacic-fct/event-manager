@@ -352,6 +352,9 @@ export class PageSubscriptionPage implements OnInit {
           case '2':
             price = majorEvent.price.professors;
             break;
+          default:
+            price = majorEvent.price.single;
+            break;
         }
 
         this.auth.user.pipe(take(1)).subscribe((user) => {
