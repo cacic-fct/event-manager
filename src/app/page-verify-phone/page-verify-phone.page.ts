@@ -40,6 +40,8 @@ export class PageVerifyPhonePage implements OnInit {
   countdownMinutes: number;
   countdown: Subscription;
 
+  timerSubscription: Subscription;
+
   constructor(
     public auth: AngularFireAuth,
     public afs: AngularFirestore,
@@ -97,7 +99,7 @@ export class PageVerifyPhonePage implements OnInit {
       this.getTimeDifference();
     });
 
-    const timerSubscription = timer(minutes * 60_000)
+    this.timerSubscription = timer(minutes * 60_000)
       .pipe(take(1))
       .subscribe(() => {
         this.cooldown = false;
