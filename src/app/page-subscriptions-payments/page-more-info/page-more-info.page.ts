@@ -3,7 +3,7 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { fromUnixTime, isSameDay } from 'date-fns';
-import { first, Observable, take } from 'rxjs';
+import { first, Observable, take, combineLatest, map } from 'rxjs';
 import { EnrollmentTypesService } from 'src/app/shared/services/enrollment-types.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { MajorEventItem, MajorEventSubscription } from 'src/app/shared/services/major-event.service';
@@ -61,14 +61,26 @@ export class PageMoreInfoPage implements OnInit {
           .pipe(trace('firestore'), take(1))
           .subscribe((document) => {
             const data = document.data() as MajorEventSubscription;
-            this.subscribedEvents$ = this.afs
-              .collection<EventItem>('events', (ref) =>
-                ref.where(documentId(), 'in', data.subscribedToEvents).orderBy('eventStartDate')
-              )
-              .valueChanges({ idField: 'id' })
-              .pipe(trace('firestore'), take(1));
+            const subscribedEventsObservables: Array<Observable<EventItem[]>> = [];
+            for (let i = 0; i < data.subscribedToEvents.length; i += 10) {
+              subscribedEventsObservables.push(
+                this.afs
+                  .collection<EventItem>('events', (ref) =>
+                    ref.where(documentId(), 'in', data.subscribedToEvents.slice(i, i + 10)).orderBy('eventStartDate')
+                  )
+                  .valueChanges({ idField: 'id' })
+                  .pipe(trace('firestore'), take(1))
+              );
+            }
+
+            this.subscribedEvents$ = combineLatest(subscribedEventsObservables).pipe(
+              map((events) => {
+                return events.flat();
+              })
+            );
 
             // TODO: Due to firestore limitations, we can't order this query when using "not-in"
+            // TODO: Doesn't work if array.length > 10
             this.notSubscribedEvents$ = this.afs
               .collection<EventItem>('events', (ref) => ref.where(documentId(), 'not-in', data.subscribedToEvents))
               .valueChanges({ idField: 'id' })
