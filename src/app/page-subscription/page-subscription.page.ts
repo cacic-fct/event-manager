@@ -8,13 +8,10 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
-import * as firestore from '@firebase/firestore';
 import { Timestamp } from '@firebase/firestore-types';
 import { formatDate } from '@angular/common';
 import { fromUnixTime, isSameDay, compareAsc } from 'date-fns';
-import { take, map, Observable, switchMap, combineLatest } from 'rxjs';
-
-import { documentId } from '@firebase/firestore';
+import { take, map, Observable } from 'rxjs';
 
 import { MajorEventItem } from '../shared/services/major-event.service';
 import { EventItem } from '../shared/services/event';
