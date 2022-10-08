@@ -42,7 +42,11 @@ export class AddEventPage implements OnInit {
 
   userData: any;
 
-  places$: Observable<any>;
+  places$: Observable<{
+    [key: string]: {
+      [key: string]: string;
+    };
+  }>;
 
   tzoffset = new Date().getTimezoneOffset() * 60_000;
   parsedPlaces: any;
