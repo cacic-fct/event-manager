@@ -12,7 +12,7 @@ import * as firestore from '@firebase/firestore';
 import { Timestamp } from '@firebase/firestore-types';
 import { formatDate } from '@angular/common';
 import { fromUnixTime, isSameDay, compareAsc } from 'date-fns';
-import { take, map, Observable, switchMap } from 'rxjs';
+import { take, map, Observable, switchMap, combineLatest } from 'rxjs';
 
 import { documentId } from '@firebase/firestore';
 
@@ -154,54 +154,201 @@ export class PageSubscriptionPage implements OnInit {
 
     this.events$ = this.majorEvent$.pipe(
       map((majorEvent: MajorEventItem) => {
-        return this.afs
-          .collection<EventItem>('events', (ref) => {
-            return ref.where(documentId(), 'in', majorEvent.events).orderBy('eventStartDate', 'asc');
-          })
-          .valueChanges({ idField: 'id' })
-          .pipe(
-            map((events: EventItem[]) => {
-              return events.map((eventItem) => {
-                // If there are no slots available, add event to form with disabled selection
-                if (eventItem.slotsAvailable <= 0) {
-                  this.dataForm.addControl(eventItem.id, this.formBuilder.control({ value: null, disabled: true }));
-                } else {
-                  this.dataForm.addControl(eventItem.id, this.formBuilder.control(null));
-                }
+        const observables: Array<Observable<EventItem[]>> = [];
+        if (majorEvent.events.length > 10) {
+          for (let i = 0; i < majorEvent.events.length; i += 10) {
+            observables.push(
+              this.afs
+                .collection<EventItem>('events', (ref) =>
+                  ref.where(documentId(), 'in', majorEvent.events.slice(i, i + 10)).orderBy('eventStartDate', 'asc')
+                )
+                .valueChanges({ idField: 'id' })
+                .pipe(
+                  map((events: EventItem[]) => {
+                    events.map((eventItem) => {
+                      // If there are no slots available, add event to form with disabled selection
+                      if (eventItem.slotsAvailable <= 0) {
+                        this.dataForm.addControl(
+                          eventItem.id,
+                          this.formBuilder.control({ value: null, disabled: true })
+                        );
+                      } else {
+                        this.dataForm.addControl(eventItem.id, this.formBuilder.control(null));
+                      }
 
-                // If user is already subscribed, auto select event
-                this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
-                  if (user) {
-                    this.afs
-                      .doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
-                      .get()
-                      .subscribe((document) => {
-                        // TODO: Remove me. This is for secompp22 only
-                        if (eventItem.eventType === 'palestra') {
-                          this.dataForm.get(eventItem.id).setValue(true);
-                        }
-                        ///
+                      // If user is already subscribed, auto select event
+                      this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
+                        if (user) {
+                          this.afs
+                            .doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
+                            .get()
+                            .subscribe((document) => {
+                              // TODO: Remove me. This is for secompp22 only
+                              if (eventItem.eventType === 'palestra') {
+                                this.dataForm.get(eventItem.id).setValue(true);
+                              }
+                              ///
 
-                        if (document.exists) {
-                          const subscription = document.data() as MajorEventSubscription;
-                          if (subscription.subscribedToEvents.includes(eventItem.id) && eventItem.slotsAvailable > 0) {
-                            this.dataForm.get(eventItem.id).setValue(true);
-                          } else {
-                            this.dataForm.get(eventItem.id).setValue(false);
-                          }
+                              if (document.exists) {
+                                const subscription = document.data() as MajorEventSubscription;
+                                if (
+                                  subscription.subscribedToEvents.includes(eventItem.id) &&
+                                  eventItem.slotsAvailable > 0
+                                ) {
+                                  this.dataForm.get(eventItem.id).setValue(true);
+                                } else {
+                                  this.dataForm.get(eventItem.id).setValue(false);
+                                }
+                              }
+                            });
                         }
                       });
-                  }
-                });
 
-                return eventItem;
-              });
+                      return eventItem;
+                    });
+
+                    return events.map((eventItem) => {
+                      // If there are no slots available, add event to form with disabled selection
+                      if (eventItem.slotsAvailable <= 0) {
+                        this.dataForm.addControl(
+                          eventItem.id,
+                          this.formBuilder.control({ value: null, disabled: true })
+                        );
+                      } else {
+                        this.dataForm.addControl(eventItem.id, this.formBuilder.control(null));
+                      }
+
+                      // If user is already subscribed, auto select event
+                      this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
+                        if (user) {
+                          this.afs
+                            .doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
+                            .get()
+                            .subscribe((document) => {
+                              // TODO: Remove me. This is for secompp22 only
+                              if (eventItem.eventType === 'palestra') {
+                                this.dataForm.get(eventItem.id).setValue(true);
+                              }
+                              ///
+
+                              if (document.exists) {
+                                const subscription = document.data() as MajorEventSubscription;
+                                if (
+                                  subscription.subscribedToEvents.includes(eventItem.id) &&
+                                  eventItem.slotsAvailable > 0
+                                ) {
+                                  this.dataForm.get(eventItem.id).setValue(true);
+                                } else {
+                                  this.dataForm.get(eventItem.id).setValue(false);
+                                }
+                              }
+                            });
+                        }
+                      });
+
+                      return eventItem;
+                    });
+                  })
+                )
+            );
+          }
+
+          return combineLatest(observables).pipe(
+            map((events) => {
+              return events.flat();
             })
           );
+        } else {
+          return this.afs
+            .collection<EventItem>('events', (ref) => {
+              return ref.where(documentId(), 'in', majorEvent.events).orderBy('eventStartDate', 'asc');
+            })
+            .valueChanges({ idField: 'id' })
+            .pipe(
+              map((events: EventItem[]) => {
+                events.map((eventItem) => {
+                  // If there are no slots available, add event to form with disabled selection
+                  if (eventItem.slotsAvailable <= 0) {
+                    this.dataForm.addControl(eventItem.id, this.formBuilder.control({ value: null, disabled: true }));
+                  } else {
+                    this.dataForm.addControl(eventItem.id, this.formBuilder.control(null));
+                  }
+
+                  // If user is already subscribed, auto select event
+                  this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
+                    if (user) {
+                      this.afs
+                        .doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
+                        .get()
+                        .subscribe((document) => {
+                          // TODO: Remove me. This is for secompp22 only
+                          if (eventItem.eventType === 'palestra') {
+                            this.dataForm.get(eventItem.id).setValue(true);
+                          }
+                          ///
+
+                          if (document.exists) {
+                            const subscription = document.data() as MajorEventSubscription;
+                            if (
+                              subscription.subscribedToEvents.includes(eventItem.id) &&
+                              eventItem.slotsAvailable > 0
+                            ) {
+                              this.dataForm.get(eventItem.id).setValue(true);
+                            } else {
+                              this.dataForm.get(eventItem.id).setValue(false);
+                            }
+                          }
+                        });
+                    }
+                  });
+
+                  return eventItem;
+                });
+
+                return events.map((eventItem) => {
+                  // If there are no slots available, add event to form with disabled selection
+                  if (eventItem.slotsAvailable <= 0) {
+                    this.dataForm.addControl(eventItem.id, this.formBuilder.control({ value: null, disabled: true }));
+                  } else {
+                    this.dataForm.addControl(eventItem.id, this.formBuilder.control(null));
+                  }
+
+                  // If user is already subscribed, auto select event
+                  this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
+                    if (user) {
+                      this.afs
+                        .doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
+                        .get()
+                        .subscribe((document) => {
+                          // TODO: Remove me. This is for secompp22 only
+                          if (eventItem.eventType === 'palestra') {
+                            this.dataForm.get(eventItem.id).setValue(true);
+                          }
+                          ///
+
+                          if (document.exists) {
+                            const subscription = document.data() as MajorEventSubscription;
+                            if (
+                              subscription.subscribedToEvents.includes(eventItem.id) &&
+                              eventItem.slotsAvailable > 0
+                            ) {
+                              this.dataForm.get(eventItem.id).setValue(true);
+                            } else {
+                              this.dataForm.get(eventItem.id).setValue(false);
+                            }
+                          }
+                        });
+                    }
+                  });
+
+                  return eventItem;
+                });
+              })
+            );
+        }
       }),
       switchMap((events) => events)
     );
-
     this.majorEvent$.pipe(untilDestroyed(this)).subscribe((majorEvent) => {
       if (this.maxCourses && this.maxCourses !== majorEvent.maxCourses) {
         this.maxChanged.fire();
