@@ -66,7 +66,10 @@ export class PageMoreInfoPage implements OnInit {
               subscribedEventsObservables.push(
                 this.afs
                   .collection<EventItem>('events', (ref) =>
-                    ref.where(documentId(), 'in', data.subscribedToEvents.slice(i, i + 10))
+                    ref
+                      .where(documentId(), 'in', data.subscribedToEvents.slice(i, i + 10))
+                      .orderBy(documentId(), 'asc')
+                      .orderBy('eventStartDate')
                   )
                   .valueChanges({ idField: 'id' })
                   .pipe(trace('firestore'), take(1))
