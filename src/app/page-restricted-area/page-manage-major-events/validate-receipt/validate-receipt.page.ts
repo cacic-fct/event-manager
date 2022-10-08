@@ -218,7 +218,7 @@ export class ValidateReceiptPage implements OnInit {
             this.subscriptionsQuery.doc(docId).update({
               // @ts-ignore
               'payment.status': 4,
-              'payment.time': Timestamp.fromDate(new Date()),
+              'payment.time': serverTimestamp(),
               'payment.author': user.uid,
             });
             this.refuseModal.dismiss();
