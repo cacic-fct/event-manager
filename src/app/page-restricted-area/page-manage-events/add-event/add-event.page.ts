@@ -15,6 +15,7 @@ import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { ConfirmModalPage } from './confirm-modal/confirm-modal.page';
 import { getStringChanges, RemoteConfig } from '@angular/fire/remote-config';
+import { serverTimestamp } from '@angular/fire/firestore/firebase';
 
 @Component({
   selector: 'app-add-event',
@@ -202,7 +203,8 @@ export class AddEventPage implements OnInit {
               // doublePresence: this.dataForm.get('doublePresence').value,
               collectAttendance: this.dataForm.get('collectAttendanceForm').value === '' || false,
               createdBy: user.uid,
-              createdOn: Timestamp.fromDate(new Date()),
+              // @ts-ignore
+              createdOn: serverTimestamp(),
               slotsAvailable: Number.parseInt(this.dataForm.get('slotsAvailable').value) || 0,
               numberOfSubscriptions: 0,
               allowSubscription: this.dataForm.get('allowSubscription').value === '' || false,

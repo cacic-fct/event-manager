@@ -12,13 +12,14 @@ import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
-import { Timestamp } from '@firebase/firestore';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { AuthService, GetUserUIDResponse } from 'src/app/shared/services/auth.service';
 
+import { serverTimestamp } from '@angular/fire/firestore';
+
 interface Attendance {
   user: Observable<User>;
-  time: Timestamp;
+  time: TimestampType;
   id?: string;
 }
 

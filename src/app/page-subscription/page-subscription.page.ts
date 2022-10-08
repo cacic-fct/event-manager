@@ -388,8 +388,6 @@ export class PageSubscriptionPage implements OnInit {
                   // Create array with event IDs from eventsSelected
                   const eventsSelectedID = eventsSelected.map((event) => event.id);
 
-                  const now: Timestamp = firestore.Timestamp.fromDate(new Date());
-
                   this.afs
                     .collection(`majorEvents/${this.majorEventID}/subscriptions`)
                     .doc<MajorEventSubscription>(user.uid)

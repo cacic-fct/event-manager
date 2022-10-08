@@ -13,6 +13,7 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 
 import { ConfirmModalComponent } from './components/confirm-modal/confirm-modal.component';
+import { serverTimestamp } from '@angular/fire/firestore/firebase';
 
 @Component({
   selector: 'app-add-major-event',
@@ -158,7 +159,8 @@ export class AddMajorEventPage implements OnInit {
               : null,
             public: this.dataForm.get('public').value === '' || false,
             createdBy: user.uid,
-            createdOn: Timestamp.fromDate(new Date()),
+            //@ts-ignore
+            createdOn: serverTimestamp(),
             events: [],
           })
           .then(() => {

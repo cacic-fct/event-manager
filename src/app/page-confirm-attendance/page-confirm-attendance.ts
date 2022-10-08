@@ -8,11 +8,12 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { map, Observable, take } from 'rxjs';
 import { EventItem } from '../shared/services/event';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
-import { Timestamp } from '@firebase/firestore';
 import { fromUnixTime } from 'date-fns';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { MajorEventItem } from '../shared/services/major-event.service';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
+
+import { serverTimestamp } from '@angular/fire/firestore';
 
 interface EventInfo {
   name: string;

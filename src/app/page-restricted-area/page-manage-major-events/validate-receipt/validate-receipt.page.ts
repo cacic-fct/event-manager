@@ -1,7 +1,6 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { ActivatedRoute } from '@angular/router';
-import { Timestamp } from '@firebase/firestore';
 import { increment } from '@angular/fire/firestore';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { fromUnixTime } from 'date-fns';
@@ -15,6 +14,7 @@ import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { AlertController, IonModal } from '@ionic/angular';
+import { serverTimestamp } from '@angular/fire/firestore';
 
 @UntilDestroy()
 @Component({
@@ -113,7 +113,7 @@ export class ValidateReceiptPage implements OnInit {
           this.subscriptionsQuery.doc(subscriberID).update({
             // @ts-ignore
             'payment.status': 2, // Novo status: pagamento aprovado
-            'payment.time': Timestamp.fromDate(new Date()), // Momento da mudança
+            'payment.time': serverTimestamp(),
             'payment.author': adminUser.uid, // Autor da mudança
           });
 
@@ -186,7 +186,7 @@ export class ValidateReceiptPage implements OnInit {
             this.subscriptionsQuery.doc(docId).update({
               // @ts-ignore
               'payment.status': 3, // Novo status: erro personalizado
-              'payment.time': Timestamp.fromDate(new Date()),
+              'payment.time': serverTimestamp(),
               'payment.author': user.uid,
               'payment.error': this.refuseForm.get('errorMessage').value,
             });
