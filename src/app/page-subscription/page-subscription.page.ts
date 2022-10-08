@@ -116,7 +116,7 @@ export class PageSubscriptionPage implements OnInit {
             this.eventNotFound.close();
           }, 1000);
         } else {
-          // If majorEventID is valid, check if enrollment is open
+          // If majorEventID is valid, check if subscriptions are open
           const majorEvent = document.data() as MajorEventItem;
           if (this.getDateFromTimestamp(majorEvent.eventEndDate) < this.today) {
             this.router.navigate(['eventos']);
