@@ -148,6 +148,7 @@ export class PageSubscriptionPage implements OnInit {
                 }, 1000);
               } else {
                 this.disableEnrollmentTypeSelection = true;
+
                 if (subscription.subscriptionType) {
                   this.opSelected = subscription.subscriptionType.toString();
                 }
@@ -392,7 +393,7 @@ export class PageSubscriptionPage implements OnInit {
               .valueChanges({ idField: 'id' })
               .pipe(take(1), trace('firestore'))
               .subscribe((subscription) => {
-                if (!subscription.reference) {
+                if (!subscription.reference || this.disableEnrollmentTypeSelection) {
                   // Merge eventsSelected arrays
                   const eventsSelected = Object.values(this.eventsSelected).reduce((acc, val) => acc.concat(val), []);
 
