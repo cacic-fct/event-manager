@@ -1,3 +1,5 @@
+import { GlobalConstantsService } from './../shared/services/global-constants.service';
+import { User } from './../shared/services/user';
 import { InfoModalComponent } from './info-modal/info-modal.component';
 import { MajorEventSubscription } from '../shared/services/major-event.service';
 import { EnrollmentTypesService } from './../shared/services/enrollment-types.service';
@@ -81,6 +83,25 @@ export class PageSubscriptionPage implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.auth.user.pipe(take(1)).subscribe((user) => {
+      if (user) {
+        this.afs
+          .collection('users')
+          .doc<User>(user.uid)
+          .get()
+          .pipe(take(1))
+          .subscribe((doc) => {
+            if (doc.exists) {
+              if (doc.data().dataVersion !== GlobalConstantsService.userDataVersion) {
+                this.router.navigate(['/register']);
+              }
+            } else {
+              this.router.navigate(['/register']);
+            }
+          });
+      }
+    });
+
     // If majorEventID is not valid, redirect
     this.afs
       .collection('majorEvents')
