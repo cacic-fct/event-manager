@@ -48,6 +48,7 @@ export class PageCalendarEventPage implements OnInit {
   eventID: string;
   subscribedToEvent: boolean;
   isUserAuthenticated: Observable<boolean>;
+  today: Date = new Date();
 
   constructor(
     private toastController: ToastController,
