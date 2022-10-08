@@ -70,7 +70,6 @@ export class PageCalendarEventPage implements OnInit {
 
     this.isUserAuthenticated = this.auth.user.pipe(
       trace('auth'),
-      untilDestroyed(this),
       map((user) => {
         return !!user;
       })
