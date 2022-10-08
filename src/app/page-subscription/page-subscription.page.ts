@@ -43,6 +43,8 @@ export class PageSubscriptionPage implements OnInit {
   private alreadySubscribed: SwalComponent;
   @ViewChild('eventNotFound')
   private eventNotFound: SwalComponent;
+  @ViewChild('eventOutOfSubscriptionDate')
+  private eventOutOfSubscriptionDate: SwalComponent;
 
   today: Date = new Date();
 
@@ -100,19 +102,31 @@ export class PageSubscriptionPage implements OnInit {
       }
     });
 
-    // If majorEventID is not valid, redirect
     this.afs
       .collection('majorEvents')
       .doc(this.majorEventID)
       .get()
       .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((document) => {
+        // If majorEventID is not valid, redirect
         if (!document.exists) {
           this.eventNotFound.fire();
           setTimeout(() => {
             this.router.navigate(['eventos']);
             this.eventNotFound.close();
           }, 1000);
+        } else {
+          // If majorEventID is valid, check if enrollment is open
+          const majorEvent = document.data() as MajorEventItem;
+          if (this.getDateFromTimestamp(majorEvent.eventEndDate) < this.today) {
+            this.router.navigate(['eventos']);
+
+            this.eventOutOfSubscriptionDate.fire();
+            setTimeout(() => {
+              this.router.navigate(['eventos']);
+              this.eventOutOfSubscriptionDate.close();
+            }, 1000);
+          }
         }
       });
 
