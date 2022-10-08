@@ -6,7 +6,7 @@ import { MajorEventItem, MajorEventsService } from 'src/app/shared/services/majo
 import { format, getDayOfYear, isEqual, parseISO, setDayOfYear, subMilliseconds } from 'date-fns';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
-import { BehaviorSubject, take, Observable } from 'rxjs';
+import { BehaviorSubject, take, Observable, map } from 'rxjs';
 import * as firestore from '@firebase/firestore';
 import { Timestamp } from '@firebase/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
@@ -14,7 +14,7 @@ import { EventItem } from 'src/app/shared/services/event';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { ConfirmModalPage } from './confirm-modal/confirm-modal.page';
-import { PlacesService } from 'src/app/shared/services/places.service';
+import { getStringChanges, RemoteConfig } from '@angular/fire/remote-config';
 
 @Component({
   selector: 'app-add-event',
@@ -28,7 +28,6 @@ export class AddEventPage implements OnInit {
   @ViewChild('selectPlace', { static: false }) selectPlace: IonSelect;
 
   courses = CoursesService.courses;
-  places = PlacesService.places;
   majorEventsData$: Observable<MajorEventItem[]>;
 
   collectAttendance: boolean = false;
@@ -43,14 +42,19 @@ export class AddEventPage implements OnInit {
 
   userData: any;
 
+  places$: Observable<any>;
+
   tzoffset = new Date().getTimezoneOffset() * 60_000;
+  parsedPlaces: any;
+
   constructor(
     public formBuilder: FormBuilder,
     private modalController: ModalController,
     public majorEvents: MajorEventsService,
     private afs: AngularFirestore,
     private router: Router,
-    private auth: AngularFireAuth
+    private auth: AngularFireAuth,
+    private remoteConfig: RemoteConfig
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
   }
@@ -102,6 +106,17 @@ export class AddEventPage implements OnInit {
     );
     this.userData.displayName.replace(/%20/g, ' ');
     this.majorEventsData$ = this.majorEvents.getFutureMajorEvents();
+
+    this.places$ = getStringChanges(this.remoteConfig, 'placesMap').pipe(
+      map((places) => {
+        if (places) {
+          // TODO: Fix me
+          const parsed = JSON.parse(places);
+          this.parsedPlaces = places;
+          return parsed;
+        }
+      })
+    );
   }
 
   formatDate(value: string) {
@@ -290,16 +305,16 @@ export class AddEventPage implements OnInit {
   }
 
   placeChange(ev: any) {
-    if (this.places[ev.detail.value] === undefined) return 1;
+    if (this.parsedPlaces[ev.detail.value] === undefined) return 1;
     this.dataForm
       .get('location')
       .get('description')
       .setValue(
-        this.places[ev.detail.value].name +
-          (this.places[ev.detail.value].description ? ' - ' + this.places[ev.detail.value].description : '')
+        this.parsedPlaces[ev.detail.value].name +
+          (this.parsedPlaces[ev.detail.value].description ? ' - ' + this.parsedPlaces[ev.detail.value].description : '')
       );
-    this.dataForm.get('location').get('lat').setValue(this.places[ev.detail.value].lat);
-    this.dataForm.get('location').get('lon').setValue(this.places[ev.detail.value].lon);
+    this.dataForm.get('location').get('lat').setValue(this.parsedPlaces[ev.detail.value].lat);
+    this.dataForm.get('location').get('lon').setValue(this.parsedPlaces[ev.detail.value].lon);
   }
 
   collectAttendanceChange() {
