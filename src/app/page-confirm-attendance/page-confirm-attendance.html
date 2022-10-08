@@ -1,0 +1,40 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/menu"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Registrar presença</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ng-container *ngIf="eventInfo$ | async as eventInfo; else loading">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{ eventInfo.name }}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
+          <ion-item>
+            <ion-label position="floating">Insira o código informado<ion-text color="danger">*</ion-text></ion-label>
+            <ion-input formControlName="code" type="text" maxlength="4"></ion-input>
+          </ion-item>
+        </form>
+      </ion-card-content>
+    </ion-card>
+  </ng-container>
+  <ng-template #loading>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  </ng-template>
+</ion-content>
+
+<!-- Confirmação da presença gera um alert de confirmação -->
+<swal
+  #swalConfirm
+  title="Presença confirmada!"
+  icon="success"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false">
+</swal>

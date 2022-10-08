@@ -98,6 +98,13 @@ const routes: Routes = [
       import('./page-subscriptions-payments/page-subscriptions.module').then((m) => m.PageSubscriptionsPageModule),
     ...canActivate(redirectUnauthorizedToLogin),
   },
+  {
+    path: 'confirmar-presenca/:eventID',
+    title: 'Confirmar presença em um evento',
+    loadChildren: () =>
+      import('./page-confirm-attendance/page-confirm-attendance.module').then((m) => m.PageConfirmAttendanceModule),
+    ...canActivate(redirectUnauthorizedToLogin),
+  },
 ];
 @NgModule({
   imports: [RouterModule.forRoot(routes, { preloadingStrategy: PreloadingStrategyService })],

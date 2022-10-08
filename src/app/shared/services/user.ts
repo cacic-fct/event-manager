@@ -10,4 +10,7 @@ export interface User {
   academicID?: string;
   dataVersion?: string;
   associateStatus?: 'undergraduate' | 'graduate' | 'professor' | 'adjunctProfessor' | 'employee' | 'external' | 'other';
+  pending?: {
+    onlineAttendance?: string[];
+  };
 }

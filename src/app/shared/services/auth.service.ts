@@ -1,3 +1,4 @@
+import { EventItem } from 'src/app/shared/services/event';
 import { Injectable, NgZone } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
@@ -7,13 +8,14 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
-import { take, Observable } from 'rxjs';
+import { take, Observable, of, map, switchMap } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { PageVerifyPhonePage } from 'src/app/page-verify-phone/page-verify-phone.page';
 
 import * as firebaseAuth from 'firebase/auth';
 import { AngularFireFunctions } from '@angular/fire/compat/functions';
 import { getStringChanges, RemoteConfig, getBooleanChanges } from '@angular/fire/remote-config';
+import { arrayRemove } from '@angular/fire/firestore';
 
 @Injectable()
 export class AuthService {
@@ -61,10 +63,45 @@ export class AuthService {
                   addProfessor({ email: user.email }).pipe(take(1)).subscribe();
                 }
               });
-            } else {
-              // Not a professor
-              this.CompareUserdataVersion(this.userData);
             }
+          } else {
+            // Not a professor or remote config not loaded yet
+            this.CompareUserdataVersion(this.userData)
+              .pipe(take(1))
+              .subscribe((response) => {
+                if (response) {
+                  return;
+                }
+                this.afs
+                  .collection('users')
+                  .doc<User>(this.userData.uid)
+                  .valueChanges()
+                  .pipe(take(1))
+                  .subscribe((user) => {
+                    if (user.pending?.onlineAttendance) {
+                      user.pending.onlineAttendance.forEach((eventID) => {
+                        this.afs
+                          .collection('events')
+                          .doc<EventItem>(eventID)
+                          .valueChanges({ idField: 'id' })
+                          .pipe(take(1))
+                          .subscribe((eventData) => {
+                            if (eventData.attendanceCollectionStart && !eventData.attendanceCollectionEnd) {
+                              this.router.navigate(['/confirmar-presenca', eventID]);
+                            } else if (eventData.attendanceCollectionEnd) {
+                              this.afs
+                                .collection('users')
+                                .doc<User>(this.userData.uid)
+                                .update({
+                                  // @ts-ignore
+                                  pending: { onlineAttendance: arrayRemove(eventID) },
+                                });
+                            }
+                          });
+                      });
+                    }
+                  });
+              });
           }
         });
       } else {
@@ -168,26 +205,32 @@ export class AuthService {
     });
   }
 
-  private CompareUserdataVersion(user: firebase.User) {
-    getBooleanChanges(this.remoteConfig, 'registerPrompt')
-      .pipe(take(1), trace('remoteconfig'))
-      .subscribe((registerPrompt) => {
+  private CompareUserdataVersion(user: firebase.User): Observable<boolean> {
+    return getBooleanChanges(this.remoteConfig, 'registerPrompt').pipe(
+      take(1),
+      trace('remoteconfig'),
+      map((registerPrompt) => {
         if (registerPrompt) {
-          this.afs
+          return this.afs
             .doc<User>(`users/${user.uid}`)
             .valueChanges()
-            .pipe(trace('firestore'))
-            .subscribe((data) => {
-              if (data === undefined) {
-                return;
-              }
-
-              if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
-                this.router.navigate(['/register']);
-              }
-            });
+            .pipe(
+              trace('firestore'),
+              map((data) => {
+                if (data === undefined) {
+                  return true;
+                } else if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
+                  this.router.navigate(['/register']);
+                  return true;
+                } else {
+                  return false;
+                }
+              })
+            );
         }
-      });
+      }),
+      switchMap((value) => value)
+    );
   }
 
   async verifyPhoneModal(phone: string): Promise<boolean> {
