@@ -146,6 +146,11 @@
       <ion-input formControlName="youtubeCode" placeholder="Código do vídeo no YouTube"></ion-input>
     </ion-item>
 
+    <ion-item *ngIf="dataForm.get('inMajorEvent').value === 'none'">
+      <ion-label>Permitir inscrição</ion-label>
+      <ion-toggle slot="end" formControlName="allowSubscription"></ion-toggle>
+    </ion-item>
+
     <ion-item>
       <ion-label>Coletar presença para este evento</ion-label>
       <ion-toggle

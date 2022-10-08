@@ -99,10 +99,11 @@ export class AddEventPage implements OnInit {
         inMajorEvent: ['none', Validators.required],
         eventType: ['none', Validators.required],
         hasDateEndForm: this.hasDateEnd,
-        issueCertificate: false,
+        issueCertificate: '',
         slotsAvailable: '',
         // doublePresence: false,
-        collectAttendanceForm: this.collectAttendance,
+        collectAttendanceForm: this.collectAttendance ? '' : null,
+        allowSubscription: null,
       },
       {
         validators: [this.validatorLatLong, this.validatorButton, this.validatorDateEnd],
@@ -204,6 +205,7 @@ export class AddEventPage implements OnInit {
               createdOn: Timestamp.fromDate(new Date()),
               slotsAvailable: Number.parseInt(this.dataForm.get('slotsAvailable').value) || 0,
               numberOfSubscriptions: 0,
+              allowSubscription: this.dataForm.get('allowSubscription').value === '' || false,
             })
             .then((res) => {
               if (majorEvent) {
