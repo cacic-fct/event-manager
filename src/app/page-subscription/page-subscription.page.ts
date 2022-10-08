@@ -410,7 +410,6 @@ export class PageSubscriptionPage implements OnInit {
                         .doc(this.majorEventID)
                         .set({
                           reference: this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`).ref,
-                          inMajorEvent: this.majorEventID,
                         })
                         .then(() => {
                           eventsSelectedID.forEach((eventID) => {
