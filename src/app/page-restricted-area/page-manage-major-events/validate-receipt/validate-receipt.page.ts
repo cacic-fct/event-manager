@@ -261,7 +261,7 @@ export class ValidateReceiptPage implements OnInit {
             let formattedPhone = phone.replace(/\D/g, '');
             formattedPhone = formattedPhone.replace(/^(\d{2})(\d)/g, '55$1$2');
 
-            const text: string = `Olá, ${name}! O seu comprovante de pagamento do evento "${event}" foi recusado.%0aA justificativa é "${message}".%0a%0aRealize o envio novamente pelo link:%0ahttps://fct-pp.web.app/inscricoes/pagar/${this.majorEventID}?utm_source=whatsapp&utm_medium=message&utm_campaign=payment_error`;
+            const text: string = `Olá, ${name}! O seu comprovante de pagamento do evento "${event}" foi recusado.%0aA justificativa é "${message}".%0a%0aRealize o envio novamente pelo link:%0ahttps://fct-pp.web.app/inscricoes/pagar/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=payment_error`;
 
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
@@ -290,7 +290,7 @@ export class ValidateReceiptPage implements OnInit {
             let formattedPhone = phone.replace(/\D/g, '');
             formattedPhone = formattedPhone.replace(/^(\d{2})(\d)/g, '55$1$2');
 
-            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aNão há mais vagas em uma das atividades selecionadas.%0a%0aVocê precisa editar a sua inscrição pelo link:%0ahttps://fct-pp.web.app/eventos/inscrever/${this.majorEventID}?utm_source=whatsapp&utm_medium=message&utm_campaign=no_slots`;
+            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aNão há mais vagas em uma das atividades selecionadas.%0a%0aVocê precisa editar a sua inscrição pelo link:%0ahttps://fct-pp.web.app/eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=no_slots`;
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
           },
