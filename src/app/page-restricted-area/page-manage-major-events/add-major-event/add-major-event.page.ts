@@ -13,7 +13,7 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 
 import { ConfirmModalComponent } from './components/confirm-modal/confirm-modal.component';
-import { serverTimestamp } from '@angular/fire/firestore/firebase';
+import { serverTimestamp } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-add-major-event',

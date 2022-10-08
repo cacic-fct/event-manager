@@ -15,7 +15,7 @@ import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { ConfirmModalPage } from './confirm-modal/confirm-modal.page';
 import { getStringChanges, RemoteConfig } from '@angular/fire/remote-config';
-import { serverTimestamp } from '@angular/fire/firestore/firebase';
+import { serverTimestamp } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-add-event',
