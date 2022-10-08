@@ -18,8 +18,8 @@
         <h4 style="font-weight: 400; margin: 5px 0 0 0">
           {{ getDateFromTimestamp(item.eventStartDate) | date: 'HH:mm' }}
         </h4>
-        <p style="font-size: 10px; margin: 0" class="ion-text-center">–</p>
         <ng-container *ngIf="item.eventEndDate">
+          <p style="font-size: 10px; margin: 0" class="ion-text-center">–</p>
           <h4 style="font-weight: 400; margin: 0 0 5px 0">
             {{ getDateFromTimestamp(item.eventEndDate) | date: 'HH:mm' }}
           </h4>
