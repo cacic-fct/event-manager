@@ -51,6 +51,18 @@
     </ion-list>
   </ng-container>
 
+  <ng-container *ngIf="eventSubscriptions$ | async as eventSubscriptions">
+    <ng-container *ngFor="let eventSubscription of eventSubscriptions">
+      <ng-container *ngIf="eventSubscription.event | async as eventItem">
+        <ng-container *ngIf="!eventItem.inMajorEvent">
+          <ion-card>
+            <ion-card-header> <ion-card-title>{{ eventItem.name }}</ion-card-title> </ion-card-header>
+          </ion-card>
+        </ng-container>
+      </ng-container>
+    </ng-container>
+  </ng-container>
+
   <ng-template
     #ionCardHeader
     let-title="title"

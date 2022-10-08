@@ -33,4 +33,5 @@ export interface EventItem {
   attendanceCollectionStart?: Timestamp;
   attendanceCollectionEnd?: Timestamp;
   attendanceCode?: string;
+  allowSubscription?: boolean;
 }

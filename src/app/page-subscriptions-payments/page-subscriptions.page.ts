@@ -1,3 +1,4 @@
+import { EventItem } from 'src/app/shared/services/event';
 import { ModalController } from '@ionic/angular';
 import { Timestamp } from '@firebase/firestore-types';
 import { MajorEventItem, MajorEventSubscription } from '../shared/services/major-event.service';
@@ -20,6 +21,7 @@ import { Router } from '@angular/router';
 })
 export class PageSubscriptionsPage implements OnInit {
   subscriptions$: Observable<Subscription[]>;
+  eventSubscriptions$: Observable<EventSubscription[]>;
 
   today: Date = new Date();
 
@@ -49,6 +51,23 @@ export class PageSubscriptionsPage implements OnInit {
                   majorEvent: this.afs
                     .doc<MajorEventItem>(`majorEvents/${subscription.id}`)
                     .valueChanges({ idField: 'id' }),
+                };
+              });
+            })
+          );
+
+        this.eventSubscriptions$ = this.afs
+          .collection<EventSubscription>(`users/${user.uid}/eventSubscriptions`)
+          .valueChanges({ idField: 'id' })
+          .pipe(
+            untilDestroyed(this),
+            trace('firestore'),
+            map((subscriptions) => {
+              return subscriptions.map((subscription) => {
+                return {
+                  id: subscription.id,
+                  userData: this.afs.doc<any>(`events/${subscription.id}/subscriptions/${user.uid}`).valueChanges(),
+                  event: this.afs.doc<EventItem>(`events/${subscription.id}`).valueChanges({ idField: 'id' }),
                 };
               });
             })
@@ -89,4 +108,11 @@ interface Subscription {
   reference?: DocumentReference<MajorEventSubscription>;
   userData?: Observable<MajorEventSubscription>;
   majorEvent?: Observable<MajorEventItem>;
+}
+
+interface EventSubscription {
+  id?: string;
+  reference?: DocumentReference<any>;
+  userData?: Observable<any>;
+  event?: Observable<EventItem>;
 }
