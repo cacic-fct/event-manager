@@ -28,11 +28,30 @@
   </ng-template>
 </ion-content>
 
-<!-- Confirmação da presença gera um alert de confirmação -->
 <swal
   #swalConfirm
   title="Presença confirmada!"
   icon="success"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false">
+</swal>
+
+<swal
+  #swalNotFound
+  title="Evento não encontrado"
+  icon="error"
+  [heightAuto]="false"
+  [showCancelButton]="false"
+  [showCloseButton]="false"
+  [showConfirmButton]="false">
+</swal>
+
+<swal
+  #swalNotOnTime
+  title="Fora do período de coleta de presença"
+  icon="error"
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
