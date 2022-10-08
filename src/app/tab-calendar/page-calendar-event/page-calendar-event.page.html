@@ -12,7 +12,7 @@
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="item$ | async; let items; else: loading">
+  <ng-container *ngIf="item$ | async as items; else: loading">
     <div class="margin-horizontal-auto content-container ion-padding">
       <img
         class="margin-horizontal-auto"
@@ -70,31 +70,33 @@
         >
       </div>
 
-      <ng-container *ngIf="today < getDateFromTimestamp(item.eventEndDate)">
-        <div *ngIf="items?.allowSubscription && (isUserAuthenticated | async)" class="ion-padding-vertical">
-          <ion-button
-            expand="block"
-            color="primary"
-            target="_blank"
-            (click)="subscribeToEvent() "
-            *ngIf="!subscribedToEvent">
-            Inscrever-se
-          </ion-button>
-          <ion-button expand="block" color="primary" target="_blank" disabled="" *ngIf="subscribedToEvent">
-            <ion-icon name="checkmark" slot="start"></ion-icon> <span slot="end">Inscrito</span>
-          </ion-button>
-        </div>
+      <ng-container *ngIf="item?.eventEndDate">
+        <ng-container *ngIf="today < getDateFromTimestamp(item?.eventEndDate)">
+          <div *ngIf="items?.allowSubscription && (isUserAuthenticated | async)" class="ion-padding-vertical">
+            <ion-button
+              expand="block"
+              color="primary"
+              target="_blank"
+              (click)="subscribeToEvent() "
+              *ngIf="!subscribedToEvent">
+              Inscrever-se
+            </ion-button>
+            <ion-button expand="block" color="primary" target="_blank" disabled="" *ngIf="subscribedToEvent">
+              <ion-icon name="checkmark" slot="start"></ion-icon> <span slot="end">Inscrito</span>
+            </ion-button>
+          </div>
 
-        <div *ngIf="items?.allowSubscription && !(isUserAuthenticated | async)" class="ion-padding-vertical">
-          <ion-button
-            expand="block"
-            color="primary"
-            target="_blank"
-            [routerLink]="['/login']"
-            [queryParams]="{redirect: '/calendario/evento/' + eventID  }">
-            Inscrever-se
-          </ion-button>
-        </div>
+          <div *ngIf="items?.allowSubscription && !(isUserAuthenticated | async)" class="ion-padding-vertical">
+            <ion-button
+              expand="block"
+              color="primary"
+              target="_blank"
+              [routerLink]="['/login']"
+              [queryParams]="{redirect: '/calendario/evento/' + eventID  }">
+              Inscrever-se
+            </ion-button>
+          </div>
+        </ng-container>
       </ng-container>
 
       <div *ngIf="items?.youtubeCode">
