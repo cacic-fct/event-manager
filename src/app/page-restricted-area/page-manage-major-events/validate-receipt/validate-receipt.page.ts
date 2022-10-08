@@ -140,7 +140,8 @@ export class ValidateReceiptPage implements OnInit {
                   .collection('subscriptions')
                   .doc(subscriberID)
                   .set({
-                    time: Timestamp.fromDate(new Date()),
+                    // @ts-ignore
+                    time: serverTimestamp(),
                   });
 
                 this.afs

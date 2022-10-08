@@ -147,30 +147,24 @@ export class PageConfirmAttendance implements OnInit {
           .subscribe((subscriptionItem) => {
             if (subscriptionItem.payment.status == 2) {
               // Escrevendo na coleção 'attendance'
-              this.eventRef
-                .collection('attendance')
-                .doc(userID)
-                .set({
-                  time: Timestamp.fromDate(new Date()),
-                });
+              this.eventRef.collection('attendance').doc(userID).set({
+                // @ts-ignore
+                time: serverTimestamp(),
+              });
             } else {
               // Escrevendo na coleção 'non-paying-attendance'
-              this.eventRef
-                .collection('non-paying-attendance')
-                .doc(userID)
-                .set({
-                  time: Timestamp.fromDate(new Date()),
-                });
+              this.eventRef.collection('non-paying-attendance').doc(userID).set({
+                // @ts-ignore
+                time: serverTimestamp(),
+              });
             }
           });
       } else {
         // Escrevendo na coleção 'attendance'
-        this.eventRef
-          .collection('attendance')
-          .doc(userID)
-          .set({
-            time: Timestamp.fromDate(new Date()),
-          });
+        this.eventRef.collection('attendance').doc(userID).set({
+          // @ts-ignore
+          time: serverTimestamp(),
+        });
       }
 
       this.swalConfirm.fire();

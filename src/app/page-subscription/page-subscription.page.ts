@@ -27,7 +27,7 @@ import { trace } from '@angular/fire/compat/performance';
 import { parse } from 'twemoji-parser';
 import { DomSanitizer } from '@angular/platform-browser';
 import { FormBuilder, FormGroup } from '@angular/forms';
-import { increment } from '@angular/fire/firestore';
+import { increment, serverTimestamp } from '@angular/fire/firestore';
 
 @UntilDestroy()
 @Component({
@@ -396,11 +396,13 @@ export class PageSubscriptionPage implements OnInit {
                     .set({
                       subscriptionType: Number.parseInt(this.opSelected),
                       subscribedToEvents: eventsSelectedID,
-                      time: now,
+                      // @ts-ignore
+                      time: serverTimestamp(),
                       payment: {
                         price: price,
                         status: 0,
-                        time: now,
+                        // @ts-ignore
+                        time: serverTimestamp(),
                         author: user.uid,
                       },
                     })
@@ -419,7 +421,8 @@ export class PageSubscriptionPage implements OnInit {
                             });
 
                             this.afs.doc(`events/${eventID}/subscriptions/${user.uid}`).set({
-                              time: now,
+                              // @ts-ignore
+                              time: serverTimestamp(),
                             });
                           });
                           this.successSwal.fire();

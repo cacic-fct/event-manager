@@ -227,7 +227,8 @@ export class PageCalendarEventPage implements OnInit {
             this.afs
               .doc(`events/${eventID}/subscriptions/${user.uid}`)
               .set({
-                time: Timestamp.fromDate(new Date()),
+                // @ts-ignore
+                time: serverTimestamp(),
               })
               .then(() => {
                 this.afs
@@ -247,7 +248,8 @@ export class PageCalendarEventPage implements OnInit {
           this.afs
             .doc(`events/${this.eventID}/subscriptions/${user.uid}`)
             .set({
-              time: Timestamp.fromDate(new Date()),
+              // @ts-ignore
+              time: serverTimestamp(),
             })
             .then(() => {
               this.afs

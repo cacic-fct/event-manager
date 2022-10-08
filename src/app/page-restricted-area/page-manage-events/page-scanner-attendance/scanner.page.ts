@@ -152,12 +152,10 @@ export class ScannerPage implements OnInit {
               .pipe(take(1), trace('firestore'))
               .subscribe((user) => {
                 if (user.exists) {
-                  this.afs
-                    .collection(`events/${this.eventID}/attendance`)
-                    .doc(resultString)
-                    .set({
-                      time: Timestamp.fromDate(new Date()),
-                    });
+                  this.afs.collection(`events/${this.eventID}/attendance`).doc(resultString).set({
+                    // @ts-ignore
+                    time: serverTimestamp(),
+                  });
                   this.audioSuccess.play();
                   this.toastSucess();
                   this.backdropColor('success');
@@ -237,12 +235,10 @@ export class ScannerPage implements OnInit {
                 .subscribe((user) => {
                   // If user uid exists, register attendance
                   if (user.exists) {
-                    this.afs
-                      .collection(`events/${this.eventID}/attendance`)
-                      .doc(uid)
-                      .set({
-                        time: Timestamp.fromDate(new Date()),
-                      });
+                    this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
+                      // @ts-ignore
+                      time: serverTimestamp(),
+                    });
                     this.audioSuccess.play();
                     this.toastSucess();
                     this.backdropColor('success');
