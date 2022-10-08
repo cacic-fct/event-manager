@@ -1,5 +1,4 @@
 import { EventItem } from 'src/app/shared/services/event';
-import { ModalController } from '@ionic/angular';
 import { Timestamp } from '@firebase/firestore-types';
 import { MajorEventItem, MajorEventSubscription } from '../shared/services/major-event.service';
 import { Component, OnInit } from '@angular/core';

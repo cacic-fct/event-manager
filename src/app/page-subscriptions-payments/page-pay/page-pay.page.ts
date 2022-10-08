@@ -4,7 +4,7 @@ import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { Observable } from 'rxjs';
 import { finalize, take } from 'rxjs/operators';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-import { DataUrl, NgxImageCompressService } from 'ngx-image-compress';
+import { NgxImageCompressService } from 'ngx-image-compress';
 import { ToastController } from '@ionic/angular';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
