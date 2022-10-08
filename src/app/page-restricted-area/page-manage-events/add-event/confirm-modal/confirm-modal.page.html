@@ -23,7 +23,7 @@
 
     <div *ngIf="dataForm.value.description">
       <h2>Sobre</h2>
-      <p>{{ dataForm.value.description }}</p>
+      <p class="pre-wrap">{{ dataForm.value.description }}</p>
     </div>
 
     <div *ngIf="dataForm.value.location.description || (dataForm.value.location.lat && dataForm.value.location.lon)">
