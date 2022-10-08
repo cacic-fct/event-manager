@@ -66,7 +66,7 @@ export class PageSubscriptionPage implements OnInit {
   eventGroupMinicursoCount: number = 0;
 
   opSelected: string;
-  disableEnrollmentTypeSelection: boolean = false;
+  userIsSubscribedWithStatusFour: boolean = false;
 
   majorEventID = this.route.snapshot.params.eventID;
 
@@ -147,7 +147,7 @@ export class PageSubscriptionPage implements OnInit {
                   this.alreadySubscribed.close();
                 }, 1000);
               } else {
-                this.disableEnrollmentTypeSelection = true;
+                this.userIsSubscribedWithStatusFour = true;
 
                 if (subscription.subscriptionType) {
                   this.opSelected = subscription.subscriptionType.toString();
@@ -393,7 +393,7 @@ export class PageSubscriptionPage implements OnInit {
               .valueChanges({ idField: 'id' })
               .pipe(take(1), trace('firestore'))
               .subscribe((subscription) => {
-                if (!subscription.reference || this.disableEnrollmentTypeSelection) {
+                if (!subscription.reference || this.userIsSubscribedWithStatusFour) {
                   // Merge eventsSelected arrays
                   const eventsSelected = Object.values(this.eventsSelected).reduce((acc, val) => acc.concat(val), []);
 
