@@ -414,10 +414,8 @@ export class PageSubscriptionPage implements OnInit {
                               numberOfSubscriptions: increment(1),
                             });
 
-                            this.afs.doc(`events/${eventID}/subscriptions/${user.uid}`).set({
-                              // @ts-ignore
-                              time: serverTimestamp(),
-                            });
+                            // Do NOT write to event/uid/subscriptions/userID
+                            // This will be done in the receipt validation
                           });
                           this.successSwal.fire();
                           setTimeout(() => {
