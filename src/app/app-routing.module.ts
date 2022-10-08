@@ -98,10 +98,6 @@ const routes: Routes = [
       import('./page-subscriptions-payments/page-subscriptions.module').then((m) => m.PageSubscriptionsPageModule),
     ...canActivate(redirectUnauthorizedToLogin),
   },
-  {
-    path: 'page-debug',
-    loadChildren: () => import('./page-debug/page-debug.module').then((m) => m.PageDebugPageModule),
-  },
 ];
 @NgModule({
   imports: [RouterModule.forRoot(routes, { preloadingStrategy: PreloadingStrategyService })],
