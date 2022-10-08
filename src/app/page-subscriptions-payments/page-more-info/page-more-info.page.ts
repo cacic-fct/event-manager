@@ -66,10 +66,7 @@ export class PageMoreInfoPage implements OnInit {
               subscribedEventsObservables.push(
                 this.afs
                   .collection<EventItem>('events', (ref) =>
-                    ref
-                      .where(documentId(), 'in', data.subscribedToEvents.slice(i, i + 10))
-                      .orderBy(documentId(), 'asc')
-                      .orderBy('eventStartDate')
+                    ref.where(documentId(), 'in', data.subscribedToEvents.slice(i, i + 10))
                   )
                   .valueChanges({ idField: 'id' })
                   .pipe(trace('firestore'), take(1))
@@ -78,7 +75,8 @@ export class PageMoreInfoPage implements OnInit {
 
             this.subscribedEvents$ = combineLatest(subscribedEventsObservables).pipe(
               map((events) => {
-                return events.flat();
+                const data = events.flat();
+                return data.sort((a, b) => a.eventStartDate.seconds - b.eventStartDate.seconds);
               })
             );
 
