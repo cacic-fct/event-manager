@@ -160,7 +160,7 @@ export class PageSubscriptionPage implements OnInit {
             observables.push(
               this.afs
                 .collection<EventItem>('events', (ref) =>
-                  ref.where(documentId(), 'in', majorEvent.events.slice(i, i + 10)).orderBy('eventStartDate', 'asc')
+                  ref.where(documentId(), 'in', majorEvent.events.slice(i, i + 10))
                 )
                 .valueChanges({ idField: 'id' })
                 .pipe(
@@ -261,7 +261,7 @@ export class PageSubscriptionPage implements OnInit {
         } else {
           return this.afs
             .collection<EventItem>('events', (ref) => {
-              return ref.where(documentId(), 'in', majorEvent.events).orderBy('eventStartDate', 'asc');
+              return ref.where(documentId(), 'in', majorEvent.events);
             })
             .valueChanges({ idField: 'id' })
             .pipe(
