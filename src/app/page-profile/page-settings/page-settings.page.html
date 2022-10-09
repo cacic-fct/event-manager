@@ -13,9 +13,15 @@
       <ion-icon name="pencil" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Editar informações do perfil</ion-label>
     </ion-item>
-    <ion-item (click)="authService.GoogleLink()" button>
-      <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
-      <ion-label>Vincular e-mail pessoal</ion-label>
-    </ion-item>
+    <ng-container *ngIf="isUnesp">
+      <ion-item (click)="authService.GoogleLink()" button *ngIf="alreadyLinked">
+        <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>Vincular e-mail pessoal</ion-label>
+      </ion-item>
+      <ion-item button disabled="" *ngIf="!alreadyLinked">
+        <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>E-mail pessoal já vinculado</ion-label>
+      </ion-item>
+    </ng-container>
   </ion-card>
 </ion-content>
