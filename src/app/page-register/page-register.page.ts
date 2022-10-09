@@ -1,3 +1,4 @@
+import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { User } from 'src/app/shared/services/user';
 import { Component, OnInit, ViewChild } from '@angular/core';
 
@@ -24,7 +25,7 @@ import { take, Observable, BehaviorSubject } from 'rxjs';
 import { WindowService } from '../shared/services/window.service';
 
 import firebase from 'firebase/compat/app';
-
+@UntilDestroy()
 @Component({
   selector: 'app-page-register',
   templateUrl: './page-register.page.html',
@@ -71,7 +72,7 @@ export class PageRegisterPage implements OnInit {
       .collection('users')
       .doc<User>(this.userData.uid)
       .valueChanges()
-      .pipe(take(1), trace('firestore'))
+      .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((user) => {
         if (user.email.includes('@unesp.br')) {
           this.isUnesp = true;
