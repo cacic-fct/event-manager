@@ -20,7 +20,7 @@ import { arrayRemove } from '@angular/fire/firestore';
 @Injectable()
 export class AuthService {
   userData: firebase.User;
-  dataVersion = GlobalConstantsService.userDataVersion;
+  dataVersion: string = GlobalConstantsService.userDataVersion;
 
   constructor(
     public auth: AngularFireAuth,
@@ -213,10 +213,11 @@ export class AuthService {
         if (registerPrompt) {
           return this.afs
             .doc<User>(`users/${user.uid}`)
-            .valueChanges()
+            .get()
             .pipe(
               trace('firestore'),
-              map((data) => {
+              map((doc) => {
+                const data = doc.data();
                 if (data === undefined) {
                   return true;
                 } else if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
