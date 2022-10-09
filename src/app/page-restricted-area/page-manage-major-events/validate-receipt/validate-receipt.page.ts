@@ -178,12 +178,12 @@ export class ValidateReceiptPage implements OnInit {
         .get()
         .pipe(take(1), trace('firestore'))
         .subscribe((col) => {
-          const docId = col.docs[0].id;
+          const subscriberID = col.docs[0].id;
 
-          const docQuery = this.afs.doc(`users/${docId}`).get();
+          const docQuery = this.afs.doc(`users/${subscriberID}`).get();
 
           if (this.refuseForm.value.radioGroup === 'invalidReceipt') {
-            this.subscriptionsQuery.doc(docId).update({
+            this.subscriptionsQuery.doc(subscriberID).update({
               // @ts-ignore
               'payment.status': 3, // Novo status: erro personalizado
               'payment.time': serverTimestamp(),
@@ -215,7 +215,7 @@ export class ValidateReceiptPage implements OnInit {
                 });
               });
           } else if (this.refuseForm.value.radioGroup === 'noSlots') {
-            this.subscriptionsQuery.doc(docId).update({
+            this.subscriptionsQuery.doc(subscriberID).update({
               // @ts-ignore
               'payment.status': 4,
               'payment.time': serverTimestamp(),
@@ -230,6 +230,23 @@ export class ValidateReceiptPage implements OnInit {
               .subscribe((doc) => {
                 const event = doc.data() as MajorEventItem;
                 const eventName = event.name;
+
+                // For every event the user subscribed to, decrement the available slots and create a new subscription
+                this.subscriptionsQuery
+                  .doc(subscriberID)
+                  .valueChanges()
+                  .pipe(take(1))
+                  .subscribe((sub) => {
+                    sub.subscribedToEvents.forEach((eventID) => {
+                      this.afs
+                        .collection('events')
+                        .doc<EventItem>(eventID)
+                        .update({
+                          // @ts-ignore
+                          numberOfSubscriptions: increment(-1),
+                        });
+                    });
+                  });
 
                 docQuery.pipe(take(1), trace('firestore')).subscribe((userDoc) => {
                   const user = userDoc.data() as User;
