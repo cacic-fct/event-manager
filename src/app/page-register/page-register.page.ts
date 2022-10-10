@@ -5,7 +5,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../shared/services/auth.service';
-import { AlertController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular';
 
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 
@@ -54,7 +54,8 @@ export class PageRegisterPage implements OnInit {
     public router: Router,
     public auth: AngularFireAuth,
     private mailtoService: NgxMailtoService,
-    private win: WindowService
+    private win: WindowService,
+    private toastController: ToastController
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
 
@@ -138,14 +139,58 @@ export class PageRegisterPage implements OnInit {
       dataVersion: this.dataVersion,
       cpf: this.dataForm.value.cpf,
     };
-    userRef.update(userData);
+    this.toastSubmitting();
+    userRef
+      .update(userData)
+      .then(() => {
+        this.mySwal.fire();
+        // Fake delay to let animation finish
+        setTimeout(() => {
+          this.mySwal.close();
+          this.router.navigate(['/menu']);
+        }, 1500);
+      })
+      .catch((error) => {
+        this.toastError();
+        console.log(error);
+      });
+  }
 
-    this.mySwal.fire();
-    // Fake delay to let animation finish
-    setTimeout(() => {
-      this.mySwal.close();
-      this.router.navigate(['/menu']);
-    }, 1500);
+  async toastError() {
+    const toast = await this.toastController.create({
+      header: 'Erro ao gravar registro',
+      message: 'Tente novamente. Se o erro persistir, entre em contato conosco.',
+      icon: 'checkmark-circle',
+      position: 'bottom',
+      duration: 7000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+
+    toast.present();
+  }
+
+  async toastSubmitting() {
+    const toast = await this.toastController.create({
+      header: 'Enviando dados',
+      icon: 'ellipsis-horizontal',
+      position: 'bottom',
+      duration: 3000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+
+    toast.present();
   }
 
   formatPhone() {
