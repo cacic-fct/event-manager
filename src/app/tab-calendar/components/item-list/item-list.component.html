@@ -15,12 +15,12 @@
         </p>
       </ion-label>
       <div slot="end">
-        <h4 style="font-weight: 400; margin: 5px 0 0 0">
+        <h4 style="font-weight: 400; margin: 5px 0 0 0" class="ion-text-center">
           {{ getDateFromTimestamp(item.eventStartDate) | date: 'HH:mm' }}
         </h4>
         <ng-container *ngIf="item.eventEndDate">
           <p style="font-size: 10px; margin: 0" class="ion-text-center">–</p>
-          <h4 style="font-weight: 400; margin: 0 0 5px 0">
+          <h4 style="font-weight: 400; margin: 0 0 5px 0" class="ion-text-center">
             {{ getDateFromTimestamp(item.eventEndDate) | date: 'HH:mm' }}
           </h4>
         </ng-container>
