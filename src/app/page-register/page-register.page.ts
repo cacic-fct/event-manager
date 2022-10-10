@@ -183,10 +183,10 @@ export class PageRegisterPage implements OnInit {
 
   async toastSubmitting() {
     const toast = await this.toastController.create({
-      header: 'Enviando dados',
+      header: 'Enviando informações',
       icon: 'ellipsis-horizontal',
       position: 'bottom',
-      duration: 3000,
+      duration: 2000,
       buttons: [
         {
           side: 'end',
