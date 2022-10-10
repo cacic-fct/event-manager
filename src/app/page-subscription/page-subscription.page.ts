@@ -436,9 +436,9 @@ export class PageSubscriptionPage implements OnInit {
                           setTimeout(() => {
                             this.successSwal.close();
                             if (this.userIsSubscribedWithStatusFour) {
-                              this.router.navigate(['/inscricoes/pagar', this.majorEventID], { replaceUrl: true });
-                            } else {
                               this.router.navigate(['/inscricoes'], { replaceUrl: true });
+                            } else {
+                              this.router.navigate(['/inscricoes/pagar', this.majorEventID], { replaceUrl: true });
                             }
                           }, 2000);
                         });
