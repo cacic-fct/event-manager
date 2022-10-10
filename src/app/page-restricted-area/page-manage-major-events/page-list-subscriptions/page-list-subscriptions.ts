@@ -95,6 +95,8 @@ export class PageListSubscriptions implements OnInit {
           subscriptions.forEach((item) => {
             const user = users.find((user) => user.uid === item.id);
             const row = [
+              user.uid,
+              user.displayName,
               user.fullName,
               user.academicID,
               user.email,

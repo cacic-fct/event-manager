@@ -21,7 +21,8 @@
     <ion-item *ngFor="let attendancePerson of attendancePeople">
       <ion-label>
         <ng-container *ngIf="(attendancePerson.user | async) as user">
-          <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
+          <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
+          <h2 class="ion-text-wrap" *ngIf="!user.fullName">Nome não cadastrado: {{ user.displayName }}</h2>
           <ng-container *ngIf="user.academicID; else notUnesp">
             <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
           </ng-container>
@@ -29,6 +30,8 @@
           <ng-template #notUnesp>
             <h3 class="ion-text-wrap" *ngIf="user.academicID">Sem RA definido</h3>
           </ng-template>
+
+          <h2 class="ion-text-wrap">{{ user.uid }}</h2>
         </ng-container>
         <h3 class="ion-text-wrap">{{ getDateFromTimestamp(attendancePerson.time) | date: "HH:mm:ss - dd/MM/y" }}</h3>
       </ion-label>

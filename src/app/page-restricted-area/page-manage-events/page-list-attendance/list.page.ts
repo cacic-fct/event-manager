@@ -93,6 +93,8 @@ export class ListPage implements OnInit {
           attendanceCol.forEach((attendance) => {
             const user = users.find((user) => user.uid === attendance.id);
             const row = [
+              user.uid,
+              user.displayName,
               user.fullName,
               user.academicID,
               user.email,
