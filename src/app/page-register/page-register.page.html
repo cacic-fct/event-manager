@@ -63,6 +63,11 @@
           <ion-label class="ion-text-wrap">E-mail</ion-label>
           <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
         </ion-item>
+
+        <ion-item>
+          <ion-label class="ion-text-wrap">Vínculo com a Unesp</ion-label>
+          <ion-input type="text" value="Não possui" readonly> </ion-input>
+        </ion-item>
       </ng-template>
 
       <ion-item>
@@ -78,6 +83,7 @@
           type="tel"
           autocomplete="tel"
           placeholder="DDD e número"
+          minlength="13"
           maxlength="13"
           (ionChange)="formatPhone()">
         </ion-input>
