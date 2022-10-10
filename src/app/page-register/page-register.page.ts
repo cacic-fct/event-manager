@@ -281,6 +281,7 @@ export class PageRegisterPage implements OnInit {
     } else {
       this.isUndergraduate = false;
       this._isUndergraduate.next(false);
+      this.dataForm.controls.academicID.setValue('');
       this.dataForm.controls.academicID.clearValidators();
       this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
     }
