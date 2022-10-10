@@ -133,7 +133,7 @@ export class PageRegisterPage implements OnInit {
     const userData: User = {
       fullName: this.isUnesp ? this.userData.displayName : this.dataForm.value.fullName,
       associateStatus: this.isUnesp ? this.dataForm.value.associateStatus : 'external',
-      academicID: this.isUnesp && this.isUndergraduate ? this.dataForm.value.academicID : null,
+      academicID: this.dataForm.value.academicID || null,
       phone: this.dataForm.value.phone,
       dataVersion: this.dataVersion,
       cpf: this.dataForm.value.cpf,
