@@ -87,7 +87,7 @@ export class ListPage implements OnInit {
       .pipe(take(1), trace('firestore'))
       .subscribe((users) => {
         const csv = [];
-        const headers = ['Nome', 'RA', 'Email', 'Data_locale', 'Data_iso'];
+        const headers = ['UID', 'Nome da conta Google', 'Nome', 'RA', 'Email', 'Data_locale', 'Data_iso'];
         csv.push(headers);
         this.attendanceCollection$.pipe(take(1)).subscribe((attendanceCol) => {
           attendanceCol.forEach((attendance) => {

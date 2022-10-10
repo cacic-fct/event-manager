@@ -89,7 +89,7 @@ export class PageListSubscriptions implements OnInit {
       .pipe(first(), trace('firestore'))
       .subscribe((users) => {
         const csv = [];
-        const headers = ['Nome', 'RA', 'Email', 'Data_locale', 'Data_iso'];
+        const headers = ['UID', 'Nome da conta Google', 'Nome', 'RA', 'Email', 'Data_locale', 'Data_iso'];
         csv.push(headers);
         this.subscriptions$.pipe(first()).subscribe((subscriptions) => {
           subscriptions.forEach((item) => {
