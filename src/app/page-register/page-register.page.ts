@@ -62,7 +62,7 @@ export class PageRegisterPage implements OnInit {
       academicID: [''],
       phone: ['', Validators.required],
       cpf: ['', this.validarCPF],
-      fullName: '',
+      fullName: ['', this.fullNameValidator],
       associateStatus: [''],
     });
   }
@@ -86,6 +86,7 @@ export class PageRegisterPage implements OnInit {
             this.dataForm.controls.academicID.setValue(user.academicID);
             this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
           }
+          this.dataForm.controls.fullName.updateValueAndValidity({ onlySelf: true });
         } else {
           this.dataForm.controls.fullName.setValue(user.fullName);
         }
@@ -168,6 +169,18 @@ export class PageRegisterPage implements OnInit {
     cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
     this.dataForm.controls.cpf.setValue(cpf);
   }
+
+  fullNameValidator = (control: AbstractControl): ValidationErrors | null => {
+    const name = control.value;
+    if (this.isUnesp) {
+      return null;
+    } else {
+      if (!name) {
+        return { fullName: true };
+      }
+    }
+    return null;
+  };
 
   validarCPF = (control: AbstractControl): ValidationErrors | null => {
     const cpf = control.value;
