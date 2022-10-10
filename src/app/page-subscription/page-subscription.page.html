@@ -169,7 +169,7 @@
   </ng-template>
   <!-- TODO: Se houver mais de um tipo de inscrição, desabilitar fab quando a seleção for indefinida-->
   <ion-fab vertical="bottom" horizontal="end" slot="fixed">
-    <ion-fab-button (click)="onSubmit()" [disabled]="eventsSelected['minicurso'].length === 0">
+    <ion-fab-button (click)="onSubmit()">
       <ion-icon name="checkmark"></ion-icon>
     </ion-fab-button>
   </ion-fab>
