@@ -51,11 +51,15 @@ export class ValidateReceiptPage implements OnInit {
       untilDestroyed(this),
       trace('firestore'),
       map((subscription) =>
-        subscription.map((sub) => ({
-          ...sub,
-          subEventsInfo: sub.subscribedToEvents.map((subEventID) => this.eventNameAndAvailableSlotsByID(subEventID)),
-          userDisplayName$: this.userNameByID(sub.id),
-        }))
+        subscription.map((sub) => {
+          return {
+            ...sub,
+            subEventsInfo: sub.subscribedToEvents.map((subEventID) =>
+              this.afs.collection('events').doc<EventItem>(subEventID).valueChanges().pipe(take(1), trace('firestore'))
+            ),
+            userDisplayName$: this.userNameByID(sub.id),
+          };
+        })
       )
     );
     this.imgBaseHref = [this.majorEventID, 'payment-receipts'].join('/');
@@ -82,20 +86,6 @@ export class ValidateReceiptPage implements OnInit {
       .pipe(
         take(1),
         map((user) => user.fullName || user.displayName)
-      );
-  }
-
-  private eventNameAndAvailableSlotsByID(eventId: string): Observable<{ name: string; availableSlots: number }> {
-    return this.afs
-      .collection('events')
-      .doc<EventItem>(eventId)
-      .valueChanges()
-      .pipe(
-        take(1),
-        map((event) => ({
-          name: event.name,
-          availableSlots: event.slotsAvailable,
-        }))
       );
   }
 
@@ -342,6 +332,6 @@ interface Subscription {
     author?: string;
   };
   subscriptionType: number;
-  subscribedToEvents: Array<string>;
-  subEventsInfo: Array<Observable<{ name: string; availableSlots: number }>>;
+  subscribedToEvents: string[];
+  subEventsInfo: Observable<EventItem>[];
 }

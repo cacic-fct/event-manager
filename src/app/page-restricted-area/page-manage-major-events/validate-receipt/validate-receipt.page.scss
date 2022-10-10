@@ -13,3 +13,15 @@
     max-width: 300px;
   }
 }
+
+.alert-text {
+  display: inline;
+  vertical-align: middle;
+  font-size: 15px;
+}
+
+.alert-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 3px;
+}

@@ -25,11 +25,27 @@
           </ion-card-subtitle>
         </ion-card-header>
         <ion-card-content>
+          <p>
+            <ion-text color="danger">
+              <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+              <span class="alert-text ion-text-wrap"> Antes de validar, verifique se não há choque de horário. </span>
+            </ion-text>
+          </p>
+          <p>
+            <ion-text color="danger">
+              <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+              <span class="alert-text ion-text-wrap"> ATENÇÃO: Os eventos estão fora de ordem.</span>
+            </ion-text>
+          </p>
           <ng-container *ngIf="subscription.subEventsInfo.length != 0">
             <ng-container *ngFor="let subEventInfo$ of subscription.subEventsInfo">
               <ng-container *ngIf="subEventInfo$ | async as subEventInfo; else: loading">
-                <ion-text [color]="subEventInfo.availableSlots? '' : 'danger'">
-                  <p>{{ subEventInfo.name }}: {{ subEventInfo.availableSlots }} vagas disponíveis.</p>
+                <ion-text [color]="subEventInfo.slotsAvailable? '' : 'danger'">
+                  <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
+                  <p style="margin-bottom: 24px">
+                    {{ getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - {{
+                    getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
+                  </p>
                 </ion-text>
               </ng-container>
             </ng-container>
