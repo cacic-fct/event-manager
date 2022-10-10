@@ -86,7 +86,7 @@
       <div class="card-section ion-padding-horizontal">
         <ion-item *ngIf="!majorEvent.price.single">
           <ion-label>Tipo de inscrição</ion-label>
-          <ion-select placeholder="Selecionar" [(ngModel)]="opSelected" [disabled]="userIsSubscribedWithStatusFour">
+          <ion-select placeholder="Selecionar" [(ngModel)]="opSelected" [disabled]="paymentStatus !== undefined">
             <ion-select-option value="0">{{ enrollmentTypes.getEnrollmentType(0) }}</ion-select-option>
             <ion-select-option value="1">{{ enrollmentTypes.getEnrollmentType(1) }}</ion-select-option>
             <ion-select-option value="2">{{ enrollmentTypes.getEnrollmentType(2) }}</ion-select-option>

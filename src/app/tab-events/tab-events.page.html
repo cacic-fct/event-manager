@@ -87,7 +87,9 @@
             <ng-container
               *ngIf="(event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(getDateFromTimestamp(event.subscriptionStartDate), getDateFromTimestamp(event.subscriptionEndDate))">
               <ng-container *ngIf="event.isSubscribed | async as isSubscribed; else notSubscribed">
-                <ion-button *ngIf="isSubscribed" disabled=""> Inscrito </ion-button>
+                <ion-button *ngIf="isSubscribed" [routerLink]="['/inscricoes']">
+                  <ion-icon slot="start" name="checkmark"></ion-icon> Inscrito
+                </ion-button>
               </ng-container>
               <ng-template #notSubscribed>
                 <ion-button [routerLink]="['inscrever', event.id]"> Inscreva-se </ion-button>

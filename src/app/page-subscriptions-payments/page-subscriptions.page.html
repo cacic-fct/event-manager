@@ -121,6 +121,10 @@
                 <ion-icon slot="start" name="paper-plane"></ion-icon>
                 Enviar comprovante
               </ion-button>
+              <ion-button [routerLink]="['/eventos/inscrever', majorEventData.id]">
+                <ion-icon slot="start" name="pencil"></ion-icon>
+                Editar inscrição
+              </ion-button>
               <ion-button [routerLink]="['detalhes', majorEventData.id]">
                 <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
                 Mais detalhes
@@ -141,7 +145,7 @@
       <ion-card-content>
         Comprovante enviado em {{getDateFromTimestamp(subscriptionData.payment.time) | date: 'dd/MM/yyyy — HH:mm'}}
         <br />
-        Aguardando a confirmação do pagamento pelos organizadores do evento
+        Aguardando a confirmação da inscrição pelos organizadores do evento
       </ion-card-content>
       <ion-grid>
         <ion-row>
@@ -149,6 +153,10 @@
             <ion-button disabled="">
               <ion-icon slot="start" name="time"></ion-icon>
               Aguardando confirmação
+            </ion-button>
+            <ion-button [routerLink]="['/eventos/inscrever', majorEventData.id]">
+              <ion-icon slot="start" name="pencil"></ion-icon>
+              Editar inscrição
             </ion-button>
             <ion-button [routerLink]="['detalhes', majorEventData.id]">
               <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
@@ -170,6 +178,8 @@
         Inscrição realizada
         <br />
         Pagamento confirmado em {{getDateFromTimestamp(subscriptionData.payment.time) | date: 'dd/MM/yyyy — HH:mm'}}
+        <br />
+        Para editar a sua inscrição, entre em contato conosco.
       </ion-card-content>
 
       <ion-grid>
@@ -208,6 +218,10 @@
               <ion-button color="danger" [routerLink]="['pagar', majorEventData.id]">
                 <ion-icon slot="start" name="paper-plane"></ion-icon>
                 Reenviar comprovante
+              </ion-button>
+              <ion-button [routerLink]="['/eventos/inscrever', majorEventData.id]">
+                <ion-icon slot="start" name="pencil"></ion-icon>
+                Editar inscrição
               </ion-button>
             </ion-col>
           </ion-row>

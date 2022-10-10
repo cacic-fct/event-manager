@@ -79,6 +79,14 @@
         <p class="ion-padding-horizontal">
           {{ rawFile ? ("Enviando… (" + (uploadPercent | async | number: '1.0-0') + "%") + ")" : "Nenhuma imagem selecionada."}}
         </p>
+        <p class="ion-padding-horizontal">
+          <ion-text color="danger">
+            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+            <span class="alert-text ion-text-wrap">
+              Você não poderá editar a sua inscrição após ter o comprovante validado
+            </span>
+          </ion-text>
+        </p>
         <ion-grid>
           <ion-row>
             <ion-col>

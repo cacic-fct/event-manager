@@ -66,7 +66,8 @@ export class PageSubscriptionPage implements OnInit {
   eventGroupMinicursoCount: number = 0;
 
   opSelected: string;
-  userIsSubscribedWithStatusFour: boolean = false;
+
+  paymentStatus: number;
 
   majorEventID = this.route.snapshot.params.eventID;
 
@@ -130,7 +131,8 @@ export class PageSubscriptionPage implements OnInit {
         }
       });
 
-    // Check if user is already subscribed
+    // Check if user has receipt validated
+    // If they have, they can't edit their subscription
     this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
       if (user) {
         this.afs
@@ -139,7 +141,7 @@ export class PageSubscriptionPage implements OnInit {
           .pipe(take(1), trace('firestore'))
           .subscribe((subscription) => {
             if (subscription?.payment) {
-              if (subscription.payment.status !== 4) {
+              if (subscription.payment.status === 2) {
                 this.alreadySubscribed.fire();
                 this.router.navigate(['/eventos'], { replaceUrl: true });
 
@@ -147,7 +149,7 @@ export class PageSubscriptionPage implements OnInit {
                   this.alreadySubscribed.close();
                 }, 1000);
               } else {
-                this.userIsSubscribedWithStatusFour = true;
+                this.paymentStatus = subscription.payment.status;
 
                 if (subscription.subscriptionType) {
                   this.opSelected = subscription.subscriptionType.toString();
@@ -394,67 +396,141 @@ export class PageSubscriptionPage implements OnInit {
               .valueChanges({ idField: 'id' })
               .pipe(take(1), trace('firestore'))
               .subscribe((subscription) => {
-                if (!subscription.reference || this.userIsSubscribedWithStatusFour) {
+                if (this.paymentStatus !== 2) {
                   // Merge eventsSelected arrays
                   const eventsSelected = Object.values(this.eventsSelected).reduce((acc, val) => acc.concat(val), []);
 
                   // Create array with event IDs from eventsSelected
                   const eventsSelectedID = eventsSelected.map((event) => event.id);
 
+                  let status: number;
+
+                  if (this.paymentStatus !== undefined) {
+                    if (this.paymentStatus === 4) {
+                      // If user has already paid,
+                      // but subscription was denied due to insufficient slots,
+                      // set status to "pending verification"
+                      status = 1;
+                    } else if (this.eventsSelected.minicurso.length === 0) {
+                      // TODO: Me remova, apenas para SECOMPP22
+                      // If user didn't select any short course, set status to approved
+                      status = 1;
+                    } else if (this.paymentStatus === 1) {
+                      // User already sent payment proof, keep status as "pending verification"
+                      status = 1;
+                    } else if (this.paymentStatus === 3) {
+                      // User had payment proof denied, keep status as "pending resending proof"
+                      status = 3;
+                    } else if (this.paymentStatus === null) {
+                      status = null;
+                    } else {
+                      status = 0;
+                    }
+                  } else {
+                    status = 0;
+                  }
+
                   this.afs
                     .collection(`majorEvents/${this.majorEventID}/subscriptions`)
                     .doc<MajorEventSubscription>(user.uid)
-                    .set({
-                      subscriptionType: Number.parseInt(this.opSelected),
-                      subscribedToEvents: eventsSelectedID,
-                      // @ts-ignore
-                      time: serverTimestamp(),
-                      payment: {
-                        price: price,
-                        status: this.userIsSubscribedWithStatusFour ? 1 : 0,
-                        // @ts-ignore
-                        time: serverTimestamp(),
-                        author: user.uid,
-                      },
-                    })
-                    .then(() => {
+                    .get()
+                    .subscribe((doc) => {
+                      let previouslySelectedEvents;
+
+                      if (doc.exists) {
+                        previouslySelectedEvents = doc.data().subscribedToEvents;
+                      }
+
                       this.afs
-                        .collection(`users/${user.uid}/majorEventSubscriptions`)
-                        .doc(this.majorEventID)
+                        .collection(`majorEvents/${this.majorEventID}/subscriptions`)
+                        .doc<MajorEventSubscription>(user.uid)
                         .set({
-                          reference: this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`).ref,
+                          subscriptionType: Number.parseInt(this.opSelected),
+                          subscribedToEvents: eventsSelectedID,
+                          // @ts-ignore
+                          time: serverTimestamp(),
+                          payment: {
+                            price: price,
+                            status: status,
+                            // @ts-ignore
+                            time: serverTimestamp(),
+                            author: user.uid,
+                          },
                         })
                         .then(() => {
-                          if (!this.userIsSubscribedWithStatusFour) {
-                            eventsSelectedID.forEach((eventID) => {
-                              this.afs.doc(`events/${eventID}`).update({
-                                numberOfSubscriptions: increment(1),
-                              });
+                          this.afs
+                            .collection(`users/${user.uid}/majorEventSubscriptions`)
+                            .doc(this.majorEventID)
+                            .set({
+                              reference: this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`).ref,
+                            })
+                            .then(() => {
+                              // TODO: Refactor this
 
-                              // Do NOT write to event/uid/subscriptions/userID
-                              // This will be done in the receipt validation
+                              if (this.paymentStatus) {
+                                // previouslySelectedEvents - eventsSelectedID = events that were removed
+                                const removedEvents = previouslySelectedEvents.filter(
+                                  (event) => !eventsSelectedID.includes(event)
+                                );
+
+                                // For every removed event, decrement the number of subscribed users
+                                removedEvents.forEach((event) => {
+                                  this.afs.doc(`events/${event}`).update({
+                                    subscribedUsers: increment(-1),
+                                  });
+                                });
+
+                                // events Selected - previouslySelectedEvents = events that were added
+                                const addedEvents = eventsSelectedID.filter(
+                                  (event) => !previouslySelectedEvents.includes(event)
+                                );
+
+                                // For every added event, increment the number of subscribed users
+                                addedEvents.forEach((event) => {
+                                  this.afs.doc(`events/${event}`).update({
+                                    subscribedUsers: increment(1),
+                                  });
+                                });
+                              } else {
+                                // If not subscribed, increment the number of subscribed users for every event
+                                eventsSelectedID.forEach((eventID) => {
+                                  this.afs.doc(`events/${eventID}`).update({
+                                    numberOfSubscriptions: increment(1),
+                                  });
+
+                                  // Do NOT write to event/uid/subscriptions/userID
+                                  // This will be done in the receipt validation
+                                });
+                              }
+
+                              this.processingToast();
+
+                              // Sleep for 1 second to allow Firestore to update
+                              setTimeout(() => {
+                                this.successSwal.fire();
+                                setTimeout(() => {
+                                  this.successSwal.close();
+                                  if (this.paymentStatus === 1 || this.paymentStatus === 4) {
+                                    this.router.navigate(['/inscricoes'], { replaceUrl: true });
+                                  } else {
+                                    this.router.navigate(['/inscricoes/pagar', this.majorEventID], {
+                                      replaceUrl: true,
+                                    });
+                                  }
+                                }, 2000);
+                              }, 1000);
                             });
-                          }
-                          this.successSwal.fire();
-                          setTimeout(() => {
-                            this.successSwal.close();
-                            if (this.userIsSubscribedWithStatusFour) {
-                              this.router.navigate(['/inscricoes'], { replaceUrl: true });
-                            } else {
-                              this.router.navigate(['/inscricoes/pagar', this.majorEventID], { replaceUrl: true });
-                            }
-                          }, 2000);
+                        })
+                        .catch((error) => {
+                          console.error(error);
+                          this.errorSwal.fire();
                         });
-                    })
-                    .catch((error) => {
-                      console.error(error);
-                      this.errorSwal.fire();
-                    });
 
-                  setTimeout(() => {
-                    this.successSwal.close();
-                    this.router.navigate(['/eventos'], { replaceUrl: true });
-                  }, 1500);
+                      setTimeout(() => {
+                        this.successSwal.close();
+                        this.router.navigate(['/eventos'], { replaceUrl: true });
+                      }, 1500);
+                    });
                 } else {
                   this.alreadySubscribed.fire();
                   this.router.navigate(['/eventos'], { replaceUrl: true });
@@ -518,6 +594,22 @@ export class PageSubscriptionPage implements OnInit {
       showBackdrop: true,
     });
     await modal.present();
+  }
+
+  async processingToast() {
+    const toast = await this.toastController.create({
+      message: 'Processando...',
+      duration: 1000,
+      position: 'bottom',
+      icon: 'hourglass-outline',
+      buttons: [
+        {
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+    toast.present();
   }
 }
 
