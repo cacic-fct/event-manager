@@ -410,7 +410,7 @@ export class PageSubscriptionPage implements OnInit {
                       time: serverTimestamp(),
                       payment: {
                         price: price,
-                        status: 0,
+                        status: this.userIsSubscribedWithStatusFour ? 1 : 0,
                         // @ts-ignore
                         time: serverTimestamp(),
                         author: user.uid,
