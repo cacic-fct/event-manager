@@ -73,7 +73,7 @@
                 <h3 class="ion-text-wrap" *ngIf="user.academicID">Usuário externo</h3>
               </ng-template>
 
-              <h2 class="ion-text-wrap">{{ user.uid }}</h2>
+              <h3 class="ion-text-wrap">UID: {{ user.uid }}</h2>
             </ng-container>
             <h3 class="ion-text-wrap">
               {{ getDateFromTimestamp(attendancePerson.time) | date: "HH:mm:ss - dd/MM/y" }}
