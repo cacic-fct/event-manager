@@ -10,10 +10,12 @@ const routes: Routes = [
   },
   {
     path: 'pagar/:eventID',
+    title: 'Pagar evento',
     loadChildren: () => import('./page-pay/page-pay.module').then((m) => m.PagePayPageModule),
   },
   {
     path: 'detalhes/:majorEventID',
+    title: 'Detalhes da inscrição',
     loadChildren: () => import('./page-more-info/page-more-info.module').then((m) => m.PageMoreInfoPageModule),
   },
 ];
