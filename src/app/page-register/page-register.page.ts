@@ -123,13 +123,19 @@ export class PageRegisterPage implements OnInit {
         this.authService.verifyPhoneModal(this.dataForm.value.phone).then((response) => {
           if (response) {
             this.submitUserData(user);
+            return;
           }
-          return;
+          this.toastError('1');
         });
       });
   }
 
   submitUserData(user: User) {
+    debugger;
+    if (!this.dataForm.value.phone) {
+      this.toastError('2');
+    }
+
     const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
     const userData: User = {
       fullName: this.isUnesp ? this.userData.displayName : this.dataForm.value.fullName,
@@ -151,15 +157,15 @@ export class PageRegisterPage implements OnInit {
         }, 1500);
       })
       .catch((error) => {
-        this.toastError();
+        this.toastError('3');
         console.log(error);
       });
   }
 
-  async toastError() {
+  async toastError(code: string) {
     const toast = await this.toastController.create({
       header: 'Erro ao gravar registro',
-      message: 'Tente novamente. Se o erro persistir, entre em contato conosco.',
+      message: `Tente novamente. Se o problema persistir, entre em contato conosco. Código: ${code}.`,
       icon: 'checkmark-circle',
       position: 'bottom',
       duration: 7000,
