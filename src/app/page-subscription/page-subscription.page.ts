@@ -190,6 +190,7 @@ export class PageSubscriptionPage implements OnInit {
                     // TODO: Remove me. This is for secompp22 only
                     if (eventItem.eventType === 'palestra') {
                       this.dataForm.get(eventItem.id).setValue(true);
+                      this.dataForm.get(eventItem.id).disable();
                     }
                     ///
 

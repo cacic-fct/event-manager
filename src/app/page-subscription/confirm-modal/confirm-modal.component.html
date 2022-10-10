@@ -90,10 +90,10 @@
           {{ minicursosCount | number: '2.0-0' }} de {{ majorEvent.maxCourses | number: '2.0-0' }} minicursos
           selecionados
         </p>
-        <!-- <p>
+        <p>
           {{ palestrasCount | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }} palestras
           selecionados
-        </p> -->
+        </p>
       </div>
     </ng-container>
 
@@ -106,7 +106,7 @@
           <ion-label> {{ formatDate(getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
         </ion-item-divider>
         <ion-list>
-          <ion-item [style.display]="event.eventType === 'palestra' ? 'none' : ''">
+          <ion-item>
             <img [src]="getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
             <ion-label>
               <h3>{{ event.name }}</h3>
