@@ -424,14 +424,16 @@ export class PageSubscriptionPage implements OnInit {
                           reference: this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`).ref,
                         })
                         .then(() => {
-                          eventsSelectedID.forEach((eventID) => {
-                            this.afs.doc(`events/${eventID}`).update({
-                              numberOfSubscriptions: increment(1),
-                            });
+                          if (!this.userIsSubscribedWithStatusFour) {
+                            eventsSelectedID.forEach((eventID) => {
+                              this.afs.doc(`events/${eventID}`).update({
+                                numberOfSubscriptions: increment(1),
+                              });
 
-                            // Do NOT write to event/uid/subscriptions/userID
-                            // This will be done in the receipt validation
-                          });
+                              // Do NOT write to event/uid/subscriptions/userID
+                              // This will be done in the receipt validation
+                            });
+                          }
                           this.successSwal.fire();
                           setTimeout(() => {
                             this.successSwal.close();
