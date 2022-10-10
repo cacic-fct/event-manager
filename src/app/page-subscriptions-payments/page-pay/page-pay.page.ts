@@ -172,6 +172,12 @@ export class PagePayPage implements OnInit {
           this.toastSize();
           return;
         }
+
+        if (this.imageCompress.byteCount(result) < 10_000_000) {
+          const format = result.split(';')[0].split('/')[1];
+          this.uploadFile(result, format);
+          this.rawFile = result;
+        }
       }
     );
   }
