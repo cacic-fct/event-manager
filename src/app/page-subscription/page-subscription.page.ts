@@ -10,7 +10,7 @@ import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firest
 import { ActivatedRoute, Router } from '@angular/router';
 import { Timestamp } from '@firebase/firestore-types';
 import { formatDate } from '@angular/common';
-import { fromUnixTime, isSameDay, compareAsc } from 'date-fns';
+import { fromUnixTime, isSameDay, compareAsc, isBefore } from 'date-fns';
 import { take, map, Observable } from 'rxjs';
 
 import { MajorEventItem } from '../shared/services/major-event.service';
@@ -70,6 +70,9 @@ export class PageSubscriptionPage implements OnInit {
   paymentStatus: number;
 
   majorEventID = this.route.snapshot.params.eventID;
+
+  eventSchedule: EventItem[] = [];
+  eventIndexBeingChecked: boolean = false;
 
   constructor(
     private sanitizer: DomSanitizer,
@@ -175,6 +178,8 @@ export class PageSubscriptionPage implements OnInit {
       .pipe(
         map((events: EventItem[]) => {
           return events.map((eventItem) => {
+            this.eventSchedule.push(eventItem);
+
             // If there are no slots available, add event to form with disabled selection
             if (eventItem.slotsAvailable <= 0) {
               this.dataForm.addControl(eventItem.id, this.formBuilder.control({ value: null, disabled: true }));
@@ -533,6 +538,113 @@ export class PageSubscriptionPage implements OnInit {
         resolve(false);
       });
     });
+  }
+
+  checkForScheduleConflict(e, eventItem: EventItem) {
+    // This doesn't unselect the event if it's already selected, it only disables it
+
+    const checked: boolean = e.currentTarget.checked;
+
+    const eventIndex = this.eventSchedule.findIndex((e) => e.id === eventItem.id);
+
+    const eventItemStartDate = this.getDateFromTimestamp(eventItem.eventStartDate);
+    const eventItemEndDate = this.getDateFromTimestamp(eventItem.eventEndDate);
+
+    if (checked) {
+      // For every event after eventIndex
+      for (let i = eventIndex + 1; i < this.eventSchedule.length; i++) {
+        const eventIterationStartDate = this.getDateFromTimestamp(this.eventSchedule[i].eventStartDate);
+        const eventIterationEndDate = this.getDateFromTimestamp(this.eventSchedule[i].eventEndDate);
+        // If event doesn't overlap or if it's itself, break
+        if (
+          this.eventSchedule[i].eventStartDate > eventItem.eventEndDate ||
+          this.eventSchedule[i].id === eventItem.id
+        ) {
+          break;
+        }
+
+        // If event overlaps, disable it
+        if (eventIterationStartDate <= eventItemEndDate && eventIterationEndDate >= eventItemStartDate) {
+          if (this.eventSchedule[i].eventGroup) {
+            this.eventSchedule[i].eventGroup.forEach((event) => {
+              this.dataForm.get(event).disable();
+            });
+          } else {
+            this.dataForm.get(this.eventSchedule[i].id).disable();
+          }
+        }
+      }
+
+      // For every event before eventIdex
+      for (let i = eventIndex - 1; i >= 0; i--) {
+        const eventIterationStartDate = this.getDateFromTimestamp(this.eventSchedule[i].eventStartDate);
+        const eventIterationEndDate = this.getDateFromTimestamp(this.eventSchedule[i].eventEndDate);
+
+        // If event doesn't overlap or if it's itself, break
+        if (eventIterationEndDate < eventItemStartDate || this.eventSchedule[i].id === eventItem.id) {
+          break;
+        }
+
+        // If event overlaps, disable it
+        if (eventIterationStartDate <= eventItemEndDate && eventIterationEndDate >= eventItemStartDate) {
+          if (this.eventSchedule[i].eventGroup) {
+            this.eventSchedule[i].eventGroup.forEach((event) => {
+              this.dataForm.get(event).disable();
+            });
+          } else {
+            this.dataForm.get(this.eventSchedule[i].id).disable();
+          }
+        }
+      }
+    } else {
+      // For every event after eventIndex
+      for (let i = eventIndex + 1; i < this.eventSchedule.length; i++) {
+        const eventIterationStartDate = this.getDateFromTimestamp(this.eventSchedule[i].eventStartDate);
+
+        // If event doesn't overlap, break
+        if (eventIterationStartDate > eventItemEndDate) {
+          break;
+        }
+
+        // If event overlaps, enable it
+        if (eventIterationStartDate <= eventItemEndDate) {
+          // TODO: Remove me. This is for secompp22 only
+          if (this.eventSchedule[i].eventType !== 'palestra') {
+            //////
+            if (this.eventSchedule[i].eventGroup) {
+              this.eventSchedule[i].eventGroup.forEach((event) => {
+                this.dataForm.get(event).enable();
+              });
+            } else {
+              this.dataForm.get(this.eventSchedule[i].id).enable();
+            }
+          }
+        }
+      }
+
+      // For every event before eventIdex
+      for (let i = eventIndex - 1; i >= 0; i--) {
+        const eventIterationEndDate = this.getDateFromTimestamp(this.eventSchedule[i].eventEndDate);
+
+        // If event doesn't overlap, break
+        if (eventIterationEndDate < eventItemStartDate) {
+          break;
+        }
+
+        // If event overlaps, enable it
+        if (eventIterationEndDate >= eventItemStartDate) {
+          if (this.eventSchedule[i].eventType !== 'palestra') {
+            if (this.eventSchedule[i].eventGroup) {
+              this.eventSchedule[i].eventGroup.forEach((event) => {
+                this.dataForm.get(event).enable();
+              });
+            } else {
+              this.dataForm.get(this.eventSchedule[i].id).enable();
+            }
+          }
+        }
+      }
+    }
   }
 
   getEmoji(emoji: string): any {

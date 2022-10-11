@@ -151,7 +151,8 @@
                 <ion-checkbox
                   name="{{event.eventType}}"
                   [formControlName]="event.id"
-                  (ionChange)="countCheckeds($event, event)"></ion-checkbox>
+                  (ionChange)="countCheckeds($event, event)"
+                  (ionChange)="checkForScheduleConflict($event, event)"></ion-checkbox>
               </ion-item>
             </ion-list>
           </ng-container>
