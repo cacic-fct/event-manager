@@ -562,9 +562,9 @@ export class PageSubscriptionPage implements OnInit {
         const eventIterationEndDate = this.getDateFromTimestamp(this.eventSchedule[i].eventEndDate);
         // If event doesn't overlap or if it's itself, break
         if (
-          eventIterationStartDate >= eventItemEndDate ||
-          eventIterationEndDate <= eventItemStartDate ||
-          this.eventSchedule[i].id === eventItem.id
+          eventItemStartDate >= eventIterationEndDate ||
+          eventItemEndDate <= eventIterationStartDate ||
+          eventItem.id === this.eventSchedule[i].id
         ) {
           break;
         }
@@ -588,9 +588,9 @@ export class PageSubscriptionPage implements OnInit {
 
         // If event doesn't overlap or if it's itself, break
         if (
-          eventIterationEndDate <= eventItemStartDate ||
-          eventIterationStartDate >= eventItemEndDate ||
-          this.eventSchedule[i].id === eventItem.id
+          eventItemStartDate >= eventIterationEndDate ||
+          eventItemEndDate <= eventIterationStartDate ||
+          eventItem.id === this.eventSchedule[i].id
         ) {
           break;
         }
@@ -612,22 +612,21 @@ export class PageSubscriptionPage implements OnInit {
         const eventIterationStartDate = this.getDateFromTimestamp(this.eventSchedule[i].eventStartDate);
 
         // If event doesn't overlap, break
-        if (eventIterationStartDate > eventItemEndDate) {
+        if (eventIterationStartDate >= eventItemEndDate) {
           break;
         }
 
         // If event overlaps, enable it
-        if (eventIterationStartDate <= eventItemEndDate) {
-          // TODO: Remove me. This is for secompp22 only
-          if (this.eventSchedule[i].eventType !== 'palestra') {
-            //////
-            if (this.eventSchedule[i].eventGroup) {
-              this.eventSchedule[i].eventGroup.forEach((event) => {
-                this.dataForm.get(event).enable();
-              });
-            } else {
-              this.dataForm.get(this.eventSchedule[i].id).enable();
-            }
+
+        // TODO: Remove me. This is for secompp22 only
+        if (this.eventSchedule[i].eventType !== 'palestra') {
+          //////
+          if (this.eventSchedule[i].eventGroup) {
+            this.eventSchedule[i].eventGroup.forEach((event) => {
+              this.dataForm.get(event).enable();
+            });
+          } else {
+            this.dataForm.get(this.eventSchedule[i].id).enable();
           }
         }
       }
@@ -637,20 +636,19 @@ export class PageSubscriptionPage implements OnInit {
         const eventIterationEndDate = this.getDateFromTimestamp(this.eventSchedule[i].eventEndDate);
 
         // If event doesn't overlap, break
-        if (eventIterationEndDate < eventItemStartDate) {
+        if (eventIterationEndDate <= eventItemStartDate) {
           break;
         }
 
         // If event overlaps, enable it
-        if (eventIterationEndDate >= eventItemStartDate) {
-          if (this.eventSchedule[i].eventType !== 'palestra') {
-            if (this.eventSchedule[i].eventGroup) {
-              this.eventSchedule[i].eventGroup.forEach((event) => {
-                this.dataForm.get(event).enable();
-              });
-            } else {
-              this.dataForm.get(this.eventSchedule[i].id).enable();
-            }
+
+        if (this.eventSchedule[i].eventType !== 'palestra') {
+          if (this.eventSchedule[i].eventGroup) {
+            this.eventSchedule[i].eventGroup.forEach((event) => {
+              this.dataForm.get(event).enable();
+            });
+          } else {
+            this.dataForm.get(this.eventSchedule[i].id).enable();
           }
         }
       }
