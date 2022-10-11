@@ -113,7 +113,7 @@ export class ValidateReceiptPage implements OnInit {
         .get()
         .pipe(take(1), trace('firestore'))
         .subscribe((col) => {
-          const subscriberID = col.docs[0].id;
+          const subscriberID = col.docs[this.arrayIndex].id;
           this.subscriptionsQuery.doc(subscriberID).update({
             // @ts-ignore
             'payment.status': 2, // Novo status: pagamento aprovado
@@ -186,7 +186,7 @@ export class ValidateReceiptPage implements OnInit {
         .get()
         .pipe(take(1), trace('firestore'))
         .subscribe((col) => {
-          const subscriberID = col.docs[0].id;
+          const subscriberID = col.docs[this.arrayIndex].id;
 
           const docQuery = this.afs.doc(`users/${subscriberID}`).get();
 
