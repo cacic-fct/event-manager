@@ -1,0 +1,53 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Gerenciar inscrição</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ng-container *ngIf="subscription$ | async as subscription; else: loading">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title
+          >{{ (userData$ | async)?.fullName || (userData$ | async)?.displayName }} - {{ subscription.payment.price |
+          currency:'BRL':'symbol':'1.2-2' }}</ion-card-title
+        >
+        <ion-card-subtitle>
+          Se inscreveu em: {{ getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
+          <br />
+          Última alteração na inscrição: {{ getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
+        </ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <p>
+          <ion-text color="danger">
+            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+            <span class="alert-text ion-text-wrap"> Antes de validar, verifique se não há choque de horário. </span>
+          </ion-text>
+        </p>
+        <ng-container *ngIf="eventsUserIsSubscribedTo$ | async as subEventsInfo; else loading">
+          <ng-container *ngIf="subEventsInfo.length != 0">
+            <ng-container *ngFor="let subEventInfo of subEventsInfo">
+              <ion-text [color]="subEventInfo.slotsAvailable? '' : 'danger'">
+                <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
+                <p style="margin-bottom: 24px">
+                  {{ getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - {{
+                  getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
+                </p>
+              </ion-text>
+            </ng-container>
+          </ng-container>
+        </ng-container>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-button color="danger" (click)="forceEventEdit()">
+      <ion-icon name="pencil"></ion-icon>
+      <ion-label>Exigir edição dos eventos, mantendo comprovante enviado</ion-label>
+    </ion-button>
+  </ng-container>
+
+  <ng-template #loading>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  </ng-template>
+</ion-content>

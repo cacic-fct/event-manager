@@ -7,6 +7,13 @@ const routes: Routes = [
     path: '',
     component: PageListSubscriptions,
   },
+  {
+    path: 'gerenciar-inscricao/:subscriptionID',
+    loadChildren: () =>
+      import('./page-manage-subscription/page-manage-subscription.module').then(
+        (m) => m.PageManageSubscriptionPageModule
+      ),
+  },
 ];
 
 @NgModule({
