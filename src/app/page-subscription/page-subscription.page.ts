@@ -465,60 +465,17 @@ export class PageSubscriptionPage implements OnInit {
                               reference: this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`).ref,
                             })
                             .then(() => {
-                              // TODO: Refactor this
-
-                              if (this.paymentStatus) {
-                                // previouslySelectedEvents - eventsSelectedID = events that were removed
-                                const removedEvents = previouslySelectedEvents.filter(
-                                  (event) => !eventsSelectedID.includes(event)
-                                );
-
-                                // For every removed event, decrement the number of subscribed users
-                                removedEvents.forEach((event) => {
-                                  this.afs.doc(`events/${event}`).update({
-                                    subscribedUsers: increment(-1),
-                                  });
-                                });
-
-                                // events Selected - previouslySelectedEvents = events that were added
-                                const addedEvents = eventsSelectedID.filter(
-                                  (event) => !previouslySelectedEvents.includes(event)
-                                );
-
-                                // For every added event, increment the number of subscribed users
-                                addedEvents.forEach((event) => {
-                                  this.afs.doc(`events/${event}`).update({
-                                    subscribedUsers: increment(1),
-                                  });
-                                });
-                              } else {
-                                // If not subscribed, increment the number of subscribed users for every event
-                                eventsSelectedID.forEach((eventID) => {
-                                  this.afs.doc(`events/${eventID}`).update({
-                                    numberOfSubscriptions: increment(1),
-                                  });
-
-                                  // Do NOT write to event/uid/subscriptions/userID
-                                  // This will be done in the receipt validation
-                                });
-                              }
-
-                              this.processingToast();
-
-                              // Sleep for 1 second to allow Firestore to update
+                              this.successSwal.fire();
                               setTimeout(() => {
-                                this.successSwal.fire();
-                                setTimeout(() => {
-                                  this.successSwal.close();
-                                  if (this.paymentStatus === 1 || this.paymentStatus === 4) {
-                                    this.router.navigate(['/inscricoes'], { replaceUrl: true });
-                                  } else {
-                                    this.router.navigate(['/inscricoes/pagar', this.majorEventID], {
-                                      replaceUrl: true,
-                                    });
-                                  }
-                                }, 2000);
-                              }, 1000);
+                                this.successSwal.close();
+                                if (this.paymentStatus === 1 || this.paymentStatus === 4) {
+                                  this.router.navigate(['/inscricoes'], { replaceUrl: true });
+                                } else {
+                                  this.router.navigate(['/inscricoes/pagar', this.majorEventID], {
+                                    replaceUrl: true,
+                                  });
+                                }
+                              }, 2000);
                             });
                         })
                         .catch((error) => {
