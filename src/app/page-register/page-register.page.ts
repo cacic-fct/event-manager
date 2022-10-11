@@ -40,11 +40,7 @@ export class PageRegisterPage implements OnInit {
   userData: any;
   dataForm: FormGroup;
   isUnesp: boolean = false;
-  _isUnespSubject: BehaviorSubject<boolean> = new BehaviorSubject(this.isUnesp);
-  isUnesp$: Observable<boolean> = this._isUnespSubject.asObservable();
   isUndergraduate: boolean = false;
-  _isUndergraduate: BehaviorSubject<boolean> = new BehaviorSubject(this.isUndergraduate);
-  isUndergraduate$: Observable<boolean> = this._isUndergraduate.asObservable();
 
   constructor(
     public authService: AuthService,
@@ -77,12 +73,10 @@ export class PageRegisterPage implements OnInit {
       .subscribe((user) => {
         if (user.email.includes('@unesp.br')) {
           this.isUnesp = true;
-          this._isUnespSubject.next(true);
           this.dataForm.controls.associateStatus.addValidators([Validators.required]);
           this.dataForm.controls.associateStatus.setValue(user.associateStatus);
           if (user.associateStatus === 'undergraduate') {
             this.isUndergraduate = true;
-            this._isUndergraduate.next(true);
 
             this.dataForm.controls.academicID.setValue(user.academicID);
             this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
@@ -281,12 +275,10 @@ export class PageRegisterPage implements OnInit {
   selectionChange(event) {
     if (event.target.value === 'undergraduate') {
       this.isUndergraduate = true;
-      this._isUndergraduate.next(true);
       this.dataForm.controls.academicID.setValidators([Validators.required, Validators.pattern('^[0-9]{9}$')]);
       this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
     } else {
       this.isUndergraduate = false;
-      this._isUndergraduate.next(false);
       this.dataForm.controls.academicID.setValue('');
       this.dataForm.controls.academicID.clearValidators();
       this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });

@@ -7,7 +7,7 @@
 <ion-content>
   <ion-grid style="margin-top: 30px; max-width: 500px; overflow: scroll">
     <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
-      <ng-container *ngIf="isUnesp$ | async; else notUnesp">
+      <ng-container *ngIf="isUnesp; else notUnesp">
         <ion-item>
           <ion-label class="ion-text-wrap">Nome completo</ion-label>
           <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
@@ -33,7 +33,7 @@
             <ion-select-option value="other">Outro</ion-select-option>
           </ion-select>
         </ion-item>
-        <ion-item *ngIf="  isUndergraduate$ | async">
+        <ion-item *ngIf="isUndergraduate">
           <ion-label class="ion-text-wrap">Registro acadêmico</ion-label>
           <ion-input
             formControlName="academicID"
@@ -89,7 +89,7 @@
         </ion-input>
       </ion-item>
 
-      <p *ngIf="isUnesp$ | async" style="font-size: 0.75em" class="ion-padding-horizontal">
+      <p *ngIf="isUnesp" style="font-size: 0.75em" class="ion-padding-horizontal">
         Para não perder o acesso à sua conta quando o seu e-mail institucional for desativado, vincule o seu e-mail
         pessoal nas configurações do perfil.
       </p>
