@@ -18,7 +18,8 @@
 <ion-content>
   <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
     <h4 *ngIf="subscriptions.length == 0" class="ion-text-center">Não há nenhuma aprovação pendente.</h4>
-    <ng-container *ngFor="let subscription of subscriptions; let i = index" [attr.data-index]="arrayIndex">
+    <!-- TODO: Melhorar interface quando arrayIndex aponta para um elemento não existente -->
+    <ng-container *ngIf="subscriptions[arrayIndex] as subscription">
       <ion-card>
         <ion-card-header>
           <ion-card-title
@@ -39,15 +40,9 @@
               <span class="alert-text ion-text-wrap"> Antes de validar, verifique se não há choque de horário. </span>
             </ion-text>
           </p>
-          <p>
-            <ion-text color="danger">
-              <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
-              <span class="alert-text ion-text-wrap"> ATENÇÃO: Os eventos estão fora de ordem.</span>
-            </ion-text>
-          </p>
-          <ng-container *ngIf="subscription.subEventsInfo.length != 0">
-            <ng-container *ngFor="let subEventInfo$ of subscription.subEventsInfo">
-              <ng-container *ngIf="subEventInfo$ | async as subEventInfo; else: loading">
+          <ng-container *ngIf="subscription.subEventsInfo | async as subEventsInfo; else loading">
+            <ng-container *ngIf="subEventsInfo.length != 0">
+              <ng-container *ngFor="let subEventInfo of subEventsInfo">
                 <ion-text [color]="subEventInfo.slotsAvailable? '' : 'danger'">
                   <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
                   <p style="margin-bottom: 24px">

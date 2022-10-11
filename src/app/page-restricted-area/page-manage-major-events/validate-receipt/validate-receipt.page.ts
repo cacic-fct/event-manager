@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { increment } from '@angular/fire/firestore';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { fromUnixTime } from 'date-fns';
-import { Observable, map, take } from 'rxjs';
+import { Observable, map, take, combineLatest } from 'rxjs';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { User } from 'src/app/shared/services/user';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
@@ -54,11 +54,23 @@ export class ValidateReceiptPage implements OnInit {
       trace('firestore'),
       map((subscription) =>
         subscription.map((sub) => {
+          const arrayOfEvents: Observable<EventItem>[] = sub.subscribedToEvents.map((subEventID) =>
+            this.afs.collection('events').doc<EventItem>(subEventID).valueChanges().pipe(take(1), trace('firestore'))
+          );
+
+          let observableArrayOfEvents: Observable<EventItem[]> = combineLatest(arrayOfEvents);
+
+          observableArrayOfEvents = observableArrayOfEvents.pipe(
+            map((events) => {
+              return events.sort((a, b) => {
+                return a.eventStartDate.toMillis() - b.eventStartDate.toMillis();
+              });
+            })
+          );
+
           return {
             ...sub,
-            subEventsInfo: sub.subscribedToEvents.map((subEventID) =>
-              this.afs.collection('events').doc<EventItem>(subEventID).valueChanges().pipe(take(1), trace('firestore'))
-            ),
+            subEventsInfo: observableArrayOfEvents,
             userDisplayName$: this.userNameByID(sub.id),
           };
         })
@@ -334,5 +346,5 @@ interface Subscription {
   };
   subscriptionType: number;
   subscribedToEvents: string[];
-  subEventsInfo: Observable<EventItem>[];
+  subEventsInfo: Observable<EventItem[]>;
 }
