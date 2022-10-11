@@ -72,7 +72,7 @@ export class PageSubscriptionPage implements OnInit {
   majorEventID = this.route.snapshot.params.eventID;
 
   eventSchedule: EventItem[] = [];
-  eventIndexBeingChecked: boolean = false;
+  isEventScheduleBeingChecked: boolean = false;
 
   constructor(
     private sanitizer: DomSanitizer,
@@ -541,6 +541,11 @@ export class PageSubscriptionPage implements OnInit {
   }
 
   checkForScheduleConflict(e, eventItem: EventItem) {
+    if (this.isEventScheduleBeingChecked) {
+      return;
+    }
+
+    this.isEventScheduleBeingChecked = true;
     // This doesn't unselect the event if it's already selected, it only disables it
 
     const checked: boolean = e.currentTarget.checked;
@@ -557,21 +562,22 @@ export class PageSubscriptionPage implements OnInit {
         const eventIterationEndDate = this.getDateFromTimestamp(this.eventSchedule[i].eventEndDate);
         // If event doesn't overlap or if it's itself, break
         if (
-          this.eventSchedule[i].eventStartDate > eventItem.eventEndDate ||
+          eventIterationStartDate > eventItemEndDate ||
+          eventIterationEndDate < eventItemStartDate ||
           this.eventSchedule[i].id === eventItem.id
         ) {
           break;
         }
 
         // If event overlaps, disable it
-        if (eventIterationStartDate <= eventItemEndDate && eventIterationEndDate >= eventItemStartDate) {
-          if (this.eventSchedule[i].eventGroup) {
-            this.eventSchedule[i].eventGroup.forEach((event) => {
-              this.dataForm.get(event).disable();
-            });
-          } else {
-            this.dataForm.get(this.eventSchedule[i].id).disable();
-          }
+
+        if (this.eventSchedule[i].eventGroup) {
+          this.eventSchedule[i].eventGroup.forEach((event) => {
+            this.dataForm.get(event).disable();
+          });
+        } else {
+          this.dataForm.get(this.eventSchedule[i].id).disable();
+          this.dataForm.get(this.eventSchedule[i].id).setValue(null);
         }
       }
 
@@ -581,19 +587,23 @@ export class PageSubscriptionPage implements OnInit {
         const eventIterationEndDate = this.getDateFromTimestamp(this.eventSchedule[i].eventEndDate);
 
         // If event doesn't overlap or if it's itself, break
-        if (eventIterationEndDate < eventItemStartDate || this.eventSchedule[i].id === eventItem.id) {
+        if (
+          eventIterationEndDate < eventItemStartDate ||
+          eventIterationStartDate > eventItemEndDate ||
+          this.eventSchedule[i].id === eventItem.id
+        ) {
           break;
         }
 
         // If event overlaps, disable it
-        if (eventIterationStartDate <= eventItemEndDate && eventIterationEndDate >= eventItemStartDate) {
-          if (this.eventSchedule[i].eventGroup) {
-            this.eventSchedule[i].eventGroup.forEach((event) => {
-              this.dataForm.get(event).disable();
-            });
-          } else {
-            this.dataForm.get(this.eventSchedule[i].id).disable();
-          }
+
+        if (this.eventSchedule[i].eventGroup) {
+          this.eventSchedule[i].eventGroup.forEach((event) => {
+            this.dataForm.get(event).disable();
+          });
+        } else {
+          this.dataForm.get(this.eventSchedule[i].id).disable();
+          this.dataForm.get(this.eventSchedule[i].id).setValue(null);
         }
       }
     } else {
@@ -645,6 +655,7 @@ export class PageSubscriptionPage implements OnInit {
         }
       }
     }
+    this.isEventScheduleBeingChecked = false;
   }
 
   getEmoji(emoji: string): any {
