@@ -32,6 +32,8 @@ export class ValidateReceiptPage implements OnInit {
   @ViewChild('swalConfirm') private swalConfirm: SwalComponent;
   @ViewChild('refuseModal') private refuseModal: IonModal;
 
+  arrayIndex: number = 0;
+
   constructor(
     private route: ActivatedRoute,
     private afs: AngularFirestore,
@@ -107,7 +109,7 @@ export class ValidateReceiptPage implements OnInit {
             'payment.author': adminUser.uid, // Autor da mudança
           });
 
-          // For every event the user subscribed to, decrement the available slots and create a new subscription
+          // For every event the user subscribed to, decrement the available slots
           this.subscriptionsQuery
             .doc(subscriberID)
             .valueChanges()
@@ -149,6 +151,10 @@ export class ValidateReceiptPage implements OnInit {
                   });
               });
             });
+
+          if (this.arrayIndex > 0) {
+            this.arrayIndex--;
+          }
 
           this.swalConfirm.fire();
           setTimeout(() => {
@@ -221,23 +227,6 @@ export class ValidateReceiptPage implements OnInit {
                 const event = doc.data() as MajorEventItem;
                 const eventName = event.name;
 
-                // For every event the user subscribed to, decrement the available slots and create a new subscription
-                this.subscriptionsQuery
-                  .doc(subscriberID)
-                  .valueChanges()
-                  .pipe(take(1))
-                  .subscribe((sub) => {
-                    sub.subscribedToEvents.forEach((eventID) => {
-                      this.afs
-                        .collection('events')
-                        .doc<EventItem>(eventID)
-                        .update({
-                          // @ts-ignore
-                          numberOfSubscriptions: increment(-1),
-                        });
-                    });
-                  });
-
                 docQuery.pipe(take(1), trace('firestore')).subscribe((userDoc) => {
                   const user = userDoc.data() as User;
                   // Only first name from fullName
@@ -245,6 +234,10 @@ export class ValidateReceiptPage implements OnInit {
 
                   this.whatsAppAlertNoSlots(firstName, user.phone, eventName);
                 });
+
+                if (this.arrayIndex > 0) {
+                  this.arrayIndex--;
+                }
               });
           }
         });
@@ -317,6 +310,14 @@ export class ValidateReceiptPage implements OnInit {
 
     control.get('errorMessage').updateValueAndValidity({ onlySelf: true });
     return null;
+  }
+
+  arrayIndexForward() {
+    this.arrayIndex++;
+  }
+
+  arrayIndexBackward() {
+    this.arrayIndex--;
   }
 }
 

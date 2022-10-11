@@ -4,13 +4,21 @@
       <ion-back-button defaultHref="/area-restrita/gerenciar-grandes-eventos"></ion-back-button>
     </ion-buttons>
     <ion-title>Comprovantes de {{ eventName$ | async }}</ion-title>
+    <ion-buttons slot="primary">
+      <ion-button (click)="arrayIndexBackward()" [disabled]="arrayIndex == 0" aria-label="Comprovante anterior">
+        <ion-icon name="chevron-back"></ion-icon>
+      </ion-button>
+      <ion-button (click)="arrayIndexForward()" [disabled]="arrayIndex == 9" aria-label="Próxima comprovante">
+        <ion-icon name="chevron-forward"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
   <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
     <h4 *ngIf="subscriptions.length == 0" class="ion-text-center">Não há nenhuma aprovação pendente.</h4>
-    <ng-container *ngFor="let subscription of subscriptions">
+    <ng-container *ngFor="let subscription of subscriptions; let i = index" [attr.data-index]="arrayIndex">
       <ion-card>
         <ion-card-header>
           <ion-card-title
