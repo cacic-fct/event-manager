@@ -420,6 +420,7 @@ export class PageSubscriptionPage implements OnInit {
                       // TODO: Me remova, apenas para SECOMPP22
                       // If user didn't select any short course, set status to approved
                       status = 1;
+                      price = 0;
                     } else if (this.paymentStatus === 1) {
                       // User already sent payment proof, keep status as "pending verification"
                       status = 1;
@@ -440,12 +441,6 @@ export class PageSubscriptionPage implements OnInit {
                     .doc<MajorEventSubscription>(user.uid)
                     .get()
                     .subscribe((doc) => {
-                      let previouslySelectedEvents;
-
-                      if (doc.exists) {
-                        previouslySelectedEvents = doc.data().subscribedToEvents;
-                      }
-
                       this.afs
                         .collection(`majorEvents/${this.majorEventID}/subscriptions`)
                         .doc<MajorEventSubscription>(user.uid)
