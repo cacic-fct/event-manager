@@ -45,7 +45,7 @@ export class ValidateReceiptPage implements OnInit {
     const eventRef = this.afs.collection('majorEvents').doc<MajorEventItem>(this.majorEventID);
     this.eventName$ = eventRef.valueChanges().pipe(map((event) => event.name));
     this.subscriptionsQuery = eventRef.collection<Subscription>('subscriptions', (ref) =>
-      ref.where('payment.status', '==', 1).orderBy('time').limit(1)
+      ref.where('payment.status', '==', 1).orderBy('payment.time').limit(10)
     );
     this.subscriptions$ = this.subscriptionsQuery.valueChanges({ idField: 'id' }).pipe(
       untilDestroyed(this),
