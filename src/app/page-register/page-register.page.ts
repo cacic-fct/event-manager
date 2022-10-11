@@ -112,9 +112,10 @@ export class PageRegisterPage implements OnInit {
     this.afs
       .collection('users')
       .doc<User>(this.userData.uid)
-      .valueChanges()
+      .get()
       .pipe(take(1))
-      .subscribe(async (user) => {
+      .subscribe((userData) => {
+        const user = userData.data();
         if (user.phone && user.phone === this.dataForm.value.phone) {
           this.submitUserData(user);
           return;
@@ -131,7 +132,6 @@ export class PageRegisterPage implements OnInit {
   }
 
   submitUserData(user: User) {
-    debugger;
     if (!this.dataForm.value.phone) {
       this.toastError('2');
     }
