@@ -416,11 +416,6 @@ export class PageSubscriptionPage implements OnInit {
                       // but subscription was denied due to insufficient slots,
                       // set status to "pending verification"
                       status = 1;
-                    } else if (this.eventsSelected.minicurso.length === 0) {
-                      // TODO: Me remova, apenas para SECOMPP22
-                      // If user didn't select any short course, set status to approved
-                      status = 1;
-                      price = 0;
                     } else if (this.paymentStatus === 1) {
                       // User already sent payment proof, keep status as "pending verification"
                       status = 1;
