@@ -50,6 +50,7 @@ export class AuthService {
             case 'VERSION_READY':
               console.log(`Current app version: ${evt.currentVersion.hash}`);
               console.log(`New app version ready for use: ${evt.latestVersion.hash}`);
+              this.newVersionAlert();
               break;
             case 'VERSION_INSTALLATION_FAILED':
               console.error(`Failed to install app version '${evt.version.hash}': ${evt.error}`);
@@ -60,15 +61,6 @@ export class AuthService {
         swUpdate.unrecoverable.subscribe(() => {
           this.tooOldAlert();
         });
-
-        const updateFound = await this.swUpdate.checkForUpdate();
-        if (updateFound) {
-          this.swUpdate.versionUpdates
-            .pipe(filter((evt): evt is VersionReadyEvent => evt.type === 'VERSION_READY'))
-            .subscribe((evt) => {
-              this.newVersionAlert();
-            });
-        }
       } catch (err) {
         console.error('Failed to check for updates:', err);
       }
@@ -235,15 +227,15 @@ export class AuthService {
 
   async newVersionAlert() {
     const alert = await this.alertController.create({
-      header: 'Atualização disponível',
-      message: 'Deseja atualizar agora?',
+      header: 'Nova versão disponível',
+      message: 'Atualize o aplicativo para receber melhorias e correções',
       buttons: [
         {
           text: 'Não',
           role: 'cancel',
         },
         {
-          text: 'Sim',
+          text: 'OK',
           role: 'confirm',
           handler: () => {
             document.location.reload();
