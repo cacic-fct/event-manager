@@ -25,7 +25,6 @@ import { parse } from 'twemoji-parser';
 import { DomSanitizer } from '@angular/platform-browser';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { increment, serverTimestamp } from '@angular/fire/firestore';
-import { FieldValue } from '@google-cloud/firestore';
 
 @UntilDestroy()
 @Component({
