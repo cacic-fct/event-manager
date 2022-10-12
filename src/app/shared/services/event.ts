@@ -35,3 +35,7 @@ export interface EventItem {
   attendanceCode?: string;
   allowSubscription?: boolean;
 }
+
+export interface EventSubscription {
+  time: Timestamp;
+}
