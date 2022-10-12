@@ -67,6 +67,9 @@ export class PageManageSubscriptionPage implements OnInit {
         .get()
         .subscribe((doc) => {
           const data = doc.data();
+          if (data.payment.status !== 2) {
+            return;
+          }
           data.subscribedToEvents.forEach((event) => {
             this.afs.doc<EventItem>(`events/${event}/subscriptions/${this.subscriptionID}`).delete();
             this.afs.doc<EventItem>(`events/${event}`).update({
