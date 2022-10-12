@@ -38,6 +38,9 @@
                   <p class="ion-text-wrap" *ngIf="item.inMajorEventName | async as majorEventName">
                     Faz parte do grande evento "{{ majorEventName }}"
                   </p>
+                  <p *ngIf="item.attendanceCollectionStart && !item.attendanceCollectionEnd" class="ion-text-wrap">
+                    <ion-text color="danger"> Presença on-line aberta com código {{ item.attendanceCode }}</ion-text>
+                  </p>
                 </ion-label>
               </ion-col>
               <ion-col>
@@ -59,6 +62,32 @@
                     <p slot="end">Listagem de presenças</p>
                   </ion-button>
                 </ion-row>
+              </ion-col>
+              <ion-col>
+                <ion-button
+                  fill="clear"
+                  color="danger"
+                  *ngIf="item.collectAttendance && (!item.attendanceCollectionStart || item.attendanceCollectionEnd)"
+                  (click)="confirmOpenOnlineAttendance(item)">
+                  <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
+                  <p slot="end">Abrir presença on-line</p>
+                </ion-button>
+                <ion-button
+                  fill="clear"
+                  color="danger"
+                  *ngIf="item.attendanceCollectionStart && !item.attendanceCollectionEnd"
+                  (click)="copyCode(item.attendanceCode)">
+                  <ion-icon name="copy" slot="start" aria-hidden="true"></ion-icon>
+                  <p slot="end">Copiar código de presença</p>
+                </ion-button>
+                <ion-button
+                  fill="clear"
+                  color="danger"
+                  *ngIf="item.attendanceCollectionStart && !item.attendanceCollectionEnd"
+                  (click)="confirmCloseOnlineAttendance(item)">
+                  <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
+                  <p slot="end">Fechar presença on-line</p>
+                </ion-button>
               </ion-col>
             </ion-row>
           </ion-grid>

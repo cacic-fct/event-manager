@@ -77,7 +77,7 @@
               expand="block"
               color="primary"
               target="_blank"
-              (click)="subscribeToEvent() "
+              (click)="subscribeToEvent()"
               *ngIf="!subscribedToEvent">
               Inscrever-se
             </ion-button>
@@ -94,6 +94,27 @@
               [routerLink]="['/login']"
               [queryParams]="{redirect: '/calendario/evento/' + eventID  }">
               Inscrever-se
+            </ion-button>
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <ng-container *ngIf="items.collectAttendance">
+        <ng-container *ngIf="items.attendanceCollectionStart && !items.attendanceCollectionEnd">
+          <div *ngIf="items.allowSubscription && (isUserAuthenticated | async)" class="ion-padding-vertical">
+            <ion-button expand="block" color="primary" target="_blank" [routerLink]="['/confirmar-presenca', eventID]">
+              Confirmar presença
+            </ion-button>
+          </div>
+
+          <div *ngIf="items.allowSubscription && !(isUserAuthenticated | async)" class="ion-padding-vertical">
+            <ion-button
+              expand="block"
+              color="primary"
+              target="_blank"
+              [routerLink]="['/login']"
+              [queryParams]="{redirect: '/confirmar-presenca/' + eventID  }">
+              Confirmar presença
             </ion-button>
           </div>
         </ng-container>
