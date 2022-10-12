@@ -7,6 +7,8 @@ import { EventItem } from 'src/app/shared/services/event';
 import { Timestamp } from '@firebase/firestore-types';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
+import { DomSanitizer } from '@angular/platform-browser';
+import { parse } from 'twemoji-parser';
 
 interface EventItemQuery extends EventItem {
   inMajorEventName?: Observable<string>;
@@ -22,7 +24,7 @@ export class PageManageEvents implements OnInit {
   currentMonth: string = this.today.toISOString();
   currentMonth$: BehaviorSubject<string | null> = new BehaviorSubject(this.currentMonth);
   events$: Observable<EventItemQuery[]>;
-  constructor(private afs: AngularFirestore, public courses: CoursesService) {}
+  constructor(private afs: AngularFirestore, public courses: CoursesService, private sanitizer: DomSanitizer) {}
 
   ngOnInit() {
     this.events$ = combineLatest([this.currentMonth$]).pipe(
@@ -72,5 +74,13 @@ export class PageManageEvents implements OnInit {
 
   onMonthChange() {
     this.currentMonth$.next(this.currentMonth);
+  }
+
+  getEmoji(emoji: string): any {
+    if (emoji === undefined || !/^\p{Emoji}|\p{Emoji_Modifier}$/u.test(emoji)) {
+      // TODO: validar apenas 1 emoji
+      return this.sanitizer.bypassSecurityTrustResourceUrl(parse('❔')[0].url);
+    }
+    return this.sanitizer.bypassSecurityTrustResourceUrl(parse(emoji)[0].url);
   }
 }

@@ -23,6 +23,8 @@
 
       <div class="event-container">
         <ion-item *ngFor="let item of eventList">
+          <img [src]="getEmoji(item.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
+
           <ion-grid>
             <ion-row>
               <ion-col>
@@ -33,8 +35,8 @@
                     getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM HH:mm' }}
                   </h4>
                   <p class="ion-text-wrap" *ngIf="item.course">{{courses.getCourse(item.course)}}</p>
-                  <p class="ion-text-wrap" *ngIf="item.inMajorEventName">
-                    Faz parte de um grande evento: {{ item.inMajorEventName | async }}
+                  <p class="ion-text-wrap" *ngIf="item.inMajorEventName | async as majorEventName">
+                    Faz parte do grande evento "{{ majorEventName }}"
                   </p>
                 </ion-label>
               </ion-col>
