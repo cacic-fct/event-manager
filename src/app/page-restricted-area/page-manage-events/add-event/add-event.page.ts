@@ -112,8 +112,6 @@ export class AddEventPage implements OnInit {
     this.places$ = getStringChanges(this.remoteConfig, 'placesMap').pipe(
       map((places) => {
         if (places) {
-          // TODO: Fix me
-
           const parsed: placesRemoteConfig = JSON.parse(places);
           this.parsedPlaces = parsed;
           return parsed;
