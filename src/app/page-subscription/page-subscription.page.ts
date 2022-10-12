@@ -611,12 +611,14 @@ export class PageSubscriptionPage implements OnInit {
         // TODO: Remove me. This is for secompp22 only
         if (this.eventSchedule[i].eventType !== 'palestra') {
           //////
-          if (this.eventSchedule[i].eventGroup) {
-            this.eventSchedule[i].eventGroup.forEach((event) => {
-              this.dataForm.get(event).enable();
-            });
-          } else {
-            this.dataForm.get(this.eventSchedule[i].id).enable();
+          if (this.eventSchedule[i].slotsAvailable > 0) {
+            if (this.eventSchedule[i].eventGroup) {
+              this.eventSchedule[i].eventGroup.forEach((event) => {
+                this.dataForm.get(event).enable();
+              });
+            } else {
+              this.dataForm.get(this.eventSchedule[i].id).enable();
+            }
           }
         }
       }
