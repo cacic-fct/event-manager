@@ -77,9 +77,9 @@ export class ScannerPage implements OnInit {
       .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((document) => {
         if (!document.exists) {
-          this.router.navigate(['area-restrita/coletar-presenca']);
           this.mySwal.fire();
           setTimeout(() => {
+            this.router.navigate(['area-restrita/gerenciar-eventos']);
             this.mySwal.close();
           }, 1000);
         }

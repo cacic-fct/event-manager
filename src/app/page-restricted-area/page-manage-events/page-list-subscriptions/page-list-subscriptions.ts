@@ -47,9 +47,9 @@ export class PageListSubscriptions implements OnInit {
       .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((document) => {
         if (!document.exists) {
-          this.router.navigate(['area-restrita/gerenciar-evento']);
           this.mySwal.fire();
           setTimeout(() => {
+            this.router.navigate(['area-restrita/gerenciar-eventos']);
             this.mySwal.close();
           }, 1000);
         }
