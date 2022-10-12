@@ -12,7 +12,6 @@ import { trace } from '@angular/fire/compat/performance';
 import { fromUnixTime } from 'date-fns';
 
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
-import { ClipboardService } from 'ngx-clipboard';
 import { Timestamp } from '@firebase/firestore';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
@@ -51,7 +50,6 @@ export class PagePayPage implements OnInit {
 
   constructor(
     private storage: AngularFireStorage,
-    private clipboardService: ClipboardService,
     public auth: AngularFireAuth,
     private imageCompress: NgxImageCompressService,
     public toastController: ToastController,
@@ -132,7 +130,7 @@ export class PagePayPage implements OnInit {
   }
 
   copyPixToClipboard(chavePix: string) {
-    this.clipboardService.copy(chavePix);
+    navigator.clipboard.writeText(chavePix);
     this.presentToastCopied();
   }
 

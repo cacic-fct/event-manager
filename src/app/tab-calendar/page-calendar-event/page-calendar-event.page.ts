@@ -5,7 +5,6 @@ import { CoursesService } from '../../shared/services/courses.service';
 import { ToastController } from '@ionic/angular';
 
 import { fromUnixTime } from 'date-fns';
-import { ClipboardService } from 'ngx-clipboard';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { DomSanitizer } from '@angular/platform-browser';
@@ -53,7 +52,6 @@ export class PageCalendarEventPage implements OnInit {
 
   constructor(
     private toastController: ToastController,
-    private clipboardService: ClipboardService,
     private router: Router,
     private route: ActivatedRoute,
     private sanitizer: DomSanitizer,
@@ -179,7 +177,7 @@ export class PageCalendarEventPage implements OnInit {
           side: 'end',
           text: 'Copiar',
           handler: () => {
-            this.clipboardService.copy(this.eventID);
+            navigator.clipboard.writeText(this.eventID);
           },
         },
         {
@@ -207,7 +205,7 @@ export class PageCalendarEventPage implements OnInit {
         },
       ],
     });
-    this.clipboardService.copy('https://fct-pp.web.app' + this.router.url);
+    navigator.clipboard.writeText('https://fct-pp.web.app' + this.router.url);
     toast.present();
   }
 
