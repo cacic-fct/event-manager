@@ -1,14 +1,14 @@
 import { EventItem } from 'src/app/shared/services/event';
-import { ApplicationRef, Injectable, NgZone } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { User } from '../services/user';
 import firebase from 'firebase/compat/app';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
-import { AlertController, ModalController, ToastController } from '@ionic/angular';
+import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
-import { take, Observable, of, map, switchMap, first, filter } from 'rxjs';
+import { take, Observable, map, switchMap } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { PageVerifyPhonePage } from 'src/app/page-verify-phone/page-verify-phone.page';
 
@@ -16,7 +16,6 @@ import * as firebaseAuth from 'firebase/auth';
 import { AngularFireFunctions } from '@angular/fire/compat/functions';
 import { getStringChanges, RemoteConfig, getBooleanChanges } from '@angular/fire/remote-config';
 import { arrayRemove } from '@angular/fire/firestore';
-import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 
 @Injectable()
 export class AuthService {
@@ -32,40 +31,8 @@ export class AuthService {
     private remoteConfig: RemoteConfig,
     public toastController: ToastController,
     private fns: AngularFireFunctions,
-    private route: ActivatedRoute,
-    private appRef: ApplicationRef,
-    private swUpdate: SwUpdate,
-    private alertController: AlertController
+    private route: ActivatedRoute
   ) {
-    // TODO: Tirar lógica de service worker do auth service, deixar global
-    const appIsStable$ = this.appRef.isStable.pipe(first((isStable) => isStable === true));
-
-    appIsStable$.subscribe(async () => {
-      try {
-        swUpdate.versionUpdates.subscribe((evt) => {
-          switch (evt.type) {
-            case 'VERSION_DETECTED':
-              console.log(`Downloading new app version: ${evt.version.hash}`);
-              break;
-            case 'VERSION_READY':
-              console.log(`Current app version: ${evt.currentVersion.hash}`);
-              console.log(`New app version ready for use: ${evt.latestVersion.hash}`);
-              this.newVersionAlert();
-              break;
-            case 'VERSION_INSTALLATION_FAILED':
-              console.error(`Failed to install app version '${evt.version.hash}': ${evt.error}`);
-              break;
-          }
-        });
-
-        swUpdate.unrecoverable.subscribe(() => {
-          this.tooOldAlert();
-        });
-      } catch (err) {
-        console.error('Failed to check for updates:', err);
-      }
-    });
-
     this.auth.authState.pipe(trace('auth')).subscribe((user) => {
       if (user) {
         this.userData = user;
@@ -223,46 +190,6 @@ export class AuthService {
       ],
     });
     toast.present();
-  }
-
-  async newVersionAlert() {
-    const alert = await this.alertController.create({
-      header: 'Nova versão disponível',
-      message: 'Atualize o aplicativo para receber melhorias e correções',
-      buttons: [
-        {
-          text: 'Não',
-          role: 'cancel',
-        },
-        {
-          text: 'OK',
-          role: 'confirm',
-          handler: () => {
-            document.location.reload();
-          },
-        },
-      ],
-    });
-
-    await alert.present();
-  }
-
-  async tooOldAlert() {
-    const alert = await this.alertController.create({
-      header: 'Seu aplicativo é muito antigo',
-      message: 'Uma atualização é necessária para continuar utilizando-o.',
-      buttons: [
-        {
-          text: 'OK',
-          role: 'confirm',
-          handler: () => {
-            document.location.reload();
-          },
-        },
-      ],
-    });
-
-    await alert.present();
   }
 
   private SetUserData(user: firebase.User) {

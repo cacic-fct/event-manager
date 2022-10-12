@@ -1,3 +1,4 @@
+import { ServiceWorkerService } from './shared/services/service-worker.service';
 import { EnrollmentTypesService } from './shared/services/enrollment-types.service';
 import { isDevMode, NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
@@ -117,6 +118,7 @@ import {
     ScreenTrackingService,
     UserTrackingService,
     PerformanceMonitoringService,
+    ServiceWorkerService,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     { provide: FIRESTORE_SETTINGS, useValue: { ignoreUndefinedProperties: true, merge: true } },
