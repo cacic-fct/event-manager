@@ -9,15 +9,18 @@
 
 <ion-content>
   <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
-    <div class="ion-padding" *ngIf="event$ | async; let event">
-      <h3 style="margin-bottom: 0">{{ event.name }}</h3>
-      <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-      <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}</h5>
-      <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
-    </div>
-    <div class="ion-padding-horizontal">
-      <p><b>Total de inscritos para este evento:</b> {{subscriptions.length}}</p>
-    </div>
+    <ng-container *ngIf="event$ | async as event">
+      <div class="ion-padding">
+        <h3 style="margin-bottom: 0">{{ event.name }}</h3>
+        <h4 style="margin: 0">{{ event.shortDescription }}</h4>
+        <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}</h5>
+        <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
+      </div>
+      <div class="ion-padding-horizontal">
+        <p><b>Total de inscritos confirmados para este evento:</b> {{subscriptions.length}}</p>
+        <p *ngIf="event.slotsAvailable"><b>Total de vagas restantes:</b> {{ event.slotsAvailable }}</p>
+      </div>
+    </ng-container>
     <ion-item *ngFor="let subscriptionItem of subscriptions">
       <ion-label>
         <ng-container *ngIf="(subscriptionItem.user | async) as user">
