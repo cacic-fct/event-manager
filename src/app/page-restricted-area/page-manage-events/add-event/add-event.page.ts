@@ -43,14 +43,10 @@ export class AddEventPage implements OnInit {
 
   userData: any;
 
-  places$: Observable<{
-    [key: string]: {
-      [key: string]: string;
-    };
-  }>;
+  places$: Observable<placesRemoteConfig>;
 
   tzoffset = new Date().getTimezoneOffset() * 60_000;
-  parsedPlaces: any;
+  parsedPlaces: placesRemoteConfig;
 
   constructor(
     public formBuilder: FormBuilder,
@@ -117,8 +113,9 @@ export class AddEventPage implements OnInit {
       map((places) => {
         if (places) {
           // TODO: Fix me
-          const parsed = JSON.parse(places);
-          this.parsedPlaces = places;
+
+          const parsed: placesRemoteConfig = JSON.parse(places);
+          this.parsedPlaces = parsed;
           return parsed;
         }
       })
@@ -161,7 +158,7 @@ export class AddEventPage implements OnInit {
             }
           }
 
-          let location;
+          let location: { description: any; lat: any; lon: any } | null;
 
           if (
             !this.dataForm.get('location.description').value &&
@@ -346,4 +343,13 @@ export class AddEventPage implements OnInit {
     );
     this.dataForm.get('eventEndDate').setValue(subMilliseconds(newTime, this.tzoffset).toISOString().slice(0, -1));
   }
+}
+
+interface placesRemoteConfig {
+  [key: string]: {
+    name: string;
+    description: string;
+    lat: string;
+    lon: string;
+  };
 }
