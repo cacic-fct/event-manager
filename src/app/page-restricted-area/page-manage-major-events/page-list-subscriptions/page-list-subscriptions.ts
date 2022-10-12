@@ -6,7 +6,7 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { fromUnixTime } from 'date-fns';
 import { Timestamp } from '@firebase/firestore-types';
-import { map, Observable, take, combineLatest, forkJoin } from 'rxjs';
+import { map, Observable, take, forkJoin } from 'rxjs';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
 import { CoursesService } from 'src/app/shared/services/courses.service';
@@ -121,22 +121,14 @@ export class PageListSubscriptions implements OnInit {
               let eventNames: { [key: string]: string } = {};
 
               event.events.forEach((event) => {
-                events.push(
-                  this.afs
-                    .doc<EventItem>(`events/${event}`)
-                    .get()
-                    .pipe(
-                      take(1),
-                      map((doc) => doc.data())
-                    )
-                );
+                events.push(this.afs.doc<EventItem>(`events/${event}`).valueChanges({ idField: 'id' }).pipe(take(1)));
               });
 
               eventsArray = forkJoin(events);
 
               eventsArray.pipe(take(1)).subscribe((events) => {
                 events.forEach((event) => {
-                  eventNames[event.id] = event.name;
+                  eventNames[event.id] = event.name.replace(/[",;]/g, '');
                 });
 
                 subscriptions.forEach((item) => {
