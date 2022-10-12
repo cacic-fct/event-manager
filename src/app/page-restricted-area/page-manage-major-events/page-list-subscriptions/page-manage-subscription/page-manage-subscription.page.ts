@@ -1,7 +1,7 @@
 import { User } from './../../../../shared/services/user';
 import { EventItem } from './../../../../shared/services/event';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-import { serverTimestamp } from '@angular/fire/firestore';
+import { serverTimestamp, increment } from '@angular/fire/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { MajorEventSubscription } from './../../../../shared/services/major-event.service';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
@@ -68,7 +68,13 @@ export class PageManageSubscriptionPage implements OnInit {
         .subscribe((doc) => {
           const data = doc.data();
           data.subscribedToEvents.forEach((event) => {
-            this.afs.doc(`events/${event}/subscriptions/${this.subscriptionID}`).delete();
+            this.afs.doc<EventItem>(`events/${event}/subscriptions/${this.subscriptionID}`).delete();
+            this.afs.doc<EventItem>(`events/${event}`).update({
+              // @ts-ignore
+              slotsAvailable: increment(1),
+              // @ts-ignore
+              numberOfSubscriptions: increment(1),
+            });
           });
 
           this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${this.subscriptionID}`).update({
