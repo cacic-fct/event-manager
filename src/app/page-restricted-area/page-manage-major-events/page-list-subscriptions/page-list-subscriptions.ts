@@ -6,11 +6,11 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { fromUnixTime } from 'date-fns';
 import { Timestamp } from '@firebase/firestore-types';
-import { map, Observable, take, combineLatest } from 'rxjs';
+import { map, Observable, take, combineLatest, forkJoin } from 'rxjs';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
 import { CoursesService } from 'src/app/shared/services/courses.service';
-import { MajorEventSubscription } from './../../../shared/services/major-event.service';
+import { MajorEventSubscription, MajorEventItem } from './../../../shared/services/major-event.service';
 
 interface Subscription extends MajorEventSubscription {
   id: string;
@@ -32,6 +32,8 @@ export class PageListSubscriptions implements OnInit {
 
   eventID: string;
 
+  disableCSVDownloadButton: boolean = false;
+
   constructor(
     private afs: AngularFirestore,
     private router: Router,
@@ -44,13 +46,13 @@ export class PageListSubscriptions implements OnInit {
     this.afs
       .collection('majorEvents')
       .doc(this.eventID)
-      .get()
+      .valueChanges()
       .pipe(untilDestroyed(this), trace('firestore'))
       .subscribe((document) => {
-        if (!document.exists) {
-          this.router.navigate(['area-restrita/gerenciar-evento']);
+        if (!document) {
           this.mySwal.fire();
           setTimeout(() => {
+            this.router.navigate(['area-restrita/gerenciar-grandes-eventos']);
             this.mySwal.close();
           }, 1000);
         }
@@ -84,6 +86,7 @@ export class PageListSubscriptions implements OnInit {
   }
 
   generateCSV() {
+    this.disableCSVDownloadButton = true;
     this.afs
       .collection<User>('users')
       .valueChanges({ idField: 'id' })
@@ -108,99 +111,128 @@ export class PageListSubscriptions implements OnInit {
         ];
         csv.push(headers);
         this.subscriptions$.pipe(take(1)).subscribe((subscriptions) => {
-          subscriptions.forEach((item) => {
-            const user = users.find((user) => user.uid === item.id);
+          this.afs
+            .doc<MajorEventItem>(`majorEvents/${this.eventID}`)
+            .valueChanges()
+            .pipe(take(1))
+            .subscribe((event) => {
+              let events: Observable<EventItem>[] = [];
+              let eventsArray: Observable<EventItem[]>;
+              let eventNames: { [key: string]: string } = {};
 
-            let status = 'Status não cadastrado';
-
-            switch (item.payment.status) {
-              case 0:
-                status = 'Aguardando envio do comprovante';
-                break;
-              case 1:
-                status = 'Comprovante em análise';
-                break;
-              case 2:
-                status = 'Pago e validado';
-                break;
-              case 3:
-                status = 'Devolvido por erro no comprovante';
-                break;
-              case 4:
-                status = 'Devolvido por falta de vagas';
-                break;
-            }
-
-            let subscribedToEventsItemArray$: Observable<EventItem>[] = [];
-
-            item.subscribedToEvents.forEach((eventID) => {
-              subscribedToEventsItemArray$.push(
-                this.afs
-                  .collection('events')
-                  .doc<EventItem>(eventID)
-                  .get()
-                  .pipe(map((doc) => doc.data()))
-              );
-            });
-
-            let subscribedToEvents$: Observable<EventItem[]> = combineLatest(subscribedToEventsItemArray$);
-
-            subscribedToEvents$.subscribe((events) => {
-              let eventNames = '';
-
-              events.forEach((event) => {
-                eventNames += '"' + event.name + '"; ';
+              event.events.forEach((event) => {
+                events.push(
+                  this.afs
+                    .doc<EventItem>(`events/${event}`)
+                    .get()
+                    .pipe(
+                      take(1),
+                      map((doc) => doc.data())
+                    )
+                );
               });
 
-              const row = [
-                user.uid,
-                user.displayName,
-                user.fullName,
-                user.associateStatus,
-                user.academicID || 'Sem RA cadastrado',
-                user.email,
-                item.payment.status,
-                status,
+              eventsArray = forkJoin(events);
 
-                this.getDateFromTimestamp(item.payment.time).toLocaleString('pt-BR', {
-                  timeZone: 'America/Sao_Paulo',
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                }),
+              eventsArray.pipe(take(1)).subscribe((events) => {
+                events.forEach((event) => {
+                  eventNames[event.id] = event.name;
+                });
 
-                this.getDateFromTimestamp(item.payment.time).toISOString(),
+                subscriptions.forEach((item) => {
+                  const user = users.find((user) => user.uid === item.id);
 
-                this.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {
-                  timeZone: 'America/Sao_Paulo',
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                }),
+                  let status = 'Status não cadastrado';
 
-                this.getDateFromTimestamp(item.time).toISOString(),
+                  switch (item.payment.status) {
+                    case 0:
+                      status = 'Aguardando envio do comprovante';
+                      break;
+                    case 1:
+                      status = 'Comprovante em análise';
+                      break;
+                    case 2:
+                      status = 'Pago e validado';
+                      break;
+                    case 3:
+                      status = 'Devolvido por erro no comprovante';
+                      break;
+                    case 4:
+                      status = 'Devolvido por falta de vagas';
+                      break;
+                  }
 
-                item.subscribedToEvents.join('; '),
+                  let subscribedToEventsItemArray$: Observable<EventItem>[] = [];
 
-                eventNames,
-              ];
-              csv.push(row);
+                  item.subscribedToEvents.forEach((eventID) => {
+                    subscribedToEventsItemArray$.push(
+                      this.afs
+                        .collection('events')
+                        .doc<EventItem>(eventID)
+                        .get()
+                        .pipe(
+                          take(1),
+                          map((doc) => doc.data())
+                        )
+                    );
+                  });
 
-              this.event$.pipe(take(1)).subscribe((event) => {
-                const csvString = csv.map((row) => row.join(',')).join('\n');
-                const a = document.createElement('a');
-                a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
-                a.download = `${event.name}_${this.getDateFromTimestamp(event.eventStartDate).toISOString()}.csv`;
-                a.click();
+                  let subscribedToEventsNames = '';
+
+                  item.subscribedToEvents.forEach((eventID) => {
+                    subscribedToEventsNames += '""' + eventNames[eventID] + '""; ';
+                  });
+
+                  const row = [
+                    user.uid,
+                    user.displayName,
+                    user.fullName,
+                    user.associateStatus,
+                    user.academicID || 'Sem RA cadastrado',
+                    user.email,
+                    item.payment.status,
+                    status,
+
+                    this.getDateFromTimestamp(item.payment.time).toLocaleString('pt-BR', {
+                      timeZone: 'America/Sao_Paulo',
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    }),
+
+                    this.getDateFromTimestamp(item.payment.time).toISOString(),
+
+                    this.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {
+                      timeZone: 'America/Sao_Paulo',
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    }),
+
+                    this.getDateFromTimestamp(item.time).toISOString(),
+
+                    item.subscribedToEvents.join('; '),
+                    subscribedToEventsNames,
+                  ];
+                  csv.push(row);
+                });
+
+                this.event$.pipe(take(1)).subscribe((event) => {
+                  const csvString = csv.map((row) => row.join(',')).join('\n');
+                  const a = document.createElement('a');
+                  a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
+                  a.download = `${event.name}_${new Date().toISOString()}.csv`;
+                  a.click();
+                  this.disableCSVDownloadButton = false;
+                });
               });
             });
-          });
         });
       });
   }

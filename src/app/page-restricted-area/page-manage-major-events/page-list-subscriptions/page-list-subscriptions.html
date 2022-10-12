@@ -13,7 +13,10 @@
       <h3 style="margin-bottom: 0">{{ event.name }}</h3>
       <h4 style="margin: 0">{{ event.shortDescription }}</h4>
       <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}</h5>
-      <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
+      <ion-button (click)="generateCSV()" [disabled]="disableCSVDownloadButton">
+        <ion-spinner slot="start" *ngIf="disableCSVDownloadButton"></ion-spinner>
+        Baixar CSV
+      </ion-button>
     </div>
     <div class="ion-padding-horizontal">
       <p><b>Total de inscritos para este evento:</b> {{subscriptions.length}}</p>
