@@ -11,7 +11,7 @@ import { trace } from '@angular/fire/compat/performance';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { fromUnixTime } from 'date-fns';
 import { EnrollmentTypesService } from '../shared/services/enrollment-types.service';
-import { Router } from '@angular/router';
+
 @UntilDestroy()
 @Component({
   selector: 'app-page-subscriptions',
@@ -27,8 +27,7 @@ export class PageSubscriptionsPage implements OnInit {
   constructor(
     public afs: AngularFirestore,
     public auth: AngularFireAuth,
-    public enrollmentTypes: EnrollmentTypesService,
-    private router: Router
+    public enrollmentTypes: EnrollmentTypesService
   ) {}
 
   ngOnInit() {
