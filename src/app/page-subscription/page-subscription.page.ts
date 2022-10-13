@@ -10,7 +10,7 @@ import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firest
 import { ActivatedRoute, Router } from '@angular/router';
 import { Timestamp } from '@firebase/firestore-types';
 import { formatDate } from '@angular/common';
-import { fromUnixTime, isSameDay, compareAsc, isBefore } from 'date-fns';
+import { fromUnixTime, isSameDay, compareAsc } from 'date-fns';
 import { take, map, Observable } from 'rxjs';
 
 import { MajorEventItem } from '../shared/services/major-event.service';
@@ -24,7 +24,7 @@ import { trace } from '@angular/fire/compat/performance';
 import { parse } from 'twemoji-parser';
 import { DomSanitizer } from '@angular/platform-browser';
 import { FormBuilder, FormGroup } from '@angular/forms';
-import { increment, serverTimestamp } from '@angular/fire/firestore';
+import { serverTimestamp } from '@angular/fire/firestore';
 
 @UntilDestroy()
 @Component({
@@ -181,7 +181,7 @@ export class PageSubscriptionPage implements OnInit {
             this.eventSchedule.push(eventItem);
 
             // If there are no slots available, add event to form with disabled selection
-            if (eventItem.slotsAvailable <= 0) {
+            if (eventItem.slotsAvailable <= 0 || this.getDateFromTimestamp(eventItem.eventStartDate) < this.today) {
               this.dataForm.addControl(eventItem.id, this.formBuilder.control({ value: null, disabled: true }));
             } else {
               this.dataForm.addControl(eventItem.id, this.formBuilder.control(null));
