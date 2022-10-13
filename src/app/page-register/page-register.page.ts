@@ -1,4 +1,3 @@
-import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { User } from 'src/app/shared/services/user';
 import { Component, OnInit, ViewChild } from '@angular/core';
 
@@ -25,7 +24,6 @@ import { take } from 'rxjs';
 import { WindowService } from '../shared/services/window.service';
 
 import firebase from 'firebase/compat/app';
-@UntilDestroy()
 @Component({
   selector: 'app-page-register',
   templateUrl: './page-register.page.html',
@@ -69,7 +67,7 @@ export class PageRegisterPage implements OnInit {
       .collection('users')
       .doc<User>(this.userData.uid)
       .valueChanges()
-      .pipe(untilDestroyed(this), trace('firestore'))
+      .pipe(take(1), trace('firestore'))
       .subscribe((user) => {
         if (user.email.includes('@unesp.br')) {
           this.isUnesp = true;
@@ -134,7 +132,7 @@ export class PageRegisterPage implements OnInit {
     const userData: User = {
       fullName: this.isUnesp ? this.userData.displayName : this.dataForm.value.fullName,
       associateStatus: this.isUnesp ? this.dataForm.value.associateStatus : 'external',
-      academicID: this.dataForm.value.academicID || null,
+      academicID: this.isUndergraduate ? this.dataForm.value.academicID : null,
       phone: this.dataForm.value.phone,
       dataVersion: this.dataVersion,
       cpf: this.dataForm.value.cpf,
@@ -180,7 +178,7 @@ export class PageRegisterPage implements OnInit {
       header: 'Enviando informações',
       icon: 'ellipsis-horizontal',
       position: 'bottom',
-      duration: 2000,
+      duration: 1000,
       buttons: [
         {
           side: 'end',
