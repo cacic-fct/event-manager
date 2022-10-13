@@ -217,15 +217,18 @@ export class AuthService {
             .pipe(
               trace('firestore'),
               map((doc) => {
-                const data = doc.data();
-                if (data === undefined) {
-                  return true;
-                } else if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
-                  this.router.navigate(['/register']);
-                  return true;
-                } else {
-                  return false;
+                if (doc.exists) {
+                  const data = doc.data();
+                  if (data === undefined) {
+                    return true;
+                  } else if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
+                    this.router.navigate(['/register']);
+                    return true;
+                  } else {
+                    return false;
+                  }
                 }
+                return true;
               })
             );
         }
