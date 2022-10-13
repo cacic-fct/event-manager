@@ -16,11 +16,12 @@ import * as firebaseAuth from 'firebase/auth';
 import { AngularFireFunctions } from '@angular/fire/compat/functions';
 import { getStringChanges, RemoteConfig, getBooleanChanges } from '@angular/fire/remote-config';
 import { arrayRemove } from '@angular/fire/firestore';
+import { gte as versionGreaterThan } from 'semver';
 
 @Injectable()
 export class AuthService {
   userData: firebase.User;
-  dataVersion: string = GlobalConstantsService.userDataVersion;
+  localDataVersion: string = GlobalConstantsService.userDataVersion;
 
   constructor(
     public auth: AngularFireAuth,
@@ -219,9 +220,13 @@ export class AuthService {
               map((doc) => {
                 if (doc.exists) {
                   const data = doc.data();
+                  const remoteDataVersion = data.dataVersion;
+
                   if (data === undefined) {
                     return true;
-                  } else if (!data.dataVersion || data.dataVersion !== this.dataVersion) {
+                  } else if (remoteDataVersion && versionGreaterThan(remoteDataVersion, this.localDataVersion)) {
+                    return true;
+                  } else if (!remoteDataVersion || remoteDataVersion !== this.localDataVersion) {
                     this.router.navigate(['/register']);
                     return true;
                   } else {
