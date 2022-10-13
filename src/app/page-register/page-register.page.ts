@@ -20,7 +20,7 @@ import { Mailto, NgxMailtoService } from 'ngx-mailto';
 
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
-import { take, Observable, BehaviorSubject } from 'rxjs';
+import { take } from 'rxjs';
 
 import { WindowService } from '../shared/services/window.service';
 

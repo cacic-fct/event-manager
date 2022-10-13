@@ -2,7 +2,7 @@ import { EventItem, EventSubscription } from 'src/app/shared/services/event';
 import { Timestamp } from '@firebase/firestore-types';
 import { MajorEventItem, MajorEventSubscription } from '../shared/services/major-event.service';
 import { Component, OnInit } from '@angular/core';
-import { map, Observable, forkJoin, switchMap, combineLatest } from 'rxjs';
+import { map, Observable, switchMap, combineLatest } from 'rxjs';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 

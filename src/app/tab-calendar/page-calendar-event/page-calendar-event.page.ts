@@ -21,7 +21,6 @@ import Point from 'ol/geom/Point';
 import VectorSource from 'ol/source/Vector';
 
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { EventItem } from '../../shared/services/event';
@@ -29,10 +28,9 @@ import { take, Observable, map } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
-import { Timestamp } from '@firebase/firestore';
 import { WeatherInfo, WeatherService } from 'src/app/shared/services/weather.service';
 import { serverTimestamp } from '@angular/fire/firestore';
-@UntilDestroy()
+
 @Component({
   selector: 'app-page-calendar-event',
   templateUrl: './page-calendar-event.page.html',
