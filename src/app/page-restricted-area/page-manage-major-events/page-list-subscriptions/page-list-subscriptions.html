@@ -33,9 +33,15 @@
           <ng-template #notUnesp>
             <h3 class="ion-text-wrap" *ngIf="user.academicID">Sem RA definido</h3>
           </ng-template>
+          <h3 class="ion-text-wrap">{{ user.email }} | {{ user.phone || "Sem celular cadastrado" }}</h3>
           <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
 
-          <h3 class="ion-text-wrap">{{ getDateFromTimestamp(subscriptionItem.time) | date: "HH:mm:ss - dd/MM/y" }}</h3>
+          <h3 class="ion-text-wrap">
+            Criação da inscrição: {{ getDateFromTimestamp(subscriptionItem.time) | date: "HH:mm:ss - dd/MM/y" }}
+          </h3>
+          <h3 class="ion-text-wrap">
+            Última edição da: {{ getDateFromTimestamp(subscriptionItem.payment.time) | date: "HH:mm:ss - dd/MM/y" }}
+          </h3>
           <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
         </ng-container>
       </ion-label>
