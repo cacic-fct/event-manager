@@ -263,11 +263,32 @@ export class PageRegisterPage implements OnInit {
     return true;
   }
 
-  mailto(): void {
+  mailtoDocumentPhone(): void {
     const mailto: Mailto = {
       receiver: 'cacic.fct@gmail.com',
       subject: '[FCT-App] Validar meu cadastro',
-      body: `Olá!\nEu não possuo (ESPECIFIQUE: CPF/celular), vocês poderiam validar o meu cadastro?\n\n=== Não apague os dados abaixo ===\nE-mail: ${this.userData.email}\nuid: ${this.userData.uid}\n`,
+      body: `Olá!\nEu não possuo (ESPECIFIQUE: CPF/celular), vocês poderiam validar o meu cadastro?\n\n=== Não apague os dados abaixo ===\nE-mail: ${
+        this.userData.email
+      }\nuid: ${this.userData.uid}\n\nDados do formulário:\nNome completo (fullName): ${
+        this.dataForm.get('fullName').value
+      }\nCPF: ${this.dataForm.get('cpf').value}\nCelular: ${this.dataForm.get('phone').value}\nRA: ${
+        this.dataForm.get('academicID').value
+      }\nVínculo: ${this.isUnesp ? this.dataForm.get('associateStatus').value : 'external'}\n`,
+    };
+    this.mailtoService.open(mailto);
+  }
+
+  mailtoIssues(): void {
+    const mailto: Mailto = {
+      receiver: 'cacic.fct@gmail.com',
+      subject: '[FCT-App] Problemas no cadastro',
+      body: `Olá!\n\n...\n\n=== Não apague os dados abaixo ===\nE-mail: ${this.userData.email}\nuid: ${
+        this.userData.uid
+      }\n\nDados do formulário:\nNome completo (fullName): ${this.dataForm.get('fullName').value}\nCPF: ${
+        this.dataForm.get('cpf').value
+      }\nCelular: ${this.dataForm.get('phone').value}\nRA: ${this.dataForm.get('academicID').value}\nVínculo: ${
+        this.isUnesp ? this.dataForm.get('associateStatus').value : 'external'
+      }\n`,
     };
     this.mailtoService.open(mailto);
   }
