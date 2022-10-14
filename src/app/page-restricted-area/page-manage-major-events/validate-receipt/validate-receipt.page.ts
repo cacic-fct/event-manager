@@ -187,9 +187,9 @@ export class ValidateReceiptPage implements OnInit {
             case 'invalidReceipt':
               this.subscriptionsQuery.doc(subscriberID).update({
                 // @ts-ignore
-                'payment.status': 3, // Novo status: erro personalizado
-                'payment.time': serverTimestamp(),
-                'payment.author': user.uid,
+                'payment.status': 3,
+                'payment.validationTime': serverTimestamp(),
+                'payment.validationAuthor': user.uid,
                 'payment.error': this.refuseForm.get('errorMessage').value,
               });
 
@@ -221,8 +221,8 @@ export class ValidateReceiptPage implements OnInit {
               this.subscriptionsQuery.doc(subscriberID).update({
                 // @ts-ignore
                 'payment.status': 4,
-                'payment.time': serverTimestamp(),
-                'payment.author': user.uid,
+                'payment.validationTime': serverTimestamp(),
+                'payment.validationAuthor': user.uid,
               });
               this.refuseModal.dismiss();
 
@@ -252,8 +252,8 @@ export class ValidateReceiptPage implements OnInit {
               this.subscriptionsQuery.doc(subscriberID).update({
                 // @ts-ignore
                 'payment.status': 5,
-                'payment.time': serverTimestamp(),
-                'payment.author': user.uid,
+                'payment.validationTime': serverTimestamp(),
+                'payment.validationAuthor': user.uid,
                 subscribedToEvents: [],
               });
               this.refuseModal.dismiss();

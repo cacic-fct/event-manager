@@ -436,62 +436,75 @@ export class PageSubscriptionPage implements OnInit {
                     }
                   }
 
+                  let subscriptionType: number = Number.parseInt(this.opSelected);
+
+                  if (isNaN(subscriptionType)) {
+                    subscriptionType = null;
+                  }
+
                   this.afs
                     .collection(`majorEvents/${this.majorEventID}/subscriptions`)
                     .doc<MajorEventSubscription>(user.uid)
                     .get()
                     .subscribe((doc) => {
-                      this.afs
-                        .collection(`majorEvents/${this.majorEventID}/subscriptions`)
-                        .doc<MajorEventSubscription>(user.uid)
-                        .set({
-                          subscriptionType: Number.parseInt(this.opSelected),
-                          subscribedToEvents: eventsSelectedID,
-                          // @ts-ignore
-                          time: serverTimestamp(),
-                          payment: {
-                            price: price,
-                            status: status,
+                      if ((status = 0)) {
+                        this.afs
+                          .collection(`majorEvents/${this.majorEventID}/subscriptions`)
+                          .doc<MajorEventSubscription>(user.uid)
+                          .set({
+                            subscriptionType: subscriptionType,
+                            subscribedToEvents: eventsSelectedID,
                             // @ts-ignore
                             time: serverTimestamp(),
-                            author: user.uid,
-                          },
+                            payment: {
+                              price: price,
+                              status: status,
+                              // @ts-ignore
+                              time: serverTimestamp(),
+                              author: user.uid,
+                            },
+                          });
+                      } else {
+                        this.afs
+                          .collection(`majorEvents/${this.majorEventID}/subscriptions`)
+                          .doc<MajorEventSubscription>(user.uid)
+                          .set({
+                            subscriptionType: subscriptionType,
+                            subscribedToEvents: eventsSelectedID,
+                            payment: {
+                              price: price,
+                              status: status,
+                              // @ts-ignore
+                              time: serverTimestamp(),
+                              author: user.uid,
+                            },
+                          });
+                      }
+
+                      this.afs
+                        .collection(`users/${user.uid}/majorEventSubscriptions`)
+                        .doc(this.majorEventID)
+                        .set({
+                          reference: this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`).ref,
                         })
                         .then(() => {
-                          this.afs
-                            .collection(`users/${user.uid}/majorEventSubscriptions`)
-                            .doc(this.majorEventID)
-                            .set({
-                              reference: this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`).ref,
-                            })
-                            .then(() => {
-                              this.successSwal.fire();
-                              setTimeout(() => {
-                                this.successSwal.close();
-                                if (
-                                  this.paymentStatus === 1 ||
-                                  this.paymentStatus === 4 ||
-                                  this.paymentStatus === 5 ||
-                                  price === 0
-                                ) {
-                                  this.router.navigate(['/inscricoes'], { replaceUrl: true });
-                                } else {
-                                  this.router.navigate(['/inscricoes/pagar', this.majorEventID], {
-                                    replaceUrl: true,
-                                  });
-                                }
-                              }, 2000);
-                            });
-                        })
-                        .catch((error) => {
-                          console.error(error);
-                          this.errorSwal.fire();
+                          this.successSwal.fire();
+                          setTimeout(() => {
+                            this.successSwal.close();
+                            if (
+                              this.paymentStatus === 1 ||
+                              this.paymentStatus === 4 ||
+                              this.paymentStatus === 5 ||
+                              price === 0
+                            ) {
+                              this.router.navigate(['/inscricoes'], { replaceUrl: true });
+                            } else {
+                              this.router.navigate(['/inscricoes/pagar', this.majorEventID], {
+                                replaceUrl: true,
+                              });
+                            }
+                          }, 2000);
                         });
-
-                      setTimeout(() => {
-                        this.successSwal.close();
-                        this.router.navigate(['/eventos'], { replaceUrl: true });
-                      }, 1500);
                     });
                 } else {
                   this.alreadySubscribed.fire();

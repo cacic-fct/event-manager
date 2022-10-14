@@ -204,7 +204,8 @@
       <ion-card-content>
         Inscrição realizada
         <br />
-        Pagamento confirmado em {{getDateFromTimestamp(subscriptionData.payment.time) | date: 'dd/MM/yyyy — HH:mm'}}
+        <!-- prettier-ignore -->
+        Pagamento confirmado em {{getDateFromTimestamp(subscriptionData.payment.validationTime) | date: 'dd/MM/yyyy — HH:mm'}}
         <br />
         Para editar a sua inscrição, entre em contato conosco.
       </ion-card-content>

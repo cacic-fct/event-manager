@@ -76,14 +76,14 @@ export class PageManageSubscriptionPage implements OnInit {
               // @ts-ignore
               slotsAvailable: increment(1),
               // @ts-ignore
-              numberOfSubscriptions: increment(1),
+              numberOfSubscriptions: increment(-1),
             });
           });
 
           this.afs.doc(`majorEvents/${this.majorEventID}/subscriptions/${this.subscriptionID}`).update({
             'payment.status': 1,
-            'payment.author': user.uid,
-            'payment.time': serverTimestamp(),
+            'payment.validationAuthor': user.uid,
+            'payment.validationTime': serverTimestamp(),
           });
         });
     });

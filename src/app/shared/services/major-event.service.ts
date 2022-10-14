@@ -67,6 +67,8 @@ export interface MajorEventSubscription {
     error?: string;
     price?: number;
     author: string;
+    validationTime: Timestamp;
+    validationAuthor: string;
   };
   subscriptionType: number;
   subscribedToEvents: string[];
