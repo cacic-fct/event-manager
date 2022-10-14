@@ -107,6 +107,11 @@
             <ion-label>Não há mais vagas</ion-label>
             <ion-radio slot="start" value="noSlots"></ion-radio>
           </ion-item>
+
+          <ion-item>
+            <ion-label>Choque de horário</ion-label>
+            <ion-radio slot="start" value="scheduleConflict"></ion-radio>
+          </ion-item>
         </ion-radio-group>
         <ng-container *ngIf="refuseForm.get('radioGroup').value == 'invalidReceipt'">
           <ion-item>

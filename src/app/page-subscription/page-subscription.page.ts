@@ -408,27 +408,32 @@ export class PageSubscriptionPage implements OnInit {
                   // Create array with event IDs from eventsSelected
                   const eventsSelectedID = eventsSelected.map((event) => event.id);
 
-                  let status: number;
+                  let status: number = 0;
 
                   if (this.paymentStatus !== undefined) {
-                    if (this.paymentStatus === 4) {
-                      // If user has already paid,
-                      // but subscription was denied due to insufficient slots,
-                      // set status to "pending verification"
-                      status = 1;
-                    } else if (this.paymentStatus === 1) {
-                      // User already sent payment proof, keep status as "pending verification"
-                      status = 1;
-                    } else if (this.paymentStatus === 3) {
-                      // User had payment proof denied, keep status as "pending resending proof"
-                      status = 3;
-                    } else if (this.paymentStatus === null) {
-                      status = null;
-                    } else {
-                      status = 0;
+                    switch (this.paymentStatus) {
+                      case 1:
+                        // User already sent payment proof, keep status as "pending verification"
+                        status = 1;
+                        break;
+                      case 3:
+                        // User had payment proof denied, keep status as "pending resending proof"
+                        status = 3;
+                        break;
+                      case 4:
+                      case 5:
+                        // If user has already paid,
+                        // but subscription was denied due to insufficient slots or schedule conflict,
+                        // set status to "pending verification"
+                        status = 1;
+                        break;
+                      case null:
+                        status = null;
+                        break;
+                      default:
+                        status = 0;
+                        break;
                     }
-                  } else {
-                    status = 0;
                   }
 
                   this.afs
@@ -463,7 +468,12 @@ export class PageSubscriptionPage implements OnInit {
                               this.successSwal.fire();
                               setTimeout(() => {
                                 this.successSwal.close();
-                                if (this.paymentStatus === 1 || this.paymentStatus === 4 || price === 0) {
+                                if (
+                                  this.paymentStatus === 1 ||
+                                  this.paymentStatus === 4 ||
+                                  this.paymentStatus === 5 ||
+                                  price === 0
+                                ) {
                                   this.router.navigate(['/inscricoes'], { replaceUrl: true });
                                 } else {
                                   this.router.navigate(['/inscricoes/pagar', this.majorEventID], {

@@ -45,6 +45,11 @@
                 *ngTemplateOutlet="eventFull; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
               </ng-container>
             </div>
+            <div *ngSwitchCase="5">
+              <ng-container
+                *ngTemplateOutlet="scheduleConflict; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+              </ng-container>
+            </div>
           </ng-container>
         </ng-container>
       </ng-container>
@@ -263,6 +268,35 @@
           <b>Não foi possível concluir a sua inscrição</b>
           <br />
           Não há mais vagas disponíveis em um dos eventos selecionados.
+          <br />
+          Para continuar, altere a sua inscrição.
+        </ion-text>
+      </ion-card-content>
+
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-button color="danger" [routerLink]="['/eventos/inscrever', majorEventData.id]">
+              <ion-icon slot="start" name="pencil-outline"></ion-icon>
+              Alterar inscrição
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card>
+  </ng-template>
+
+  <ng-template #scheduleConflict let-majorEventData="majorEventData" let-subscriptionData="subscriptionData">
+    <ion-card>
+      <ng-container
+        *ngTemplateOutlet="ionCardHeader; context: {majorEventData: majorEventData, subType: subscriptionData.subscriptionType, price: subscriptionData.payment.price, color: 'danger'}">
+      </ng-container>
+
+      <ion-card-content>
+        <ion-text color="danger">
+          <b>Não foi possível concluir a sua inscrição</b>
+          <br />
+          Há um choque de horário entre os eventos selecionados.
           <br />
           Para continuar, altere a sua inscrição.
         </ion-text>

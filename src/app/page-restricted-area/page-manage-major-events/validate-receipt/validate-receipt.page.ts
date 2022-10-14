@@ -190,67 +190,103 @@ export class ValidateReceiptPage implements OnInit {
 
           const docQuery = this.afs.doc(`users/${subscriberID}`).get();
 
-          if (this.refuseForm.value.radioGroup === 'invalidReceipt') {
-            this.subscriptionsQuery.doc(subscriberID).update({
-              // @ts-ignore
-              'payment.status': 3, // Novo status: erro personalizado
-              'payment.time': serverTimestamp(),
-              'payment.author': user.uid,
-              'payment.error': this.refuseForm.get('errorMessage').value,
-            });
-
-            this.refuseModal.dismiss();
-
-            this.afs
-              .doc(`majorEvents/${this.majorEventID}`)
-              .get()
-              .pipe(take(1), trace('firestore'))
-              .subscribe((doc) => {
-                const event = doc.data() as MajorEventItem;
-                const eventName = event.name;
-
-                docQuery.pipe(take(1), trace('firestore')).subscribe((userDoc) => {
-                  const user = userDoc.data() as User;
-                  // Only first name from fullName
-                  const firstName = user.fullName.split(' ')[0];
-
-                  this.whatsAppAlertInvalid(
-                    firstName,
-                    user.phone,
-                    eventName,
-                    this.refuseForm.get('errorMessage').value
-                  );
-                });
+          switch (this.refuseForm.value.radioGroup) {
+            case 'invalidReceipt':
+              this.subscriptionsQuery.doc(subscriberID).update({
+                // @ts-ignore
+                'payment.status': 3, // Novo status: erro personalizado
+                'payment.time': serverTimestamp(),
+                'payment.author': user.uid,
+                'payment.error': this.refuseForm.get('errorMessage').value,
               });
-          } else if (this.refuseForm.value.radioGroup === 'noSlots') {
-            this.subscriptionsQuery.doc(subscriberID).update({
-              // @ts-ignore
-              'payment.status': 4,
-              'payment.time': serverTimestamp(),
-              'payment.author': user.uid,
-            });
-            this.refuseModal.dismiss();
 
-            this.afs
-              .doc(`majorEvents/${this.majorEventID}`)
-              .get()
-              .pipe(take(1), trace('firestore'))
-              .subscribe((doc) => {
-                const event = doc.data() as MajorEventItem;
-                const eventName = event.name;
+              this.refuseModal.dismiss();
 
-                docQuery.pipe(take(1), trace('firestore')).subscribe((userDoc) => {
-                  const user = userDoc.data() as User;
-                  // Only first name from fullName
-                  const firstName = user.fullName.split(' ')[0];
+              this.afs
+                .doc(`majorEvents/${this.majorEventID}`)
+                .get()
+                .pipe(take(1), trace('firestore'))
+                .subscribe((doc) => {
+                  const event = doc.data() as MajorEventItem;
+                  const eventName = event.name;
 
-                  this.whatsAppAlertNoSlots(firstName, user.phone, eventName);
+                  docQuery.pipe(take(1), trace('firestore')).subscribe((userDoc) => {
+                    const user = userDoc.data() as User;
+                    // Only first name from fullName
+                    const firstName = user.fullName.split(' ')[0];
+
+                    this.whatsAppAlertInvalid(
+                      firstName,
+                      user.phone,
+                      eventName,
+                      this.refuseForm.get('errorMessage').value
+                    );
+                  });
+                });
+              break;
+            case 'noSlots':
+              this.subscriptionsQuery.doc(subscriberID).update({
+                // @ts-ignore
+                'payment.status': 4,
+                'payment.time': serverTimestamp(),
+                'payment.author': user.uid,
+              });
+              this.refuseModal.dismiss();
+
+              this.afs
+                .doc(`majorEvents/${this.majorEventID}`)
+                .get()
+                .pipe(take(1), trace('firestore'))
+                .subscribe((doc) => {
+                  const event = doc.data() as MajorEventItem;
+                  const eventName = event.name;
+
+                  docQuery.pipe(take(1), trace('firestore')).subscribe((userDoc) => {
+                    const user = userDoc.data() as User;
+                    // Only first name from fullName
+                    const firstName = user.fullName.split(' ')[0];
+
+                    this.whatsAppAlertNoSlots(firstName, user.phone, eventName);
+                  });
+
+                  if (this.arrayIndex > 0) {
+                    this.arrayIndex--;
+                  }
+                });
+              break;
+
+            case 'scheduleConflict':
+              this.subscriptionsQuery.doc(subscriberID).update({
+                // @ts-ignore
+                'payment.status': 5,
+                'payment.time': serverTimestamp(),
+                'payment.author': user.uid,
+                subscribedToEvents: [],
+              });
+              this.refuseModal.dismiss();
+
+              this.afs
+                .doc(`majorEvents/${this.majorEventID}`)
+                .get()
+                .pipe(take(1), trace('firestore'))
+                .subscribe((doc) => {
+                  const event = doc.data() as MajorEventItem;
+                  const eventName = event.name;
+
+                  docQuery.pipe(take(1), trace('firestore')).subscribe((userDoc) => {
+                    const user = userDoc.data() as User;
+                    // Only first name from fullName
+                    const firstName = user.fullName.split(' ')[0];
+
+                    this.whatsAppAlertScheduleConflict(firstName, user.phone, eventName);
+                  });
+
+                  if (this.arrayIndex > 0) {
+                    this.arrayIndex--;
+                  }
                 });
 
-                if (this.arrayIndex > 0) {
-                  this.arrayIndex--;
-                }
-              });
+              break;
           }
         });
     });
