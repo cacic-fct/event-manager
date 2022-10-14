@@ -128,7 +128,7 @@ export class ValidateReceiptPage implements OnInit {
                     // @ts-ignore
                     slotsAvailable: increment(-1),
                     // @ts-ignore
-                    numberOfSubscriptions: increment(1),
+                    numberOfSubscriptions: increment(-1),
                   });
 
                 this.afs
