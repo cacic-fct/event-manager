@@ -21,17 +21,24 @@
     <!-- TODO: Melhorar interface quando arrayIndex aponta para um elemento não existente -->
     <ng-container *ngIf="subscriptions[arrayIndex] as subscription">
       <ion-card>
-        <ion-card-header>
-          <ion-card-title
-            >{{ subscription.userDisplayName$ | async }} - {{ subscription.payment.price |
-            currency:'BRL':'symbol':'1.2-2' }}</ion-card-title
-          >
+        <ion-card-header *ngIf="subscription.userData$ | async as userData">
+          <!-- prettier-ignore -->
+          <ion-card-title>
+            {{ userData.fullName || userData.displayName}} - {{ subscription.payment.price | currency:'BRL':'symbol':'1.2-2' }}
+          </ion-card-title>
           <ion-card-subtitle>
             Se inscreveu em: {{ getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
             <br />
             Última alteração na inscrição: {{ getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm'
             }}
           </ion-card-subtitle>
+          <ion-button fill="clear" [href]="'mailto:' + userData.email">
+            <ion-icon name="mail" slot="icon-only"></ion-icon>
+          </ion-button>
+
+          <ion-button fill="clear" [href]="'https://wa.me/' + formatPhoneWhatsApp(userData.phone)">
+            <ion-icon name="logo-whatsapp" slot="icon-only"></ion-icon>
+          </ion-button>
         </ion-card-header>
         <ion-card-content>
           <p>

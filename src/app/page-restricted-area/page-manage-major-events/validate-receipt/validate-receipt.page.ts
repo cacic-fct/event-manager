@@ -71,7 +71,7 @@ export class ValidateReceiptPage implements OnInit {
           return {
             ...sub,
             subEventsInfo: observableArrayOfEvents,
-            userDisplayName$: this.userNameByID(sub.id),
+            userData$: this.userDataByID(sub.id),
           };
         })
       )
@@ -92,15 +92,8 @@ export class ValidateReceiptPage implements OnInit {
     return [this.imgBaseHref, receiptId].join('/');
   }
 
-  private userNameByID(userId: string): Observable<string> {
-    return this.afs
-      .collection('users')
-      .doc<User>(userId)
-      .valueChanges()
-      .pipe(
-        take(1),
-        map((user) => user.fullName || user.displayName)
-      );
+  private userDataByID(userId: string): Observable<User> {
+    return this.afs.collection('users').doc<User>(userId).valueChanges().pipe(take(1));
   }
 
   getDateFromTimestamp(timestamp: TimestampType): Date {
@@ -305,9 +298,7 @@ export class ValidateReceiptPage implements OnInit {
           text: 'Sim',
           role: 'confirm',
           handler: () => {
-            // Format phone from 11 99999-9999 to 5511999999999
-            let formattedPhone = phone.replace(/\D/g, '');
-            formattedPhone = formattedPhone.replace(/^(\d{2})(\d)/g, '55$1$2');
+            const formattedPhone = this.formatPhoneWhatsApp(phone);
 
             const text: string = `Olá, ${name}! O seu comprovante de pagamento do evento "${event}" foi recusado.%0aA justificativa é "${message}".%0a%0aRealize o envio novamente pelo link:%0ahttps://fct-pp.web.app/inscricoes/pagar/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=payment_error`;
 
@@ -334,9 +325,7 @@ export class ValidateReceiptPage implements OnInit {
           text: 'Sim',
           role: 'confirm',
           handler: () => {
-            // Format phone from 11 99999-9999 to 5511999999999
-            let formattedPhone = phone.replace(/\D/g, '');
-            formattedPhone = formattedPhone.replace(/^(\d{2})(\d)/g, '55$1$2');
+            const formattedPhone = this.formatPhoneWhatsApp(phone);
 
             const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aNão há mais vagas em uma das atividades selecionadas.%0a%0aVocê precisa editar a sua inscrição pelo link:%0ahttps://fct-pp.web.app/eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=no_slots`;
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
@@ -347,6 +336,40 @@ export class ValidateReceiptPage implements OnInit {
     });
 
     await alert.present();
+  }
+
+  async whatsAppAlertScheduleConflict(name: string, phone: string, event: string) {
+    const alert = await this.alertController.create({
+      header: 'Enviar notificação por WhatsApp?',
+      message: 'Envie uma mensagem para o usuário informando sobre o choque de horário.',
+      buttons: [
+        {
+          text: 'Não',
+          role: 'cancel',
+        },
+        {
+          text: 'Sim',
+          role: 'confirm',
+          handler: () => {
+            const formattedPhone = this.formatPhoneWhatsApp(phone);
+
+            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aHá um choque de horário nos eventos que você selecionou.%0a%0aVocê precisa editar a sua inscrição pelo link:%0ahttps://fct-pp.web.app/eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=schedule_conflict`;
+            const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
+            window.open(url, '_blank');
+          },
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
+  formatPhoneWhatsApp(phone: string): string {
+    // Format phone from 11 99999-9999 to 5511999999999
+    let formattedPhone = phone.replace(/\D/g, '');
+    formattedPhone = formattedPhone.replace(/^(\d{2})(\d)/g, '55$1$2');
+
+    return formattedPhone;
   }
 
   validatorRadio(control: AbstractControl): ValidationErrors | null {
@@ -371,7 +394,7 @@ export class ValidateReceiptPage implements OnInit {
 
 interface Subscription {
   id: string;
-  userDisplayName$: Observable<string>;
+  userData$: Observable<User>;
   time: TimestampType;
   payment: {
     status: number;
