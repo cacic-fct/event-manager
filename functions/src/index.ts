@@ -142,8 +142,8 @@ exports.getUserUid = functions.https.onCall((data, context) => {
     );
   }
 
-  if (context.auth.token.role !== 1000) {
-    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by an admin.');
+  if (context.auth.token.role >= 3000) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by an authorized role.');
   }
 
   if (data.string === '') {

@@ -8,10 +8,10 @@ import { pipe } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { customClaims } from '@angular/fire/compat/auth-guard';
 
-const adminOnly = () =>
+const caAndGreater = () =>
   pipe(
     customClaims,
-    map((claims) => claims.role === 1000)
+    map((claims) => claims.role < 3000)
   );
 
 const routes: Routes = [
@@ -49,7 +49,7 @@ const routes: Routes = [
         title: 'Área restrita',
         loadChildren: () =>
           import('../page-restricted-area/page-restricted-area.module').then((m) => m.PageRestrictedAreaPageModule),
-        ...canActivate(adminOnly),
+        ...canActivate(caAndGreater),
       },
     ],
   },

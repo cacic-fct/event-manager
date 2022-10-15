@@ -12,8 +12,8 @@ import { trace } from '@angular/fire/compat/performance';
   styleUrls: ['tabs.page.scss'],
 })
 export class TabsPage {
-  _isAdmin: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
-  isAdmin$: Observable<boolean> = this._isAdmin.asObservable();
+  _allowRestrictedArea: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+  allowRestrictedArea$: Observable<boolean> = this._allowRestrictedArea.asObservable();
   readonly manual$: Observable<boolean>;
   readonly events$: Observable<boolean>;
   readonly map$: Observable<boolean>;
@@ -22,8 +22,8 @@ export class TabsPage {
     this.auth.idTokenResult.pipe(untilDestroyed(this)).subscribe((idTokenResult) => {
       if (idTokenResult) {
         const claims = idTokenResult.claims;
-        if (claims.role === 1000) {
-          this._isAdmin.next(true);
+        if (claims.role < 3000) {
+          this._allowRestrictedArea.next(true);
         }
       }
     });
