@@ -447,7 +447,7 @@ export class PageSubscriptionPage implements OnInit {
                     .doc<MajorEventSubscription>(user.uid)
                     .get()
                     .subscribe((doc) => {
-                      if ((status = 0)) {
+                      if (status === 0) {
                         this.afs
                           .collection(`majorEvents/${this.majorEventID}/subscriptions`)
                           .doc<MajorEventSubscription>(user.uid)
