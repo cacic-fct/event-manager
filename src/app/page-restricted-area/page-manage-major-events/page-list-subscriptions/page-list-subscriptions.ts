@@ -152,6 +152,9 @@ export class PageListSubscriptions implements OnInit {
                     case 4:
                       status = 'Devolvido por falta de vagas';
                       break;
+                    case 5:
+                      status = 'Devolvido por choque de horário';
+                      break;
                   }
 
                   let subscribedToEventsItemArray$: Observable<EventItem>[] = [];
