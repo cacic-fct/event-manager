@@ -9,7 +9,7 @@
         <ion-icon name="chevron-back"></ion-icon>
       </ion-button>
       {{ arrayIndex }}
-      <ion-button (click)="arrayIndexForward()" [disabled]="arrayIndex == 9" aria-label="Próxima comprovante">
+      <ion-button (click)="arrayIndexForward()" aria-label="Próxima comprovante">
         <ion-icon name="chevron-forward"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -57,8 +57,11 @@
           <ng-container *ngIf="subscription.subEventsInfo | async as subEventsInfo; else loading">
             <ng-container *ngIf="subEventsInfo.length != 0">
               <ng-container *ngFor="let subEventInfo of subEventsInfo">
-                <ion-text [color]="subEventInfo.slotsAvailable? '' : 'danger'">
+                <ion-text
+                  [color]="subEventInfo.slotsAvailable? '' : 'danger'"
+                  [style.color]="subEventInfo.eventType === 'palestra' ? '#0277bd' : ''">
                   <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
+                  <p>{{ subEventInfo.id }}</p>
                   <p style="margin-bottom: 24px">
                     {{ getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - {{
                     getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}

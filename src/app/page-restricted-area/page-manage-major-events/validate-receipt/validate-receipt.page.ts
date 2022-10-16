@@ -55,7 +55,11 @@ export class ValidateReceiptPage implements OnInit {
       map((subscription) =>
         subscription.map((sub) => {
           const arrayOfEvents: Observable<EventItem>[] = sub.subscribedToEvents.map((subEventID) =>
-            this.afs.collection('events').doc<EventItem>(subEventID).valueChanges().pipe(take(1), trace('firestore'))
+            this.afs
+              .collection('events')
+              .doc<EventItem>(subEventID)
+              .valueChanges({ idField: 'id' })
+              .pipe(take(1), trace('firestore'))
           );
 
           let observableArrayOfEvents: Observable<EventItem[]> = combineLatest(arrayOfEvents);
