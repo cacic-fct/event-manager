@@ -8,6 +8,7 @@
       <ion-button (click)="arrayIndexBackward()" [disabled]="arrayIndex == 0" aria-label="Comprovante anterior">
         <ion-icon name="chevron-back"></ion-icon>
       </ion-button>
+      {{ arrayIndex }}
       <ion-button (click)="arrayIndexForward()" [disabled]="arrayIndex == 9" aria-label="Próxima comprovante">
         <ion-icon name="chevron-forward"></ion-icon>
       </ion-button>
