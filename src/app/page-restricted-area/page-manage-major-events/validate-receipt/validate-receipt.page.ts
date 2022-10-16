@@ -369,6 +369,9 @@ export class ValidateReceiptPage implements OnInit {
   }
 
   formatPhoneWhatsApp(phone: string): string {
+    if (!phone) {
+      return '';
+    }
     // Format phone from 11 99999-9999 to 5511999999999
     let formattedPhone = phone.replace(/\D/g, '');
     formattedPhone = formattedPhone.replace(/^(\d{2})(\d)/g, '55$1$2');
