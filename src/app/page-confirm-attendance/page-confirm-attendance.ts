@@ -132,11 +132,13 @@ export class PageConfirmAttendance implements OnInit {
     });
 
     // When the code is valid, automatically submit.
-    this.dataForm.get('code').valueChanges.subscribe((value) => {
-      if (value == this.attendanceCode) {
-        this.dataForm.get('code').disable();
-        this.onSubmit();
-      }
+    this.dataForm.get('code')
+      .valueChanges
+      .pipe(untilDestroyed(this))
+      .subscribe((value) => {
+        if (value == this.attendanceCode) {
+          this.onSubmit();
+        }
     });
 
     this.eventInfo$ = eventValueChanges$.pipe(
