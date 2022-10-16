@@ -30,10 +30,15 @@
           <ion-card-subtitle>
             Se inscreveu em: {{ getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
             <br />
-            Última alteração na inscrição: {{ getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm'
-            }}
+            <!-- prettier-ignore -->
+            Última alteração na inscrição: {{ getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
           </ion-card-subtitle>
           <p>UID: {{ userData.uid }}</p>
+          <p class="pre-wrap">
+            ID dos eventos selecionados: <br />
+            <br />
+            {{ formatArrayDisplay(subscription.subscribedToEvents) }}
+          </p>
           <ion-button fill="clear" [href]="'mailto:' + userData.email">
             <ion-icon name="mail" slot="icon-only"></ion-icon>
           </ion-button>

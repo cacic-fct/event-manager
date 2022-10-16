@@ -390,6 +390,27 @@ export class ValidateReceiptPage implements OnInit {
   arrayIndexBackward() {
     this.arrayIndex--;
   }
+
+  // TODO: Remove me
+  formatArrayDisplay(array: string[]): string {
+    let removeThose = [
+      '8lKAZWFLhCI3D78GYmHW',
+      'L49qGWKO9UExKAemEowZ',
+      'MchBNwLi1fUP5JYYi9zs',
+      'NWt93X56CrhjBlDS587Y',
+      'hhWllv7ZeEj8IrVEDPaY',
+    ];
+
+    let newArray = array.filter((item) => !removeThose.includes(item));
+
+    let string = newArray.join(', ');
+
+    string = string.replace(/[\[\]"]+/g, '');
+
+    string = string.replace(/,/g, '\n\n');
+
+    return string;
+  }
 }
 
 interface Subscription {
