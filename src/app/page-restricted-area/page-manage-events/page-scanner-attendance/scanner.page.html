@@ -83,6 +83,35 @@
 
         <h1 *ngIf="attendancePeople.length === 0" class="ion-text-center">Nenhum usuário encontrado</h1>
       </ng-container>
+      <ng-container *ngIf="nonPayingAttendanceCollection$ | async as nonPayingAttendancePeople; else: loading">
+        <div>
+          <p><b>Total de presentes não-pagantes:</b> {{ nonPayingAttendancePeople.length }}</p>
+        </div>
+        <ion-item *ngFor="let nonPayingAttendancePerson of nonPayingAttendancePeople">
+          <ion-label>
+            <ng-container *ngIf="(nonPayingAttendancePerson.user | async) as user">
+              <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
+              <h2 class="ion-text-wrap" *ngIf="!user.fullName">Nome não cadastrado: {{ user.displayName }}</h2>
+              <ng-container *ngIf="user.academicID; else notUnesp">
+                <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+              </ng-container>
+
+              <ng-template #notUnesp>
+                <h3 class="ion-text-wrap" *ngIf="user.academicID">Usuário externo</h3>
+              </ng-template>
+
+              <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+            </ng-container>
+            <h3 class="ion-text-wrap">
+              {{ getDateFromTimestamp(nonPayingAttendancePerson.time) | date: "HH:mm:ss - dd/MM/y" }}
+            </h3>
+          </ion-label>
+        </ion-item>
+
+        <h1 *ngIf="nonPayingAttendancePeople.length === 0" class="ion-text-center">
+          Nenhum usuário não-pagante encontrado
+        </h1>
+      </ng-container>
 
       <ng-template #loading>
         <ion-progress-bar type="indeterminate"></ion-progress-bar>

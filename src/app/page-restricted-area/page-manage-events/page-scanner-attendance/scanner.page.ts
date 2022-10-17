@@ -11,11 +11,10 @@ import { trace } from '@angular/fire/compat/performance';
 import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { AuthService, GetUserUIDResponse } from 'src/app/shared/services/auth.service';
-
 import { serverTimestamp } from '@angular/fire/firestore';
+import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 
 interface Attendance {
   user: Observable<User>;
@@ -47,8 +46,22 @@ export class ScannerPage implements OnInit {
   showScanner = true;
 
   attendanceCollection$: Observable<Attendance[]>;
+  /**
+   * Coleção de presença de não-pagantes
+   */
+  nonPayingAttendanceCollection$: Observable<Attendance[]>;
   eventID: string;
   event$: Observable<EventItem>;
+  /**
+   * Variable initialized at this.checkIfEventIsPaid();
+   * Variável inicializada no método this.checkIfEventIsPaid()
+   */
+  private eventIsPaid: boolean;
+  /**
+   * Variable initialized at this.checkIfEventIsPaid();
+   * Variável inicializada no método this.checkIfEventIsPaid()
+   */
+  private majorEventID?: string;
 
   _backdropVisibleSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   backdropVisible$: Observable<boolean> = this._backdropVisibleSubject.asObservable();
@@ -86,6 +99,7 @@ export class ScannerPage implements OnInit {
       });
 
     this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges().pipe(trace('firestore'));
+    this.checkIfEventIsPaid();
 
     // Get attendance list
     this.attendanceCollection$ = this.afs
@@ -96,18 +110,38 @@ export class ScannerPage implements OnInit {
       .pipe(
         untilDestroyed(this),
         trace('firestore'),
-        map((attendance) => {
-          return attendance.map((item) => {
-            return {
-              ...item,
-              user: this.afs
-                .collection('users')
-                .doc<User>(item.id)
-                .get()
-                .pipe(map((document) => document.data())),
-            };
-          });
-        })
+        map((attendance) =>
+          attendance.map((item) => ({
+            ...item,
+            user: this.afs
+              .collection('users')
+              .doc<User>(item.id)
+              .get()
+              .pipe(map((document) => document.data())),
+          }))
+        )
+      );
+
+    // Get non-paying-attendance list
+    // Lista de não-pagantes
+    this.nonPayingAttendanceCollection$ = this.afs
+      .collection<Attendance>(`events/${this.eventID}/non-paying-attendance`, (ref) => {
+        return ref.orderBy('time', 'desc');
+      })
+      .valueChanges({ idField: 'id' })
+      .pipe(
+        untilDestroyed(this),
+        trace('firestore'),
+        map((attendance) =>
+          attendance.map((item) => ({
+            ...item,
+            user: this.afs
+              .collection('users')
+              .doc<User>(item.id)
+              .get()
+              .pipe(map((document) => document.data())),
+          }))
+        )
       );
 
     // Load audio asset (beep)
@@ -131,45 +165,8 @@ export class ScannerPage implements OnInit {
 
   onCodeResult(resultString: string) {
     if (resultString.startsWith('uid:') && resultString.length === 32) {
-      resultString = resultString.substring(4);
-      console.log(resultString);
-      this.afs
-        .collection<Attendance>(`events/${this.eventID}/attendance`)
-        .doc(resultString)
-        .get()
-        .pipe(take(1), trace('firestore'))
-        .subscribe((document) => {
-          // If document with user uid already exists
-          if (document.exists) {
-            this.backdropColor('duplicate');
-            this.toastDuplicate();
-            return false;
-          } else {
-            // Check if user uid exists
-            this.afs
-              .collection('users')
-              .doc(resultString)
-              .get()
-              .pipe(take(1), trace('firestore'))
-              .subscribe((user) => {
-                if (user.exists) {
-                  this.afs.collection(`events/${this.eventID}/attendance`).doc(resultString).set({
-                    // @ts-ignore
-                    time: serverTimestamp(),
-                  });
-                  this.audioSuccess.play();
-                  this.toastSucess();
-                  this.backdropColor('success');
-                  this.attendanceSessionScans++;
-                  return true;
-                } else {
-                  this.backdropColor('invalid');
-                  this.toastInvalid();
-                  return false;
-                }
-              });
-          }
-        });
+      const uid = resultString.substring(4);
+      this.writeUserAttendance(uid);
     } else {
       this.backdropColor('invalid');
       this.toastInvalid();
@@ -191,6 +188,183 @@ export class ScannerPage implements OnInit {
 
   getDateFromTimestamp(timestamp: TimestampType): Date {
     return fromUnixTime(timestamp.seconds);
+  }
+
+  /**
+   * Verifica se o evento é parte de um majorEvent pago.
+   */
+  checkIfEventIsPaid() {
+    this.afs
+      .collection<EventItem>('events')
+      .doc(this.eventID)
+      .get()
+      .pipe(take(1), trace('firestore'))
+      .subscribe((event) => {
+        if (event.exists) {
+          // Verify if event is a part of majorEvent
+          const majorEventID = event.data().inMajorEvent;
+          this.majorEventID = majorEventID;
+          const isSubEvent = majorEventID != null;
+          // If it is a subEvent, check if majorEvent is paid
+          if (isSubEvent) {
+            this.afs
+              .collection<MajorEventItem>('majorEvents')
+              .doc(majorEventID)
+              .get()
+              .pipe(take(1), trace('firestore'))
+              .subscribe((majorEvent) => {
+                const majorEventIsPaid = !majorEvent.data().price.isFree;
+                // Finally, set if event is paid
+                this.eventIsPaid = isSubEvent && majorEventIsPaid;
+              });
+          } else {
+            this.eventIsPaid = false;
+          }
+        }
+      });
+  }
+
+  /**
+   * Observable que indica se um usuário existe ou não
+   * @param uid User ID, ID do Usuário
+   */
+  userExists$(uid: string): Observable<boolean> {
+    // Check if user uid exists in user list
+    return this.afs
+      .collection('users')
+      .doc(uid)
+      .get()
+      .pipe(
+        take(1),
+        trace('firestore'),
+        map((userDocument) => userDocument.exists)
+      );
+  }
+
+  /**
+   * Observable que indica se um usuário pagou o evento (se for pago)
+   * @param uid User ID, ID do usuário
+   */
+  userPaid$(uid: string): Observable<boolean> {
+    return this.afs
+      .collection<any>(`majorEvents/${this.majorEventID}/subscriptions`)
+      .doc(uid)
+      .valueChanges()
+      .pipe(
+        untilDestroyed(this),
+        trace('firestore'),
+        map((subscription) => subscription.payment.status == 2)
+      );
+  }
+
+  /**
+   * Remove um determinado UID da coleção 'non-paying-attendance', se o UID estiver lá.
+   * @param uid User ID, ID do usuário
+   */
+  removeFromNPAttendance(uid: string) {
+    this.afs
+      .collection<Attendance>(`events/${this.eventID}/non-paying-attendance`)
+      .doc(uid)
+      .get()
+      .pipe(take(1), trace('firestore'))
+      .subscribe((document) => {
+        if (document.exists) {
+          document.ref.delete();
+        }
+      });
+  }
+
+  /**
+   * Escreve um determinado UID na coleção correta
+   * @param uid User ID, ID do usuário
+   */
+  writeUserAttendance(uid: string) {
+    debugger;
+    // First, verify if user exists
+    this.userExists$(uid).subscribe((exists) => {
+      if (exists) {
+        // If event is paid, treat for two different collections
+        if (this.eventIsPaid) {
+          // Check if user has paid
+          // Yes -> write on 'attendance'
+          // No -> write on 'non-paying-attendance'
+          this.userPaid$(uid).subscribe((paid) => {
+            if (paid) {
+              this.writeUIDAttendance(uid);
+              // If it was on NP-attendance, remove.
+              this.removeFromNPAttendance(uid);
+            } else {
+              this.writeUIDNPAttendance(uid);
+            }
+          });
+        }
+        // Else, write on 'attendance'
+        else {
+          this.writeUIDAttendance(uid);
+        }
+      }
+      // User does not exists
+      else {
+        this.backdropColor('invalid');
+        this.toastInvalid();
+      }
+    });
+  }
+
+  /**
+   * Escreve um determinado UID na coleção 'attendance'
+   * @param uid User ID, ID do usuário
+   */
+  writeUIDAttendance(uid: string) {
+    this.afs
+      .collection<Attendance>(`events/${this.eventID}/attendance`)
+      .doc(uid)
+      .get()
+      .pipe(take(1), trace('firestore'))
+      .subscribe((document) => {
+        // If document with user uid already exists in attendance list
+        if (document.exists) {
+          this.backdropColor('duplicate');
+          this.toastDuplicate();
+          return false;
+        }
+        this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
+          // @ts-ignore
+          time: serverTimestamp(),
+        });
+        this.audioSuccess.play();
+        this.toastSucess();
+        this.backdropColor('success');
+        this.attendanceSessionScans++;
+      });
+  }
+
+  /**
+   * Escreve um determinado UID na coleção 'non-paying-attendance'
+   * @param uid User ID, ID do usuário
+   */
+  writeUIDNPAttendance(uid: string) {
+    this.afs
+      .collection<Attendance>(`events/${this.eventID}/non-paying-attendance`)
+      .doc(uid)
+      .get()
+      .pipe(take(1), trace('firestore'))
+      .subscribe((document) => {
+        // If document with user uid already exists in non-paying-attendance collection
+        if (document.exists) {
+          this.backdropColor('duplicate');
+          this.toastDuplicate();
+          return false;
+        }
+        this.afs.collection(`events/${this.eventID}/non-paying-attendance`).doc(uid).set({
+          // @ts-ignore
+          time: serverTimestamp(),
+        });
+        this.audioSuccess.play();
+        this.toastSucess();
+        this.backdropColor('success');
+        this.attendanceSessionScans++;
+      });
   }
 
   manualAttendance() {
@@ -215,43 +389,7 @@ export class ScannerPage implements OnInit {
           return;
         } else {
           const uid = response.uid;
-          this.afs
-            .collection<Attendance>(`events/${this.eventID}/attendance`)
-            .doc(uid)
-            .get()
-            .pipe(take(1), trace('firestore'))
-            .subscribe((document) => {
-              // If document with user uid already exists in attendance list
-              if (document.exists) {
-                this.backdropColor('duplicate');
-                this.toastDuplicate();
-                return false;
-              }
-              // Check if user uid exists in user list
-              this.afs
-                .collection('users')
-                .doc(uid)
-                .get()
-                .pipe(take(1), trace('firestore'))
-                .subscribe((user) => {
-                  // If user uid exists, register attendance
-                  if (user.exists) {
-                    this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
-                      // @ts-ignore
-                      time: serverTimestamp(),
-                    });
-                    this.audioSuccess.play();
-                    this.toastSucess();
-                    this.backdropColor('success');
-                    this.attendanceSessionScans++;
-                    return true;
-                  } else {
-                    this.backdropColor('invalid');
-                    this.toastInvalid();
-                    return false;
-                  }
-                });
-            });
+          this.writeUserAttendance(uid);
         }
       });
     }
