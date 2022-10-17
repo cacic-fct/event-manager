@@ -468,7 +468,7 @@ export class PageSubscriptionPage implements OnInit {
                         this.afs
                           .collection(`majorEvents/${this.majorEventID}/subscriptions`)
                           .doc<MajorEventSubscription>(user.uid)
-                          .set({
+                          .update({
                             subscriptionType: subscriptionType,
                             subscribedToEvents: eventsSelectedID,
                             payment: {
