@@ -58,7 +58,7 @@
             <ng-container *ngIf="subEventsInfo.length != 0">
               <ng-container *ngFor="let subEventInfo of subEventsInfo">
                 <ion-text
-                  [color]="subEventInfo.slotsAvailable? '' : 'danger'"
+                  [color]="subEventInfo.slotsAvailable > 0? '' : 'danger'"
                   [style.color]="subEventInfo.eventType === 'palestra' ? '#0277bd' : ''">
                   <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
                   <p>{{ subEventInfo.id }}</p>
