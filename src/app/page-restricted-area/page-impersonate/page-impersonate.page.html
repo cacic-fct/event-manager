@@ -1,0 +1,33 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Impersonate</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/area-restrita"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-grid>
+    <ion-row>
+      <ion-col>
+        <p class="ion-padding-horizontal">
+          Ao utilizar esta funcionalidade, você estará assumindo a identidade de outro usuário.
+          <br />
+          Apenas admins na whitelist podem utilizar esta função.
+        </p>
+      </ion-col>
+    </ion-row>
+    <ion-row>
+      <ion-col>
+        <form [formGroup]="impersonateForm" (ngSubmit)="impersonate()">
+          <ion-item>
+            <ion-label position="floating">UID do usuário</ion-label>
+            <ion-input type="text" formControlName="userID"></ion-input>
+          </ion-item>
+          <ion-button expand="block" type="submit">Impersonate</ion-button>
+        </form>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>
