@@ -366,7 +366,6 @@ exports.impersonate = functions.https.onCall((data, context) => {
               .auth()
               .createCustomToken(userId)
               .then((customToken) => {
-                console.log(customToken);
                 return {
                   token: customToken,
                 };
