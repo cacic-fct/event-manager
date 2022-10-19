@@ -43,7 +43,7 @@ export class ServiceWorkerService {
       message: 'Atualize o aplicativo para receber melhorias e correções',
       buttons: [
         {
-          text: 'Não',
+          text: 'Mais tarde',
           role: 'cancel',
         },
         {
@@ -63,7 +63,7 @@ export class ServiceWorkerService {
 
   async tooOldAlert() {
     const alert = await this.alertController.create({
-      header: 'Seu aplicativo é muito antigo',
+      header: 'A versão do seu aplicativo é muito antiga',
       message: 'Uma atualização é necessária para continuar utilizando-o.',
       buttons: [
         {
