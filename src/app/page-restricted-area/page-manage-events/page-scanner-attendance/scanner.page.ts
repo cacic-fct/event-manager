@@ -1,3 +1,4 @@
+import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { Component, Input, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
 import { BehaviorSubject, take, isObservable, map, Observable } from 'rxjs';
@@ -70,17 +71,24 @@ export class ScannerPage implements OnInit {
 
   audioSuccess: HTMLAudioElement;
 
+  adminID: string;
+
   constructor(
     private afs: AngularFirestore,
     private router: Router,
     private route: ActivatedRoute,
     public courses: CoursesService,
     private toastController: ToastController,
-    private authService: AuthService
+    private authService: AuthService,
+    private auth: AngularFireAuth
   ) {}
 
   ngOnInit() {
     this.eventID = this.route.snapshot.params.eventID;
+
+    this.auth.user.pipe(take(1)).subscribe((user) => {
+      this.adminID = user.uid;
+    });
 
     // If eventID is not valid, redirect
     this.afs
@@ -330,6 +338,7 @@ export class ScannerPage implements OnInit {
         this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
           // @ts-ignore
           time: serverTimestamp(),
+          author: this.adminID,
         });
         this.audioSuccess.play();
         this.toastSucess();
@@ -358,6 +367,7 @@ export class ScannerPage implements OnInit {
         this.afs.collection(`events/${this.eventID}/non-paying-attendance`).doc(uid).set({
           // @ts-ignore
           time: serverTimestamp(),
+          author: this.adminID,
         });
         this.audioSuccess.play();
         this.toastSucess();
