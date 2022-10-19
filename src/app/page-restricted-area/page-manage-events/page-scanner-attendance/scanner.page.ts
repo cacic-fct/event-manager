@@ -279,7 +279,6 @@ export class ScannerPage implements OnInit {
    * @param uid User ID, ID do usuário
    */
   writeUserAttendance(uid: string) {
-    debugger;
     // First, verify if user exists
     this.userExists$(uid).subscribe((exists) => {
       if (exists) {
