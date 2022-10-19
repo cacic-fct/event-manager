@@ -150,7 +150,7 @@ export class PageRegisterPage implements OnInit {
       })
       .catch((error) => {
         this.toastError('3');
-        console.log(error);
+        console.error(error);
       });
   }
 
