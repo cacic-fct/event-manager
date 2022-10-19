@@ -73,7 +73,7 @@ const routes: Routes = [
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {
-    path: 'profile',
+    path: 'perfil',
     title: 'Perfil',
     data: { preload: true },
     loadChildren: () => import('./page-profile/page-profile.module').then((m) => m.PageProfilePageModule),
