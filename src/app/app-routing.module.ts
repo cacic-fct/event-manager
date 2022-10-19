@@ -24,6 +24,28 @@ const routes: Routes = [
     loadChildren: () => import('./page-about/page-about.module').then((m) => m.PageAboutPageModule),
   },
   {
+    path: 'privacidade',
+    data: { preload: true },
+    title: 'Política de privacidade',
+    loadChildren: () =>
+      import('./page-about/page-privacy-policy/page-privacy-policy.module').then((m) => m.PagePrivacyPolicyPageModule),
+  },
+  {
+    path: 'privacy',
+    redirectTo: 'privacidade',
+    pathMatch: 'full',
+  },
+  {
+    path: 'privacy-policy',
+    redirectTo: 'privacidade',
+    pathMatch: 'full',
+  },
+  {
+    path: 'politica-de-privacidade',
+    redirectTo: 'privacidade',
+    pathMatch: 'full',
+  },
+  {
     path: 'about',
     redirectTo: 'sobre',
     pathMatch: 'full',
