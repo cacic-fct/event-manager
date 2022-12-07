@@ -28,7 +28,7 @@ export class TabEventsPage {
     this.auth.user.pipe(take(1)).subscribe((user) => {
       this.majorEvents$ = this.afs
         .collection<MajorEventItem>('majorEvents', (ref) => {
-          return ref.orderBy('eventStartDate', 'asc');
+          return ref.orderBy('eventStartDate', 'asc').limit(5);
         })
         .valueChanges({ idField: 'id' })
         .pipe(
