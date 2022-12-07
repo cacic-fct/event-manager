@@ -41,12 +41,6 @@ const routes: Routes = [
     loadChildren: () =>
       import('./page-manage-events/page-manage-events.module').then((m) => m.PageManageEventsPageModule),
   },
-  {
-    path: 'impersonate',
-    title: 'Impersonate',
-    loadChildren: () => import('./page-impersonate/page-impersonate.module').then((m) => m.PageImpersonatePageModule),
-    ...canActivate(adminOnly),
-  },
 ];
 
 @NgModule({
