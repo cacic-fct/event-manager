@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Component, Input, OnInit } from '@angular/core';
 import firebase from 'firebase/compat/app';

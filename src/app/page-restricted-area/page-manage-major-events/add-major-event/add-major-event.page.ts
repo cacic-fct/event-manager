@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { Router } from '@angular/router';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';

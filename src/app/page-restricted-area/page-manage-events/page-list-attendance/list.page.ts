@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { ToastController, AlertController } from '@ionic/angular';
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';

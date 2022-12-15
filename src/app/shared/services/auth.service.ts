@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { EventItem } from 'src/app/shared/services/event';
 import { Injectable, NgZone } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';

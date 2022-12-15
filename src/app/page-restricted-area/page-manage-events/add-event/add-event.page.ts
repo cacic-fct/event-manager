@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { IonSelect, ModalController } from '@ionic/angular';
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';

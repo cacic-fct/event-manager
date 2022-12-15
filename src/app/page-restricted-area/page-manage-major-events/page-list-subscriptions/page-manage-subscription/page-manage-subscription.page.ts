@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { User } from './../../../../shared/services/user';
 import { EventItem } from './../../../../shared/services/event';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';

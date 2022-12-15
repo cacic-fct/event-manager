@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { EventItem, EventSubscription } from 'src/app/shared/services/event';
 import { Timestamp } from '@firebase/firestore-types';
 import { MajorEventItem, MajorEventSubscription } from '../shared/services/major-event.service';

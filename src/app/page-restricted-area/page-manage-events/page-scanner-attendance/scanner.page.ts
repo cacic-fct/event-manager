@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { Component, Input, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';

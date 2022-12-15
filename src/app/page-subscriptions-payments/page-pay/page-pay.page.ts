@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFireStorage } from '@angular/fire/compat/storage';

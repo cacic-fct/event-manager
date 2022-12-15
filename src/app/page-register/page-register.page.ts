@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { User } from 'src/app/shared/services/user';
 import { Component, OnInit, ViewChild } from '@angular/core';
 

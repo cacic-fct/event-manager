@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { formatDate } from '@angular/common';
 import { Component, Input, OnInit } from '@angular/core';
 import { fromUnixTime, isSameDay } from 'date-fns';

@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 export class CoursesService {
   public static courses = {
     a1: {

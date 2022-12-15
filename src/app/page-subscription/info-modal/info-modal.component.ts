@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { ModalController } from '@ionic/angular';
 import { Component, Input, OnInit } from '@angular/core';
 import { fromUnixTime } from 'date-fns';

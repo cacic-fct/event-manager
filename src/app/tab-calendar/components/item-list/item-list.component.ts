@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { BehaviorSubject, combineLatest, Observable } from 'rxjs';
 import { Component, Input, OnChanges, OnInit } from '@angular/core';

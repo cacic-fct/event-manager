@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from 'src/app/shared/services/auth.service';
 import { AngularFirestore } from '@angular/fire/compat/firestore';

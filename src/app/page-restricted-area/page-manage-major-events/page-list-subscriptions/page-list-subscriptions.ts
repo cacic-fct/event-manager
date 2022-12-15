@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';

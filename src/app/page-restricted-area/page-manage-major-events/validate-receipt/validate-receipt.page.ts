@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { ActivatedRoute } from '@angular/router';

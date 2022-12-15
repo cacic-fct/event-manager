@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { Component, OnInit } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFireFunctions } from '@angular/fire/compat/functions';

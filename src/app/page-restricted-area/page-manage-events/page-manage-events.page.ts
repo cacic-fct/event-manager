@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { GlobalConstantsService } from './../../shared/services/global-constants.service';
 import { AlertController, ToastController } from '@ionic/angular';
 import { User } from './../../shared/services/user';

@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { GlobalConstantsService } from './../shared/services/global-constants.service';
 import { User } from './../shared/services/user';
 import { InfoModalComponent } from './info-modal/info-modal.component';

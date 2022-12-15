@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { Component, OnInit } from '@angular/core';
 import { startOfMonth, endOfMonth, parseISO, fromUnixTime, addYears } from 'date-fns';
 import { AngularFirestore } from '@angular/fire/compat/firestore';

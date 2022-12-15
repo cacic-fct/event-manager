@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { KeyValue } from '@angular/common';
 import { AfterViewInit, Component, Input, OnInit } from '@angular/core';
 import { ModalController } from '@ionic/angular';

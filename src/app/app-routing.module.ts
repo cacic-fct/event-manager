@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { NgModule } from '@angular/core';
 import { canActivate, redirectLoggedInTo, redirectUnauthorizedTo } from '@angular/fire/compat/auth-guard';
 import { ActivatedRouteSnapshot, RouterModule, RouterStateSnapshot, Routes } from '@angular/router';

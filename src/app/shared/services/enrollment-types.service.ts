@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 export class EnrollmentTypesService {
   public static enrollmentTypes = {
     0: {

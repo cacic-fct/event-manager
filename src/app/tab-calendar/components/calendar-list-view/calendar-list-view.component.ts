@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { BehaviorSubject, combineLatest, Observable } from 'rxjs';
 import { Component, Input, OnChanges, OnInit } from '@angular/core';
 import { CoursesService } from 'src/app/shared/services/courses.service';

@@ -13,7 +13,12 @@
     "target": "es2015",
     "module": "es2020",
     "lib": ["es2018", "dom"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "plugins": [
+      {
+       "name": "typescript-strict-plugin"
+      }
+    ]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

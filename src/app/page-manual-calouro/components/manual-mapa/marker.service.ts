@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import Map from 'ol/Map';
 import { Injectable } from '@angular/core';
 import GeoJSON from 'ol/format/GeoJSON';
