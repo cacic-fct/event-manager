@@ -16,7 +16,7 @@ import { GlobalConstantsService } from '../shared/services/global-constants.serv
 
 import { trace } from '@angular/fire/compat/performance';
 
-import { Mailto, NgxMailtoService } from 'ngx-mailto';
+import { Mailto, MailtoService } from './../shared/services/mailto.service';
 
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
@@ -48,7 +48,7 @@ export class PageRegisterPage implements OnInit {
     public afs: AngularFirestore,
     public router: Router,
     public auth: AngularFireAuth,
-    private mailtoService: NgxMailtoService,
+    private mailtoService: MailtoService,
     private win: WindowService,
     private toastController: ToastController
   ) {

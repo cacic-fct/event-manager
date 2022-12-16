@@ -13,7 +13,7 @@ import { ModalController } from '@ionic/angular';
 import * as authFirebase from 'firebase/auth';
 import { User } from '../shared/services/user';
 
-import { Mailto, NgxMailtoService } from 'ngx-mailto';
+import { Mailto, MailtoService } from './../shared/services/mailto.service';
 
 import { add } from 'date-fns';
 import { trace } from '@angular/fire/compat/performance';
@@ -48,7 +48,7 @@ export class PageVerifyPhonePage implements OnInit {
     public afs: AngularFirestore,
     private win: WindowService,
     public modalController: ModalController,
-    private mailtoService: NgxMailtoService
+    private mailtoService: MailtoService
   ) {}
 
   ngOnInit() {
