@@ -10,9 +10,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Component, OnInit } from '@angular/core';
 import { Observable, map, take, combineLatest } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
-import { fromUnixTime } from 'date-fns';
-
-import { Timestamp as TimestampType } from '@firebase/firestore-types';
+import { DateService } from 'src/app/shared/services/date.service';
 
 @UntilDestroy()
 @Component({
@@ -30,7 +28,12 @@ export class PageManageSubscriptionPage implements OnInit {
 
   eventsUserIsSubscribedTo$: Observable<EventItem[]>;
 
-  constructor(private route: ActivatedRoute, private afs: AngularFirestore, private auth: AngularFireAuth) {}
+  constructor(
+    private route: ActivatedRoute,
+    private afs: AngularFirestore,
+    private auth: AngularFireAuth,
+    public dateService: DateService
+  ) {}
 
   ngOnInit() {
     this.userData$ = this.afs.doc<User>(`users/${this.subscriptionID}`).valueChanges().pipe(untilDestroyed(this));
@@ -88,9 +91,5 @@ export class PageManageSubscriptionPage implements OnInit {
           });
         });
     });
-  }
-
-  getDateFromTimestamp(timestamp: TimestampType): Date {
-    return fromUnixTime(timestamp.seconds);
   }
 }

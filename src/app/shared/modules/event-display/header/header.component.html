@@ -1,0 +1,37 @@
+<img
+  class="margin-horizontal-auto"
+  style="width: 72px; height: 72px; display: block; padding: 10px"
+  [src]="emojiService.getEmoji(eventItem.icon)"
+  (click)="presentToast()" />
+
+<div class="ion-text-center">
+  <h1 style="margin: 0">{{ eventItem.name }}</h1>
+  <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ eventItem.shortDescription }}</h5>
+  <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ coursesService.getCourse(eventItem.course) }}</h5>
+  <!-- TODO: Exibir data de término de um evento -->
+  <h4 style="margin: 0; font-weight: 400">
+    <!-- prettier-ignore -->
+    {{ stringService.toUppercase(dateService.getDateFromTimestamp(eventItem.eventStartDate) | date: "EEEE, dd 'de' MMMM 'de' y") }}
+  </h4>
+  <h3 style="margin: 0; font-weight: 400">
+    {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date : 'HH:mm' }}
+    <ng-container *ngIf="eventItem.eventEndDate">
+      - {{ dateService.getDateFromTimestamp(eventItem.eventEndDate) | date : 'HH:mm' }}
+    </ng-container>
+  </h3>
+
+  <div class="weather-container" *ngIf="displayWeather === true">
+    <ng-container *ngIf="weather | async as weatherInfo">
+      <ng-container *ngIf="!weatherInfo.error">
+        <ion-icon class="weather-icon" [name]="weatherInfo.icon"></ion-icon>
+        <span class="weather-text">{{ weatherInfo.temperature }}°C – {{ weatherInfo.text }}</span>
+      </ng-container>
+    </ng-container>
+  </div>
+</div>
+
+<div class="ion-text-center weather-attribution" *ngIf="weather | async">
+  <ion-text color="medium">
+    <a href="https://open-meteo.com/" target="_blank">Weather data by Open-Meteo.com</a>
+  </ion-text>
+</div>

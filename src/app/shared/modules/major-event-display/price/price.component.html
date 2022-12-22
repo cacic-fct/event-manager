@@ -1,0 +1,40 @@
+<div class="card-section ion-padding-horizontal" *ngIf="majorEventItem.price">
+  <div class="card-label">
+    <ion-icon name="wallet-outline" aria-hidden="true"></ion-icon>
+    Valores
+  </div>
+
+  <ng-container *ngIf="majorEventItem.price.isFree; else notFree">
+    <ion-item lines="none">
+      <ion-label>Gratuito</ion-label>
+    </ion-item>
+  </ng-container>
+
+  <ng-template #notFree>
+    <ng-container *ngIf="majorEventItem.price.single; then singlePrice; else multiPrice"> </ng-container>
+  </ng-template>
+
+  <ng-template #singlePrice>
+    <ion-item lines="none">
+      Preço único
+      <span slot="end">{{ majorEventItem.price.single | currency : 'BRL' }}</span>
+    </ion-item>
+  </ng-template>
+
+  <ng-template #multiPrice>
+    <ion-item lines="none" *ngIf="majorEventItem.price.students">
+      Alunos da Unesp
+      <span slot="end">{{ majorEventItem.price.students | currency : 'BRL' }}</span>
+    </ion-item>
+
+    <ion-item lines="none" *ngIf="majorEventItem.price.otherStudents">
+      Alunos
+      <span slot="end">{{ majorEventItem.price.otherStudents | currency : 'BRL' }}</span>
+    </ion-item>
+
+    <ion-item lines="none" *ngIf="majorEventItem.price.professors">
+      Professores
+      <span slot="end">{{ majorEventItem.price.professors | currency : 'BRL' }}</span>
+    </ion-item>
+  </ng-template>
+</div>

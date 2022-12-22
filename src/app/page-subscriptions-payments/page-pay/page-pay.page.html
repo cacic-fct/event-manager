@@ -24,7 +24,7 @@
         </ng-container>
         <!-- prettier-ignore -->
         <ion-card-subtitle>
-          Efetue o pagamento e envio do comprovante até {{ getDateFromTimestamp(majorEvent.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }} 
+          Efetue o pagamento e envio do comprovante até {{ dateService.getDateFromTimestamp(majorEvent.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }} 
         </ion-card-subtitle>
         <ion-card-content>
           <h2>Dados para o pagamento</h2>

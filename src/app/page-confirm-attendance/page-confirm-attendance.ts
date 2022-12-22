@@ -8,8 +8,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { map, Observable, take, combineLatest } from 'rxjs';
 import { EventItem } from '../shared/services/event';
-import { Timestamp as TimestampType } from '@firebase/firestore-types';
-import { fromUnixTime } from 'date-fns';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { MajorEventItem } from '../shared/services/major-event.service';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
@@ -133,14 +131,14 @@ export class PageConfirmAttendance implements OnInit {
     });
 
     // When the code is valid, automatically submit.
-    this.dataForm.get('code')
-      .valueChanges
-      .pipe(untilDestroyed(this))
+    this.dataForm
+      .get('code')
+      .valueChanges.pipe(untilDestroyed(this))
       .subscribe((value) => {
         if (value == this.attendanceCode) {
           this.onSubmit();
         }
-    });
+      });
 
     this.eventInfo$ = eventValueChanges$.pipe(
       trace('firestore'),
@@ -175,10 +173,6 @@ export class PageConfirmAttendance implements OnInit {
       return { wrongCode: true };
     }
   };
-
-  getDateFromTimestamp(timestamp: TimestampType): Date {
-    return fromUnixTime(timestamp.seconds);
-  }
 
   onSubmit() {
     this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {

@@ -23,7 +23,12 @@
 
       <div class="event-container">
         <ion-item *ngFor="let item of eventList">
-          <img [src]="getEmoji(item.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
+          <img
+            [src]="emojiService.getEmoji(item.icon)"
+            class="twemoji"
+            slot="start"
+            aria-hidden="true"
+            loading="lazy" />
 
           <ion-grid>
             <ion-row>
@@ -31,8 +36,8 @@
                 <ion-label>
                   <h1 class="ion-text-wrap">{{item.name}}</h1>
                   <h4 class="date-item" *ngIf="item.eventStartDate && item.eventEndDate">
-                    Data do evento: {{ getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM HH:mm' }} - {{
-                    getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM HH:mm' }}
+                    Data do evento: {{ dateService.getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM HH:mm' }} -
+                    {{ dateService.getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM HH:mm' }}
                   </h4>
                   <p class="ion-text-wrap" *ngIf="item.course">{{courses.getCourse(item.course)}}</p>
                   <p class="ion-text-wrap" *ngIf="item.inMajorEventName | async as majorEventName">

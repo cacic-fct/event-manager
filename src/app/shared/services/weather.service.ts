@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { format } from 'date-fns';
@@ -7,7 +6,7 @@ import { add } from 'date-fns';
 
 @Injectable()
 export class WeatherService {
-  public static weatherCodes = {
+  public static weatherCodes: WeatherCodesList = {
     0: { icon: 'sunny', icon_night: 'moon', text: 'Céu limpo' },
     1: { icon: 'sunny', icon_night: 'moon', text: 'Céu predominantemente limpo' },
     2: { icon: 'partly-sunny', icon_night: 'cloudy-night', text: 'Predominantemente nublado' },
@@ -73,6 +72,9 @@ export class WeatherService {
   }
 
   private getWeatherInfo(weatherCode: string | number) {
+    if (typeof weatherCode === 'string') {
+      weatherCode = parseInt(weatherCode, 10);
+    }
     return WeatherService.weatherCodes[weatherCode];
   }
 
@@ -100,4 +102,12 @@ export interface WeatherInfo {
   icon?: string;
   text?: string;
   error?: boolean;
+}
+
+interface WeatherCodesList {
+  [key: number]: {
+    icon?: string;
+    icon_night?: string;
+    text: string;
+  };
 }

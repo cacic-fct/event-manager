@@ -1,0 +1,22 @@
+<div class="card-section ion-padding-horizontal">
+  <div class="card-label">
+    <ion-icon name="calendar-outline" aria-hidden="true"></ion-icon>
+    Datas
+  </div>
+
+  <ion-item lines="none">
+    Evento
+    <!-- prettier-ignore -->
+    <span slot="end">
+      {{ dateService.getDateFromTimestamp(majorEventItem.eventStartDate) | date: 'dd/MM' }} {{ majorEventItem.eventEndDate && '-' + (dateService.getDateFromTimestamp(majorEventItem.eventEndDate) | date: 'dd/MM') }}
+    </span>
+  </ion-item>
+
+  <ion-item lines="none" *ngIf="majorEventItem.subscriptionStartDate && majorEventItem.subscriptionEndDate">
+    Inscrição
+    <!-- prettier-ignore -->
+    <span slot="end">
+      {{ dateService.getDateFromTimestamp(majorEventItem.subscriptionStartDate) | date: 'dd/MM' }} {{ majorEventItem.subscriptionEndDate && '- ' + (dateService.getDateFromTimestamp(majorEventItem.subscriptionEndDate) | date: 'dd/MM') }}
+    </span>
+  </ion-item>
+</div>

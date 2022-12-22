@@ -8,10 +8,10 @@ import { take, map, Observable } from 'rxjs';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
-import { fromUnixTime } from 'date-fns';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { Timestamp } from '@firebase/firestore-types';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+import { DateService } from 'src/app/shared/services/date.service';
 
 interface Attendance {
   user: Observable<User>;
@@ -39,7 +39,8 @@ export class ListPage implements OnInit {
     private route: ActivatedRoute,
     public courses: CoursesService,
     private toastController: ToastController,
-    private alertController: AlertController
+    private alertController: AlertController,
+    public dateService: DateService
   ) {}
 
   ngOnInit() {
@@ -78,10 +79,6 @@ export class ListPage implements OnInit {
           });
         })
       );
-  }
-
-  getDateFromTimestamp(timestamp: Timestamp): Date {
-    return fromUnixTime(timestamp.seconds);
   }
 
   deleteAttendance(attendanceID: string) {
@@ -150,7 +147,7 @@ export class ListPage implements OnInit {
               user.fullName,
               user.academicID,
               user.email,
-              this.getDateFromTimestamp(attendance.time).toLocaleString('pt-BR', {
+              this.dateService.getDateFromTimestamp(attendance.time).toLocaleString('pt-BR', {
                 timeZone: 'America/Sao_Paulo',
                 year: 'numeric',
                 month: '2-digit',
@@ -159,7 +156,7 @@ export class ListPage implements OnInit {
                 minute: '2-digit',
                 second: '2-digit',
               }),
-              this.getDateFromTimestamp(attendance.time).toISOString(),
+              this.dateService.getDateFromTimestamp(attendance.time).toISOString(),
             ];
             csv.push(row);
           });
@@ -168,7 +165,9 @@ export class ListPage implements OnInit {
             const csvString = csv.map((row) => row.join(',')).join('\n');
             const a = document.createElement('a');
             a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
-            a.download = `${event.name}_${this.getDateFromTimestamp(event.eventStartDate).toISOString()}.csv`;
+            a.download = `${event.name}_${this.dateService
+              .getDateFromTimestamp(event.eventStartDate)
+              .toISOString()}.csv`;
             a.click();
           });
         });

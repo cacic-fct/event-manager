@@ -13,7 +13,9 @@
       <div class="ion-padding">
         <h3 style="margin-bottom: 0">{{ event.name }}</h3>
         <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-        <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}</h5>
+        <h5 style="margin-top: 0">
+          {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+        </h5>
         <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
       </div>
       <div class="ion-padding-horizontal">
@@ -36,7 +38,9 @@
 
           <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
         </ng-container>
-        <h3 class="ion-text-wrap">{{ getDateFromTimestamp(subscriptionItem.time) | date: "HH:mm:ss - dd/MM/y" }}</h3>
+        <h3 class="ion-text-wrap">
+          {{ dateService.getDateFromTimestamp(subscriptionItem.time) | date: "HH:mm:ss - dd/MM/y" }}
+        </h3>
       </ion-label>
     </ion-item>
   </ng-container>

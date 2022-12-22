@@ -1,35 +1,25 @@
-<ion-list style="max-width: 1600px; display: block" class="margin-horizontal-auto">
-  <ng-container *ngIf="items$ | async; let items; else: loading">
-    <ion-item
-      *ngFor="let item of items"
-      style="cursor: pointer"
-      [style.--background]="courses[item.course] ? courses[item.course].color + '25' : undefined"
-      [routerLink]="['./evento', item.id]">
-      <img [src]="getEmoji(item.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
+<ion-item
+  (click)="openItem(eventItem)"
+  style="cursor: pointer"
+  [style.--background]="courses[eventItem.course] ? courses[eventItem.course].color + '25' : undefined">
+  <img [src]="emojiService.getEmoji(eventItem.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
 
-      <ion-label>
-        <h2 class="ion-text-wrap">{{ item.name }}</h2>
-        <h3 class="ion-text-wrap">{{ item.shortDescription }}</h3>
-        <p *ngIf="courses[item.course]" class="ion-text-wrap">
-          {{ courses[item.course].name }}
-        </p>
-      </ion-label>
-      <div slot="end">
-        <h4 style="font-weight: 400; margin: 5px 0 0 0" class="ion-text-center">
-          {{ getDateFromTimestamp(item.eventStartDate) | date: 'HH:mm' }}
-        </h4>
-        <ng-container *ngIf="item.eventEndDate">
-          <p style="font-size: 10px; margin: 0" class="ion-text-center">–</p>
-          <h4 style="font-weight: 400; margin: 0 0 5px 0" class="ion-text-center">
-            {{ getDateFromTimestamp(item.eventEndDate) | date: 'HH:mm' }}
-          </h4>
-        </ng-container>
-      </div>
-    </ion-item>
-    <h1 *ngIf="items.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
-  </ng-container>
-
-  <ng-template #loading>
-    <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  </ng-template>
-</ion-list>
+  <ion-label>
+    <h2 class="ion-text-wrap">{{ eventItem.name }}</h2>
+    <h3 class="ion-text-wrap">{{ eventItem.shortDescription }}</h3>
+    <p *ngIf="courses[eventItem.course]" class="ion-text-wrap">
+      {{ courses[eventItem.course].name }}
+    </p>
+  </ion-label>
+  <div slot="end">
+    <h4 style="font-weight: 400; margin: 5px 0 0 0" class="ion-text-center">
+      {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date : 'HH:mm' }}
+    </h4>
+    <ng-container *ngIf="eventItem.eventEndDate">
+      <p style="font-size: 10px; margin: 0" class="ion-text-center">–</p>
+      <h4 style="font-weight: 400; margin: 0 0 5px 0" class="ion-text-center">
+        {{ dateService.getDateFromTimestamp(eventItem.eventEndDate) | date : 'HH:mm' }}
+      </h4>
+    </ng-container>
+  </div>
+</ion-item>

@@ -29,12 +29,13 @@
                 <ion-label>
                   <h1 class="ion-text-wrap">{{item.name}}</h1>
                   <h4 class="date-item" *ngIf="item.subscriptionStartDate && item.subscriptionEndDate">
-                    Inscrições: {{getDateFromTimestamp(item.subscriptionStartDate) | date: 'dd/MM'}} -
-                    {{getDateFromTimestamp(item.subscriptionEndDate) | date: 'dd/MM'}}
+                    Inscrições: {{dateService.getDateFromTimestamp(item.subscriptionStartDate) | date: 'dd/MM'}} -
+                    {{dateService.getDateFromTimestamp(item.subscriptionEndDate) | date: 'dd/MM'}}
                   </h4>
+                  <!-- prettier-ignore -->
                   <h4 class="date-item" *ngIf="item.eventStartDate && item.eventEndDate">
-                    Data do evento: {{ getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM' }} - {{
-                    getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM' }}
+                    Data do evento: {{ dateService.getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM' }} - 
+                    {{ dateService.getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM' }}
                   </h4>
                   <p class="ion-text-wrap" *ngIf="item.course">{{courses.getCourse(item.course)}}</p>
                 </ion-label>

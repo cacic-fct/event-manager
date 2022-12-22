@@ -1,0 +1,69 @@
+<div *ngIf="eventItem.button" class="ion-padding-vertical">
+  <ion-button expand="block" color="primary" [href]="eventItem.button.url" target="_blank">{{
+    eventItem.button.text || 'Acompanhe o evento'
+  }}</ion-button>
+</div>
+
+<div *ngIf="eventItem.youtubeCode">
+  <h2>Transmissão do evento</h2>
+  <iframe
+    width="400"
+    height="225"
+    [src]="'https://www.youtube-nocookie.com/embed/' + eventItem.youtubeCode | safe : 'resourceUrl'"
+    title="YouTube"
+    frameborder="0"
+    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+    allowfullscreen></iframe>
+</div>
+
+<ng-container *ngIf="displaySubscriptionAttendanceButtons === true">
+  <ng-container *ngIf="eventItem.eventEndDate">
+    <ng-container *ngIf="dateService.today() < dateService.getDateFromTimestamp(eventItem.eventEndDate)">
+      <div *ngIf="eventItem.allowSubscription && (isUserAuthenticated | async)" class="ion-padding-vertical">
+        <ion-button
+          expand="block"
+          color="primary"
+          target="_blank"
+          (click)="subscribeToEvent()"
+          *ngIf="!subscribedToEvent">
+          Inscrever-se
+        </ion-button>
+        <ion-button expand="block" color="primary" target="_blank" disabled="" *ngIf="subscribedToEvent">
+          <ion-icon name="checkmark" slot="start"></ion-icon> <span slot="end">Inscrito</span>
+        </ion-button>
+      </div>
+
+      <div *ngIf="eventItem.allowSubscription && !(isUserAuthenticated | async)" class="ion-padding-vertical">
+        <ion-button
+          expand="block"
+          color="primary"
+          target="_blank"
+          [routerLink]="['/login']"
+          [queryParams]="{ redirect: '/calendario/evento/' + eventItem.id }">
+          Inscrever-se
+        </ion-button>
+      </div>
+    </ng-container>
+  </ng-container>
+
+  <ng-container *ngIf="eventItem.collectAttendance">
+    <ng-container *ngIf="eventItem.attendanceCollectionStart && !eventItem.attendanceCollectionEnd">
+      <div *ngIf="eventItem.allowSubscription && (isUserAuthenticated | async)" class="ion-padding-vertical">
+        <ion-button expand="block" color="primary" target="_blank" [routerLink]="['/confirmar-presenca', eventItem.id]">
+          Confirmar presença
+        </ion-button>
+      </div>
+
+      <div *ngIf="eventItem.allowSubscription && !(isUserAuthenticated | async)" class="ion-padding-vertical">
+        <ion-button
+          expand="block"
+          color="primary"
+          target="_blank"
+          [routerLink]="['/login']"
+          [queryParams]="{ redirect: '/confirmar-presenca/' + eventItem.id }">
+          Confirmar presença
+        </ion-button>
+      </div>
+    </ng-container>
+  </ng-container>
+</ng-container>

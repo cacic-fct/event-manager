@@ -8,7 +8,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
 import { User } from 'src/app/shared/services/user';
 import { CoursesService } from 'src/app/shared/services/courses.service';
-import { fromUnixTime } from 'date-fns';
 import { trace } from '@angular/fire/compat/performance';
 import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
@@ -17,6 +16,7 @@ import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { AuthService, GetUserUIDResponse } from 'src/app/shared/services/auth.service';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
+import { DateService } from 'src/app/shared/services/date.service';
 
 interface Attendance {
   user: Observable<User>;
@@ -81,7 +81,8 @@ export class ScannerPage implements OnInit {
     public courses: CoursesService,
     private toastController: ToastController,
     private authService: AuthService,
-    private auth: AngularFireAuth
+    private auth: AngularFireAuth,
+    public dateService: DateService
   ) {}
 
   ngOnInit() {
@@ -193,10 +194,6 @@ export class ScannerPage implements OnInit {
 
   onHasPermission(has: boolean) {
     this.hasPermission = has;
-  }
-
-  getDateFromTimestamp(timestamp: TimestampType): Date {
-    return fromUnixTime(timestamp.seconds);
   }
 
   /**

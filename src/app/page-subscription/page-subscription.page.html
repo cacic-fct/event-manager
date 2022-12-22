@@ -27,17 +27,17 @@
         <ion-item lines="none">
           Evento
           <span slot="end">
-            {{ getDateFromTimestamp(majorEvent.eventStartDate) | date: 'dd/MM' }} {{ majorEvent.eventEndDate && '- ' +
-            (getDateFromTimestamp(majorEvent.eventEndDate) | date: 'dd/MM') }}
+            {{ dateService.getDateFromTimestamp(majorEvent.eventStartDate) | date: 'dd/MM' }} {{ majorEvent.eventEndDate
+            && '- ' + (dateService.getDateFromTimestamp(majorEvent.eventEndDate) | date: 'dd/MM') }}
           </span>
         </ion-item>
 
         <ion-item lines="none" *ngIf="majorEvent.subscriptionStartDate && majorEvent.subscriptionEndDate">
           Inscrição
           <span slot="end">
-            {{ getDateFromTimestamp(majorEvent.subscriptionStartDate) | date: 'dd/MM' }} {{
-            majorEvent.subscriptionEndDate && '- ' + (getDateFromTimestamp(majorEvent.subscriptionEndDate) | date:
-            'dd/MM') }}
+            {{ dateService.getDateFromTimestamp(majorEvent.subscriptionStartDate) | date: 'dd/MM' }} {{
+            majorEvent.subscriptionEndDate && '- ' + (dateService.getDateFromTimestamp(majorEvent.subscriptionEndDate) |
+            date: 'dd/MM') }}
           </span>
         </ion-item>
       </div>
@@ -124,19 +124,24 @@
             <ion-item-divider
               mode="ios"
               sticky="true"
-              *ngIf="i == 0 || !dayCompare(eventsArray[i - 1].eventStartDate, event.eventStartDate)">
-              <ion-label> {{ formatDate(getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
+              *ngIf="i == 0 || !dateService.compareDayTimestamp(eventsArray[i - 1].eventStartDate, event.eventStartDate)">
+              <ion-label> {{ formatDate(dateService.getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
             </ion-item-divider>
 
             <ion-list>
               <ion-item>
-                <img [src]="getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
+                <img
+                  [src]="emojiService.getEmoji(event.icon)"
+                  class="twemoji"
+                  slot="start"
+                  aria-hidden="true"
+                  loading="lazy" />
                 <ion-label>
                   <h3 class="ion-text-wrap">{{ event.name }}</h3>
                   <h3 class="ion-text-wrap">{{ event.shortDescription }}</h3>
                   <h4>
-                    {{ (getDateFromTimestamp(event.eventStartDate) | date: 'HH:mm') }} {{ event.eventEndDate && ' às ' +
-                    (getDateFromTimestamp(event.eventEndDate) | date: 'HH:mm') }}
+                    {{ (dateService.getDateFromTimestamp(event.eventStartDate) | date: 'HH:mm') }} {{ event.eventEndDate
+                    && ' às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date: 'HH:mm') }}
                   </h4>
                   <p>{{ event.slotsAvailable }} vagas restantes</p>
                   <p>Sua posição na fila: {{ event.numberOfSubscriptions + 1 | number: '1.0-0' }}</p>

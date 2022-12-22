@@ -8,8 +8,10 @@ import { PageSubscriptionPageRoutingModule } from './page-subscription-routing.m
 import { ConfirmModalComponent } from './confirm-modal/confirm-modal.component';
 import { InfoModalComponent } from './info-modal/info-modal.component';
 import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
+import { EventDisplayModule } from '../shared/modules/event-display/event-display.module';
 
 @NgModule({
+  declarations: [PageSubscriptionPage, ConfirmModalComponent, InfoModalComponent],
   imports: [
     IonicModule,
     CommonModule,
@@ -17,7 +19,7 @@ import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
     ReactiveFormsModule,
     PageSubscriptionPageRoutingModule,
     SweetAlert2Module,
+    EventDisplayModule,
   ],
-  declarations: [PageSubscriptionPage, ConfirmModalComponent, InfoModalComponent],
 })
 export class PageSubscriptionPageModule {}

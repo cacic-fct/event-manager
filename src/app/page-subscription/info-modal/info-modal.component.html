@@ -10,30 +10,7 @@
 </ion-header>
 <ion-content>
   <div class="margin-horizontal-auto content-container ion-padding">
-    <img
-      class="margin-horizontal-auto"
-      style="width: 72px; height: 72px; display: block; padding: 10px"
-      [src]="getEmoji(event.icon)" />
-
-    <div class="ion-text-center">
-      <h1 style="margin: 0">{{ event?.name }}</h1>
-      <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ event?.shortDescription }}</h5>
-      <!-- TODO: Exibir data de término de um evento -->
-      <h4 style="margin: 0; font-weight: 400">
-        <!-- prettier-ignore -->
-        {{ toUppercase(getDateFromTimestamp(event?.eventStartDate) | date: "EEEE, dd 'de' MMMM 'de' y") }}
-      </h4>
-      <h3 style="margin: 0; font-weight: 400">
-        {{ getDateFromTimestamp(event?.eventStartDate) | date: 'HH:mm' }}
-        <ng-container *ngIf="event?.eventEndDate">
-          - {{ getDateFromTimestamp(event?.eventEndDate) | date: 'HH:mm' }}
-        </ng-container>
-      </h3>
-    </div>
-
-    <div *ngIf="event?.description">
-      <h2>Sobre</h2>
-      <p class="pre-wrap ion-text-justify">{{ event?.description }}</p>
-    </div>
+    <app-event-display-header [eventItem]="event" [displayWeather]="false"></app-event-display-header>
+    <app-event-display-description [eventItem]="event"></app-event-display-description>
   </div>
 </ion-content>

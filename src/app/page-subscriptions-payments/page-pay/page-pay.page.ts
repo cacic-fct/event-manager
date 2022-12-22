@@ -17,6 +17,7 @@ import { Timestamp } from '@firebase/firestore';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
 import { EnrollmentTypesService } from '../../shared/services/enrollment-types.service';
+import { DateService } from 'src/app/shared/services/date.service';
 
 @UntilDestroy()
 @Component({
@@ -57,7 +58,8 @@ export class PagePayPage implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     public afs: AngularFirestore,
-    public enrollmentTypes: EnrollmentTypesService
+    public enrollmentTypes: EnrollmentTypesService,
+    public dateService: DateService
   ) {}
 
   ngOnInit() {
@@ -119,7 +121,7 @@ export class PagePayPage implements OnInit {
       .pipe(untilDestroyed(this), trace('firestore'));
 
     this.majorEvent$.pipe(untilDestroyed(this)).subscribe((event) => {
-      if (this.getDateFromTimestamp(event.subscriptionEndDate) < this.today) {
+      if (this.dateService.getDateFromTimestamp(event.subscriptionEndDate) < this.today) {
         this.outOfDate = true;
         this.router.navigate(['inscricoes']);
         this.expired.fire();
@@ -292,10 +294,6 @@ export class PagePayPage implements OnInit {
       ],
     });
     toast.present();
-  }
-
-  getDateFromTimestamp(timestamp: any): Date {
-    return fromUnixTime(timestamp.seconds);
   }
 }
 

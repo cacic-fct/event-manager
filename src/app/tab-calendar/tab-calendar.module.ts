@@ -8,9 +8,10 @@ import { TabCalendarPage } from './tab-calendar.page';
 
 import { TabCalendarPageRoutingModule } from './tab-calendar-routing.module';
 import { ItemListComponent } from './components/item-list/item-list.component';
+import { ItemListViewComponent } from './components/item-list-view/item-list.component';
 
 @NgModule({
   imports: [IonicModule, CommonModule, FormsModule, TabCalendarPageRoutingModule],
-  declarations: [TabCalendarPage, ItemListComponent, CalendarListViewComponent, FilterModalPage],
+  declarations: [TabCalendarPage, ItemListComponent, CalendarListViewComponent, FilterModalPage, ItemListViewComponent],
 })
 export class TabCalendarPageModule {}

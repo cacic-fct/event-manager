@@ -10,8 +10,8 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { trace } from '@angular/fire/compat/performance';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-import { fromUnixTime } from 'date-fns';
 import { EnrollmentTypesService } from '../shared/services/enrollment-types.service';
+import { DateService } from 'src/app/shared/services/date.service';
 
 @UntilDestroy()
 @Component({
@@ -28,7 +28,8 @@ export class PageSubscriptionsPage implements OnInit {
   constructor(
     public afs: AngularFirestore,
     public auth: AngularFireAuth,
-    public enrollmentTypes: EnrollmentTypesService
+    public enrollmentTypes: EnrollmentTypesService,
+    public dateService: DateService
   ) {}
 
   ngOnInit() {
@@ -95,13 +96,9 @@ export class PageSubscriptionsPage implements OnInit {
     });
   }
 
-  getDateFromTimestamp(timestamp: Timestamp): Date {
-    return fromUnixTime(timestamp.seconds);
-  }
-
   isInSubscriptionPeriod(endDateTimestamp: Timestamp): boolean {
     if (endDateTimestamp) {
-      const endDate = fromUnixTime(endDateTimestamp.seconds);
+      const endDate = this.dateService.getDateFromTimestamp(endDateTimestamp);
       return this.today < endDate;
     }
     return false;
@@ -109,14 +106,14 @@ export class PageSubscriptionsPage implements OnInit {
 
   isPastEvent(endDateTimestamp: Timestamp): boolean {
     if (endDateTimestamp) {
-      const endDate = fromUnixTime(endDateTimestamp.seconds);
+      const endDate = this.dateService.getDateFromTimestamp(endDateTimestamp);
       return this.today > endDate;
     }
     return false;
   }
 
   getCardType(majorEvent: MajorEventItem, subscription: MajorEventSubscription): number {
-    const eventEndDate = fromUnixTime(majorEvent.eventEndDate.seconds);
+    const eventEndDate = this.dateService.getDateFromTimestamp(majorEvent.eventEndDate);
     if (this.today > eventEndDate && subscription.payment.status === 2) return -1;
     return subscription.payment.status;
   }

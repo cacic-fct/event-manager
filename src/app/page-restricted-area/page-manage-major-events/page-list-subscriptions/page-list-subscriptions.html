@@ -12,7 +12,9 @@
     <div class="ion-padding" *ngIf="event$ | async; let event">
       <h3 style="margin-bottom: 0">{{ event.name }}</h3>
       <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-      <h5 style="margin-top: 0">{{ getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}</h5>
+      <h5 style="margin-top: 0">
+        {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+      </h5>
       <ion-button (click)="generateCSV()" [disabled]="disableCSVDownloadButton">
         <ion-spinner slot="start" *ngIf="disableCSVDownloadButton"></ion-spinner>
         Baixar CSV
@@ -37,10 +39,12 @@
           <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
 
           <h3 class="ion-text-wrap">
-            Criação da inscrição: {{ getDateFromTimestamp(subscriptionItem.time) | date: "HH:mm:ss - dd/MM/y" }}
+            Criação da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.time) | date: "HH:mm:ss -
+            dd/MM/y" }}
           </h3>
           <h3 class="ion-text-wrap">
-            Última edição da: {{ getDateFromTimestamp(subscriptionItem.payment.time) | date: "HH:mm:ss - dd/MM/y" }}
+            Última edição da: {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: "HH:mm:ss -
+            dd/MM/y" }}
           </h3>
           <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
         </ng-container>

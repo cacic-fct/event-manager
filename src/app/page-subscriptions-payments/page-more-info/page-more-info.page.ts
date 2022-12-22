@@ -3,19 +3,17 @@ import { Component, OnInit } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { fromUnixTime, isSameDay } from 'date-fns';
 import { first, Observable, take, combineLatest, map } from 'rxjs';
 import { EnrollmentTypesService } from 'src/app/shared/services/enrollment-types.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { MajorEventItem, MajorEventSubscription } from 'src/app/shared/services/major-event.service';
-import { Timestamp } from '@firebase/firestore-types';
 
-import { parse } from 'twemoji-parser';
-import { DomSanitizer } from '@angular/platform-browser';
 import { formatDate } from '@angular/common';
 
 import { documentId } from 'firebase/firestore';
 import { ActivatedRoute } from '@angular/router';
+
+import { DateService } from 'src/app/shared/services/date.service';
 
 @Component({
   selector: 'app-page-more-info',
@@ -38,8 +36,8 @@ export class PageMoreInfoPage implements OnInit {
     public afs: AngularFirestore,
     public auth: AngularFireAuth,
     public enrollmentTypes: EnrollmentTypesService,
-    private sanitizer: DomSanitizer,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    public dateService: DateService
   ) {}
 
   ngOnInit() {
@@ -109,25 +107,10 @@ export class PageMoreInfoPage implements OnInit {
     });
   }
 
-  getDateFromTimestamp(timestamp: Timestamp): Date {
-    return fromUnixTime(timestamp.seconds);
-  }
-
   formatDate(date: Date): string {
     let formated = formatDate(date, "EEEE, dd 'de' MMMM 'de' yyyy", 'pt-BR');
 
     formated = formated.charAt(0).toUpperCase() + formated.slice(1);
     return formated;
-  }
-
-  dayCompare(date1: Timestamp, date2: Timestamp): boolean {
-    return isSameDay(fromUnixTime(date1.seconds), fromUnixTime(date2.seconds));
-  }
-
-  getEmoji(emoji: string): any {
-    if (emoji === undefined) {
-      return this.sanitizer.bypassSecurityTrustResourceUrl(parse('❔')[0].url);
-    }
-    return this.sanitizer.bypassSecurityTrustResourceUrl(parse(emoji)[0].url);
   }
 }

@@ -1,6 +1,5 @@
-// @ts-strict-ignore
 export class CoursesService {
-  public static courses = {
+  public static courses: courseList = {
     a1: {
       name: 'Para todos os cursos',
     },
@@ -13,6 +12,17 @@ export class CoursesService {
       color: '#51aaf2',
     },
   };
+
+  /**
+   * Courses are defined by the third and fourth digits of the academic ID
+   *
+   * If the input doesn't have two or nine digits, returns 'Curso ou RA inválido'
+   *
+   * If the input has a valid length, but course number is not registered, returns 'Curso não cadastrado ou RA inválido'
+   *
+   * @param course - Course number (2 digits) or academic ID (9 digits)
+   * @returns Course name
+   */
 
   getCourse(course: string): string {
     if (course === undefined) {
@@ -51,4 +61,11 @@ export class CoursesService {
         return 'Vínculo inválido';
     }
   }
+}
+
+interface courseList {
+  [key: string]: {
+    name: string;
+    color?: string;
+  };
 }

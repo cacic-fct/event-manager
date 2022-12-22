@@ -1,6 +1,5 @@
-// @ts-strict-ignore
 export class EnrollmentTypesService {
-  public static enrollmentTypes = {
+  public static enrollmentTypes: enrollmentTypesList = {
     0: {
       name: 'Aluno da Unesp',
     },
@@ -12,11 +11,21 @@ export class EnrollmentTypesService {
     },
   };
 
-  getEnrollmentType(type: number | string | undefined | unknown): string {
-    if (typeof type === 'number' || type === 'string') {
+  getEnrollmentType(type: number | string | undefined): string {
+    if (typeof type === 'string') {
+      type = parseInt(type, 10);
+    }
+
+    if (typeof type === 'number') {
       return EnrollmentTypesService.enrollmentTypes[type].name;
     }
 
     return 'Tipo de inscrição não definido';
   }
+}
+
+interface enrollmentTypesList {
+  [key: number]: {
+    name: string;
+  };
 }

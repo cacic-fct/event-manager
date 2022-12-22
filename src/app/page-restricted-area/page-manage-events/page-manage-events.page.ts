@@ -14,7 +14,8 @@ import { Timestamp } from '@firebase/firestore-types';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { DomSanitizer } from '@angular/platform-browser';
-import { parse } from 'twemoji-parser';
+import { EmojiService } from './../../shared/services/emoji.service';
+import { DateService } from 'src/app/shared/services/date.service';
 
 interface EventItemQuery extends EventItem {
   inMajorEventName?: Observable<string>;
@@ -35,7 +36,9 @@ export class PageManageEvents implements OnInit {
     public courses: CoursesService,
     private sanitizer: DomSanitizer,
     private alertController: AlertController,
-    private toastController: ToastController
+    private toastController: ToastController,
+    public emojiService: EmojiService,
+    public dateService: DateService
   ) {}
 
   ngOnInit() {
@@ -76,10 +79,6 @@ export class PageManageEvents implements OnInit {
       );
   }
 
-  getDateFromTimestamp(timestamp: Timestamp): Date {
-    return fromUnixTime(timestamp.seconds);
-  }
-
   getLimitDate(): string {
     return addYears(this.today, 1).toISOString();
   }
@@ -88,19 +87,11 @@ export class PageManageEvents implements OnInit {
     this.currentMonth$.next(this.currentMonth);
   }
 
-  getEmoji(emoji: string): any {
-    if (emoji === undefined || !/^\p{Emoji}|\p{Emoji_Modifier}$/u.test(emoji)) {
-      // TODO: validar apenas 1 emoji
-      return this.sanitizer.bypassSecurityTrustResourceUrl(parse('❔')[0].url);
-    }
-    return this.sanitizer.bypassSecurityTrustResourceUrl(parse(emoji)[0].url);
-  }
-
   async confirmOpenOnlineAttendance(event: EventItem) {
     const alert = await this.alertController.create({
       header: 'Deseja abrir presença?',
       subHeader: `${event.name}`,
-      message: `Data do evento: ${this.getDateFromTimestamp(event.eventStartDate).toLocaleString('pt-BR', {
+      message: `Data do evento: ${this.dateService.getDateFromTimestamp(event.eventStartDate).toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo',
         year: 'numeric',
         month: '2-digit',
@@ -164,7 +155,7 @@ export class PageManageEvents implements OnInit {
     const alert = await this.alertController.create({
       header: 'Deseja fechar presença?',
       subHeader: `${event.name}`,
-      message: `Data do evento: ${this.getDateFromTimestamp(event.eventStartDate).toLocaleString('pt-BR', {
+      message: `Data do evento: ${this.dateService.getDateFromTimestamp(event.eventStartDate).toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo',
         year: 'numeric',
         month: '2-digit',

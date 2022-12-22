@@ -4,21 +4,21 @@
     <ion-item-divider
       mode="ios"
       sticky="true"
-      *ngIf="i == 0 || !dayCompare(eventsArray[i - 1].eventStartDate, event.eventStartDate)">
+      *ngIf="i == 0 || !dateService.compareDayTimestamp(eventsArray[i - 1].eventStartDate, event.eventStartDate)">
       <ion-label class="wrap-no-change">
-        {{ formatDate(getDateFromTimestamp(event.eventStartDate)) }}
+        {{ formatDate(dateService.getDateFromTimestamp(event.eventStartDate)) }}
       </ion-label>
     </ion-item-divider>
 
     <ion-list>
       <ion-item [routerLink]="['evento', event.id]" routerDirection="forward">
-        <img [src]="getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
+        <img [src]="emojiService.getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
         <ion-label>
           <h2 class="ion-text-wrap">{{ event.name }}</h2>
           <h3 class="ion-text-wrap">{{ event.shortDescription }}</h3>
           <h3>
-            {{ getDateFromTimestamp(event.eventStartDate) | date: 'HH:mm' }}
-            {{ event.eventEndDate && ' às ' + (getDateFromTimestamp(event.eventEndDate) | date: 'HH:mm') }}
+            {{ dateService.getDateFromTimestamp(event.eventStartDate) | date : 'HH:mm' }}
+            {{ event.eventEndDate && ' às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date : 'HH:mm') }}
           </h3>
           <!-- TODO: Botão de certificados -->
         </ion-label>

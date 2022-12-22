@@ -5,12 +5,12 @@ import { trace } from '@angular/fire/compat/performance';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
-import { fromUnixTime } from 'date-fns';
 import { Timestamp } from '@firebase/firestore-types';
 import { first, map, Observable } from 'rxjs';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
 import { CoursesService } from 'src/app/shared/services/courses.service';
+import { DateService } from 'src/app/shared/services/date.service';
 
 interface Subscription {
   id: string;
@@ -36,7 +36,8 @@ export class PageListSubscriptions implements OnInit {
     private afs: AngularFirestore,
     private router: Router,
     private route: ActivatedRoute,
-    public courses: CoursesService
+    public courses: CoursesService,
+    public dateService: DateService
   ) {}
 
   ngOnInit() {
@@ -75,10 +76,6 @@ export class PageListSubscriptions implements OnInit {
       );
   }
 
-  getDateFromTimestamp(timestamp: Timestamp): Date {
-    return fromUnixTime(timestamp.seconds);
-  }
-
   generateCSV() {
     this.afs
       .collection<User>('users')
@@ -97,7 +94,7 @@ export class PageListSubscriptions implements OnInit {
               user.fullName,
               user.academicID,
               user.email,
-              this.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {
+              this.dateService.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {
                 timeZone: 'America/Sao_Paulo',
                 year: 'numeric',
                 month: '2-digit',
@@ -106,7 +103,7 @@ export class PageListSubscriptions implements OnInit {
                 minute: '2-digit',
                 second: '2-digit',
               }),
-              this.getDateFromTimestamp(item.time).toISOString(),
+              this.dateService.getDateFromTimestamp(item.time).toISOString(),
             ];
             csv.push(row);
           });
@@ -115,7 +112,9 @@ export class PageListSubscriptions implements OnInit {
             const csvString = csv.map((row) => row.join(',')).join('\n');
             const a = document.createElement('a');
             a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
-            a.download = `${event.name}_${this.getDateFromTimestamp(event.eventStartDate).toISOString()}.csv`;
+            a.download = `${event.name}_${this.dateService
+              .getDateFromTimestamp(event.eventStartDate)
+              .toISOString()}.csv`;
             a.click();
           });
         });

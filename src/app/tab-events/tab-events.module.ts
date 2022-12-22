@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TabEventsPage } from './tab-events.page';
 
+import { MajorEventDisplayModule } from './../shared/modules/major-event-display/major-event-display.module';
 import { TabEventsPageRoutingModule } from './tab-events-routing.module';
 
 @NgModule({
@@ -14,6 +15,7 @@ import { TabEventsPageRoutingModule } from './tab-events-routing.module';
     FormsModule,
     RouterModule.forChild([{ path: '', component: TabEventsPage }]),
     TabEventsPageRoutingModule,
+    MajorEventDisplayModule,
   ],
   declarations: [TabEventsPage],
 })

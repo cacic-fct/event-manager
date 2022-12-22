@@ -1,0 +1,12 @@
+<ion-list style="max-width: 1600px; display: block" class="margin-horizontal-auto">
+  <ng-container *ngIf="items$ | async; let items; else: loading">
+    <ng-container *ngFor="let item of items; index as i">
+      <app-event-item-list [eventItem]="item"></app-event-item-list>
+    </ng-container>
+    <h1 *ngIf="items.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
+  </ng-container>
+
+  <ng-template #loading>
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  </ng-template>
+</ion-list>

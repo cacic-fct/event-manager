@@ -67,10 +67,13 @@
               <ion-card-subtitle>
                 <!-- prettier-ignore -->
                 <p>
-                  Data do evento: {{ getDateFromTimestamp(eventItem.eventStartDate) | date: 'dd/MM/yyyy - HH:mm' }} {{ eventItem.eventEndDate && '– ' + getDateFromTimestamp(eventItem.eventEndDate) | date: 'dd/MM/yyyy - HH:mm' }}
+                  Data do evento: {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date: 'dd/MM/yyyy - HH:mm' }} {{ eventItem.eventEndDate && '– ' + dateService.getDateFromTimestamp(eventItem.eventEndDate) | date: 'dd/MM/yyyy - HH:mm' }}
                 </p>
                 <ng-container *ngIf="eventSubscription.userData | async as userData;">
-                  <p>Data de inscrição: {{ getDateFromTimestamp(userData.time) | date: 'dd/MM/yyyy - HH:mm' }}</p>
+                  <p>
+                    Data de inscrição: {{ dateService.getDateFromTimestamp(userData.time) | date: 'dd/MM/yyyy - HH:mm'
+                    }}
+                  </p>
                 </ng-container>
               </ion-card-subtitle>
             </ion-card-header>
@@ -104,11 +107,11 @@
         <p *ngIf="subType">{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
         <!-- prettier-ignore -->
         <p>
-          Data do evento: {{ getDateFromTimestamp(majorEventData.eventStartDate) | date: 'dd/MM/yyyy' }} – {{ getDateFromTimestamp(majorEventData.eventEndDate) | date: 'dd/MM/yyyy' }}
+          Data do evento: {{ dateService.getDateFromTimestamp(majorEventData.eventStartDate) | date: 'dd/MM/yyyy' }} – {{ dateService.getDateFromTimestamp(majorEventData.eventEndDate) | date: 'dd/MM/yyyy' }}
         </p>
         <!-- prettier-ignore -->
         <p>
-          Período de inscrições: {{ getDateFromTimestamp(majorEventData.subscriptionStartDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }} – {{ getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }}
+          Período de inscrições: {{ dateService.getDateFromTimestamp(majorEventData.subscriptionStartDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }} – {{ dateService.getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }}
         </p>
       </ion-card-subtitle>
 
@@ -135,7 +138,7 @@
         <ion-card-content>
           Aguardando o pagamento e envio do comprovante <br />
 
-          Efetue o pagamento e envio do comprovante até {{ getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }}
+          Efetue o pagamento e envio do comprovante até {{ dateService.getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }}
         </ion-card-content>
         <ion-grid>
           <ion-row>
@@ -170,7 +173,8 @@
       </ng-container>
 
       <ion-card-content>
-        Comprovante enviado em {{getDateFromTimestamp(subscriptionData.payment.time) | date: 'dd/MM/yyyy — HH:mm'}}
+        <!-- prettier-ignore -->
+        Comprovante enviado em {{ dateService.getDateFromTimestamp(subscriptionData.payment.time) | date: 'dd/MM/yyyy — HH:mm'}}
         <br />
         Aguardando a confirmação da inscrição pelos organizadores do evento
       </ion-card-content>
@@ -205,7 +209,7 @@
         Inscrição realizada
         <br />
         <!-- prettier-ignore -->
-        Pagamento confirmado em {{getDateFromTimestamp(subscriptionData.payment.validationTime) | date: 'dd/MM/yyyy — HH:mm'}}
+        Pagamento confirmado em {{ dateService.getDateFromTimestamp(subscriptionData.payment.validationTime) | date: 'dd/MM/yyyy — HH:mm'}}
         <br />
         Para editar a sua inscrição, entre em contato conosco.
       </ion-card-content>

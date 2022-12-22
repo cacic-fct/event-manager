@@ -11,81 +11,14 @@
     <div *ngIf="majorEventsList.length > 0" class="event-container">
       <ng-container *ngFor="let event of majorEventsList">
         <ion-card>
-          <ion-card-header>
-            <ion-card-title>{{event.name}}</ion-card-title>
-          </ion-card-header>
-
-          <ion-card-content *ngIf="event.description">
-            <p class="ion-text-justify event-description">{{event.description}}</p>
-          </ion-card-content>
-
-          <div class="card-section ion-padding-horizontal">
-            <div class="card-label">
-              <ion-icon name="calendar-outline" aria-hidden="true"></ion-icon>
-              Datas
-            </div>
-
-            <ion-item lines="none">
-              Evento
-              <span slot="end">
-                {{ getDateFromTimestamp(event.eventStartDate) | date: 'dd/MM' }} {{ event.eventEndDate && '- ' +
-                (getDateFromTimestamp(event.eventEndDate) | date: 'dd/MM') }}
-              </span>
-            </ion-item>
-
-            <ion-item lines="none" *ngIf="event.subscriptionStartDate && event.subscriptionEndDate">
-              Inscrição
-              <span slot="end">
-                {{ getDateFromTimestamp(event.subscriptionStartDate) | date: 'dd/MM' }} {{ event.subscriptionEndDate &&
-                '- ' + (getDateFromTimestamp(event.subscriptionEndDate) | date: 'dd/MM') }}
-              </span>
-            </ion-item>
-          </div>
-
-          <div class="card-section ion-padding-horizontal" *ngIf="event.price">
-            <div class="card-label">
-              <ion-icon name="wallet-outline" aria-hidden="true"></ion-icon>
-              Valores
-            </div>
-
-            <ng-container *ngIf="event.price.isFree; else notFree">
-              <ion-item lines="none">
-                <ion-label>Gratuito</ion-label>
-              </ion-item>
-            </ng-container>
-
-            <ng-template #notFree>
-              <ng-container *ngIf="event.price.single; then singlePrice else multiPrice"> </ng-container>
-            </ng-template>
-
-            <ng-template #singlePrice>
-              <ion-item lines="none">
-                Preço único
-                <span slot="end">{{ event.price.single | currency:'BRL' }}</span>
-              </ion-item>
-            </ng-template>
-
-            <ng-template #multiPrice>
-              <ion-item lines="none" *ngIf="event.price.students">
-                Alunos da Unesp
-                <span slot="end">{{ event.price.students | currency:'BRL' }}</span>
-              </ion-item>
-
-              <ion-item lines="none" *ngIf="event.price.otherStudents">
-                Alunos
-                <span slot="end">{{ event.price.otherStudents | currency:'BRL' }}</span>
-              </ion-item>
-
-              <ion-item lines="none" *ngIf="event.price.professors">
-                Professores
-                <span slot="end">{{ event.price.professors | currency:'BRL' }}</span>
-              </ion-item>
-            </ng-template>
-          </div>
+          <app-major-event-display-header [majorEventItem]="event"></app-major-event-display-header>
+          <app-major-event-display-description [majorEventItem]="event"></app-major-event-display-description>
+          <app-major-event-display-date [majorEventItem]="event"></app-major-event-display-date>
+          <app-major-event-display-price [majorEventItem]="event"></app-major-event-display-price>
 
           <div class="ion-padding">
             <ng-container
-              *ngIf="(event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(getDateFromTimestamp(event.subscriptionStartDate), getDateFromTimestamp(event.subscriptionEndDate))">
+              *ngIf="(event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(dateService.getDateFromTimestamp(event.subscriptionStartDate), dateService.getDateFromTimestamp(event.subscriptionEndDate))">
               <ng-container *ngIf="event.isSubscribed | async as isSubscribed; else notSubscribed">
                 <ion-button *ngIf="isSubscribed" [routerLink]="['/inscricoes']">
                   <ion-icon slot="start" name="checkmark"></ion-icon> Inscrito

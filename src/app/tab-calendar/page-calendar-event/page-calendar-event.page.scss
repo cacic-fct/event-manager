@@ -2,33 +2,3 @@
   display: block;
   max-width: 400px;
 }
-
-#ol-map {
-  height: 300px;
-  width: 100%;
-}
-
-.weather-text {
-  display: inline;
-  vertical-align: middle;
-  font-size: 15px;
-}
-
-.weather-icon {
-  display: inline-block;
-  vertical-align: middle;
-  margin-right: 3px;
-}
-
-.weather-container {
-  height: 20px;
-}
-
-.weather-attribution {
-  font-size: 10px;
-
-  a {
-    color: inherit;
-    text-decoration: none;
-  }
-}

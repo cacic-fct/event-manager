@@ -28,10 +28,10 @@
             {{ userData.fullName || userData.displayName}} - {{ subscription.payment.price | currency:'BRL':'symbol':'1.2-2' }}
           </ion-card-title>
           <ion-card-subtitle>
-            Se inscreveu em: {{ getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
+            Se inscreveu em: {{ dateService.getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
             <br />
             <!-- prettier-ignore -->
-            Última alteração na inscrição: {{ getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
+            Última alteração na inscrição: {{ dateService.getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
           </ion-card-subtitle>
           <p>UID: {{ userData.uid }}</p>
           <p class="pre-wrap">
@@ -62,9 +62,10 @@
                   [style.color]="subEventInfo.eventType === 'palestra' ? '#0277bd' : ''">
                   <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
                   <p>{{ subEventInfo.id }}</p>
+                  <!-- prettier-ignore -->
                   <p style="margin-bottom: 24px">
-                    {{ getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - {{
-                    getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
+                    {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - 
+                    {{ dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
                   </p>
                 </ion-text>
               </ng-container>
