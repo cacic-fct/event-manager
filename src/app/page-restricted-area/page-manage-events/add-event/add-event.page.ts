@@ -99,7 +99,6 @@ export class AddEventPage implements OnInit {
         hasDateEndForm: this.hasDateEnd,
         issueCertificate: '',
         slotsAvailable: '',
-        // doublePresence: false,
         collectAttendanceForm: this.collectAttendance ? '' : null,
         allowSubscription: null,
       },
@@ -196,7 +195,6 @@ export class AddEventPage implements OnInit {
               inMajorEvent: majorEvent,
               eventType: this.dataForm.get('eventType').value,
               issueCertificate: this.dataForm.get('issueCertificate').value === '' || false,
-              // doublePresence: this.dataForm.get('doublePresence').value,
               collectAttendance: this.dataForm.get('collectAttendanceForm').value === '' || false,
               createdBy: user.uid,
               // @ts-ignore
