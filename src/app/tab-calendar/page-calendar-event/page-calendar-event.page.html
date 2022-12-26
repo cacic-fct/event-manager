@@ -17,7 +17,9 @@
       <app-event-display-header [eventItem]="items" [displayWeather]="true"></app-event-display-header>
       <app-event-display-description [eventItem]="items"></app-event-display-description>
       <app-event-display-map [eventItem]="items"></app-event-display-map>
-      <app-event-display-buttons [eventItem]="items"></app-event-display-buttons>
+      <app-event-display-buttons
+        [eventItem]="items"
+        [displaySubscriptionAttendanceButtons]="true"></app-event-display-buttons>
     </div>
   </ng-container>
   <ng-template #loading>
