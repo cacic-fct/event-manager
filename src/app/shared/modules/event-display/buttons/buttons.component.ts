@@ -57,8 +57,8 @@ export class ButtonsComponent implements OnInit {
   ngOnInit() {}
 
   subscribeToEvent() {
-    if (this.eventItem.eventGroup) {
-      this.eventItem.eventGroup.forEach((eventID) => {
+    if (this.eventItem.eventGroup?.groupEventIDs) {
+      this.eventItem.eventGroup.groupEventIDs.forEach((eventID) => {
         this.auth.user.subscribe((user) => {
           if (!user) {
             return;

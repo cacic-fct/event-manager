@@ -1,0 +1,37 @@
+<ng-container *ngIf="eventSubscriptionsInput | async as eventSubscriptions; else loadingSpinner">
+  <ng-container *ngFor="let eventSubscription of eventSubscriptions">
+    <ng-container *ngIf="eventSubscription.event as eventItem">
+      <ng-container *ngIf="!eventItem.inMajorEvent">
+        <ng-container *ngIf="!eventItem.eventGroup; else eventGroupDescription">
+          <app-event-card [eventSubscription]="eventSubscription"></app-event-card>
+        </ng-container>
+        <ng-template #eventGroupDescription>
+          <ion-card>
+            <ng-container *ngIf="eventItem.eventGroup">
+              <ng-container *ngIf="eventItem.eventGroup.mainEventID === eventItem.id">
+                <ion-card-header>
+                  <ion-card-title>{{ eventItem.eventGroup.groupDisplayName }}</ion-card-title>
+                </ion-card-header>
+                <ion-grid>
+                  <ion-row>
+                    <ion-col>
+                      <!-- TODO: Implementar -->
+                      <ion-button disabled="">
+                        <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
+                        Mais detalhes
+                      </ion-button>
+                    </ion-col>
+                  </ion-row>
+                </ion-grid>
+              </ng-container>
+            </ng-container>
+          </ion-card>
+        </ng-template>
+      </ng-container>
+    </ng-container>
+  </ng-container>
+</ng-container>
+
+<ng-template #loadingSpinner>
+  <ion-spinner name="dots" style="margin: 0 auto; display: block"></ion-spinner>
+</ng-template>

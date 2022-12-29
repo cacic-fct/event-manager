@@ -27,7 +27,11 @@ export interface EventItem {
   issueCertificate?: boolean;
   doublePresence?: boolean;
   collectAttendance?: boolean;
-  eventGroup?: string[];
+  eventGroup?: {
+    groupEventIDs: string[];
+    groupDisplayName: string;
+    mainEventID: string;
+  };
   createdBy: string;
   createdOn: Timestamp;
   attendanceCollectionStart?: Timestamp;

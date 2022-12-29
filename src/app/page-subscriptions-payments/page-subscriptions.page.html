@@ -56,42 +56,7 @@
     </ion-list>
   </ng-container>
 
-  <ng-container *ngIf="eventSubscriptions$ | async as eventSubscriptions; else loadingSpinner">
-    <ng-container *ngFor="let eventSubscription of eventSubscriptions">
-      <ng-container *ngIf="eventSubscription.event as eventItem">
-        <ng-container *ngIf="!eventItem.inMajorEvent">
-          <ion-card>
-            <ion-card-header>
-              <ion-card-title>{{ eventItem.name }}</ion-card-title>
-
-              <ion-card-subtitle>
-                <!-- prettier-ignore -->
-                <p>
-                  Data do evento: {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date: 'dd/MM/yyyy - HH:mm' }} {{ eventItem.eventEndDate && '– ' + dateService.getDateFromTimestamp(eventItem.eventEndDate) | date: 'dd/MM/yyyy - HH:mm' }}
-                </p>
-                <ng-container *ngIf="eventSubscription.userData | async as userData;">
-                  <p>
-                    Data de inscrição: {{ dateService.getDateFromTimestamp(userData.time) | date: 'dd/MM/yyyy - HH:mm'
-                    }}
-                  </p>
-                </ng-container>
-              </ion-card-subtitle>
-            </ion-card-header>
-            <ion-grid>
-              <ion-row *ngIf="eventItem.collectAttendance">
-                <ion-col *ngIf="eventItem.attendanceCollectionStart && !eventItem.attendanceCollectionEnd">
-                  <ion-button [routerLink]="['/confirmar-presenca', eventItem.id]">
-                    <ion-icon slot="start" name="person"></ion-icon>
-                    Confirmar presença
-                  </ion-button>
-                </ion-col>
-              </ion-row>
-            </ion-grid>
-          </ion-card>
-        </ng-container>
-      </ng-container>
-    </ng-container>
-  </ng-container>
+  <app-event-card-display-main-page [eventSubscriptionsInput]="eventSubscriptions$"></app-event-card-display-main-page>
 
   <ng-template
     #ionCardHeader

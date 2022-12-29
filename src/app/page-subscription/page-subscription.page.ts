@@ -263,9 +263,9 @@ export class PageSubscriptionPage implements OnInit {
             return;
           }
 
-          if (!this.groupInSelection && event.eventGroup) {
+          if (!this.groupInSelection && event.eventGroup.groupEventIDs) {
             this.groupInSelection = true;
-            event.eventGroup.forEach((eventFromGroup) => {
+            event.eventGroup.groupEventIDs.forEach((eventFromGroup) => {
               if (eventFromGroup === event.id) {
                 return;
               }
@@ -301,9 +301,9 @@ export class PageSubscriptionPage implements OnInit {
           case 'minicurso':
             this.eventsSelected['minicurso'] = this.eventsSelected['minicurso'].filter((e) => e.id !== event.id);
 
-            if (!this.groupInSelection && event.eventGroup) {
+            if (!this.groupInSelection && event.eventGroup.groupEventIDs) {
               this.groupInSelection = true;
-              event.eventGroup.forEach((eventFromGroup) => {
+              event.eventGroup.groupEventIDs.forEach((eventFromGroup) => {
                 if (eventFromGroup === event.id) {
                   return;
                 }
@@ -578,8 +578,8 @@ export class PageSubscriptionPage implements OnInit {
 
         // If event overlaps, disable it
 
-        if (this.eventSchedule[i].eventGroup) {
-          this.eventSchedule[i].eventGroup.forEach((event) => {
+        if (this.eventSchedule[i].eventGroup.groupEventIDs) {
+          this.eventSchedule[i].eventGroup.groupEventIDs.forEach((event) => {
             this.dataForm.get(event).disable();
           });
         } else {
@@ -604,8 +604,8 @@ export class PageSubscriptionPage implements OnInit {
 
         // If event overlaps, disable it
 
-        if (this.eventSchedule[i].eventGroup) {
-          this.eventSchedule[i].eventGroup.forEach((event) => {
+        if (this.eventSchedule[i].eventGroup.groupEventIDs) {
+          this.eventSchedule[i].eventGroup.groupEventIDs.forEach((event) => {
             this.dataForm.get(event).disable();
           });
         } else {
@@ -629,8 +629,8 @@ export class PageSubscriptionPage implements OnInit {
         if (this.eventSchedule[i].eventType !== 'palestra') {
           //////
           if (this.eventSchedule[i].slotsAvailable > 0) {
-            if (this.eventSchedule[i].eventGroup) {
-              this.eventSchedule[i].eventGroup.forEach((event) => {
+            if (this.eventSchedule[i].eventGroup.groupEventIDs) {
+              this.eventSchedule[i].eventGroup.groupEventIDs.forEach((event) => {
                 this.dataForm.get(event).enable();
               });
             } else {
@@ -652,8 +652,8 @@ export class PageSubscriptionPage implements OnInit {
         // If event overlaps, enable it
 
         if (this.eventSchedule[i].eventType !== 'palestra') {
-          if (this.eventSchedule[i].eventGroup) {
-            this.eventSchedule[i].eventGroup.forEach((event) => {
+          if (this.eventSchedule[i].eventGroup.groupEventIDs) {
+            this.eventSchedule[i].eventGroup.groupEventIDs.forEach((event) => {
               this.dataForm.get(event).enable();
             });
           } else {

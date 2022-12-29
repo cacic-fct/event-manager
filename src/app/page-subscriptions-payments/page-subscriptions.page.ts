@@ -30,9 +30,7 @@ export class PageSubscriptionsPage implements OnInit {
     public auth: AngularFireAuth,
     public enrollmentTypes: EnrollmentTypesService,
     public dateService: DateService
-  ) {}
-
-  ngOnInit() {
+  ) {
     this.auth.user.pipe(untilDestroyed(this)).subscribe((user) => {
       if (user) {
         this.subscriptions$ = this.afs
@@ -96,6 +94,8 @@ export class PageSubscriptionsPage implements OnInit {
     });
   }
 
+  ngOnInit() {}
+
   isInSubscriptionPeriod(endDateTimestamp: Timestamp): boolean {
     if (endDateTimestamp) {
       const endDate = this.dateService.getDateFromTimestamp(endDateTimestamp);
@@ -126,7 +126,7 @@ interface Subscription {
   majorEvent?: Observable<MajorEventItem>;
 }
 
-interface EventSubscriptionLocal {
+export interface EventSubscriptionLocal {
   id?: string;
   reference?: DocumentReference<any>;
   userData?: Observable<EventSubscription>;

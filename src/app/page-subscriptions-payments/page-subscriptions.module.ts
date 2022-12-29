@@ -7,9 +7,11 @@ import { IonicModule } from '@ionic/angular';
 import { PageSubscriptionsPageRoutingModule } from './page-subscriptions-routing.module';
 
 import { PageSubscriptionsPage } from './page-subscriptions.page';
+import { EventCardComponent } from './components/event-card/event-card.component';
+import { EventCardDisplayMainPageComponent } from './components/event-card-display-main-page/event-card-display-main-page.component';
 
 @NgModule({
   imports: [CommonModule, FormsModule, IonicModule, PageSubscriptionsPageRoutingModule],
-  declarations: [PageSubscriptionsPage],
+  declarations: [PageSubscriptionsPage, EventCardComponent, EventCardDisplayMainPageComponent],
 })
 export class PageSubscriptionsPageModule {}
