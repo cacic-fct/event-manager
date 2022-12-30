@@ -1,16 +1,13 @@
 // @ts-strict-ignore
 import { NgModule } from '@angular/core';
-import { canActivate, redirectLoggedInTo, redirectUnauthorizedTo } from '@angular/fire/compat/auth-guard';
-import { ActivatedRouteSnapshot, RouterModule, RouterStateSnapshot, Routes } from '@angular/router';
-import { PreloadingStrategyService } from './shared/services/preloading-strategy.service';
-
-// Attribution: waternova
-// https://stackoverflow.com/questions/64456664/angularfireauthguard-redirecturl-after-login
-const redirectUnauthorizedToLogin = (next: ActivatedRouteSnapshot, state: RouterStateSnapshot) => {
-  return redirectUnauthorizedTo(`/login?redirect=${state.url}`);
-};
-
-const redirectLoggedInToMenu = () => redirectLoggedInTo(['menu']);
+import { canActivate } from '@angular/fire/compat/auth-guard';
+import { RouterModule, Routes } from '@angular/router';
+import { PreloadingStrategyService } from './shared/services/routing/preloading-strategy.service';
+import {
+  DevelopmentOnlyGuard,
+  redirectUnauthorizedToLogin,
+  redirectLoggedInToMenu,
+} from './shared/services/routing/guards.service';
 
 const routes: Routes = [
   {

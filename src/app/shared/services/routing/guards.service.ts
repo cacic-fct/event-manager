@@ -1,0 +1,36 @@
+import { Injectable } from '@angular/core';
+import { ActivatedRouteSnapshot, CanActivate, RouterStateSnapshot } from '@angular/router';
+import { environment } from 'src/environments/environment';
+import { redirectUnauthorizedTo, redirectLoggedInTo, customClaims } from '@angular/fire/compat/auth-guard';
+
+import { pipe } from 'rxjs';
+import { map } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class DevelopmentOnlyGuard implements CanActivate {
+  canActivate(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): boolean {
+    return !environment.production;
+  }
+}
+
+// Attribution: waternova
+// https://stackoverflow.com/questions/64456664/angularfireauthguard-redirecturl-after-login
+export const redirectUnauthorizedToLogin = (_next: ActivatedRouteSnapshot, state: RouterStateSnapshot) => {
+  return redirectUnauthorizedTo(`/login?redirect=${state.url}`);
+};
+
+export const redirectLoggedInToMenu = () => redirectLoggedInTo(['menu']);
+
+export const caAndGreater = () =>
+  pipe(
+    customClaims,
+    map((claims) => claims.role < 3000)
+  );
+
+export const adminOnly = () =>
+  pipe(
+    customClaims,
+    map((claims) => claims.role === 1000)
+  );

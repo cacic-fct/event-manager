@@ -5,15 +5,7 @@ import { Routes, RouterModule } from '@angular/router';
 import { PageRestrictedAreaPage } from './page-restricted-area.page';
 
 import { canActivate } from '@angular/fire/compat/auth-guard';
-import { pipe } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { customClaims } from '@angular/fire/compat/auth-guard';
-
-const adminOnly = () =>
-  pipe(
-    customClaims,
-    map((claims) => claims.role === 1000)
-  );
+import { adminOnly } from '../shared/services/routing/guards.service';
 
 const routes: Routes = [
   {
