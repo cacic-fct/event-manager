@@ -1,7 +1,7 @@
  GPL-3.0-only
 
  FCT App
- Copyright (c) 2022 CACIC - Centro Acadêmico de Ciência da Computação "Alan Turing" 
+ Copyright (c) CACIC - Centro Acadêmico de Ciência da Computação "Alan Turing" 
 da Faculdade de Ciências e Tecnologia, Câmpus de Presidente Prudente, 
 Universidade Estadual Paulista "Júlio de Mesquita Filho"
 
