@@ -8,7 +8,7 @@
     Evento
     <!-- prettier-ignore -->
     <span slot="end">
-      {{ dateService.getDateFromTimestamp(majorEventItem.eventStartDate) | date: 'dd/MM' }} {{ majorEventItem.eventEndDate && '-' + (dateService.getDateFromTimestamp(majorEventItem.eventEndDate) | date: 'dd/MM') }}
+      {{ dateService.getDateFromTimestamp(majorEventItem.eventStartDate) | date: 'dd/MM' }} {{ majorEventItem.eventEndDate && '- ' + (dateService.getDateFromTimestamp(majorEventItem.eventEndDate) | date: 'dd/MM') }}
     </span>
   </ion-item>
 
