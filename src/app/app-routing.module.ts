@@ -3,6 +3,7 @@ import { NgModule } from '@angular/core';
 import { canActivate } from '@angular/fire/compat/auth-guard';
 import { RouterModule, Routes } from '@angular/router';
 import { PreloadingStrategyService } from './shared/services/routing/preloading-strategy.service';
+
 import {
   DevelopmentOnlyGuard,
   redirectUnauthorizedToLogin,
@@ -10,6 +11,14 @@ import {
 } from './shared/services/routing/guards.service';
 
 const routes: Routes = [
+  // Development environment only
+  {
+    path: 'development-tools',
+    loadChildren: () =>
+      import('./development-tools/development-tools.module').then((m) => m.DevelopmentToolsPageModule),
+    canActivate: [DevelopmentOnlyGuard],
+  },
+  // General routes
   {
     path: '',
     data: { preload: true },

@@ -1,0 +1,94 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="development-tools"></ion-back-button>
+    </ion-buttons>
+
+    <ion-title>Popular banco de dados</ion-title>
+
+    <ion-buttons slot="end">
+      <ion-button (click)="populateDatabase()" fill="clear" [disabled]="numberOfSelectedCheckboxes === 0">
+        <ion-icon name="play" slot="start"> </ion-icon> Popular
+      </ion-button>
+    </ion-buttons>
+    <ion-progress-bar
+      [value]="progress"
+      *ngIf="populateStarted"
+      [color]="parseFloat(progress | number: '1.0-1') >= 1 ? 'success': ''"></ion-progress-bar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <form [formGroup]="dataForm">
+    <ion-list>
+      <ion-item-group>
+        <ion-item-divider>
+          <ion-label>Autenticação</ion-label>
+        </ion-item-divider>
+
+        <ion-item>
+          <ion-checkbox slot="start" formControlName="createAdmin"></ion-checkbox>
+          <ion-label>
+            Conta de admin
+            <p>1x - Aluno da graduação com claim de admin</p>
+          </ion-label>
+        </ion-item>
+
+        <ion-item>
+          <ion-checkbox slot="start" formControlName="createUndergraduate"></ion-checkbox>
+          <ion-label>Conta de graduação</ion-label>
+        </ion-item>
+
+        <ion-item>
+          <ion-checkbox slot="start" formControlName="createProfessor"></ion-checkbox>
+          <ion-label>
+            Conta de professor
+            <p>1x - Conta @unesp.br com claim de professor</p>
+          </ion-label>
+        </ion-item>
+
+        <ion-item>
+          <ion-checkbox slot="start" formControlName="createExternal"></ion-checkbox>
+          <ion-label>
+            Conta de usuário externo
+            <p>E-mail sem sufixo @unesp.br</p>
+          </ion-label>
+        </ion-item>
+      </ion-item-group>
+
+      <ion-item-group>
+        <ion-item-divider>
+          <ion-label>Eventos</ion-label>
+        </ion-item-divider>
+        <ion-item>
+          <ion-checkbox slot="start" formControlName="createPaidMajorEvent"></ion-checkbox>
+          <ion-label>
+            Grande evento
+            <p>1x - Pago, com inscrição aberta e data futura</p>
+            <p>
+              Também cria para cada grande evento: <br />
+              1x - Minicurso<br />
+              1x - Palestra<br />
+              1x - Grupo de eventos
+            </p>
+          </ion-label>
+        </ion-item>
+        <ion-item>
+          <ion-checkbox slot="start" formControlName="createEvent"></ion-checkbox>
+          <ion-label>
+            Eventos comuns
+            <p>1x - Evento com inscrição aberta</p>
+            <p>1x - Evento sem data de término</p>
+          </ion-label>
+        </ion-item>
+        <ion-item>
+          <ion-checkbox slot="start" formControlName="createEventGroup"></ion-checkbox>
+          <ion-label>
+            Grupo de eventos
+            <p>2x - Eventos</p>
+          </ion-label>
+        </ion-item>
+      </ion-item-group>
+    </ion-list>
+  </form>
+</ion-content>

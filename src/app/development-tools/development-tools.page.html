@@ -1,0 +1,18 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="menu"></ion-back-button>
+    </ion-buttons>
+
+    <ion-title>Ferramentas de desenvolvedor</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-card>
+    <ion-item [routerLink]="['./populate-db']">
+      <ion-icon name="server-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Popular banco de dados</ion-label>
+    </ion-item>
+  </ion-card>
+</ion-content>
