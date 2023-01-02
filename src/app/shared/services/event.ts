@@ -38,6 +38,10 @@ export interface EventItem {
   attendanceCollectionEnd?: Timestamp;
   attendanceCode?: string;
   allowSubscription?: boolean;
+  /**
+   * Carga-horária em horas
+   */
+  creditHours?: number;
 }
 
 export interface EventSubscription {
