@@ -42,7 +42,7 @@ export class PageManageAdminsPage implements OnInit {
   }
 
   addAdmin() {
-    const addAdminRole = this.fns.httpsCallable('addAdminRole');
+    const addAdminRole = this.fns.httpsCallable('claims-addAdminRole');
     addAdminRole({ email: this.addAdminForm.value.adminEmail })
       .pipe(take(1))
       .subscribe((res) => {
@@ -52,7 +52,7 @@ export class PageManageAdminsPage implements OnInit {
   }
 
   removeAdmin() {
-    const removeAdminRole = this.fns.httpsCallable('removeAdminRole');
+    const removeAdminRole = this.fns.httpsCallable('claims-removeAdminRole');
     removeAdminRole({ email: this.removeAdminForm.value.adminEmail })
       .pipe(take(1))
       .subscribe((res) => {
