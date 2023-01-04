@@ -1,3 +1,9 @@
+### 2023.01.04.15.29
+
+- Adicionado interface para criação de grupos de eventos;
+- Corrigido o ordenamento dos eventos não inscritos na página de detalhes da inscrição em um grande evento;
+- Arrumado um bug que exibia "preço único" quando era para exibir "Aluno da Unesp" na página de pagamento de um grande evento;
+
 ### 2023.01.04.12.10
 
 - Adicionado campo de carga horária na criação do evento;
