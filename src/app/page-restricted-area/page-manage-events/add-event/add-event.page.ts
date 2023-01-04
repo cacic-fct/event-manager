@@ -95,7 +95,7 @@ export class AddEventPage implements OnInit {
         creditHours: ['', Validators.pattern(/^\d*$/)],
         slotsAvailable: '',
         collectAttendance: false,
-        allowSubscription: null,
+        allowSubscription: false,
       },
       {
         validators: [this.validatorLatLong, this.validatorButton, this.validatorDateEnd],
@@ -196,7 +196,7 @@ export class AddEventPage implements OnInit {
               createdOn: serverTimestamp(),
               slotsAvailable: Number.parseInt(this.dataForm.get('slotsAvailable').value) || 0,
               numberOfSubscriptions: 0,
-              allowSubscription: this.dataForm.get('allowSubscription').value === '' || false,
+              allowSubscription: this.dataForm.get('allowSubscription').value,
             })
             .then((res) => {
               if (majorEvent) {
