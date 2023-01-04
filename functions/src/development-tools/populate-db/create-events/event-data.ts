@@ -172,7 +172,7 @@ export const paidMajorEvent_group_event = (i: number) => {
     createdOn: timestampFromDate(new Date()),
     allowSubscription: false,
     eventGroup: {
-      groupEventIDs: ['paidMajorEvent-event1', 'paidMajorEvent-event2'],
+      groupEventIDs: ['paidMajorEvent-group-event1', 'paidMajorEvent-group-event2'],
       groupDisplayName: 'Grupo de eventos do Grande evento pago',
       mainEventID: 'paidMajorEvent-event1',
     },
