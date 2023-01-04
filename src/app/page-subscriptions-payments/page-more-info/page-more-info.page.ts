@@ -79,12 +79,24 @@ export class PageMoreInfoPage implements OnInit {
               })
             );
 
-            // TODO: Due to firestore limitations, we can't order this query when using "not-in"
-            // TODO: Doesn't work if array.length > 10
-            this.notSubscribedEvents$ = this.afs
-              .collection<EventItem>('events', (ref) => ref.where(documentId(), 'not-in', data.subscribedToEvents))
-              .valueChanges({ idField: 'id' })
-              .pipe(trace('firestore'), take(1));
+            const notSubscribedEventsObservables: Array<Observable<EventItem[]>> = [];
+            for (let i = 0; i < data.subscribedToEvents.length; i += 10) {
+              notSubscribedEventsObservables.push(
+                this.afs
+                  .collection<EventItem>('events', (ref) =>
+                    ref.where(documentId(), 'not-in', data.subscribedToEvents.slice(i, i + 10))
+                  )
+                  .valueChanges({ idField: 'id' })
+                  .pipe(trace('firestore'), take(1))
+              );
+            }
+
+            this.notSubscribedEvents$ = combineLatest(notSubscribedEventsObservables).pipe(
+              map((events) => {
+                const data = events.flat();
+                return data.sort((a, b) => a.eventStartDate.seconds - b.eventStartDate.seconds);
+              })
+            );
           });
 
         this.majorEventSubscription$ = query.valueChanges({ idField: 'id' }).pipe(trace('firestore'), take(1));
