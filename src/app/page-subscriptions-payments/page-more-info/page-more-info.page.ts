@@ -84,7 +84,9 @@ export class PageMoreInfoPage implements OnInit {
               notSubscribedEventsObservables.push(
                 this.afs
                   .collection<EventItem>('events', (ref) =>
-                    ref.where(documentId(), 'not-in', data.subscribedToEvents.slice(i, i + 10))
+                    ref
+                      .where(documentId(), 'not-in', data.subscribedToEvents.slice(i, i + 10))
+                      .where('inMajorEvent', '==', this.majorEventID)
                   )
                   .valueChanges({ idField: 'id' })
                   .pipe(trace('firestore'), take(1))
