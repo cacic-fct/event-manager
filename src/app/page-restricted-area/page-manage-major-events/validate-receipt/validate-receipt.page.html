@@ -41,11 +41,6 @@
               Última alteração na inscrição: {{ dateService.getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
             </ion-card-subtitle>
             <p>UID: {{ userData.uid }}</p>
-            <p class="pre-wrap">
-              ID dos eventos selecionados: <br />
-              <br />
-              {{ formatArrayDisplay(subscription.subscribedToEvents) }}
-            </p>
             <ion-button fill="clear" [href]="'mailto:' + userData.email">
               <ion-icon name="mail" slot="icon-only"></ion-icon>
             </ion-button>
@@ -61,6 +56,12 @@
                 <span class="alert-text ion-text-wrap"> Antes de validar, verifique se não há choque de horário. </span>
               </ion-text>
             </p>
+            <p class="pre-wrap">
+              ID dos eventos selecionados: <br />
+              <br />
+              {{ displayEventIDs(subscription.subscribedToEvents) }}
+            </p>
+            <br />
             <ng-container *ngIf="subscription.subEventsInfo | async as subEventsInfo; else loading">
               <ng-container *ngIf="subEventsInfo.length != 0">
                 <ng-container *ngFor="let subEventInfo of subEventsInfo">
