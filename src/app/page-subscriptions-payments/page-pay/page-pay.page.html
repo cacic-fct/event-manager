@@ -15,10 +15,10 @@
         <ion-card-title>{{majorEvent.name}}</ion-card-title>
         <ng-container *ngIf="userSubscription$ | async as userInfo">
           <!-- prettier-ignore -->
-          <ion-card-subtitle *ngIf="userInfo.subscriptionType">
+          <ion-card-subtitle *ngIf="userInfo.subscriptionType !== undefined && userInfo.subscriptionType !== null">
             {{ enrollmentTypes.getEnrollmentType(userInfo.subscriptionType) }} - {{ userInfo.payment.price | currency: 'BRL' }}
           </ion-card-subtitle>
-          <ion-card-subtitle *ngIf="!userInfo.subscriptionType">
+          <ion-card-subtitle *ngIf="userInfo.subscriptionType === null || userInfo.subscriptionType === undefined">
             Preço único - {{ userInfo.payment.price | currency: 'BRL' }}
           </ion-card-subtitle>
         </ng-container>
