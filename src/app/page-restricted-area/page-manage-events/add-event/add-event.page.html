@@ -162,8 +162,8 @@
         <ion-toggle slot="end" formControlName="issueCertificate" checked="off"></ion-toggle>
       </ion-item>
 
-      <ion-item>
-        <ion-label *ngIf="dataForm.get('issueCertificate').value">Carga horária deste dia</ion-label>
+      <ion-item *ngIf="dataForm.get('issueCertificate').value">
+        <ion-label>Carga horária deste dia</ion-label>
         <ion-input formControlName="creditHours" numeric="decimal" placeholder="Em horas"></ion-input>
       </ion-item>
 
