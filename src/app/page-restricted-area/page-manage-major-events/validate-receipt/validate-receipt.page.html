@@ -8,90 +8,98 @@
       <ion-button (click)="arrayIndexBackward()" [disabled]="arrayIndex == 0" aria-label="Comprovante anterior">
         <ion-icon name="chevron-back"></ion-icon>
       </ion-button>
-      {{ arrayIndex }}
-      <ion-button (click)="arrayIndexForward()" aria-label="Próxima comprovante">
-        <ion-icon name="chevron-forward"></ion-icon>
-      </ion-button>
+      {{ arrayIndex + 1 }}º
+      <ng-container *ngIf="(subscriptions$ | async) as subscriptionsArray">
+        <ion-button
+          (click)="arrayIndexForward()"
+          [disabled]="((arrayIndex + 1) === subscriptionsArray.length) || !subscriptionsArray.length"
+          aria-label="Próximo comprovante">
+          <ion-icon name="chevron-forward"></ion-icon>
+        </ion-button>
+      </ng-container>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
   <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
-    <h4 *ngIf="subscriptions.length == 0" class="ion-text-center">Não há nenhuma aprovação pendente.</h4>
-    <!-- TODO: Melhorar interface quando arrayIndex aponta para um elemento não existente -->
-    <ng-container *ngIf="subscriptions[arrayIndex] as subscription">
-      <ion-card>
-        <ion-card-header *ngIf="subscription.userData$ | async as userData">
-          <!-- prettier-ignore -->
-          <ion-card-title>
-            {{ userData.fullName || userData.displayName}} - {{ subscription.payment.price | currency:'BRL':'symbol':'1.2-2' }}
-          </ion-card-title>
-          <ion-card-subtitle>
-            Se inscreveu em: {{ dateService.getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
-            <br />
+    <h4 *ngIf="subscriptions.length == 0; else subscriptionsArrayIsNotEmpty" class="ion-text-center">
+      Não há nenhuma aprovação pendente.
+    </h4>
+    <ng-template #subscriptionsArrayIsNotEmpty>
+      <ng-container *ngIf="subscriptions[arrayIndex] as subscription;">
+        <ion-card>
+          <ion-card-header *ngIf="subscription.userData$ | async as userData">
             <!-- prettier-ignore -->
-            Última alteração na inscrição: {{ dateService.getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
-          </ion-card-subtitle>
-          <p>UID: {{ userData.uid }}</p>
-          <p class="pre-wrap">
-            ID dos eventos selecionados: <br />
-            <br />
-            {{ formatArrayDisplay(subscription.subscribedToEvents) }}
-          </p>
-          <ion-button fill="clear" [href]="'mailto:' + userData.email">
-            <ion-icon name="mail" slot="icon-only"></ion-icon>
-          </ion-button>
+            <ion-card-title>
+              {{ userData.fullName || userData.displayName}} - {{ subscription.payment.price | currency:'BRL':'symbol':'1.2-2' }}
+            </ion-card-title>
+            <ion-card-subtitle>
+              Se inscreveu em: {{ dateService.getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
+              <br />
+              <!-- prettier-ignore -->
+              Última alteração na inscrição: {{ dateService.getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
+            </ion-card-subtitle>
+            <p>UID: {{ userData.uid }}</p>
+            <p class="pre-wrap">
+              ID dos eventos selecionados: <br />
+              <br />
+              {{ formatArrayDisplay(subscription.subscribedToEvents) }}
+            </p>
+            <ion-button fill="clear" [href]="'mailto:' + userData.email">
+              <ion-icon name="mail" slot="icon-only"></ion-icon>
+            </ion-button>
 
-          <ion-button fill="clear" [href]="'https://wa.me/' + formatPhoneWhatsApp(userData.phone)">
-            <ion-icon name="logo-whatsapp" slot="icon-only"></ion-icon>
-          </ion-button>
-        </ion-card-header>
-        <ion-card-content>
-          <p>
-            <ion-text color="danger">
-              <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
-              <span class="alert-text ion-text-wrap"> Antes de validar, verifique se não há choque de horário. </span>
-            </ion-text>
-          </p>
-          <ng-container *ngIf="subscription.subEventsInfo | async as subEventsInfo; else loading">
-            <ng-container *ngIf="subEventsInfo.length != 0">
-              <ng-container *ngFor="let subEventInfo of subEventsInfo">
-                <ion-text
-                  [color]="subEventInfo.slotsAvailable > 0? '' : 'danger'"
-                  [style.color]="subEventInfo.eventType === 'palestra' ? '#0277bd' : ''">
-                  <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
-                  <p>{{ subEventInfo.id }}</p>
-                  <!-- prettier-ignore -->
-                  <p style="margin-bottom: 24px">
-                    {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - 
-                    {{ dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
-                  </p>
-                </ion-text>
+            <ion-button fill="clear" [href]="'https://wa.me/' + formatPhoneWhatsApp(userData.phone)">
+              <ion-icon name="logo-whatsapp" slot="icon-only"></ion-icon>
+            </ion-button>
+          </ion-card-header>
+          <ion-card-content>
+            <p>
+              <ion-text color="danger">
+                <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+                <span class="alert-text ion-text-wrap"> Antes de validar, verifique se não há choque de horário. </span>
+              </ion-text>
+            </p>
+            <ng-container *ngIf="subscription.subEventsInfo | async as subEventsInfo; else loading">
+              <ng-container *ngIf="subEventsInfo.length != 0">
+                <ng-container *ngFor="let subEventInfo of subEventsInfo">
+                  <ion-text
+                    [color]="subEventInfo.slotsAvailable > 0? '' : 'danger'"
+                    [style.color]="subEventInfo.eventType === 'palestra' ? '#0277bd' : ''">
+                    <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
+                    <p>{{ subEventInfo.id }}</p>
+                    <!-- prettier-ignore -->
+                    <p style="margin-bottom: 24px">
+                      {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - 
+                      {{ dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
+                    </p>
+                  </ion-text>
+                </ng-container>
               </ng-container>
             </ng-container>
-          </ng-container>
-          <div class="img-container">
-            <img [src]="imgURL(subscription.id) | getDownloadURL" />
-          </div>
-        </ion-card-content>
-      </ion-card>
-    </ng-container>
-    <ion-fab *ngIf="subscriptions.length > 0" vertical="bottom" horizontal="end" slot="fixed">
-      <ion-fab-button>
-        <ion-icon name="add"></ion-icon>
-      </ion-fab-button>
-      <ion-fab-list side="top">
-        <ion-fab-button color="success" (click)="confirm()">
-          <ion-icon name="checkmark"></ion-icon>
+            <div class="img-container">
+              <img [src]="imgURL(subscription.id) | getDownloadURL" />
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </ng-container>
+      <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+        <ion-fab-button>
+          <ion-icon name="add"></ion-icon>
         </ion-fab-button>
-      </ion-fab-list>
-      <ion-fab-list side="start">
-        <ion-fab-button color="danger" (click)="refuseModal.present()">
-          <ion-icon name="close"></ion-icon>
-        </ion-fab-button>
-      </ion-fab-list>
-    </ion-fab>
+        <ion-fab-list side="top">
+          <ion-fab-button color="success" (click)="confirm()">
+            <ion-icon name="checkmark"></ion-icon>
+          </ion-fab-button>
+        </ion-fab-list>
+        <ion-fab-list side="start">
+          <ion-fab-button color="danger" (click)="refuseModal.present()">
+            <ion-icon name="close"></ion-icon>
+          </ion-fab-button>
+        </ion-fab-list>
+      </ion-fab>
+    </ng-template>
   </ng-container>
 </ion-content>
 
