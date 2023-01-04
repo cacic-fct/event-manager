@@ -1,3 +1,10 @@
+### 2023.01.04.12.10
+
+- Adicionado campo de carga horária na criação do evento;
+- Impedir o usuário de avançar um número além dos comprovantes existentes na página de validação;
+- Removido adaptações específicas para a SECOMPP22;
+- O ícone do aplicativo agora é levemente menor, para evitar ser cortado.
+
 ### 2023.01.02.11.55
 
 - Licença de uso alterada para GPL-3.0-only;
