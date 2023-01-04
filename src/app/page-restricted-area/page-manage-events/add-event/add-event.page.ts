@@ -7,7 +7,7 @@ import { MajorEventItem, MajorEventsService } from 'src/app/shared/services/majo
 import { format, getDayOfYear, isEqual, parseISO, setDayOfYear, subMilliseconds } from 'date-fns';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
-import { BehaviorSubject, take, Observable, map } from 'rxjs';
+import { take, Observable, map } from 'rxjs';
 import * as firestore from '@firebase/firestore';
 import { Timestamp } from '@firebase/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
@@ -32,13 +32,7 @@ export class AddEventPage implements OnInit {
   courses = CoursesService.courses;
   majorEventsData$: Observable<MajorEventItem[]>;
 
-  collectAttendance: boolean = false;
-  _collectAttendanceSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(this.collectAttendance);
-  collectAttendance$: Observable<boolean> = this._collectAttendanceSubject.asObservable();
-
   hasDateEnd: boolean = false;
-  _hasDateEndSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(this.hasDateEnd);
-  hasDateEnd$: Observable<boolean> = this._hasDateEndSubject.asObservable();
 
   dataForm: FormGroup;
 
@@ -89,7 +83,7 @@ export class AddEventPage implements OnInit {
           ],
         }),
         youtubeCode: '',
-        public: '',
+        public: true,
         button: this.formBuilder.group({
           text: '',
           url: '',
@@ -97,9 +91,10 @@ export class AddEventPage implements OnInit {
         inMajorEvent: ['none', Validators.required],
         eventType: ['none', Validators.required],
         hasDateEndForm: this.hasDateEnd,
-        issueCertificate: '',
+        issueCertificate: false,
+        creditHours: ['', Validators.pattern(/^\d*$/)],
         slotsAvailable: '',
-        collectAttendanceForm: this.collectAttendance ? '' : null,
+        collectAttendance: false,
         allowSubscription: null,
       },
       {
@@ -184,8 +179,7 @@ export class AddEventPage implements OnInit {
               eventEndDate: dateEnd,
               location: location,
               youtubeCode: this.dataForm.get('youtubeCode').value || null,
-              // TODO: Verificar se public está funcionando
-              public: this.dataForm.get('public').value === '' || false,
+              public: this.dataForm.get('public').value,
               button: this.dataForm.get('button').get('url').value
                 ? {
                     text: this.dataForm.get('button').get('text').value,
@@ -194,8 +188,9 @@ export class AddEventPage implements OnInit {
                 : null,
               inMajorEvent: majorEvent,
               eventType: this.dataForm.get('eventType').value,
-              issueCertificate: this.dataForm.get('issueCertificate').value === '' || false,
-              collectAttendance: this.dataForm.get('collectAttendanceForm').value === '' || false,
+              issueCertificate: this.dataForm.get('issueCertificate').value,
+              collectAttendance: this.dataForm.get('collectAttendance').value,
+              creditHours: Number.parseInt(this.dataForm.get('creditHours').value) || null,
               createdBy: user.uid,
               // @ts-ignore
               createdOn: serverTimestamp(),
@@ -264,7 +259,6 @@ export class AddEventPage implements OnInit {
     });
   }
 
-  // TODO: Revisar e talvez arrumar validadores
   validatorLatLong(control: AbstractControl): ValidationErrors | null {
     if (control.get('location').get('lat').value == '' && control.get('location').get('lon').value == '') {
       control.get('location').get('lat').removeValidators(Validators.required);
@@ -319,18 +313,12 @@ export class AddEventPage implements OnInit {
     this.dataForm.get('location').get('lon').setValue(this.parsedPlaces[ev.detail.value].lon);
   }
 
-  collectAttendanceChange() {
-    this.collectAttendance = !this.collectAttendance;
-    this._collectAttendanceSubject.next(this.collectAttendance);
+  placeInputKeyDown() {
+    this.selectPlace.value = undefined;
   }
 
   hasDateEndChange() {
     this.hasDateEnd = !this.hasDateEnd;
-    this._hasDateEndSubject.next(this.hasDateEnd);
-  }
-
-  placeInputKeyDown() {
-    this.selectPlace.value = undefined;
   }
 
   onDateStartChange() {
