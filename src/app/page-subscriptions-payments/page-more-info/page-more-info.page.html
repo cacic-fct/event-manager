@@ -70,11 +70,10 @@
 
         <div class="ion-padding">
           <h2>Inscrito</h2>
-          <app-event-list [eventInput$]="subscribedEvents$"></app-event-list>
+          <app-event-list [eventInput]="subscribedEvents$" [isSubscribedList]="true"></app-event-list>
 
-          <!-- TODO: Bugged, fix me -->
           <h2>Não inscrito</h2>
-          <app-event-list [eventInput$]="notSubscribedEvents$"></app-event-list>
+          <app-event-list [eventInput]="notSubscribedEvents$" [isSubscribedList]="false"></app-event-list>
         </div>
       </div>
     </ng-container>

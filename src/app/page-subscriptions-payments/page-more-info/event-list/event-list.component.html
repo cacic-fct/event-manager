@@ -1,4 +1,4 @@
-<ng-container *ngIf="eventInput$ | async as eventsArray; else loadingSpinner">
+<ng-container *ngIf="eventInput | async as eventsArray; else loadingSpinner">
   <p *ngIf="eventsArray.length === 0">Você inscreveu-se em todos os eventos</p>
   <ng-container *ngFor="let event of eventsArray; index as i">
     <ion-item-divider
@@ -20,7 +20,8 @@
             {{ dateService.getDateFromTimestamp(event.eventStartDate) | date : 'HH:mm' }}
             {{ event.eventEndDate && ' às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date : 'HH:mm') }}
           </h3>
-          <!-- TODO: Botão de certificados -->
+          <!-- TODO: Indicar se o usuário esteve presente ou não -->
+          <ng-container *ngIf="subscribed">asd</ng-container>
         </ion-label>
       </ion-item>
     </ion-list>

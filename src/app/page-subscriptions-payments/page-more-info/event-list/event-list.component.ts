@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { formatDate } from '@angular/common';
 import { Component, Input, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -8,12 +7,13 @@ import { EmojiService } from './../../../shared/services/emoji.service';
 import { DateService } from 'src/app/shared/services/date.service';
 
 @Component({
-  selector: 'app-event-list',
+  selector: 'app-event-list[eventInput]',
   templateUrl: './event-list.component.html',
   styleUrls: ['./event-list.component.scss'],
 })
 export class EventListComponent implements OnInit {
-  @Input() eventInput$: Observable<EventItem[]>;
+  @Input() eventInput!: Observable<EventItem[]>;
+  @Input() isSubscribedList!: boolean;
 
   constructor(public emojiService: EmojiService, public dateService: DateService) {}
 
