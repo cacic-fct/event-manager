@@ -21,7 +21,7 @@
             {{ event.eventEndDate && ' às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date : 'HH:mm') }}
           </h3>
           <!-- TODO: Indicar se o usuário esteve presente ou não -->
-          <ng-container *ngIf="subscribed">asd</ng-container>
+          <ng-container *ngIf="isSubscribedList"></ng-container>
         </ion-label>
       </ion-item>
     </ion-list>
