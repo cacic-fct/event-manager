@@ -28,6 +28,14 @@
           *ngIf="!subscribedToEvent">
           Inscrever-se
         </ion-button>
+        <ion-button
+          expand="block"
+          color="primary"
+          target="_blank"
+          disabled=""
+          *ngIf="!subscribedToEvent && disableSubscription">
+          Não há mais vagas
+        </ion-button>
         <ion-button expand="block" color="primary" target="_blank" disabled="" *ngIf="subscribedToEvent">
           <ion-icon name="checkmark" slot="start"></ion-icon> <span slot="end">Inscrito</span>
         </ion-button>
@@ -41,6 +49,9 @@
           [routerLink]="['/login']"
           [queryParams]="{ redirect: '/calendario/evento/' + eventItem.id }">
           Inscrever-se
+        </ion-button>
+        <ion-button expand="block" color="primary" target="_blank" disabled="" *ngIf="disableSubscription">
+          Não há mais vagas
         </ion-button>
       </div>
     </ng-container>

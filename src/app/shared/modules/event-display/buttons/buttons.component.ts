@@ -1,3 +1,4 @@
+import { EventItem } from 'src/app/shared/services/event';
 import { DateService } from './../../../services/date.service';
 import { ToastController } from '@ionic/angular';
 import { Component, Input, OnInit } from '@angular/core';
@@ -5,10 +6,11 @@ import { map, Observable, take } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 
-import { EventItem } from '../../../services/event';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { trace } from '@angular/fire/compat/performance';
+import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
+@UntilDestroy()
 /**
  * Requires the eventItem input to be passed in.
  */
@@ -24,6 +26,8 @@ export class ButtonsComponent implements OnInit {
   userID: string | undefined;
   subscribedToEvent: boolean | undefined;
   isUserAuthenticated: Observable<boolean>;
+  disableSubscription: boolean = false;
+
   constructor(
     private toastController: ToastController,
     private afs: AngularFirestore,
@@ -47,6 +51,7 @@ export class ButtonsComponent implements OnInit {
         this.afs
           .doc(`events/${this.eventItem.id}/subscriptions/${user.uid}`)
           .get()
+          .pipe(untilDestroyed(this))
           .subscribe((doc) => {
             this.subscribedToEvent = doc.exists;
           });
@@ -54,15 +59,36 @@ export class ButtonsComponent implements OnInit {
     });
   }
 
-  ngOnInit() {}
+  ngOnInit() {
+    this.afs
+      .doc<EventItem>(`events/${this.eventItem.id}`)
+      .get()
+      .pipe(untilDestroyed(this))
+      .subscribe((doc) => {
+        const event = doc.data();
+
+        if (!event) {
+          this.disableSubscription = true;
+        }
+
+        if (event!.numberOfSubscriptions && event!.slotsAvailable) {
+          if (event!.numberOfSubscriptions >= event!.slotsAvailable) {
+            this.disableSubscription = true;
+          }
+        }
+      });
+  }
 
   subscribeToEvent() {
-    if (this.eventItem.eventGroup?.groupEventIDs) {
-      this.eventItem.eventGroup.groupEventIDs.forEach((eventID) => {
-        this.auth.user.subscribe((user) => {
-          if (!user) {
-            return;
-          }
+    if (this.disableSubscription === true) {
+      return;
+    }
+    this.auth.user.subscribe((user) => {
+      if (!user) {
+        return;
+      }
+      if (this.eventItem.eventGroup?.groupEventIDs) {
+        this.eventItem.eventGroup.groupEventIDs.forEach((eventID) => {
           this.afs
             .doc(`events/${eventID}/subscriptions/${user.uid}`)
             .set({
@@ -81,12 +107,7 @@ export class ButtonsComponent implements OnInit {
                 });
             });
         });
-      });
-    } else {
-      this.auth.user.subscribe((user) => {
-        if (!user) {
-          return;
-        }
+      } else {
         this.afs
           .doc(`events/${this.eventItem.id}/subscriptions/${user.uid}`)
           .set({
@@ -104,8 +125,8 @@ export class ButtonsComponent implements OnInit {
                 this.subscribedToEvent = true;
               });
           });
-      });
-    }
+      }
+    });
   }
 
   async presentToastSubscribe() {
