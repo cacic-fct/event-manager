@@ -66,7 +66,7 @@
     let-color="color"
     let-majorEventData="majorEventData">
     <ion-card-header>
-      <ion-card-title [color]="color">{{majorEventData.name.toUpperCase()}} </ion-card-title>
+      <ion-card-title [color]="color">{{majorEventData.name}} </ion-card-title>
 
       <ion-card-subtitle [color]="color">
         <p *ngIf="subType">{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
