@@ -1,0 +1,49 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="closeModal()">
+        <ion-icon slot="icon-only" name="close"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Confirmar criação do grupo</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+  <ion-list>
+    <form [formGroup]="dataForm">
+      <ion-item>
+        <ion-label position="stacked">Nome do grupo</ion-label>
+        <ion-input type="text" formControlName="groupDisplayName"></ion-input>
+      </ion-item>
+    </form>
+  </ion-list>
+  <ion-list>
+    <ion-item *ngFor="let event of eventGroup; index as i">
+      <img [src]="emojiService.getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
+
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-label>
+              <h1 class="ion-text-wrap">{{ event.name }}</h1>
+              <h4 class="date-item">
+                Data do evento: {{ dateService.getDateFromTimestamp(event.eventStartDate) | date : 'dd/MM HH:mm' }}
+                {{
+                  event.eventEndDate
+                    ? ' - ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date : 'dd/MM HH:mm')
+                    : ''
+                }}
+              </h4>
+              <h4 *ngIf="i === 0">Evento principal</h4>
+            </ion-label>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-item>
+  </ion-list>
+  <div>
+    <ion-button [disabled]="!dataForm.valid" class="ion-padding" expand="block" (click)="createGroup()"
+      >Criar grupo</ion-button
+    >
+  </div>
+</ion-content>

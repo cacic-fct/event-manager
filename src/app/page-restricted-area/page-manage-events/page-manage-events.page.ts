@@ -1,21 +1,22 @@
+import { GroupCreationModalComponent } from './components/group-creation-modal/group-creation-modal.component';
+import { ModalController } from '@ionic/angular';
 // @ts-strict-ignore
 import { GlobalConstantsService } from './../../shared/services/global-constants.service';
 import { AlertController, ToastController } from '@ionic/angular';
 import { User } from './../../shared/services/user';
 import { EventSubscription } from './../../shared/services/event';
-import { arrayRemove, arrayUnion, serverTimestamp } from '@angular/fire/firestore';
+import { arrayRemove, arrayUnion, deleteField, serverTimestamp } from '@angular/fire/firestore';
 import { Component, OnInit } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { addYears, endOfMonth, fromUnixTime, parseISO, startOfMonth } from 'date-fns';
+import { addYears, endOfMonth, parseISO, startOfMonth } from 'date-fns';
 import { BehaviorSubject, combineLatest, map, Observable, switchMap, take } from 'rxjs';
 import { EventItem } from 'src/app/shared/services/event';
-import { Timestamp } from '@firebase/firestore-types';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
-import { DomSanitizer } from '@angular/platform-browser';
 import { EmojiService } from './../../shared/services/emoji.service';
 import { DateService } from 'src/app/shared/services/date.service';
+import { FormArray, FormBuilder, FormGroup } from '@angular/forms';
 
 interface EventItemQuery extends EventItem {
   inMajorEventName?: Observable<string>;
@@ -27,6 +28,8 @@ interface EventItemQuery extends EventItem {
   styleUrls: ['./page-manage-events.page.scss'],
 })
 export class PageManageEvents implements OnInit {
+  groupUnderSelection: boolean = false;
+  dataForm: FormGroup;
   today: Date = new Date();
   currentMonth: string = this.today.toISOString();
   currentMonth$: BehaviorSubject<string | null> = new BehaviorSubject(this.currentMonth);
@@ -34,12 +37,17 @@ export class PageManageEvents implements OnInit {
   constructor(
     private afs: AngularFirestore,
     public courses: CoursesService,
-    private sanitizer: DomSanitizer,
     private alertController: AlertController,
     private toastController: ToastController,
     public emojiService: EmojiService,
-    public dateService: DateService
-  ) {}
+    public dateService: DateService,
+    private formBuilder: FormBuilder,
+    private modalController: ModalController
+  ) {
+    this.dataForm = this.formBuilder.group({
+      selectedCheckboxes: this.formBuilder.array([]),
+    });
+  }
 
   ngOnInit() {
     this.events$ = combineLatest([this.currentMonth$]).pipe(
@@ -223,5 +231,100 @@ export class PageManageEvents implements OnInit {
           });
         });
       });
+  }
+
+  onCheckBoxChange(e: any, eventItem: EventItem) {
+    const checkArray: FormArray = this.dataForm.get('selectedCheckboxes') as FormArray;
+
+    if (e.target.checked) {
+      checkArray.push(
+        this.formBuilder.group({
+          id: eventItem.id,
+          icon: eventItem.icon,
+          name: eventItem.name,
+          eventStartDate: eventItem.eventStartDate,
+          eventEndDate: eventItem.eventEndDate,
+        })
+      );
+    } else {
+      let i = 0;
+      checkArray.controls.forEach((item: FormGroup) => {
+        if (item.controls.id.value === eventItem.id) {
+          checkArray.removeAt(i);
+          return;
+        }
+        i++;
+      });
+    }
+  }
+
+  groupEventToolbarText(length: number): string {
+    switch (length) {
+      case 0:
+        return 'Nenhum evento selecionado';
+      case 1:
+        return 'Apenas 1 evento selecionado';
+      default:
+        return `Agrupando ${length} eventos`;
+    }
+  }
+
+  cancelGroupSelection() {
+    this.groupUnderSelection = false;
+    const formArray = this.dataForm.get('selectedCheckboxes') as FormArray;
+    formArray.clear();
+  }
+
+  async confirmEventGroupDelete(event: EventItem) {
+    const alert = await this.alertController.create({
+      header: 'Deseja deletar o grupo?',
+      subHeader: `${event.eventGroup?.groupDisplayName}`,
+      message: `Um grupo só deve ser deletado se ocorreu algum engano em sua criação.<br><br>
+      Erros acontecerão se o grupo tiver certificados emitidos<br><br>
+      Este grupo contém ${event.eventGroup.groupEventIDs.length} eventos.`,
+      buttons: [
+        {
+          text: 'Não',
+        },
+        {
+          text: 'Sim',
+          handler: () => {
+            this.deleteEventGroup(event.id);
+          },
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
+  deleteEventGroup(eventID: string) {
+    this.afs
+      .collection<EventItem>(`events`, (ref) => ref.where('eventGroup.groupEventIDs', 'array-contains', eventID))
+      .get()
+      .subscribe((events) => {
+        events.forEach((event) => {
+          this.afs.doc<EventItem>(`events/${event.id}`).update({
+            // @ts-ignore
+            eventGroup: deleteField(),
+          });
+        });
+      });
+  }
+
+  async openCreateEventGroupModal() {
+    const modal = await this.modalController.create({
+      component: GroupCreationModalComponent,
+      componentProps: {
+        eventGroup: this.dataForm.get('selectedCheckboxes').value,
+      },
+      backdropDismiss: false,
+    });
+
+    modal.onDidDismiss().then(() => {
+      this.cancelGroupSelection();
+    });
+
+    return await modal.present();
   }
 }
