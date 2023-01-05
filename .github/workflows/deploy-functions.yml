@@ -1,6 +1,6 @@
 # Attribution: Dave Sugden
 # https://davelms.medium.com/deploy-firebase-functions-using-github-actions-7dbafbd4df77
-name: main
+name: Deploy Functions
 
 on: 
   release:
