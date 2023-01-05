@@ -40,10 +40,10 @@ export class ServiceWorkerService {
   async newVersionAlert() {
     const alert = await this.alertController.create({
       header: 'Nova versão disponível',
-      message: 'Atualize o aplicativo para receber melhorias e correções',
+      message: 'Atualize agora para receber melhorias e correções',
       buttons: [
         {
-          text: 'Mais tarde',
+          text: 'Não',
           role: 'cancel',
         },
         {
