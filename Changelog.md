@@ -1,3 +1,11 @@
+### 2023.01.05.11.32
+
+- Adicionado 0,5 segundo de delay na inicialização do mapa na página do manual do calouro e na aba do mapa;
+- Adicionado botão para recarregar o mapa na página do manual do calouro, para caso o mapa não carregue;
+- Desabilitado o botão de "Inscrever-se" na página de detalhes do evento, caso o evento já tenha todas as vagas preenchidas;
+- Arrumado um bug que exibia o input de carga horária indevidamente na página de criação de evento;
+- Arrumado um bug que não escrevia corretamente o campo `allowSubscription` no banco de dados.
+
 ### 2023.01.04.15.29
 
 - Adicionado interface para criação de grupos de eventos;
@@ -25,7 +33,7 @@
 
 ### 2022.10.19.15.46
 
-- Armazenar o usuário que leu o QR Code na página de presenças no BD;
+- Armazenar o usuário que leu o QR Code na página de presenças no banco de dados;
 - Botão para remover presença;
 - Arrumado `defaultHref` do botão de voltar na página de listar presenças;
 - Melhorado a mensagem de alerta do Service Worker.
