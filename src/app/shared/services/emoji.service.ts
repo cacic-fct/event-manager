@@ -18,10 +18,17 @@ export class EmojiService {
    *
    */
   getEmoji(emoji: string): SafeResourceUrl {
+    const buildUrl = (codepoints: any, assetType: any) =>
+      `https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/${codepoints}.${assetType}`;
+
     if (emoji === undefined || !/^\p{Emoji}|\p{Emoji_Modifier}$/u.test(emoji)) {
       // TODO: validar apenas 1 emoji
-      return this.sanitizer.bypassSecurityTrustResourceUrl(parse('❔')[0].url);
+      return this.sanitizer.bypassSecurityTrustResourceUrl(
+        parse('❔', {
+          buildUrl: buildUrl,
+        })[0].url
+      );
     }
-    return this.sanitizer.bypassSecurityTrustResourceUrl(parse(emoji)[0].url);
+    return this.sanitizer.bypassSecurityTrustResourceUrl(parse(emoji, { buildUrl: buildUrl })[0].url);
   }
 }
