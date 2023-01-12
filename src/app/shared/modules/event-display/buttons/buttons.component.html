@@ -25,7 +25,7 @@
           color="primary"
           target="_blank"
           (click)="subscribeToEvent()"
-          *ngIf="!subscribedToEvent && !disableSubscription">
+          *ngIf="!subscribedToEvent && !disableSubscriptionNoSlotsLeft">
           Inscrever-se
         </ion-button>
         <ion-button
@@ -33,7 +33,7 @@
           color="primary"
           target="_blank"
           disabled=""
-          *ngIf="!subscribedToEvent && disableSubscription">
+          *ngIf="!subscribedToEvent && disableSubscriptionNoSlotsLeft">
           Não há mais vagas
         </ion-button>
         <ion-button expand="block" color="primary" target="_blank" disabled="" *ngIf="subscribedToEvent">
@@ -47,10 +47,11 @@
           color="primary"
           target="_blank"
           [routerLink]="['/login']"
-          [queryParams]="{ redirect: '/calendario/evento/' + eventItem.id }">
+          [queryParams]="{ redirect: '/calendario/evento/' + eventItem.id }"
+          *ngIf="!disableSubscriptionNoSlotsLeft">
           Inscrever-se
         </ion-button>
-        <ion-button expand="block" color="primary" target="_blank" disabled="" *ngIf="disableSubscription">
+        <ion-button expand="block" color="primary" target="_blank" disabled="" *ngIf="disableSubscriptionNoSlotsLeft">
           Não há mais vagas
         </ion-button>
       </div>

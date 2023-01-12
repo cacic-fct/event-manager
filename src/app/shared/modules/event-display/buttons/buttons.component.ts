@@ -26,7 +26,7 @@ export class ButtonsComponent implements OnInit {
   userID: string | undefined;
   subscribedToEvent: boolean | undefined;
   isUserAuthenticated: Observable<boolean>;
-  disableSubscription: boolean = false;
+  disableSubscriptionNoSlotsLeft: boolean = false;
 
   constructor(
     private toastController: ToastController,
@@ -68,19 +68,19 @@ export class ButtonsComponent implements OnInit {
         const event = doc.data();
 
         if (!event) {
-          this.disableSubscription = true;
+          this.disableSubscriptionNoSlotsLeft = true;
         }
 
         if (event!.numberOfSubscriptions && event!.slotsAvailable) {
           if (event!.numberOfSubscriptions >= event!.slotsAvailable) {
-            this.disableSubscription = true;
+            this.disableSubscriptionNoSlotsLeft = true;
           }
         }
       });
   }
 
   subscribeToEvent() {
-    if (this.disableSubscription === true) {
+    if (this.disableSubscriptionNoSlotsLeft === true) {
       return;
     }
     this.auth.user.subscribe((user) => {
