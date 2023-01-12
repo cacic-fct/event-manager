@@ -25,7 +25,7 @@
           color="primary"
           target="_blank"
           (click)="subscribeToEvent()"
-          *ngIf="!subscribedToEvent">
+          *ngIf="!subscribedToEvent && !disableSubscription">
           Inscrever-se
         </ion-button>
         <ion-button
