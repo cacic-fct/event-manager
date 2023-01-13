@@ -24,6 +24,11 @@ const routes: Routes = [
     data: { preload: true },
     loadChildren: () => import('./tabs/tabs.module').then((m) => m.TabsPageModule),
   },
+  // Redirect not found routes (404) to index
+  {
+    path: '**',
+    redirectTo: '',
+  },
   {
     path: 'sobre',
     data: { preload: true },
