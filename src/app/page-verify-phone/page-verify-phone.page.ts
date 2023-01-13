@@ -10,7 +10,7 @@ import { timer, take, interval, Subscription } from 'rxjs';
 
 import { ModalController } from '@ionic/angular';
 
-import * as authFirebase from 'firebase/auth';
+import { linkWithPhoneNumber } from 'firebase/auth';
 import { User } from '../shared/services/user';
 
 import { Mailto, MailtoService } from './../shared/services/mailto.service';
@@ -128,8 +128,7 @@ export class PageVerifyPhonePage implements OnInit {
 
     this.auth.authState.pipe(take(1)).subscribe((user) => {
       if (user) {
-        authFirebase
-          .linkWithPhoneNumber(user, fullPhoneNumber, appVerifier)
+        linkWithPhoneNumber(user, fullPhoneNumber, appVerifier)
           .then((confirmationResult) => {
             // SMS sent
             this.windowRef.confirmationResult = confirmationResult;

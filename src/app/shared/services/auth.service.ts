@@ -13,7 +13,7 @@ import { take, Observable, map, switchMap } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { PageVerifyPhonePage } from 'src/app/page-verify-phone/page-verify-phone.page';
 
-import * as firebaseAuth from 'firebase/auth';
+import { unlink } from 'firebase/auth';
 import { AngularFireFunctions } from '@angular/fire/compat/functions';
 import { getStringChanges, RemoteConfig, getBooleanChanges } from '@angular/fire/remote-config';
 import { arrayRemove } from '@angular/fire/firestore';
@@ -270,7 +270,7 @@ export class AuthService {
   }
 
   async phoneUnlink() {
-    firebaseAuth.unlink(this.userData, firebase.auth.PhoneAuthProvider.PROVIDER_ID);
+    unlink(this.userData, firebase.auth.PhoneAuthProvider.PROVIDER_ID);
   }
   getUserUid(manualInput: string): GetUserUIDResponse | Observable<GetUserUIDResponse> {
     // Remove spaces from the string

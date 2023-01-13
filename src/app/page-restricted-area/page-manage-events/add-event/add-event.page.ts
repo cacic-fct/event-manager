@@ -8,8 +8,7 @@ import { format, getDayOfYear, isEqual, parseISO, setDayOfYear, subMilliseconds 
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
 import { take, Observable, map } from 'rxjs';
-import * as firestore from '@firebase/firestore';
-import { Timestamp } from '@firebase/firestore';
+import { Timestamp, arrayUnion } from '@firebase/firestore';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { EventItem } from 'src/app/shared/services/event';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
@@ -175,7 +174,7 @@ export class AddEventPage implements OnInit {
               name: this.dataForm.get('name').value,
               shortDescription: this.dataForm.get('shortDescription').value,
               description: this.dataForm.get('description').value,
-              eventStartDate: firestore.Timestamp.fromDate(new Date(this.dataForm.get('eventStartDate').value)),
+              eventStartDate: Timestamp.fromDate(new Date(this.dataForm.get('eventStartDate').value)),
               eventEndDate: dateEnd,
               location: location,
               youtubeCode: this.dataForm.get('youtubeCode').value || null,
@@ -204,7 +203,7 @@ export class AddEventPage implements OnInit {
                 this.afs
                   .collection('majorEvents')
                   .doc(majorEvent)
-                  .update({ events: firestore.arrayUnion(eventId) })
+                  .update({ events: arrayUnion(eventId) })
                   .then(() => {
                     this.addEventSuccess();
                   })
