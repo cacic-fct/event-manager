@@ -106,7 +106,6 @@ export class PageManageEvents implements OnInit {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit',
       })}`,
       buttons: [
         {
@@ -161,7 +160,7 @@ export class PageManageEvents implements OnInit {
 
   async confirmCloseOnlineAttendance(event: EventItem) {
     const alert = await this.alertController.create({
-      header: 'Deseja fechar presença?',
+      header: 'Deseja encerrar presença?',
       subHeader: `${event.name}`,
       message: `Data do evento: ${this.dateService.getDateFromTimestamp(event.eventStartDate).toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo',
@@ -284,7 +283,7 @@ export class PageManageEvents implements OnInit {
       Este grupo contém ${event.eventGroup.groupEventIDs.length} eventos.`,
       buttons: [
         {
-          text: 'Não',
+          text: 'Cancelar',
         },
         {
           text: 'Sim',

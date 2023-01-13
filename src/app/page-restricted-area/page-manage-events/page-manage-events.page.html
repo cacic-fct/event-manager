@@ -96,7 +96,7 @@
                 <ion-col *ngIf="!groupUnderSelection">
                   <ion-button
                     fill="clear"
-                    color="danger"
+                    color="tertiary"
                     *ngIf="item.collectAttendance && (!item.attendanceCollectionStart || item.attendanceCollectionEnd)"
                     (click)="confirmOpenOnlineAttendance(item)">
                     <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
@@ -104,15 +104,7 @@
                   </ion-button>
                   <ion-button
                     fill="clear"
-                    color="danger"
-                    *ngIf="item.eventGroup"
-                    (click)="confirmEventGroupDelete(item)">
-                    <ion-icon name="folder" slot="start" aria-hidden="true"></ion-icon>
-                    <p slot="end">Excluir grupo</p>
-                  </ion-button>
-                  <ion-button
-                    fill="clear"
-                    color="danger"
+                    color="tertiary"
                     *ngIf="item.attendanceCollectionStart && !item.attendanceCollectionEnd"
                     (click)="copyCode(item.attendanceCode)">
                     <ion-icon name="copy" slot="start" aria-hidden="true"></ion-icon>
@@ -120,11 +112,21 @@
                   </ion-button>
                   <ion-button
                     fill="clear"
-                    color="danger"
+                    color="tertiary"
                     *ngIf="item.attendanceCollectionStart && !item.attendanceCollectionEnd"
                     (click)="confirmCloseOnlineAttendance(item)">
                     <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
-                    <p slot="end">Fechar presença on-line</p>
+                    <p slot="end">Encerrar presença on-line</p>
+                  </ion-button>
+                </ion-col>
+                <ion-col *ngIf="!groupUnderSelection">
+                  <ion-button
+                    fill="clear"
+                    color="danger"
+                    *ngIf="item.eventGroup"
+                    (click)="confirmEventGroupDelete(item)">
+                    <ion-icon name="folder" slot="start" aria-hidden="true"></ion-icon>
+                    <p slot="end">Excluir grupo</p>
                   </ion-button>
                 </ion-col>
               </ion-row>
