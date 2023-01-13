@@ -67,7 +67,9 @@
           <ion-label>
             <ng-container *ngIf="(attendancePerson.user | async) as user">
               <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
-              <h2 class="ion-text-wrap" *ngIf="!user.fullName">Nome não cadastrado: {{ user.displayName }}</h2>
+              <h2 class="ion-text-wrap" *ngIf="!user.fullName">
+                <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+              </h2>
               <ng-container *ngIf="user.academicID; else notUnesp">
                 <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
               </ng-container>
@@ -94,7 +96,9 @@
           <ion-label>
             <ng-container *ngIf="(nonPayingAttendancePerson.user | async) as user">
               <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
-              <h2 class="ion-text-wrap" *ngIf="!user.fullName">Nome não cadastrado: {{ user.displayName }}</h2>
+              <h2 class="ion-text-wrap" *ngIf="!user.fullName">
+                <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+              </h2>
               <ng-container *ngIf="user.academicID; else notUnesp">
                 <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
               </ng-container>
