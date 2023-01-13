@@ -281,7 +281,7 @@ export class PagePayPage implements OnInit {
   async toastSuccess() {
     const toast = await this.toastController.create({
       header: 'Comprovante enviado',
-      message: 'Acompanhe o status do pagamento através da página "minhas inscrições"',
+      message: 'Acompanhe o status do pagamento através da página "minhas participações"',
       icon: 'checkmark-circle',
       position: 'bottom',
       duration: 7000,

@@ -122,7 +122,7 @@ const routes: Routes = [
   },
   {
     path: 'inscricoes',
-    title: 'Minhas inscrições',
+    title: 'Minhas participações',
     loadChildren: () =>
       import('./page-subscriptions-payments/page-subscriptions.module').then((m) => m.PageSubscriptionsPageModule),
     ...canActivate(redirectUnauthorizedToLogin),
