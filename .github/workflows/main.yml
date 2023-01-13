@@ -1,3 +1,5 @@
+# Attribution: Oleksii Holub (Tyrrrz)
+# https://github.com/Tyrrrz/DiscordChatExporter
 name: main
 
 on: [push, pull_request]
@@ -53,14 +55,10 @@ jobs:
           projectId: fct-pp
 
       - name: Create release
-        id: create_release
-        uses: actions/create-release@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          body: |
+          body_path: |
             [Changelog](https://github.com/cacic-fct/fct-app/blob/main/Changelog.md)
+          token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
