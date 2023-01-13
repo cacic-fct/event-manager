@@ -59,6 +59,5 @@ jobs:
         with:
           body_path: |
             [Changelog](https://github.com/cacic-fct/fct-app/blob/main/Changelog.md)
-          token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
