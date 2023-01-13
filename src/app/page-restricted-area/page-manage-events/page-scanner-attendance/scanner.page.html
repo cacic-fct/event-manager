@@ -81,7 +81,7 @@
               <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
             </ng-container>
             <h3 class="ion-text-wrap">
-              {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "HH:mm:ss - dd/MM/y" }}
+              {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
             </h3>
           </ion-label>
         </ion-item>
@@ -110,7 +110,7 @@
               <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
             </ng-container>
             <h3 class="ion-text-wrap">
-              {{ dateService.getDateFromTimestamp(nonPayingAttendancePerson.time) | date: "HH:mm:ss - dd/MM/y" }}
+              {{ dateService.getDateFromTimestamp(nonPayingAttendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
             </h3>
           </ion-label>
         </ion-item>

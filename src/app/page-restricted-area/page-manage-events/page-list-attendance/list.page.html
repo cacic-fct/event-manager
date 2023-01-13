@@ -37,7 +37,7 @@
 
           <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
           <h3 class="ion-text-wrap">
-            {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "HH:mm:ss - dd/MM/y" }}
+            {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
           </h3>
           <ion-button slot="end" (click)="deleteAlert(attendancePerson.id, (user.fullName || user.displayName))">
             <ion-icon slot="start" name="trash-outline">Remover presença</ion-icon>
