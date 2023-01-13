@@ -35,7 +35,7 @@
           </ng-container>
 
           <ng-template #notUnesp>
-            <h3 class="ion-text-wrap" *ngIf="user.academicID">Sem RA definido</h3>
+            <h3 class="ion-text-wrap" *ngIf="!user.academicID">Sem RA definido</h3>
           </ng-template>
 
           <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
