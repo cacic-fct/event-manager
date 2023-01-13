@@ -8,21 +8,26 @@
 </ion-header>
 
 <ion-content>
+  <div class="ion-padding" *ngIf="event$ | async; let event">
+    <h3 style="margin-bottom: 0">{{ event.name }}</h3>
+    <h4 style="margin: 0">{{ event.shortDescription }}</h4>
+    <h5 style="margin-top: 0">
+      {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+    </h5>
+    <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
+  </div>
   <ng-container *ngIf="attendanceCollection$ | async as attendancePeople; else: loading">
-    <div class="ion-padding" *ngIf="event$ | async; let event">
-      <h3 style="margin-bottom: 0">{{ event.name }}</h3>
-      <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-      <h5 style="margin-top: 0">
-        {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
-      </h5>
-      <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
-    </div>
     <div class="ion-padding-horizontal">
-      <p><b>Total de scans para este evento:</b> {{attendancePeople.length}}</p>
+      <p><b>Total de presenças coletadas:</b> {{attendancePeople.length | number: '2.0-0'}}</p>
     </div>
+    <!-- <ion-button (click)="orderByDesc = !orderByDesc" class="ion-margin-bottom" fill="clear">
+      <ion-icon slot="start" [name]="orderByDesc ? 'arrow-down' : 'arrow-up'"></ion-icon>
+      Data
+    </ion-button> -->
+
     <ion-item *ngFor="let attendancePerson of attendancePeople">
-      <ion-label>
-        <ng-container *ngIf="(attendancePerson.user | async) as user">
+      <ng-container *ngIf="(attendancePerson.user | async) as user">
+        <ion-label>
           <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
           <h2 class="ion-text-wrap" *ngIf="!user.fullName">
             <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
@@ -39,11 +44,11 @@
           <h3 class="ion-text-wrap">
             {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
           </h3>
-          <ion-button slot="end" (click)="deleteAlert(attendancePerson.id, (user.fullName || user.displayName))">
-            <ion-icon slot="start" name="trash-outline">Remover presença</ion-icon>
-          </ion-button>
-        </ng-container>
-      </ion-label>
+        </ion-label>
+        <ion-button slot="end" (click)="deleteAlert(attendancePerson.id, (user.fullName || user.displayName))">
+          <ion-icon slot="icon-only" name="trash-outline">Remover presença</ion-icon>
+        </ion-button>
+      </ng-container>
     </ion-item>
   </ng-container>
 

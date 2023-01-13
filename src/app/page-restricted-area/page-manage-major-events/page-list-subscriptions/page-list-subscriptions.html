@@ -21,7 +21,7 @@
       </ion-button>
     </div>
     <div class="ion-padding-horizontal">
-      <p><b>Total de inscritos para este evento:</b> {{subscriptions.length}}</p>
+      <p><b>Total de inscritos:</b> {{subscriptions.length | number: '2.0-0'}}</p>
     </div>
     <ion-item *ngFor="let subscriptionItem of subscriptions">
       <ion-label>

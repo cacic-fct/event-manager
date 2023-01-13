@@ -47,9 +47,9 @@
           </h5>
 
           <p>
-            <b>Scans desta sessão:</b> {{ attendanceSessionScans }}
+            <b>Scans desta sessão:</b> {{ attendanceSessionScans | number: '2.0-0' }}
             <br />
-            <b>Total de presentes:</b> {{ attendancePeople.length }}
+            <b>Total de presentes:</b> {{ attendancePeople.length | number: '2.0-0'}}
           </p>
 
           <ion-item>
