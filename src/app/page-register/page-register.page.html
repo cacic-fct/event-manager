@@ -57,6 +57,9 @@
           <ion-label class="ion-text-wrap">Nome completo</ion-label>
           <ion-input type="text" value="{{userData.fullName}}" formControlName="fullName" placeholder="Sem abreviações">
           </ion-input>
+          <ion-note slot="helper">
+            Utilizamos o seu nome completo para a geração de certificados de participação.
+          </ion-note>
         </ion-item>
 
         <ion-item>
@@ -73,6 +76,8 @@
       <ion-item>
         <ion-label class="ion-text-wrap">CPF</ion-label>
         <ion-input formControlName="cpf" inputmode="numeric" maxlength="14" (ionChange)="formatCPF()"> </ion-input>
+        <ion-note slot="helper"> Utilizamos o seu CPF apenas para a geração de certificados de participação. </ion-note>
+        <ion-note slot="error"> Utilizamos o seu CPF apenas para a geração de certificados de participação. </ion-note>
       </ion-item>
 
       <ion-item>
@@ -97,10 +102,6 @@
       <p style="font-size: 0.75em" class="ion-padding-horizontal">
         Poderemos entrar em contato para confirmar ou complementar estas informações ou para informar sobre eventuais
         problemas com pagamentos.
-      </p>
-
-      <p style="font-size: 0.75em" class="ion-padding-horizontal">
-        Utilizamos o seu nome completo e CPF apenas para a geração de certificados de participação.
       </p>
 
       <p style="font-size: 0.75em" class="ion-padding-horizontal">
