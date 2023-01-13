@@ -259,7 +259,13 @@ export class ScannerPage implements OnInit {
       .pipe(
         untilDestroyed(this),
         trace('firestore'),
-        map((subscription) => subscription.payment.status == 2)
+        map((subscription) => {
+          if (subscription) {
+            return subscription.payment.status == 2;
+          } else {
+            return false;
+          }
+        })
       );
   }
 
