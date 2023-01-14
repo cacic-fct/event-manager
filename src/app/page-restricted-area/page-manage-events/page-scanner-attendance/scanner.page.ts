@@ -2,7 +2,7 @@
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { Component, Input, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
-import { BehaviorSubject, take, isObservable, map, Observable } from 'rxjs';
+import { BehaviorSubject, take, map, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
@@ -13,7 +13,7 @@ import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
-import { AuthService, GetUserUIDResponse } from 'src/app/shared/services/auth.service';
+import { AuthService } from 'src/app/shared/services/auth.service';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { DateService } from 'src/app/shared/services/date.service';
@@ -380,32 +380,19 @@ export class ScannerPage implements OnInit {
       });
   }
 
-  manualAttendance() {
-    const response = this.authService.getUserUid(this.manualInput);
+  async manualAttendance() {
+    const response = await this.authService.getUserUid(this.manualInput);
 
     this.manualInput = '';
-    if (this.authService.instanceOfResponse(response) && response.status === false) {
-      if (response.message) {
-        this.backdropColor('invalid');
-        this.toastRequestError(response.message);
-      }
+
+    if (!response.success) {
+      this.backdropColor('invalid');
+      this.toastRequestError(response.message);
+      console.error(response.message);
       return;
     }
 
-    if (isObservable(response)) {
-      response.pipe(take(1)).subscribe((response: GetUserUIDResponse) => {
-        // If cloud function returns a message, it's an error
-        if (response.message) {
-          this.backdropColor('invalid');
-          this.toastRequestError(response.message);
-          console.error(response.message);
-          return;
-        } else {
-          const uid = response.uid;
-          this.writeUserAttendance(uid);
-        }
-      });
-    }
+    this.writeUserAttendance(response.data);
   }
 
   async toastSucess() {

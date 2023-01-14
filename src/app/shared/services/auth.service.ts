@@ -1,3 +1,4 @@
+import { StringDataReturnType } from './cloud-functions.service';
 // @ts-strict-ignore
 import { EventItem } from 'src/app/shared/services/event';
 import { Injectable, NgZone } from '@angular/core';
@@ -9,7 +10,7 @@ import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
-import { take, Observable, map, switchMap } from 'rxjs';
+import { take, Observable, map, switchMap, lastValueFrom } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { PageVerifyPhonePage } from 'src/app/page-verify-phone/page-verify-phone.page';
 
@@ -272,7 +273,8 @@ export class AuthService {
   async phoneUnlink() {
     unlink(this.userData, firebase.auth.PhoneAuthProvider.PROVIDER_ID);
   }
-  getUserUid(manualInput: string): GetUserUIDResponse | Observable<GetUserUIDResponse> {
+
+  async getUserUid(manualInput: string): Promise<StringDataReturnType> {
     // Remove spaces from the string
     manualInput = manualInput.replace(/\s/g, '');
 
@@ -281,12 +283,12 @@ export class AuthService {
 
     // If string doesn't include "@" and isn't numeric only or is empty, return false
     if ((!manualInput.includes('@') && !isNumeric) || manualInput === '') {
-      return { message: 'Os dados inseridos são inválidos', status: false };
+      return { message: 'Os dados inseridos são inválidos', success: false, data: null };
     }
 
     if (isNumeric) {
       if (manualInput.length < 11 || manualInput.length > 14) {
-        return { message: 'O número de telefone deve ter entre 11 e 14 dígitos', status: false };
+        return { message: 'O número de telefone deve ter entre 11 e 14 dígitos', success: false, data: null };
       }
 
       // If string is numeric only and has length of 11, add country code
@@ -299,16 +301,6 @@ export class AuthService {
 
     const getUserUid = this.fns.httpsCallable('user_utils-getUserUid');
 
-    return getUserUid({ string: manualInput });
+    return await lastValueFrom(getUserUid({ string: manualInput }));
   }
-
-  instanceOfResponse(object: any): object is GetUserUIDResponse {
-    return 'message' in object;
-  }
-}
-
-export interface GetUserUIDResponse {
-  status?: boolean;
-  message?: string;
-  uid?: string;
 }

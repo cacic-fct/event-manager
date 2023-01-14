@@ -2,8 +2,9 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue } from 'firebase-admin/firestore';
+import { MainReturnType } from './../shared/return-types';
 
-exports.addAdminRole = functions.https.onCall((data, context) => {
+exports.addAdminRole = functions.https.onCall(async (data, context): Promise<MainReturnType> => {
   if (context.app == undefined) {
     throw new functions.https.HttpsError(
       'failed-precondition',
@@ -21,31 +22,29 @@ exports.addAdminRole = functions.https.onCall((data, context) => {
   }
 
   // Get user and add custom claim (admin)
-  return getAuth()
-    .getUserByEmail(data.email)
-    .then((user) => {
-      return getAuth().setCustomUserClaims(user.uid, {
-        role: 1000,
-      });
-    })
-    .then(() => {
-      const firestore = admin.firestore();
-      const document = firestore.doc('claims/admin');
 
-      document.set({ admins: FieldValue.arrayUnion(data.email) }, { merge: true });
-
-      return {
-        message: `${data.email} has been made an admin`,
-      };
-    })
-    .catch((error) => {
-      return {
-        message: `${error}`,
-      };
+  try {
+    const user = await getAuth().getUserByEmail(data.email);
+    getAuth().setCustomUserClaims(user.uid, {
+      role: 1000,
     });
+    const firestore = admin.firestore();
+    const document = firestore.doc('claims/admin');
+
+    document.set({ admins: FieldValue.arrayUnion(data.email) }, { merge: true });
+    return {
+      message: `${data.email} has been made an admin`,
+      success: true,
+    };
+  } catch (error) {
+    return {
+      message: `${error}`,
+      success: false,
+    };
+  }
 });
 
-exports.removeAdminRole = functions.https.onCall((data, context) => {
+exports.removeAdminRole = functions.https.onCall(async (data, context): Promise<MainReturnType> => {
   if (context.app == undefined) {
     throw new functions.https.HttpsError(
       'failed-precondition',
@@ -64,51 +63,45 @@ exports.removeAdminRole = functions.https.onCall((data, context) => {
   const remoteConfig = admin.remoteConfig();
 
   // Get whitelist array as string from remote config
-  return remoteConfig.getTemplate().then((template) => {
-    // @ts-ignore
-    const whitelist: string = template.parameters.adminWhitelist.defaultValue?.value;
+  const template = await remoteConfig.getTemplate();
+  // @ts-ignore
+  const whitelist: string = template.parameters.adminWhitelist.defaultValue?.value;
+  // Check if email is included in whitelist array
+  if (whitelist.includes(data.email)) {
+    throw new functions.https.HttpsError('failed-precondition', 'You cannot remove this user.');
+  }
+  try {
+    const user = await getAuth().getUserByEmail(data.email);
+    getAuth().setCustomUserClaims(user.uid, {
+      role: undefined,
+    });
+    const firestore = admin.firestore();
+    const document = firestore.doc('claims/admin');
 
-    // Check if email is included in whitelist array
-    if (whitelist.includes(data.email)) {
-      throw new functions.https.HttpsError('failed-precondition', 'You cannot remove this user.');
-    }
-
-    return getAuth()
-      .getUserByEmail(data.email)
-      .then((user) => {
-        return getAuth().setCustomUserClaims(user.uid, {
-          role: undefined,
-        });
-      })
-      .then(() => {
-        const firestore = admin.firestore();
-        const document = firestore.doc('claims/admin');
-
-        // Get admin array from document
-        document.get().then((doc) => {
-          const admins = doc.data()?.admins;
-          if (admins === undefined) {
-            return;
-          }
-          // Remove admin from array
-          admins.splice(admins.indexOf(data.email), 1);
-          // Update document with new array
-          return document.update({ admins });
-        });
-
-        return {
-          message: `Success! ${data.email} has been demoted from admin`,
-        };
-      })
-      .catch((error) => {
-        return {
-          message: `An error has occured: ${error}`,
-        };
-      });
-  });
+    // Get admin array from document
+    document.get().then((doc) => {
+      const admins = doc.data()?.admins;
+      if (admins === undefined) {
+        return;
+      }
+      // Remove admin from array
+      admins.splice(admins.indexOf(data.email), 1);
+      // Update document with new array
+      return document.update({ admins });
+    });
+    return {
+      message: `Success! ${data.email} has been demoted from admin`,
+      success: true,
+    };
+  } catch (error) {
+    return {
+      message: `An error has occured: ${error}`,
+      success: false,
+    };
+  }
 });
 
-exports.addProfessorRole = functions.https.onCall((data, context) => {
+exports.addProfessorRole = functions.https.onCall(async (data, context): Promise<MainReturnType> => {
   if (context.app == undefined) {
     throw new functions.https.HttpsError(
       'failed-precondition',
@@ -137,6 +130,7 @@ exports.addProfessorRole = functions.https.onCall((data, context) => {
       if (!professors.includes(data.email)) {
         return {
           message: `${data.email} is not a professor`,
+          success: false,
         };
       }
 
@@ -155,17 +149,20 @@ exports.addProfessorRole = functions.https.onCall((data, context) => {
 
           return {
             message: `${data.email} has been made a professor`,
+            success: true,
           };
         })
         .catch((error) => {
           return {
             message: `${error}`,
+            success: false,
           };
         });
     })
     .catch((error) => {
       return {
         message: `${error}`,
+        success: false,
       };
     });
 });

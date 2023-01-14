@@ -1,10 +1,11 @@
 import * as functions from 'firebase-functions';
 import { getAuth } from 'firebase-admin/auth';
+import { StringDataReturnType } from '../../shared/return-types';
 
 // Attribution: The Net Ninja
 // https://youtube.com/watch?v=VvcBqPua2DI&list=PL4cUxeGkcC9jUPIes_B8vRjn1_GaplOPQ
 
-exports.getUserUid = functions.https.onCall((data, context) => {
+exports.getUserUid = functions.https.onCall(async (data, context): Promise<StringDataReturnType> => {
   if (!context.auth) {
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
   }
@@ -21,20 +22,20 @@ exports.getUserUid = functions.https.onCall((data, context) => {
   }
 
   if (data.string === '') {
-    return { message: 'Invalid argument: A string must be provided.' };
+    return { message: 'Invalid argument: A string must be provided.', success: false, data: null };
   }
 
   if (data.string.includes('@')) {
-    return getAuth()
-      .getUserByEmail(data.string)
-      .then((user) => {
-        return {
-          uid: user.uid,
-        };
-      })
-      .catch((error) => {
-        return { message: `${error}` };
-      });
+    try {
+      const user = await getAuth().getUserByEmail(data.string);
+      return {
+        data: user.uid,
+        success: true,
+        message: 'User found by email',
+      };
+    } catch (error) {
+      return { message: `${error}`, success: false, data: null };
+    }
   }
   // Remove spaces from the string
   data.string = data.string.replace(/\s/g, '');
@@ -44,11 +45,11 @@ exports.getUserUid = functions.https.onCall((data, context) => {
 
   // Check if string only has numbers
   if (!isNumeric) {
-    return { message: 'Invalid argument: Invalid input' };
+    return { message: 'Invalid argument: Invalid input', success: false, data: null };
   }
 
   if (data.string.length < 11 || data.string.length > 14) {
-    return { message: 'Invalid argument: Invalid input' };
+    return { message: 'Invalid argument: Invalid input', success: false, data: null };
   }
 
   if (data.string.length === 11) {
@@ -57,14 +58,14 @@ exports.getUserUid = functions.https.onCall((data, context) => {
     data.string = `+${data.string}`;
   }
 
-  return getAuth()
-    .getUserByPhoneNumber(data.string)
-    .then((user) => {
-      return {
-        uid: user.uid,
-      };
-    })
-    .catch((error) => {
-      return { message: `${error}` };
-    });
+  try {
+    const user = await getAuth().getUserByPhoneNumber(data.string);
+    return {
+      data: user.uid,
+      success: true,
+      message: 'User found by phone number',
+    };
+  } catch (error) {
+    return { message: `${error}`, success: false, data: null };
+  }
 });

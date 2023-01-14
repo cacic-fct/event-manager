@@ -13,126 +13,82 @@ import {
   externalData,
   externalDataFirestoreDocument,
 } from './user-data';
+import { MainReturnType } from '../../../shared/return-types';
 
-exports.createAdminUser = functions.https.onCall(() => {
+exports.createAdminUser = functions.https.onCall(async (): Promise<MainReturnType> => {
   const firestore = admin.firestore();
-
-  getAuth()
-    .importUsers([adminData])
-    .then(() => {
-      console.log('Sucessfully created admin user');
-      getAuth()
-        .setCustomUserClaims(adminData.uid, {
-          role: 1000,
-        })
-        .catch((error) => {
-          console.error('Error setting custom claims for admin user:', error);
-        });
-
-      firestore
-        .collection('claims')
-        .doc('admin')
-        .set(
-          {
-            admins: FieldValue.arrayUnion(adminData.uid),
-          },
-          { merge: true }
-        )
-        .catch((error) => {
-          console.error('Error writing admin claim to database:', error);
-        });
-
-      firestore
-        .collection('users')
-        .doc(adminData.uid)
-        .set(adminDataFirestoreDocument)
-        .catch((error) => {
-          console.error('Error writing admin data to database:', error);
-        });
+  try {
+    await getAuth().importUsers([adminData]);
+    console.log('Sucessfully created admin user');
+    await getAuth().setCustomUserClaims(adminData.uid, {
+      role: 1000,
     });
-  return { success: true };
+    await firestore
+      .collection('claims')
+      .doc('admin')
+      .set(
+        {
+          admins: FieldValue.arrayUnion(adminData.uid),
+        },
+        { merge: true }
+      );
+    await firestore.collection('users').doc(adminData.uid).set(adminDataFirestoreDocument);
+    return { success: true, message: 'Successfully created admin user' };
+  } catch (error) {
+    console.error('Error creating admin user:', error);
+    return { success: false, message: 'Error creating admin user' };
+  }
 });
 
-exports.createUndergraduateUser = functions.https.onCall(() => {
+exports.createUndergraduateUser = functions.https.onCall(async (): Promise<MainReturnType> => {
   const firestore = admin.firestore();
 
-  getAuth()
-    .importUsers([undergraduateData])
-    .then(() => {
-      console.log('Successfully created undergraduate user');
-      firestore
-        .collection('users')
-        .doc(undergraduateData.uid)
-        .set(undergraduateDataFirestoreDocument)
-        .catch((error) => {
-          console.error('Error writing undergraduate data to database:', error);
-        });
-    })
-    .catch((error) => {
-      console.error('Error creating undergraduate user:', error);
-    });
-  return { success: true };
+  try {
+    await getAuth().importUsers([undergraduateData]);
+    console.log('Successfully created undergraduate user');
+    await firestore.collection('users').doc(undergraduateData.uid).set(undergraduateDataFirestoreDocument);
+  } catch (error) {
+    console.error('Error creating undergraduate user:', error);
+    return { success: false, message: 'Error creating undergraduate user' };
+  }
+  return { success: true, message: 'Successfully created undergraduate user' };
 });
 
-exports.createProfessorUser = functions.https.onCall(() => {
+exports.createProfessorUser = functions.https.onCall(async (): Promise<MainReturnType> => {
   const firestore = admin.firestore();
 
-  getAuth()
-    .importUsers([professorData])
-    .then(() => {
-      console.log('Successfully created professor user');
-      getAuth()
-        .setCustomUserClaims(adminData.uid, {
-          role: 1000,
-        })
-        .catch((error) => {
-          console.error('Error setting custom claims for professor user:', error);
-        });
-
-      firestore
-        .collection('claims')
-        .doc('professor')
-        .set(
-          {
-            professors: FieldValue.arrayUnion(professorData.uid),
-          },
-          { merge: true }
-        )
-        .catch((error) => {
-          console.error('Error writing professor claim to database:', error);
-        });
-
-      firestore
-        .collection('users')
-        .doc(professorData.uid)
-        .set(professorDataFirestoreDocument)
-        .catch((error) => {
-          console.error('Error writing professor data to database:', error);
-        });
-    })
-    .catch((error) => {
-      console.error('Error creating professor user:', error);
+  try {
+    await getAuth().importUsers([professorData]);
+    await getAuth().setCustomUserClaims(adminData.uid, {
+      role: 1000,
     });
-  return { success: true };
+    await firestore
+      .collection('claims')
+      .doc('professor')
+      .set(
+        {
+          professors: FieldValue.arrayUnion(professorData.uid),
+        },
+        { merge: true }
+      );
+    await firestore.collection('users').doc(professorData.uid).set(professorDataFirestoreDocument);
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: 'Error creating professor user' };
+  }
+  return { success: true, message: 'Successfully created professor user' };
 });
 
-exports.createExternalUser = functions.https.onCall(() => {
+exports.createExternalUser = functions.https.onCall(async (): Promise<MainReturnType> => {
   const firestore = admin.firestore();
 
-  getAuth()
-    .importUsers([externalData])
-    .then(() => {
-      console.log('Successfully created external user');
-      firestore
-        .collection('users')
-        .doc(externalData.uid)
-        .set(externalDataFirestoreDocument)
-        .catch((error) => {
-          console.error('Error writing external user data to database:', error);
-        });
-    })
-    .catch((error) => {
-      console.error('Error creating external user:', error);
-    });
-  return { success: true };
+  try {
+    await getAuth().importUsers([externalData]);
+    console.log('Successfully created external user');
+    await firestore.collection('users').doc(externalData.uid).set(externalDataFirestoreDocument);
+  } catch (error) {
+    console.error('Error creating external user:', error);
+    return { success: false, message: 'Error creating external user' };
+  }
+  return { success: true, message: 'Successfully created external user' };
 });

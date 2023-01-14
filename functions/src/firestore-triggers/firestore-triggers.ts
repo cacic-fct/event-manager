@@ -4,7 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 exports.createEventSubscription = functions.firestore
   .document(`events/{eventId}/subscriptions/{userId}`)
-  .onCreate(async (snap, context) => {
+  .onCreate(async (snap, context): Promise<void> => {
     const eventRef = admin.firestore().collection('events').doc(context.params.eventId);
     const event = await eventRef.get();
     const numberOfSubscriptions = event.data()?.numberOfSubscriptions;
@@ -16,7 +16,7 @@ exports.createEventSubscription = functions.firestore
 
 exports.createMajorEventSubscription = functions.firestore
   .document(`majorEvents/{eventId}/subscriptions/{userId}`)
-  .onCreate(async (snap, context) => {
+  .onCreate(async (snap, context): Promise<void> => {
     const data = snap.data();
 
     // For each array in subscribedToEvents, increment the numberOfSubscriptions
@@ -30,7 +30,7 @@ exports.createMajorEventSubscription = functions.firestore
 
 exports.updateMajorEventSubscription = functions.firestore
   .document(`majorEvents/{eventId}/subscriptions/{userId}`)
-  .onUpdate(async (change, context) => {
+  .onUpdate(async (change, context): Promise<void> => {
     const beforeChange = change.before.data();
     const afterChange = change.after.data();
 
