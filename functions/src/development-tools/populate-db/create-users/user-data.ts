@@ -35,6 +35,7 @@ export const adminDataFirestoreDocument = {
   academicID: '201200000',
   dataVersion: '0.3.0',
   uid: adminData.uid,
+  cpf: '159.762.260-51',
 };
 
 export const undergraduateData: UserImportRecord = {
@@ -72,6 +73,7 @@ export const undergraduateDataFirestoreDocument = {
   academicID: '201200000',
   dataVersion: '0.3.0',
   uid: undergraduateData.uid,
+  cpf: '159.762.260-51',
 };
 
 export const professorData: UserImportRecord = {
@@ -108,6 +110,7 @@ export const professorDataFirestoreDocument = {
   associateStatus: 'professor',
   dataVersion: '0.3.0',
   uid: professorData.uid,
+  cpf: '159.762.260-51',
 };
 
 export const externalData: UserImportRecord = {
@@ -144,4 +147,5 @@ export const externalDataFirestoreDocument = {
   associateStatus: 'external',
   dataVersion: '0.3.0',
   uid: externalData.uid,
+  cpf: '159.762.260-51',
 };
