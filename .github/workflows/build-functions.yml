@@ -4,14 +4,17 @@ on:
   push:
     paths:
      — 'functions/**'
+    branches:
+     - '**'
 
   pull_request:
     paths:
      — 'functions/**'
+    branches:
+     - '**'
 
 jobs:
   build_functions:
-    if: ${{ !github.ref_type == 'tag' }}
     runs-on: ubuntu-latest
 
     steps:
