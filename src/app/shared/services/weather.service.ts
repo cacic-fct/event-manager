@@ -40,7 +40,8 @@ export class WeatherService {
   constructor(private http: HttpClient) {}
 
   getWeather(date: Date, lat: number, lon: number) {
-    if (date > add(new Date(), { days: 7 })) {
+    // Only allow dates within 7 days from today
+    if (date > add(new Date(), { days: 7 }) || date < add(new Date(), { days: -7 })) {
       return new Observable<never>();
     }
 
