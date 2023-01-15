@@ -145,7 +145,7 @@ export const group_event = (i: number) => {
 
 export const paidMajorEvent_group_event = (i: number) => {
   return {
-    name: `Minicurso - Evento ${i} - Grande evento pago`,
+    name: `Minicurso - Evento ${i} do grupo - Grande evento pago`,
     description: 'Pertence ao Grande evento pago',
     shortDescription: 'Pertence ao Grande evento pago',
     course: '12',
