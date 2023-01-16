@@ -1,9 +1,11 @@
+import { ListCertificatesComponent } from './../components/list-certificates/list-certificates.component';
+import { ModalController } from '@ionic/angular';
 // @ts-strict-ignore
 import { Component, OnInit } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { first, Observable, take, combineLatest, map } from 'rxjs';
+import { Observable, take, combineLatest, map } from 'rxjs';
 import { EnrollmentTypesService } from 'src/app/shared/services/enrollment-types.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { MajorEventItem, MajorEventSubscription } from 'src/app/shared/services/major-event.service';
@@ -37,7 +39,8 @@ export class PageMoreInfoPage implements OnInit {
     public auth: AngularFireAuth,
     public enrollmentTypes: EnrollmentTypesService,
     private route: ActivatedRoute,
-    public dateService: DateService
+    public dateService: DateService,
+    private modalController: ModalController
   ) {}
 
   ngOnInit() {
@@ -49,7 +52,7 @@ export class PageMoreInfoPage implements OnInit {
       .valueChanges({ idField: 'id' })
       .pipe(trace('firestore'));
 
-    this.auth.user.pipe(first(), trace('auth')).subscribe((user) => {
+    this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
       if (user) {
         const query = this.afs.doc<MajorEventSubscription>(
           `majorEvents/${this.majorEventID}/subscriptions/${user.uid}`
@@ -126,5 +129,16 @@ export class PageMoreInfoPage implements OnInit {
 
     formated = formated.charAt(0).toUpperCase() + formated.slice(1);
     return formated;
+  }
+
+  async getCertificateList() {
+    const modal = await this.modalController.create({
+      component: ListCertificatesComponent,
+      componentProps: {
+        majorEventID: this.majorEventID,
+      },
+      showBackdrop: true,
+    });
+    await modal.present();
   }
 }

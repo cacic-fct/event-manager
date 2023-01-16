@@ -25,7 +25,6 @@ export interface EventItem {
   eventType?: string;
   public?: boolean;
   issueCertificate?: boolean;
-  doublePresence?: boolean;
   collectAttendance?: boolean;
   eventGroup?: {
     groupEventIDs: string[];

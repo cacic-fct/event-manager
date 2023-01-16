@@ -20,8 +20,8 @@ import { DateService } from 'src/app/shared/services/date.service';
   styleUrls: ['./page-subscriptions.page.scss'],
 })
 export class PageSubscriptionsPage implements OnInit {
-  subscriptions$: Observable<Subscription[]>;
-  eventSubscriptions$: Observable<EventSubscriptionLocal[]>;
+  subscriptions$!: Observable<Subscription[]>;
+  eventSubscriptions$!: Observable<EventSubscriptionLocal[]>;
 
   today: Date = new Date();
 

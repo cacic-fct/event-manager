@@ -59,6 +59,12 @@
                     <p slot="end" class="ion-text-wrap">Validar comprovantes</p>
                   </ion-button>
                 </ion-row>
+                <ion-row>
+                  <ion-button fill="clear" [routerLink]="['emitir-certificados', item.id]">
+                    <ion-icon name="document-text-outline" slot="start"></ion-icon>
+                    <p slot="end" class="ion-text-wrap">Emitir certificados</p>
+                  </ion-button>
+                </ion-row>
               </ion-col>
             </ion-row>
           </ion-grid>

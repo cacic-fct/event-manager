@@ -54,6 +54,8 @@ import { GlobalConstantsService } from './shared/services/global-constants.servi
 
 import { CoursesService } from './shared/services/courses.service';
 
+import { CertificateService } from 'src/app/shared/services/certificates.service';
+
 import {
   AngularFireAuthModule,
   USE_DEVICE_LANGUAGE,
@@ -138,6 +140,7 @@ import {
     CoursesService,
     WeatherService,
     EnrollmentTypesService,
+    CertificateService,
   ],
   bootstrap: [AppComponent],
 })

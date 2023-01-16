@@ -23,6 +23,15 @@ const routes: Routes = [
     loadChildren: () =>
       import('./page-list-subscriptions/page-list-subscriptions.module').then((m) => m.PageListSubscriptionsModule),
   },
+  {
+    path: 'emitir-certificados/:eventID',
+    loadChildren: () =>
+      import('./issue-certificate/issue-certificate.module').then((m) => m.IssueCertificatePageModule),
+  },
+  {
+    path: 'emitir-certificados',
+    redirectTo: '',
+  },
 ];
 
 @NgModule({

@@ -6,7 +6,7 @@ import { Injectable } from '@angular/core';
 export class StringManagementService {
   constructor() {}
 
-  toUppercase(string: string) {
+  toUppercase(string: string): string {
     return string.charAt(0).toUpperCase() + string.slice(1);
   }
 }

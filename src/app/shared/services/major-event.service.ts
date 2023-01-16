@@ -27,7 +27,7 @@ export interface MajorEventItem {
   course: string;
   description?: string;
   eventStartDate: Timestamp;
-  eventEndDate?: Timestamp;
+  eventEndDate: Timestamp;
   subscriptionStartDate?: Timestamp;
   subscriptionEndDate?: Timestamp;
   maxCourses?: number;

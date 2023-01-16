@@ -1,0 +1,61 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Confirme os dados</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+  <div class="ion-padding-horizontal">
+    <p>
+      Você está gerando o certificado "{{ certificateData.certificateName }}" com o modelo
+      {{ certificateData.certificateTemplate }}.
+    </p>
+    <p>
+      O certificado será gerado para:
+      <br />
+      <ion-chip *ngIf="certificateData.issuedTo.toPayer">
+        <ion-label>Inscritos pagantes</ion-label>
+      </ion-chip>
+      <ion-chip *ngIf="certificateData.issuedTo.toNonSubscriber">
+        <ion-label>Pagantes não inscritos</ion-label>
+      </ion-chip>
+      <ion-chip *ngIf="certificateData.issuedTo.toNonPayer">
+        <ion-label>Não pagantes</ion-label>
+      </ion-chip>
+      <ion-chip *ngIf="certificateData.issuedTo.toList.length > 0">
+        <ion-label>Lista manual</ion-label>
+        <ng-container *ngFor="let participant of certificateData.issuedTo.toList; let i = index">
+          <ion-chip *ngIf="i < 3">
+            <ion-label>{{ participant }}</ion-label>
+          </ion-chip>
+          <ion-chip *ngIf="i === 3">
+            <ion-label>…</ion-label>
+          </ion-chip>
+        </ng-container>
+      </ion-chip>
+    </p>
+    <p>
+      Os dados que serão inseridos no certificado são:
+      <br />
+      <b>{{ formatParticipation() }}</b>
+      <br />
+      <i>Nome do participante</i>
+      <br />
+      <b>{{ formatEventType() }}</b>
+      <br />
+      <i>Nome do evento</i>
+      <br />
+      <b>{{ formatContentType() }}</b>
+    </p>
+  </div>
+
+  <ion-grid style="width: 100%">
+    <ion-row>
+      <ion-col>
+        <ion-button style="width: 100%" fill="clear" (click)="closeModal()">Cancelar</ion-button>
+      </ion-col>
+      <ion-col>
+        <ion-button style="width: 100%" fill="clear" (click)="onSubmit()">Confirmar</ion-button>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

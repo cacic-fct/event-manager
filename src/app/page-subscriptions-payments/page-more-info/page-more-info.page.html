@@ -14,7 +14,6 @@
         <app-major-event-display-header [majorEventItem]="majorEvent"></app-major-event-display-header>
         <app-major-event-display-description [majorEventItem]="majorEvent"></app-major-event-display-description>
         <app-major-event-display-date [majorEventItem]="majorEvent"></app-major-event-display-date>
-        <app-major-event-display-price [majorEventItem]="majorEvent"></app-major-event-display-price>
 
         <div class="card-section ion-padding-horizontal" *ngIf="majorEvent.price">
           <div class="card-label">
@@ -68,12 +67,36 @@
           </ng-template>
         </div>
 
+        <div
+          class="card-section ion-padding-horizontal"
+          *ngIf="dateService.isInThePast(dateService.getDateFromTimestamp(majorEvent.eventStartDate)) ">
+          <div class="card-label">
+            <ion-icon name="document-text-outline" aria-hidden="true"></ion-icon>
+            Certificados
+          </div>
+
+          <ng-container>
+            <ion-button color="primary" class="ion-padding" (click)="getCertificateList()">
+              <ion-icon name="list" slot="start"></ion-icon>Listar certificados
+            </ion-button>
+          </ng-container>
+        </div>
+
         <div class="ion-padding">
           <h2>Inscrito</h2>
           <app-event-list [eventInput]="subscribedEvents$" [isSubscribedList]="true"></app-event-list>
 
-          <h2>Não inscrito</h2>
-          <app-event-list [eventInput]="notSubscribedEvents$" [isSubscribedList]="false"></app-event-list>
+          <ion-accordion-group>
+            <ion-accordion value="notSubscribed">
+              <ion-item slot="header" color="light">
+                <h1>Não inscrito</h1>
+              </ion-item>
+              <app-event-list
+                slot="content"
+                [eventInput]="notSubscribedEvents$"
+                [isSubscribedList]="false"></app-event-list>
+            </ion-accordion>
+          </ion-accordion-group>
         </div>
       </div>
     </ng-container>
