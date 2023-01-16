@@ -1,6 +1,5 @@
 import { Timestamp } from 'firebase-admin/firestore';
-import { Timestamp as TimestampType } from '@firebase/firestore-types';
 
-export const timestampFromDate = (date: Date): TimestampType => {
+export const timestampFromDate = (date: Date): Timestamp => {
   return Timestamp.fromDate(date);
 };
