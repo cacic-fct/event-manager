@@ -1,13 +1,18 @@
 import { ApplicationRef, Injectable } from '@angular/core';
 import { SwUpdate } from '@angular/service-worker';
-import { AlertController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular';
 import { first } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ServiceWorkerService {
-  constructor(private appRef: ApplicationRef, private swUpdate: SwUpdate, private alertController: AlertController) {
+  constructor(
+    private appRef: ApplicationRef,
+    private swUpdate: SwUpdate,
+    private alertController: AlertController,
+    private toastController: ToastController
+  ) {
     const appIsStable$ = this.appRef.isStable.pipe(first((isStable) => isStable === true));
 
     appIsStable$.subscribe(async () => {
@@ -16,6 +21,7 @@ export class ServiceWorkerService {
           switch (evt.type) {
             case 'VERSION_DETECTED':
               console.info(`Downloading new app version: ${evt.version.hash}`);
+              this.updatingToast();
               break;
             case 'VERSION_READY':
               console.info(`Current app version: ${evt.currentVersion.hash}`);
@@ -59,6 +65,26 @@ export class ServiceWorkerService {
     });
 
     await alert.present();
+  }
+
+  async updatingToast() {
+    const toast = await this.toastController.create({
+      message: 'Instalando atualização...',
+      duration: 2000,
+      position: 'top',
+      color: 'primary',
+      icon: 'cloud-download-outline',
+
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'confirm',
+        },
+      ],
+    });
+
+    await toast.present();
   }
 
   async tooOldAlert() {
