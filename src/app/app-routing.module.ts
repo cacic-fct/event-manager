@@ -134,6 +134,11 @@ const routes: Routes = [
       import('./page-confirm-attendance/page-confirm-attendance.module').then((m) => m.PageConfirmAttendanceModule),
     ...canActivate(redirectUnauthorizedToLogin),
   },
+  {
+    path: 'certificado/validar/:param',
+    loadChildren: () =>
+      import('./validate-certificate/validate-certificate.module').then((m) => m.ValidateCertificatePageModule),
+  },
   // Redirect not found routes (404) to index
   // Must be the last route
   {

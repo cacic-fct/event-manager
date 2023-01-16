@@ -372,7 +372,7 @@ export const certificateTemplates = {
   },
 };
 
-interface CertificateDocPublic {
+export interface CertificateDocPublic {
   certificateID: string;
   document: string;
   fullName: string;

@@ -1,0 +1,59 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+
+    <ion-title>Validar certificado</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Em construção</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <p>
+        Esta página ainda está em desenvolvimento. Por enquanto, deve-se validar os eventos do certificado manualmente.
+      </p>
+    </ion-card-content>
+  </ion-card>
+  <ng-container *ngIf="certificatePublic$ | async as certificatePublic; else loading">
+    <ion-card *ngIf="certificatePublic.fullName">
+      <ion-card-header>
+        <ion-card-title>Certificado válido</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>
+          O certificado é válido e foi emitido para
+          <strong>{{ certificatePublic.fullName }}</strong>, que possui o documento de identificação
+          <strong>{{ certificatePublic.document }}</strong>.
+
+          <br />
+          Esteve presente nos eventos com identificação: <code>{{ certificatePublic.attendedEvents }}</code>
+          <br />
+
+          Num total de {{ certificatePublic.attendedEvents.length }} eventos.
+        </p>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card *ngIf="!certificatePublic.fullName">
+      <ion-card-header>
+        <ion-card-title>Certificado inválido</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>O certificado não foi encontrado</p>
+      </ion-card-content>
+    </ion-card>
+  </ng-container>
+</ion-content>
+
+<ng-template #loading>
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Carregando...</ion-card-title>
+    </ion-card-header>
+  </ion-card>
+</ng-template>
