@@ -7,8 +7,8 @@ import { MainReturnType } from './../shared/return-types';
 
 exports.issueMajorEventCertificate = functions
   .runWith({
-    timeoutSeconds: 300,
-    memory: '256MB',
+    timeoutSeconds: 540,
+    memory: '512MB',
   })
   .https.onCall(async (data: MajorEventCertificateData, context): Promise<MainReturnType & { data?: any[] }> => {
     if (context.app == undefined) {
@@ -85,6 +85,10 @@ exports.issueMajorEventCertificate = functions
 
     // If certificate doesn't exist, create it
     else {
+      await firestore.doc(`certificates/${majorEventID}`).set({
+        null: null,
+      });
+
       await certificate.ref.set({
         certificateName: data.certificateData.certificateName,
         certificateTemplate: data.certificateData.certificateTemplate,
@@ -260,6 +264,10 @@ const issueCertificate = async (
     await firestore.doc(`certificates/${eventID}/${documentID}/admin`).set({
       actualIssueDate: FieldValue.serverTimestamp(),
       issuedBy: adminUID,
+    });
+
+    await firestore.doc(`users/${userUID}/certificates/majorEvents`).set({
+      null: null,
     });
 
     await firestore.doc(`users/${userUID}/certificates/majorEvents/${eventID}/${documentID}`).set({
