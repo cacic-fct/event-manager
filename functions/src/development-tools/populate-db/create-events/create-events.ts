@@ -11,24 +11,26 @@ import {
 } from './event-data';
 import { MainReturnType } from '../../../shared/return-types';
 
-exports.createPaidMajorEvent = functions.https.onCall(async (): Promise<MainReturnType> => {
-  const firestore = admin.firestore();
+exports.createPaidMajorEvent = functions
+  .region('southamerica-east1')
+  .https.onCall(async (): Promise<MainReturnType> => {
+    const firestore = admin.firestore();
 
-  await firestore.collection('majorEvents').doc('paidMajorEvent').set(paidMajorEvent, { merge: true });
+    await firestore.collection('majorEvents').doc('paidMajorEvent').set(paidMajorEvent, { merge: true });
 
-  await firestore.collection('events').doc('paidMajorEvent-event1').set(paidMajorEvent_event1, { merge: true });
-  await firestore.collection('events').doc('paidMajorEvent-event2').set(paidMajorEvent_event2, { merge: true });
+    await firestore.collection('events').doc('paidMajorEvent-event1').set(paidMajorEvent_event1, { merge: true });
+    await firestore.collection('events').doc('paidMajorEvent-event2').set(paidMajorEvent_event2, { merge: true });
 
-  for (let i = 1; i <= 2; i++) {
-    await firestore
-      .collection('events')
-      .doc(`paidMajorEvent-group-event${i}`)
-      .set(paidMajorEvent_group_event(i), { merge: true });
-  }
-  return { success: true, message: 'Successfully created paid major event' };
-});
+    for (let i = 1; i <= 2; i++) {
+      await firestore
+        .collection('events')
+        .doc(`paidMajorEvent-group-event${i}`)
+        .set(paidMajorEvent_group_event(i), { merge: true });
+    }
+    return { success: true, message: 'Successfully created paid major event' };
+  });
 
-exports.createEventGroup = functions.https.onCall(async (): Promise<MainReturnType> => {
+exports.createEventGroup = functions.region('southamerica-east1').https.onCall(async (): Promise<MainReturnType> => {
   const firestore = admin.firestore();
 
   for (let i = 1; i <= 2; i++) {

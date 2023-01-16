@@ -2,8 +2,9 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
-exports.createEventSubscription = functions.firestore
-  .document(`events/{eventId}/subscriptions/{userId}`)
+exports.createEventSubscription = functions
+  .region('southamerica-east1')
+  .firestore.document(`events/{eventId}/subscriptions/{userId}`)
   .onCreate(async (snap, context): Promise<void> => {
     const eventRef = admin.firestore().collection('events').doc(context.params.eventId);
     const event = await eventRef.get();
@@ -14,8 +15,9 @@ exports.createEventSubscription = functions.firestore
     eventRef.update({ numberOfSubscriptions: FieldValue.increment(1) });
   });
 
-exports.createMajorEventSubscription = functions.firestore
-  .document(`majorEvents/{eventId}/subscriptions/{userId}`)
+exports.createMajorEventSubscription = functions
+  .region('southamerica-east1')
+  .firestore.document(`majorEvents/{eventId}/subscriptions/{userId}`)
   .onCreate(async (snap, context): Promise<void> => {
     const data = snap.data();
 
@@ -28,8 +30,9 @@ exports.createMajorEventSubscription = functions.firestore
     });
   });
 
-exports.updateMajorEventSubscription = functions.firestore
-  .document(`majorEvents/{eventId}/subscriptions/{userId}`)
+exports.updateMajorEventSubscription = functions
+  .region('southamerica-east1')
+  .firestore.document(`majorEvents/{eventId}/subscriptions/{userId}`)
   .onUpdate(async (change, context): Promise<void> => {
     const beforeChange = change.before.data();
     const afterChange = change.after.data();

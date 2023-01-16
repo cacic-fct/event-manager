@@ -6,9 +6,10 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { MainReturnType } from './../shared/return-types';
 
 exports.issueMajorEventCertificate = functions
+  .region('southamerica-east1')
   .runWith({
     timeoutSeconds: 540,
-    memory: '512MB',
+    memory: '1GB',
   })
   .https.onCall(async (data: MajorEventCertificateData, context): Promise<MainReturnType & { data?: any[] }> => {
     if (context.app == undefined) {

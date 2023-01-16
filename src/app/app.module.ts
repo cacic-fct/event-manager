@@ -25,7 +25,11 @@ import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@ang
 
 import { getRemoteConfig, provideRemoteConfig } from '@angular/fire/remote-config';
 
-import { AngularFireFunctionsModule, USE_EMULATOR as USE_FUNCTIONS_EMULATOR } from '@angular/fire/compat/functions';
+import {
+  AngularFireFunctionsModule,
+  REGION as FUNCTIONS_REGION,
+  USE_EMULATOR as USE_FUNCTIONS_EMULATOR,
+} from '@angular/fire/compat/functions';
 import { AngularFireStorageModule, USE_EMULATOR as USE_STORAGE_EMULATOR } from '@angular/fire/compat/storage';
 
 import { environment } from '../environments/environment';
@@ -127,6 +131,7 @@ import {
     { provide: USE_DEVICE_LANGUAGE, useValue: true },
     { provide: APP_VERSION, useValue: GlobalConstantsService.appVersion },
     { provide: APP_NAME, useValue: GlobalConstantsService.appName },
+    { provide: FUNCTIONS_REGION, useValue: 'southamerica-east1' },
     {
       provide: USE_AUTH_EMULATOR,
       useValue: environment.useEmulators ? ['http://localhost:9099', { disableWarnings: true }] : undefined,

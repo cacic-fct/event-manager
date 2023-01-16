@@ -15,7 +15,7 @@ import {
 } from './user-data';
 import { MainReturnType } from '../../../shared/return-types';
 
-exports.createAdminUser = functions.https.onCall(async (): Promise<MainReturnType> => {
+exports.createAdminUser = functions.region('southamerica-east1').https.onCall(async (): Promise<MainReturnType> => {
   const firestore = admin.firestore();
   try {
     await getAuth().importUsers([adminData]);
@@ -40,21 +40,23 @@ exports.createAdminUser = functions.https.onCall(async (): Promise<MainReturnTyp
   }
 });
 
-exports.createUndergraduateUser = functions.https.onCall(async (): Promise<MainReturnType> => {
-  const firestore = admin.firestore();
+exports.createUndergraduateUser = functions
+  .region('southamerica-east1')
+  .https.onCall(async (): Promise<MainReturnType> => {
+    const firestore = admin.firestore();
 
-  try {
-    await getAuth().importUsers([undergraduateData]);
-    console.log('Successfully created undergraduate user');
-    await firestore.collection('users').doc(undergraduateData.uid).set(undergraduateDataFirestoreDocument);
-  } catch (error) {
-    console.error('Error creating undergraduate user:', error);
-    return { success: false, message: 'Error creating undergraduate user' };
-  }
-  return { success: true, message: 'Successfully created undergraduate user' };
-});
+    try {
+      await getAuth().importUsers([undergraduateData]);
+      console.log('Successfully created undergraduate user');
+      await firestore.collection('users').doc(undergraduateData.uid).set(undergraduateDataFirestoreDocument);
+    } catch (error) {
+      console.error('Error creating undergraduate user:', error);
+      return { success: false, message: 'Error creating undergraduate user' };
+    }
+    return { success: true, message: 'Successfully created undergraduate user' };
+  });
 
-exports.createProfessorUser = functions.https.onCall(async (): Promise<MainReturnType> => {
+exports.createProfessorUser = functions.region('southamerica-east1').https.onCall(async (): Promise<MainReturnType> => {
   const firestore = admin.firestore();
 
   try {
@@ -79,7 +81,7 @@ exports.createProfessorUser = functions.https.onCall(async (): Promise<MainRetur
   return { success: true, message: 'Successfully created professor user' };
 });
 
-exports.createExternalUser = functions.https.onCall(async (): Promise<MainReturnType> => {
+exports.createExternalUser = functions.region('southamerica-east1').https.onCall(async (): Promise<MainReturnType> => {
   const firestore = admin.firestore();
 
   try {
