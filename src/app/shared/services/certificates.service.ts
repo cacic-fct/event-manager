@@ -88,6 +88,7 @@ export class CertificateService {
 
         switch (certificateStoreData.certificateTemplate) {
           case 'cacic':
+          case 'cacic_unesp':
             font = {
               Inter_Regular: {
                 data: InterRegular,
@@ -119,6 +120,7 @@ export class CertificateService {
           date: formatDate(certificateDataSnapshot.issueDate.toDate(), "dd 'de' MMMM 'de' yyyy", {
             locale: ptBR,
           }),
+          front_text_field: certificateStoreData.extraText || '',
           document: `Documento: ${certificateDataSnapshot.document}`,
           event_type: certificateStoreData.eventType.custom || eventTypes[certificateStoreData.eventType.type],
           participation_type:
@@ -311,8 +313,10 @@ function makeText(typeSingular: string, typePlural: string, array: EventItem[]):
   content = content.slice(0, -2) + '.\n';
 
   if (totalCreditHours > 0) {
-    content += `Carga horária total: ${totalCreditHours} horas.\n\n`;
+    content += `Carga horária total: ${totalCreditHours} horas.\n`;
   }
+
+  content += '\n';
 
   return content;
 }
@@ -362,6 +366,10 @@ export const certificateTemplates = {
      */
     templateFilename: 'cacic',
   },
+  cacic_unesp: {
+    displayName: 'CACiC com logo da Unesp',
+    templateFilename: 'cacic_unesp',
+  },
 };
 
 interface CertificateDocPublic {
@@ -393,6 +401,7 @@ export interface CertificateStoreData {
     type: string;
     custom?: string;
   };
+  extraText: string | null;
   id?: string;
 }
 

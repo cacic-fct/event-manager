@@ -75,6 +75,8 @@ export class IssueCertificatePage implements OnInit {
         Validators.required,
       ],
 
+      extraText: [''],
+
       participationType: this.formBuilder.group(
         {
           type: ['', Validators.required],
@@ -229,6 +231,7 @@ export class IssueCertificatePage implements OnInit {
         certificateID: this.dataForm.get('certificateID')?.value,
         certificateTemplate: this.dataForm.get('certificateTemplate')?.value,
         issueDate: this.dateService.TimestampFromDate(this.dateService.parseISO(this.dataForm.get('issueDate')?.value)),
+        extraText: this.dataForm.get('extraText')?.value || null,
         participation: {
           type: this.dataForm.get('participationType')?.get('type')?.value,
           custom: this.dataForm.get('participationType')?.get('custom')?.value || null,

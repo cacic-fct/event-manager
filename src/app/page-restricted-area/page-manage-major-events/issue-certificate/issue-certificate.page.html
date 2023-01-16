@@ -126,9 +126,16 @@
         </ion-item>
       </ng-container>
 
+      <ng-container>
+        <ion-item>
+          <ion-label>Texto complementar</ion-label>
+          <ion-textarea placeholder="Escreva aqui" formControlName="extraText"></ion-textarea>
+        </ion-item>
+      </ng-container>
+
       <ng-container formGroupName="contentType">
         <ion-item>
-          <ion-label>Conteúdo</ion-label>
+          <ion-label>Conteúdo do evento</ion-label>
           <ion-select interface="popover" formControlName="type">
             <ng-container *ngFor="let contentType of contentTypes | keyvalue">
               <ion-select-option *ngIf="!(contentType.key === 'custom')" [value]="contentType.key">
