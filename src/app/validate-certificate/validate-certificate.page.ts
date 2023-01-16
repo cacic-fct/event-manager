@@ -22,8 +22,6 @@ export class ValidateCertificatePage implements OnInit {
     const [eventID, certificateID] = this.param.split('-');
     this.eventID = eventID;
     this.certificateID = certificateID;
-
-    console.log('param', this.param, 'eventID', this.eventID, 'certificateID', this.certificateID);
     this.certificatePublic$ = this.afs
       .doc<CertificateDocPublic>(`certificates/${this.eventID}/${this.certificateID}/public`)
       .valueChanges({ idField: 'id' });
