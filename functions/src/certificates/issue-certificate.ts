@@ -41,11 +41,18 @@ exports.issueMajorEventCertificate = functions
     }
 
     const majorEventData = majorEvent.data();
-    // if majorEventData.currentTask.certificateID doesn't match certificateID, return error
-    if (majorEventData?.tasks?.certificateID !== data.certificateData.certificateID) {
+    if (!majorEventData) {
+      throw new functions.https.HttpsError('not-found', 'Major event data not found.');
+    }
+
+    if (
+      majorEventData?.tasks &&
+      majorEventData.tasks.certificateID &&
+      majorEventData?.tasks?.certificateID !== data.certificateData.certificateID
+    ) {
       throw new functions.https.HttpsError(
         'already-exists',
-        `Certificate '${majorEventData?.tasks.certificateID}' is being issued.`
+        `Certificate '${majorEventData?.tasks?.certificateID}' is being issued.`
       );
     }
 
