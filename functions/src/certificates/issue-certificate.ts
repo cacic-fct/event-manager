@@ -6,6 +6,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { MainReturnType } from './../shared/return-types';
 import { deleteCollection } from './../shared/firestore.utils';
 
+// TODO: A função de retomar emissão NÃO FOI TESTADA
 exports.issueMajorEventCertificate = functions
   .region('southamerica-east1')
   .runWith({
