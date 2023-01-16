@@ -135,7 +135,7 @@ const routes: Routes = [
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {
-    path: 'certificado/validar/:param',
+    path: 'certificado/verificar/:param',
     loadChildren: () =>
       import('./validate-certificate/validate-certificate.module').then((m) => m.ValidateCertificatePageModule),
   },
