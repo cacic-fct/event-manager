@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue } from 'firebase-admin/firestore';
 import { MainReturnType } from './../shared/return-types';
+import { deleteCollection } from './../shared/firestore.utils';
 
 exports.issueMajorEventCertificate = functions
   .region('southamerica-east1')
@@ -38,6 +39,15 @@ exports.issueMajorEventCertificate = functions
       throw new functions.https.HttpsError('not-found', 'Major event not found.');
     }
 
+    const majorEventData = majorEvent.data();
+    // if majorEventData.currentTask.certificateID doesn't match certificateID, return error
+    if (majorEventData?.tasks?.certificateID !== data.certificateData.certificateID) {
+      throw new functions.https.HttpsError(
+        'already-exists',
+        `Certificate '${majorEventData?.tasks.certificateID}' is being issued.`
+      );
+    }
+
     const certificate = await firestore
       .doc(`majorEvents/${majorEventID}/certificates/${data.certificateData.certificateID}`)
       .get();
@@ -61,7 +71,10 @@ exports.issueMajorEventCertificate = functions
         issuedTo.toNonSubscriber === data.certificateData.issuedTo.toNonSubscriber &&
         issuedTo.toNonPayer === data.certificateData.issuedTo.toNonPayer
       ) {
-        throw new functions.https.HttpsError('already-exists', 'Certificate already exists.');
+        // If not resuming a certificate, return error
+        if (!majorEventData?.tasks) {
+          throw new functions.https.HttpsError('already-exists', 'Certificate already exists.');
+        }
       }
 
       // If certificate is issuing to person already on list, return error
@@ -73,15 +86,17 @@ exports.issueMajorEventCertificate = functions
         }
       }
 
-      // If certificate is issuing to new people, add them to the list
-      await certificateAdmin.ref.update({
-        issuedTo: {
-          toPayer: data.certificateData.issuedTo.toPayer,
-          toNonSubscriber: data.certificateData.issuedTo.toNonSubscriber,
-          toNonPayer: data.certificateData.issuedTo.toNonPayer,
-          toList: FieldValue.arrayUnion(...data.certificateData.issuedTo.toList),
-        },
-      });
+      if (!majorEventData?.tasks) {
+        // If certificate is issuing to new people, add them to the list
+        await certificateAdmin.ref.update({
+          issuedTo: {
+            toPayer: data.certificateData.issuedTo.toPayer,
+            toNonSubscriber: data.certificateData.issuedTo.toNonSubscriber,
+            toNonPayer: data.certificateData.issuedTo.toNonPayer,
+            toList: FieldValue.arrayUnion(...data.certificateData.issuedTo.toList),
+          },
+        });
+      }
     }
 
     // If certificate doesn't exist, create it
@@ -96,6 +111,7 @@ exports.issueMajorEventCertificate = functions
         certificateContent: data.certificateData.content,
         eventType: data.certificateData.event,
         participationType: data.certificateData.participation,
+        extraText: data.certificateData.extraText,
       });
 
       certificateAdmin.ref.set({
@@ -133,7 +149,20 @@ exports.issueMajorEventCertificate = functions
         });
     });
 
+    let iStored = 0;
     let failed = [];
+
+    if (majorEventData.currentTask) {
+      deleteCollection(firestore, `certificates/${majorEventID}/${majorEventData.currentTask.documentID}`, 10);
+      await firestore
+        .doc(
+          `users/${majorEventData.currentTask.uid}/certificates/majorEvents/${majorEventID}/${majorEventData.currentTask.documentID}`
+        )
+        .delete();
+      iStored = majorEventData.currentTask.index;
+      failed = majorEventData.currentTaskFailedList;
+      await firestore.doc(`certificates/${majorEventID}/${majorEventData.currentTask.documentID}`).delete();
+    }
 
     if (data.certificateData.issuedTo.toPayer) {
       const subscriptionList = await firestore
@@ -141,14 +170,42 @@ exports.issueMajorEventCertificate = functions
         .where('payment.status', '==', 2)
         .get();
 
-      for (const attendance of subscriptionList.docs) {
+      for (let i = iStored; i < subscriptionList.docs.length; i++) {
+        const attendance = subscriptionList.docs[i];
         const uid = attendance.id;
-        const result = await issueCertificate(data.certificateData, uid, majorEventID, context.auth.uid);
+        const documentID = firestore.collection('dummy').doc().id;
+        majorEvent.ref.set(
+          {
+            currentTask: {
+              task: 'Issuing certificate',
+              uid: uid,
+              documentID: documentID,
+              index: i,
+              certificateID: data.certificateData.certificateID,
+            },
+          },
+          { merge: true }
+        );
+        const result = await issueCertificate(data.certificateData, uid, majorEventID, context.auth.uid, documentID);
         if (!result.success) {
           failed.push({ uid: uid, error: result.message });
+          majorEvent.ref.set(
+            {
+              currentTaskFailedList: FieldValue.arrayUnion({ uid: uid, error: result.message }),
+            },
+            { merge: true }
+          );
         }
       }
     }
+
+    majorEvent.ref.set(
+      {
+        currentTask: FieldValue.delete(),
+        currentTaskFailedList: FieldValue.delete(),
+      },
+      { merge: true }
+    );
 
     if (failed.length > 0) {
       // Store failed in database
@@ -178,7 +235,8 @@ const issueCertificate = async (
   certificateData: CertificateData,
   userUID: string,
   eventID: string,
-  adminUID: string
+  adminUID: string,
+  documentID: string
 ) => {
   const firestore = admin.firestore();
   const auth = getAuth();
@@ -212,8 +270,6 @@ const issueCertificate = async (
       message: 'User data not found.',
     };
   }
-
-  const documentID = firestore.collection('dummy').doc().id;
 
   let userDocumentFormat;
 
@@ -323,6 +379,7 @@ interface CertificateData {
   certificateID: string;
   certificateTemplate: string;
   issueDate: Timestamp;
+  extraText: string | null;
   participation: {
     type: string;
     custom?: string | null;
