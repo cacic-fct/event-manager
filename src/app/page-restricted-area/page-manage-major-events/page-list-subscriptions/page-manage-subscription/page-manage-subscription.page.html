@@ -1,6 +1,6 @@
 <ion-header>
   <ion-toolbar>
-    <ion-buttons>
+    <ion-buttons slot="start">
       <ion-back-button defaultHref="/area-restrita/gerenciar-grandes-eventos"></ion-back-button>
     </ion-buttons>
     <ion-title>Gerenciar inscrição</ion-title>
@@ -11,15 +11,15 @@
   <ng-container *ngIf="subscription$ | async as subscription; else: loading">
     <ion-card>
       <ion-card-header>
-        <ion-card-title
-          >{{ (userData$ | async)?.fullName || (userData$ | async)?.displayName }} - {{ subscription.payment.price |
-          currency:'BRL':'symbol':'1.2-2' }}</ion-card-title
-        >
+        <ion-card-title>
+          {{ (userData$ | async)?.fullName || (userData$ | async)?.displayName }} - {{ subscription.payment.price |
+          currency:'BRL':'symbol':'1.2-2' }}
+        </ion-card-title>
+        <!-- prettier-ignore -->
         <ion-card-subtitle>
           Se inscreveu em: {{ dateService.getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
           <br />
-          Última alteração na inscrição: {{ dateService.getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy
-          - HH:mm' }}
+          Última alteração na inscrição: {{ dateService.getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
         </ion-card-subtitle>
       </ion-card-header>
       <ion-card-content>
@@ -43,6 +43,28 @@
           </ng-container>
         </ng-container>
       </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header><ion-card-title>Presenças do usuário</ion-card-title></ion-card-header>
+
+      <ng-container *ngFor="let attendance of eventsUserAttended">
+        <ion-card-content>
+          <ion-text color="success">
+            <ion-icon name="checkmark-circle-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+            <span class="alert-text"> O usuário compareceu ao evento {{ attendance }}. </span>
+          </ion-text>
+        </ion-card-content>
+      </ng-container>
+
+      <ng-container *ngFor="let attendance of eventsUserAttendedNotPaying">
+        <ion-card-content>
+          <ion-text color="danger">
+            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+            <span class="alert-text"> O usuário não pagou a inscrição para o evento {{ attendance }}. </span>
+          </ion-text>
+        </ion-card-content>
+      </ng-container>
     </ion-card>
 
     <ng-container *ngIf="subscription.payment.status === 2">

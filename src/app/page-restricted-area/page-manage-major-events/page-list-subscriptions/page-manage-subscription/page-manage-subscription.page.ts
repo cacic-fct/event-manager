@@ -1,4 +1,5 @@
 // @ts-strict-ignore
+import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { User } from './../../../../shared/services/user';
 import { EventItem } from './../../../../shared/services/event';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
@@ -27,6 +28,9 @@ export class PageManageSubscriptionPage implements OnInit {
   userData$: Observable<User>;
 
   eventsUserIsSubscribedTo$: Observable<EventItem[]>;
+
+  eventsUserAttended = [];
+  eventsUserAttendedNotPaying = [];
 
   constructor(
     private route: ActivatedRoute,
@@ -62,6 +66,36 @@ export class PageManageSubscriptionPage implements OnInit {
 
       this.eventsUserIsSubscribedTo$ = observableArrayOfEvents;
     });
+
+    // TODO: Refactor me
+    // Get all events of this major event
+    this.afs
+      .doc<MajorEventItem>(`majorEvents/${this.majorEventID}`)
+      .get()
+      .subscribe((doc) => {
+        const data = doc.data();
+
+        // For every event of this major event, check if user document is in the attendance collection
+        data.events.forEach((event) => {
+          this.afs
+            .doc(`events/${event}/attendance/${this.subscriptionID}`)
+            .get()
+            .subscribe((doc) => {
+              if (doc.exists) {
+                this.eventsUserAttended.push(event);
+              } else {
+                this.afs
+                  .doc(`events/${event}/non-paying-attendance/${this.subscriptionID}`)
+                  .get()
+                  .subscribe((doc) => {
+                    if (doc.exists) {
+                      this.eventsUserAttendedNotPaying.push(event);
+                    }
+                  });
+              }
+            });
+        });
+      });
   }
 
   forceEventEdit() {

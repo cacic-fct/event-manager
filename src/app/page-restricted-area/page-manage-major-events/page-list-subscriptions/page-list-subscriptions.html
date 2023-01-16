@@ -46,7 +46,7 @@
           </h3>
           <!-- prettier-ignore -->
           <h3 class="ion-text-wrap">
-            Última edição da: {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: "dd/MM/y - HH:mm:ss" }}
+            Última edição da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: "dd/MM/y - HH:mm:ss" }}
           </h3>
           <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
         </ng-container>
