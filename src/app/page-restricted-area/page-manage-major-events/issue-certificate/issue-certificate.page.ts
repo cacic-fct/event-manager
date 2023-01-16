@@ -152,28 +152,28 @@ export class IssueCertificatePage implements OnInit {
     });
   }
 
-  autofill() {
-    this.dataForm.patchValue({
-      certificateName: 'Certificado de Participação',
-      certificateID: 'participacao',
-      certificateTemplate: 'cacic',
-      issueType: 'list',
-      issueList: [{ userData: 'Usuário 0' }],
-      participationType: { type: 'participacao' },
-      eventType: { type: 'palestra' },
-      contentType: { type: 'default' },
-    });
+  // autofill() {
+  //   this.dataForm.patchValue({
+  //     certificateName: 'Certificado de Participação',
+  //     certificateID: 'participacao',
+  //     certificateTemplate: 'cacic',
+  //     issueType: 'list',
+  //     issueList: [{ userData: 'Usuário 0' }],
+  //     participationType: { type: 'participacao' },
+  //     eventType: { type: 'palestra' },
+  //     contentType: { type: 'default' },
+  //   });
 
-    const issueList = this.dataForm.get('issueList') as FormArray;
-    // repeat 3 times
-    for (let i = 1; i <= 3; i++) {
-      issueList.push(
-        this.formBuilder.group({
-          userData: [`Usuário ${i}`, Validators.required],
-        })
-      );
-    }
-  }
+  //   const issueList = this.dataForm.get('issueList') as FormArray;
+  //   // repeat 3 times
+  //   for (let i = 1; i <= 3; i++) {
+  //     issueList.push(
+  //       this.formBuilder.group({
+  //         userData: [`Usuário ${i}`, Validators.required],
+  //       })
+  //     );
+  //   }
+  // }
   async prepareUserUids(userDataList: string[]): Promise<boolean> {
     const userUidList: string[] = [];
 
