@@ -154,7 +154,7 @@ export class CertificateService {
       switchMap((certificate) => {
         if (certificate.exists) {
           // For every element in attendedEvents, get event info from /events/{eventID}
-          const eventInfoCache: Observable<EventItem | undefined>[] = [];
+          const eventInfoCache: Observable<EventItemLocal | undefined>[] = [];
           const eventsUserAttended = certificate.data()?.attendedEvents;
 
           if (eventsUserAttended === undefined) {
@@ -163,7 +163,7 @@ export class CertificateService {
 
           // Get event info from cache
           for (const eventID of eventsUserAttended) {
-            eventInfoCache.push(this.afs.doc<EventItem>(`events/${eventID}`).valueChanges({ idField: 'id' }));
+            eventInfoCache.push(this.afs.doc<EventItemLocal>(`events/${eventID}`).valueChanges({ idField: 'id' }));
           }
 
           // Generate content
@@ -177,7 +177,7 @@ export class CertificateService {
   }
 }
 function generateContent(
-  eventInfoCache: Observable<EventItem | undefined>[],
+  eventInfoCache: Observable<EventItemLocal | undefined>[],
   eventsUserAttended: string[]
 ): Observable<string> {
   const eventInfo$ = combineLatest(eventInfoCache);
@@ -222,11 +222,12 @@ function generateContent(
             return eventsUserAttended.includes(e?.id!);
           });
 
-          // Add every event that is part of group from eventInfo to skip array
+          // Append all events of group to skip array
           for (const e of groupEvents) {
-            if (e) {
-              skip.push(e.id!);
+            if (e === undefined) {
+              continue;
             }
+            skip.push(e.id!);
           }
 
           // If user didn't attend every event of group, don't display anything
@@ -234,18 +235,43 @@ function generateContent(
             continue;
           }
 
-          // If user attended every event of group, display 1 event with all credit hours using eventgroup.groupDisplayName as name
-          let creditHours = groupEventsAttended.reduce((acc, cur) => {
-            if (cur === undefined || cur.creditHours === undefined) {
-              return acc;
+          let creditHours: number = 0;
+          // let creditHoursTotal: number = 0;
+          let eventDays: Timestamp[] = [];
+
+          // Sum credit hours of all events in group
+          for (const e of groupEventsAttended) {
+            if (e === undefined) {
+              continue;
             }
-            return acc + cur.creditHours;
-          }, 0);
+
+            if (e.creditHours) {
+              creditHours += e.creditHours;
+            }
+
+            eventDays.push(e.eventStartDate);
+          }
+
+          // if (event.eventGroup.groupEventIDs.length !== groupEventsAttended.length) {
+          //   creditHoursTotal = groupEvents.reduce((acc, cur) => {
+          //     if (cur === undefined || cur.creditHours === undefined) {
+          //       return acc;
+          //     }
+
+          //     if (typeof cur.creditHours === 'string') {
+          //       return acc + parseInt(cur.creditHours);
+          //     }
+
+          //     return acc + cur.creditHours;
+          //   }, 0);
+          // }
 
           event = {
             ...event,
             name: event.eventGroup.groupDisplayName,
             creditHours: creditHours,
+            // totalCreditHours: creditHoursTotal,
+            eventDays: eventDays,
           };
         }
 
@@ -275,18 +301,18 @@ function generateContent(
         content += makeText('Atividade', 'Atividades', uncategorized);
       }
 
-      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const userTimezoneOffset = new Date().getTimezoneOffset() / 60;
-      const userTimezoneOffsetString = `${userTimezoneOffset > 0 ? '-' : '+'}${Math.abs(userTimezoneOffset)}`;
+      // const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // const userTimezoneOffset = new Date().getTimezoneOffset() / 60;
+      // const userTimezoneOffsetString = `${userTimezoneOffset > 0 ? '-' : '+'}${Math.abs(userTimezoneOffset)}`;
 
-      content += `\nDatas de acordo com o fuso horário "${userTimezone}" (UTC${userTimezoneOffsetString}).`;
+      content += `\nDatas em formato "dia/mês/ano".`;
 
       return content;
     })
   );
 }
 
-function makeText(typeSingular: string, typePlural: string, array: EventItem[]): string {
+function makeText(typeSingular: string, typePlural: string, array: EventItemLocal[]): string {
   if (array.length === 0) {
     return '';
   }
@@ -302,18 +328,38 @@ function makeText(typeSingular: string, typePlural: string, array: EventItem[]):
   content += ':\n';
 
   let totalCreditHours = 0;
+
   for (const event of array) {
-    content += `• ${formatTimestamp(event.eventStartDate)} - ${event.name}`;
+    if (event.eventDays) {
+      // If event has multiple days, display date as follows:
+      // • 01/01/21, 02/01/21, 03/01/21
+      content += `• ${event.eventDays
+        .map((day) => {
+          return formatTimestamp(day);
+        })
+        .join(', ')} - ${event.name}`;
+    } else {
+      content += `• ${formatTimestamp(event.eventStartDate)} - ${event.name}`;
+    }
+
     if (event.creditHours) {
-      content += ` - Carga horária: ${event.creditHours} horas`;
+      // if (event.totalCreditHours) {
+      //   content += ` - Carga horária: ${event.creditHours.toLocaleString(
+      //     'pt-BR'
+      //   )} horas (de um total de ${event.totalCreditHours.toLocaleString('pt-BR')} horas possíveis)`;
+      // } else {
+      content += ` - Carga horária: ${event.creditHours.toLocaleString('pt-BR')} horas`;
+      // }
+
       totalCreditHours += event.creditHours;
     }
     content += ';\n';
   }
+
   content = content.slice(0, -2) + '.\n';
 
   if (totalCreditHours > 0) {
-    content += `Carga horária total: ${totalCreditHours} horas.\n`;
+    content += `Carga horária total: ${totalCreditHours.toLocaleString('pt-BR')} horas.\n`;
   }
 
   content += '\n';
@@ -330,7 +376,7 @@ function formatTimestamp(date: Timestamp): string {
   let dateFormatted = date.toDate();
   dateFormatted = convertTimezone(dateFormatted, 'America/Sao_Paulo');
 
-  return formatDate(dateFormatted, 'dd/MM/yyyy - HH:mm');
+  return formatDate(dateFormatted, 'dd/MM/yy');
 }
 
 interface CertificateOptionsTypes {
@@ -371,6 +417,11 @@ export const certificateTemplates = {
     templateFilename: 'cacic_unesp',
   },
 };
+
+interface EventItemLocal extends EventItem {
+  totalCreditHours?: number;
+  eventDays?: Timestamp[];
+}
 
 export interface CertificateDocPublic {
   certificateID: string;
