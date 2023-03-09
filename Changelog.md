@@ -1,3 +1,5 @@
+### 2023.03.09.20.25
+
 ### 2023.01.05.11.32
 
 - Adicionado 0,5 segundo de delay na inicialização do mapa na página do manual do calouro e na aba do mapa;
