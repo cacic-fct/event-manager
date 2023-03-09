@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
@@ -17,7 +16,7 @@ import { DateService } from 'src/app/shared/services/date.service';
 interface Subscription extends MajorEventSubscription {
   id: string;
   time: Timestamp;
-  user: Observable<User>;
+  user: Observable<User | undefined>;
 }
 @UntilDestroy()
 @Component({
@@ -27,7 +26,7 @@ interface Subscription extends MajorEventSubscription {
 })
 export class PageListSubscriptions implements OnInit {
   @ViewChild('mySwal')
-  private mySwal: SwalComponent;
+  private mySwal!: SwalComponent;
 
   event$: Observable<EventItem>;
   subscriptions$: Observable<Subscription[]>;
@@ -42,9 +41,7 @@ export class PageListSubscriptions implements OnInit {
     private route: ActivatedRoute,
     public courses: CoursesService,
     public dateService: DateService
-  ) {}
-
-  ngOnInit() {
+  ) {
     this.eventID = this.route.snapshot.params.eventID;
     this.afs
       .collection('majorEvents')
@@ -60,11 +57,14 @@ export class PageListSubscriptions implements OnInit {
           }, 1000);
         }
       });
+
     this.event$ = this.afs
       .collection('majorEvents')
       .doc<EventItem>(this.eventID)
       .valueChanges()
+      // @ts-ignore
       .pipe(trace('firestore'));
+
     this.subscriptions$ = this.afs
       .collection<MajorEventSubscription>(`majorEvents/${this.eventID}/subscriptions`, (ref) => ref.orderBy('time'))
       .valueChanges({ idField: 'id' })
@@ -84,6 +84,8 @@ export class PageListSubscriptions implements OnInit {
       );
   }
 
+  ngOnInit() {}
+
   getDateFromTimestamp(timestamp: Timestamp): Date {
     return fromUnixTime(timestamp.seconds);
   }
@@ -95,7 +97,7 @@ export class PageListSubscriptions implements OnInit {
       .valueChanges({ idField: 'id' })
       .pipe(take(1), trace('firestore'))
       .subscribe((users) => {
-        const csv = [];
+        const csv: (string | number | undefined)[][] = [];
         const headers = [
           'UID',
           'Nome da conta Google',
@@ -119,8 +121,12 @@ export class PageListSubscriptions implements OnInit {
             .valueChanges()
             .pipe(take(1))
             .subscribe((event) => {
-              let events: Observable<EventItem>[] = [];
-              let eventsArray: Observable<EventItem[]>;
+              if (!event) {
+                return;
+              }
+
+              let events: Observable<EventItem | undefined>[] = [];
+              let eventsArray: Observable<(EventItem | undefined)[]>;
               let eventNames: { [key: string]: string } = {};
 
               event.events.forEach((event) => {
@@ -131,11 +137,19 @@ export class PageListSubscriptions implements OnInit {
 
               eventsArray.pipe(take(1)).subscribe((events) => {
                 events.forEach((event) => {
+                  if (!event || !event.id) {
+                    return;
+                  }
+
                   eventNames[event.id] = event.name.replace(/[",;]/g, '');
                 });
 
                 subscriptions.forEach((item) => {
                   const user = users.find((user) => user.uid === item.id);
+
+                  if (!user) {
+                    return;
+                  }
 
                   let status = 'Status não cadastrado';
 
@@ -160,7 +174,7 @@ export class PageListSubscriptions implements OnInit {
                       break;
                   }
 
-                  let subscribedToEventsItemArray$: Observable<EventItem>[] = [];
+                  let subscribedToEventsItemArray$: Observable<EventItem | undefined>[] = [];
 
                   item.subscribedToEvents.forEach((eventID) => {
                     subscribedToEventsItemArray$.push(
@@ -184,10 +198,10 @@ export class PageListSubscriptions implements OnInit {
                   const row = [
                     user.uid,
                     user.displayName,
-                    user.fullName,
-                    user.associateStatus,
+                    user.fullName || '',
+                    user.associateStatus || '',
                     user.academicID || 'Sem RA cadastrado',
-                    user.email,
+                    user.email || '',
                     item.payment.status,
                     status,
 

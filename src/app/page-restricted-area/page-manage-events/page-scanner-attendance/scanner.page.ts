@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { Component, Input, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
@@ -19,7 +18,7 @@ import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { DateService } from 'src/app/shared/services/date.service';
 
 interface Attendance {
-  user: Observable<User>;
+  user: Observable<User | undefined>;
   time: TimestampType;
   id?: string;
 }
@@ -31,19 +30,18 @@ interface Attendance {
   styleUrls: ['./scanner.page.scss'],
 })
 export class ScannerPage implements OnInit {
-  @Input('manualInput') manualInput: string;
+  @Input('manualInput') manualInput!: string;
   @ViewChild('mySwal')
-  private mySwal: SwalComponent;
+  private mySwal!: SwalComponent;
 
   // QR Code scanner
-  availableDevices: MediaDeviceInfo[];
-  currentDevice: MediaDeviceInfo = null;
+  availableDevices!: MediaDeviceInfo[];
+  currentDevice: MediaDeviceInfo | null = null;
   allowedFormats = [BarcodeFormat.QR_CODE];
   torchEnabled = false;
   torchAvailable = new BehaviorSubject<boolean>(false);
-  hasDevices: boolean;
-  hasPermission: boolean;
-  qrResultString: string;
+  hasDevices: boolean = false;
+  hasPermission: boolean = false;
   deviceIndex: number = -1;
   showScanner = true;
 
@@ -58,7 +56,7 @@ export class ScannerPage implements OnInit {
    * Variable initialized at this.checkIfEventIsPaid();
    * Variável inicializada no método this.checkIfEventIsPaid()
    */
-  private eventIsPaid: boolean;
+  private eventIsPaid: boolean | undefined;
   /**
    * Variable initialized at this.checkIfEventIsPaid();
    * Variável inicializada no método this.checkIfEventIsPaid()
@@ -72,7 +70,7 @@ export class ScannerPage implements OnInit {
 
   audioSuccess: HTMLAudioElement;
 
-  adminID: string;
+  adminID: string | undefined;
 
   constructor(
     private afs: AngularFirestore,
@@ -83,13 +81,11 @@ export class ScannerPage implements OnInit {
     private authService: AuthService,
     private auth: AngularFireAuth,
     public dateService: DateService
-  ) {}
-
-  ngOnInit() {
+  ) {
     this.eventID = this.route.snapshot.params.eventID;
 
     this.auth.user.pipe(take(1)).subscribe((user) => {
-      this.adminID = user.uid;
+      this.adminID = user?.uid || 'Desconhecido';
     });
 
     // If eventID is not valid, redirect
@@ -108,7 +104,12 @@ export class ScannerPage implements OnInit {
         }
       });
 
-    this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges().pipe(trace('firestore'));
+    this.event$ = this.afs
+      .collection('events')
+      .doc<EventItem>(this.eventID)
+      .valueChanges()
+      // @ts-ignore
+      .pipe(trace('firestore'));
     this.checkIfEventIsPaid();
 
     // Get attendance list
@@ -156,6 +157,9 @@ export class ScannerPage implements OnInit {
 
     // Load audio asset (beep)
     this.audioSuccess = new Audio();
+  }
+
+  ngOnInit() {
     this.audioSuccess.src = 'assets/sounds/scanner-beep.mp3';
     this.audioSuccess.load();
   }
@@ -208,7 +212,7 @@ export class ScannerPage implements OnInit {
       .subscribe((event) => {
         if (event.exists) {
           // Verify if event is a part of majorEvent
-          const majorEventID = event.data().inMajorEvent;
+          const majorEventID = event.data()?.inMajorEvent;
           this.majorEventID = majorEventID;
           const isSubEvent = majorEventID != null;
           // If it is a subEvent, check if majorEvent is paid
@@ -219,7 +223,7 @@ export class ScannerPage implements OnInit {
               .get()
               .pipe(take(1), trace('firestore'))
               .subscribe((majorEvent) => {
-                const majorEventIsPaid = !majorEvent.data().price.isFree;
+                const majorEventIsPaid = !majorEvent.data()?.price.isFree;
                 // Finally, set if event is paid
                 this.eventIsPaid = isSubEvent && majorEventIsPaid;
               });
@@ -290,7 +294,10 @@ export class ScannerPage implements OnInit {
    * Escreve um determinado UID na coleção correta
    * @param uid User ID, ID do usuário
    */
-  writeUserAttendance(uid: string) {
+  writeUserAttendance(uid: string | null) {
+    if (!uid) {
+      return;
+    }
     // First, verify if user exists
     this.userExists$(uid).subscribe((exists) => {
       if (exists) {
@@ -462,7 +469,7 @@ export class ScannerPage implements OnInit {
 
   async backdropColor(color: string) {
     // Add class to ion-backdrop
-    document.querySelector('ion-backdrop').classList.add(color);
+    document.querySelector('ion-backdrop')!.classList.add(color);
 
     // Change backdrop class to color
     this._backdropVisibleSubject.next(true);
@@ -472,6 +479,6 @@ export class ScannerPage implements OnInit {
 
     this._backdropVisibleSubject.next(false);
     // Remove backdrop class
-    document.querySelector('ion-backdrop').classList.remove(color);
+    document.querySelector('ion-backdrop')!.classList.remove(color);
   }
 }

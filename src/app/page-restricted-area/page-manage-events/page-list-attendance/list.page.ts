@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { ToastController, AlertController } from '@ionic/angular';
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -27,7 +26,7 @@ interface Attendance {
 })
 export class ListPage implements OnInit {
   @ViewChild('mySwal')
-  private mySwal: SwalComponent;
+  private mySwal!: SwalComponent;
 
   attendanceCollection$: Observable<Attendance[]>;
   eventID: string;
@@ -41,9 +40,7 @@ export class ListPage implements OnInit {
     private toastController: ToastController,
     private alertController: AlertController,
     public dateService: DateService
-  ) {}
-
-  ngOnInit() {
+  ) {
     this.eventID = this.route.snapshot.params.eventID;
     this.afs
       .collection('events')
@@ -60,7 +57,12 @@ export class ListPage implements OnInit {
         }
       });
 
-    this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges().pipe(trace('firestore'));
+    this.event$ = this.afs
+      .collection('events')
+      .doc<EventItem>(this.eventID)
+      .valueChanges()
+      // @ts-ignore
+      .pipe(trace('firestore'));
 
     this.attendanceCollection$ = this.afs
       .collection<Attendance>(`events/${this.eventID}/attendance`, (ref) => {
@@ -74,12 +76,15 @@ export class ListPage implements OnInit {
           return attendance.map((item) => {
             return {
               ...item,
+              // @ts-ignore
               user: this.afs.collection('users').doc<User>(item.id).valueChanges().pipe(trace('firestore'), take(1)),
             };
           });
         })
       );
   }
+
+  ngOnInit() {}
 
   deleteAttendance(attendanceID: string) {
     this.afs
@@ -135,18 +140,34 @@ export class ListPage implements OnInit {
       .valueChanges({ idfield: 'id' })
       .pipe(take(1), trace('firestore'))
       .subscribe((users) => {
-        const csv = [];
-        const headers = ['UID', 'Nome da conta Google', 'Nome', 'RA', 'Email', 'Data_locale', 'Data_iso'];
+        const csv: (string | undefined)[][] = [];
+        const headers = [
+          'UID',
+          'Nome da conta Google',
+          'Nome completo',
+          'Vínculo com a Unesp',
+          'RA',
+          'Email',
+          'Data_locale',
+          'Data_iso',
+        ];
         csv.push(headers);
         this.attendanceCollection$.pipe(take(1)).subscribe((attendanceCol) => {
           attendanceCol.forEach((attendance) => {
             const user = users.find((user) => user.uid === attendance.id);
+
+            if (!user) {
+              return;
+            }
+
             const row = [
               user.uid,
               user.displayName,
-              user.fullName,
-              user.academicID,
+              user.fullName || '',
+              user.associateStatus || '',
+              user.academicID || 'Sem RA cadastrado',
               user.email,
+
               this.dateService.getDateFromTimestamp(attendance.time).toLocaleString('pt-BR', {
                 timeZone: 'America/Sao_Paulo',
                 year: 'numeric',

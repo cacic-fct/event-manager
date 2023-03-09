@@ -13,10 +13,6 @@
   <div class="ion-padding-horizontal">
     <h2 *ngIf="hasPermission === false">Você não concedeu permissão para acessar a câmera.</h2>
 
-    <p *ngIf="hasDevices === undefined">
-      Verifique se o app tem permissão para acessar a câmera e se o dispositivo está conectado.
-    </p>
-
     <h2 *ngIf="hasDevices === false">
       Nenhuma câmera foi detectada. Verifique se o dispositivo está conectado e se o app tem permissão para acessar a
       câmera.
@@ -99,15 +95,22 @@
               <h2 class="ion-text-wrap" *ngIf="!user.fullName">
                 <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
               </h2>
-              <ng-container *ngIf="user.academicID; else notUnesp">
-                <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+              <ng-container *ngIf="user.academicID; else noAcademicID">
+                <h3 class="ion-text-wrap">
+                  {{ courses.getCourse(user.academicID) || "RA inválido" }} | {{ user.academicID }}
+                </h3>
               </ng-container>
 
+              <ng-template #noAcademicID>
+                <h3 class="ion-text-wrap" *ngIf="user.email.includes('@unesp.br'); else notUnesp">Sem RA cadastrado</h3>
+              </ng-template>
+
               <ng-template #notUnesp>
-                <h3 class="ion-text-wrap" *ngIf="user.academicID">Usuário externo</h3>
+                <h3 class="ion-text-wrap">Usuário externo</h3>
               </ng-template>
 
               <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+              <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
             </ng-container>
             <h3 class="ion-text-wrap">
               {{ dateService.getDateFromTimestamp(nonPayingAttendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}

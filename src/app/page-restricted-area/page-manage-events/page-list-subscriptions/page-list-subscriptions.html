@@ -30,15 +30,23 @@
           <h2 class="ion-text-wrap" *ngIf="!user.fullName">
             <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
           </h2>
-          <ng-container *ngIf="user.academicID; else notUnesp">
-            <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+
+          <ng-container *ngIf="user.academicID; else noAcademicID">
+            <h3 class="ion-text-wrap">
+              {{ courses.getCourse(user.academicID) || "RA inválido" }} | {{ user.academicID }}
+            </h3>
           </ng-container>
 
+          <ng-template #noAcademicID>
+            <h3 class="ion-text-wrap" *ngIf="user.email.includes('@unesp.br'); else notUnesp">Sem RA cadastrado</h3>
+          </ng-template>
+
           <ng-template #notUnesp>
-            <h3 class="ion-text-wrap" *ngIf="!user.academicID">Sem RA definido</h3>
+            <h3 class="ion-text-wrap">Usuário externo</h3>
           </ng-template>
 
           <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+          <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
         </ng-container>
         <h3 class="ion-text-wrap">
           {{ dateService.getDateFromTimestamp(subscriptionItem.time) | date: "dd/MM/y - HH:mm:ss" }}

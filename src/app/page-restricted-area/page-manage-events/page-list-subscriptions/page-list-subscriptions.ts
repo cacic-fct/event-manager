@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
@@ -15,7 +14,7 @@ import { DateService } from 'src/app/shared/services/date.service';
 interface Subscription {
   id: string;
   time: Timestamp;
-  user: Observable<User>;
+  user: Observable<User | undefined>;
 }
 @UntilDestroy()
 @Component({
@@ -25,7 +24,7 @@ interface Subscription {
 })
 export class PageListSubscriptions implements OnInit {
   @ViewChild('mySwal')
-  private mySwal: SwalComponent;
+  private mySwal!: SwalComponent;
 
   event$: Observable<EventItem>;
   subscriptions$: Observable<Subscription[]>;
@@ -38,9 +37,7 @@ export class PageListSubscriptions implements OnInit {
     private route: ActivatedRoute,
     public courses: CoursesService,
     public dateService: DateService
-  ) {}
-
-  ngOnInit() {
+  ) {
     this.eventID = this.route.snapshot.params.eventID;
     this.afs
       .collection('events')
@@ -56,7 +53,14 @@ export class PageListSubscriptions implements OnInit {
           }, 1000);
         }
       });
-    this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges().pipe(trace('firestore'));
+
+    this.event$ = this.afs
+      .collection('events')
+      .doc<EventItem>(this.eventID)
+      .valueChanges()
+      // @ts-ignore
+      .pipe(trace('firestore'));
+
     this.subscriptions$ = this.afs
       .collection<Subscription>(`events/${this.eventID}/subscriptions`, (ref) => ref.orderBy('time'))
       .valueChanges({ idField: 'id' })
@@ -76,23 +80,39 @@ export class PageListSubscriptions implements OnInit {
       );
   }
 
+  ngOnInit() {}
+
   generateCSV() {
     this.afs
       .collection<User>('users')
       .valueChanges({ idField: 'id' })
       .pipe(first(), trace('firestore'))
       .subscribe((users) => {
-        const csv = [];
-        const headers = ['UID', 'Nome da conta Google', 'Nome', 'RA', 'Email', 'Data_locale', 'Data_iso'];
+        const csv: (string | undefined)[][] = [];
+        const headers = [
+          'UID',
+          'Nome da conta Google',
+          'Nome completo',
+          'Vínculo com a Unesp',
+          'RA',
+          'Email',
+          'Data_locale',
+          'Data_iso',
+        ];
         csv.push(headers);
         this.subscriptions$.pipe(first()).subscribe((subscriptions) => {
           subscriptions.forEach((item) => {
             const user = users.find((user) => user.uid === item.id);
+            if (!user) {
+              return;
+            }
+
             const row = [
               user.uid,
               user.displayName,
-              user.fullName,
-              user.academicID,
+              user.fullName || '',
+              user.associateStatus || '',
+              user.academicID || 'Sem RA cadastrado',
               user.email,
               this.dateService.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {
                 timeZone: 'America/Sao_Paulo',
