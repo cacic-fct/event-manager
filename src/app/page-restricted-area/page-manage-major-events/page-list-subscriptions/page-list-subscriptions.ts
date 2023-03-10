@@ -229,6 +229,7 @@ export class PageListSubscriptions implements OnInit {
                       item.subscribedToEvents.join('; '),
                       subscribedToEventsNames,
                     ];
+                    csv.push(row);
                     return;
                   }
 
