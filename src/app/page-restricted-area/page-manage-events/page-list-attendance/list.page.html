@@ -26,7 +26,7 @@
     </ion-button> -->
 
     <ion-item *ngFor="let attendancePerson of attendancePeople">
-      <ng-container *ngIf="(attendancePerson.user | async) as user">
+      <ng-container *ngIf="(attendancePerson.user | async) as user; else userNotFound">
         <ion-label>
           <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
           <h2 class="ion-text-wrap" *ngIf="!user.fullName">
@@ -54,10 +54,31 @@
             {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
           </h3>
         </ion-label>
-        <ion-button slot="end" (click)="deleteAlert(attendancePerson.id, (user.fullName || user.displayName))">
-          <ion-icon slot="icon-only" name="trash-outline">Remover presença</ion-icon>
+        <ion-button
+          color="danger"
+          slot="end"
+          (click)="deleteAlert(attendancePerson.id, (user.fullName || user.displayName))">
+          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
         </ion-button>
       </ng-container>
+
+      <ng-template #userNotFound>
+        <ion-label>
+          <h2 class="ion-text-wrap">
+            <ion-text color="danger">Usuário não encontrado</ion-text>
+          </h2>
+          <h2 class="ion-text-wrap">
+            <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
+          </h2>
+          <h2>UID: {{ attendancePerson.id }}</h2>
+        </ion-label>
+        <ion-button
+          color="danger"
+          slot="end"
+          (click)="deleteAlert(attendancePerson.id, 'Usuário não encontrado.<br>Confira os dados no banco de dados antes de remover a presença')">
+          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+        </ion-button>
+      </ng-template>
     </ion-item>
   </ng-container>
 

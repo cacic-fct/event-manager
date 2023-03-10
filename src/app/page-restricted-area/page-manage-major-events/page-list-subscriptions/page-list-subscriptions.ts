@@ -147,10 +147,6 @@ export class PageListSubscriptions implements OnInit {
                 subscriptions.forEach((item) => {
                   const user = users.find((user) => user.uid === item.id);
 
-                  if (!user) {
-                    return;
-                  }
-
                   let status = 'Status não cadastrado';
 
                   switch (item.payment.status) {
@@ -176,6 +172,7 @@ export class PageListSubscriptions implements OnInit {
 
                   let subscribedToEventsItemArray$: Observable<EventItem | undefined>[] = [];
 
+                  // TODO: Optimize this
                   item.subscribedToEvents.forEach((eventID) => {
                     subscribedToEventsItemArray$.push(
                       this.afs
@@ -194,6 +191,46 @@ export class PageListSubscriptions implements OnInit {
                   item.subscribedToEvents.forEach((eventID) => {
                     subscribedToEventsNames += '""' + eventNames[eventID] + '""; ';
                   });
+
+                  if (!user) {
+                    const row = [
+                      item.id,
+                      'Usuário não encontrado',
+                      '',
+                      '',
+                      '',
+                      '',
+                      item.payment.status,
+                      status,
+                      this.getDateFromTimestamp(item.payment.time).toLocaleString('pt-BR', {
+                        timeZone: 'America/Sao_Paulo',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      }),
+
+                      this.getDateFromTimestamp(item.payment.time).toISOString(),
+
+                      this.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {
+                        timeZone: 'America/Sao_Paulo',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      }),
+
+                      this.getDateFromTimestamp(item.time).toISOString(),
+
+                      item.subscribedToEvents.join('; '),
+                      subscribedToEventsNames,
+                    ];
+                    return;
+                  }
 
                   const row = [
                     user.uid,

@@ -25,7 +25,7 @@
     </div>
     <ion-item *ngFor="let subscriptionItem of subscriptions">
       <ion-label>
-        <ng-container *ngIf="(subscriptionItem.user | async) as user">
+        <ng-container *ngIf="(subscriptionItem.user | async) as user; else userNotFound">
           <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
           <h2 class="ion-text-wrap" *ngIf="!user.fullName">
             <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
@@ -50,6 +50,15 @@
           </h3>
           <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
         </ng-container>
+        <ng-template #userNotFound>
+          <h2 class="ion-text-wrap">
+            <ion-text color="danger">Usuário não encontrado</ion-text>
+          </h2>
+          <h2 class="ion-text-wrap">
+            <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
+          </h2>
+          <h2>UID: {{ subscriptionItem.id }}</h2>
+        </ng-template>
       </ion-label>
     </ion-item>
   </ng-container>

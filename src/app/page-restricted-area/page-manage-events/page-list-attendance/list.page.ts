@@ -157,6 +157,8 @@ export class ListPage implements OnInit {
             const user = users.find((user) => user.uid === attendance.id);
 
             if (!user) {
+              const row = [attendance.id, 'Usuário não encontrado'];
+              csv.push(row);
               return;
             }
 

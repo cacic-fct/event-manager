@@ -104,6 +104,8 @@ export class PageListSubscriptions implements OnInit {
           subscriptions.forEach((item) => {
             const user = users.find((user) => user.uid === item.id);
             if (!user) {
+              const row = [item.id, 'Usuário não encontrado'];
+              csv.push(row);
               return;
             }
 

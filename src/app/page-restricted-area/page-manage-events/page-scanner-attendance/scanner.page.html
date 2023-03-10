@@ -61,7 +61,7 @@
         </div>
         <ion-item *ngFor="let attendancePerson of attendancePeople">
           <ion-label>
-            <ng-container *ngIf="(attendancePerson.user | async) as user">
+            <ng-container *ngIf="(attendancePerson.user | async) as user; else userNotFound">
               <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
               <h2 class="ion-text-wrap" *ngIf="!user.fullName">
                 <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
@@ -76,6 +76,19 @@
 
               <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
             </ng-container>
+
+            <ng-template #userNotFound>
+              <ion-label>
+                <h2 class="ion-text-wrap">
+                  <ion-text color="danger">Usuário não encontrado</ion-text>
+                </h2>
+                <h2 class="ion-text-wrap">
+                  <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
+                </h2>
+                <h2>UID: {{ attendancePerson.id }}</h2>
+              </ion-label>
+            </ng-template>
+
             <h3 class="ion-text-wrap">
               {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
             </h3>
