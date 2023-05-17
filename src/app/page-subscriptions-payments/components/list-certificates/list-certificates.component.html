@@ -14,7 +14,7 @@
 
   <ng-container *ngIf="certificatesColletion$ | async as certificatesCollection; else loading">
     <ng-container *ngIf="certificatesCollection.length === 0">
-      <h1 class="ion-padding ion-text-center">Você não tem certificados emitidos</h1>
+      <h1 class="ion-padding ion-text-center">Nenhum certificado foi emitido para você</h1>
     </ng-container>
     <ng-container *ngFor="let certificate of certificatesCollection">
       <ng-container *ngIf="certificate.certificateData | async as certificateData">
