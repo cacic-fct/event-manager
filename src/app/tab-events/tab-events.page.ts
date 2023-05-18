@@ -1,6 +1,5 @@
 // @ts-strict-ignore
-import { Component } from '@angular/core';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { Component, inject } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { compareAsc } from 'date-fns';
@@ -9,6 +8,7 @@ import { take, map, Observable } from 'rxjs';
 import { MajorEventItem } from '../shared/services/major-event.service';
 import { MajorEventSubscription } from './../shared/services/major-event.service';
 import { DateService } from 'src/app/shared/services/date.service';
+import { user, Auth } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-tab-events',
@@ -16,6 +16,9 @@ import { DateService } from 'src/app/shared/services/date.service';
   styleUrls: ['tab-events.page.scss'],
 })
 export class TabEventsPage {
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+
   majorEvents$: Observable<
     (MajorEventItem & {
       isSubscribed: Observable<boolean>;
@@ -23,10 +26,10 @@ export class TabEventsPage {
   >;
   today: Date = new Date();
 
-  constructor(public afs: AngularFirestore, public auth: AngularFireAuth, public dateService: DateService) {}
+  constructor(public afs: AngularFirestore, public dateService: DateService) {}
 
   ngOnInit() {
-    this.auth.user.pipe(take(1)).subscribe((user) => {
+    this.user$.pipe(take(1)).subscribe((user) => {
       this.majorEvents$ = this.afs
         .collection<MajorEventItem>('majorEvents', (ref) => {
           return ref.orderBy('eventStartDate', 'asc').limit(5);

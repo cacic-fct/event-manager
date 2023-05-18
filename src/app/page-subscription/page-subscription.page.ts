@@ -5,8 +5,7 @@ import { InfoModalComponent } from './info-modal/info-modal.component';
 import { MajorEventSubscription } from '../shared/services/major-event.service';
 import { EnrollmentTypesService } from './../shared/services/enrollment-types.service';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
 import { formatDate } from '@angular/common';
@@ -25,6 +24,7 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { EmojiService } from './../shared/services/emoji.service';
 import { DateService } from 'src/app/shared/services/date.service';
+import { Auth, user } from '@angular/fire/auth';
 
 @UntilDestroy()
 @Component({
@@ -45,6 +45,9 @@ export class PageSubscriptionPage implements OnInit {
   private eventNotFound: SwalComponent;
   @ViewChild('eventOutOfSubscriptionDate')
   private eventOutOfSubscriptionDate: SwalComponent;
+
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
 
   today: Date = new Date();
 
@@ -76,7 +79,6 @@ export class PageSubscriptionPage implements OnInit {
 
   constructor(
     public afs: AngularFirestore,
-    public auth: AngularFireAuth,
     private router: Router,
     private route: ActivatedRoute,
     private modalController: ModalController,
@@ -88,7 +90,7 @@ export class PageSubscriptionPage implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.auth.user.pipe(take(1)).subscribe((user) => {
+    this.user$.pipe(take(1)).subscribe((user) => {
       if (user) {
         this.afs
           .collection('users')
@@ -137,7 +139,7 @@ export class PageSubscriptionPage implements OnInit {
 
     // Check if user has receipt validated
     // If they have, they can't edit their subscription
-    this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
+    this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
       if (user) {
         this.afs
           .doc<MajorEventSubscription>(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
@@ -192,7 +194,7 @@ export class PageSubscriptionPage implements OnInit {
             }
 
             // If user is already subscribed, auto select event
-            this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
+            this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
               if (user) {
                 this.afs
                   .doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
@@ -386,7 +388,7 @@ export class PageSubscriptionPage implements OnInit {
             break;
         }
 
-        this.auth.user.pipe(take(1)).subscribe((user) => {
+        this.user$.pipe(take(1)).subscribe((user) => {
           if (user) {
             this.afs
               .doc<Subscription>(`users/${user.uid}/majorEventSubscriptions/${this.majorEventID}`)

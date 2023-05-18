@@ -59,11 +59,7 @@ import { CoursesService } from './shared/services/courses.service';
 
 import { CertificateService } from 'src/app/shared/services/certificates.service';
 
-import {
-  AngularFireAuthModule,
-  USE_DEVICE_LANGUAGE,
-  USE_EMULATOR as USE_AUTH_EMULATOR,
-} from '@angular/fire/compat/auth';
+import { connectAuthEmulator, getAuth, getRedirectResult, provideAuth, useDeviceLanguage } from '@angular/fire/auth';
 
 @NgModule({
   declarations: [AppComponent],
@@ -71,7 +67,6 @@ import {
     BrowserModule,
     IonicModule.forRoot(),
     AppRoutingModule,
-    AngularFireAuthModule,
     AngularFireModule.initializeApp(environment.firebase),
     AngularFireAnalyticsModule,
     AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
@@ -120,6 +115,17 @@ import {
       return remoteConfig;
     }),
 
+    provideAuth(() => {
+      const auth = getAuth();
+
+      useDeviceLanguage(auth);
+
+      if (environment.useEmulators) {
+        connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+      }
+      return auth;
+    }),
+
     provideFirebaseApp(() => initializeApp(environment.firebase)),
   ],
   providers: [
@@ -130,14 +136,9 @@ import {
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     { provide: FIRESTORE_SETTINGS, useValue: { ignoreUndefinedProperties: true, merge: true } },
-    { provide: USE_DEVICE_LANGUAGE, useValue: true },
     { provide: APP_VERSION, useValue: GlobalConstantsService.appVersion },
     { provide: APP_NAME, useValue: GlobalConstantsService.appName },
     { provide: FUNCTIONS_REGION, useValue: 'southamerica-east1' },
-    {
-      provide: USE_AUTH_EMULATOR,
-      useValue: environment.useEmulators ? ['http://localhost:9099', { disableWarnings: true }] : undefined,
-    },
     { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
     { provide: USE_FUNCTIONS_EMULATOR, useValue: environment.useEmulators ? ['localhost', 5001] : undefined },
     { provide: USE_STORAGE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 9199] : undefined },

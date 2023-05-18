@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { ActivatedRoute } from '@angular/router';
 import { increment } from '@angular/fire/firestore';
@@ -11,11 +11,11 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { trace } from '@angular/fire/compat/performance';
 import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { AlertController, IonModal } from '@ionic/angular';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { DateService } from 'src/app/shared/services/date.service';
+import { Auth, user } from '@angular/fire/auth';
 
 @UntilDestroy()
 @Component({
@@ -24,6 +24,9 @@ import { DateService } from 'src/app/shared/services/date.service';
   styleUrls: ['./validate-receipt.page.scss'],
 })
 export class ValidateReceiptPage implements OnInit {
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+
   private majorEventID: string;
   public eventName$: Observable<string>;
   private subscriptionsQuery: AngularFirestoreCollection<Subscription>;
@@ -38,7 +41,6 @@ export class ValidateReceiptPage implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private afs: AngularFirestore,
-    private auth: AngularFireAuth,
     private formBuilder: FormBuilder,
     private alertController: AlertController,
     public dateService: DateService
@@ -103,7 +105,7 @@ export class ValidateReceiptPage implements OnInit {
   }
 
   confirm() {
-    this.auth.user.pipe(take(1)).subscribe((adminUser) => {
+    this.user$.pipe(take(1)).subscribe((adminUser) => {
       this.subscriptionsQuery
         .get()
         .pipe(take(1), trace('firestore'))
@@ -176,7 +178,7 @@ export class ValidateReceiptPage implements OnInit {
       return;
     }
 
-    this.auth.user.pipe(take(1)).subscribe((user) => {
+    this.user$.pipe(take(1)).subscribe((user) => {
       this.subscriptionsQuery
         .get()
         .pipe(take(1), trace('firestore'))

@@ -1,6 +1,5 @@
 // @ts-strict-ignore
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { Observable } from 'rxjs';
 import { finalize, take } from 'rxjs/operators';
@@ -18,6 +17,7 @@ import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
 import { EnrollmentTypesService } from '../../shared/services/enrollment-types.service';
 import { DateService } from 'src/app/shared/services/date.service';
+import { Auth, user } from '@angular/fire/auth';
 
 @UntilDestroy()
 @Component({
@@ -38,6 +38,9 @@ export class PagePayPage implements OnInit {
   @ViewChild('alreadyPaid')
   private alreadyPaid: SwalComponent;
 
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+
   uploadPercent: Observable<number>;
   downloadURL: Observable<string>;
   majorEvent$: Observable<MajorEventItem>;
@@ -52,7 +55,6 @@ export class PagePayPage implements OnInit {
 
   constructor(
     private storage: AngularFireStorage,
-    public auth: AngularFireAuth,
     private imageCompress: NgxImageCompressService,
     public toastController: ToastController,
     private router: Router,
@@ -81,7 +83,7 @@ export class PagePayPage implements OnInit {
         }
       });
 
-    this.auth.user.pipe(take(1)).subscribe((user) => {
+    this.user$.pipe(take(1)).subscribe((user) => {
       if (user) {
         this.uid = user.uid;
         this.afs

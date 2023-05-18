@@ -1,6 +1,5 @@
 // @ts-strict-ignore
 import { Component, Input, OnInit } from '@angular/core';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { formatDate } from '@angular/common';
 
@@ -27,7 +26,6 @@ export class ConfirmModalComponent implements OnInit {
 
   constructor(
     public afs: AngularFirestore,
-    public auth: AngularFireAuth,
     private modalController: ModalController,
     public enrollmentTypes: EnrollmentTypesService,
     public emojiService: EmojiService,

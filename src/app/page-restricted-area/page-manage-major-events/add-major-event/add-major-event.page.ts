@@ -1,9 +1,8 @@
 // @ts-strict-ignore
-import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { Router } from '@angular/router';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { ModalController } from '@ionic/angular';
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { format, parseISO, addHours } from 'date-fns';
@@ -15,6 +14,7 @@ import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 
 import { ConfirmModalComponent } from './components/confirm-modal/confirm-modal.component';
 import { serverTimestamp } from '@angular/fire/firestore';
+import { Auth, user } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-add-major-event',
@@ -24,6 +24,9 @@ import { serverTimestamp } from '@angular/fire/firestore';
 export class AddMajorEventPage implements OnInit {
   @ViewChild('successSwal') private successSwal: SwalComponent;
   @ViewChild('errorSwal') private errorSwal: SwalComponent;
+
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
 
   courses = CoursesService.courses;
   priceDifferentiate: boolean = true;
@@ -40,8 +43,7 @@ export class AddMajorEventPage implements OnInit {
     public formBuilder: FormBuilder,
     private modalController: ModalController,
     private afs: AngularFirestore,
-    private router: Router,
-    private auth: AngularFireAuth
+    private router: Router
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
   }
@@ -127,7 +129,7 @@ export class AddMajorEventPage implements OnInit {
         }
       }
 
-      this.auth.user.subscribe((user) => {
+      this.user$.subscribe((user) => {
         this.afs
           .collection<MajorEventItem>('majorEvents')
           .add({

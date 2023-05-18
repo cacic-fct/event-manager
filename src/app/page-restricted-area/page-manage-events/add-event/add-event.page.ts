@@ -9,13 +9,13 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
 import { take, Observable, map } from 'rxjs';
 import { Timestamp, arrayUnion } from '@firebase/firestore';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { EventItem } from 'src/app/shared/services/event';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { ConfirmModalPage } from './confirm-modal/confirm-modal.page';
 import { getStringChanges, RemoteConfig } from '@angular/fire/remote-config';
 import { serverTimestamp } from '@angular/fire/firestore';
+import { Auth, user } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-add-event',
@@ -27,6 +27,9 @@ export class AddEventPage implements OnInit {
   @ViewChild('errorSwal') private errorSwal: SwalComponent;
   @ViewChild('errorMajorEventSwal') private errorMajorEventSwal: SwalComponent;
   @ViewChild('selectPlace', { static: false }) selectPlace: IonSelect;
+
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
 
   courses = CoursesService.courses;
   majorEventsData$: Observable<MajorEventItem[]>;
@@ -49,8 +52,7 @@ export class AddEventPage implements OnInit {
     private modalController: ModalController,
     public majorEvents: MajorEventsService,
     private afs: AngularFirestore,
-    private router: Router,
-    private auth: AngularFireAuth
+    private router: Router
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
   }
@@ -125,7 +127,7 @@ export class AddEventPage implements OnInit {
     }
     this.openConfirmModal().then((response) => {
       if (response) {
-        this.auth.user.pipe(take(1)).subscribe((user) => {
+        this.user$.pipe(take(1)).subscribe((user) => {
           let majorEvent = this.dataForm.get('inMajorEvent').value;
           if (majorEvent === 'none') {
             majorEvent = null;

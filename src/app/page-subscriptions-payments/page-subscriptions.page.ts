@@ -2,16 +2,16 @@
 import { EventItem, EventSubscription } from 'src/app/shared/services/event';
 import { Timestamp } from '@firebase/firestore-types';
 import { MajorEventItem, MajorEventSubscription } from '../shared/services/major-event.service';
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { map, Observable, switchMap, combineLatest } from 'rxjs';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { trace } from '@angular/fire/compat/performance';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { EnrollmentTypesService } from '../shared/services/enrollment-types.service';
 import { DateService } from 'src/app/shared/services/date.service';
+import { Auth, user } from '@angular/fire/auth';
 
 @UntilDestroy()
 @Component({
@@ -20,6 +20,9 @@ import { DateService } from 'src/app/shared/services/date.service';
   styleUrls: ['./page-subscriptions.page.scss'],
 })
 export class PageSubscriptionsPage implements OnInit {
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+
   subscriptions$!: Observable<Subscription[]>;
   eventSubscriptions$!: Observable<EventSubscriptionLocal[]>;
 
@@ -27,11 +30,10 @@ export class PageSubscriptionsPage implements OnInit {
 
   constructor(
     public afs: AngularFirestore,
-    public auth: AngularFireAuth,
     public enrollmentTypes: EnrollmentTypesService,
     public dateService: DateService
   ) {
-    this.auth.user.pipe(untilDestroyed(this)).subscribe((user) => {
+    this.user$.pipe(untilDestroyed(this)).subscribe((user) => {
       if (user) {
         this.subscriptions$ = this.afs
           .collection<Subscription>(`users/${user.uid}/majorEventSubscriptions`)

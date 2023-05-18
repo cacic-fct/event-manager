@@ -1,15 +1,14 @@
 // @ts-strict-ignore
-import { Component } from '@angular/core';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { Component, inject } from '@angular/core';
 
 import { AuthService } from '../shared/services/auth.service';
-import firebase from 'firebase/compat/app';
 
 import { trace } from '@angular/fire/compat/performance';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 
 import { environment } from 'src/environments/environment';
+import { Auth, authState, user, User } from '@angular/fire/auth';
 
 @UntilDestroy()
 @Component({
@@ -18,14 +17,18 @@ import { environment } from 'src/environments/environment';
   styleUrls: ['tab-menu.page.scss'],
 })
 export class TabMenuPage {
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+  authState$ = authState(this.auth);
+
   isProduction: boolean = environment.production;
-  userData: firebase.User;
+  userData: User;
   firstName: string;
 
-  constructor(public authService: AuthService, public auth: AngularFireAuth) {}
+  constructor(public authService: AuthService) {}
 
   ngOnInit() {
-    this.auth.user.pipe(untilDestroyed(this), trace('auth')).subscribe((user) => {
+    this.user$.pipe(untilDestroyed(this), trace('auth')).subscribe((user) => {
       if (user) {
         this.userData = user;
         this.firstName = this.userData.displayName.split(' ')[0];

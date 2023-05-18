@@ -1,16 +1,22 @@
 // @ts-strict-ignore
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { Component, Input, OnInit } from '@angular/core';
-import firebase from 'firebase/compat/app';
+import { Component, inject, Input, OnInit } from '@angular/core';
 
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+import {
+  Auth,
+  authState,
+  updatePhoneNumber,
+  linkWithPhoneNumber,
+  RecaptchaVerifier,
+  PhoneAuthProvider,
+} from '@angular/fire/auth';
+
 import { WindowService } from '../shared/services/window.service';
 
 import { timer, take, interval, Subscription } from 'rxjs';
 
 import { ModalController } from '@ionic/angular';
 
-import { linkWithPhoneNumber } from 'firebase/auth';
 import { User } from '../shared/services/user';
 
 import { Mailto, MailtoService } from './../shared/services/mailto.service';
@@ -24,6 +30,9 @@ import { trace } from '@angular/fire/compat/performance';
   styleUrls: ['./page-verify-phone.page.scss'],
 })
 export class PageVerifyPhonePage implements OnInit {
+  private auth: Auth = inject(Auth);
+  authState$ = authState(this.auth);
+
   verificationCode: string;
   @Input() phone: string;
   windowRef: any;
@@ -44,7 +53,6 @@ export class PageVerifyPhonePage implements OnInit {
   timerSubscription: Subscription;
 
   constructor(
-    public auth: AngularFireAuth,
     public afs: AngularFirestore,
     private win: WindowService,
     public modalController: ModalController,
@@ -66,7 +74,7 @@ export class PageVerifyPhonePage implements OnInit {
 
     this.setTimer();
 
-    this.auth.authState.pipe(take(1), trace('auth')).subscribe((userState) => {
+    this.authState$.pipe(take(1), trace('auth')).subscribe((userState) => {
       this.afs
         .collection('users')
         .doc<User>(userState.uid)
@@ -104,9 +112,13 @@ export class PageVerifyPhonePage implements OnInit {
       .pipe(take(1))
       .subscribe(() => {
         this.cooldown = false;
-        this.windowRef.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-          size: 'invisible',
-        });
+        this.windowRef.recaptchaVerifier = new RecaptchaVerifier(
+          'resend-sms',
+          {
+            size: 'invisible',
+          },
+          this.auth
+        );
         this.countdown.unsubscribe();
       });
   }
@@ -126,7 +138,7 @@ export class PageVerifyPhonePage implements OnInit {
     const fullPhoneNumber = '+55 ' + phone;
     const appVerifier = this.windowRef.recaptchaVerifier;
 
-    this.auth.authState.pipe(take(1)).subscribe((user) => {
+    this.authState$.pipe(take(1)).subscribe((user) => {
       if (user) {
         linkWithPhoneNumber(user, fullPhoneNumber, appVerifier)
           .then((confirmationResult) => {
@@ -148,7 +160,7 @@ export class PageVerifyPhonePage implements OnInit {
     const fullPhoneNumber = '+55 ' + phone;
     const appVerifier = this.windowRef.recaptchaVerifier;
 
-    const provider = new firebase.auth.PhoneAuthProvider();
+    const provider = new PhoneAuthProvider(this.auth);
 
     provider
       .verifyPhoneNumber(fullPhoneNumber, appVerifier)
@@ -169,14 +181,12 @@ export class PageVerifyPhonePage implements OnInit {
     }
 
     if (this.updatePhone) {
-      let phoneCredential = firebase.auth.PhoneAuthProvider.credential(
-        this.windowRef.confirmationResult,
-        this.verificationCode
-      );
+      let phoneCredential = PhoneAuthProvider.credential(this.windowRef.confirmationResult, this.verificationCode);
 
-      this.auth.authState.pipe(take(1)).subscribe((user) => {
-        user
-          .updatePhoneNumber(phoneCredential)
+      this.authState$.pipe(take(1)).subscribe((user) => {
+        updatePhoneNumber(user, phoneCredential);
+
+        updatePhoneNumber(user, phoneCredential)
           .then(() => {
             // User signed in successfully.
             this.modalController.dismiss({ data: true });

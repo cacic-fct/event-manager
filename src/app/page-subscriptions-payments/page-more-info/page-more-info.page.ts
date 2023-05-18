@@ -1,8 +1,7 @@
 import { ListCertificatesComponent } from './../components/list-certificates/list-certificates.component';
 import { ModalController } from '@ionic/angular';
 // @ts-strict-ignore
-import { Component, OnInit } from '@angular/core';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+import { Component, inject, OnInit } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { Observable, take, combineLatest, map } from 'rxjs';
@@ -16,6 +15,7 @@ import { documentId } from 'firebase/firestore';
 import { ActivatedRoute } from '@angular/router';
 
 import { DateService } from 'src/app/shared/services/date.service';
+import { Auth, user } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-page-more-info',
@@ -23,6 +23,9 @@ import { DateService } from 'src/app/shared/services/date.service';
   styleUrls: ['./page-more-info.page.scss'],
 })
 export class PageMoreInfoPage implements OnInit {
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+
   majorEventID: string;
 
   majorEvent$: Observable<MajorEventItem>;
@@ -36,7 +39,6 @@ export class PageMoreInfoPage implements OnInit {
 
   constructor(
     public afs: AngularFirestore,
-    public auth: AngularFireAuth,
     public enrollmentTypes: EnrollmentTypesService,
     private route: ActivatedRoute,
     public dateService: DateService,
@@ -52,7 +54,7 @@ export class PageMoreInfoPage implements OnInit {
       .valueChanges({ idField: 'id' })
       .pipe(trace('firestore'));
 
-    this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
+    this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
       if (user) {
         const query = this.afs.doc<MajorEventSubscription>(
           `majorEvents/${this.majorEventID}/subscriptions/${user.uid}`

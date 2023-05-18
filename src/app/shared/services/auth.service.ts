@@ -5,8 +5,19 @@ import { Injectable, NgZone, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { User } from '../services/user';
-import firebase from 'firebase/compat/app';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
+
+import {
+  Auth,
+  signInAnonymously,
+  GoogleAuthProvider,
+  authState,
+  User as UserAuth,
+  getIdTokenResult,
+  AuthProvider,
+  PhoneAuthProvider,
+  signInWithPopup,
+  linkWithPopup,
+} from '@angular/fire/auth';
 
 import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
@@ -24,11 +35,14 @@ import { gte as versionGreaterThan } from 'semver';
 export class AuthService {
   private remoteConfig: RemoteConfig = inject(RemoteConfig);
 
-  userData: firebase.User;
+  private auth: Auth = inject(Auth);
+
+  authState$ = authState(this.auth);
+
+  userData: UserAuth;
   localDataVersion: string = GlobalConstantsService.userDataVersion;
 
   constructor(
-    public auth: AngularFireAuth,
     public router: Router,
     public afs: AngularFirestore,
     public ngZone: NgZone,
@@ -37,7 +51,7 @@ export class AuthService {
     private fns: AngularFireFunctions,
     private route: ActivatedRoute
   ) {
-    this.auth.authState.pipe(trace('auth')).subscribe((user) => {
+    this.authState$.pipe(trace('auth')).subscribe((user) => {
       if (user) {
         this.userData = user;
         localStorage.setItem('user', JSON.stringify(this.userData));
@@ -50,7 +64,7 @@ export class AuthService {
             // Check if user email matches a professor email.
             // Professors are exempt from the register prompt
             if (professorsList.includes(user.email)) {
-              this.auth.idTokenResult.pipe(take(1)).subscribe((idTokenResult) => {
+              getIdTokenResult(user).then((idTokenResult) => {
                 const claims = idTokenResult.claims;
 
                 // If role is not set, set it to professor (3000)
@@ -120,26 +134,26 @@ export class AuthService {
   }
 
   GoogleAuth() {
-    return this.AuthLogin(new firebase.auth.GoogleAuthProvider());
+    return this.AuthLogin(new GoogleAuthProvider());
   }
 
   GoogleLink() {
-    return this.LinkProfile(new firebase.auth.GoogleAuthProvider());
+    return this.LinkProfile(new GoogleAuthProvider());
   }
 
   async anonAuth() {
     try {
-      await this.auth.signInAnonymously();
+      await signInAnonymously(this.auth);
       console.log('Signed in');
     } catch (error) {
       console.error(error);
     }
   }
 
-  async AuthLogin(provider: firebase.auth.AuthProvider) {
+  async AuthLogin(provider: AuthProvider) {
     this.auth.useDeviceLanguage();
     try {
-      this.auth.signInWithPopup(provider).then((result) => {
+      signInWithPopup(this.auth, provider).then((result) => {
         this.SetUserData(result.user);
 
         this.route.queryParams.pipe(take(1)).subscribe((params) => {
@@ -160,10 +174,10 @@ export class AuthService {
     }
   }
 
-  async LinkProfile(provider: firebase.auth.AuthProvider) {
+  async LinkProfile(provider: AuthProvider) {
     this.auth.useDeviceLanguage();
     try {
-      const result = await (await this.auth.currentUser).linkWithPopup(provider);
+      const result = await linkWithPopup(this.auth.currentUser, provider);
       const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${result.user.uid}`);
       const userData: User = {
         linkedPersonalEmail: true,
@@ -196,7 +210,7 @@ export class AuthService {
     toast.present();
   }
 
-  private SetUserData(user: firebase.User) {
+  private SetUserData(user: UserAuth) {
     const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
     const userData: User = {
       uid: user.uid,
@@ -209,7 +223,7 @@ export class AuthService {
     });
   }
 
-  private CompareUserdataVersion(user: firebase.User): Observable<boolean> {
+  private CompareUserdataVersion(user: UserAuth): Observable<boolean> {
     return getBooleanChanges(this.remoteConfig, 'registerPrompt').pipe(
       take(1),
       trace('remoteconfig'),
@@ -271,7 +285,7 @@ export class AuthService {
   }
 
   async phoneUnlink() {
-    unlink(this.userData, firebase.auth.PhoneAuthProvider.PROVIDER_ID);
+    unlink(this.userData, PhoneAuthProvider.PROVIDER_ID);
   }
 
   async getUserUid(manualInput: string): Promise<StringDataReturnType> {

@@ -1,5 +1,4 @@
-import { AngularFireAuth } from '@angular/fire/compat/auth';
-import { Component, Input, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, Input, OnInit, ViewChild } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
 import { BehaviorSubject, take, map, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
@@ -16,6 +15,7 @@ import { AuthService } from 'src/app/shared/services/auth.service';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { DateService } from 'src/app/shared/services/date.service';
+import { Auth, user } from '@angular/fire/auth';
 
 interface Attendance {
   user: Observable<User | undefined>;
@@ -33,6 +33,8 @@ export class ScannerPage implements OnInit {
   @Input('manualInput') manualInput!: string;
   @ViewChild('mySwal')
   private mySwal!: SwalComponent;
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
 
   // QR Code scanner
   availableDevices!: MediaDeviceInfo[];
@@ -79,12 +81,11 @@ export class ScannerPage implements OnInit {
     public courses: CoursesService,
     private toastController: ToastController,
     private authService: AuthService,
-    private auth: AngularFireAuth,
     public dateService: DateService
   ) {
     this.eventID = this.route.snapshot.params.eventID;
 
-    this.auth.user.pipe(take(1)).subscribe((user) => {
+    this.user$.pipe(take(1)).subscribe((user) => {
       this.adminID = user?.uid || 'Desconhecido';
     });
 

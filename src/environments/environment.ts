@@ -10,7 +10,7 @@ export const environment = {
     storageBucket: 'fct-pp.appspot.com',
     locationId: 'southamerica-east1',
     apiKey: 'AIzaSyAGtd5nwgEC68dvzTtA1TvCt9LGZ9luWhk',
-    authDomain: 'fct-pp.firebaseapp.com',
+    authDomain: 'fct-pp.web.app',
     messagingSenderId: '169157391934',
     measurementId: 'G-BKYCC0GR6G',
   },

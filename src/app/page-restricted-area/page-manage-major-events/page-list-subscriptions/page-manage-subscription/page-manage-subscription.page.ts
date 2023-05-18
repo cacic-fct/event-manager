@@ -4,14 +4,14 @@ import { User } from './../../../../shared/services/user';
 import { EventItem } from './../../../../shared/services/event';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { serverTimestamp, increment } from '@angular/fire/firestore';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { MajorEventSubscription } from './../../../../shared/services/major-event.service';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { ActivatedRoute } from '@angular/router';
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { Observable, map, take, combineLatest } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { DateService } from 'src/app/shared/services/date.service';
+import { Auth, user } from '@angular/fire/auth';
 
 @UntilDestroy()
 @Component({
@@ -20,6 +20,9 @@ import { DateService } from 'src/app/shared/services/date.service';
   styleUrls: ['./page-manage-subscription.page.scss'],
 })
 export class PageManageSubscriptionPage implements OnInit {
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+
   subscriptionID = this.route.snapshot.paramMap.get('subscriptionID');
   majorEventID = this.route.snapshot.paramMap.get('eventID');
 
@@ -32,12 +35,7 @@ export class PageManageSubscriptionPage implements OnInit {
   eventsUserAttended = [];
   eventsUserAttendedNotPaying = [];
 
-  constructor(
-    private route: ActivatedRoute,
-    private afs: AngularFirestore,
-    private auth: AngularFireAuth,
-    public dateService: DateService
-  ) {}
+  constructor(private route: ActivatedRoute, private afs: AngularFirestore, public dateService: DateService) {}
 
   ngOnInit() {
     this.userData$ = this.afs.doc<User>(`users/${this.subscriptionID}`).valueChanges().pipe(untilDestroyed(this));
@@ -99,7 +97,7 @@ export class PageManageSubscriptionPage implements OnInit {
   }
 
   forceEventEdit() {
-    this.auth.user.subscribe((user) => {
+    this.user$.subscribe((user) => {
       this.afs
         .doc<MajorEventSubscription>(`majorEvents/${this.majorEventID}/subscriptions/${this.subscriptionID}`)
         .get()

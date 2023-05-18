@@ -1,6 +1,6 @@
 <ion-header>
   <ion-toolbar>
-    <ng-content *ngIf="auth.authState | async; then signout_button; else login_button"></ng-content>
+    <ng-content *ngIf="authState$ | async; then signout_button; else login_button"></ng-content>
     <ng-template #signout_button>
       <ion-buttons slot="primary">
         <ion-button fill="clear" (click)="authService.SignOut()">
@@ -23,7 +23,7 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-card *ngIf="auth.authState | async">
+  <ion-card *ngIf="authState$ | async">
     <ion-item routerLink="/perfil">
       <ion-icon name="person-circle-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Meu perfil</ion-label>

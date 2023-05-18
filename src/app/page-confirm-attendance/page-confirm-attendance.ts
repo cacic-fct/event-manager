@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import { NavController, ToastController } from '@ionic/angular';
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -10,9 +10,9 @@ import { map, Observable, take, combineLatest } from 'rxjs';
 import { EventItem } from '../shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { MajorEventItem } from '../shared/services/major-event.service';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { serverTimestamp, arrayRemove } from '@angular/fire/firestore';
+import { Auth, user } from '@angular/fire/auth';
 
 interface EventInfo {
   name: string;
@@ -38,13 +38,15 @@ export class PageConfirmAttendance implements OnInit {
   @ViewChild('swalNotOnTime') private swalNotOnTime: SwalComponent;
   @ViewChild('swalAlreadyConfirmed') private swalAlreadyConfirmed: SwalComponent;
 
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+
   constructor(
     public formBuilder: FormBuilder,
     private route: ActivatedRoute,
     private afs: AngularFirestore,
     private navController: NavController,
     private router: Router,
-    private auth: AngularFireAuth,
     private toastController: ToastController
   ) {}
 
@@ -55,7 +57,7 @@ export class PageConfirmAttendance implements OnInit {
     });
 
     // Check if user is already registered
-    this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
+    this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
       const payingAttendance = this.afs
         .doc<EventItem>(`events/${this.eventID}/attendance/${user.uid}`)
         .get()
@@ -175,7 +177,7 @@ export class PageConfirmAttendance implements OnInit {
   };
 
   onSubmit() {
-    this.auth.user.pipe(take(1), trace('auth')).subscribe((user) => {
+    this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
       const userID = user.uid;
 
       const isPaymentNecessary: boolean = this.isSubEvent && this.isPaid;

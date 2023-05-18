@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import { User } from 'src/app/shared/services/user';
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 
 import { Router } from '@angular/router';
 
@@ -8,6 +8,8 @@ import { AuthService } from '../shared/services/auth.service';
 import { AlertController, ToastController } from '@ionic/angular';
 
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
+
+import { Auth, RecaptchaVerifier } from '@angular/fire/auth';
 
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
@@ -18,13 +20,10 @@ import { trace } from '@angular/fire/compat/performance';
 
 import { Mailto, MailtoService } from './../shared/services/mailto.service';
 
-import { AngularFireAuth } from '@angular/fire/compat/auth';
-
 import { take } from 'rxjs';
 
 import { WindowService } from '../shared/services/window.service';
 
-import firebase from 'firebase/compat/app';
 @Component({
   selector: 'app-page-register',
   templateUrl: './page-register.page.html',
@@ -34,6 +33,8 @@ export class PageRegisterPage implements OnInit {
   @ViewChild('mySwal')
   private mySwal: SwalComponent;
   windowRef: any;
+
+  private auth: Auth = inject(Auth);
 
   dataVersion: string = GlobalConstantsService.userDataVersion;
   userData: any;
@@ -47,7 +48,6 @@ export class PageRegisterPage implements OnInit {
     public formBuilder: FormBuilder,
     public afs: AngularFirestore,
     public router: Router,
-    public auth: AngularFireAuth,
     private mailtoService: MailtoService,
     private win: WindowService,
     private toastController: ToastController
@@ -92,9 +92,13 @@ export class PageRegisterPage implements OnInit {
       });
 
     this.windowRef = this.win.windowRef;
-    this.windowRef.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-      size: 'invisible',
-    });
+    this.windowRef.recaptchaVerifier = new RecaptchaVerifier(
+      'continue-button',
+      {
+        size: 'invisible',
+      },
+      this.auth
+    );
   }
 
   onSubmit() {

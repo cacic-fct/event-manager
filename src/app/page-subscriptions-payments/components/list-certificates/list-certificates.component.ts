@@ -1,15 +1,15 @@
 import { CertificateStoreData } from './../../../shared/services/certificates.service';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { MailtoService, Mailto } from './../../../shared/services/mailto.service';
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { ModalController, ToastController } from '@ionic/angular';
 import { filterNullish } from 'src/app/shared/services/rxjs.service';
 
 import { User } from '@firebase/auth';
 
 import { map, Observable, take, switchMap } from 'rxjs';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { UserCertificateDocument, CertificateService } from 'src/app/shared/services/certificates.service';
+import { Auth, user } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-list-certificates',
@@ -17,6 +17,9 @@ import { UserCertificateDocument, CertificateService } from 'src/app/shared/serv
   styleUrls: ['./list-certificates.component.scss'],
 })
 export class ListCertificatesComponent implements OnInit {
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+
   majorEventID!: string;
   userData: User;
   certificatesColletion$: Observable<UserCertificateDocumentLocal[]>;
@@ -27,14 +30,13 @@ export class ListCertificatesComponent implements OnInit {
   constructor(
     private modalController: ModalController,
     private mailtoService: MailtoService,
-    private auth: AngularFireAuth,
     private afs: AngularFirestore,
     private certificateService: CertificateService,
     private toastController: ToastController
   ) {
     this.userData = JSON.parse(localStorage.getItem('user') as string);
 
-    this.certificatesColletion$ = this.auth.user.pipe(
+    this.certificatesColletion$ = this.user$.pipe(
       filterNullish(),
       map((user) => {
         this.userID = user.uid;

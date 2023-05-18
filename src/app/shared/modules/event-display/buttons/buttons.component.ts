@@ -1,14 +1,14 @@
 import { EventItem } from 'src/app/shared/services/event';
 import { DateService } from './../../../services/date.service';
 import { ToastController } from '@ionic/angular';
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, inject, Input, OnInit } from '@angular/core';
 import { map, Observable, take } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { AngularFireAuth } from '@angular/fire/compat/auth';
 
 import { serverTimestamp } from '@angular/fire/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+import { Auth, user } from '@angular/fire/auth';
 
 @UntilDestroy()
 /**
@@ -23,6 +23,9 @@ export class ButtonsComponent implements OnInit {
   @Input() eventItem!: EventItem;
   @Input() displaySubscriptionAttendanceButtons: boolean | undefined;
 
+  private auth: Auth = inject(Auth);
+  user$ = user(this.auth);
+
   userID: string | undefined;
   subscribedToEvent: boolean | undefined;
   isUserAuthenticated: Observable<boolean>;
@@ -31,10 +34,9 @@ export class ButtonsComponent implements OnInit {
   constructor(
     private toastController: ToastController,
     private afs: AngularFirestore,
-    private auth: AngularFireAuth,
     public dateService: DateService
   ) {
-    this.isUserAuthenticated = this.auth.user.pipe(
+    this.isUserAuthenticated = this.user$.pipe(
       trace('auth'),
       map((user) => {
         if (user?.uid) {
@@ -46,7 +48,7 @@ export class ButtonsComponent implements OnInit {
     );
 
     // Check if user is already subscribed to event
-    this.auth.user.pipe(take(1)).subscribe((user) => {
+    this.user$.pipe(take(1)).subscribe((user) => {
       if (user) {
         this.afs
           .doc(`events/${this.eventItem.id}/subscriptions/${user.uid}`)
@@ -83,7 +85,7 @@ export class ButtonsComponent implements OnInit {
     if (this.disableSubscriptionNoSlotsLeft === true) {
       return;
     }
-    this.auth.user.subscribe((user) => {
+    this.user$.subscribe((user) => {
       if (!user) {
         return;
       }
