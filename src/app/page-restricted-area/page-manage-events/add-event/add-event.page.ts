@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import { IonSelect, ModalController } from '@ionic/angular';
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventItem, MajorEventsService } from 'src/app/shared/services/major-event.service';
@@ -42,14 +42,15 @@ export class AddEventPage implements OnInit {
   tzoffset = new Date().getTimezoneOffset() * 60_000;
   parsedPlaces: placesRemoteConfig;
 
+  private remoteConfig: RemoteConfig = inject(RemoteConfig);
+
   constructor(
     public formBuilder: FormBuilder,
     private modalController: ModalController,
     public majorEvents: MajorEventsService,
     private afs: AngularFirestore,
     private router: Router,
-    private auth: AngularFireAuth,
-    private remoteConfig: RemoteConfig
+    private auth: AngularFireAuth
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
   }

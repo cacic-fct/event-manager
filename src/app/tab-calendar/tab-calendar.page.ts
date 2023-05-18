@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import { Router } from '@angular/router';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { KeyValue, formatDate } from '@angular/common';
 
 import { CoursesService } from 'src/app/shared/services/courses.service';
@@ -20,6 +20,7 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
   styleUrls: ['tab-calendar.page.scss'],
 })
 export class TabCalendarPage {
+  private remoteConfig: RemoteConfig = inject(RemoteConfig);
   // Selected calendar date
   active: string;
   fullDate: string;
@@ -65,7 +66,6 @@ export class TabCalendarPage {
   constructor(
     private modalController: ModalController,
     public router: Router,
-    public remoteConfig: RemoteConfig,
     public toastController: ToastController
   ) {
     getBooleanChanges(this.remoteConfig, 'calendarItemViewDefault')

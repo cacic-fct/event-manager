@@ -1,7 +1,7 @@
 import { StringDataReturnType } from './cloud-functions.service';
 // @ts-strict-ignore
 import { EventItem } from 'src/app/shared/services/event';
-import { Injectable, NgZone } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { User } from '../services/user';
@@ -22,6 +22,8 @@ import { gte as versionGreaterThan } from 'semver';
 
 @Injectable()
 export class AuthService {
+  private remoteConfig: RemoteConfig = inject(RemoteConfig);
+
   userData: firebase.User;
   localDataVersion: string = GlobalConstantsService.userDataVersion;
 
@@ -31,7 +33,6 @@ export class AuthService {
     public afs: AngularFirestore,
     public ngZone: NgZone,
     public modalController: ModalController,
-    private remoteConfig: RemoteConfig,
     public toastController: ToastController,
     private fns: AngularFireFunctions,
     private route: ActivatedRoute

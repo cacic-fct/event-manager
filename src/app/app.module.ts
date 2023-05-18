@@ -23,7 +23,7 @@ import {
 } from '@angular/fire/compat/firestore';
 import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@angular/fire/compat/performance';
 
-import { getRemoteConfig, provideRemoteConfig } from '@angular/fire/remote-config';
+import { fetchAndActivate, getRemoteConfig, provideRemoteConfig } from '@angular/fire/remote-config';
 
 import {
   AngularFireFunctionsModule,
@@ -40,7 +40,6 @@ import localePt from '@angular/common/locales/pt';
 registerLocaleData(localePt);
 
 import { AuthService } from './shared/services/auth.service';
-import { RemoteConfigService } from './shared/services/remote-config.service';
 import { WeatherService } from 'src/app/shared/services/weather.service';
 
 import { ServiceWorkerModule } from '@angular/service-worker';
@@ -115,6 +114,10 @@ import {
         registerPrompt: true,
       };
 
+      fetchAndActivate(remoteConfig).catch((err) => {
+        console.error(err);
+      });
+
       return remoteConfig;
     }),
 
@@ -141,7 +144,6 @@ import {
     { provide: USE_STORAGE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 9199] : undefined },
 
     AuthService,
-    RemoteConfigService,
     CoursesService,
     WeatherService,
     EnrollmentTypesService,

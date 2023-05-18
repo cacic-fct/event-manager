@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import { getBooleanChanges, RemoteConfig } from '@angular/fire/remote-config';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { trace } from '@angular/fire/compat/performance';
+
 @UntilDestroy()
 @Component({
   selector: 'app-tabs',
@@ -12,13 +13,15 @@ import { trace } from '@angular/fire/compat/performance';
   styleUrls: ['tabs.page.scss'],
 })
 export class TabsPage {
+  private remoteConfig: RemoteConfig = inject(RemoteConfig);
+
   _allowRestrictedArea: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   allowRestrictedArea$: Observable<boolean> = this._allowRestrictedArea.asObservable();
   readonly manual$: Observable<boolean>;
   readonly events$: Observable<boolean>;
   readonly map$: Observable<boolean>;
 
-  constructor(public auth: AngularFireAuth, private remoteConfig: RemoteConfig) {
+  constructor(public auth: AngularFireAuth) {
     this.auth.idTokenResult.pipe(untilDestroyed(this)).subscribe((idTokenResult) => {
       if (idTokenResult) {
         const claims = idTokenResult.claims;
