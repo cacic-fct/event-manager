@@ -8,8 +8,5 @@
     </ion-item>
   </div>
 
-  <div
-    id="ol-map"
-    class="map-container"
-    *ngIf="eventItem.location.lat !== undefined && eventItem.location.lon !== undefined"></div>
+  <div id="ol-map" class="map-container" *ngIf="eventItem.location.lat && eventItem.location.lon"></div>
 </div>
