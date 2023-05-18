@@ -38,7 +38,6 @@ export class PageQrScannerPage implements OnInit {
       componentProps: {
         userID: userID,
       },
-      swipeToClose: true,
       presentingElement: this.routerOutlet.nativeEl,
     });
     this.showScanner = false;

@@ -165,7 +165,6 @@ export class TabCalendarPage {
         selectedFilter: this.selectedFilter,
       },
       backdropDismiss: false,
-      swipeToClose: false,
     });
 
     modal.onDidDismiss().then((selectedFilter) => {

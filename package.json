@@ -21,7 +21,7 @@
     "@angular/platform-browser-dynamic": "~15.2.2",
     "@angular/router": "~15.2.2",
     "@angular/service-worker": "^15.2.2",
-    "@ionic/angular": "^6.6.1",
+    "@ionic/angular": "^7.0.7",
     "@ionic/angular-server": "^6.6.1",
     "@ngneat/until-destroy": "^9.2.3",
     "@pdfme/generator": "^1.1.9",

@@ -252,7 +252,6 @@ export class AuthService {
         phone: phone,
       },
       backdropDismiss: false,
-      swipeToClose: false,
       keyboardClose: false,
     });
 
