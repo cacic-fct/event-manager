@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { ActivatedRouteSnapshot, CanActivate, RouterStateSnapshot } from '@angular/router';
+import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { environment } from 'src/environments/environment';
 import { redirectUnauthorizedTo, redirectLoggedInTo, customClaims } from '@angular/fire/compat/auth-guard';
 
@@ -9,7 +9,7 @@ import { map } from 'rxjs/operators';
 @Injectable({
   providedIn: 'root',
 })
-export class DevelopmentOnlyGuard implements CanActivate {
+export class DevelopmentOnlyGuard  {
   canActivate(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): boolean {
     return !environment.production;
   }
