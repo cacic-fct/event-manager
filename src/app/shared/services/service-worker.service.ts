@@ -72,7 +72,6 @@ export class ServiceWorkerService {
       message: 'Instalando atualização...',
       duration: 2000,
       position: 'top',
-      color: 'primary',
       icon: 'cloud-download-outline',
 
       buttons: [
