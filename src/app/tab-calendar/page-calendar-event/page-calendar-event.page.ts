@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 
 import { CoursesService } from '../../shared/services/courses.service';
 
@@ -12,12 +12,15 @@ import { take, Observable, map } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 
+import { Analytics, logEvent } from '@angular/fire/analytics';
+
 @Component({
   selector: 'app-page-calendar-event',
   templateUrl: './page-calendar-event.page.html',
   styleUrls: ['./page-calendar-event.page.scss'],
 })
 export class PageCalendarEventPage implements OnInit {
+  private analytics: Analytics = inject(Analytics);
   courses = CoursesService.courses;
   item: EventItem;
   item$: Observable<EventItem>;
@@ -55,5 +58,10 @@ export class PageCalendarEventPage implements OnInit {
     });
     navigator.clipboard.writeText('https://fct-pp.web.app' + this.router.url);
     toast.present();
+
+    logEvent(this.analytics, 'share', {
+      content_type: 'event',
+      item_id: this.eventID,
+    });
   }
 }

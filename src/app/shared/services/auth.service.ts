@@ -18,6 +18,7 @@ import {
   signInWithPopup,
   linkWithPopup,
 } from '@angular/fire/auth';
+import { Analytics, logEvent, setUserId } from '@angular/fire/analytics';
 
 import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
@@ -34,6 +35,7 @@ import { gte as versionGreaterThan } from 'semver';
 @Injectable()
 export class AuthService {
   private remoteConfig: RemoteConfig = inject(RemoteConfig);
+  private analytics: Analytics = inject(Analytics);
 
   private auth: Auth = inject(Auth);
 
@@ -158,6 +160,9 @@ export class AuthService {
 
         this.route.queryParams.pipe(take(1)).subscribe((params) => {
           const redirect = params['redirect'];
+
+          logEvent(this.analytics, 'login');
+          setUserId(this.analytics, result.user.uid);
 
           if (redirect) {
             this.router.navigate([redirect]);

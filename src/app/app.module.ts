@@ -9,13 +9,7 @@ import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { AngularFireModule } from '@angular/fire/compat';
-import {
-  AngularFireAnalyticsModule,
-  ScreenTrackingService,
-  UserTrackingService,
-  APP_NAME,
-  APP_VERSION,
-} from '@angular/fire/compat/analytics';
+
 import {
   AngularFirestoreModule,
   USE_EMULATOR as USE_FIRESTORE_EMULATOR,
@@ -59,7 +53,8 @@ import { CoursesService } from './shared/services/courses.service';
 
 import { CertificateService } from 'src/app/shared/services/certificates.service';
 
-import { connectAuthEmulator, getAuth, getRedirectResult, provideAuth, useDeviceLanguage } from '@angular/fire/auth';
+import { connectAuthEmulator, getAuth, provideAuth, useDeviceLanguage } from '@angular/fire/auth';
+import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytics';
 
 @NgModule({
   declarations: [AppComponent],
@@ -68,7 +63,6 @@ import { connectAuthEmulator, getAuth, getRedirectResult, provideAuth, useDevice
     IonicModule.forRoot(),
     AppRoutingModule,
     AngularFireModule.initializeApp(environment.firebase),
-    AngularFireAnalyticsModule,
     AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
     AngularFireStorageModule,
     AngularFirePerformanceModule,
@@ -126,18 +120,25 @@ import { connectAuthEmulator, getAuth, getRedirectResult, provideAuth, useDevice
       return auth;
     }),
 
+    provideAnalytics(() => {
+      const analytics = getAnalytics();
+
+      logEvent(analytics, 'app_version', {
+        app_name: GlobalConstantsService.appName,
+        app_version: GlobalConstantsService.appVersion,
+      });
+
+      return analytics;
+    }),
+
     provideFirebaseApp(() => initializeApp(environment.firebase)),
   ],
   providers: [
-    ScreenTrackingService,
-    UserTrackingService,
     PerformanceMonitoringService,
     ServiceWorkerService,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     { provide: FIRESTORE_SETTINGS, useValue: { ignoreUndefinedProperties: true, merge: true } },
-    { provide: APP_VERSION, useValue: GlobalConstantsService.appVersion },
-    { provide: APP_NAME, useValue: GlobalConstantsService.appName },
     { provide: FUNCTIONS_REGION, useValue: 'southamerica-east1' },
     { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
     { provide: USE_FUNCTIONS_EMULATOR, useValue: environment.useEmulators ? ['localhost', 5001] : undefined },

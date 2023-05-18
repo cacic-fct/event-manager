@@ -10,6 +10,7 @@ import { User } from '@firebase/auth';
 import { map, Observable, take, switchMap } from 'rxjs';
 import { UserCertificateDocument, CertificateService } from 'src/app/shared/services/certificates.service';
 import { Auth, user } from '@angular/fire/auth';
+import { Analytics, logEvent } from '@angular/fire/analytics';
 
 @Component({
   selector: 'app-list-certificates',
@@ -18,6 +19,7 @@ import { Auth, user } from '@angular/fire/auth';
 })
 export class ListCertificatesComponent implements OnInit {
   private auth: Auth = inject(Auth);
+  private analytics: Analytics = inject(Analytics);
   user$ = user(this.auth);
 
   majorEventID!: string;
@@ -116,8 +118,14 @@ export class ListCertificatesComponent implements OnInit {
         },
       ],
     });
+
     navigator.clipboard.writeText(`https://fct-pp.web.app/certificado/validar/${this.majorEventID}-${certificateID}`);
     toast.present();
+
+    logEvent(this.analytics, 'share', {
+      content_type: 'certificate',
+      item_id: `${this.majorEventID}-${certificateID}`,
+    });
   }
 }
 
