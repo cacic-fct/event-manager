@@ -1,4 +1,3 @@
-import { ServiceWorkerService } from './shared/services/service-worker.service';
 import { Component } from '@angular/core';
 
 @Component({
@@ -7,5 +6,5 @@ import { Component } from '@angular/core';
   styleUrls: ['app.component.scss'],
 })
 export class AppComponent {
-  constructor(private swService: ServiceWorkerService) {}
+  constructor() {}
 }
