@@ -74,3 +74,13 @@
     "typescript": "4.9",
     "typescript-strict-plugin": "^2.1.0"
   },
+  "description": "An Ionic project",
+  "overrides": {
+    "@angular/fire": {
+      "@angular/common": "^16.0.0",
+      "@angular/core": "^16.0.0",
+      "@angular/platform-browser": "^16.0.0",
+      "@angular/platform-browser-dynamic": "^16.0.0"
+    }
+  }
+}
