@@ -41,13 +41,16 @@
               Última alteração na inscrição: {{ dateService.getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
             </ion-card-subtitle>
             <p>UID: {{ userData.uid }}</p>
-            <ion-button fill="clear" [href]="'mailto:' + userData.email">
-              <ion-icon name="mail" slot="icon-only"></ion-icon>
-            </ion-button>
 
-            <ion-button fill="clear" [href]="'https://wa.me/' + formatPhoneWhatsApp(userData.phone)">
-              <ion-icon name="logo-whatsapp" slot="icon-only"></ion-icon>
-            </ion-button>
+            <ion-row>
+              <ion-button fill="clear" [href]="'mailto:' + userData.email">
+                <ion-icon name="mail" slot="icon-only"></ion-icon>
+              </ion-button>
+
+              <ion-button fill="clear" [href]="'https://wa.me/' + formatPhoneWhatsApp(userData.phone)">
+                <ion-icon name="logo-whatsapp" slot="icon-only"></ion-icon>
+              </ion-button>
+            </ion-row>
           </ion-card-header>
           <ion-card-content>
             <p>
@@ -80,7 +83,12 @@
               </ng-container>
             </ng-container>
             <div class="img-container">
-              <img [src]="imgURL(subscription.id) | getDownloadURL" />
+              <ng-container *ngIf="subscription.image | async as url; else noImage">
+                <img [src]="url" loading="lazy" />
+              </ng-container>
+              <ng-template #noImage>
+                <h1>Imagem não encontrada</h1>
+              </ng-template>
             </div>
           </ion-card-content>
         </ion-card>
@@ -151,7 +159,6 @@
   </ng-template>
 </ion-modal>
 
-<!-- Confirmação do comprovante gera um alert de confirmação -->
 <swal
   #swalConfirm
   title="Comprovante validado"

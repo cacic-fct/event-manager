@@ -1,6 +1,7 @@
 // @ts-strict-ignore
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
-import { AngularFireStorage } from '@angular/fire/compat/storage';
+import { Storage, ref, uploadBytesResumable, getDownloadURL } from '@angular/fire/storage';
+
 import { Observable } from 'rxjs';
 import { finalize, take } from 'rxjs/operators';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
@@ -41,8 +42,10 @@ export class PagePayPage implements OnInit {
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
 
-  uploadPercent: Observable<number>;
-  downloadURL: Observable<string>;
+  private readonly storage: Storage = inject(Storage);
+
+  uploadPercentage: number;
+  downloadURL: string;
   majorEvent$: Observable<MajorEventItem>;
   eventID: string;
   fileName: string;
@@ -54,7 +57,6 @@ export class PagePayPage implements OnInit {
   outOfDate: boolean = false;
 
   constructor(
-    private storage: AngularFireStorage,
     private imageCompress: NgxImageCompressService,
     public toastController: ToastController,
     private router: Router,
@@ -204,25 +206,25 @@ export class PagePayPage implements OnInit {
 
     const filePath = `${this.eventID}/payment-receipts/${this.uid}`;
 
-    const fileRef = this.storage.ref(filePath);
-    const task = this.storage.upload(filePath, fileBlob, { customMetadata: { owner: this.uid } });
+    const fileRef = ref(this.storage, filePath);
+    const task = uploadBytesResumable(fileRef, fileBlob, { customMetadata: { owner: this.uid } });
 
-    this.uploadPercent = task.percentageChanges();
-    task.catch((error) => {
-      console.error('Upload task failed', error);
-      this.toastError();
-    });
-
-    task
-      .snapshotChanges()
-      .pipe(
-        finalize(() => {
-          this.downloadURL = fileRef.getDownloadURL();
+    task.on(
+      'state_changed',
+      (snapshot) => {
+        this.uploadPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      },
+      (error) => {
+        console.error('Upload task failed', error);
+        this.toastError();
+      },
+      () => {
+        getDownloadURL(task.snapshot.ref).then((downloadURL) => {
+          this.downloadURL = downloadURL;
           this.updateUser();
-        }),
-        untilDestroyed(this)
-      )
-      .subscribe();
+        });
+      }
+    );
   }
 
   updateUser() {

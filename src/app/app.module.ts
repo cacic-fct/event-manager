@@ -9,7 +9,6 @@ import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { AngularFireModule } from '@angular/fire/compat';
-
 import {
   AngularFirestoreModule,
   USE_EMULATOR as USE_FIRESTORE_EMULATOR,
@@ -24,7 +23,8 @@ import {
   REGION as FUNCTIONS_REGION,
   USE_EMULATOR as USE_FUNCTIONS_EMULATOR,
 } from '@angular/fire/compat/functions';
-import { AngularFireStorageModule, USE_EMULATOR as USE_STORAGE_EMULATOR } from '@angular/fire/compat/storage';
+
+import { getStorage, provideStorage, connectStorageEmulator } from '@angular/fire/storage';
 
 import { environment } from '../environments/environment';
 
@@ -64,10 +64,8 @@ import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytic
     AppRoutingModule,
     AngularFireModule.initializeApp(environment.firebase),
     AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
-    AngularFireStorageModule,
     AngularFirePerformanceModule,
     AngularFireFunctionsModule,
-    AngularFireStorageModule,
     ServiceWorkerModule.register('ngsw-worker.js', {
       enabled: environment.production,
       registrationStrategy: 'registerImmediately',
@@ -131,6 +129,16 @@ import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytic
       return analytics;
     }),
 
+    provideStorage(() => {
+      const storage = getStorage();
+
+      if (environment.useEmulators) {
+        connectStorageEmulator(storage, 'localhost', 9199);
+      }
+
+      return storage;
+    }),
+
     provideFirebaseApp(() => initializeApp(environment.firebase)),
   ],
   providers: [
@@ -142,7 +150,6 @@ import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytic
     { provide: FUNCTIONS_REGION, useValue: 'southamerica-east1' },
     { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
     { provide: USE_FUNCTIONS_EMULATOR, useValue: environment.useEmulators ? ['localhost', 5001] : undefined },
-    { provide: USE_STORAGE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 9199] : undefined },
 
     AuthService,
     CoursesService,

@@ -17,6 +17,9 @@ import { serverTimestamp } from '@angular/fire/firestore';
 import { DateService } from 'src/app/shared/services/date.service';
 import { Auth, user } from '@angular/fire/auth';
 
+import { Storage, ref } from '@angular/fire/storage';
+import { getDownloadURL } from '@angular/fire/storage';
+
 @UntilDestroy()
 @Component({
   selector: 'app-validate-receipt',
@@ -26,6 +29,8 @@ import { Auth, user } from '@angular/fire/auth';
 export class ValidateReceiptPage implements OnInit {
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
+
+  private readonly storage: Storage = inject(Storage);
 
   private majorEventID: string;
   public eventName$: Observable<string>;
@@ -80,6 +85,7 @@ export class ValidateReceiptPage implements OnInit {
             ...sub,
             subEventsInfo: observableArrayOfEvents,
             userData$: this.userDataByID(sub.id),
+            image: this.imgURL(sub.id),
           };
         })
       )
@@ -96,8 +102,15 @@ export class ValidateReceiptPage implements OnInit {
     );
   }
 
-  imgURL(receiptId: string): string {
-    return [this.imgBaseHref, receiptId].join('/');
+  async imgURL(receiptId: string): Promise<string> {
+    const reference = ref(this.storage, [this.imgBaseHref, receiptId].join('/'));
+    try {
+      const url = await getDownloadURL(reference);
+      return url;
+    } catch (error) {
+      console.log(error);
+      return '';
+    }
   }
 
   private userDataByID(userId: string): Observable<User> {
@@ -429,4 +442,5 @@ interface Subscription {
   subscriptionType: number;
   subscribedToEvents: string[];
   subEventsInfo: Observable<EventItem[]>;
+  image: Promise<string>;
 }
