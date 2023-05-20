@@ -14,15 +14,11 @@ import {
   USE_EMULATOR as USE_FIRESTORE_EMULATOR,
   SETTINGS as FIRESTORE_SETTINGS,
 } from '@angular/fire/compat/firestore';
+
+import { getFunctions, provideFunctions, connectFunctionsEmulator } from '@angular/fire/functions';
 import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@angular/fire/compat/performance';
 
 import { fetchAndActivate, getRemoteConfig, provideRemoteConfig } from '@angular/fire/remote-config';
-
-import {
-  AngularFireFunctionsModule,
-  REGION as FUNCTIONS_REGION,
-  USE_EMULATOR as USE_FUNCTIONS_EMULATOR,
-} from '@angular/fire/compat/functions';
 
 import { getStorage, provideStorage, connectStorageEmulator } from '@angular/fire/storage';
 
@@ -65,7 +61,6 @@ import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytic
     AngularFireModule.initializeApp(environment.firebase),
     AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
     AngularFirePerformanceModule,
-    AngularFireFunctionsModule,
     ServiceWorkerModule.register('ngsw-worker.js', {
       enabled: environment.production,
       registrationStrategy: 'registerImmediately',
@@ -139,6 +134,14 @@ import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytic
       return storage;
     }),
 
+    provideFunctions(() => {
+      const functions = getFunctions(undefined, 'southamerica-east1');
+      if (environment.useEmulators) {
+        connectFunctionsEmulator(functions, 'localhost', 5001);
+      }
+      return functions;
+    }),
+
     provideFirebaseApp(() => initializeApp(environment.firebase)),
   ],
   providers: [
@@ -147,9 +150,7 @@ import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytic
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     { provide: FIRESTORE_SETTINGS, useValue: { ignoreUndefinedProperties: true, merge: true } },
-    { provide: FUNCTIONS_REGION, useValue: 'southamerica-east1' },
     { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
-    { provide: USE_FUNCTIONS_EMULATOR, useValue: environment.useEmulators ? ['localhost', 5001] : undefined },
 
     AuthService,
     CoursesService,

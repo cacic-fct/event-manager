@@ -1,11 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 
-import { AngularFireFunctions } from '@angular/fire/compat/functions';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 
 import { FormGroup, FormControl } from '@angular/forms';
 import { ToastController } from '@ionic/angular';
-
-import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-manage-admins',
@@ -13,6 +11,8 @@ import { take } from 'rxjs/operators';
   styleUrls: ['./manage-admins.page.scss'],
 })
 export class ManageAdminsPage implements OnInit {
+  private functions: Functions = inject(Functions);
+
   addAdminForm: FormGroup = new FormGroup({
     adminEmail: new FormControl(''),
   });
@@ -21,7 +21,7 @@ export class ManageAdminsPage implements OnInit {
     adminEmail: new FormControl(''),
   });
 
-  constructor(private fns: AngularFireFunctions, public toastController: ToastController) {}
+  constructor(public toastController: ToastController) {}
 
   ngOnInit() {}
 
@@ -42,22 +42,18 @@ export class ManageAdminsPage implements OnInit {
   }
 
   addAdmin() {
-    const addAdminRole = this.fns.httpsCallable('claims-addAdminRole');
-    addAdminRole({ email: this.addAdminForm.value.adminEmail })
-      .pipe(take(1))
-      .subscribe((res) => {
-        this.successToast();
-        this.addAdminForm.reset();
-      });
+    const addAdminRole = httpsCallable(this.functions, 'claims-addAdminRole');
+    addAdminRole({ email: this.addAdminForm.value.adminEmail }).then((res) => {
+      this.successToast();
+      this.addAdminForm.reset();
+    });
   }
 
   removeAdmin() {
-    const removeAdminRole = this.fns.httpsCallable('claims-removeAdminRole');
-    removeAdminRole({ email: this.removeAdminForm.value.adminEmail })
-      .pipe(take(1))
-      .subscribe((res) => {
-        this.successToast();
-        this.removeAdminForm.reset();
-      });
+    const removeAdminRole = httpsCallable(this.functions, 'claims-removeAdminRole');
+    removeAdminRole({ email: this.removeAdminForm.value.adminEmail }).then((res) => {
+      this.successToast();
+      this.removeAdminForm.reset();
+    });
   }
 }

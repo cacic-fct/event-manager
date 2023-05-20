@@ -1,10 +1,9 @@
 // @ts-strict-ignore
 import { Component, inject, OnInit } from '@angular/core';
 import { Auth, signInWithCustomToken } from '@angular/fire/auth';
-import { AngularFireFunctions } from '@angular/fire/compat/functions';
 import { FormGroup, FormBuilder } from '@angular/forms';
 import { ToastController } from '@ionic/angular';
-import { take } from 'rxjs';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 
 @Component({
   selector: 'app-page-impersonate',
@@ -14,12 +13,9 @@ import { take } from 'rxjs';
 export class PageImpersonatePage implements OnInit {
   impersonateForm: FormGroup;
   private auth: Auth = inject(Auth);
+  private functions: Functions = inject(Functions);
 
-  constructor(
-    private formBuilder: FormBuilder,
-    private fns: AngularFireFunctions,
-    private toastController: ToastController
-  ) {
+  constructor(private formBuilder: FormBuilder, private toastController: ToastController) {
     this.impersonateForm = this.formBuilder.group({
       userID: '',
     });
@@ -28,15 +24,14 @@ export class PageImpersonatePage implements OnInit {
   ngOnInit() {}
 
   impersonate() {
-    const impersonate = this.fns.httpsCallable('impersonate');
-    impersonate({ uid: this.impersonateForm.get('userID').value })
-      .pipe(take(1))
-      .subscribe((res) => {
-        signInWithCustomToken(this.auth, res.token).then(() => {
-          this.successToast();
-          this.impersonateForm.reset();
-        });
+    const impersonate = httpsCallable(this.functions, 'impersonate');
+    impersonate({ uid: this.impersonateForm.get('userID').value }).then((res) => {
+      const data: any = res.data;
+      signInWithCustomToken(this.auth, data).then(() => {
+        this.successToast();
+        this.impersonateForm.reset();
       });
+    });
   }
 
   async successToast() {

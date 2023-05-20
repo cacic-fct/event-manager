@@ -1,4 +1,3 @@
-import { AngularFireFunctions } from '@angular/fire/compat/functions';
 import { CertificatePreviewModalComponent } from './components/certificate-preview-modal/certificate-preview-modal.component';
 import { DateService } from 'src/app/shared/services/date.service';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
@@ -12,10 +11,11 @@ import {
   contentTypes,
   certificateTemplates,
 } from '../../../shared/services/certificates.service';
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { Observable, take } from 'rxjs';
 import { AuthService } from 'src/app/shared/services/auth.service';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 
 @Component({
   selector: 'app-issue-certificate',
@@ -23,6 +23,7 @@ import { AuthService } from 'src/app/shared/services/auth.service';
   styleUrls: ['./issue-certificate.page.scss'],
 })
 export class IssueCertificatePage implements OnInit {
+  private functions: Functions = inject(Functions);
   public participationTypes = participationTypes;
   public eventTypes = eventTypes;
   public contentTypes = contentTypes;
@@ -44,8 +45,7 @@ export class IssueCertificatePage implements OnInit {
     private afs: AngularFirestore,
     private dateService: DateService,
     private modalController: ModalController,
-    private authService: AuthService,
-    private fns: AngularFireFunctions
+    private authService: AuthService
   ) {
     this.eventID = this.route.snapshot.paramMap.get('eventID');
 
@@ -263,8 +263,8 @@ export class IssueCertificatePage implements OnInit {
           majorEventID: this.eventID,
         };
 
-        const issueData = this.fns.httpsCallable('certificates-issueMajorEventCertificate');
-        issueData(payload).subscribe((response) => {
+        const issueData = httpsCallable(this.functions, 'certificates-issueMajorEventCertificate');
+        issueData(payload).then((response) => {
           console.log(response);
         });
       });

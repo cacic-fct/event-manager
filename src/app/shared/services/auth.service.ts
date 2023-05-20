@@ -22,15 +22,15 @@ import { Analytics, logEvent, setUserId } from '@angular/fire/analytics';
 
 import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
-import { take, Observable, map, switchMap, lastValueFrom } from 'rxjs';
+import { take, Observable, map, switchMap } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { VerifyPhonePage } from 'src/app/auth/verify-phone/verify-phone.page';
 
 import { unlink } from 'firebase/auth';
-import { AngularFireFunctions } from '@angular/fire/compat/functions';
 import { getStringChanges, RemoteConfig, getBooleanChanges } from '@angular/fire/remote-config';
 import { arrayRemove } from '@angular/fire/firestore';
 import { gte as versionGreaterThan } from 'semver';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 
 @Injectable()
 export class AuthService {
@@ -38,6 +38,7 @@ export class AuthService {
   private analytics: Analytics = inject(Analytics);
 
   private auth: Auth = inject(Auth);
+  private functions: Functions = inject(Functions);
 
   authState$ = authState(this.auth);
 
@@ -50,7 +51,6 @@ export class AuthService {
     public ngZone: NgZone,
     public modalController: ModalController,
     public toastController: ToastController,
-    private fns: AngularFireFunctions,
     private route: ActivatedRoute
   ) {
     this.authState$.pipe(trace('auth')).subscribe((user) => {
@@ -79,8 +79,10 @@ export class AuthService {
                     merge: true,
                   });
 
-                  const addProfessor = this.fns.httpsCallable('claims-addProfessorRole');
-                  addProfessor({ email: user.email }).pipe(take(1)).subscribe();
+                  const addProfessor = httpsCallable(this.functions, 'claims-addProfessorRole');
+                  addProfessor({ email: user.email }).then((res) => {
+                    console.log(res);
+                  });
                 }
               });
             }
@@ -318,8 +320,8 @@ export class AuthService {
       }
     }
 
-    const getUserUid = this.fns.httpsCallable('user_utils-getUserUid');
+    const getUserUid = httpsCallable(this.functions, 'user_utils-getUserUid');
 
-    return await lastValueFrom(getUserUid({ string: manualInput }));
+    return (await getUserUid({ string: manualInput })).data as StringDataReturnType;
   }
 }

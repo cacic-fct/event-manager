@@ -1,7 +1,7 @@
 // TODO: Handle errors
-import { Component, OnInit } from '@angular/core';
-import { AngularFireFunctions } from '@angular/fire/compat/functions';
-import { take } from 'rxjs';
+import { Component, inject, OnInit } from '@angular/core';
+
+import { Functions, httpsCallable } from '@angular/fire/functions';
 
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
@@ -12,6 +12,7 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
   styleUrls: ['./populate-database.page.scss'],
 })
 export class PopulateDatabasePage implements OnInit {
+  private functions: Functions = inject(Functions);
   parseFloat = parseFloat;
   dataForm: FormGroup;
 
@@ -22,7 +23,7 @@ export class PopulateDatabasePage implements OnInit {
   numberOfSelectedCheckboxes: number = 0;
   progressPerItem: number;
 
-  constructor(private fns: AngularFireFunctions, private formBuilder: FormBuilder) {
+  constructor(private formBuilder: FormBuilder) {
     this.dataForm = this.formBuilder.group({
       createAdmin: [true],
       createUndergraduate: [true],
@@ -91,65 +92,51 @@ export class PopulateDatabasePage implements OnInit {
   }
 
   createAdmin() {
-    const createAdmin = this.fns.httpsCallable('populate_db-create_users-createAdminUser');
-    createAdmin(null)
-      .pipe(take(1))
-      .subscribe(() => {
-        this.progress += this.progressPerItem;
-      });
+    const createAdmin = httpsCallable(this.functions, 'populate_db-create_users-createAdminUser');
+    createAdmin(null).then(() => {
+      this.progress += this.progressPerItem;
+    });
   }
 
   createUndergraduate() {
-    const createUndergraduate = this.fns.httpsCallable('populate_db-create_users-createUndergraduateUser');
-    createUndergraduate(null)
-      .pipe(take(1))
-      .subscribe(() => {
-        this.progress += this.progressPerItem;
-      });
+    const createUndergraduate = httpsCallable(this.functions, 'populate_db-create_users-createUndergraduateUser');
+    createUndergraduate(null).then(() => {
+      this.progress += this.progressPerItem;
+    });
   }
 
   createProfessor() {
-    const createProfessor = this.fns.httpsCallable('populate_db-create_users-createProfessorUser');
-    createProfessor(null)
-      .pipe(take(1))
-      .subscribe(() => {
-        this.progress += this.progressPerItem;
-      });
+    const createProfessor = httpsCallable(this.functions, 'populate_db-create_users-createProfessorUser');
+    createProfessor(null).then(() => {
+      this.progress += this.progressPerItem;
+    });
   }
 
   createExternal() {
-    const createExternal = this.fns.httpsCallable('populate_db-create_users-createExternalUser');
-    createExternal(null)
-      .pipe(take(1))
-      .subscribe(() => {
-        this.progress += this.progressPerItem;
-      });
+    const createExternal = httpsCallable(this.functions, 'populate_db-create_users-createExternalUser');
+    createExternal(null).then(() => {
+      this.progress += this.progressPerItem;
+    });
   }
 
   createPaidMajorEvent() {
-    const createPaidMajorEvent = this.fns.httpsCallable('populate_db-create_events-createPaidMajorEvent');
-    createPaidMajorEvent(null)
-      .pipe(take(1))
-      .subscribe(() => {
-        this.progress += this.progressPerItem;
-      });
+    const createPaidMajorEvent = httpsCallable(this.functions, 'populate_db-create_events-createPaidMajorEvent');
+    createPaidMajorEvent(null).then(() => {
+      this.progress += this.progressPerItem;
+    });
   }
 
   createEvent() {
-    const createEvent = this.fns.httpsCallable('populate_db-create_events-createEvent');
-    createEvent(null)
-      .pipe(take(1))
-      .subscribe(() => {
-        this.progress += this.progressPerItem;
-      });
+    const createEvent = httpsCallable(this.functions, 'populate_db-create_events-createEvent');
+    createEvent(null).then(() => {
+      this.progress += this.progressPerItem;
+    });
   }
 
   createEventGroup() {
-    const createEventGroup = this.fns.httpsCallable('populate_db-create_events-createEventGroup');
-    createEventGroup(null)
-      .pipe(take(1))
-      .subscribe(() => {
-        this.progress += this.progressPerItem;
-      });
+    const createEventGroup = httpsCallable(this.functions, 'populate_db-create_events-createEventGroup');
+    createEventGroup(null).then(() => {
+      this.progress += this.progressPerItem;
+    });
   }
 }
