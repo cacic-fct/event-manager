@@ -28,14 +28,13 @@ const routes: Routes = [
     path: 'sobre',
     data: { preload: true },
     title: 'Sobre',
-    loadChildren: () => import('./page-about/page-about.module').then((m) => m.PageAboutPageModule),
+    loadChildren: () => import('./about/about.module').then((m) => m.AboutPageModule),
   },
   {
     path: 'privacidade',
     data: { preload: true },
     title: 'Política de privacidade',
-    loadChildren: () =>
-      import('./page-about/page-privacy-policy/page-privacy-policy.module').then((m) => m.PagePrivacyPolicyPageModule),
+    loadChildren: () => import('./about/privacy-policy/privacy-policy.module').then((m) => m.PrivacyPolicyPageModule),
   },
   {
     path: 'privacy',
@@ -70,68 +69,71 @@ const routes: Routes = [
   {
     path: 'sobre/licencas',
     title: 'Licenças',
-    loadChildren: () => import('./page-about/page-licenses/page-licenses.module').then((m) => m.PageLegalPageModule),
+    loadChildren: () => import('./about/licenses/licenses.module').then((m) => m.PageLegalPageModule),
   },
   {
     path: 'manual-do-calouro',
     title: 'Manual do Calouro',
-    loadChildren: () =>
-      import('./page-manual-calouro/page-manual-calouro.module').then((m) => m.PageManualCalouroPageModule),
+    loadChildren: () => import('src/app/freshmen/manual/manual.module').then((m) => m.ManualPageModule),
   },
   {
     path: 'calouros',
     title: 'Página dos calouros',
-    loadChildren: () => import('./page-calouros/page-calouros.module').then((m) => m.PageCalourosPageModule),
+    loadChildren: () => import('src/app/freshmen/welcome/welcome.module').then((m) => m.WelcomePageModule),
   },
-  {
-    path: 'scan',
-    title: 'Escanear',
-    loadChildren: () =>
-      import('./page-qr-scanner-public/page-qr-scanner.module').then((m) => m.PageQrScannerPageModule),
-    ...canActivate(redirectUnauthorizedToLogin),
-  },
+  // Unused route
+  // {
+  //   path: 'scan',
+  //   title: 'Escanear',
+  //   loadChildren: () =>
+  //     import('./page-qr-scanner-public/page-qr-scanner.module').then((m) => m.PageQrScannerPageModule),
+  //   ...canActivate(redirectUnauthorizedToLogin),
+  // },
   {
     path: 'login',
-    loadChildren: () => import('./page-login/page-login.module').then((m) => m.PageLoginPageModule),
+    loadChildren: () => import('src/app/auth/login/login.module').then((m) => m.LoginPageModule),
     ...canActivate(redirectLoggedInToMenu),
   },
   {
     path: 'register',
     title: 'Registro',
-    loadChildren: () => import('./page-register/page-register.module').then((m) => m.PageRegisterPageModule),
+    loadChildren: () => import('src/app/auth/register/register.module').then((m) => m.RegisterPageModule),
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {
     path: 'perfil',
     title: 'Perfil',
     data: { preload: true },
-    loadChildren: () => import('./page-profile/page-profile.module').then((m) => m.PageProfilePageModule),
+    loadChildren: () => import('src/app/profile/profile-info/profile-info.module').then((m) => m.ProfileInfoPageModule),
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {
     path: 'entidades',
     title: 'Entidades estudantis',
-    loadChildren: () => import('./page-contact-cas/page-contact-cas.module').then((m) => m.PageContactCasPageModule),
+    loadChildren: () =>
+      import('src/app/freshmen/student-organizations/student-organizations.module').then(
+        (m) => m.StudentOrganizationsPageModule
+      ),
   },
   {
     path: 'eventos/inscrever/:eventID',
     title: 'Inscrição',
     loadChildren: () =>
-      import('./page-subscription/page-subscription.module').then((m) => m.PageSubscriptionPageModule),
+      import('src/app/tabs/major-events-display/subscribe/subscribe.module').then((m) => m.SubscribePageModule),
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {
     path: 'inscricoes',
     title: 'Minhas participações',
     loadChildren: () =>
-      import('./page-subscriptions-payments/page-subscriptions.module').then((m) => m.PageSubscriptionsPageModule),
+      import('src/app/profile/my-attendances/my-attendances.module').then((m) => m.MyAttendancesPageModule),
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {
     path: 'confirmar-presenca/:eventID',
     title: 'Confirmar presença em um evento',
     loadChildren: () =>
-      import('./page-confirm-attendance/page-confirm-attendance.module').then((m) => m.PageConfirmAttendanceModule),
+      import('src/app/modals/confirm-attendance/confirm-attendance.module').then((m) => m.ConfirmAttendancePageModule),
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {

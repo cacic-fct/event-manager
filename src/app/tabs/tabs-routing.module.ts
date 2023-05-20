@@ -19,28 +19,31 @@ const routes: Routes = [
       {
         path: 'calendario',
         title: 'Calendário de eventos',
-        loadChildren: () => import('../tab-calendar/tab-calendar.module').then((m) => m.TabCalendarPageModule),
+        loadChildren: () => import('src/app/tabs/calendar/calendar.module').then((m) => m.CalendarPageModule),
       },
       {
         path: 'eventos',
         title: 'Lista de eventos',
-        loadChildren: () => import('../tab-events/tab-events.module').then((m) => m.TabEventsPageModule),
+        loadChildren: () =>
+          import('src/app/tabs/major-events-display/major-events-display.module').then(
+            (m) => m.MajorEventsDisplayPageModule
+          ),
       },
       {
         path: 'mapa',
         title: 'Mapa',
-        loadChildren: () => import('../tab-map/tab-map.module').then((m) => m.TabMapPageModule),
+        loadChildren: () => import('src/app/tabs/map/map.module').then((m) => m.MapPageModule),
       },
       {
         path: 'menu',
         title: 'Menu',
-        loadChildren: () => import('../tab-menu/tab-menu.module').then((m) => m.TabMenuPageModule),
+        loadChildren: () => import('src/app/tabs/menu/menu.module').then((m) => m.MenuPageModule),
       },
       {
         path: 'area-restrita',
         title: 'Área restrita',
         loadChildren: () =>
-          import('../page-restricted-area/page-restricted-area.module').then((m) => m.PageRestrictedAreaPageModule),
+          import('src/app/restricted-area/restricted-area.module').then((m) => m.RestrictedAreaPageModule),
         ...canActivate(caAndGreater),
       },
     ],

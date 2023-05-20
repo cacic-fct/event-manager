@@ -24,7 +24,7 @@ import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
 import { take, Observable, map, switchMap, lastValueFrom } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
-import { PageVerifyPhonePage } from 'src/app/page-verify-phone/page-verify-phone.page';
+import { VerifyPhonePage } from 'src/app/auth/verify-phone/verify-phone.page';
 
 import { unlink } from 'firebase/auth';
 import { AngularFireFunctions } from '@angular/fire/compat/functions';
@@ -266,7 +266,7 @@ export class AuthService {
 
   async verifyPhoneModal(phone: string): Promise<boolean> {
     const modal = await this.modalController.create({
-      component: PageVerifyPhonePage,
+      component: VerifyPhonePage,
       componentProps: {
         phone: phone,
       },
