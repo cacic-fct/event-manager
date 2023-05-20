@@ -66,7 +66,7 @@
     let-color="color"
     let-majorEventData="majorEventData">
     <ion-card-header>
-      <ion-card-title [color]="color">{{majorEventData.name}} </ion-card-title>
+      <ion-card-title [color]="color">{{ majorEventData.name }}</ion-card-title>
 
       <ion-card-subtitle [color]="color">
         <p *ngIf="subType">{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
@@ -78,13 +78,6 @@
         <p>
           Período de inscrições: {{ dateService.getDateFromTimestamp(majorEventData.subscriptionStartDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }} – {{ dateService.getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }}
         </p>
-      </ion-card-subtitle>
-
-      <ion-card-subtitle [color]="color"> </ion-card-subtitle>
-
-      <!-- prettier-ignore -->
-      <ion-card-subtitle [color]="color"> 
-
       </ion-card-subtitle>
     </ion-card-header>
   </ng-template>
