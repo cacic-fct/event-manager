@@ -1,41 +1,58 @@
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 
-exports.createEventSubscription = functions
-  .region('southamerica-east1')
-  .firestore.document(`events/{eventId}/subscriptions/{userId}`)
-  .onCreate(async (snap, context): Promise<void> => {
-    const eventRef = admin.firestore().collection('events').doc(context.params.eventId);
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
+
+exports.createEventSubscription = onDocumentCreated(
+  `events/{eventId}/subscriptions/{userId}`,
+  async (context): Promise<void> => {
+    const db = getFirestore();
+    const eventRef = db.collection('events').doc(context.params.eventId);
     const event = await eventRef.get();
     const numberOfSubscriptions = event.data()?.numberOfSubscriptions;
     if (numberOfSubscriptions === undefined) {
       return;
     }
     eventRef.update({ numberOfSubscriptions: FieldValue.increment(1) });
-  });
+  }
+);
 
-exports.createMajorEventSubscription = functions
-  .region('southamerica-east1')
-  .firestore.document(`majorEvents/{eventId}/subscriptions/{userId}`)
-  .onCreate(async (snap, context): Promise<void> => {
-    const data = snap.data();
+exports.createMajorEventSubscription = onDocumentCreated(
+  `majorEvents/{eventId}/subscriptions/{userId}`,
+  async (context): Promise<void> => {
+    const db = getFirestore();
+
+    const snapshot = context.data;
+
+    if (!snapshot) {
+      console.error('No data associated with the event');
+      return;
+    }
+
+    const data = snapshot.data();
 
     // For each array in subscribedToEvents, increment the numberOfSubscriptions
     data.subscribedToEvents.forEach((event: string) => {
-      const document = admin.firestore().doc(`events/${event}`);
+      const document = db.doc(`events/${event}`);
       document.update({
         numberOfSubscriptions: FieldValue.increment(1),
       });
     });
-  });
+  }
+);
 
-exports.updateMajorEventSubscription = functions
-  .region('southamerica-east1')
-  .firestore.document(`majorEvents/{eventId}/subscriptions/{userId}`)
-  .onUpdate(async (change, context): Promise<void> => {
-    const beforeChange = change.before.data();
-    const afterChange = change.after.data();
+exports.updateMajorEventSubscription = onDocumentUpdated(
+  `majorEvents/{eventId}/subscriptions/{userId}`,
+  async (context): Promise<void> => {
+    const snapshot = context.data;
+    const db = getFirestore();
+
+    if (!snapshot) {
+      console.error('No data associated with the event');
+      return;
+    }
+
+    const beforeChange = snapshot.before.data();
+    const afterChange = snapshot.after.data();
 
     if (beforeChange.subscribedToEvents !== afterChange.subscribedToEvents) {
       // previouslySelectedEvents - eventsSelectedID = events that were removed
@@ -50,7 +67,7 @@ exports.updateMajorEventSubscription = functions
 
       // For every removed event, decrement the number of subscribed users
       removedEvents.forEach((event: string) => {
-        const document = admin.firestore().doc(`events/${event}`);
+        const document = db.doc(`events/${event}`);
         document.update({
           numberOfSubscriptions: FieldValue.increment(-1),
         });
@@ -58,10 +75,11 @@ exports.updateMajorEventSubscription = functions
 
       // For every added event, increment the number of subscribed users
       addedEvents.forEach((event: string) => {
-        const document = admin.firestore().doc(`events/${event}`);
+        const document = db.doc(`events/${event}`);
         document.update({
           numberOfSubscriptions: FieldValue.increment(1),
         });
       });
     }
-  });
+  }
+);

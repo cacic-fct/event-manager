@@ -1,7 +1,6 @@
 import { getAuth } from 'firebase-admin/auth';
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { onCall } from 'firebase-functions/v2/https';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 
 import {
   adminData,
@@ -15,15 +14,15 @@ import {
 } from './user-data';
 import { MainReturnType } from '../../../shared/return-types';
 
-exports.createAdminUser = functions.region('southamerica-east1').https.onCall(async (): Promise<MainReturnType> => {
-  const firestore = admin.firestore();
+exports.createAdminUser = onCall(async (): Promise<MainReturnType> => {
+  const db = getFirestore();
   try {
     await getAuth().importUsers([adminData]);
     console.log('Sucessfully created admin user');
     await getAuth().setCustomUserClaims(adminData.uid, {
       role: 1000,
     });
-    await firestore
+    await db
       .collection('claims')
       .doc('admin')
       .set(
@@ -32,7 +31,7 @@ exports.createAdminUser = functions.region('southamerica-east1').https.onCall(as
         },
         { merge: true }
       );
-    await firestore.collection('users').doc(adminData.uid).set(adminDataFirestoreDocument);
+    await db.collection('users').doc(adminData.uid).set(adminDataFirestoreDocument);
     return { success: true, message: 'Successfully created admin user' };
   } catch (error) {
     console.error('Error creating admin user:', error);
@@ -40,31 +39,29 @@ exports.createAdminUser = functions.region('southamerica-east1').https.onCall(as
   }
 });
 
-exports.createUndergraduateUser = functions
-  .region('southamerica-east1')
-  .https.onCall(async (): Promise<MainReturnType> => {
-    const firestore = admin.firestore();
+exports.createUndergraduateUser = onCall(async (): Promise<MainReturnType> => {
+  const db = getFirestore();
 
-    try {
-      await getAuth().importUsers([undergraduateData]);
-      console.log('Successfully created undergraduate user');
-      await firestore.collection('users').doc(undergraduateData.uid).set(undergraduateDataFirestoreDocument);
-    } catch (error) {
-      console.error('Error creating undergraduate user:', error);
-      return { success: false, message: 'Error creating undergraduate user' };
-    }
-    return { success: true, message: 'Successfully created undergraduate user' };
-  });
+  try {
+    await getAuth().importUsers([undergraduateData]);
+    console.log('Successfully created undergraduate user');
+    await db.collection('users').doc(undergraduateData.uid).set(undergraduateDataFirestoreDocument);
+  } catch (error) {
+    console.error('Error creating undergraduate user:', error);
+    return { success: false, message: 'Error creating undergraduate user' };
+  }
+  return { success: true, message: 'Successfully created undergraduate user' };
+});
 
-exports.createProfessorUser = functions.region('southamerica-east1').https.onCall(async (): Promise<MainReturnType> => {
-  const firestore = admin.firestore();
+exports.createProfessorUser = onCall(async (): Promise<MainReturnType> => {
+  const db = getFirestore();
 
   try {
     await getAuth().importUsers([professorData]);
     await getAuth().setCustomUserClaims(adminData.uid, {
       role: 1000,
     });
-    await firestore
+    await db
       .collection('claims')
       .doc('professor')
       .set(
@@ -73,7 +70,7 @@ exports.createProfessorUser = functions.region('southamerica-east1').https.onCal
         },
         { merge: true }
       );
-    await firestore.collection('users').doc(professorData.uid).set(professorDataFirestoreDocument);
+    await db.collection('users').doc(professorData.uid).set(professorDataFirestoreDocument);
   } catch (error) {
     console.error(error);
     return { success: false, message: 'Error creating professor user' };
@@ -81,13 +78,13 @@ exports.createProfessorUser = functions.region('southamerica-east1').https.onCal
   return { success: true, message: 'Successfully created professor user' };
 });
 
-exports.createExternalUser = functions.region('southamerica-east1').https.onCall(async (): Promise<MainReturnType> => {
-  const firestore = admin.firestore();
+exports.createExternalUser = onCall(async (): Promise<MainReturnType> => {
+  const db = getFirestore();
 
   try {
     await getAuth().importUsers([externalData]);
     console.log('Successfully created external user');
-    await firestore.collection('users').doc(externalData.uid).set(externalDataFirestoreDocument);
+    await db.collection('users').doc(externalData.uid).set(externalDataFirestoreDocument);
   } catch (error) {
     console.error('Error creating external user:', error);
     return { success: false, message: 'Error creating external user' };
