@@ -1,3 +1,6 @@
+### 2023.05.21.16.41
+- Alterada lógica de importação de services, para reduzir o tamanho inicial do bundle.
+
 ### 2023.05.21.01.08
 
 ### 2023.05.19.22.22
