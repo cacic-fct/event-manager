@@ -18,7 +18,7 @@ export class EmojiService {
    *
    */
   getEmoji(emoji: string): SafeResourceUrl {
-    const buildUrl = (codepoints: any, assetType: any) =>
+    const buildUrl = (codepoints: string, assetType: string) =>
       `https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/${codepoints}.${assetType}`;
 
     if (emoji === undefined || !/^\p{Emoji}|\p{Emoji_Modifier}$/u.test(emoji)) {
