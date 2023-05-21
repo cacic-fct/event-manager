@@ -6,7 +6,9 @@ import { startOfDay } from 'date-fns';
 
 // TODO como utilizar Observables para retornar os grandes eventos futuros?
 
-@Injectable()
+@Injectable({
+  providedIn: 'root',
+})
 export class MajorEventsService {
   constructor(public afs: AngularFirestore) {}
 

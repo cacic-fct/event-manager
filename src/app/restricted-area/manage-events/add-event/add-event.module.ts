@@ -6,7 +6,6 @@ import { IonicModule } from '@ionic/angular';
 import { AddEventPageRoutingModule } from './add-event-routing.module';
 import { AddEventPage } from './add-event.page';
 import { SafeModule } from 'src/app/shared/pipes/safe.module';
-import { MajorEventsService } from 'src/app/shared/services/major-event.service';
 import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 
 @NgModule({
@@ -20,6 +19,5 @@ import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
     SweetAlert2Module,
   ],
   declarations: [AddEventPage, ConfirmModalPage],
-  providers: [MajorEventsService],
 })
 export class AddEventPageModule {}

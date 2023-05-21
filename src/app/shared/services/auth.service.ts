@@ -32,7 +32,9 @@ import { arrayRemove } from '@angular/fire/firestore';
 import { gte as versionGreaterThan } from 'semver';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root',
+})
 export class AuthService {
   private remoteConfig: RemoteConfig = inject(RemoteConfig);
   private analytics: Analytics = inject(Analytics);

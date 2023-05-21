@@ -1,5 +1,3 @@
-import { ServiceWorkerService } from './shared/services/service-worker.service';
-import { EnrollmentTypesService } from './shared/services/enrollment-types.service';
 import { isDevMode, NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { RouteReuseStrategy } from '@angular/router';
@@ -29,9 +27,6 @@ import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 registerLocaleData(localePt);
 
-import { AuthService } from './shared/services/auth.service';
-import { WeatherService } from 'src/app/shared/services/weather.service';
-
 import { ServiceWorkerModule } from '@angular/service-worker';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
@@ -44,10 +39,6 @@ import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 
 import { GlobalConstantsService } from './shared/services/global-constants.service';
-
-import { CoursesService } from './shared/services/courses.service';
-
-import { CertificateService } from 'src/app/shared/services/certificates.service';
 
 import { connectAuthEmulator, getAuth, provideAuth, useDeviceLanguage } from '@angular/fire/auth';
 import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytics';
@@ -68,6 +59,7 @@ import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytic
     HttpClientModule,
     MarkdownModule.forRoot({ loader: HttpClient }),
     SweetAlert2Module.forRoot(),
+
     provideAppCheck(() => {
       const provider = new ReCaptchaV3Provider(environment.recaptcha3SiteKey);
       return initializeAppCheck(undefined, {
@@ -146,17 +138,10 @@ import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytic
   ],
   providers: [
     PerformanceMonitoringService,
-    ServiceWorkerService,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     { provide: FIRESTORE_SETTINGS, useValue: { ignoreUndefinedProperties: true, merge: true } },
     { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
-
-    AuthService,
-    CoursesService,
-    WeatherService,
-    EnrollmentTypesService,
-    CertificateService,
   ],
   bootstrap: [AppComponent],
 })

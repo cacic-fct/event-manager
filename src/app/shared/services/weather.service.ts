@@ -4,7 +4,9 @@ import { format } from 'date-fns';
 import { catchError, take, map, Observable, retry, throwError } from 'rxjs';
 import { add } from 'date-fns';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root',
+})
 export class WeatherService {
   public static weatherCodes: WeatherCodesList = {
     0: { icon: 'sunny', icon_night: 'moon', text: 'Céu limpo' },
