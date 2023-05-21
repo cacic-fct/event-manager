@@ -1,3 +1,5 @@
+### 2023.05.21.01.08
+
 ### 2023.05.19.22.22
 
 - Corrigido um bug que fazia com que o Remote Config não funcionasse corretamente;
