@@ -1,11 +1,24 @@
-import { isDevMode, NgModule } from '@angular/core';
+import { isDevMode, NgModule, LOCALE_ID } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { RouteReuseStrategy } from '@angular/router';
+import { registerLocaleData } from '@angular/common';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { ServiceWorkerModule } from '@angular/service-worker';
+import localePt from '@angular/common/locales/pt';
+registerLocaleData(localePt);
 
 import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 
-import { AppRoutingModule } from './app-routing.module';
-import { AppComponent } from './app.component';
+// AngularFire
+import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
+import { getFunctions, provideFunctions, connectFunctionsEmulator } from '@angular/fire/functions';
+import { fetchAndActivate, getRemoteConfig, provideRemoteConfig } from '@angular/fire/remote-config';
+import { getStorage, provideStorage, connectStorageEmulator } from '@angular/fire/storage';
+import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
+import { connectAuthEmulator, getAuth, provideAuth, useDeviceLanguage } from '@angular/fire/auth';
+import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytics';
+
+import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@angular/fire/compat/performance';
 import { AngularFireModule } from '@angular/fire/compat';
 import {
   AngularFirestoreModule,
@@ -13,52 +26,36 @@ import {
   SETTINGS as FIRESTORE_SETTINGS,
 } from '@angular/fire/compat/firestore';
 
-import { getFunctions, provideFunctions, connectFunctionsEmulator } from '@angular/fire/functions';
-import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@angular/fire/compat/performance';
-
-import { fetchAndActivate, getRemoteConfig, provideRemoteConfig } from '@angular/fire/remote-config';
-
-import { getStorage, provideStorage, connectStorageEmulator } from '@angular/fire/storage';
-
+// App
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
 import { environment } from '../environments/environment';
-
-import { LOCALE_ID } from '@angular/core';
-import { registerLocaleData } from '@angular/common';
-import localePt from '@angular/common/locales/pt';
-registerLocaleData(localePt);
-
-import { ServiceWorkerModule } from '@angular/service-worker';
-import { MarkdownModule } from 'ngx-markdown';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
-
-// Alerts
-import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
-
-import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
-
-import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
-
 import { GlobalConstantsService } from './shared/services/global-constants.service';
 
-import { connectAuthEmulator, getAuth, provideAuth, useDeviceLanguage } from '@angular/fire/auth';
-import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytics';
+// Other modules
+import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
+import { MarkdownModule } from 'ngx-markdown';
 
 @NgModule({
   declarations: [AppComponent],
   imports: [
     BrowserModule,
-    IonicModule.forRoot(),
     AppRoutingModule,
-    AngularFireModule.initializeApp(environment.firebase),
-    AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
-    AngularFirePerformanceModule,
     ServiceWorkerModule.register('ngsw-worker.js', {
       enabled: environment.production,
       registrationStrategy: 'registerImmediately',
     }),
     HttpClientModule,
+    IonicModule.forRoot(),
+
+    // Other modules
     MarkdownModule.forRoot({ loader: HttpClient }),
     SweetAlert2Module.forRoot(),
+
+    // AngularFire
+    AngularFireModule.initializeApp(environment.firebase),
+    AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
+    AngularFirePerformanceModule,
 
     provideAppCheck(() => {
       const provider = new ReCaptchaV3Provider(environment.recaptcha3SiteKey);
