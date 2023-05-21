@@ -31,19 +31,18 @@ export class MapComponent implements OnInit {
   }
 
   ngOnDestroy() {
-    // Remove map on leave if it exists
-    if (this.map) {
-      this.map.setTarget(undefined);
-      this.map = null;
-    }
+    this.destroyMap();
   }
 
   ngOnChanges() {
+    this.generateMap();
+  }
+
+  destroyMap() {
     if (this.map) {
       this.map.setTarget(undefined);
       this.map = null;
     }
-    this.generateMap();
   }
 
   generateMap() {
@@ -79,6 +78,7 @@ export class MapComponent implements OnInit {
       });
 
       setTimeout(() => {
+        this.destroyMap();
         this.map = new Map({
           view: new View({
             center: [this.eventItem.location!.lon!, this.eventItem.location!.lat!],
