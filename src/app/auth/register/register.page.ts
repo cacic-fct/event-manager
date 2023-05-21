@@ -305,7 +305,7 @@ export class RegisterPage implements OnInit {
       this.isUndergraduate = false;
       this.dataForm.controls.academicID.setValue('');
       this.dataForm.controls.academicID.clearValidators();
-      this.dataForm.updateValueAndValidity({ onlySelf: true });
+      this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
     }
   }
 }
