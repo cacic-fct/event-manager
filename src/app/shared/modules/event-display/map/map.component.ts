@@ -47,7 +47,7 @@ export class MapComponent implements OnInit {
   }
 
   generateMap() {
-    if (this.eventItem.location?.lat !== undefined && this.eventItem.location?.lon !== undefined) {
+    if (this.eventItem.location?.lat && this.eventItem.location?.lon) {
       useGeographic();
       const iconStyle = new Style({
         image: new Icon({
@@ -81,7 +81,7 @@ export class MapComponent implements OnInit {
       setTimeout(() => {
         this.map = new Map({
           view: new View({
-            center: [this.eventItem.location.lon, this.eventItem.location.lat],
+            center: [this.eventItem.location!.lon!, this.eventItem.location!.lat!],
             zoom: 18,
             maxZoom: 19,
             projection: 'EPSG:3857',
