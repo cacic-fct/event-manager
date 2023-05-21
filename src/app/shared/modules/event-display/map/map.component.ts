@@ -78,16 +78,18 @@ export class MapComponent implements OnInit {
         source: new OSM(),
       });
 
-      this.map = new Map({
-        view: new View({
-          center: [this.eventItem.location.lon, this.eventItem.location.lat],
-          zoom: 18,
-          maxZoom: 19,
-          projection: 'EPSG:3857',
-        }),
-        layers: [rasterLayer, vectorLayer],
-        target: 'ol-map',
-      });
+      setTimeout(() => {
+        this.map = new Map({
+          view: new View({
+            center: [this.eventItem.location.lon, this.eventItem.location.lat],
+            zoom: 18,
+            maxZoom: 19,
+            projection: 'EPSG:3857',
+          }),
+          layers: [rasterLayer, vectorLayer],
+          target: 'ol-map',
+        });
+      }, 500);
     }
   }
 }
