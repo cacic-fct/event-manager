@@ -5,7 +5,7 @@ import { MainReturnType } from './../shared/return-types';
 import { deleteCollection } from './../shared/firestore.utils';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 
-exports.date = onCall({ timeoutSeconds: 540, memory: '1GiB' }, async (request): Promise<MainReturnType> => {
+exports.issueMajorEventCertificate = onCall({ timeoutSeconds: 540, memory: '1GiB' }, async (request): Promise<MainReturnType> => {
   const data: MajorEventCertificateData = request.data;
   const context = request;
 
