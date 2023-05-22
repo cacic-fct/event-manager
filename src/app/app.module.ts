@@ -10,7 +10,7 @@ registerLocaleData(localePt);
 import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 
 // AngularFire
-import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
+import { initializeApp, provideFirebaseApp, getApp } from '@angular/fire/app';
 import { getFunctions, provideFunctions, connectFunctionsEmulator } from '@angular/fire/functions';
 import { fetchAndActivate, getRemoteConfig, provideRemoteConfig } from '@angular/fire/remote-config';
 import { getStorage, provideStorage, connectStorageEmulator } from '@angular/fire/storage';
@@ -59,7 +59,7 @@ import { MarkdownModule } from 'ngx-markdown';
 
     provideAppCheck(() => {
       const provider = new ReCaptchaV3Provider(environment.recaptcha3SiteKey);
-      return initializeAppCheck(undefined, {
+      return initializeAppCheck(getApp(), {
         provider,
         isTokenAutoRefreshEnabled: true,
       });
@@ -124,7 +124,7 @@ import { MarkdownModule } from 'ngx-markdown';
     }),
 
     provideFunctions(() => {
-      const functions = getFunctions(undefined, 'southamerica-east1');
+      const functions = getFunctions(getApp(), 'southamerica-east1');
       if (environment.useEmulators) {
         connectFunctionsEmulator(functions, 'localhost', 5001);
       }
