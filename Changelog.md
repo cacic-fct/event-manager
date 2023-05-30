@@ -1,3 +1,9 @@
+### 2023.05.30.14.45
+
+- Licença de uso alterada para AGPL-3.0-only;
+- Adicionado 0.5s de delay na inicialização do mapa na página de informações do evento;
+- Usar `getApp()` no `app.module.ts` ao invés de `undefined`.
+
 ### 2023.05.21.16.41
 - Alterada lógica de importação de services, para reduzir o tamanho inicial do bundle.
 
