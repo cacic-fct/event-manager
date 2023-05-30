@@ -1,5 +1,10 @@
 AGPL-3.0-only
 
+ FCT App
+ Copyright (c) CACIC - Centro Acadêmico de Ciência da Computação "Alan Turing" 
+da Faculdade de Ciências e Tecnologia, Câmpus de Presidente Prudente, 
+Universidade Estadual Paulista "Júlio de Mesquita Filho"
+
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
