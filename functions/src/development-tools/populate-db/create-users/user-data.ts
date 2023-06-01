@@ -7,14 +7,14 @@ export const adminData: UserImportRecord = {
   uid: 'uid_admin',
   email: 'admin@unesp.br',
   emailVerified: true,
-  photoURL: 'https://via.placeholder.com/256/?text=Admin',
+  photoURL: 'https://placehold.co/256.png?text=Admin',
   metadata: {
     lastSignInTime: 'Thu, 01 Jan 1970 00:00:00 UTC',
     creationTime: 'Thu, 01 Jan 1970 00:00:00 UTC',
   },
   providerData: [
     {
-      photoURL: 'https://via.placeholder.com/256/?text=Admin',
+      photoURL: 'https://placehold.co/256.png?text=Admin',
       providerId: 'google.com',
       uid: 'uid_admin',
       displayName: 'Admin',
@@ -45,14 +45,14 @@ export const undergraduateData: UserImportRecord = {
   uid: 'uid_undergraduate',
   email: 'aluno.graduacao@unesp.br',
   emailVerified: true,
-  photoURL: 'https://via.placeholder.com/256/?text=Aluno%20da%20gradu%C3%A7%C3%A3cao',
+  photoURL: 'https://placehold.co/256.png?text=Aluno%20da%20gradu%C3%A7%C3%A3cao',
   metadata: {
     lastSignInTime: 'Thu, 01 Jan 1970 00:00:00 UTC',
     creationTime: 'Thu, 01 Jan 1970 00:00:00 UTC',
   },
   providerData: [
     {
-      photoURL: 'https://via.placeholder.com/256/?text=Aluno%20da%20gradu%C3%A7%C3%A3cao',
+      photoURL: 'https://placehold.co/256.png?text=Aluno%20da%20gradu%C3%A7%C3%A3cao',
       providerId: 'google.com',
       uid: 'uid_undergraduate',
       displayName: 'Aluno da graduação',
@@ -83,14 +83,14 @@ export const professorData: UserImportRecord = {
   uid: 'uid_professor',
   email: 'professor@unesp.br',
   emailVerified: true,
-  photoURL: 'https://via.placeholder.com/256/?text=Professor',
+  photoURL: 'https://placehold.co/256.png?text=Professor',
   metadata: {
     lastSignInTime: 'Thu, 01 Jan 1970 00:00:00 UTC',
     creationTime: 'Thu, 01 Jan 1970 00:00:00 UTC',
   },
   providerData: [
     {
-      photoURL: 'https://via.placeholder.com/256/?text=Professor',
+      photoURL: 'https://placehold.co/256.png?text=Professor',
       providerId: 'google.com',
       uid: 'uid_professor',
       displayName: 'Professor',
@@ -120,14 +120,14 @@ export const externalData: UserImportRecord = {
   uid: 'uid_external',
   email: 'externo@gmail.com',
   emailVerified: true,
-  photoURL: 'https://via.placeholder.com/256/?text=Usu%C3%A1rio%20externo',
+  photoURL: 'https://placehold.co/256.png?text=Usu%C3%A1rio%20externo',
   metadata: {
     lastSignInTime: 'Thu, 01 Jan 1970 00:00:00 UTC',
     creationTime: 'Thu, 01 Jan 1970 00:00:00 UTC',
   },
   providerData: [
     {
-      photoURL: 'https://via.placeholder.com/256/?text=Usu%C3%A1rio%20externo',
+      photoURL: 'https://placehold.co/256.png?text=Usu%C3%A1rio%20externo',
       providerId: 'google.com',
       uid: 'uid_external',
       displayName: 'Usuário externo',
