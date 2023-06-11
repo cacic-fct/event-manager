@@ -264,8 +264,29 @@ export class IssueCertificatePage implements OnInit {
         };
 
         const issueData = httpsCallable(this.functions, 'certificates-issueMajorEventCertificate');
-        issueData(payload).then((response) => {
-          console.log(response);
+        issueData(payload).then((response: any) => {
+          if (response.data.success) {
+            console.log(response);
+            const alert = this.alertController.create({
+              header: 'Certificados emitidos com sucesso',
+              buttons: ['OK'],
+            });
+
+            alert.then((alert) => {
+              alert.present();
+            });
+          } else {
+            console.error(response);
+            const alert = this.alertController.create({
+              header: 'Erro ao emitir certificados',
+              message: response.data.error,
+              buttons: ['OK'],
+            });
+
+            alert.then((alert) => {
+              alert.present();
+            });
+          }
         });
       });
     });
