@@ -7,7 +7,7 @@ import { ServiceWorkerModule } from '@angular/service-worker';
 import localePt from '@angular/common/locales/pt';
 registerLocaleData(localePt);
 
-import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
+import { IonicModule, IonicRouteStrategy, isPlatform } from '@ionic/angular';
 
 // AngularFire
 import { initializeApp, provideFirebaseApp, getApp } from '@angular/fire/app';
@@ -47,7 +47,9 @@ import { MarkdownModule } from 'ngx-markdown';
       registrationStrategy: 'registerImmediately',
     }),
     HttpClientModule,
-    IonicModule.forRoot(),
+    IonicModule.forRoot({
+      backButtonText: isPlatform('ios') ? 'Voltar' : undefined,
+    }),
 
     // Other modules
     MarkdownModule.forRoot({ loader: HttpClient }),
