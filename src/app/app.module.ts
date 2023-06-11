@@ -17,7 +17,13 @@ import { getStorage, provideStorage, connectStorageEmulator } from '@angular/fir
 import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 import { connectAuthEmulator, getAuth, provideAuth, useDeviceLanguage } from '@angular/fire/auth';
 import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytics';
-import { provideFirestore, initializeFirestore, connectFirestoreEmulator } from '@angular/fire/firestore';
+import {
+  provideFirestore,
+  initializeFirestore,
+  connectFirestoreEmulator,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from '@angular/fire/firestore';
 
 import { AngularFirePerformanceModule, PerformanceMonitoringService } from '@angular/fire/compat/performance';
 import { AngularFireModule } from '@angular/fire/compat';
@@ -137,6 +143,7 @@ import { MarkdownModule } from 'ngx-markdown';
     provideFirestore(() => {
       const firestore = initializeFirestore(getApp(), {
         ignoreUndefinedProperties: true,
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
       });
 
       if (environment.useEmulators) {
