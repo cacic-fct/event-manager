@@ -14,11 +14,10 @@
         <p class="ion-padding-horizontal">
           Administrador é a permissão máxima e absoluta do aplicativo.
           <br />
-          Só podem ter esta permissão pessoas confiáveis do CACiC que podem
-          contribuir para o app e desenvolvedores selecionados.
+          Só podem ter esta permissão pessoas confiáveis do CACiC que podem contribuir para o app e desenvolvedores
+          selecionados.
           <br />
-          Toda adição e remoção é gravada nos registros e deve ser documentada
-          em um arquivo interno.
+          Toda adição e remoção é gravada nos registros e deve ser documentada em um arquivo interno.
         </p>
       </ion-col>
     </ion-row>
@@ -27,32 +26,22 @@
         <form [formGroup]="addAdminForm" (ngSubmit)="addAdmin()">
           <ion-item>
             <ion-label position="floating">Adicionar admin</ion-label>
-            <ion-input
-              type="text"
-              formControlName="adminEmail"
-              placeholder="E-mail institucional"></ion-input>
+            <ion-input type="text" formControlName="adminEmail" placeholder="E-mail institucional"></ion-input>
           </ion-item>
           <ion-button expand="block" type="submit">Adicionar</ion-button>
         </form>
       </ion-col>
     </ion-row>
 
-    <br />
-    <ion-row>
-      <ion-col>
-        <ion-list>
-          <form [formGroup]="removeAdminForm" (ngSubmit)="removeAdmin()">
-            <ion-item>
-              <ion-label position="floating">Remover admin</ion-label>
-              <ion-input
-                type="text"
-                formControlName="adminEmail"
-                placeholder="E-mail institucional"></ion-input>
-            </ion-item>
-            <ion-button expand="block" type="submit">Remover</ion-button>
-          </form>
-        </ion-list>
-      </ion-col>
-    </ion-row>
+    <h1 class="ion-padding-horizontal">Lista de admins</h1>
+
+    <ion-list *ngIf="adminList$ | async as adminList">
+      <ion-item *ngFor="let admin of adminList">
+        <ion-label>{{ admin }}</ion-label>
+        <ion-button slot="end" (click)="removeConfirmationAlert(admin)" color="danger">
+          <ion-icon name="trash-outline"></ion-icon>
+        </ion-button>
+      </ion-item>
+    </ion-list>
   </ion-grid>
 </ion-content>

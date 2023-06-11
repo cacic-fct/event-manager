@@ -3,7 +3,10 @@ import { Component, inject, OnInit } from '@angular/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 
 import { FormGroup, FormControl } from '@angular/forms';
-import { ToastController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular';
+
+import { Firestore, docData, doc } from '@angular/fire/firestore';
+import { map, Observable } from 'rxjs';
 
 @Component({
   selector: 'app-manage-admins',
@@ -11,17 +14,18 @@ import { ToastController } from '@ionic/angular';
   styleUrls: ['./manage-admins.page.scss'],
 })
 export class ManageAdminsPage implements OnInit {
+  private firestore: Firestore = inject(Firestore);
   private functions: Functions = inject(Functions);
+
+  adminList$: Observable<string[]>;
 
   addAdminForm: FormGroup = new FormGroup({
     adminEmail: new FormControl(''),
   });
 
-  removeAdminForm: FormGroup = new FormGroup({
-    adminEmail: new FormControl(''),
-  });
-
-  constructor(public toastController: ToastController) {}
+  constructor(public toastController: ToastController, private alertController: AlertController) {
+    this.adminList$ = docData(doc(this.firestore, 'claims', 'admin')).pipe(map((doc) => doc.admins));
+  }
 
   ngOnInit() {}
 
@@ -49,11 +53,32 @@ export class ManageAdminsPage implements OnInit {
     });
   }
 
-  removeAdmin() {
+  removeAdmin(adminEmail: string) {
     const removeAdminRole = httpsCallable(this.functions, 'claims-removeAdminRole');
-    removeAdminRole({ email: this.removeAdminForm.value.adminEmail }).then((res) => {
+    removeAdminRole({ email: adminEmail }).then((res) => {
       this.successToast();
-      this.removeAdminForm.reset();
     });
+  }
+
+  async removeConfirmationAlert(adminEmail: string) {
+    const alert = await this.alertController.create({
+      header: 'Desejar remover este admin?',
+      message: adminEmail,
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+        },
+        {
+          text: 'OK',
+          role: 'confirm',
+          handler: () => {
+            this.removeAdmin(adminEmail);
+          },
+        },
+      ],
+    });
+
+    await alert.present();
   }
 }
