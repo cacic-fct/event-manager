@@ -41,9 +41,7 @@
       </ion-grid>
     </ion-item>
   </ion-list>
-  <div>
-    <ion-button [disabled]="!dataForm.valid" class="ion-padding" expand="block" (click)="createGroup()"
-      >Criar grupo</ion-button
-    >
+  <div class="ion-padding">
+    <ion-button [disabled]="!dataForm.valid" expand="block" (click)="createGroup()">Criar grupo</ion-button>
   </div>
 </ion-content>
