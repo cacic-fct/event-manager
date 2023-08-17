@@ -14,7 +14,6 @@ import {
   User as UserAuth,
   getIdTokenResult,
   AuthProvider,
-  PhoneAuthProvider,
   signInWithPopup,
   linkWithPopup,
 } from '@angular/fire/auth';
@@ -24,9 +23,7 @@ import { ModalController, ToastController } from '@ionic/angular';
 import { GlobalConstantsService } from './global-constants.service';
 import { take, Observable, map, switchMap } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
-import { VerifyPhonePage } from 'src/app/auth/verify-phone/verify-phone.page';
 
-import { unlink } from 'firebase/auth';
 import { getStringChanges, RemoteConfig, getBooleanChanges } from '@angular/fire/remote-config';
 import { arrayRemove } from '@angular/fire/firestore';
 import { gte as versionGreaterThan } from 'semver';
@@ -268,35 +265,6 @@ export class AuthService {
     );
   }
 
-  async verifyPhoneModal(phone: string): Promise<boolean> {
-    const modal = await this.modalController.create({
-      component: VerifyPhonePage,
-      componentProps: {
-        phone: phone,
-      },
-      backdropDismiss: false,
-      keyboardClose: false,
-    });
-
-    await modal.present();
-
-    return modal.onDidDismiss().then((response) => {
-      const data = response.data;
-      if (data) {
-        return new Promise<boolean>((resolve) => {
-          resolve(true);
-        });
-      }
-      return new Promise<boolean>((resolve) => {
-        resolve(false);
-      });
-    });
-  }
-
-  async phoneUnlink() {
-    unlink(this.userData, PhoneAuthProvider.PROVIDER_ID);
-  }
-
   async getUserUid(manualInput: string): Promise<StringDataReturnType> {
     // Remove spaces from the string
     manualInput = manualInput.replace(/\s/g, '');
@@ -326,4 +294,36 @@ export class AuthService {
 
     return (await getUserUid({ string: manualInput })).data as StringDataReturnType;
   }
+
+  /* UNUSED */
+  /*
+   async verifyPhoneModal(phone: string): Promise<boolean> {
+    const modal = await this.modalController.create({
+      component: VerifyPhonePage,
+      componentProps: {
+        phone: phone,
+      },
+      backdropDismiss: false,
+      keyboardClose: false,
+    });
+
+    await modal.present();
+
+    return modal.onDidDismiss().then((response) => {
+      const data = response.data;
+      if (data) {
+        return new Promise<boolean>((resolve) => {
+          resolve(true);
+        });
+      }
+      return new Promise<boolean>((resolve) => {
+        resolve(false);
+      });
+    });
+  }
+
+  async phoneUnlink() {
+    unlink(this.userData, PhoneAuthProvider.PROVIDER_ID);
+  }
+*/
 }

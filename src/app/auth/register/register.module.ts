@@ -10,18 +10,8 @@ import { RegisterPage } from './register.page';
 
 import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 
-import { VerifyPhonePageModule } from 'src/app/auth/verify-phone/verify-phone.module';
-
 @NgModule({
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    IonicModule,
-    RegisterPageRoutingModule,
-    SweetAlert2Module,
-    VerifyPhonePageModule,
-  ],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, IonicModule, RegisterPageRoutingModule, SweetAlert2Module],
   declarations: [RegisterPage],
 })
 export class RegisterPageModule {}

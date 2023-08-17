@@ -106,56 +106,47 @@ export class RegisterPage implements OnInit {
       return;
     }
 
+    this.submitUserData();
+  }
+
+  submitUserData() {
+    if (!this.dataForm.value.phone) {
+      this.toastError('2');
+      return;
+    }
+
     this.afs
       .collection('users')
       .doc<User>(this.userData.uid)
       .get()
       .pipe(take(1))
-      .subscribe((userData) => {
-        const user = userData.data();
-        if (user.phone && user.phone === this.dataForm.value.phone) {
-          this.submitUserData(user);
-          return;
-        }
+      .subscribe((userDocument) => {
+        const user = userDocument.data();
 
-        this.authService.verifyPhoneModal(this.dataForm.value.phone).then((response) => {
-          if (response) {
-            this.submitUserData(user);
-            return;
-          }
-          this.toastError('1');
-        });
-      });
-  }
-
-  submitUserData(user: User) {
-    if (!this.dataForm.value.phone) {
-      this.toastError('2');
-    }
-
-    const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
-    const userData: User = {
-      fullName: this.isUnesp ? this.userData.displayName : this.dataForm.value.fullName,
-      associateStatus: this.isUnesp ? this.dataForm.value.associateStatus : 'external',
-      academicID: this.isUndergraduate ? this.dataForm.value.academicID : null,
-      phone: this.dataForm.value.phone,
-      dataVersion: this.dataVersion,
-      cpf: this.dataForm.value.cpf,
-    };
-    this.toastSubmitting();
-    userRef
-      .update(userData)
-      .then(() => {
-        this.mySwal.fire();
-        // Fake delay to let animation finish
-        setTimeout(() => {
-          this.mySwal.close();
-          this.router.navigate(['/menu']);
-        }, 1500);
-      })
-      .catch((error) => {
-        this.toastError('3');
-        console.error(error);
+        const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
+        const userData: User = {
+          fullName: this.isUnesp ? this.userData.displayName : this.dataForm.value.fullName,
+          associateStatus: this.isUnesp ? this.dataForm.value.associateStatus : 'external',
+          academicID: this.isUndergraduate ? this.dataForm.value.academicID : null,
+          phone: this.dataForm.value.phone,
+          dataVersion: this.dataVersion,
+          cpf: this.dataForm.value.cpf,
+        };
+        this.toastSubmitting();
+        userRef
+          .update(userData)
+          .then(() => {
+            this.mySwal.fire();
+            // Fake delay to let animation finish
+            setTimeout(() => {
+              this.mySwal.close();
+              this.router.navigate(['/menu']);
+            }, 1500);
+          })
+          .catch((error) => {
+            this.toastError('3');
+            console.error(error);
+          });
       });
   }
 
