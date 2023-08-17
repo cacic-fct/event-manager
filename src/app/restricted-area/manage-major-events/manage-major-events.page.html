@@ -60,7 +60,8 @@
                   </ion-button>
                 </ion-row>
                 <ion-row>
-                  <ion-button fill="clear" [routerLink]="['emitir-certificados', item.id]">
+                  <!-- TODO: Certificate issuing disabled until #133 is merged -->
+                  <ion-button fill="clear" [routerLink]="['emitir-certificados', item.id]" disabled="true">
                     <ion-icon name="document-text-outline" slot="start"></ion-icon>
                     <p slot="end" class="ion-text-wrap">Emitir certificados</p>
                   </ion-button>
