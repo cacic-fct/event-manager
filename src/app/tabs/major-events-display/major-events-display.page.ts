@@ -2,7 +2,7 @@
 import { Component, inject } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { compareAsc } from 'date-fns';
+import { compareAsc, subMonths, startOfDay } from 'date-fns';
 import { take, map, Observable } from 'rxjs';
 
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
@@ -32,7 +32,13 @@ export class MajorEventsDisplayPage {
     this.user$.pipe(take(1)).subscribe((user) => {
       this.majorEvents$ = this.afs
         .collection<MajorEventItem>('majorEvents', (ref) => {
-          return ref.orderBy('eventStartDate', 'asc').limit(5);
+          let query: any = ref;
+
+          // TODO: Show events in which the subscription opens in the next 2 weeks AND events that ended in the last 2 weeks
+          const threeMonthsAgo = subMonths(startOfDay(this.today), 3);
+          query = query.where('eventStartDate', '>=', threeMonthsAgo);
+
+          return query.orderBy('eventStartDate', 'asc').limit(5);
         })
         .valueChanges({ idField: 'id' })
         .pipe(
