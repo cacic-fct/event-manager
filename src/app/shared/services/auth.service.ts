@@ -194,7 +194,7 @@ export class AuthService {
     } catch (error) {
       console.error('Link profile failed');
       console.error(error);
-      this.toastLoginFailed();
+      this.toastAccountLinkFailed(error);
     }
   }
 
@@ -202,6 +202,30 @@ export class AuthService {
     const toast = await this.toastController.create({
       header: 'Ocorreu um erro no seu login',
       message: 'Verifique a sua conexão e tente novamente.',
+      icon: 'close-circle',
+      position: 'bottom',
+      duration: 5000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+    toast.present();
+  }
+
+  async toastAccountLinkFailed(error: any) {
+    let header: string;
+    let message: string;
+    if (error.code === 'auth/credential-already-in-use') {
+      header = 'Esta conta já está vinculada a outro usuário';
+      message = 'Por favor, tente novamente com outra conta.';
+    }
+    const toast = await this.toastController.create({
+      header: header || 'Ocorreu um erro ao vincular sua conta',
+      message: message || 'Verifique a sua conexão e tente novamente.',
       icon: 'close-circle',
       position: 'bottom',
       duration: 5000,
