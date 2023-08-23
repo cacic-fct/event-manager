@@ -158,7 +158,10 @@
 
     <ng-container *ngIf="dataForm.get('collectAttendance').value">
       <ion-item>
-        <ion-label>Emite certificado de participação</ion-label>
+        <ion-label *ngIf="dataForm.get('inMajorEvent').value === 'none'">Emite certificado de participação</ion-label>
+        <ion-label *ngIf="dataForm.get('inMajorEvent').value !== 'none'">
+          Consta no certificado de participação
+        </ion-label>
         <ion-toggle slot="end" formControlName="issueCertificate" checked="off"></ion-toggle>
       </ion-item>
 
