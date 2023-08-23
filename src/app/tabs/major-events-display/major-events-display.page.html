@@ -6,7 +6,7 @@
 
 <ion-content>
   <ng-container *ngIf="majorEvents$ | async as majorEventsList; else loading">
-    <h1 *ngIf="majorEventsList.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
+    <h1 *ngIf="majorEventsList.length === 0" class="ion-text-center">Nenhum evento disponível</h1>
 
     <div *ngIf="majorEventsList.length > 0" class="event-container">
       <ng-container *ngFor="let event of majorEventsList">
