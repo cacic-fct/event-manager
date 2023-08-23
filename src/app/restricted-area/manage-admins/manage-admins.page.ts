@@ -47,17 +47,25 @@ export class ManageAdminsPage implements OnInit {
 
   addAdmin() {
     const addAdminRole = httpsCallable(this.functions, 'claims-addAdminRole');
-    addAdminRole({ email: this.addAdminForm.value.adminEmail }).then((res) => {
-      this.successToast();
-      this.addAdminForm.reset();
-    });
+    addAdminRole({ email: this.addAdminForm.value.adminEmail })
+      .then((res) => {
+        this.successToast();
+        this.addAdminForm.reset();
+      })
+      .catch((err) => {
+        this.errorToast(err);
+      });
   }
 
   removeAdmin(adminEmail: string) {
     const removeAdminRole = httpsCallable(this.functions, 'claims-removeAdminRole');
-    removeAdminRole({ email: adminEmail }).then((res) => {
-      this.successToast();
-    });
+    removeAdminRole({ email: adminEmail })
+      .then((res) => {
+        this.successToast();
+      })
+      .catch((err) => {
+        this.errorToast(err);
+      });
   }
 
   async removeConfirmationAlert(adminEmail: string) {
