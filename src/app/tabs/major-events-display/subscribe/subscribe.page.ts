@@ -200,13 +200,13 @@ export class SubscribePage implements OnInit {
                   .doc(`majorEvents/${this.majorEventID}/subscriptions/${user.uid}`)
                   .get()
                   .subscribe((document) => {
-                    /* Autoselects and disabled palestras
-                    Used during SECOMPP22 when palestras were mandatory
+                    // Autoselects and disabled palestras
+                    // Used during SECOMPP22 when palestras were mandatory
                      if (eventItem.eventType === 'palestra') {
                       this.dataForm.get(eventItem.id).setValue(true);
                       this.dataForm.get(eventItem.id).disable();
-                    }*/
-                    ///
+                    }
+                    
 
                     if (document.exists) {
                       const subscription = document.data() as MajorEventSubscription;
@@ -628,18 +628,18 @@ export class SubscribePage implements OnInit {
         // If event overlaps, enable it
 
         /* Keeps event disabled if it's a palestra.
-         Used during SECOMPP22 where palestras were mandatory
-         if (this.eventSchedule[i].eventType !== 'palestra') { */
-        if (this.eventSchedule[i].slotsAvailable > 0) {
-          if (this.eventSchedule[i].eventGroup?.groupEventIDs) {
-            this.eventSchedule[i].eventGroup.groupEventIDs.forEach((event) => {
-              this.dataForm.get(event).enable();
-            });
-          } else {
-            this.dataForm.get(this.eventSchedule[i].id).enable();
+         Used during SECOMPP22 where palestras were mandatory*/
+        if (this.eventSchedule[i].eventType !== 'palestra') { 
+          if (this.eventSchedule[i].slotsAvailable > 0) {
+            if (this.eventSchedule[i].eventGroup?.groupEventIDs) {
+              this.eventSchedule[i].eventGroup.groupEventIDs.forEach((event) => {
+                this.dataForm.get(event).enable();
+              });
+            } else {
+              this.dataForm.get(this.eventSchedule[i].id).enable();
+            }
           }
         }
-        // }
       }
 
       // For every event before eventIdex
