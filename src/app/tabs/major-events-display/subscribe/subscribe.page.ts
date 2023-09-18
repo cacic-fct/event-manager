@@ -256,6 +256,10 @@ export class SubscribePage implements OnInit {
 
   pushEvent(eventFromGroup: string) {
     const eventItem = this.eventSchedule.find((event) => event.id === eventFromGroup);
+    // Check if event is already in array
+    if (this.eventsSelected[eventItem.eventType].some((e) => e.id === eventItem.id)) {
+      return;
+    }
     this.eventsSelected[eventItem.eventType].push(eventItem);
   }
 
