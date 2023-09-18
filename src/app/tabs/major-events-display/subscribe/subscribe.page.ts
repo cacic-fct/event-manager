@@ -207,6 +207,16 @@ export class SubscribePage implements OnInit {
                     }
 
                     if (document.exists) {
+                      this.alreadySubscribed.fire();
+                      this.router.navigate(['/eventos'], { replaceUrl: true });
+
+                      // TODO: Subscription editing is bugged, fix me
+                      setTimeout(() => {
+                        this.alreadySubscribed.close();
+                      }, 1000);
+                      return;
+                      //
+
                       const subscription = document.data() as MajorEventSubscription;
                       if (subscription.subscribedToEvents.includes(eventItem.id) && eventItem.slotsAvailable > 0) {
                         this.dataForm.get(eventItem.id).setValue(true);
