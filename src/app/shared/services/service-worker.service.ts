@@ -49,10 +49,6 @@ export class ServiceWorkerService {
       message: 'Atualize agora para receber melhorias e correções',
       buttons: [
         {
-          text: 'Não',
-          role: 'cancel',
-        },
-        {
           text: 'OK',
           role: 'confirm',
           handler: () => {
