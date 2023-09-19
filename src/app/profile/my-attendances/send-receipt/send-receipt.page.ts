@@ -216,13 +216,18 @@ export class SendReceiptPage implements OnInit {
       },
       (error) => {
         console.error('Upload task failed', error);
-        this.toastError();
+        this.toastUploadError();
       },
       () => {
-        getDownloadURL(task.snapshot.ref).then((downloadURL) => {
-          this.downloadURL = downloadURL;
-          this.updateUser();
-        });
+        getDownloadURL(task.snapshot.ref)
+          .then((downloadURL) => {
+            this.downloadURL = downloadURL;
+            this.updateUser();
+          })
+          .catch((err) => {
+            console.error('Failed to get download URL', err);
+            this.toastUploadError();
+          });
       }
     );
   }
@@ -241,16 +246,34 @@ export class SendReceiptPage implements OnInit {
           this.toastController.dismiss();
         }, 1500);
       })
-      .catch((err) => {
-        this.toastError();
-        console.error('Failed to update user', err);
+      .catch((error) => {
+        this.toastDownloadError(error.code);
+        console.error('Failed to update user', error);
       });
   }
 
-  async toastError() {
+  async toastUploadError() {
     const toast = await this.toastController.create({
       header: 'Falha no upload',
       message: 'Ocorreu um erro ao fazer o upload do seu recibo de pagamento. Tente novamente.',
+      icon: 'close-circle',
+      position: 'bottom',
+      duration: 5000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+    toast.present();
+  }
+
+  async toastDownloadError(errorCode: string) {
+    const toast = await this.toastController.create({
+      header: 'Falha na visualização do recibo de pagamento',
+      message: `Entre em contato com a organização do evento e informe o código: (${errorCode}).`,
       icon: 'close-circle',
       position: 'bottom',
       duration: 5000,
@@ -284,7 +307,7 @@ export class SendReceiptPage implements OnInit {
 
   async toastSuccess() {
     const toast = await this.toastController.create({
-      header: 'Comprovante enviado',
+      header: 'Rebibo de pagamento enviado',
       message: 'Acompanhe o status do pagamento através da página "minhas participações"',
       icon: 'checkmark-circle',
       position: 'bottom',
