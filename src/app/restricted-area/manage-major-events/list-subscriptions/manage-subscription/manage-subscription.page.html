@@ -23,12 +23,6 @@
         </ion-card-subtitle>
       </ion-card-header>
       <ion-card-content>
-        <p>
-          <ion-text color="danger">
-            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
-            <span class="alert-text ion-text-wrap"> Antes de validar, verifique se não há choque de horário. </span>
-          </ion-text>
-        </p>
         <ng-container *ngIf="eventsUserIsSubscribedTo$ | async as subEventsInfo; else loading">
           <ng-container *ngIf="subEventsInfo.length != 0">
             <ng-container *ngFor="let subEventInfo of subEventsInfo">
