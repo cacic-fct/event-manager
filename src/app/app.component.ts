@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { ServiceWorkerService } from 'src/app/shared/services/service-worker.service';
 
 @Component({
   selector: 'app-root',
@@ -6,5 +7,5 @@ import { Component } from '@angular/core';
   styleUrls: ['app.component.scss'],
 })
 export class AppComponent {
-  constructor() {}
+  constructor(private swService: ServiceWorkerService) {}
 }
