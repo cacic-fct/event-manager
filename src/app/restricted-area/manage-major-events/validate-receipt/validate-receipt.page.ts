@@ -48,7 +48,8 @@ export class ValidateReceiptPage implements OnInit {
     private afs: AngularFirestore,
     private formBuilder: FormBuilder,
     private alertController: AlertController,
-    public dateService: DateService
+    public dateService: DateService,
+    private toastController: ToastController
   ) {}
 
   ngOnInit() {
