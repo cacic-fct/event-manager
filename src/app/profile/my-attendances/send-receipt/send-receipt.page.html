@@ -13,6 +13,8 @@
     <ion-card>
       <ion-card-header>
         <ion-card-title>{{majorEvent.name}}</ion-card-title>
+      </ion-card-header>
+      <div class="ion-padding-horizontal">
         <ng-container *ngIf="userSubscription$ | async as userInfo">
           <!-- prettier-ignore -->
           <ion-card-subtitle *ngIf="userInfo.subscriptionType !== undefined && userInfo.subscriptionType !== null">
@@ -44,8 +46,7 @@
             {{ majorEvent.paymentInfo.additionalPaymentInformation }}
           </div>
         </ion-card-content>
-      </ion-card-header>
-
+      </div>
       <ion-grid *ngIf="majorEvent.paymentInfo.chavePix">
         <ion-row>
           <ion-col>
