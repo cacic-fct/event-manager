@@ -413,11 +413,10 @@ export class ValidateReceiptPage implements OnInit {
   }
 
   async copyEventIDs(array: string[]) {
-    let string = array.join(', ');
+    let string = array.join('\n');
 
+    // Remove all quotes and brackets
     string = string.replace(/[\[\]"]+/g, '');
-
-    string = string.replace(/,/g, '\n');
 
     const toast = await this.toastController.create({
       header: 'IDs dos eventos',
