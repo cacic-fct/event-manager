@@ -60,9 +60,15 @@
               </ion-text>
             </p>
             <p class="pre-wrap">
-              ID dos eventos selecionados: <br />
+              Eventos selecionados: <br />
               <br />
-              {{ displayEventIDs(subscription.subscribedToEvents) }}
+              <!-- Button copy event IDs -->
+              <ion-button
+                size="small"
+                (click)="copyEventIDs(subscription.subscribedToEvents)"
+                [disabled]="subscription.subscribedToEvents.length == 0">
+                Copiar IDs
+              </ion-button>
             </p>
             <br />
             <ng-container *ngIf="subscription.subEventsInfo | async as subEventsInfo; else loading">

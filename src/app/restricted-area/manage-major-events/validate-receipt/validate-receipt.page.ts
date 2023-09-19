@@ -12,7 +12,7 @@ import { trace } from '@angular/fire/compat/performance';
 import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
-import { AlertController, IonModal } from '@ionic/angular';
+import { AlertController, IonModal, ToastController } from '@ionic/angular';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { DateService } from 'src/app/shared/services/date.service';
 import { Auth, user } from '@angular/fire/auth';
@@ -411,20 +411,29 @@ export class ValidateReceiptPage implements OnInit {
     this.arrayIndex--;
   }
 
-  displayEventIDs(array: string[]): string {
-    // let exclusionList = [
-    //   'eventID',
-    // ];
-    // let newArray = array.filter((item) => !exclusionList.includes(item));
-    // let string = newArray.join(', ');
-
+  async copyEventIDs(array: string[]) {
     let string = array.join(', ');
 
     string = string.replace(/[\[\]"]+/g, '');
 
-    string = string.replace(/,/g, '\n\n');
+    string = string.replace(/,/g, '\n');
 
-    return string;
+    const toast = await this.toastController.create({
+      header: 'IDs dos eventos',
+      message: 'Copiados para a área de transferência.',
+      icon: 'copy',
+      position: 'bottom',
+      duration: 2000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+    navigator.clipboard.writeText(string);
+    toast.present();
   }
 }
 
