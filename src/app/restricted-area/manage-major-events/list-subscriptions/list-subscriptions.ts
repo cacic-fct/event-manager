@@ -203,27 +203,31 @@ export class ListSubscriptionsPage implements OnInit {
                       '',
                       item.payment.status,
                       status,
-                      this.getDateFromTimestamp(item.payment.time).toLocaleString('pt-BR', {
-                        timeZone: 'America/Sao_Paulo',
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      }),
+                      this.getDateFromTimestamp(item.payment.time)
+                        .toLocaleString('pt-BR', {
+                          timeZone: 'America/Sao_Paulo',
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })
+                        .replace(/[",;]/g, ''),
 
                       this.getDateFromTimestamp(item.payment.time).toISOString(),
 
-                      this.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {
-                        timeZone: 'America/Sao_Paulo',
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      }),
+                      this.getDateFromTimestamp(item.time)
+                        .toLocaleString('pt-BR', {
+                          timeZone: 'America/Sao_Paulo',
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })
+                        .replace(/[",;]/g, ''),
 
                       this.getDateFromTimestamp(item.time).toISOString(),
 
@@ -244,27 +248,31 @@ export class ListSubscriptionsPage implements OnInit {
                     item.payment.status,
                     status,
 
-                    this.getDateFromTimestamp(item.payment.time).toLocaleString('pt-BR', {
-                      timeZone: 'America/Sao_Paulo',
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    }),
+                    this.getDateFromTimestamp(item.payment.time)
+                      .toLocaleString('pt-BR', {
+                        timeZone: 'America/Sao_Paulo',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })
+                      .replace(/[",;]/g, ''),
 
                     this.getDateFromTimestamp(item.payment.time).toISOString(),
 
-                    this.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {
-                      timeZone: 'America/Sao_Paulo',
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    }),
+                    this.getDateFromTimestamp(item.time)
+                      .toLocaleString('pt-BR', {
+                        timeZone: 'America/Sao_Paulo',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })
+                      .replace(/[",;]/g, ''),
 
                     this.getDateFromTimestamp(item.time).toISOString(),
 
