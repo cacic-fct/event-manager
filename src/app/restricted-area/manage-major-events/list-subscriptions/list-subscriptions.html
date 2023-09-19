@@ -9,9 +9,8 @@
 
 <ion-content>
   <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
-    <div class="ion-padding" *ngIf="event$ | async; let event">
+    <div class="ion-padding" *ngIf="event$ | async as event">
       <h3 style="margin-bottom: 0">{{ event.name }}</h3>
-      <h4 style="margin: 0">{{ event.shortDescription }}</h4>
       <h5 style="margin-top: 0">
         {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
       </h5>
@@ -19,48 +18,62 @@
         <ion-spinner slot="start" *ngIf="disableCSVDownloadButton"></ion-spinner>
         Baixar CSV
       </ion-button>
-    </div>
-    <div class="ion-padding-horizontal">
-      <p><b>Total de inscritos:</b> {{subscriptions.length | number: '2.0-0'}}</p>
-    </div>
-    <ion-item *ngFor="let subscriptionItem of subscriptions">
-      <ion-label>
-        <ng-container *ngIf="(subscriptionItem.user | async) as user; else userNotFound">
-          <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
-          <h2 class="ion-text-wrap" *ngIf="!user.fullName">
-            <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
-          </h2>
-          <ng-container *ngIf="user.academicID; else notUnesp">
-            <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
-          </ng-container>
 
-          <ng-template #notUnesp>
-            <h3 class="ion-text-wrap" *ngIf="!user.academicID">Sem RA definido</h3>
-          </ng-template>
-          <h3 class="ion-text-wrap">{{ user.email }} | {{ user.phone || "Sem celular cadastrado" }}</h3>
-          <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+      <div class="ion-padding-horizontal">
+        <p><b>Total de inscritos:</b> {{subscriptions.length | number: '2.0-0'}}</p>
+      </div>
+      <ion-item *ngFor="let subscriptionItem of subscriptions">
+        <ion-label>
+          <ng-container *ngIf="(subscriptionItem.user | async) as user; else userNotFound">
+            <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
+            <h2 class="ion-text-wrap" *ngIf="!user.fullName">
+              <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+            </h2>
+            <ng-container *ngIf="user.academicID; else notUnesp">
+              <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+            </ng-container>
 
-          <!-- prettier-ignore -->
-          <h3 class="ion-text-wrap">
+            <ng-template #notUnesp>
+              <h3 class="ion-text-wrap" *ngIf="!user.academicID">Sem RA definido</h3>
+            </ng-template>
+            <h3 class="ion-text-wrap">{{ user.email }} | {{ user.phone || "Sem celular cadastrado" }}</h3>
+            <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+            <!-- prettier-ignore -->
+            <h3 class="ion-text-wrap" style="margin-top: 8px">
             Criação da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.time) | date: "dd/MM/y - HH:mm:ss" }}
           </h3>
-          <!-- prettier-ignore -->
-          <h3 class="ion-text-wrap">
+            <!-- prettier-ignore -->
+            <h3 class="ion-text-wrap">
             Última edição da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: "dd/MM/y - HH:mm:ss" }}
           </h3>
-          <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
-        </ng-container>
-        <ng-template #userNotFound>
-          <h2 class="ion-text-wrap">
-            <ion-text color="danger">Usuário não encontrado</ion-text>
-          </h2>
-          <h2 class="ion-text-wrap">
-            <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
-          </h2>
-          <h2>UID: {{ subscriptionItem.id }}</h2>
-        </ng-template>
-      </ion-label>
-    </ion-item>
+            <h3 class="ion-text-wrap" *ngIf="!event.price.isFree">
+              Status da inscrição:
+              <ng-container *ngIf="subscriptionItem.payment.status === 0">Não pago</ng-container>
+              <ng-container *ngIf="subscriptionItem.payment.status === 1">
+                <!-- prettier-ignore -->
+                Comprovante enviado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }} - Aguardando confirmação
+              </ng-container>
+              <ng-container *ngIf="subscriptionItem.payment.status === 2">
+                <!-- prettier-ignore -->
+                Pagamento validado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }}
+              </ng-container>
+              <ng-container *ngIf="subscriptionItem.payment.status === 3"> Erro no pagamento </ng-container>
+              <ng-container *ngIf="subscriptionItem.payment.status === 4"> Erro na inscrição </ng-container>
+            </h3>
+            <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
+          </ng-container>
+          <ng-template #userNotFound>
+            <h2 class="ion-text-wrap">
+              <ion-text color="danger">Usuário não encontrado</ion-text>
+            </h2>
+            <h2 class="ion-text-wrap">
+              <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
+            </h2>
+            <h2>UID: {{ subscriptionItem.id }}</h2>
+          </ng-template>
+        </ion-label>
+      </ion-item>
+    </div>
   </ng-container>
 
   <ng-template #loading>

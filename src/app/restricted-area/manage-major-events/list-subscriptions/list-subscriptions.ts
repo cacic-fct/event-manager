@@ -7,7 +7,6 @@ import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 import { fromUnixTime } from 'date-fns';
 import { Timestamp } from '@firebase/firestore-types';
 import { map, Observable, take, forkJoin } from 'rxjs';
-import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventSubscription, MajorEventItem } from '../../../shared/services/major-event.service';
@@ -28,7 +27,7 @@ export class ListSubscriptionsPage implements OnInit {
   @ViewChild('mySwal')
   private mySwal!: SwalComponent;
 
-  event$: Observable<EventItem>;
+  event$: Observable<MajorEventItem>;
   subscriptions$: Observable<Subscription[]>;
 
   eventID: string;
@@ -60,7 +59,7 @@ export class ListSubscriptionsPage implements OnInit {
 
     this.event$ = this.afs
       .collection('majorEvents')
-      .doc<EventItem>(this.eventID)
+      .doc<MajorEventItem>(this.eventID)
       .valueChanges()
       // @ts-ignore
       .pipe(trace('firestore'));
@@ -125,12 +124,14 @@ export class ListSubscriptionsPage implements OnInit {
                 return;
               }
 
-              let events: Observable<EventItem | undefined>[] = [];
-              let eventsArray: Observable<(EventItem | undefined)[]>;
+              let events: Observable<MajorEventItem | undefined>[] = [];
+              let eventsArray: Observable<(MajorEventItem | undefined)[]>;
               let eventNames: { [key: string]: string } = {};
 
               event.events.forEach((event) => {
-                events.push(this.afs.doc<EventItem>(`events/${event}`).valueChanges({ idField: 'id' }).pipe(take(1)));
+                events.push(
+                  this.afs.doc<MajorEventItem>(`events/${event}`).valueChanges({ idField: 'id' }).pipe(take(1))
+                );
               });
 
               eventsArray = forkJoin(events);
@@ -170,14 +171,14 @@ export class ListSubscriptionsPage implements OnInit {
                       break;
                   }
 
-                  let subscribedToEventsItemArray$: Observable<EventItem | undefined>[] = [];
+                  let subscribedToEventsItemArray$: Observable<MajorEventItem | undefined>[] = [];
 
                   // TODO: Optimize this
                   item.subscribedToEvents.forEach((eventID) => {
                     subscribedToEventsItemArray$.push(
                       this.afs
                         .collection('events')
-                        .doc<EventItem>(eventID)
+                        .doc<MajorEventItem>(eventID)
                         .get()
                         .pipe(
                           take(1),
