@@ -59,6 +59,8 @@
               </ng-container>
               <ng-container *ngIf="subscriptionItem.payment.status === 3"> Erro no pagamento </ng-container>
               <ng-container *ngIf="subscriptionItem.payment.status === 4"> Erro na inscrição </ng-container>
+              <br />
+              Autor: {{ subscriptionItem.payment.author }}
             </h3>
             <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
           </ng-container>
