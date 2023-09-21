@@ -116,15 +116,18 @@ export class ListSubscriptionsPage implements OnInit {
               user.associateStatus || '',
               user.academicID || 'Sem RA cadastrado',
               user.email,
-              this.dateService.getDateFromTimestamp(item.time).toLocaleString('pt-BR', {
-                timeZone: 'America/Sao_Paulo',
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              }),
+              this.dateService
+                .getDateFromTimestamp(item.time)
+                .toLocaleString('pt-BR', {
+                  timeZone: 'America/Sao_Paulo',
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                })
+                .replace(/[",;]/g, ''),
               this.dateService.getDateFromTimestamp(item.time).toISOString(),
             ];
             csv.push(row);
