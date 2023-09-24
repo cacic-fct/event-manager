@@ -61,7 +61,6 @@ export class AuthService {
         getStringChanges(this.remoteConfig, 'professors').subscribe((professors) => {
           if (professors) {
             const professorsList: string[] = JSON.parse(professors);
-
             // Check if user email matches a professor email.
             // Professors are exempt from the register prompt
             if (professorsList.includes(user.email)) {
@@ -79,52 +78,51 @@ export class AuthService {
                   });
 
                   const addProfessor = httpsCallable(this.functions, 'claims-addProfessorRole');
-                  addProfessor({ email: user.email }).then((res) => {
-                    console.log(res);
+                  addProfessor({ email: user.email }).catch((error) => {
+                    console.error(error);
                   });
                 }
               });
             }
-          } else {
-            // Not a professor or remote config not loaded yet
-            this.CompareUserdataVersion(this.userData)
-              .pipe(take(1))
-              .subscribe((response) => {
-                if (response) {
-                  return;
-                }
-                this.afs
-                  .collection('users')
-                  .doc<User>(this.userData.uid)
-                  .valueChanges()
-                  .pipe(take(1))
-                  .subscribe((user) => {
-                    if (user.pending?.onlineAttendance) {
-                      user.pending.onlineAttendance.forEach((eventID) => {
-                        this.afs
-                          .collection('events')
-                          .doc<EventItem>(eventID)
-                          .valueChanges({ idField: 'id' })
-                          .pipe(take(1))
-                          .subscribe((eventData) => {
-                            if (eventData.attendanceCollectionStart && !eventData.attendanceCollectionEnd) {
-                              this.router.navigate(['/confirmar-presenca', eventID]);
-                            } else if (eventData.attendanceCollectionEnd) {
-                              this.afs
-                                .collection('users')
-                                .doc<User>(this.userData.uid)
-                                .update({
-                                  // @ts-ignore
-                                  pending: { onlineAttendance: arrayRemove(eventID) },
-                                });
-                            }
-                          });
-                      });
-                    }
-                  });
-              });
           }
         });
+
+        this.CompareUserdataVersion(this.userData)
+          .pipe(take(1))
+          .subscribe((response) => {
+            if (response) {
+              return;
+            }
+            this.afs
+              .collection('users')
+              .doc<User>(this.userData.uid)
+              .valueChanges()
+              .pipe(take(1))
+              .subscribe((user) => {
+                if (user.pending?.onlineAttendance) {
+                  user.pending.onlineAttendance.forEach((eventID) => {
+                    this.afs
+                      .collection('events')
+                      .doc<EventItem>(eventID)
+                      .valueChanges({ idField: 'id' })
+                      .pipe(take(1))
+                      .subscribe((eventData) => {
+                        if (eventData.attendanceCollectionStart && !eventData.attendanceCollectionEnd) {
+                          this.router.navigate(['/confirmar-presenca', eventID]);
+                        } else if (eventData.attendanceCollectionEnd) {
+                          this.afs
+                            .collection('users')
+                            .doc<User>(this.userData.uid)
+                            .update({
+                              // @ts-ignore
+                              pending: { onlineAttendance: arrayRemove(eventID) },
+                            });
+                        }
+                      });
+                  });
+                }
+              });
+          });
       } else {
         localStorage.removeItem('user');
       }
