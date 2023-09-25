@@ -26,14 +26,16 @@
         <ng-container *ngIf="eventsUserIsSubscribedTo$ | async as subEventsInfo; else loading">
           <ng-container *ngIf="subEventsInfo.length != 0">
             <ng-container *ngFor="let subEventInfo of subEventsInfo">
-              <ion-text [color]="subEventInfo.slotsAvailable? '' : 'danger'">
-                <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
-                <p style="margin-bottom: 24px">
-                  {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - {{
-                  dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
-                </p>
-                <p>{{ subEventInfo.id }}</p>
-              </ion-text>
+              <div style="margin-bottom: 24px">
+                <ion-text [color]="subEventInfo.slotsAvailable? '' : 'danger'">
+                  <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
+                  <p>
+                    {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - {{
+                    dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
+                  </p>
+                  <p>{{ subEventInfo.id }}</p>
+                </ion-text>
+              </div>
             </ng-container>
           </ng-container>
         </ng-container>
