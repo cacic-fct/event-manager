@@ -32,6 +32,7 @@
                   {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - {{
                   dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
                 </p>
+                <p>{{ subEventInfo.id }}</p>
               </ion-text>
             </ng-container>
           </ng-container>
@@ -61,16 +62,29 @@
       </ng-container>
     </ion-card>
 
-    <ng-container *ngIf="subscription.payment.status === 2">
-      <div class="ion-padding">
-        <h2>Para inscrições com comprovante já validado</h2>
-        <ion-button color="danger" (click)="forceEventEdit()">
-          <ion-icon name="pencil" slot="start"></ion-icon>
-          <ion-label>Exigir edição dos eventos, mantendo comprovante enviado</ion-label>
-        </ion-button>
-        <p>Deleta todas as inscrições e libera a vaga dos eventos</p>
-      </div>
-    </ng-container>
+    <ion-card>
+      <ion-card-content>
+        <div class="ion-padding">
+          <h2>Gerenciar inscrição</h2>
+          <ion-button color="danger" (click)="deleteSubscriptionAlert()">
+            <ion-icon name="trash" slot="start"></ion-icon>
+            <ion-label>Deletar inscrição</ion-label>
+          </ion-button>
+          <p>Deleta a inscrição e libera a vaga dos eventos</p>
+        </div>
+
+        <ng-container *ngIf="subscription.payment.status === 2">
+          <div class="ion-padding">
+            <h2>Para inscrições com comprovante já validado</h2>
+            <ion-button color="danger" (click)="forceSubscriptionEdit()">
+              <ion-icon name="pencil" slot="start"></ion-icon>
+              <ion-label>Exigir edição dos eventos, mantendo comprovante enviado</ion-label>
+            </ion-button>
+            <p>Deleta todas as inscrições e libera a vaga dos eventos</p>
+          </div>
+        </ng-container>
+      </ion-card-content>
+    </ion-card>
   </ng-container>
 
   <ng-template #loading>
