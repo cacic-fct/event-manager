@@ -26,7 +26,7 @@ import { trace } from '@angular/fire/compat/performance';
 
 import { getStringChanges, RemoteConfig, getBooleanChanges } from '@angular/fire/remote-config';
 import { arrayRemove } from '@angular/fire/firestore';
-import { gte as versionGreaterThan } from 'semver';
+import { gt as versionGreaterThan } from 'semver';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 
 @Injectable({
