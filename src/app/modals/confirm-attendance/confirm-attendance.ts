@@ -1,6 +1,5 @@
-// @ts-strict-ignore
 import { NavController, ToastController } from '@ionic/angular';
-import { Component, inject, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -24,19 +23,19 @@ interface EventInfo {
   templateUrl: './confirm-attendance.html',
   styleUrls: ['./confirm-attendance.scss'],
 })
-export class ConfirmAttendancePage implements OnInit {
+export class ConfirmAttendancePage {
   eventID: string;
   dataForm: FormGroup;
   eventInfo$: Observable<EventInfo>;
   private eventRef: AngularFirestoreDocument<EventItem>;
-  private isSubEvent: boolean;
-  private majorEventRef: AngularFirestoreDocument<MajorEventItem>;
-  private isPaid: boolean;
-  private attendanceCode: string;
-  @ViewChild('swalConfirm') private swalConfirm: SwalComponent;
-  @ViewChild('swalNotFound') private swalNotFound: SwalComponent;
-  @ViewChild('swalNotOnTime') private swalNotOnTime: SwalComponent;
-  @ViewChild('swalAlreadyConfirmed') private swalAlreadyConfirmed: SwalComponent;
+  private isSubEvent: boolean | undefined;
+  private majorEventRef: AngularFirestoreDocument<MajorEventItem> | undefined;
+  private isPaid: boolean | undefined;
+  private attendanceCode: string | undefined;
+  @ViewChild('swalConfirm') private swalConfirm!: SwalComponent;
+  @ViewChild('swalNotFound') private swalNotFound!: SwalComponent;
+  @ViewChild('swalNotOnTime') private swalNotOnTime!: SwalComponent;
+  @ViewChild('swalAlreadyConfirmed') private swalAlreadyConfirmed!: SwalComponent;
 
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
@@ -48,9 +47,7 @@ export class ConfirmAttendancePage implements OnInit {
     private navController: NavController,
     private router: Router,
     private toastController: ToastController
-  ) {}
-
-  ngOnInit() {
+  ) {
     this.eventID = this.route.snapshot.params.eventID;
     this.dataForm = this.formBuilder.group({
       code: ['', [Validators.required, this.codeValidator]],
@@ -58,6 +55,10 @@ export class ConfirmAttendancePage implements OnInit {
 
     // Check if user is already registered
     this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
+      if (!user) {
+        return;
+      }
+
       const payingAttendance = this.afs
         .doc<EventItem>(`events/${this.eventID}/attendance/${user.uid}`)
         .get()
@@ -95,7 +96,9 @@ export class ConfirmAttendancePage implements OnInit {
             this.router.navigate(['/menu']);
             this.swalNotFound.close();
           }, 2000);
+          return;
         }
+
         if (!eventItem.attendanceCollectionStart || eventItem.attendanceCollectionEnd) {
           this.swalNotOnTime.fire();
           setTimeout(() => {
@@ -105,9 +108,13 @@ export class ConfirmAttendancePage implements OnInit {
         }
       });
 
-    const eventValueChanges$: Observable<EventItem> = this.eventRef.valueChanges();
+    const eventValueChanges$: Observable<EventItem | undefined> = this.eventRef.valueChanges();
     // attendanceCode is constant
     eventValueChanges$.pipe(take(1)).subscribe((event) => {
+      if (!event) {
+        return;
+      }
+
       this.attendanceCode = event.attendanceCode;
       if (event.inMajorEvent) {
         // If it is a subEvent, then check to see if the majorEvent
@@ -121,6 +128,10 @@ export class ConfirmAttendancePage implements OnInit {
           .valueChanges()
           .pipe(take(1))
           .subscribe((majorEvent) => {
+            if (!majorEvent) {
+              return;
+            }
+
             if (majorEvent.price.isFree) {
               this.isPaid = false;
             } else {
@@ -134,8 +145,8 @@ export class ConfirmAttendancePage implements OnInit {
 
     // When the code is valid, automatically submit.
     this.dataForm
-      .get('code')
-      .valueChanges.pipe(untilDestroyed(this))
+      ?.get('code')
+      ?.valueChanges.pipe(untilDestroyed(this))
       .subscribe((value) => {
         if (value == this.attendanceCode) {
           this.onSubmit();
@@ -146,7 +157,7 @@ export class ConfirmAttendancePage implements OnInit {
       trace('firestore'),
       untilDestroyed(this),
       map((event) => ({
-        name: event.name,
+        name: event?.name || 'Evento indefinido',
       }))
     );
   }
@@ -178,7 +189,15 @@ export class ConfirmAttendancePage implements OnInit {
 
   onSubmit() {
     this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
+      if (!user || !this.majorEventRef) {
+        return;
+      }
+
       const userID = user.uid;
+
+      if (this.isPaid === undefined || this.isSubEvent === undefined) {
+        return;
+      }
 
       const isPaymentNecessary: boolean = this.isSubEvent && this.isPaid;
 
@@ -191,7 +210,7 @@ export class ConfirmAttendancePage implements OnInit {
             .valueChanges()
             .pipe(take(1), trace('firestore'))
             .subscribe((subscriptionItem) => {
-              if (subscriptionItem.payment.status == 2) {
+              if (subscriptionItem?.payment.status == 2) {
                 // Escrevendo na coleção 'attendance'
                 this.eventRef.collection('attendance').doc(userID).set({
                   // @ts-ignore
@@ -229,7 +248,7 @@ export class ConfirmAttendancePage implements OnInit {
             }, 1500);
           });
       } catch (error) {
-        this.dataForm.get('code').enable();
+        this.dataForm?.get('code')?.enable();
         this.errorToast();
         console.error(error);
       }
