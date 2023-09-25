@@ -132,23 +132,13 @@ export class ValidateReceiptPage implements OnInit {
             'payment.author': adminUser.uid, // Autor da mudança
           });
 
-          // For every event the user subscribed to, decrement the available slots
+          // TODO: Move this to a cloud function
           this.subscriptionsQuery
             .doc(subscriberID)
             .valueChanges()
             .pipe(take(1))
             .subscribe((sub) => {
               sub.subscribedToEvents.forEach((eventID) => {
-                this.afs
-                  .collection('events')
-                  .doc<EventItem>(eventID)
-                  .update({
-                    // @ts-ignore
-                    slotsAvailable: increment(-1),
-                    // @ts-ignore
-                    numberOfSubscriptions: increment(-1),
-                  });
-
                 this.afs
                   .collection('events')
                   .doc<EventItem>(eventID)
