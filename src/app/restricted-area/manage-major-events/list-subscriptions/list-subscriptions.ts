@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
-import { Firestore, collection, collectionData, docData, doc } from '@angular/fire/firestore';
+import { Firestore, collection, collectionData, docData, doc, query, orderBy } from '@angular/fire/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
@@ -59,7 +59,7 @@ export class ListSubscriptionsPage implements OnInit {
 
     const colRef = collection(this.firestore, `majorEvents/${this.eventID}/subscriptions`);
 
-    const colData = collectionData(colRef, { idField: 'id' }) as Observable<Subscription[]>;
+    const colData = collectionData(query(colRef, orderBy('time')), { idField: 'id' }) as Observable<Subscription[]>;
 
     this.subscriptions$ = colData.pipe(
       untilDestroyed(this),
