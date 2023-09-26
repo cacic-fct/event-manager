@@ -24,7 +24,9 @@ export class ManageAdminsPage implements OnInit {
   });
 
   constructor(public toastController: ToastController, private alertController: AlertController) {
-    this.adminList$ = docData(doc(this.firestore, 'claims', 'admin')).pipe(map((doc) => doc.admins));
+    this.adminList$ = docData(doc(this.firestore, 'claims', 'admin')).pipe(map((doc) => doc.admins)) as Observable<
+      string[]
+    >;
   }
 
   ngOnInit() {}
@@ -54,6 +56,7 @@ export class ManageAdminsPage implements OnInit {
       })
       .catch((err) => {
         this.errorToast(err);
+        console.error(err);
       });
   }
 
@@ -65,6 +68,7 @@ export class ManageAdminsPage implements OnInit {
       })
       .catch((err) => {
         this.errorToast(err);
+        console.error(err);
       });
   }
 
