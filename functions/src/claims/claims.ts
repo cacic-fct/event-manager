@@ -3,6 +3,7 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { MainReturnType } from './../shared/return-types';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getRemoteConfig } from 'firebase-admin/remote-config';
+import { log } from 'firebase-functions/logger';
 
 exports.addAdminRole = onCall(async (request): Promise<MainReturnType> => {
   const data = request.data;
@@ -30,6 +31,8 @@ exports.addAdminRole = onCall(async (request): Promise<MainReturnType> => {
     const document = db.doc('claims/admin');
 
     document.set({ admins: FieldValue.arrayUnion(data.email) }, { merge: true });
+    log('User ' + data.email + ' has been made an admin by' + context.auth.uid);
+
     return {
       message: `${data.email} has been made an admin`,
       success: true,
@@ -87,6 +90,9 @@ exports.removeAdminRole = onCall(async (request): Promise<MainReturnType> => {
       // Update document with new array
       return document.update({ admins });
     });
+
+    log('User ' + data.email + ' has been demoted from admin by' + context.auth.uid);
+
     return {
       message: `Success! ${data.email} has been demoted from admin`,
       success: true,
