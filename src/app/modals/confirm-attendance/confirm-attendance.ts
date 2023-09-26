@@ -215,12 +215,14 @@ export class ConfirmAttendancePage {
                 this.eventRef.collection('attendance').doc(userID).set({
                   // @ts-ignore
                   time: serverTimestamp(),
+                  author: 'online',
                 });
               } else {
                 // Escrevendo na coleção 'non-paying-attendance'
                 this.eventRef.collection('non-paying-attendance').doc(userID).set({
                   // @ts-ignore
                   time: serverTimestamp(),
+                  author: 'online',
                 });
               }
             });
@@ -229,6 +231,7 @@ export class ConfirmAttendancePage {
           this.eventRef.collection('attendance').doc(userID).set({
             // @ts-ignore
             time: serverTimestamp(),
+            author: 'online',
           });
         }
 
