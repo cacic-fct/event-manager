@@ -29,7 +29,9 @@ export class MajorEventsService {
       .collection<MajorEventItem>('majorEvents', (ref) => {
         let query: any = ref;
         query = query.where('eventEndDate', '>=', startOfDay(date));
-        return query.orderBy('eventStartDate', 'asc');
+        // TODO: Order by eventStartDate
+        return query.orderBy('eventEndDate', 'asc');
+        return query;
       })
       .valueChanges({ idField: 'id' });
   }
