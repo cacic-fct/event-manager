@@ -116,7 +116,9 @@ export class ScannerPage implements OnInit {
     // Get attendance list
     this.attendanceCollection$ = this.afs
       .collection<Attendance>(`events/${this.eventID}/attendance`, (ref) => {
-        return ref.orderBy('time', 'desc');
+        let query = ref.orderBy('time', 'desc');
+        query = query.limit(5);
+        return query;
       })
       .valueChanges({ idField: 'id' })
       .pipe(
@@ -138,7 +140,9 @@ export class ScannerPage implements OnInit {
     // Lista de não-pagantes
     this.nonPayingAttendanceCollection$ = this.afs
       .collection<Attendance>(`events/${this.eventID}/non-paying-attendance`, (ref) => {
-        return ref.orderBy('time', 'desc');
+        let query = ref.orderBy('time', 'desc');
+        query = query.limit(5);
+        return query;
       })
       .valueChanges({ idField: 'id' })
       .pipe(
