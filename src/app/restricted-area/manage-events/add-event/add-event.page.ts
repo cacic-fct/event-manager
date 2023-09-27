@@ -104,7 +104,7 @@ export class AddEventPage implements OnInit {
       }
     );
     this.userData.displayName.replace(/%20/g, ' ');
-    this.majorEventsData$ = this.majorEvents.getFutureMajorEvents();
+    this.majorEventsData$ = this.majorEvents.getCurrentAndFutureMajorEvents();
 
     this.places$ = getStringChanges(this.remoteConfig, 'placesMap').pipe(
       map((places) => {
