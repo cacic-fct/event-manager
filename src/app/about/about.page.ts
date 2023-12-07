@@ -8,7 +8,6 @@ import { GlobalConstantsService } from '../shared/services/global-constants.serv
 })
 export class AboutPage implements OnInit {
   globalConstants = GlobalConstantsService;
-  currentYear: number = new Date().getFullYear();
 
   constructor() {}
 
