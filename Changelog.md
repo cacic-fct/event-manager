@@ -1,5 +1,9 @@
 ### 2023.12.23.00.19
 
+- Atualização de dependências das Cloud Functions
+- Refatorado estrutura de armazenamento dos certificados ([#133](https://github.com/cacic-fct/fct-app/pull/133))
+- Removido informação sobre Google Drive ilimitado na página dos calouros
+
 ### 2023.12.07.12.07
 
 - Atualização de dependências
@@ -30,7 +34,7 @@
 - Usar `getApp()` no `app.module.ts` ao invés de `undefined`.
 
 ### 2023.05.21.16.41
-- Alterada lógica de importação de services, para reduzir o tamanho inicial do bundle.
+- Alterado lógica de importação de services, para reduzir o tamanho inicial do bundle.
 
 ### 2023.05.21.01.08
 
