@@ -281,7 +281,7 @@ export class IssueCertificatePage implements OnInit {
             console.error(response);
             const alert = this.alertController.create({
               header: 'Erro ao emitir certificados',
-              message: response.data.error,
+              message: 'Confira o log para mais informações: ' + response.data.error,
               buttons: ['OK'],
             });
 

@@ -14,8 +14,11 @@ import * as firestore_triggers from './firestore-triggers/firestore-triggers';
 import * as user_utils from './utils/user/user-utils';
 import * as certificates from './certificates/issue-certificate';
 
+import * as moveCertificates from './unused/move-certificates';
+
 exports.populate_db = populate_db;
 exports.claims = claims;
 exports.firestore_triggers = firestore_triggers;
 exports.user_utils = user_utils;
 exports.certificates = certificates;
+exports.moveCertificates = moveCertificates;

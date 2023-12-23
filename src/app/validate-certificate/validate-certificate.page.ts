@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CertificateDocPublic } from 'src/app/shared/services/certificates.service';
-import { id } from 'date-fns/locale';
+import { decodeCertificateCode } from 'src/app/shared/services/certificates.service';
 
 @Component({
   selector: 'app-validate-certificate',
@@ -14,16 +14,23 @@ export class ValidateCertificatePage implements OnInit {
   param: string;
   eventID: string;
   certificateID: string;
+  certificateDoc: string;
   certificatePublic$: Observable<CertificateDocPublic | undefined>;
 
   constructor(private route: ActivatedRoute, private afs: AngularFirestore) {
     this.param = this.route.snapshot.paramMap.get('param') as string;
 
-    const [eventID, certificateID] = this.param.split('-');
+    const object = decodeCertificateCode(this.param);
+
+    const eventID = object.eventID;
+    const certificateID = object.certificateID;
+    const certificateDoc = object.certificateDoc;
+
     this.eventID = eventID;
     this.certificateID = certificateID;
+    this.certificateDoc = certificateDoc;
     this.certificatePublic$ = this.afs
-      .doc<CertificateDocPublic>(`certificates/${this.eventID}/${this.certificateID}/public`)
+      .doc<CertificateDocPublic>(`certificates/${this.eventID}/${this.certificateID}/${this.certificateDoc}`)
       .valueChanges({ idField: 'id' });
   }
 

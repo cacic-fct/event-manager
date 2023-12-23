@@ -72,6 +72,18 @@ export class ManageAdminsPage implements OnInit {
       });
   }
 
+  certificateMove() {
+    const moveCertificates = httpsCallable(this.functions, 'moveCertificates-moveCertificates');
+    moveCertificates()
+      .then((res) => {
+        this.successToast();
+      })
+      .catch((err) => {
+        this.errorToast(err);
+        console.error(err);
+      });
+  }
+
   async removeConfirmationAlert(adminEmail: string) {
     const alert = await this.alertController.create({
       header: 'Desejar remover este admin?',

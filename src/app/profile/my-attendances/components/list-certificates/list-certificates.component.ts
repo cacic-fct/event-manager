@@ -1,6 +1,5 @@
-import { CertificateStoreData } from '../../../../shared/services/certificates.service';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { MailtoService, Mailto } from '../../../../shared/services/mailto.service';
+import { CertificateStoreData } from 'src/app/shared/services/certificates.service';
+import { MailtoService, Mailto } from 'src/app/shared/services/mailto.service';
 import { Component, inject, OnInit } from '@angular/core';
 import { ModalController, ToastController } from '@ionic/angular';
 import { filterNullish } from 'src/app/shared/services/rxjs.service';
@@ -11,6 +10,7 @@ import { map, Observable, take, switchMap } from 'rxjs';
 import { UserCertificateDocument, CertificateService } from 'src/app/shared/services/certificates.service';
 import { Auth, user } from '@angular/fire/auth';
 import { Analytics, logEvent } from '@angular/fire/analytics';
+import { Firestore, collection, collectionData, doc, docData } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-list-certificates',
@@ -19,6 +19,7 @@ import { Analytics, logEvent } from '@angular/fire/analytics';
 })
 export class ListCertificatesComponent implements OnInit {
   private auth: Auth = inject(Auth);
+  private firestore: Firestore = inject(Firestore);
   private analytics: Analytics = inject(Analytics);
   user$ = user(this.auth);
 
@@ -27,12 +28,9 @@ export class ListCertificatesComponent implements OnInit {
   certificatesColletion$: Observable<UserCertificateDocumentLocal[]>;
   userID!: string;
 
-  certificates$!: Observable<any>;
-
   constructor(
     private modalController: ModalController,
     private mailtoService: MailtoService,
-    private afs: AngularFirestore,
     private certificateService: CertificateService,
     private toastController: ToastController
   ) {
@@ -42,29 +40,37 @@ export class ListCertificatesComponent implements OnInit {
       filterNullish(),
       map((user) => {
         this.userID = user.uid;
-        return this.afs
-          .collection<UserCertificateDocument>(`/users/${user.uid}/certificates/majorEvents/${this.majorEventID}`)
-          .valueChanges({ idField: 'id' })
-          .pipe(
-            map((certificates) =>
-              certificates.map((certificate) => ({
+        const colRef = collection(
+          this.firestore,
+          `/users/${user.uid}/userCertificates/majorEvents/${this.majorEventID}`
+        );
+        const col$ = collectionData(colRef, { idField: 'id' }) as Observable<UserCertificateDocument[]>;
+
+        return col$.pipe(
+          take(1),
+          map((certificates) =>
+            certificates.map((certificate) => {
+              const docRef = doc(
+                this.firestore,
+                `/majorEvents/${this.majorEventID}/majorEventCertificates/${certificate.id}`
+              );
+              const docData$ = docData(docRef, { idField: 'id' }) as Observable<CertificateStoreData>;
+
+              return {
                 ...certificate,
-                certificateData: this.afs
-                  .doc<CertificateStoreData>(
-                    `/majorEvents/${this.majorEventID}/certificates/${certificate.certificateID}`
-                  )
-                  .get()
-                  .pipe(
-                    map((certificateData) => {
-                      return {
-                        ...(certificateData.data() as CertificateStoreData),
-                        id: certificateData.id,
-                      };
-                    })
-                  ),
-              }))
-            )
-          );
+                certificateData: docData$.pipe(
+                  take(1),
+                  map((certificateData) => {
+                    return {
+                      ...(certificateData as CertificateStoreData),
+                      id: certificateData.id,
+                    };
+                  })
+                ),
+              };
+            })
+          )
+        );
       }),
       switchMap((value) => value)
     );
@@ -88,19 +94,15 @@ export class ListCertificatesComponent implements OnInit {
   async getCertificate(event: any, certificateData: CertificateStoreData, certificate: UserCertificateDocumentLocal) {
     event.target.disabled = true;
 
-    this.certificateService.generateCertificate(this.majorEventID, certificateData, certificate);
-
-    setTimeout(() => {
-      event.target.disabled = false;
-    }, 5000);
-  }
-
-  getCertificateData$(certificateID: string) {
-    return this.afs
-      .collection(`/majorEvents/${this.majorEventID}/certificates`)
-      .doc(certificateID)
-      .valueChanges()
-      .pipe(take(1));
+    try {
+      this.certificateService.generateCertificate(this.majorEventID, certificateData, certificate);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setTimeout(() => {
+        event.target.disabled = false;
+      }, 5000);
+    }
   }
 
   async copyValidationUrl(certificateID: string) {

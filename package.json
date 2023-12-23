@@ -28,6 +28,7 @@
     "@sweetalert2/ngx-sweetalert2": "^12.1.0",
     "@types/twemoji-parser": "^13.1.1",
     "@zxing/ngx-scanner": "^3.9.1",
+    "buffer": "^6.0.3",
     "date-fns": "^2.30.0",
     "ng-qrcode": "^16.0.0",
     "ngx-image-compress": "^15.1.5",
