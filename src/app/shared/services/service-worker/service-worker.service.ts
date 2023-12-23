@@ -1,6 +1,7 @@
+import { UpdateModalComponent } from './update-modal/update-modal.component';
 import { ApplicationRef, Injectable } from '@angular/core';
 import { SwUpdate } from '@angular/service-worker';
-import { AlertController, ToastController } from '@ionic/angular';
+import { AlertController, ToastController, ModalController } from '@ionic/angular';
 import { first } from 'rxjs';
 
 @Injectable({
@@ -11,7 +12,7 @@ export class ServiceWorkerService {
     private appRef: ApplicationRef,
     private swUpdate: SwUpdate,
     private alertController: AlertController,
-    private toastController: ToastController
+    private modalController: ModalController
   ) {
     const appIsStable$ = this.appRef.isStable.pipe(first((isStable) => isStable === true));
 
@@ -21,12 +22,12 @@ export class ServiceWorkerService {
           switch (evt.type) {
             case 'VERSION_DETECTED':
               console.info(`Downloading new app version: ${evt.version.hash}`);
-              this.updatingToast();
+              this.openModal();
               break;
             case 'VERSION_READY':
               console.info(`Current app version: ${evt.currentVersion.hash}`);
               console.info(`New app version ready for use: ${evt.latestVersion.hash}`);
-              this.newVersionAlert();
+              document.location.reload();
               break;
             case 'VERSION_INSTALLATION_FAILED':
               console.error(`Failed to install app version '${evt.version.hash}': ${evt.error}`);
@@ -43,10 +44,18 @@ export class ServiceWorkerService {
     });
   }
 
-  async newVersionAlert() {
+  async openModal() {
+    const modal = await this.modalController.create({
+      component: UpdateModalComponent,
+      canDismiss: false,
+    });
+    modal.present();
+  }
+
+  async updateErrorAlert(error: string) {
     const alert = await this.alertController.create({
-      header: 'Nova versão disponível',
-      message: 'Atualize agora para receber melhorias e correções',
+      header: 'Erro ao atualizar o aplicativo',
+      message: error,
       buttons: [
         {
           text: 'OK',
@@ -61,25 +70,6 @@ export class ServiceWorkerService {
     });
 
     await alert.present();
-  }
-
-  async updatingToast() {
-    const toast = await this.toastController.create({
-      message: 'Instalando atualização...',
-      duration: 2000,
-      position: 'top',
-      icon: 'cloud-download-outline',
-
-      buttons: [
-        {
-          side: 'end',
-          text: 'OK',
-          role: 'confirm',
-        },
-      ],
-    });
-
-    await toast.present();
   }
 
   async tooOldAlert() {

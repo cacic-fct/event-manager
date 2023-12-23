@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { ServiceWorkerService } from 'src/app/shared/services/service-worker.service';
+import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 
 @Component({
   selector: 'app-root',
