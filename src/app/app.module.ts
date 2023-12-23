@@ -43,8 +43,11 @@ import { GlobalConstantsService } from './shared/services/global-constants.servi
 import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { MarkdownModule } from 'ngx-markdown';
 
+// Components
+import { UpdateModalComponent } from './shared/services/service-worker/update-modal/update-modal.component';
+
 @NgModule({
-  declarations: [AppComponent],
+  declarations: [AppComponent, UpdateModalComponent],
   imports: [
     BrowserModule,
     AppRoutingModule,
