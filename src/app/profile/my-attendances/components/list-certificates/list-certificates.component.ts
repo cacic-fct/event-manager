@@ -18,7 +18,6 @@ import {
   IonToolbar,
   IonButtons,
   IonButton,
-  IonBackButton,
   IonTitle,
   IonContent,
   IonSpinner,
@@ -29,6 +28,7 @@ import {
   IonCol,
   IonProgressBar,
 } from '@ionic/angular/standalone';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-list-certificates',
@@ -56,25 +56,25 @@ export class ListCertificatesComponent implements OnInit {
   private auth: Auth = inject(Auth);
   private firestore: Firestore = inject(Firestore);
   private analytics: Analytics = inject(Analytics);
-  user$ = user(this.auth);
+  user$: Observable<User>;
 
-  majorEventID!: string;
+  majorEventID: string;
   userData: User;
   certificatesColletion$: Observable<UserCertificateDocumentLocal[]>;
-  userID!: string;
 
   constructor(
     private modalController: ModalController,
     private mailtoService: MailtoService,
     private certificateService: CertificateService,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private route: ActivatedRoute
   ) {
+    this.user$ = user(this.auth);
+    this.majorEventID = this.route.snapshot.paramMap.get('majorEventID') as string;
     this.userData = JSON.parse(localStorage.getItem('user') as string);
-
     this.certificatesColletion$ = this.user$.pipe(
       filterNullish(),
       map((user) => {
-        this.userID = user.uid;
         const colRef = collection(
           this.firestore,
           `/users/${user.uid}/userCertificates/majorEvents/${this.majorEventID}`
