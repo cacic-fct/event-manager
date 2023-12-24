@@ -12,12 +12,69 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { EnrollmentTypesService } from '../../shared/services/enrollment-types.service';
 import { DateService } from 'src/app/shared/services/date.service';
 import { Auth, user } from '@angular/fire/auth';
+import { CurrencyPipe, DatePipe, AsyncPipe, NgTemplateOutlet } from '@angular/common';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonIcon,
+  IonContent,
+  IonList,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonProgressBar,
+  IonButton,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent,
+  IonCardSubtitle,
+  IonCard,
+  IonText,
+  IonSpinner,
+  IonRouterLink,
+} from '@ionic/angular/standalone';
+import { RouterLink } from '@angular/router';
+import { EventCardDisplayMainPageComponent } from 'src/app/profile/my-attendances/components/event-card-display-main-page/event-card-display-main-page.component';
 
 @UntilDestroy()
 @Component({
   selector: 'app-subscribe',
   templateUrl: './my-attendances.page.html',
   styleUrls: ['./my-attendances.page.scss'],
+  standalone: true,
+  imports: [
+    RouterLink,
+    IonRouterLink,
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonContent,
+    IonList,
+    IonProgressBar,
+    IonCardHeader,
+    IonCardTitle,
+    IonCardContent,
+    IonCardSubtitle,
+    IonCard,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonButton,
+    IonIcon,
+    IonText,
+    IonSpinner,
+    CurrencyPipe,
+    DatePipe,
+    AsyncPipe,
+    EventCardDisplayMainPageComponent,
+    NgTemplateOutlet,
+  ],
 })
 export class MyAttendancesPage implements OnInit {
   private auth: Auth = inject(Auth);

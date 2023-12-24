@@ -17,11 +17,11 @@
       <ion-item>
         <ion-label position="floating">Curso</ion-label>
         <ion-select interface="popover" formControlName="course">
-          <ng-container *ngFor="let course of courses | keyvalue">
+          @for (course of courses | keyvalue; track course) {
             <ion-select-option slot="start" class="course" [value]="course.key">
               {{ course.value.name }}
             </ion-select-option>
-          </ng-container>
+          }
         </ion-select>
       </ion-item>
 
@@ -73,7 +73,7 @@
           formControlName="maxCourses"
           inputmode="numeric"
           (keypress)="inputNumbersOnly($event)"
-          placeholder="Somente números"></ion-input>
+        placeholder="Somente números"></ion-input>
       </ion-item>
 
       <ion-item>
@@ -82,7 +82,7 @@
           formControlName="maxLectures"
           inputmode="numeric"
           (keypress)="inputNumbersOnly($event)"
-          placeholder="Somente números"></ion-input>
+        placeholder="Somente números"></ion-input>
       </ion-item>
     </ng-container>
 
@@ -96,16 +96,15 @@
         slot="end"
         [checked]="isEventPaid"
         (ionChange)="isEventPaidChange()"
-        formControlName="isEventPaidForm"></ion-toggle>
+      formControlName="isEventPaidForm"></ion-toggle>
     </ion-item>
 
-    <ng-container *ngIf="(isEventPaid$ | async);">
+    @if ((isEventPaid$ | async);) {
       <ion-item>
         <ion-label class="ion-text-wrap">Diferenciar preço por tipo de inscrição</ion-label>
         <ion-toggle slot="end" [checked]="priceDifferentiate" (ionChange)="priceDifferentiateChange()"></ion-toggle>
       </ion-item>
-
-      <ng-container *ngIf="(priceDifferentiate$ | async); else noPriceDifferentiation">
+      @if ((priceDifferentiate$ | async)) {
         <ion-item>
           <ion-label position="floating">Aluno da Unesp</ion-label>
           <ion-input
@@ -113,7 +112,7 @@
             inputmode="decimal"
             (ionInput)="validatePrice($event, 'priceStudents')"
             (ionInput)="inputCurrency($event)"
-            replaceCommaWithPeriod></ion-input>
+          replaceCommaWithPeriod></ion-input>
           <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceStudents | currency: 'BRL'}}</p></ion-text>
         </ion-item>
         <ion-item>
@@ -123,7 +122,7 @@
             inputmode="decimal"
             (ionInput)="validatePrice($event, 'priceOtherStudents')"
             (ionInput)="inputCurrency($event)"
-            replaceCommaWithPeriod></ion-input>
+          replaceCommaWithPeriod></ion-input>
           <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceOtherStudents | currency: 'BRL'}}</p></ion-text>
         </ion-item>
         <ion-item>
@@ -133,11 +132,10 @@
             inputmode="decimal"
             (ionInput)="validatePrice($event, 'priceProfessors')"
             (ionInput)="inputCurrency($event)"
-            replaceCommaWithPeriod></ion-input>
+          replaceCommaWithPeriod></ion-input>
           <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceProfessors | currency: 'BRL'}}</p></ion-text>
         </ion-item>
-      </ng-container>
-      <ng-template #noPriceDifferentiation>
+      } @else {
         <ion-item>
           <ion-label position="floating">Preço único</ion-label>
           <ion-input
@@ -145,10 +143,10 @@
             inputmode="decimal"
             (ionInput)="validatePrice($event, 'priceSingle')"
             (ionInput)="inputCurrency($event)"
-            replaceCommaWithPeriod></ion-input>
+          replaceCommaWithPeriod></ion-input>
           <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceSingle | currency: 'BRL'}}</p></ion-text>
         </ion-item>
-      </ng-template>
+      }
       <ion-card-header>
         <ion-card-title>Informações de pagamento</ion-card-title>
       </ion-card-header>
@@ -163,7 +161,7 @@
           placeholder="Somente números"
           inputmode="numeric"
           maxlength="14"
-          (keypress)="inputNumbersOnly($event)"></ion-input>
+        (keypress)="inputNumbersOnly($event)"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label position="floating">Instituição bancária</ion-label>
@@ -176,7 +174,7 @@
           placeholder="XXXX"
           maxLength="4"
           inputmode="numeric"
-          (keypress)="inputNumbersOnly($event)"></ion-input>
+        (keypress)="inputNumbersOnly($event)"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label position="floating">Conta - Com dígito verificador</ion-label>
@@ -184,18 +182,17 @@
           formControlName="accountNumber"
           placeholder="XXXX-X"
           (keypress)="inputBankAccountNumber($event)"
-          (ionInput)="validateAccountNumber($event)"></ion-input>
+        (ionInput)="validateAccountNumber($event)"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label position="floating">Chave Pix</ion-label>
         <ion-input formControlName="chavePix"></ion-input>
       </ion-item>
-
       <ion-item>
         <ion-label position="floating">Informações adicionais (opcional)</ion-label>
         <ion-textarea formControlName="additionalPaymentInformation"></ion-textarea>
       </ion-item>
-    </ng-container>
+    }
 
     <ion-card-header>
       <ion-card-title>Botão (opcional)</ion-card-title>
@@ -284,7 +281,7 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-  [showConfirmButton]="false"></swal>
+[showConfirmButton]="false"></swal>
 
 <swal
   #errorSwal
@@ -294,4 +291,4 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-  [showConfirmButton]="true"></swal>
+[showConfirmButton]="true"></swal>

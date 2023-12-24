@@ -3,11 +3,14 @@ import { EventItem } from 'src/app/shared/services/event';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { DocumentReference } from '@angular/fire/firestore';
 import { Timestamp } from '@firebase/firestore-types';
-import { Observable, take, switchMap, combineLatest, map, mergeMap, forkJoin, of } from 'rxjs';
+import { Observable, take, switchMap, combineLatest, map, mergeMap, forkJoin } from 'rxjs';
 import { Injectable, isDevMode } from '@angular/core';
 import { format as formatDate } from 'date-fns';
 
-import { Template, generate as PDFGenerate } from '@pdfme/generator';
+import { generate as PDFGenerate } from '@pdfme/generator';
+import { Template } from '@pdfme/common';
+import { text, barcodes } from '@pdfme/schemas';
+
 import { HttpClient } from '@angular/common/http';
 import { ptBR } from 'date-fns/locale';
 
@@ -151,7 +154,15 @@ export class CertificateService {
 
         const inputs = [input];
 
-        PDFGenerate({ template, inputs, options: { font } }).then((pdf) => {
+        PDFGenerate({
+          template,
+          inputs,
+          options: { font },
+          plugins: {
+            text,
+            qrcode: barcodes.qrcode,
+          },
+        }).then((pdf) => {
           const blob = new Blob([pdf.buffer], { type: 'application/pdf' });
           const pdfUrl = URL.createObjectURL(blob);
           const a = document.createElement('a');

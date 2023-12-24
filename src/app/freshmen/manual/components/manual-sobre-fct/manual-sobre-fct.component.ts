@@ -1,9 +1,13 @@
 import { Component, OnInit } from '@angular/core';
+import { MarkdownModule } from 'ngx-markdown';
+import { IonImg } from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-manual-sobre-fct',
   templateUrl: './manual-sobre-fct.component.html',
   styleUrls: ['./manual-sobre-fct.component.scss', '../../manual.page.scss'],
+  standalone: true,
+  imports: [MarkdownModule, IonImg],
 })
 export class ManualSobreFctComponent implements OnInit {
   timelineDescription =

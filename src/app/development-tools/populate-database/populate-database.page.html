@@ -11,10 +11,11 @@
         <ion-icon name="play" slot="start"> </ion-icon> Popular
       </ion-button>
     </ion-buttons>
-    <ion-progress-bar
-      [value]="progress"
-      *ngIf="populateStarted"
+    @if (populateStarted) {
+      <ion-progress-bar
+        [value]="progress"
       [color]="parseFloat(progress | number: '1.0-1') >= 1 ? 'success': ''"></ion-progress-bar>
+    }
   </ion-toolbar>
 </ion-header>
 
@@ -43,7 +44,7 @@
           <ion-checkbox slot="start" formControlName="createProfessor"></ion-checkbox>
           <ion-label>
             Conta de professor
-            <p>1x - Conta @unesp.br com claim de professor</p>
+            <p>1x - Conta &#64;unesp.br com claim de professor</p>
           </ion-label>
         </ion-item>
 
@@ -51,7 +52,7 @@
           <ion-checkbox slot="start" formControlName="createExternal"></ion-checkbox>
           <ion-label>
             Conta de usuário externo
-            <p>E-mail sem sufixo @unesp.br</p>
+            <p>E-mail sem sufixo &#64;unesp.br</p>
           </ion-label>
         </ion-item>
       </ion-item-group>

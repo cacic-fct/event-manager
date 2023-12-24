@@ -1,12 +1,16 @@
-<div *ngIf="eventItem.location">
-  <h2>Localização</h2>
-
-  <div *ngIf="eventItem.location.description" class="ion-padding-bottom">
-    <ion-item lines="none">
-      <ion-icon name="pin" slot="start"></ion-icon>
-      <ion-label class="ion-text-wrap">{{ eventItem.location.description }}</ion-label>
-    </ion-item>
+@if (eventItem.location) {
+  <div>
+    <h2>Localização</h2>
+    @if (eventItem.location.description) {
+      <div class="ion-padding-bottom">
+        <ion-item lines="none">
+          <ion-icon name="pin" slot="start"></ion-icon>
+          <ion-label class="ion-text-wrap">{{ eventItem.location.description }}</ion-label>
+        </ion-item>
+      </div>
+    }
+    @if (eventItem.location.lat && eventItem.location.lon) {
+      <div id="ol-map" class="map-container"></div>
+    }
   </div>
-
-  <div id="ol-map" class="map-container" *ngIf="eventItem.location.lat && eventItem.location.lon"></div>
-</div>
+}

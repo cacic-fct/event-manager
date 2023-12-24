@@ -2,10 +2,10 @@
   <div class="markdown-container ion-text-justify ion-padding-horizontal">
     <!-- prettier-ignore -->
     <markdown ngPreserveWhitespaces>
-    # Glossário
-    <ng-container *ngFor="let d of dictionary">
-    - **{{ d.term }}**: {{ d.definition }}
-    </ng-container>
-  </markdown>
+      # Glossário
+      @for (d of dictionary; track d) {
+        - **{{ d.term }}**: {{ d.definition }}
+      }
+    </markdown>
   </div>
 </div>

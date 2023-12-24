@@ -8,67 +8,56 @@
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
-    <ng-container *ngIf="event$ | async as event">
-      <div class="ion-padding">
-        <h3 style="margin-bottom: 0">{{ event.name }}</h3>
-        <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-        <h5 style="margin-top: 0">
-          {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
-        </h5>
-        <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
-      </div>
-      <div class="ion-padding-horizontal">
-        <p><b>Total de inscritos confirmados para este evento:</b> {{subscriptions.length}}</p>
-        <p *ngIf="event.slotsAvailable"><b>Total de vagas restantes:</b> {{ event.slotsAvailable }}</p>
-      </div>
-    </ng-container>
-    <ion-item *ngFor="let subscriptionItem of subscriptions">
-      <ion-label>
-        <ng-container *ngIf="(subscriptionItem.user | async) as user; else userNotFound">
-          <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
-          <h2 class="ion-text-wrap" *ngIf="!user.fullName">
-            <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
-          </h2>
-
-          <ng-container *ngIf="user.academicID; else noAcademicID">
-            <h3 class="ion-text-wrap">
-              {{ courses.getCourse(user.academicID) || "RA inválido" }} | {{ user.academicID }}
-            </h3>
-          </ng-container>
-
-          <ng-template #noAcademicID>
-            <h3 class="ion-text-wrap" *ngIf="user.email.includes('@unesp.br'); else notUnesp">Sem RA cadastrado</h3>
-          </ng-template>
-
-          <ng-template #notUnesp>
-            <h3 class="ion-text-wrap">Usuário externo</h3>
-          </ng-template>
-
-          <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
-          <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
-        </ng-container>
-
-        <ng-template #userNotFound>
-          <h2 class="ion-text-wrap">
-            <ion-text color="danger">Usuário não encontrado</ion-text>
-          </h2>
-          <h2 class="ion-text-wrap">
-            <ion-text color="danger">Confira os dados no banco de dados antes de remover a inscrição</ion-text>
-          </h2>
-          <h2>UID: {{ subscriptionItem.id }}</h2>
-        </ng-template>
-
-        <h3 class="ion-text-wrap">
-          {{ dateService.getDateFromTimestamp(subscriptionItem.time) | date: "dd/MM/y - HH:mm:ss" }}
-        </h3>
-      </ion-label>
-    </ion-item>
-  </ng-container>
-
-  <ng-template #loading>
-    <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  </ng-template>
+  @if (subscriptions$ | async; as subscriptions) { @if (event$ | async; as event) {
+  <div class="ion-padding">
+    <h3 style="margin-bottom: 0">{{ event.name }}</h3>
+    <h4 style="margin: 0">{{ event.shortDescription }}</h4>
+    <h5 style="margin-top: 0">
+      {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+    </h5>
+    <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
+  </div>
+  <div class="ion-padding-horizontal">
+    <p><b>Total de inscritos confirmados para este evento:</b> {{subscriptions.length}}</p>
+    @if (event.slotsAvailable) {
+    <p><b>Total de vagas restantes:</b> {{ event.slotsAvailable }}</p>
+    }
+  </div>
+  } @for (subscriptionItem of subscriptions; track subscriptionItem) {
+  <ion-item>
+    <ion-label>
+      @if ((subscriptionItem.user | async); as user) { @if (user.fullName) {
+      <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
+      } @if (!user.fullName) {
+      <h2 class="ion-text-wrap">
+        <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+      </h2>
+      } @if (user.academicID) {
+      <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) || "RA inválido" }} | {{ user.academicID }}</h3>
+      } @else { @if (user.email.includes('@unesp.br')) {
+      <h3 class="ion-text-wrap">Sem RA cadastrado</h3>
+      } @else {
+      <h3 class="ion-text-wrap">Usuário externo</h3>
+      } }
+      <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+      <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
+      } @else {
+      <h2 class="ion-text-wrap">
+        <ion-text color="danger">Usuário não encontrado</ion-text>
+      </h2>
+      <h2 class="ion-text-wrap">
+        <ion-text color="danger">Confira os dados no banco de dados antes de remover a inscrição</ion-text>
+      </h2>
+      <h2>UID: {{ subscriptionItem.id }}</h2>
+      }
+      <h3 class="ion-text-wrap">
+        {{ dateService.getDateFromTimestamp(subscriptionItem.time) | date: "dd/MM/y - HH:mm:ss" }}
+      </h3>
+    </ion-label>
+  </ion-item>
+  } } @else {
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
 </ion-content>
 
 <swal

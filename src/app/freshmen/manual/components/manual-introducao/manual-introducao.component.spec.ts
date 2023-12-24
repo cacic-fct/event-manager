@@ -1,24 +1,21 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { IonicModule } from '@ionic/angular';
-
 import { ManualIntroducaoComponent } from './manual-introducao.component';
 
 describe('ManualIntroducaoComponent', () => {
-  let component: ManualIntroducaoComponent;
-  let fixture: ComponentFixture<ManualIntroducaoComponent>;
+    let component: ManualIntroducaoComponent;
+    let fixture: ComponentFixture<ManualIntroducaoComponent>;
 
-  beforeEach(waitForAsync(() => {
-    TestBed.configureTestingModule({
-      declarations: [ ManualIntroducaoComponent ],
-      imports: [IonicModule.forRoot()]
-    }).compileComponents();
+    beforeEach(waitForAsync(() => {
+        TestBed.configureTestingModule({
+            imports: [IonicModule.forRoot(), ManualIntroducaoComponent]
+        }).compileComponents();
 
-    fixture = TestBed.createComponent(ManualIntroducaoComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  }));
+        fixture = TestBed.createComponent(ManualIntroducaoComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    }));
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

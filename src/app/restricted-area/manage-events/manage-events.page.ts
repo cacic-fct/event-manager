@@ -1,8 +1,8 @@
 import { GroupCreationModalComponent } from './components/group-creation-modal/group-creation-modal.component';
-import { ModalController } from '@ionic/angular';
+import { IonText, ModalController } from '@ionic/angular/standalone';
 // @ts-strict-ignore
 import { GlobalConstantsService } from '../../shared/services/global-constants.service';
-import { AlertController, ToastController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular/standalone';
 import { User } from '../../shared/services/user';
 import { EventSubscription } from '../../shared/services/event';
 import { arrayRemove, arrayUnion, deleteField, serverTimestamp } from '@angular/fire/firestore';
@@ -16,7 +16,34 @@ import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { EmojiService } from '../../shared/services/emoji.service';
 import { DateService } from 'src/app/shared/services/date.service';
-import { FormArray, FormBuilder, FormGroup } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+
+import {
+  IonRouterLink,
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonButton,
+  IonIcon,
+  IonContent,
+  IonDatetimeButton,
+  IonList,
+  IonItem,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonLabel,
+  IonCheckbox,
+  IonProgressBar,
+  IonFooter,
+  IonPopover,
+  IonModal,
+  IonDatetime,
+} from '@ionic/angular/standalone';
+import { RouterLink } from '@angular/router';
+import { AsyncPipe, DatePipe } from '@angular/common';
 
 interface EventItemQuery extends EventItem {
   inMajorEventName?: Observable<string>;
@@ -26,6 +53,38 @@ interface EventItemQuery extends EventItem {
   selector: 'app-manage-events',
   templateUrl: './manage-events.page.html',
   styleUrls: ['./manage-events.page.scss'],
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    AsyncPipe,
+    RouterLink,
+    IonText,
+    IonRouterLink,
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonButton,
+    IonIcon,
+    IonContent,
+    IonItem,
+    IonDatetimeButton,
+    IonList,
+    IonItem,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonLabel,
+    IonCheckbox,
+    IonProgressBar,
+    IonFooter,
+    IonPopover,
+    IonModal,
+    IonDatetime,
+    FormsModule,
+    DatePipe,
+  ],
 })
 export class PageManageEvents implements OnInit {
   groupUnderSelection: boolean = false;
@@ -248,7 +307,7 @@ export class PageManageEvents implements OnInit {
     } else {
       let i = 0;
       checkArray.controls.forEach((item: FormGroup) => {
-        if (item.controls.id.value === eventItem.id) {
+        if (item.controls['id'].value === eventItem.id) {
           checkArray.removeAt(i);
           return;
         }

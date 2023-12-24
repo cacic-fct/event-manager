@@ -16,11 +16,11 @@
     <ion-item>
       <ion-label position="floating">Curso</ion-label>
       <ion-select interface="popover" formControlName="course">
-        <ng-container *ngFor="let course of courses | keyvalue">
+        @for (course of courses | keyvalue; track course) {
           <ion-select-option slot="start" class="course" [value]="course.key">
             {{ course.value.name }}
           </ion-select-option>
-        </ng-container>
+        }
       </ion-select>
     </ion-item>
 
@@ -55,21 +55,23 @@
         formControlName="hasDateEndForm"
         [checked]="hasDateEnd"
         (ionChange)="hasDateEndChange()"
-        formControlName="hasDateEndForm"></ion-toggle>
+      formControlName="hasDateEndForm"></ion-toggle>
       <ion-datetime-button
         [disabled]="!this.dataForm.value.hasDateEndForm"
-        datetime="eventDateEnd"></ion-datetime-button>
+      datetime="eventDateEnd"></ion-datetime-button>
     </ion-item>
 
     <ion-item>
       <ion-label position="floating">Pertence ao grande evento</ion-label>
       <ion-select interface="popover" formControlName="inMajorEvent">
         <ion-select-option slot="start" value="none">Nenhum</ion-select-option>
-        <ng-container *ngIf="majorEventsData$ | async; let items; else: loadingMajorEventsList">
-          <ng-container *ngFor="let mEvent of items">
+        @if (majorEventsData$ | async; as items) {
+          @for (mEvent of items; track mEvent) {
             <ion-select-option slot="start" [value]="mEvent.id"> {{ mEvent.name }} </ion-select-option>
-          </ng-container>
-        </ng-container>
+          }
+        } @else {
+          <ion-select-option slot="start" value="none" disabled>Carregando eventos...</ion-select-option>
+        }
       </ion-select>
     </ion-item>
 
@@ -82,9 +84,6 @@
       </ion-select>
     </ion-item>
 
-    <ng-template #loadingMajorEventsList>
-      <ion-select-option slot="start" value="none" disabled>Carregando eventos...</ion-select-option>
-    </ng-template>
 
     <ion-card-header>
       <ion-card-title>Localização (opcional)</ion-card-title>
@@ -93,14 +92,13 @@
     <ion-item>
       <ion-label position="floating">Predefinição</ion-label>
       <ion-select (ionChange)="placeChange($event)" interface="popover" placeholder="Personalizado" #selectPlace>
-        <ng-container *ngIf="places$ | async as places; else loadingPlaces">
-          <ng-container *ngFor="let place of places | keyvalue">
+        @if (places$ | async; as places) {
+          @for (place of places | keyvalue; track place) {
             <ion-select-option slot="start" [value]="place.key"> {{ place.value.name }} </ion-select-option>
-          </ng-container>
-        </ng-container>
-        <ng-template #loadingPlaces>
+          }
+        } @else {
           <ion-select-option slot="start" value="none" disabled>Carregando locais...</ion-select-option>
-        </ng-template>
+        }
       </ion-select>
     </ion-item>
 
@@ -146,35 +144,41 @@
       <ion-input formControlName="youtubeCode" placeholder="Código do vídeo no YouTube"></ion-input>
     </ion-item>
 
-    <ion-item *ngIf="dataForm.get('inMajorEvent').value === 'none'">
-      <ion-label>Permitir inscrição</ion-label>
-      <ion-toggle slot="end" formControlName="allowSubscription"></ion-toggle>
-    </ion-item>
+    @if (dataForm.get('inMajorEvent').value === 'none') {
+      <ion-item>
+        <ion-label>Permitir inscrição</ion-label>
+        <ion-toggle slot="end" formControlName="allowSubscription"></ion-toggle>
+      </ion-item>
+    }
 
     <ion-item>
       <ion-label>Coletar presença para este evento</ion-label>
       <ion-toggle slot="end" formControlName="collectAttendance"></ion-toggle>
     </ion-item>
 
-    <ng-container *ngIf="dataForm.get('collectAttendance').value">
+    @if (dataForm.get('collectAttendance').value) {
       <ion-item>
-        <ion-label *ngIf="dataForm.get('inMajorEvent').value === 'none'">Emite certificado de participação</ion-label>
-        <ion-label *ngIf="dataForm.get('inMajorEvent').value !== 'none'">
-          Consta no certificado de participação
-        </ion-label>
+        @if (dataForm.get('inMajorEvent').value === 'none') {
+          <ion-label>Emite certificado de participação</ion-label>
+        }
+        @if (dataForm.get('inMajorEvent').value !== 'none') {
+          <ion-label>
+            Consta no certificado de participação
+          </ion-label>
+        }
         <ion-toggle slot="end" formControlName="issueCertificate" checked="off"></ion-toggle>
       </ion-item>
-
-      <ion-item *ngIf="dataForm.get('issueCertificate').value">
-        <ion-label>Carga horária deste dia</ion-label>
-        <ion-input formControlName="creditHours" numeric="decimal" placeholder="Em horas"></ion-input>
-      </ion-item>
-
+      @if (dataForm.get('issueCertificate').value) {
+        <ion-item>
+          <ion-label>Carga horária deste dia</ion-label>
+          <ion-input formControlName="creditHours" numeric="decimal" placeholder="Em horas"></ion-input>
+        </ion-item>
+      }
       <ion-item>
         <ion-label position="floating">Vagas</ion-label>
         <ion-input formControlName="slotsAvailable"></ion-input>
       </ion-item>
-    </ng-container>
+    }
 
     <ion-item>
       <ion-label>Evento aberto ao público</ion-label>
@@ -225,7 +229,7 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-  [showConfirmButton]="false"></swal>
+[showConfirmButton]="false"></swal>
 
 <swal
   #errorSwal
@@ -235,7 +239,7 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-  [showConfirmButton]="true"></swal>
+[showConfirmButton]="true"></swal>
 
 <swal
   #errorMajorEventSwal
@@ -245,4 +249,4 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-  [showConfirmButton]="true"></swal>
+[showConfirmButton]="true"></swal>

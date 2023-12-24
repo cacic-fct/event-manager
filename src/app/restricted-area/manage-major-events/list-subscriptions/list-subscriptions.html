@@ -8,79 +8,94 @@
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
-    <div class="ion-padding" *ngIf="event$ | async as event">
-      <h3 style="margin-bottom: 0">{{ event.name }}</h3>
-      <h5 style="margin-top: 0">
-        {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
-      </h5>
-      <ion-button (click)="generateCSV()" [disabled]="disableCSVDownloadButton">
-        <ion-spinner slot="start" *ngIf="disableCSVDownloadButton"></ion-spinner>
-        Baixar CSV
-      </ion-button>
-
-      <div class="ion-padding-horizontal">
-        <p><b>Total de inscritos:</b> {{subscriptions.length | number: '2.0-0'}}</p>
+  @if (subscriptions$ | async; as subscriptions) {
+    @if (event$ | async; as event) {
+      <div class="ion-padding">
+        <h3 style="margin-bottom: 0">{{ event.name }}</h3>
+        <h5 style="margin-top: 0">
+          {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+        </h5>
+        <ion-button (click)="generateCSV()" [disabled]="disableCSVDownloadButton">
+          @if (disableCSVDownloadButton) {
+            <ion-spinner slot="start"></ion-spinner>
+          }
+          Baixar CSV
+        </ion-button>
+        <div class="ion-padding-horizontal">
+          <p><b>Total de inscritos:</b> {{subscriptions.length | number: '2.0-0'}}</p>
+        </div>
+        @for (subscriptionItem of subscriptions; track subscriptionItem) {
+          <ion-item>
+            <ion-label>
+              @if ((subscriptionItem.user | async); as user) {
+                @if (user.fullName) {
+                  <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
+                }
+                @if (!user.fullName) {
+                  <h2 class="ion-text-wrap">
+                    <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+                  </h2>
+                }
+                @if (user.academicID) {
+                  <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+                } @else {
+                  @if (!user.academicID) {
+                    <h3 class="ion-text-wrap">Sem RA definido</h3>
+                  }
+                }
+                <h3 class="ion-text-wrap">{{ user.email }} | {{ user.phone || "Sem celular cadastrado" }}</h3>
+                <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+                <!-- prettier-ignore -->
+                <h3 class="ion-text-wrap" style="margin-top: 8px">
+                  Criação da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.time) | date: "dd/MM/y - HH:mm:ss" }}
+                </h3>
+                <!-- prettier-ignore -->
+                <h3 class="ion-text-wrap">
+                  Última edição da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: "dd/MM/y - HH:mm:ss" }}
+                </h3>
+                @if (!event.price.isFree) {
+                  <h3 class="ion-text-wrap">
+                    Status da inscrição:
+                    @if (subscriptionItem.payment.status === 0) {
+                      Não pago
+                    }
+                    @if (subscriptionItem.payment.status === 1) {
+                      <!-- prettier-ignore -->
+                      Comprovante enviado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }} - Aguardando confirmação
+                    }
+                    @if (subscriptionItem.payment.status === 2) {
+                      <!-- prettier-ignore -->
+                      Pagamento validado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }}
+                    }
+                    @if (subscriptionItem.payment.status === 3) {
+                      Erro no pagamento
+                    }
+                    @if (subscriptionItem.payment.status === 4) {
+                      Erro na inscrição
+                    }
+                    <br />
+                    Autor: {{ subscriptionItem.payment.author === user.uid ? "O próprio" : subscriptionItem.payment.author }}
+                  </h3>
+                }
+                <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
+              } @else {
+                <h2 class="ion-text-wrap">
+                  <ion-text color="danger">Usuário não encontrado</ion-text>
+                </h2>
+                <h2 class="ion-text-wrap">
+                  <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
+                </h2>
+                <h2>UID: {{ subscriptionItem.id }}</h2>
+              }
+            </ion-label>
+          </ion-item>
+        }
       </div>
-      <ion-item *ngFor="let subscriptionItem of subscriptions">
-        <ion-label>
-          <ng-container *ngIf="(subscriptionItem.user | async) as user; else userNotFound">
-            <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
-            <h2 class="ion-text-wrap" *ngIf="!user.fullName">
-              <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
-            </h2>
-            <ng-container *ngIf="user.academicID; else notUnesp">
-              <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
-            </ng-container>
-
-            <ng-template #notUnesp>
-              <h3 class="ion-text-wrap" *ngIf="!user.academicID">Sem RA definido</h3>
-            </ng-template>
-            <h3 class="ion-text-wrap">{{ user.email }} | {{ user.phone || "Sem celular cadastrado" }}</h3>
-            <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
-            <!-- prettier-ignore -->
-            <h3 class="ion-text-wrap" style="margin-top: 8px">
-            Criação da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.time) | date: "dd/MM/y - HH:mm:ss" }}
-          </h3>
-            <!-- prettier-ignore -->
-            <h3 class="ion-text-wrap">
-            Última edição da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: "dd/MM/y - HH:mm:ss" }}
-          </h3>
-            <h3 class="ion-text-wrap" *ngIf="!event.price.isFree">
-              Status da inscrição:
-              <ng-container *ngIf="subscriptionItem.payment.status === 0">Não pago</ng-container>
-              <ng-container *ngIf="subscriptionItem.payment.status === 1">
-                <!-- prettier-ignore -->
-                Comprovante enviado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }} - Aguardando confirmação
-              </ng-container>
-              <ng-container *ngIf="subscriptionItem.payment.status === 2">
-                <!-- prettier-ignore -->
-                Pagamento validado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }}
-              </ng-container>
-              <ng-container *ngIf="subscriptionItem.payment.status === 3"> Erro no pagamento </ng-container>
-              <ng-container *ngIf="subscriptionItem.payment.status === 4"> Erro na inscrição </ng-container>
-              <br />
-              Autor: {{ subscriptionItem.payment.author === user.uid ? "O próprio" : subscriptionItem.payment.author }}
-            </h3>
-            <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
-          </ng-container>
-          <ng-template #userNotFound>
-            <h2 class="ion-text-wrap">
-              <ion-text color="danger">Usuário não encontrado</ion-text>
-            </h2>
-            <h2 class="ion-text-wrap">
-              <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
-            </h2>
-            <h2>UID: {{ subscriptionItem.id }}</h2>
-          </ng-template>
-        </ion-label>
-      </ion-item>
-    </div>
-  </ng-container>
-
-  <ng-template #loading>
+    }
+  } @else {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  </ng-template>
+  }
+
 </ion-content>
 
 <swal

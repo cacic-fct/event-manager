@@ -7,71 +7,66 @@
 <ion-content>
   <ion-grid style="margin-top: 30px; max-width: 500px; overflow: scroll">
     <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
-      <ng-container *ngIf="isUnesp; else notUnesp">
-        <ion-item>
-          <ion-label class="ion-text-wrap">Nome completo</ion-label>
-          <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
-        </ion-item>
-
-        <ion-item>
-          <ion-label class="ion-text-wrap">E-mail</ion-label>
-          <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
-        </ion-item>
-        <ion-item>
-          <ion-label class="ion-text-wrap">Eu sou</ion-label>
-          <ion-select
-            formControlName="associateStatus"
-            interface="popover"
-            placeholder="Selecione seu vínculo"
-            (ionChange)="selectionChange($event)">
-            <ion-select-option value="undergraduate">Aluno da graduação</ion-select-option>
-            <ion-select-option value="graduate">Aluno da pós-graduação</ion-select-option>
-            <ion-select-option value="professor">Professor</ion-select-option>
-            <ion-select-option value="adjunctprofessor">Professor substituto</ion-select-option>
-            <!-- TODO: servidor técnico-administrativo muito longo, está sendo cortado -->
-            <ion-select-option value="employee">Servidor técnico-administrativo</ion-select-option>
-            <ion-select-option value="other">Outro</ion-select-option>
-          </ion-select>
-        </ion-item>
-        <ion-item *ngIf="isUndergraduate">
-          <ion-label class="ion-text-wrap">Registro acadêmico</ion-label>
-          <ion-input
-            formControlName="academicID"
-            inputmode="numeric"
-            type="text"
-            placeholder="RA"
-            minlength="9"
-            maxlength="9"
-            required="true">
-          </ion-input>
-        </ion-item>
-      </ng-container>
-
-      <ng-template #notUnesp>
-        <ion-item>
-          <ion-label class="ion-text-wrap">Nome da conta</ion-label>
-          <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
-        </ion-item>
-
-        <ion-item>
-          <ion-label class="ion-text-wrap">Nome completo</ion-label>
-          <ion-input type="text" value="{{userData.fullName}}" formControlName="fullName" placeholder="Sem abreviações">
-          </ion-input>
-          <ion-note slot="helper">
-            Utilizamos o seu nome completo para a geração de certificados de participação.
-          </ion-note>
-        </ion-item>
-
-        <ion-item>
-          <ion-label class="ion-text-wrap">E-mail</ion-label>
-          <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
-        </ion-item>
-
-        <ion-item>
-          <ion-label class="ion-text-wrap">Vínculo com a Unesp</ion-label>
-          <ion-input type="text" value="Não possui" readonly> </ion-input>
-        </ion-item>
-      </ng-template>
+      @if (isUnesp) {
+      <ion-item>
+        <ion-label class="ion-text-wrap">Nome completo</ion-label>
+        <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label class="ion-text-wrap">E-mail</ion-label>
+        <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label class="ion-text-wrap">Eu sou</ion-label>
+        <ion-select
+          formControlName="associateStatus"
+          interface="popover"
+          placeholder="Selecione seu vínculo"
+          (ionChange)="selectionChange($event)">
+          <ion-select-option value="undergraduate">Aluno da graduação</ion-select-option>
+          <ion-select-option value="graduate">Aluno da pós-graduação</ion-select-option>
+          <ion-select-option value="professor">Professor</ion-select-option>
+          <ion-select-option value="adjunctprofessor">Professor substituto</ion-select-option>
+          <!-- TODO: servidor técnico-administrativo muito longo, está sendo cortado -->
+          <ion-select-option value="employee">Servidor técnico-administrativo</ion-select-option>
+          <ion-select-option value="other">Outro</ion-select-option>
+        </ion-select>
+      </ion-item>
+      @if (isUndergraduate) {
+      <ion-item>
+        <ion-label class="ion-text-wrap">Registro acadêmico</ion-label>
+        <ion-input
+          formControlName="academicID"
+          inputmode="numeric"
+          type="text"
+          placeholder="RA"
+          minlength="9"
+          maxlength="9"
+          required="true">
+        </ion-input>
+      </ion-item>
+      } } @else {
+      <ion-item>
+        <ion-label class="ion-text-wrap">Nome da conta</ion-label>
+        <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label class="ion-text-wrap">Nome completo</ion-label>
+        <ion-input type="text" value="{{userData.fullName}}" formControlName="fullName" placeholder="Sem abreviações">
+        </ion-input>
+        <ion-note slot="helper">
+          Utilizamos o seu nome completo para a geração de certificados de participação.
+        </ion-note>
+      </ion-item>
+      <ion-item>
+        <ion-label class="ion-text-wrap">E-mail</ion-label>
+        <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label class="ion-text-wrap">Vínculo com a Unesp</ion-label>
+        <ion-input type="text" value="Não possui" readonly> </ion-input>
+      </ion-item>
+      }
 
       <ion-item>
         <ion-label class="ion-text-wrap">CPF</ion-label>
@@ -94,10 +89,12 @@
         </ion-input>
       </ion-item>
 
-      <p *ngIf="isUnesp" style="font-size: 0.75em" class="ion-padding-horizontal">
+      @if (isUnesp) {
+      <p style="font-size: 0.75em" class="ion-padding-horizontal">
         Para não perder o acesso à sua conta quando o seu e-mail institucional for desativado, vincule o seu e-mail
         pessoal nas configurações do perfil.
       </p>
+      }
 
       <p style="font-size: 0.75em" class="ion-padding-horizontal">
         Poderemos entrar em contato para confirmar ou complementar estas informações ou para informar sobre eventuais

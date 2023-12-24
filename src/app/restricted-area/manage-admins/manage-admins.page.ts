@@ -2,16 +2,55 @@ import { Component, inject, OnInit } from '@angular/core';
 
 import { Functions, httpsCallable } from '@angular/fire/functions';
 
-import { FormGroup, FormControl } from '@angular/forms';
-import { AlertController, ToastController } from '@ionic/angular';
+import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
+import { AlertController, ToastController } from '@ionic/angular/standalone';
 
 import { Firestore, docData, doc } from '@angular/fire/firestore';
 import { map, Observable } from 'rxjs';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonContent,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonItem,
+  IonLabel,
+  IonInput,
+  IonButton,
+  IonList,
+  IonIcon,
+} from '@ionic/angular/standalone';
+import { AsyncPipe } from '@angular/common';
 
 @Component({
   selector: 'app-manage-admins',
   templateUrl: './manage-admins.page.html',
   styleUrls: ['./manage-admins.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonItem,
+    IonLabel,
+    IonInput,
+    IonButton,
+    IonList,
+    IonIcon,
+    ReactiveFormsModule,
+    AsyncPipe,
+  ],
 })
 export class ManageAdminsPage implements OnInit {
   private firestore: Firestore = inject(Firestore);
@@ -24,7 +63,7 @@ export class ManageAdminsPage implements OnInit {
   });
 
   constructor(public toastController: ToastController, private alertController: AlertController) {
-    this.adminList$ = docData(doc(this.firestore, 'claims', 'admin')).pipe(map((doc) => doc.admins)) as Observable<
+    this.adminList$ = docData(doc(this.firestore, 'claims', 'admin')).pipe(map((doc) => doc['admins'])) as Observable<
       string[]
     >;
   }

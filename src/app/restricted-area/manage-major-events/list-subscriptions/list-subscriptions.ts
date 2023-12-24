@@ -1,9 +1,9 @@
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { Firestore, collection, collectionData, docData, doc, query, orderBy } from '@angular/fire/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
+import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { fromUnixTime } from 'date-fns';
 import { Timestamp } from '@firebase/firestore-types';
 import { map, Observable, take, forkJoin } from 'rxjs';
@@ -11,6 +11,23 @@ import { User } from 'src/app/shared/services/user';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventSubscription, MajorEventItem } from '../../../shared/services/major-event.service';
 import { DateService } from 'src/app/shared/services/date.service';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonBackButton,
+  IonContent,
+  IonButton,
+  IonItem,
+  IonLabel,
+  IonText,
+  IonProgressBar,
+  IonSpinner,
+  IonRouterLink,
+} from '@ionic/angular/standalone';
+import { AsyncPipe, DatePipe, DecimalPipe } from '@angular/common';
 
 interface Subscription extends MajorEventSubscription {
   id: string;
@@ -22,6 +39,27 @@ interface Subscription extends MajorEventSubscription {
   selector: 'app-list-subscriptions',
   templateUrl: './list-subscriptions.html',
   styleUrls: ['./list-subscriptions.scss'],
+  standalone: true,
+  imports: [
+    IonRouterLink,
+    RouterLink,
+    AsyncPipe,
+    DecimalPipe,
+    DatePipe,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonButton,
+    IonSpinner,
+    IonItem,
+    IonLabel,
+    IonText,
+    IonProgressBar,
+    SweetAlert2Module,
+  ],
 })
 export class ListSubscriptionsPage implements OnInit {
   @ViewChild('mySwal')
@@ -42,7 +80,7 @@ export class ListSubscriptionsPage implements OnInit {
     public courses: CoursesService,
     public dateService: DateService
   ) {
-    this.eventID = this.route.snapshot.params.eventID;
+    this.eventID = this.route.snapshot.params['eventID'];
 
     const docRef = doc(this.firestore, 'majorEvents', this.eventID);
     this.event$ = docData(docRef) as Observable<MajorEventItem>;

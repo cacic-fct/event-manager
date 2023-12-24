@@ -5,14 +5,36 @@ import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../shared/services/auth.service';
-import { AlertController, ToastController } from '@ionic/angular';
+import {
+  AlertController,
+  ToastController,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonGrid,
+  IonItem,
+  IonLabel,
+  IonInput,
+  IonSelect,
+  IonSelectOption,
+  IonButton,
+  IonNote,
+} from '@ionic/angular/standalone';
 
-import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  ValidationErrors,
+  Validators,
+  ReactiveFormsModule,
+} from '@angular/forms';
 
 import { Auth, RecaptchaVerifier } from '@angular/fire/auth';
 
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
+import { SweetAlert2Module, SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
 import { GlobalConstantsService } from '../../shared/services/global-constants.service';
 
@@ -28,6 +50,23 @@ import { WindowService } from '../../shared/services/window.service';
   selector: 'app-page-register',
   templateUrl: './register.page.html',
   styleUrls: ['./register.page.scss'],
+  standalone: true,
+  imports: [
+    SweetAlert2Module,
+    ReactiveFormsModule,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonContent,
+    IonGrid,
+    IonItem,
+    IonLabel,
+    IonInput,
+    IonSelect,
+    IonSelectOption,
+    IonButton,
+    IonNote,
+  ],
 })
 export class RegisterPage implements OnInit {
   @ViewChild('mySwal')
@@ -72,33 +111,29 @@ export class RegisterPage implements OnInit {
       .subscribe((user) => {
         if (user.email.includes('@unesp.br')) {
           this.isUnesp = true;
-          this.dataForm.controls.associateStatus.addValidators([Validators.required]);
-          this.dataForm.controls.associateStatus.setValue(user.associateStatus);
+          this.dataForm.controls['associateStatus'].addValidators([Validators.required]);
+          this.dataForm.controls['associateStatus'].setValue(user.associateStatus);
           if (user.associateStatus === 'undergraduate') {
             this.isUndergraduate = true;
 
-            this.dataForm.controls.academicID.setValue(user.academicID);
-            this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
+            this.dataForm.controls['academicID'].setValue(user.academicID);
+            this.dataForm.controls['academicID'].updateValueAndValidity({ onlySelf: true });
           }
-          this.dataForm.controls.fullName.updateValueAndValidity({ onlySelf: true });
+          this.dataForm.controls['fullName'].updateValueAndValidity({ onlySelf: true });
         } else {
-          this.dataForm.controls.fullName.setValue(user.fullName);
+          this.dataForm.controls['fullName'].setValue(user.fullName);
         }
-        this.dataForm.controls.phone.setValue(user.phone);
+        this.dataForm.controls['phone'].setValue(user.phone);
         if (user.cpf) {
-          this.dataForm.controls.cpf.setValue(user.cpf);
-          this.dataForm.controls.cpf.disable();
+          this.dataForm.controls['cpf'].setValue(user.cpf);
+          this.dataForm.controls['cpf'].disable();
         }
       });
 
     this.windowRef = this.win.windowRef;
-    this.windowRef.recaptchaVerifier = new RecaptchaVerifier(
-      'continue-button',
-      {
-        size: 'invisible',
-      },
-      this.auth
-    );
+    this.windowRef.recaptchaVerifier = new RecaptchaVerifier(this.auth, 'continue-button', {
+      size: 'invisible',
+    });
   }
 
   onSubmit() {
@@ -107,6 +142,7 @@ export class RegisterPage implements OnInit {
     }
 
     this.submitUserData();
+    return;
   }
 
   submitUserData() {
@@ -193,7 +229,7 @@ export class RegisterPage implements OnInit {
     phoneNumber = phoneNumber.replace(/\D/g, '');
     phoneNumber = phoneNumber.replace(/^(\d{2})(\d)/g, '$1 $2');
     phoneNumber = phoneNumber.replace(/(\d)(\d{4})$/, '$1-$2');
-    this.dataForm.controls.phone.setValue(phoneNumber);
+    this.dataForm.controls['phone'].setValue(phoneNumber);
   }
 
   formatCPF() {
@@ -206,7 +242,7 @@ export class RegisterPage implements OnInit {
     cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
     cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
     cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    this.dataForm.controls.cpf.setValue(cpf);
+    this.dataForm.controls['cpf'].setValue(cpf);
   }
 
   fullNameValidator = (control: AbstractControl): ValidationErrors | null => {
@@ -290,13 +326,13 @@ export class RegisterPage implements OnInit {
   selectionChange(event) {
     if (event.target.value === 'undergraduate') {
       this.isUndergraduate = true;
-      this.dataForm.controls.academicID.setValidators([Validators.required, Validators.pattern('^[0-9]{9}$')]);
-      this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
+      this.dataForm.controls['academicID'].setValidators([Validators.required, Validators.pattern('^[0-9]{9}$')]);
+      this.dataForm.controls['academicID'].updateValueAndValidity({ onlySelf: true });
     } else {
       this.isUndergraduate = false;
-      this.dataForm.controls.academicID.setValue('');
-      this.dataForm.controls.academicID.clearValidators();
-      this.dataForm.controls.academicID.updateValueAndValidity({ onlySelf: true });
+      this.dataForm.controls['academicID'].setValue('');
+      this.dataForm.controls['academicID'].clearValidators();
+      this.dataForm.controls['academicID'].updateValueAndValidity({ onlySelf: true });
     }
   }
 }

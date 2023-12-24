@@ -1,9 +1,22 @@
 import { Component, OnInit } from '@angular/core';
+import {
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardSubtitle,
+  IonCardContent,
+  IonButton,
+  IonIcon,
+} from '@ionic/angular/standalone';
+
+import { KeyValuePipe } from '@angular/common';
 
 @Component({
   selector: 'app-contact-ejs',
   templateUrl: './contact-ejs.component.html',
   styleUrls: ['./contact-ejs.component.scss'],
+  standalone: true,
+  imports: [IonCard, IonCardHeader, IonCardTitle, IonCardSubtitle, IonCardContent, IonButton, IonIcon, KeyValuePipe],
 })
 export class ContactEjsComponent implements OnInit {
   contacts: any = [

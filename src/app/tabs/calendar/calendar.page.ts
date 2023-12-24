@@ -1,23 +1,49 @@
 // @ts-strict-ignore
 import { Router } from '@angular/router';
 import { Component, inject } from '@angular/core';
-import { KeyValue, formatDate } from '@angular/common';
+import { KeyValue, KeyValuePipe, NgClass, formatDate } from '@angular/common';
 
 import { CoursesService } from 'src/app/shared/services/courses.service';
 
 import { startOfWeek, endOfWeek, addDays, subDays, isSameDay, getDate, format, isSameWeek } from 'date-fns';
-import { ModalController } from '@ionic/angular';
+import { ModalController } from '@ionic/angular/standalone';
 import { FilterModalPage } from './components/filter-modal/filter-modal.page';
 import { getBooleanChanges, RemoteConfig } from '@angular/fire/remote-config';
-import { ToastController } from '@ionic/angular';
+import {
+  ToastController,
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonButton,
+  IonIcon,
+  IonTitle,
+  IonContent,
+} from '@ionic/angular/standalone';
 import { trace } from '@angular/fire/compat/performance';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+import { CalendarListViewComponent } from 'src/app/tabs/calendar/components/calendar-list-view/calendar-list-view.component';
+import { ItemListViewComponent } from 'src/app/tabs/calendar/components/item-list-view/item-list.component';
+
 @UntilDestroy()
 @Component({
   selector: 'app-calendar',
   templateUrl: 'calendar.page.html',
   styleUrls: ['calendar.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonButton,
+    IonIcon,
+    IonTitle,
+    IonContent,
+    KeyValuePipe,
+    CalendarListViewComponent,
+    ItemListViewComponent,
+    NgClass,
+  ],
 })
 export class CalendarPage {
   private remoteConfig: RemoteConfig = inject(RemoteConfig);
@@ -119,6 +145,7 @@ export class CalendarPage {
       weekStartsOn: 0,
     });
     this.generateCalendarData();
+    return 0;
   }
 
   dateSelector(): void {

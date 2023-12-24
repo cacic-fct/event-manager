@@ -1,10 +1,44 @@
 import { Component, OnInit } from '@angular/core';
-import { AlertController } from '@ionic/angular';
+import { AlertController } from '@ionic/angular/standalone';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonContent,
+  IonCard,
+  IonItem,
+  IonIcon,
+  IonLabel,
+  IonAccordionGroup,
+  IonAccordion,
+  IonList,
+  IonText,
+} from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-support',
   templateUrl: './support.page.html',
   styleUrls: ['./support.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonContent,
+    IonCard,
+    IonItem,
+    IonIcon,
+    IonLabel,
+    IonAccordionGroup,
+    IonAccordion,
+    IonList,
+    IonText,
+  ],
 })
 export class SupportPage implements OnInit {
   serviceWorkerActive: boolean = false;

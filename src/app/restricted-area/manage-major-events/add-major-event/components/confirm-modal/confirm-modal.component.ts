@@ -2,14 +2,44 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { parseISO, getUnixTime } from 'date-fns';
 
-import { ModalController } from '@ionic/angular';
+import { ModalController } from '@ionic/angular/standalone';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { Timestamp } from '@firebase/firestore';
+
+import {
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonButton,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonCardContent,
+} from '@ionic/angular/standalone';
+import { HeaderComponent } from 'src/app/shared/modules/major-event-display/header/header.component';
+import { DescriptionComponent } from 'src/app/shared/modules/major-event-display/description/description.component';
+import { DateComponent } from 'src/app/shared/modules/major-event-display/date/date.component';
+import { PriceComponent } from 'src/app/shared/modules/major-event-display/price/price.component';
 
 @Component({
   selector: 'app-confirm-modal[dataForm][isEventPaid]',
   templateUrl: './confirm-modal.component.html',
   styleUrls: ['./confirm-modal.component.scss'],
+  standalone: true,
+  imports: [
+    IonIcon,
+    IonItem,
+    IonLabel,
+    IonButton,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonCardContent,
+    HeaderComponent,
+    DescriptionComponent,
+    DateComponent,
+    PriceComponent,
+  ],
 })
 export class ConfirmModalComponent implements OnInit {
   @Input() dataForm!: FormGroup<any>;
@@ -47,9 +77,11 @@ export class ConfirmModalComponent implements OnInit {
 
   onSubmit() {
     this.modalController.dismiss(true);
+    return;
   }
 
   closeModal() {
     this.modalController.dismiss(false);
+    return;
   }
 }

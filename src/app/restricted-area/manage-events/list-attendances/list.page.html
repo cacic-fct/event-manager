@@ -8,48 +8,49 @@
 </ion-header>
 
 <ion-content>
-  <div class="ion-padding" *ngIf="event$ | async; let event">
-    <h3 style="margin-bottom: 0">{{ event.name }}</h3>
-    <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-    <h5 style="margin-top: 0">
-      {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
-    </h5>
-    <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
-  </div>
-  <ng-container *ngIf="attendanceCollection$ | async as attendancePeople; else: loading">
+  @if (event$ | async; as event) {
+    <div class="ion-padding">
+      <h3 style="margin-bottom: 0">{{ event.name }}</h3>
+      <h4 style="margin: 0">{{ event.shortDescription }}</h4>
+      <h5 style="margin-top: 0">
+        {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+      </h5>
+      <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
+    </div>
+  }
+  @if (attendanceCollection$ | async; as attendancePeople) {
     <div class="ion-padding-horizontal">
       <p><b>Total de presenças coletadas:</b> {{attendancePeople.length | number: '2.0-0'}}</p>
     </div>
     <!-- <ion-button (click)="orderByDesc = !orderByDesc" class="ion-margin-bottom" fill="clear">
-      <ion-icon slot="start" [name]="orderByDesc ? 'arrow-down' : 'arrow-up'"></ion-icon>
-      Data
-    </ion-button> -->
-
-    <ion-item *ngFor="let attendancePerson of attendancePeople">
-      <ng-container *ngIf="(attendancePerson.user | async) as user; else userNotFound">
+    <ion-icon slot="start" [name]="orderByDesc ? 'arrow-down' : 'arrow-up'"></ion-icon>
+    Data
+  </ion-button> -->
+  @for (attendancePerson of attendancePeople; track attendancePerson) {
+    <ion-item>
+      @if ((attendancePerson.user | async); as user) {
         <ion-label>
-          <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
-          <h2 class="ion-text-wrap" *ngIf="!user.fullName">
-            <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
-          </h2>
-
-          <ng-container *ngIf="user.academicID; else noAcademicID">
+          @if (user.fullName) {
+            <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
+          }
+          @if (!user.fullName) {
+            <h2 class="ion-text-wrap">
+              <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+            </h2>
+          }
+          @if (user.academicID) {
             <h3 class="ion-text-wrap">
               {{ courses.getCourse(user.academicID) || "RA inválido" }} | {{ user.academicID }}
             </h3>
-          </ng-container>
-
-          <ng-template #noAcademicID>
-            <h3 class="ion-text-wrap" *ngIf="user.email.includes('@unesp.br'); else notUnesp">Sem RA cadastrado</h3>
-          </ng-template>
-
-          <ng-template #notUnesp>
-            <h3 class="ion-text-wrap">Usuário externo</h3>
-          </ng-template>
-
+          } @else {
+            @if (user.email.includes('@unesp.br')) {
+              <h3 class="ion-text-wrap">Sem RA cadastrado</h3>
+            } @else {
+              <h3 class="ion-text-wrap">Usuário externo</h3>
+            }
+          }
           <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
           <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
-
           <h3 class="ion-text-wrap">
             {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
           </h3>
@@ -60,9 +61,7 @@
           (click)="deleteAlert(attendancePerson.id, (user.fullName || user.displayName))">
           <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
         </ion-button>
-      </ng-container>
-
-      <ng-template #userNotFound>
+      } @else {
         <ion-label>
           <h2 class="ion-text-wrap">
             <ion-text color="danger">Usuário não encontrado</ion-text>
@@ -78,13 +77,13 @@
           (click)="deleteAlert(attendancePerson.id, 'Usuário não encontrado.<br>Confira os dados no banco de dados antes de remover a presença')">
           <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
         </ion-button>
-      </ng-template>
+      }
     </ion-item>
-  </ng-container>
+  }
+} @else {
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
+}
 
-  <ng-template #loading>
-    <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  </ng-template>
 </ion-content>
 
 <swal
@@ -94,4 +93,4 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-  [showConfirmButton]="false"></swal>
+[showConfirmButton]="false"></swal>

@@ -8,53 +8,72 @@
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="subscriptions$ | async as subscriptions; else loading">
-    <h1 *ngIf="subscriptions.length === 0" class="ion-text-center">Nenhuma participação encontrada</h1>
-
-    <ion-list *ngFor="let subscription of subscriptions">
-      <ng-container *ngIf="subscription.majorEvent | async as majorEventData">
-        <ng-container *ngIf="subscription.userData | async as subscriptionData">
-          <ng-container [ngSwitch]="getCardType(majorEventData, subscriptionData)">
-            <div *ngSwitchCase="-1">
-              <ng-container
-                *ngTemplateOutlet="pastEvent; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-              </ng-container>
-            </div>
-            <div *ngSwitchCase="0">
-              <ng-container
-                *ngTemplateOutlet="waitingPayment; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-              </ng-container>
-            </div>
-            <div *ngSwitchCase="1">
-              <ng-container
-                *ngTemplateOutlet="waitingConfirmation; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-              </ng-container>
-            </div>
-            <div *ngSwitchCase="2">
-              <ng-container
-                *ngTemplateOutlet="paymentConfirmed; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-              </ng-container>
-            </div>
-            <div *ngSwitchCase="3">
-              <ng-container
-                *ngTemplateOutlet="paymentError; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-              </ng-container>
-            </div>
-            <div *ngSwitchCase="4">
-              <ng-container
-                *ngTemplateOutlet="eventFull; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-              </ng-container>
-            </div>
-            <div *ngSwitchCase="5">
-              <ng-container
-                *ngTemplateOutlet="scheduleConflict; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-              </ng-container>
-            </div>
-          </ng-container>
-        </ng-container>
-      </ng-container>
-    </ion-list>
-  </ng-container>
+  @if (subscriptions$ | async; as subscriptions) {
+    @if (subscriptions.length === 0) {
+      <h1 class="ion-text-center">Nenhuma participação encontrada</h1>
+    }
+    @for (subscription of subscriptions; track subscription) {
+      <ion-list>
+        @if (subscription.majorEvent | async; as majorEventData) {
+          @if (subscription.userData | async; as subscriptionData) {
+            @switch (getCardType(majorEventData, subscriptionData)) {
+              @case (-1) {
+                <div>
+                  <ng-container
+                    *ngTemplateOutlet="pastEvent; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+                  </ng-container>
+                </div>
+              }
+              @case (0) {
+                <div>
+                  <ng-container
+                    *ngTemplateOutlet="waitingPayment; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+                  </ng-container>
+                </div>
+              }
+              @case (1) {
+                <div>
+                  <ng-container
+                    *ngTemplateOutlet="waitingConfirmation; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+                  </ng-container>
+                </div>
+              }
+              @case (2) {
+                <div>
+                  <ng-container
+                    *ngTemplateOutlet="paymentConfirmed; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+                  </ng-container>
+                </div>
+              }
+              @case (3) {
+                <div>
+                  <ng-container
+                    *ngTemplateOutlet="paymentError; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+                  </ng-container>
+                </div>
+              }
+              @case (4) {
+                <div>
+                  <ng-container
+                    *ngTemplateOutlet="eventFull; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+                  </ng-container>
+                </div>
+              }
+              @case (5) {
+                <div>
+                  <ng-container
+                    *ngTemplateOutlet="scheduleConflict; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+                  </ng-container>
+                </div>
+              }
+            }
+          }
+        }
+      </ion-list>
+    }
+  } @else {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
 
   <app-event-card-display-main-page [eventSubscriptionsInput]="eventSubscriptions$"></app-event-card-display-main-page>
 
@@ -71,33 +90,31 @@
 
     <ion-card-content>
       <ion-card-subtitle [color]="color">
-        <p *ngIf="subType">{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
+        @if (subType) {
+          <p>{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
+        }
         <!-- prettier-ignore -->
         <p>
-              Data do evento: {{ dateService.getDateFromTimestamp(majorEventData.eventStartDate) | date: 'dd/MM/yyyy' }} – {{ dateService.getDateFromTimestamp(majorEventData.eventEndDate) | date: 'dd/MM/yyyy' }}
-            </p>
+          Data do evento: {{ dateService.getDateFromTimestamp(majorEventData.eventStartDate) | date: 'dd/MM/yyyy' }} – {{ dateService.getDateFromTimestamp(majorEventData.eventEndDate) | date: 'dd/MM/yyyy' }}
+        </p>
         <!-- prettier-ignore -->
         <p>
-              Período de inscrições: {{ dateService.getDateFromTimestamp(majorEventData.subscriptionStartDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }} – {{ dateService.getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }}
-            </p>
+          Período de inscrições: {{ dateService.getDateFromTimestamp(majorEventData.subscriptionStartDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }} – {{ dateService.getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd/MM/yyyy&nbsp;-&nbsp;HH:mm' }}
+        </p>
       </ion-card-subtitle>
     </ion-card-content>
   </ng-template>
 
-  <ng-template #outOfDate>
-    <ion-card-content> Fora do período de pagamento. </ion-card-content>
-  </ng-template>
 
   <ng-template #waitingPayment let-majorEventData="majorEventData" let-subscriptionData="subscriptionData">
     <ion-card>
       <ng-container
         *ngTemplateOutlet="ionCardHeader; context: {majorEventData: majorEventData, subType: subscriptionData.subscriptionType, price: subscriptionData.payment.price, color: ''}">
       </ng-container>
-      <ng-container *ngIf="isInSubscriptionPeriod(majorEventData.subscriptionEndDate); else outOfDate">
+      @if (isInSubscriptionPeriod(majorEventData.subscriptionEndDate)) {
         <!-- prettier-ignore -->
         <ion-card-content>
           Aguardando o pagamento e envio do comprovante <br />
-
           Efetue o pagamento e envio do comprovante até {{ dateService.getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }}
         </ion-card-content>
         <ion-grid>
@@ -122,7 +139,9 @@
             </ion-col>
           </ion-row>
         </ion-grid>
-      </ng-container>
+      } @else {
+        <ion-card-content> Fora do período de pagamento. </ion-card-content>
+      }
     </ion-card>
   </ng-template>
 
@@ -169,7 +188,9 @@
         Inscrição realizada
         <br />
         <!-- prettier-ignore -->
-        <span *ngIf="subscriptionData.payment.validationTime">Pagamento confirmado em {{ dateService.getDateFromTimestamp(subscriptionData.payment.validationTime) | date: 'dd/MM/yyyy — HH:mm'}}</span>
+        @if (subscriptionData.payment.validationTime) {
+          <span>Pagamento confirmado em {{ dateService.getDateFromTimestamp(subscriptionData.payment.validationTime) | date: 'dd/MM/yyyy — HH:mm'}}</span>
+        }
         <br />
         Para editar a sua inscrição, entre em contato conosco.
       </ion-card-content>
@@ -203,7 +224,7 @@
         </ion-text>
       </ion-card-content>
 
-      <ng-container *ngIf="isInSubscriptionPeriod(majorEventData.subscriptionEndDate); else outOfDate">
+      @if (isInSubscriptionPeriod(majorEventData.subscriptionEndDate)) {
         <ion-grid>
           <ion-row>
             <ion-col>
@@ -218,7 +239,9 @@
             </ion-col>
           </ion-row>
         </ion-grid>
-      </ng-container>
+      } @else {
+        <ion-card-content> Fora do período de pagamento. </ion-card-content>
+      }
     </ion-card>
   </ng-template>
 
@@ -299,9 +322,6 @@
     </ion-card>
   </ng-template>
 
-  <ng-template #loading>
-    <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  </ng-template>
   <ng-template #loadingSpinner>
     <ion-spinner name="dots" style="margin: 0 auto; display: block"></ion-spinner>
   </ng-template>

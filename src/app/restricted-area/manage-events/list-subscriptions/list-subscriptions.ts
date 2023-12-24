@@ -3,13 +3,28 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
+import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { Timestamp } from '@firebase/firestore-types';
 import { first, map, Observable } from 'rxjs';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { DateService } from 'src/app/shared/services/date.service';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonBackButton,
+  IonContent,
+  IonButton,
+  IonItem,
+  IonLabel,
+  IonText,
+  IonProgressBar,
+} from '@ionic/angular/standalone';
+import { AsyncPipe, DatePipe } from '@angular/common';
 
 interface Subscription {
   id: string;
@@ -21,6 +36,23 @@ interface Subscription {
   selector: 'app-list-subscriptions',
   templateUrl: './list-subscriptions.html',
   styleUrls: ['./list-subscriptions.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonButton,
+    IonItem,
+    IonLabel,
+    IonText,
+    IonProgressBar,
+    SweetAlert2Module,
+    AsyncPipe,
+    DatePipe,
+  ],
 })
 export class ListSubscriptionsPage implements OnInit {
   @ViewChild('mySwal')
@@ -38,7 +70,7 @@ export class ListSubscriptionsPage implements OnInit {
     public courses: CoursesService,
     public dateService: DateService
   ) {
-    this.eventID = this.route.snapshot.params.eventID;
+    this.eventID = this.route.snapshot.params['eventID'];
     this.afs
       .collection('events')
       .doc(this.eventID)

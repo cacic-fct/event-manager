@@ -14,23 +14,27 @@
   </h4>
   <h3 style="margin: 0; font-weight: 400">
     {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date : 'HH:mm' }}
-    <ng-container *ngIf="eventItem.eventEndDate">
+    @if (eventItem.eventEndDate) {
       - {{ dateService.getDateFromTimestamp(eventItem.eventEndDate) | date : 'HH:mm' }}
-    </ng-container>
+    }
   </h3>
 
-  <div class="weather-container" *ngIf="displayWeather === true">
-    <ng-container *ngIf="weather | async as weatherInfo">
-      <ng-container *ngIf="!weatherInfo.error">
-        <ion-icon class="weather-icon" [name]="weatherInfo.icon"></ion-icon>
-        <span class="weather-text">{{ weatherInfo.temperature }}°C – {{ weatherInfo.text }}</span>
-      </ng-container>
-    </ng-container>
-  </div>
+  @if (displayWeather === true) {
+    <div class="weather-container">
+      @if (weather | async; as weatherInfo) {
+        @if (!weatherInfo.error) {
+          <ion-icon class="weather-icon" [name]="weatherInfo.icon"></ion-icon>
+          <span class="weather-text">{{ weatherInfo.temperature }}°C – {{ weatherInfo.text }}</span>
+        }
+      }
+    </div>
+  }
 </div>
 
-<div class="ion-text-center weather-attribution" *ngIf="weather | async">
-  <ion-text color="medium">
-    <a href="https://open-meteo.com/" target="_blank">Weather data by Open-Meteo.com</a>
-  </ion-text>
-</div>
+@if (weather | async) {
+  <div class="ion-text-center weather-attribution">
+    <ion-text color="medium">
+      <a href="https://open-meteo.com/" target="_blank">Weather data by Open-Meteo.com</a>
+    </ion-text>
+  </div>
+}

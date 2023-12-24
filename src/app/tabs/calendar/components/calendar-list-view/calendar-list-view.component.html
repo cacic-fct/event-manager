@@ -1,6 +1,6 @@
 <ion-content>
   <ion-list style="max-width: 1600px; display: block" class="margin-horizontal-auto">
-    <ng-container *ngIf="items$ | async; let items; else: loading">
+    @if (items$ | async; as items) {
       <ion-button
         (click)="loadOlderEvents()"
         expand="block"
@@ -9,29 +9,30 @@
         class="margin-horizontal-auto">
         <ion-label> Mostrar eventos mais antigos </ion-label>
       </ion-button>
-      <ng-container *ngFor="let item of items; index as i">
-        <ion-list-header
-          mode="ios"
-          *ngIf="i == 0 || !dateService.compareMonthTimestamp(items[i - 1].eventStartDate, items[i].eventStartDate)">
-          <ion-label>{{ formatMonth(dateService.getDateFromTimestamp(item.eventStartDate)) }}</ion-label>
-        </ion-list-header>
-
-        <ion-item-divider
-          mode="ios"
-          sticky="true"
-          *ngIf="i == 0 || !dateService.compareDayTimestamp(items[i - 1].eventStartDate, items[i].eventStartDate)">
-          <ion-label>
-            {{ formatDate(dateService.getDateFromTimestamp(item.eventStartDate)) }}
-          </ion-label>
-        </ion-item-divider>
-
+      @for (item of items; track item; let i = $index) {
+        @if (i == 0 || !dateService.compareMonthTimestamp(items[i - 1].eventStartDate, items[i].eventStartDate)) {
+          <ion-list-header
+            mode="ios"
+            >
+            <ion-label>{{ formatMonth(dateService.getDateFromTimestamp(item.eventStartDate)) }}</ion-label>
+          </ion-list-header>
+        }
+        @if (i == 0 || !dateService.compareDayTimestamp(items[i - 1].eventStartDate, items[i].eventStartDate)) {
+          <ion-item-divider
+            mode="ios"
+            sticky="true"
+            >
+            <ion-label>
+              {{ formatDate(dateService.getDateFromTimestamp(item.eventStartDate)) }}
+            </ion-label>
+          </ion-item-divider>
+        }
         <app-event-item-list [eventItem]="item"></app-event-item-list>
-      </ng-container>
-
-      <h1 *ngIf="items.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
-    </ng-container>
-
-    <ng-template #loading>
+      }
+      @if (items.length === 0) {
+        <h1 class="ion-text-center">Nenhum evento encontrado</h1>
+      }
+    } @else {
       <ion-button
         expand="block"
         disabled="true"
@@ -39,8 +40,8 @@
         class="margin-horizontal-auto">
         <ion-label> <ion-skeleton-text animated style="width: 200px"> </ion-skeleton-text> </ion-label>
       </ion-button>
-
       <ion-progress-bar type="indeterminate"></ion-progress-bar>
-    </ng-template>
+    }
+
   </ion-list>
 </ion-content>

@@ -13,16 +13,17 @@
       <ion-icon name="pencil" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Editar informações do perfil</ion-label>
     </ion-item>
-    <ng-container *ngIf="isUnesp">
-      <ion-item (click)="authService.GoogleLink()" button *ngIf="!alreadyLinked">
-        <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
-        <ion-label>Vincular e-mail pessoal</ion-label>
-      </ion-item>
-      <ion-item button disabled="" *ngIf="alreadyLinked">
-        <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
-        <ion-label>E-mail pessoal já vinculado</ion-label>
-      </ion-item>
-    </ng-container>
+    @if (isUnesp) { @if (!alreadyLinked) {
+    <ion-item (click)="authService.GoogleLink()" button>
+      <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Vincular e-mail pessoal</ion-label>
+    </ion-item>
+    } @if (alreadyLinked) {
+    <ion-item button disabled="">
+      <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>E-mail pessoal já vinculado</ion-label>
+    </ion-item>
+    } }
     <ion-item lines="none" button>
       <ion-icon name="trash-outline" slot="start" aria-hidden="true" (click)="mailtoDeleteAccount()"></ion-icon>
       <ion-label>Excluir conta</ion-label>

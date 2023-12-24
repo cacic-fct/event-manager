@@ -1,24 +1,21 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { IonicModule } from '@ionic/angular';
-
 import { MoreInfoPage } from './more-info.page';
 
 describe('MoreInfoPage', () => {
-  let component: MoreInfoPage;
-  let fixture: ComponentFixture<MoreInfoPage>;
+    let component: MoreInfoPage;
+    let fixture: ComponentFixture<MoreInfoPage>;
 
-  beforeEach(waitForAsync(() => {
-    TestBed.configureTestingModule({
-      declarations: [MoreInfoPage],
-      imports: [IonicModule.forRoot()],
-    }).compileComponents();
+    beforeEach(waitForAsync(() => {
+        TestBed.configureTestingModule({
+            imports: [IonicModule.forRoot(), MoreInfoPage],
+        }).compileComponents();
 
-    fixture = TestBed.createComponent(MoreInfoPage);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  }));
+        fixture = TestBed.createComponent(MoreInfoPage);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    }));
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

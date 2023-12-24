@@ -1,8 +1,10 @@
-<div *ngIf="licenses | async as licensesText; else loadingOrError">{{ licensesText }}</div>
-
-<ng-template #loadingOrError>
-  <ion-text color="danger" *ngIf="error$ | async; else loading">Não foi possível obter a lista de licenças</ion-text>
-  <ng-template #loading>
+@if (licenses | async; as licensesText) {
+  <div>{{ licensesText }}</div>
+} @else {
+  @if (error$ | async) {
+    <ion-text color="danger">Não foi possível obter a lista de licenças</ion-text>
+  } @else {
     <ion-spinner name="dots"></ion-spinner>
-  </ng-template>
-</ng-template>
+  }
+}
+

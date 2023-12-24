@@ -2,6 +2,8 @@
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Component, inject, Input, OnInit } from '@angular/core';
 
+import { DecimalPipe } from '@angular/common';
+
 import {
   Auth,
   authState,
@@ -15,7 +17,7 @@ import { WindowService } from '../../shared/services/window.service';
 
 import { timer, take, interval, Subscription } from 'rxjs';
 
-import { ModalController } from '@ionic/angular';
+import { ModalController } from '@ionic/angular/standalone';
 
 import { User } from 'src/app/shared/services/user';
 
@@ -24,10 +26,47 @@ import { Mailto, MailtoService } from 'src/app/shared/services/mailto.service';
 import { add } from 'date-fns';
 import { trace } from '@angular/fire/compat/performance';
 
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonButton,
+  IonIcon,
+  IonContent,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonItem,
+  IonLabel,
+  IonInput,
+  IonText,
+  IonTitle,
+} from '@ionic/angular/standalone';
+import { FormsModule } from '@angular/forms';
+
 @Component({
   selector: 'app-verify-phone',
   templateUrl: './verify-phone.page.html',
   styleUrls: ['./verify-phone.page.scss'],
+  standalone: true,
+  imports: [
+    DecimalPipe,
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonButton,
+    IonIcon,
+    IonContent,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonItem,
+    IonLabel,
+    IonInput,
+    IonText,
+    IonTitle,
+    FormsModule,
+  ],
 })
 export class VerifyPhonePage implements OnInit {
   private auth: Auth = inject(Auth);
@@ -112,13 +151,9 @@ export class VerifyPhonePage implements OnInit {
       .pipe(take(1))
       .subscribe(() => {
         this.cooldown = false;
-        this.windowRef.recaptchaVerifier = new RecaptchaVerifier(
-          'resend-sms',
-          {
-            size: 'invisible',
-          },
-          this.auth
-        );
+        this.windowRef.recaptchaVerifier = new RecaptchaVerifier(this.auth, 'resend-sms', {
+          size: 'invisible',
+        });
         this.countdown.unsubscribe();
       });
   }

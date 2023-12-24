@@ -1,24 +1,21 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { IonicModule } from '@ionic/angular';
-
 import { EventInfoDisplayPage } from './event-info-display.page';
 
 describe('EventInfoDisplayPage', () => {
-  let component: EventInfoDisplayPage;
-  let fixture: ComponentFixture<EventInfoDisplayPage>;
+    let component: EventInfoDisplayPage;
+    let fixture: ComponentFixture<EventInfoDisplayPage>;
 
-  beforeEach(waitForAsync(() => {
-    TestBed.configureTestingModule({
-      declarations: [EventInfoDisplayPage],
-      imports: [IonicModule.forRoot()],
-    }).compileComponents();
+    beforeEach(waitForAsync(() => {
+        TestBed.configureTestingModule({
+            imports: [IonicModule.forRoot(), EventInfoDisplayPage],
+        }).compileComponents();
 
-    fixture = TestBed.createComponent(EventInfoDisplayPage);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  }));
+        fixture = TestBed.createComponent(EventInfoDisplayPage);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    }));
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

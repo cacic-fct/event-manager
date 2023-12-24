@@ -12,12 +12,12 @@
     <ion-spinner name="dots" style="margin: 0 auto; display: block"></ion-spinner>
   </ng-template>
 
-  <ng-container *ngIf="certificatesColletion$ | async as certificatesCollection; else loading">
-    <ng-container *ngIf="certificatesCollection.length === 0">
+  @if (certificatesColletion$ | async; as certificatesCollection) {
+    @if (certificatesCollection.length === 0) {
       <h1 class="ion-padding ion-text-center">Nenhum certificado foi emitido para você</h1>
-    </ng-container>
-    <ng-container *ngFor="let certificate of certificatesCollection">
-      <ng-container *ngIf="certificate.certificateData | async as certificateData">
+    }
+    @for (certificate of certificatesCollection; track certificate) {
+      @if (certificate.certificateData | async; as certificateData) {
         <ion-item lines="inset">
           {{ certificateData.certificateName }}
           <ion-button slot="end" fill="clear" (click)="copyValidationUrl(certificate.id)">
@@ -27,9 +27,11 @@
             <ion-icon name="download" slot="icon-only"></ion-icon>
           </ion-button>
         </ion-item>
-      </ng-container>
-    </ng-container>
-  </ng-container>
+      }
+    }
+  } @else {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
 
   <ion-grid>
     <ion-row class="ion-align-items-center">
@@ -40,6 +42,3 @@
   </ion-grid>
 </ion-content>
 
-<ng-template #loading>
-  <ion-progress-bar type="indeterminate"></ion-progress-bar>
-</ng-template>

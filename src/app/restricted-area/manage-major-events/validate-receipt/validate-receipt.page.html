@@ -9,49 +9,50 @@
         <ion-icon name="chevron-back"></ion-icon>
       </ion-button>
       {{ arrayIndex + 1 }}º
-      <ng-container *ngIf="(subscriptions$ | async) as subscriptionsArray">
+      @if ((subscriptions$ | async); as subscriptionsArray) {
         <ion-button
           (click)="arrayIndexForward()"
           [disabled]="((arrayIndex + 1) === subscriptionsArray.length) || !subscriptionsArray.length"
           aria-label="Próximo comprovante">
           <ion-icon name="chevron-forward"></ion-icon>
         </ion-button>
-      </ng-container>
+      }
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="subscriptions$ | async as subscriptions; else: loading">
-    <h4 *ngIf="subscriptions.length == 0; else subscriptionsArrayIsNotEmpty" class="ion-text-center">
-      Não há nenhuma aprovação pendente.
-    </h4>
-    <ng-template #subscriptionsArrayIsNotEmpty>
-      <ng-container *ngIf="subscriptions[arrayIndex] as subscription;">
+  @if (subscriptions$ | async; as subscriptions) {
+    @if (subscriptions.length == 0) {
+      <h4 class="ion-text-center">
+        Não há nenhuma aprovação pendente.
+      </h4>
+    } @else {
+      @if (subscriptions[arrayIndex]; as subscription;) {
         <ion-card>
-          <ion-card-header *ngIf="subscription.userData$ | async as userData">
-            <!-- prettier-ignore -->
-            <ion-card-title>
-              {{ userData.fullName || userData.displayName}} - {{ subscription.payment.price | currency:'BRL':'symbol':'1.2-2' }}
-            </ion-card-title>
-            <ion-card-subtitle>
-              Se inscreveu em: {{ dateService.getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
-              <br />
+          @if (subscription.userData$ | async; as userData) {
+            <ion-card-header>
               <!-- prettier-ignore -->
-              Última alteração na inscrição: {{ dateService.getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
-            </ion-card-subtitle>
-            <p>UID: {{ userData.uid }}</p>
-
-            <ion-row>
-              <ion-button fill="clear" [href]="'mailto:' + userData.email">
-                <ion-icon name="mail" slot="icon-only"></ion-icon>
-              </ion-button>
-
-              <ion-button fill="clear" [href]="'https://wa.me/' + formatPhoneWhatsApp(userData.phone)">
-                <ion-icon name="logo-whatsapp" slot="icon-only"></ion-icon>
-              </ion-button>
-            </ion-row>
-          </ion-card-header>
+              <ion-card-title>
+                {{ userData.fullName || userData.displayName}} - {{ subscription.payment.price | currency:'BRL':'symbol':'1.2-2' }}
+              </ion-card-title>
+              <ion-card-subtitle>
+                Se inscreveu em: {{ dateService.getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
+                <br />
+                <!-- prettier-ignore -->
+                Última alteração na inscrição: {{ dateService.getDateFromTimestamp(subscription.payment.time) | date:'dd/MM/yy - HH:mm' }}
+              </ion-card-subtitle>
+              <p>UID: {{ userData.uid }}</p>
+              <ion-row>
+                <ion-button fill="clear" [href]="'mailto:' + userData.email">
+                  <ion-icon name="mail" slot="icon-only"></ion-icon>
+                </ion-button>
+                <ion-button fill="clear" [href]="'https://wa.me/' + formatPhoneWhatsApp(userData.phone)">
+                  <ion-icon name="logo-whatsapp" slot="icon-only"></ion-icon>
+                </ion-button>
+              </ion-row>
+            </ion-card-header>
+          }
           <ion-card-content>
             <p>
               <ion-text color="danger">
@@ -71,9 +72,9 @@
               </ion-button>
             </p>
             <br />
-            <ng-container *ngIf="subscription.subEventsInfo | async as subEventsInfo; else loading">
-              <ng-container *ngIf="subEventsInfo.length != 0">
-                <ng-container *ngFor="let subEventInfo of subEventsInfo">
+            @if (subscription.subEventsInfo | async; as subEventsInfo) {
+              @if (subEventsInfo.length != 0) {
+                @for (subEventInfo of subEventsInfo; track subEventInfo) {
                   <ion-text
                     [color]="subEventInfo.slotsAvailable > 0? '' : 'danger'"
                     [style.color]="subEventInfo.eventType === 'palestra' ? '#0277bd' : ''">
@@ -81,24 +82,25 @@
                     <p>{{ subEventInfo.id }}</p>
                     <!-- prettier-ignore -->
                     <p style="margin-bottom: 24px">
-                      {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - 
+                      {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} -
                       {{ dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
                     </p>
                   </ion-text>
-                </ng-container>
-              </ng-container>
-            </ng-container>
+                }
+              }
+            } @else {
+              <ion-progress-bar type="indeterminate"></ion-progress-bar>
+            }
             <div class="img-container">
-              <ng-container *ngIf="subscription.image | async as url; else noImage">
+              @if (subscription.image | async; as url) {
                 <img [src]="url" loading="lazy" />
-              </ng-container>
-              <ng-template #noImage>
+              } @else {
                 <h1>Imagem não encontrada</h1>
-              </ng-template>
+              }
             </div>
           </ion-card-content>
         </ion-card>
-      </ng-container>
+      }
       <ion-fab vertical="bottom" horizontal="end" slot="fixed">
         <ion-fab-button>
           <ion-icon name="add"></ion-icon>
@@ -114,8 +116,10 @@
           </ion-fab-button>
         </ion-fab-list>
       </ion-fab>
-    </ng-template>
-  </ng-container>
+    }
+  } @else {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
 </ion-content>
 
 <ng-template #loading>
@@ -154,12 +158,12 @@
             <ion-radio slot="start" value="scheduleConflict"></ion-radio>
           </ion-item>
         </ion-radio-group>
-        <ng-container *ngIf="refuseForm.get('radioGroup').value == 'invalidReceipt'">
+        @if (refuseForm.get('radioGroup').value == 'invalidReceipt') {
           <ion-item>
             <ion-label position="floating">Motivo da recusa</ion-label>
             <ion-input formControlName="errorMessage"></ion-input>
           </ion-item>
-        </ng-container>
+        }
       </form>
     </ion-content>
   </ng-template>

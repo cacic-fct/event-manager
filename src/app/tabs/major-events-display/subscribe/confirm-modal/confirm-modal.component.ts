@@ -1,21 +1,63 @@
 // @ts-strict-ignore
 import { Component, Input, OnInit } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { formatDate } from '@angular/common';
+import { AsyncPipe, CurrencyPipe, DatePipe, DecimalPipe, formatDate } from '@angular/common';
 
 import { MajorEventItem } from '../../../../shared/services/major-event.service';
 import { EventItem } from '../../../../shared/services/event';
-import { ModalController } from '@ionic/angular';
+import { ModalController } from '@ionic/angular/standalone';
 import { Observable } from 'rxjs';
 import { EnrollmentTypesService } from 'src/app/shared/services/enrollment-types.service';
 
 import { EmojiService } from '../../../../shared/services/emoji.service';
 import { DateService } from 'src/app/shared/services/date.service';
 
+import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonButton,
+  IonContent,
+  IonCardHeader,
+  IonCardContent,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonItemDivider,
+  IonProgressBar,
+  IonList,
+  IonCardTitle,
+} from '@ionic/angular/standalone';
+import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
+
 @Component({
   selector: 'app-confirm-modal',
   templateUrl: './confirm-modal.component.html',
   styleUrls: ['./confirm-modal.component.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonButton,
+    IonContent,
+    IonCardHeader,
+    IonCardContent,
+    IonIcon,
+    IonItem,
+    IonLabel,
+    IonItemDivider,
+    IonProgressBar,
+    IonList,
+    IonCardTitle,
+    SweetAlert2Module,
+    AsyncPipe,
+    CurrencyPipe,
+    DecimalPipe,
+    DatePipe,
+  ],
 })
 export class ConfirmModalComponent implements OnInit {
   @Input() majorEvent$: Observable<MajorEventItem>;

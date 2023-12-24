@@ -8,171 +8,162 @@
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="majorEvent$| async as majorEvent; else loading">
-    <div class="event-container">
-      <ion-card-header>
-        <ion-card-title>{{majorEvent.name}}</ion-card-title>
-      </ion-card-header>
-
-      <ion-card-content *ngIf="majorEvent.description">
-        <p class="ion-text-justify event-description">{{majorEvent.description}}</p>
-      </ion-card-content>
-
-      <div class="card-section ion-padding-horizontal">
-        <div class="card-label">
-          <ion-icon name="calendar-outline" aria-hidden="true"></ion-icon>
-          Datas
-        </div>
-
-        <ion-item lines="none">
-          Evento
-          <span slot="end">
-            {{ dateService.getDateFromTimestamp(majorEvent.eventStartDate) | date: 'dd/MM' }} {{ majorEvent.eventEndDate
-            && '- ' + (dateService.getDateFromTimestamp(majorEvent.eventEndDate) | date: 'dd/MM') }}
-          </span>
-        </ion-item>
-
-        <ion-item lines="none" *ngIf="majorEvent.subscriptionStartDate && majorEvent.subscriptionEndDate">
-          Inscrição
-          <span slot="end">
-            {{ dateService.getDateFromTimestamp(majorEvent.subscriptionStartDate) | date: 'dd/MM' }} {{
-            majorEvent.subscriptionEndDate && '- ' + (dateService.getDateFromTimestamp(majorEvent.subscriptionEndDate) |
-            date: 'dd/MM') }}
-          </span>
-        </ion-item>
+  @if (majorEvent$| async; as majorEvent) {
+  <div class="event-container">
+    <ion-card-header>
+      <ion-card-title>{{majorEvent.name}}</ion-card-title>
+    </ion-card-header>
+    @if (majorEvent.description) {
+    <ion-card-content>
+      <p class="ion-text-justify event-description">{{majorEvent.description}}</p>
+    </ion-card-content>
+    }
+    <div class="card-section ion-padding-horizontal">
+      <div class="card-label">
+        <ion-icon name="calendar-outline" aria-hidden="true"></ion-icon>
+        Datas
       </div>
-
-      <div class="card-section ion-padding-horizontal" *ngIf="majorEvent.price">
-        <div class="card-label">
-          <ion-icon name="wallet-outline" aria-hidden="true"></ion-icon>
-          Valores
-        </div>
-
-        <ng-container *ngIf="majorEvent.price.isFree; else notFree">
-          <ion-item lines="none">
-            <ion-label>Gratuito</ion-label>
-          </ion-item>
-        </ng-container>
-
-        <ng-template #notFree>
-          <ng-container *ngIf="majorEvent.price.single; then singlePrice else multiPrice"> </ng-container>
-        </ng-template>
-
-        <ng-template #singlePrice>
-          <ion-item lines="none">
-            Preço único
-            <span slot="end">{{ majorEvent.price.single | currency:'BRL' }}</span>
-          </ion-item>
-        </ng-template>
-
-        <ng-template #multiPrice>
-          <ion-item lines="none" *ngIf="majorEvent.price.students">
-            {{ enrollmentTypes.getEnrollmentType(0) }}
-            <span slot="end">{{ majorEvent.price.students | currency:'BRL' }}</span>
-          </ion-item>
-
-          <ion-item lines="none" *ngIf="majorEvent.price.otherStudents">
-            {{ enrollmentTypes.getEnrollmentType(1) }}
-            <span slot="end">{{ majorEvent.price.otherStudents | currency:'BRL' }}</span>
-          </ion-item>
-
-          <ion-item lines="none" *ngIf="majorEvent.price.professors">
-            {{ enrollmentTypes.getEnrollmentType(2) }}
-            <span slot="end">{{ majorEvent.price.professors | currency:'BRL' }}</span>
-          </ion-item>
-        </ng-template>
-      </div>
-
-      <div class="card-section ion-padding-horizontal">
-        <ion-item *ngIf="!majorEvent.price.single">
-          <ion-label>Tipo de inscrição</ion-label>
-          <ion-select placeholder="Selecionar" [(ngModel)]="opSelected" [disabled]="paymentStatus !== undefined">
-            <ion-select-option value="0">{{ enrollmentTypes.getEnrollmentType(0) }}</ion-select-option>
-            <ion-select-option value="1">{{ enrollmentTypes.getEnrollmentType(1) }}</ion-select-option>
-            <ion-select-option value="2">{{ enrollmentTypes.getEnrollmentType(2) }}</ion-select-option>
-          </ion-select>
-        </ion-item>
-
-        <!-- prettier-ignore -->
-        <p *ngIf="majorEvent.maxCourses && majorEvent.maxCourses > 0">
-          {{ eventsSelected['minicurso'].length - this.eventGroupMinicursoCount| number: '2.0-0' }} de {{ majorEvent.maxCourses | number: '2.0-0' }} minicursos selecionados
-        </p>
-        <p *ngIf="majorEvent.maxLectures && majorEvent.maxLectures > 0">
-          {{ eventsSelected['palestra'].length | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }}
-          palestras selecionados
-        </p>
-
-        <p>
-          <ion-text color="danger">
-            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
-            <span class="alert-text ion-text-wrap"> Verifique os pré-requisitos nas descrições dos eventos </span>
-          </ion-text>
-        </p>
-        <p>
-          <ion-text color="danger">
-            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
-            <span class="alert-text ion-text-wrap">
-              Verifique se não há choque de horário entre os eventos selecionados
-            </span>
-          </ion-text>
-        </p>
-      </div>
-
-      <form [formGroup]="dataForm">
-        <ng-container *ngIf="events$ | async as eventsArray; else loadingSpinner">
-          <ng-container *ngFor="let event of eventsArray; index as i">
-            <ion-item-divider
-              mode="ios"
-              sticky="true"
-              *ngIf="i == 0 || !dateService.compareDayTimestamp(eventsArray[i - 1].eventStartDate, event.eventStartDate)">
-              <ion-label> {{ formatDate(dateService.getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
-            </ion-item-divider>
-
-            <ion-list>
-              <ion-item>
-                <img
-                  [src]="emojiService.getEmoji(event.icon)"
-                  class="twemoji"
-                  slot="start"
-                  aria-hidden="true"
-                  loading="lazy" />
-                <ion-label>
-                  <h3 class="ion-text-wrap">{{ event.name }}</h3>
-                  <h3 class="ion-text-wrap">{{ event.shortDescription }}</h3>
-                  <h4>
-                    {{ (dateService.getDateFromTimestamp(event.eventStartDate) | date: 'HH:mm') }} {{ event.eventEndDate
-                    && ' às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date: 'HH:mm') }}
-                  </h4>
-                  <p>{{ event.slotsAvailable }} vagas restantes</p>
-                  <p>Sua posição na fila: {{ event.numberOfSubscriptions + 1 | number: '1.0-0' }}</p>
-                  <!-- <p>Conflito de horário com "item 2"</p>-->
-                </ion-label>
-
-                <ion-button *ngIf="event.description" color="primary" fill="clear" (click)="showEventInfo(event)">
-                  <ion-icon name="information-circle-outline" aria-hidden="true" slot="start"></ion-icon>
-                  <p slot="end">INFO</p>
-                </ion-button>
-
-                <ion-checkbox
-                  name="{{event.eventType}}"
-                  [formControlName]="event.id"
-                  (ionChange)="countCheckeds($event, event)"
-                  (ionChange)="checkForScheduleConflict($event, event)"></ion-checkbox>
-              </ion-item>
-            </ion-list>
-          </ng-container>
-        </ng-container>
-      </form>
+      <ion-item lines="none">
+        Evento
+        <span slot="end">
+          {{ dateService.getDateFromTimestamp(majorEvent.eventStartDate) | date: 'dd/MM' }} {{ majorEvent.eventEndDate
+          && '- ' + (dateService.getDateFromTimestamp(majorEvent.eventEndDate) | date: 'dd/MM') }}
+        </span>
+      </ion-item>
+      @if (majorEvent.subscriptionStartDate && majorEvent.subscriptionEndDate) {
+      <ion-item lines="none">
+        Inscrição
+        <span slot="end">
+          {{ dateService.getDateFromTimestamp(majorEvent.subscriptionStartDate) | date: 'dd/MM' }} {{
+          majorEvent.subscriptionEndDate && '- ' + (dateService.getDateFromTimestamp(majorEvent.subscriptionEndDate) |
+          date: 'dd/MM') }}
+        </span>
+      </ion-item>
+      }
     </div>
-  </ng-container>
+    @if (majorEvent.price) {
+    <div class="card-section ion-padding-horizontal">
+      <div class="card-label">
+        <ion-icon name="wallet-outline" aria-hidden="true"></ion-icon>
+        Valores
+      </div>
+      @if (majorEvent.price.isFree) {
+      <ion-item lines="none">
+        <ion-label>Gratuito</ion-label>
+      </ion-item>
+      } @else { @if (majorEvent.price.single) {
+      <ion-item lines="none">
+        Preço único
+        <span slot="end">{{ majorEvent.price.single | currency:'BRL' }}</span>
+      </ion-item>
+      } @else { @if (majorEvent.price.students) {
+      <ion-item lines="none">
+        {{ enrollmentTypes.getEnrollmentType(0) }}
+        <span slot="end">{{ majorEvent.price.students | currency:'BRL' }}</span>
+      </ion-item>
+      } @if (majorEvent.price.otherStudents) {
+      <ion-item lines="none">
+        {{ enrollmentTypes.getEnrollmentType(1) }}
+        <span slot="end">{{ majorEvent.price.otherStudents | currency:'BRL' }}</span>
+      </ion-item>
+      } @if (majorEvent.price.professors) {
+      <ion-item lines="none">
+        {{ enrollmentTypes.getEnrollmentType(2) }}
+        <span slot="end">{{ majorEvent.price.professors | currency:'BRL' }}</span>
+      </ion-item>
+      } } }
+    </div>
+    }
+    <div class="card-section ion-padding-horizontal">
+      @if (!majorEvent.price.single) {
+      <ion-item>
+        <ion-label>Tipo de inscrição</ion-label>
+        <ion-select placeholder="Selecionar" [(ngModel)]="opSelected" [disabled]="paymentStatus !== undefined">
+          <ion-select-option value="0">{{ enrollmentTypes.getEnrollmentType(0) }}</ion-select-option>
+          <ion-select-option value="1">{{ enrollmentTypes.getEnrollmentType(1) }}</ion-select-option>
+          <ion-select-option value="2">{{ enrollmentTypes.getEnrollmentType(2) }}</ion-select-option>
+        </ion-select>
+      </ion-item>
+      }
+      <!-- prettier-ignore -->
+      @if (majorEvent.maxCourses && majorEvent.maxCourses > 0) {
+      <p>
+        {{ eventsSelected['minicurso'].length - this.eventGroupMinicursoCount| number: '2.0-0' }} de {{
+        majorEvent.maxCourses | number: '2.0-0' }} minicursos selecionados
+      </p>
+      } @if (majorEvent.maxLectures && majorEvent.maxLectures > 0) {
+      <p>
+        {{ eventsSelected['palestra'].length | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }}
+        palestras selecionados
+      </p>
+      }
+      <p>
+        <ion-text color="danger">
+          <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+          <span class="alert-text ion-text-wrap"> Verifique os pré-requisitos nas descrições dos eventos </span>
+        </ion-text>
+      </p>
+      <p>
+        <ion-text color="danger">
+          <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+          <span class="alert-text ion-text-wrap">
+            Verifique se não há choque de horário entre os eventos selecionados
+          </span>
+        </ion-text>
+      </p>
+    </div>
+    <form [formGroup]="dataForm">
+      @if (events$ | async; as eventsArray) { @for (event of eventsArray; track event; let i = $index) { @if (i == 0 ||
+      !dateService.compareDayTimestamp(eventsArray[i - 1].eventStartDate, event.eventStartDate)) {
+      <ion-item-divider mode="ios" sticky="true">
+        <ion-label> {{ formatDate(dateService.getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
+      </ion-item-divider>
+      }
+      <ion-list>
+        <ion-item>
+          <img
+            [src]="emojiService.getEmoji(event.icon)"
+            class="twemoji"
+            slot="start"
+            aria-hidden="true"
+            loading="lazy" />
+          <ion-label>
+            <h3 class="ion-text-wrap">{{ event.name }}</h3>
+            <h3 class="ion-text-wrap">{{ event.shortDescription }}</h3>
+            <h4>
+              {{ (dateService.getDateFromTimestamp(event.eventStartDate) | date: 'HH:mm') }} {{ event.eventEndDate && '
+              às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date: 'HH:mm') }}
+            </h4>
+            <p>{{ event.slotsAvailable }} vagas restantes</p>
+            <p>Sua posição na fila: {{ event.numberOfSubscriptions + 1 | number: '1.0-0' }}</p>
+            <!-- <p>Conflito de horário com "item 2"</p>-->
+          </ion-label>
+          @if (event.description) {
+          <ion-button color="primary" fill="clear" (click)="showEventInfo(event)">
+            <ion-icon name="information-circle-outline" aria-hidden="true" slot="start"></ion-icon>
+            <p slot="end">INFO</p>
+          </ion-button>
+          }
+          <ion-checkbox
+            name="{{event.eventType}}"
+            [formControlName]="event.id"
+            (ionChange)="countCheckeds($event, event)"
+            (ionChange)="checkForScheduleConflict($event, event)"></ion-checkbox>
+        </ion-item>
+      </ion-list>
+      } } @else {
+      <ion-spinner name="dots" style="margin: 0 auto; display: block"></ion-spinner>
+      }
+    </form>
+  </div>
+  } @else {
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
 
   <ng-template #loading>
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   </ng-template>
 
-  <ng-template #loadingSpinner>
-    <ion-spinner name="dots" style="margin: 0 auto; display: block"></ion-spinner>
-  </ng-template>
   <!-- TODO: Se houver mais de um tipo de inscrição, desabilitar fab quando a seleção for indefinida-->
   <ion-fab vertical="bottom" horizontal="end" slot="fixed">
     <ion-fab-button (click)="onSubmit()">

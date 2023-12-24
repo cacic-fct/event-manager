@@ -1,4 +1,4 @@
-import { ToastController } from '@ionic/angular';
+import { ToastController } from '@ionic/angular/standalone';
 import { Component, Input, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -8,6 +8,8 @@ import { CoursesService } from './../../../services/courses.service';
 import { StringManagementService } from './../../../services/string-management.service';
 import { EmojiService } from './../../../services/emoji.service';
 import { EventItem } from '../../../services/event';
+import { IonCardHeader, IonCardTitle, IonIcon, IonText } from '@ionic/angular/standalone';
+import { DatePipe, AsyncPipe } from '@angular/common';
 
 /**
  * Requires the eventItem input to be passed in.
@@ -16,6 +18,8 @@ import { EventItem } from '../../../services/event';
   selector: 'app-event-display-header[eventItem]',
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.scss'],
+  standalone: true,
+  imports: [IonCardHeader, IonCardTitle, IonIcon, IonText, DatePipe, AsyncPipe],
 })
 export class HeaderComponent implements OnInit {
   @Input() eventItem!: EventItem;

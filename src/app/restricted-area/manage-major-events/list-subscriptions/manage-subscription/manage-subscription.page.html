@@ -8,7 +8,7 @@
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="subscription$ | async as subscription; else: loading">
+  @if (subscription$ | async; as subscription) {
     <ion-card>
       <ion-card-header>
         <ion-card-title>
@@ -23,9 +23,9 @@
         </ion-card-subtitle>
       </ion-card-header>
       <ion-card-content>
-        <ng-container *ngIf="eventsUserIsSubscribedTo$ | async as subEventsInfo; else loading">
-          <ng-container *ngIf="subEventsInfo.length != 0">
-            <ng-container *ngFor="let subEventInfo of subEventsInfo">
+        @if (eventsUserIsSubscribedTo$ | async; as subEventsInfo) {
+          @if (subEventsInfo.length != 0) {
+            @for (subEventInfo of subEventsInfo; track subEventInfo) {
               <div style="margin-bottom: 24px">
                 <ion-text [color]="subEventInfo.slotsAvailable? '' : 'danger'">
                   <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
@@ -36,34 +36,32 @@
                   <p>{{ subEventInfo.id }}</p>
                 </ion-text>
               </div>
-            </ng-container>
-          </ng-container>
-        </ng-container>
+            }
+          }
+        } @else {
+          <ion-progress-bar type="indeterminate"></ion-progress-bar>
+        }
       </ion-card-content>
     </ion-card>
-
     <ion-card>
       <ion-card-header><ion-card-title>Presenças do usuário</ion-card-title></ion-card-header>
-
-      <ng-container *ngFor="let attendance of eventsUserAttended">
+      @for (attendance of eventsUserAttended; track attendance) {
         <ion-card-content>
           <ion-text color="success">
             <ion-icon name="checkmark-circle-outline" class="alert-icon" aria-hidden="true"></ion-icon>
             <span class="alert-text"> O usuário compareceu ao evento {{ attendance }}. </span>
           </ion-text>
         </ion-card-content>
-      </ng-container>
-
-      <ng-container *ngFor="let attendance of eventsUserAttendedNotPaying">
+      }
+      @for (attendance of eventsUserAttendedNotPaying; track attendance) {
         <ion-card-content>
           <ion-text color="danger">
             <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
             <span class="alert-text"> O usuário não pagou a inscrição para o evento {{ attendance }}. </span>
           </ion-text>
         </ion-card-content>
-      </ng-container>
+      }
     </ion-card>
-
     <ion-card>
       <ion-card-content>
         <div class="ion-padding">
@@ -74,8 +72,7 @@
           </ion-button>
           <p>Deleta a inscrição e libera a vaga dos eventos</p>
         </div>
-
-        <ng-container *ngIf="subscription.payment.status === 2">
+        @if (subscription.payment.status === 2) {
           <div class="ion-padding">
             <h2>Para inscrições com comprovante já validado</h2>
             <ion-button color="danger" (click)="forceSubscriptionEdit()">
@@ -84,12 +81,11 @@
             </ion-button>
             <p>Deleta todas as inscrições e libera a vaga dos eventos</p>
           </div>
-        </ng-container>
+        }
       </ion-card-content>
     </ion-card>
-  </ng-container>
-
-  <ng-template #loading>
+  } @else {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  </ng-template>
+  }
+
 </ion-content>

@@ -1,9 +1,22 @@
 import { Component, OnInit } from '@angular/core';
+import {
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardSubtitle,
+  IonCardContent,
+  IonButton,
+  IonIcon,
+} from '@ionic/angular/standalone';
+
+import { KeyValuePipe } from '@angular/common';
 
 @Component({
   selector: 'app-contact-cas',
   templateUrl: './contact-cas.component.html',
   styleUrls: ['./contact-cas.component.scss'],
+  standalone: true,
+  imports: [IonCard, IonCardHeader, IonCardTitle, IonCardSubtitle, IonCardContent, IonButton, IonIcon, KeyValuePipe],
 })
 export class ContactCasComponent implements OnInit {
   contacts: any = [

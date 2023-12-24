@@ -8,29 +8,86 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
-import { formatDate } from '@angular/common';
+import { AsyncPipe, CurrencyPipe, DatePipe, DecimalPipe, formatDate } from '@angular/common';
 import { compareAsc } from 'date-fns';
 import { take, map, Observable } from 'rxjs';
 
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { EventItem } from 'src/app/shared/services/event';
-import { ModalController, ToastController } from '@ionic/angular';
+import { ModalController, ToastController } from '@ionic/angular/standalone';
 
 import { ConfirmModalComponent } from './confirm-modal/confirm-modal.component';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
+import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { trace } from '@angular/fire/compat/performance';
 
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { EmojiService } from 'src/app/shared/services/emoji.service';
 import { DateService } from 'src/app/shared/services/date.service';
 import { Auth, user } from '@angular/fire/auth';
+
+import {
+  IonHeader,
+  IonCardContent,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonBackButton,
+  IonContent,
+  IonCardHeader,
+  IonCardTitle,
+  IonItem,
+  IonIcon,
+  IonLabel,
+  IonText,
+  IonItemDivider,
+  IonCheckbox,
+  IonProgressBar,
+  IonFab,
+  IonFabButton,
+  IonButton,
+  IonSpinner,
+  IonSelectOption,
+  IonList,
+} from '@ionic/angular/standalone';
 
 @UntilDestroy()
 @Component({
   selector: 'app-subscribe',
   templateUrl: 'subscribe.page.html',
   styleUrls: ['subscribe.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonCardContent,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonCardHeader,
+    IonCardTitle,
+    IonItem,
+    IonIcon,
+    IonLabel,
+    IonText,
+    IonItemDivider,
+    IonCheckbox,
+    IonProgressBar,
+    IonFab,
+    IonFabButton,
+    IonButton,
+    IonSpinner,
+    IonList,
+    IonSelectOption,
+    ReactiveFormsModule,
+    SweetAlert2Module,
+    CurrencyPipe,
+    AsyncPipe,
+    DecimalPipe,
+    DatePipe,
+    FormsModule,
+  ],
 })
 export class SubscribePage implements OnInit {
   @ViewChild('successSwal')
@@ -70,22 +127,24 @@ export class SubscribePage implements OnInit {
 
   paymentStatus: number;
 
-  majorEventID = this.route.snapshot.params.eventID;
+  majorEventID: string;
 
   eventSchedule: EventItem[] = [];
   isEventScheduleBeingChecked: boolean = false;
 
   constructor(
+    private route: ActivatedRoute,
     public afs: AngularFirestore,
     private router: Router,
-    private route: ActivatedRoute,
     private modalController: ModalController,
     private toastController: ToastController,
     public enrollmentTypes: EnrollmentTypesService,
     private formBuilder: FormBuilder,
     public emojiService: EmojiService,
     public dateService: DateService
-  ) {}
+  ) {
+    this.majorEventID = this.route.snapshot.params['eventID'];
+  }
 
   ngOnInit() {
     this.user$.pipe(take(1)).subscribe((user) => {
@@ -538,6 +597,7 @@ export class SubscribePage implements OnInit {
         });
       });
     });
+    return;
   }
 
   async openConfirmModal(): Promise<boolean> {
@@ -555,8 +615,8 @@ export class SubscribePage implements OnInit {
       componentProps: {
         majorEvent$: this.majorEvent$,
         eventsSelected: eventsSelected,
-        minicursosCount: this.eventsSelected.minicurso.length - this.eventGroupMinicursoCount,
-        palestrasCount: this.eventsSelected.palestra.length,
+        minicursosCount: this.eventsSelected['minicurso'].length - this.eventGroupMinicursoCount,
+        palestrasCount: this.eventsSelected['palestra'].length,
         subscriptionType: this.opSelected,
       },
       showBackdrop: true,
@@ -653,7 +713,7 @@ export class SubscribePage implements OnInit {
         // If event overlaps, enable it
 
         /* Keeps event disabled if it's a palestra.
-         Used during SECOMPP22 where palestras were mandatory*/
+                 Used during SECOMPP22 where palestras were mandatory*/
         if (this.eventSchedule[i].eventType !== 'palestra') {
           if (this.eventSchedule[i].slotsAvailable > 0) {
             if (this.eventSchedule[i].eventGroup?.groupEventIDs) {

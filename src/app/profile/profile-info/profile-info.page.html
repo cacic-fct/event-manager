@@ -13,50 +13,76 @@
 </ion-header>
 
 <ion-content>
-  <ion-card *ngIf="user$ | async as user; else loading">
-    <ng-container *ngIf="userFirestore$ | async as userFirestore; else loading">
-      <div class="ion-text-center ion-padding-horizontal ion-padding-top">
-        <ion-avatar class="margin-horizontal-auto">
-          <img [src]="user.photoURL" />
-        </ion-avatar>
-        <ion-card-title>
-          <h2 class="margin-horizontal-auto">{{ (userFirestore$ | async)?.fullName || user.displayName }}</h2>
-          <p class="margin-horizontal-auto no-margin-bottom" style="font-size: 20px">{{ user.email }}</p>
-          <p style="font-size: 20px; margin: auto 0">{{ userFirestore.phone }}</p>
-
-          <ng-container *ngIf="user.email.includes('@unesp.br')">
-            <ng-container *ngIf="(userFirestore$ | async)?.academicID as academicID; else notAStudent">
-              <ng-container *ngIf="academicID">
-                <p class="ion-text-wrap no-margin-bottom">Graduação em {{ courses.getCourse(academicID) }}</p>
-              </ng-container>
-            </ng-container>
-
-            <ng-template #notAStudent>
-              <p class="ion-text-wrap no-margin-bottom">
-                {{ courses.getAssociateStatus(userFirestore.associateStatus) }}
-              </p>
-            </ng-template>
-          </ng-container>
-
-          <p class="ion-text-wrap no-margin-bottom" *ngIf="!user.email.includes('@unesp.br')">Comunidade externa</p>
-        </ion-card-title>
-      </div>
-
-      <qr-code
-        class="qr-code ion-text-center"
-        [value]="'uid:' + (user.uid)"
-        size="320"
-        errorCorrectionLevel="H"></qr-code>
-
-      <div class="ion-text-center ion-padding" *ngIf="serviceWorkerActive">
-        <ion-icon name="information-circle-outline" class="info-icon"></ion-icon>
-        <span class="info-text">Esta página está disponível off-line</span>
-      </div>
-    </ng-container>
+  @if (user$ | async; as user) {
+  <ion-card>
+    @if (userFirestore$ | async; as userFirestore) {
+    <div class="ion-text-center ion-padding-horizontal ion-padding-top">
+      <ion-avatar class="margin-horizontal-auto">
+        <img [src]="user.photoURL" />
+      </ion-avatar>
+      <ion-card-title>
+        <h2 class="margin-horizontal-auto">{{ (userFirestore$ | async)?.fullName || user.displayName }}</h2>
+        <p class="margin-horizontal-auto no-margin-bottom" style="font-size: 20px">{{ user.email }}</p>
+        <p style="font-size: 20px; margin: auto 0">{{ userFirestore.phone }}</p>
+        @if (user.email.includes('@unesp.br')) { @if ((userFirestore$ | async)?.academicID; as academicID) { @if
+        (academicID) {
+        <p class="ion-text-wrap no-margin-bottom">Graduação em {{ courses.getCourse(academicID) }}</p>
+        } } @else {
+        <p class="ion-text-wrap no-margin-bottom">{{ courses.getAssociateStatus(userFirestore.associateStatus) }}</p>
+        } } @if (!user.email.includes('@unesp.br')) {
+        <p class="ion-text-wrap no-margin-bottom">Comunidade externa</p>
+        }
+      </ion-card-title>
+    </div>
+    <qr-code
+      class="qr-code ion-text-center"
+      [value]="'uid:' + (user.uid)"
+      size="320"
+      errorCorrectionLevel="H"></qr-code>
+    @if (serviceWorkerActive) {
+    <div class="ion-text-center ion-padding">
+      <ion-icon name="information-circle-outline" class="info-icon"></ion-icon>
+      <span class="info-text">Esta página está disponível off-line</span>
+    </div>
+    } } @else {
+    <ion-card>
+      <ng-container>
+        <div class="ion-text-center ion-padding-horizontal ion-padding-top">
+          <ion-avatar class="margin-horizontal-auto">
+            <ion-skeleton-text [animated]="true"></ion-skeleton-text>
+          </ion-avatar>
+          <ion-card-title>
+            <h2>
+              <ion-skeleton-text
+                class="margin-horizontal-auto"
+                [animated]="true"
+                style="width: 200px; height: 24px"></ion-skeleton-text>
+            </h2>
+            <p class="no-margin-bottom">
+              <ion-skeleton-text
+                class="margin-horizontal-auto"
+                [animated]="true"
+                style="width: 250px; height: 20px"></ion-skeleton-text>
+            </p>
+            <p style="margin: auto 0">
+              <ion-skeleton-text
+                [animated]="true"
+                class="margin-horizontal-auto"
+                style="width: 300px; height: 20px"></ion-skeleton-text>
+            </p>
+          </ion-card-title>
+        </div>
+        <div class="qr-code ion-text-center" style="height: 353.3px">
+          <ion-skeleton-text
+            [animated]="false"
+            class="margin-horizontal-auto"
+            style="width: 320px; height: 100%"></ion-skeleton-text>
+        </div>
+      </ng-container>
+    </ion-card>
+    }
   </ion-card>
-</ion-content>
-
-<ng-template #loading>
+  } @else {
   <ion-card>
     <ng-container>
       <div class="ion-text-center ion-padding-horizontal ion-padding-top">
@@ -70,14 +96,12 @@
               [animated]="true"
               style="width: 200px; height: 24px"></ion-skeleton-text>
           </h2>
-
           <p class="no-margin-bottom">
             <ion-skeleton-text
               class="margin-horizontal-auto"
               [animated]="true"
               style="width: 250px; height: 20px"></ion-skeleton-text>
           </p>
-
           <p style="margin: auto 0">
             <ion-skeleton-text
               [animated]="true"
@@ -86,7 +110,6 @@
           </p>
         </ion-card-title>
       </div>
-
       <div class="qr-code ion-text-center" style="height: 353.3px">
         <ion-skeleton-text
           [animated]="false"
@@ -95,4 +118,5 @@
       </div>
     </ng-container>
   </ion-card>
-</ng-template>
+  }
+</ion-content>

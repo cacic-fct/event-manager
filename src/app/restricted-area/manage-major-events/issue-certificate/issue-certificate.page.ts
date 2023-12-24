@@ -3,8 +3,16 @@ import { DateService } from 'src/app/shared/services/date.service';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AlertController, ModalController } from '@ionic/angular';
-import { AbstractControl, FormArray, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
+import { AlertController, IonDatetimeButton, IonIcon, ModalController } from '@ionic/angular/standalone';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import {
   participationTypes,
   eventTypes,
@@ -12,15 +20,64 @@ import {
   certificateTemplates,
 } from '../../../shared/services/certificates.service';
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
+import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { Observable, take } from 'rxjs';
 import { AuthService } from 'src/app/shared/services/auth.service';
 import { Functions, httpsCallable, HttpsCallableResult } from '@angular/fire/functions';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonContent,
+  IonList,
+  IonItem,
+  IonLabel,
+  IonSelect,
+  IonSelectOption,
+  IonToggle,
+  IonNote,
+  IonInput,
+  IonButton,
+  IonTextarea,
+  IonDatetime,
+  IonModal,
+} from '@ionic/angular/standalone';
+import { AsyncPipe, KeyValuePipe } from '@angular/common';
 
 @Component({
   selector: 'app-issue-certificate',
   templateUrl: './issue-certificate.page.html',
   styleUrls: ['./issue-certificate.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonContent,
+    IonList,
+    IonItem,
+    IonLabel,
+    IonSelect,
+    IonSelectOption,
+    IonToggle,
+    IonNote,
+    IonInput,
+    IonButton,
+    IonTextarea,
+    IonDatetime,
+    IonModal,
+    IonIcon,
+    IonDatetimeButton,
+    SweetAlert2Module,
+    KeyValuePipe,
+    ReactiveFormsModule,
+    AsyncPipe,
+  ],
 })
 export class IssueCertificatePage implements OnInit {
   private functions: Functions = inject(Functions);
@@ -292,6 +349,7 @@ export class IssueCertificatePage implements OnInit {
         });
       });
     });
+    return;
   }
 
   async openConfirmModal(certificateData: { [key: string]: any }): Promise<boolean> {

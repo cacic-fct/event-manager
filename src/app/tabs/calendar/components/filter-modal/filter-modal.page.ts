@@ -1,13 +1,42 @@
 // @ts-strict-ignore
-import { KeyValue } from '@angular/common';
+import { KeyValue, KeyValuePipe } from '@angular/common';
 import { AfterViewInit, Component, Input, OnInit } from '@angular/core';
-import { ModalController } from '@ionic/angular';
+import { ModalController } from '@ionic/angular/standalone';
 import { CoursesService } from 'src/app/shared/services/courses.service';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonButton,
+  IonTitle,
+  IonContent,
+  IonList,
+  IonListHeader,
+  IonItem,
+  IonLabel,
+  IonCheckbox,
+} from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-filter-modal',
   templateUrl: './filter-modal.page.html',
   styleUrls: ['./filter-modal.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonButton,
+    IonTitle,
+    IonContent,
+    IonList,
+    IonListHeader,
+    IonItem,
+    IonLabel,
+    IonCheckbox,
+    KeyValuePipe,
+  ],
 })
 export class FilterModalPage implements OnInit, AfterViewInit {
   courses = CoursesService.courses;

@@ -5,39 +5,42 @@
 </ion-header>
 
 <ion-content>
-  <ng-container *ngIf="majorEvents$ | async as majorEventsList; else loading">
-    <h1 *ngIf="majorEventsList.length === 0" class="ion-text-center">Nenhum evento disponível</h1>
-
-    <div *ngIf="majorEventsList.length > 0" class="event-container">
-      <ng-container *ngFor="let event of majorEventsList">
-        <ion-card>
-          <app-major-event-display-header [majorEventItem]="event"></app-major-event-display-header>
-          <app-major-event-display-description [majorEventItem]="event"></app-major-event-display-description>
-          <app-major-event-display-date [majorEventItem]="event"></app-major-event-display-date>
-          <app-major-event-display-price [majorEventItem]="event"></app-major-event-display-price>
-
-          <div class="ion-padding">
-            <ng-container
-              *ngIf="(event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(dateService.getDateFromTimestamp(event.subscriptionStartDate), dateService.getDateFromTimestamp(event.subscriptionEndDate))">
-              <ng-container *ngIf="event.isSubscribed | async as isSubscribed; else notSubscribed">
-                <ion-button *ngIf="isSubscribed" [routerLink]="['/inscricoes']">
-                  <ion-icon slot="start" name="checkmark"></ion-icon> Inscrito
+  @if (majorEvents$ | async; as majorEventsList) {
+    @if (majorEventsList.length === 0) {
+      <h1 class="ion-text-center">Nenhum evento disponível</h1>
+    }
+    @if (majorEventsList.length > 0) {
+      <div class="event-container">
+        @for (event of majorEventsList; track event) {
+          <ion-card>
+            <app-major-event-display-header [majorEventItem]="event"></app-major-event-display-header>
+            <app-major-event-display-description [majorEventItem]="event"></app-major-event-display-description>
+            <app-major-event-display-date [majorEventItem]="event"></app-major-event-display-date>
+            <app-major-event-display-price [majorEventItem]="event"></app-major-event-display-price>
+            <div class="ion-padding">
+              @if ((event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(dateService.getDateFromTimestamp(event.subscriptionStartDate), dateService.getDateFromTimestamp(event.subscriptionEndDate))) {
+                @if (event.isSubscribed | async; as isSubscribed) {
+                  @if (isSubscribed) {
+                    <ion-button [routerLink]="['/inscricoes']">
+                      <ion-icon slot="start" name="checkmark"></ion-icon> Inscrito
+                    </ion-button>
+                  }
+                } @else {
+                  <ion-button [routerLink]="['inscrever', event.id]"> Inscreva-se </ion-button>
+                }
+              }
+              @if (event.button?.url) {
+                <ion-button [href]="event.button.url" fill="clear" target="_blank">
+                  {{ event.button.text || 'Saiba mais' }}
                 </ion-button>
-              </ng-container>
-              <ng-template #notSubscribed>
-                <ion-button [routerLink]="['inscrever', event.id]"> Inscreva-se </ion-button>
-              </ng-template>
-            </ng-container>
-            <ion-button *ngIf="event.button?.url" [href]="event.button.url" fill="clear" target="_blank">
-              {{ event.button.text || 'Saiba mais' }}
-            </ion-button>
-          </div>
-        </ion-card>
-      </ng-container>
-    </div>
-  </ng-container>
-
-  <ng-template #loading>
+              }
+            </div>
+          </ion-card>
+        }
+      </div>
+    }
+  } @else {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  </ng-template>
+  }
+
 </ion-content>

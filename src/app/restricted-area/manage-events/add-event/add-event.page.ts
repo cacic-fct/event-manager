@@ -1,7 +1,13 @@
 // @ts-strict-ignore
-import { IonSelect, ModalController } from '@ionic/angular';
 import { Component, OnInit, ViewChild, inject } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventItem, MajorEventsService } from 'src/app/shared/services/major-event.service';
 import { format, getDayOfYear, isEqual, parseISO, setDayOfYear, subMilliseconds } from 'date-fns';
@@ -11,16 +17,65 @@ import { take, Observable, map } from 'rxjs';
 import { Timestamp, arrayUnion } from '@firebase/firestore';
 import { EventItem } from 'src/app/shared/services/event';
 import { Timestamp as TimestampType } from '@firebase/firestore-types';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
+import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { ConfirmModalPage } from './confirm-modal/confirm-modal.page';
 import { getStringChanges, RemoteConfig } from '@angular/fire/remote-config';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { Auth, user } from '@angular/fire/auth';
+import {
+  IonSelect,
+  ModalController,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonBackButton,
+  IonContent,
+  IonCardHeader,
+  IonItem,
+  IonLabel,
+  IonSelectOption,
+  IonToggle,
+  IonCardTitle,
+  IonInput,
+  IonDatetimeButton,
+  IonTextarea,
+  IonDatetime,
+  IonModal,
+  IonButton,
+} from '@ionic/angular/standalone';
+import { AsyncPipe, KeyValuePipe } from '@angular/common';
 
 @Component({
   selector: 'app-add-event',
   templateUrl: './add-event.page.html',
   styleUrls: ['./add-event.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonCardHeader,
+    IonItem,
+    IonLabel,
+    IonSelect,
+    IonSelectOption,
+    IonToggle,
+    IonCardTitle,
+    IonInput,
+    IonDatetimeButton,
+    IonTextarea,
+    IonDatetime,
+    IonModal,
+    IonButton,
+    SweetAlert2Module,
+    AsyncPipe,
+    KeyValuePipe,
+    ReactiveFormsModule,
+  ],
 })
 export class AddEventPage implements OnInit {
   @ViewChild('successSwal') private successSwal: SwalComponent;
@@ -113,6 +168,7 @@ export class AddEventPage implements OnInit {
           this.parsedPlaces = parsed;
           return parsed;
         }
+        return {};
       })
     );
   }
@@ -227,6 +283,7 @@ export class AddEventPage implements OnInit {
 
       return;
     });
+    return;
   }
 
   addEventSuccess(): void {
@@ -303,7 +360,10 @@ export class AddEventPage implements OnInit {
   }
 
   placeChange(ev: any) {
-    if (this.parsedPlaces[ev.detail.value] === undefined) return 1;
+    if (this.parsedPlaces[ev.detail.value] === undefined) {
+      return 1;
+    }
+
     this.dataForm
       .get('location')
       .get('description')
@@ -313,6 +373,7 @@ export class AddEventPage implements OnInit {
       );
     this.dataForm.get('location').get('lat').setValue(this.parsedPlaces[ev.detail.value].lat);
     this.dataForm.get('location').get('lon').setValue(this.parsedPlaces[ev.detail.value].lon);
+    return 0;
   }
 
   placeInputKeyDown() {

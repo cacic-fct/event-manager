@@ -14,10 +14,16 @@ import { trace } from '@angular/fire/compat/performance';
 import { EmojiService } from '../../../../shared/services/emoji.service';
 import { DateService } from 'src/app/shared/services/date.service';
 
+import { IonList, IonProgressBar } from '@ionic/angular/standalone';
+import { ItemListComponent } from 'src/app/tabs/calendar/components/item-list/item-list.component';
+import { AsyncPipe } from '@angular/common';
+
 @Component({
   selector: 'app-item-list',
   templateUrl: './item-list.component.html',
   styleUrls: ['./item-list.component.scss'],
+  standalone: true,
+  imports: [IonList, IonProgressBar, ItemListComponent, AsyncPipe],
 })
 export class ItemListViewComponent implements OnInit, OnChanges {
   courses = CoursesService.courses;

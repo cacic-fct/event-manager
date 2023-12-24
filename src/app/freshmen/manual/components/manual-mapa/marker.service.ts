@@ -110,6 +110,8 @@ export class MarkerService {
               return this.farmaciasIcon;
             case 'autoridades':
               return this.autoridadesIcon;
+            default:
+              return null;
           }
         },
       });

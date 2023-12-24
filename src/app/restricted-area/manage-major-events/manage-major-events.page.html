@@ -17,65 +17,71 @@
     <ion-datetime-button datetime="dateSelector" class="margin-horizontal-auto"></ion-datetime-button>
   </ion-item>
 
-  <ng-container *ngIf="majorEvents$ | async; let majorEventsList; else loading">
-    <ion-list>
-      <h1 *ngIf="majorEventsList.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
-
-      <div class="event-container">
-        <ion-item *ngFor="let item of majorEventsList">
-          <ion-grid>
-            <ion-row>
-              <ion-col>
-                <ion-label>
-                  <h1 class="ion-text-wrap">{{item.name}}</h1>
-                  <h4 class="date-item" *ngIf="item.subscriptionStartDate && item.subscriptionEndDate">
-                    Inscrições: {{dateService.getDateFromTimestamp(item.subscriptionStartDate) | date: 'dd/MM'}} -
-                    {{dateService.getDateFromTimestamp(item.subscriptionEndDate) | date: 'dd/MM'}}
-                  </h4>
-                  <!-- prettier-ignore -->
-                  <h4 class="date-item" *ngIf="item.eventStartDate && item.eventEndDate">
-                    Data do evento: {{ dateService.getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM' }} - 
-                    {{ dateService.getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM' }}
-                  </h4>
-                  <p class="ion-text-wrap" *ngIf="item.course">{{courses.getCourse(item.course)}}</p>
-                </ion-label>
-              </ion-col>
-              <ion-col>
-                <!-- <ion-row>
+  @if (majorEvents$ | async; as majorEventsList) {
+  <ion-list>
+    @if (majorEventsList.length === 0) {
+    <h1 class="ion-text-center">Nenhum evento encontrado</h1>
+    }
+    <div class="event-container">
+      @for (item of majorEventsList; track item) {
+      <ion-item>
+        <ion-grid>
+          <ion-row>
+            <ion-col>
+              <ion-label>
+                <h1 class="ion-text-wrap">{{item.name}}</h1>
+                @if (item.subscriptionStartDate && item.subscriptionEndDate) {
+                <h4 class="date-item">
+                  Inscrições: {{dateService.getDateFromTimestamp(item.subscriptionStartDate) | date: 'dd/MM'}} -
+                  {{dateService.getDateFromTimestamp(item.subscriptionEndDate) | date: 'dd/MM'}}
+                </h4>
+                }
+                <!-- prettier-ignore -->
+                @if (item.eventStartDate && item.eventEndDate) {
+                <h4 class="date-item">
+                  Data do evento: {{ dateService.getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM' }} - {{
+                  dateService.getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM' }}
+                </h4>
+                } @if (item.course) {
+                <p class="ion-text-wrap">{{courses.getCourse(item.course)}}</p>
+                }
+              </ion-label>
+            </ion-col>
+            <ion-col>
+              <!-- <ion-row>
                   <ion-button fill="clear">
                     <ion-icon name="pencil-outline" slot="start"></ion-icon>
                     <p slot="end">Editar evento</p>
                   </ion-button>
                 </ion-row> -->
-                <ion-row>
-                  <ion-button fill="clear" [routerLink]="['listar-inscritos', item.id]">
-                    <ion-icon name="people-outline" slot="start"></ion-icon>
-                    <p slot="end">Gerenciar inscritos</p>
-                  </ion-button>
-                </ion-row>
-                <ion-row>
-                  <ion-button fill="clear" [routerLink]="['validar-comprovante', item.id]">
-                    <ion-icon name="wallet-outline" slot="start"></ion-icon>
-                    <p slot="end" class="ion-text-wrap">Validar comprovantes</p>
-                  </ion-button>
-                </ion-row>
-                <ion-row>
-                  <!-- TODO: Certificate issuing disabled until #133 is merged -->
-                  <ion-button fill="clear" [routerLink]="['emitir-certificados', item.id]">
-                    <ion-icon name="document-text-outline" slot="start"></ion-icon>
-                    <p slot="end" class="ion-text-wrap">Emitir certificados</p>
-                  </ion-button>
-                </ion-row>
-              </ion-col>
-            </ion-row>
-          </ion-grid>
-        </ion-item>
-      </div>
-    </ion-list>
-  </ng-container>
-  <ng-template #loading>
-    <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  </ng-template>
+              <ion-row>
+                <ion-button fill="clear" [routerLink]="['listar-inscritos', item.id]">
+                  <ion-icon name="people-outline" slot="start"></ion-icon>
+                  <p slot="end">Gerenciar inscritos</p>
+                </ion-button>
+              </ion-row>
+              <ion-row>
+                <ion-button fill="clear" [routerLink]="['validar-comprovante', item.id]">
+                  <ion-icon name="wallet-outline" slot="start"></ion-icon>
+                  <p slot="end" class="ion-text-wrap">Validar comprovantes</p>
+                </ion-button>
+              </ion-row>
+              <ion-row>
+                <ion-button fill="clear" [routerLink]="['emitir-certificados', item.id]">
+                  <ion-icon name="document-text-outline" slot="start"></ion-icon>
+                  <p slot="end" class="ion-text-wrap">Emitir certificados</p>
+                </ion-button>
+              </ion-row>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-item>
+      }
+    </div>
+  </ion-list>
+  } @else {
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
 </ion-content>
 
 <ion-modal [keepContentsMounted]="true">

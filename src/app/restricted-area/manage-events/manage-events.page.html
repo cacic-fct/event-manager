@@ -1,34 +1,38 @@
 <ion-header>
-  <ion-toolbar *ngIf="!groupUnderSelection">
-    <ion-buttons slot="start">
-      <ion-back-button defaultHref="/area-restrita"></ion-back-button>
-    </ion-buttons>
-    <ion-title>Gerenciar eventos</ion-title>
-    <ion-buttons slot="primary">
-      <ion-button (click)="groupUnderSelection = true">
-        <ion-icon name="folder-open-outline" slot="icon-only"></ion-icon>
-      </ion-button>
-      <ion-button [routerLink]="'adicionar'">
-        <ion-icon slot="icon-only" name="add"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-  </ion-toolbar>
+  @if (!groupUnderSelection) {
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        <ion-back-button defaultHref="/area-restrita"></ion-back-button>
+      </ion-buttons>
+      <ion-title>Gerenciar eventos</ion-title>
+      <ion-buttons slot="primary">
+        <ion-button (click)="groupUnderSelection = true">
+          <ion-icon name="folder-open-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+        <ion-button [routerLink]="'adicionar'">
+          <ion-icon slot="icon-only" name="add"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  }
 
-  <ion-toolbar *ngIf="groupUnderSelection">
-    <ion-buttons slot="start">
-      <ion-button (click)="cancelGroupSelection()">
-        <ion-icon slot="icon-only" name="close"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-    <ion-title>{{groupEventToolbarText(dataForm.get('selectedCheckboxes').value.length)}}</ion-title>
-    <ion-buttons slot="primary">
-      <ion-button
-        [disabled]="dataForm.get('selectedCheckboxes').value.length < 2"
-        (click)="openCreateEventGroupModal()">
-        <ion-icon name="checkmark" slot="icon-only"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-  </ion-toolbar>
+  @if (groupUnderSelection) {
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        <ion-button (click)="cancelGroupSelection()">
+          <ion-icon slot="icon-only" name="close"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+      <ion-title>{{groupEventToolbarText(dataForm.get('selectedCheckboxes').value.length)}}</ion-title>
+      <ion-buttons slot="primary">
+        <ion-button
+          [disabled]="dataForm.get('selectedCheckboxes').value.length < 2"
+          (click)="openCreateEventGroupModal()">
+          <ion-icon name="checkmark" slot="icon-only"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  }
 </ion-header>
 
 <ion-content>
@@ -36,133 +40,158 @@
     <ion-datetime-button datetime="dateSelector" class="margin-horizontal-auto"></ion-datetime-button>
   </ion-item>
 
-  <ng-container *ngIf="events$ | async as eventList; else loading">
+  @if (events$ | async; as eventList) {
     <form [formGroup]="dataForm">
       <ion-list>
-        <h1 *ngIf="eventList.length === 0" class="ion-text-center">Nenhum evento encontrado</h1>
-
+        @if (eventList.length === 0) {
+          <h1 class="ion-text-center">Nenhum evento encontrado</h1>
+        }
         <div class="event-container">
-          <ion-item *ngFor="let item of eventList">
-            <img
-              [src]="emojiService.getEmoji(item.icon)"
-              class="twemoji"
-              slot="start"
-              aria-hidden="true"
-              loading="lazy" />
-
-            <ion-grid>
-              <ion-row>
-                <ion-col>
-                  <ion-label>
-                    <h1 class="ion-text-wrap">{{item.name}}</h1>
-                    <!-- prettier-ignore -->
-                    <h4 class="date-item">
-                      Data do evento: {{ dateService.getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM HH:mm' }}
-                      {{ item.eventEndDate ? ' - ' + (dateService.getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM HH:mm') : ''}}
-                    </h4>
-                    <p class="ion-text-wrap" *ngIf="item.course">{{courses.getCourse(item.course)}}</p>
-                    <p class="ion-text-wrap" *ngIf="item.inMajorEventName | async as majorEventName">
-                      Faz parte do grande evento "{{ majorEventName }}"
-                    </p>
-                    <p class="ion-text-wrap" *ngIf="item.eventGroup as eventGroup">
-                      Faz parte do grupo "{{ eventGroup.groupDisplayName }}"
-                    </p>
-                    <p *ngIf="item.attendanceCollectionStart && !item.attendanceCollectionEnd" class="ion-text-wrap">
-                      <ion-text color="danger"> Presença on-line aberta com código {{ item.attendanceCode }}</ion-text>
-                    </p>
-                  </ion-label>
-                </ion-col>
-                <ion-col *ngIf="!groupUnderSelection">
-                  <ion-row>
-                    <ion-button [routerLink]="['./listar-inscritos', item.id]" fill="clear">
-                      <ion-icon name="list-outline" slot="start"></ion-icon>
-                      <p slot="end">Listar inscritos</p>
-                    </ion-button>
-                  </ion-row>
-                  <ion-row>
-                    <ion-button [routerLink]="['./coletar-presencas', item.id]" fill="clear">
-                      <ion-icon name="qr-code-outline" slot="start" aria-hidden="true"></ion-icon>
-                      <p slot="end">Coleta de presenças</p>
-                    </ion-button>
-                  </ion-row>
-                  <ion-row>
-                    <ion-button [routerLink]="['./listar-presencas', item.id]" fill="clear">
-                      <ion-icon name="list-outline" slot="start" aria-hidden="true"></ion-icon>
-                      <p slot="end">Listagem de presenças</p>
-                    </ion-button>
-                  </ion-row>
-                </ion-col>
-                <ion-col *ngIf="!groupUnderSelection">
-                  <ion-button
-                    fill="clear"
-                    color="tertiary"
-                    *ngIf="item.collectAttendance && (!item.attendanceCollectionStart || item.attendanceCollectionEnd)"
-                    (click)="confirmOpenOnlineAttendance(item)">
-                    <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
-                    <p slot="end">Abrir presença on-line</p>
-                  </ion-button>
-                  <ion-button
-                    fill="clear"
-                    color="tertiary"
-                    *ngIf="item.attendanceCollectionStart && !item.attendanceCollectionEnd"
-                    (click)="copyCode(item.attendanceCode)">
-                    <ion-icon name="copy" slot="start" aria-hidden="true"></ion-icon>
-                    <p slot="end">Copiar código de presença</p>
-                  </ion-button>
-                  <ion-button
-                    fill="clear"
-                    color="tertiary"
-                    *ngIf="item.attendanceCollectionStart && !item.attendanceCollectionEnd"
-                    (click)="confirmCloseOnlineAttendance(item)">
-                    <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
-                    <p slot="end">Encerrar presença on-line</p>
-                  </ion-button>
-                </ion-col>
-                <ion-col *ngIf="!groupUnderSelection">
-                  <ion-button
-                    fill="clear"
-                    color="danger"
-                    *ngIf="item.eventGroup"
-                    (click)="confirmEventGroupDelete(item)">
-                    <ion-icon name="folder" slot="start" aria-hidden="true"></ion-icon>
-                    <p slot="end">Excluir grupo</p>
-                  </ion-button>
-                </ion-col>
-              </ion-row>
-            </ion-grid>
-            <ion-checkbox
-              slot="end"
-              *ngIf="groupUnderSelection && !item.eventGroup"
-              (ionChange)="onCheckBoxChange($event, item)"
-              [checked]="dataForm.get('selectedCheckboxes').value.includes(item.id)"></ion-checkbox>
-          </ion-item>
+          @for (item of eventList; track item) {
+            <ion-item>
+              <img
+                [src]="emojiService.getEmoji(item.icon)"
+                class="twemoji"
+                slot="start"
+                aria-hidden="true"
+                loading="lazy" />
+              <ion-grid>
+                <ion-row>
+                  <ion-col>
+                    <ion-label>
+                      <h1 class="ion-text-wrap">{{item.name}}</h1>
+                      <!-- prettier-ignore -->
+                      <h4 class="date-item">
+                        Data do evento: {{ dateService.getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM HH:mm' }}
+                        {{ item.eventEndDate ? ' - ' + (dateService.getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM HH:mm') : ''}}
+                      </h4>
+                      @if (item.course) {
+                        <p class="ion-text-wrap">{{courses.getCourse(item.course)}}</p>
+                      }
+                      @if (item.inMajorEventName | async; as majorEventName) {
+                        <p class="ion-text-wrap">
+                          Faz parte do grande evento "{{ majorEventName }}"
+                        </p>
+                      }
+                      @if (item.eventGroup; as eventGroup) {
+                        <p class="ion-text-wrap">
+                          Faz parte do grupo "{{ eventGroup.groupDisplayName }}"
+                        </p>
+                      }
+                      @if (item.attendanceCollectionStart && !item.attendanceCollectionEnd) {
+                        <p class="ion-text-wrap">
+                          <ion-text color="danger"> Presença on-line aberta com código {{ item.attendanceCode }}</ion-text>
+                        </p>
+                      }
+                    </ion-label>
+                  </ion-col>
+                  @if (!groupUnderSelection) {
+                    <ion-col>
+                      <ion-row>
+                        <ion-button [routerLink]="['./listar-inscritos', item.id]" fill="clear">
+                          <ion-icon name="list-outline" slot="start"></ion-icon>
+                          <p slot="end">Listar inscritos</p>
+                        </ion-button>
+                      </ion-row>
+                      <ion-row>
+                        <ion-button [routerLink]="['./coletar-presencas', item.id]" fill="clear">
+                          <ion-icon name="qr-code-outline" slot="start" aria-hidden="true"></ion-icon>
+                          <p slot="end">Coleta de presenças</p>
+                        </ion-button>
+                      </ion-row>
+                      <ion-row>
+                        <ion-button [routerLink]="['./listar-presencas', item.id]" fill="clear">
+                          <ion-icon name="list-outline" slot="start" aria-hidden="true"></ion-icon>
+                          <p slot="end">Listagem de presenças</p>
+                        </ion-button>
+                      </ion-row>
+                    </ion-col>
+                  }
+                  @if (!groupUnderSelection) {
+                    <ion-col>
+                      @if (item.collectAttendance && (!item.attendanceCollectionStart || item.attendanceCollectionEnd)) {
+                        <ion-button
+                          fill="clear"
+                          color="tertiary"
+                          (click)="confirmOpenOnlineAttendance(item)">
+                          <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
+                          <p slot="end">Abrir presença on-line</p>
+                        </ion-button>
+                      }
+                      @if (item.attendanceCollectionStart && !item.attendanceCollectionEnd) {
+                        <ion-button
+                          fill="clear"
+                          color="tertiary"
+                          (click)="copyCode(item.attendanceCode)">
+                          <ion-icon name="copy" slot="start" aria-hidden="true"></ion-icon>
+                          <p slot="end">Copiar código de presença</p>
+                        </ion-button>
+                      }
+                      @if (item.attendanceCollectionStart && !item.attendanceCollectionEnd) {
+                        <ion-button
+                          fill="clear"
+                          color="tertiary"
+                          (click)="confirmCloseOnlineAttendance(item)">
+                          <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
+                          <p slot="end">Encerrar presença on-line</p>
+                        </ion-button>
+                      }
+                    </ion-col>
+                  }
+                  @if (!groupUnderSelection) {
+                    <ion-col>
+                      @if (item.eventGroup) {
+                        <ion-button
+                          fill="clear"
+                          color="danger"
+                          (click)="confirmEventGroupDelete(item)">
+                          <ion-icon name="folder" slot="start" aria-hidden="true"></ion-icon>
+                          <p slot="end">Excluir grupo</p>
+                        </ion-button>
+                      }
+                    </ion-col>
+                  }
+                </ion-row>
+              </ion-grid>
+              @if (groupUnderSelection && !item.eventGroup) {
+                <ion-checkbox
+                  slot="end"
+                  (ionChange)="onCheckBoxChange($event, item)"
+                [checked]="dataForm.get('selectedCheckboxes').value.includes(item.id)"></ion-checkbox>
+              }
+            </ion-item>
+          }
         </div>
       </ion-list>
     </form>
-  </ng-container>
+  } @else {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
   <ng-template #loading>
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   </ng-template>
 </ion-content>
 
-<ion-footer *ngIf="groupUnderSelection">
-  <div style="overflow-x: scroll; display: flex">
-    <ng-container *ngFor="let eventInfo of dataForm.get('selectedCheckboxes').value;">
-      <img
-        [src]="emojiService.getEmoji(eventInfo.icon)"
-        class="twemoji"
-        slot="start"
-        aria-hidden="true"
-        loading="lazy"
-        id="{{eventInfo.id}}-triger'" />
-      <ion-popover trigger="{{eventInfo.id}}-triger'" triggerAction="click">
-        <ng-template>
-          <ion-content class="ion-padding">{{eventInfo.name}}</ion-content>
-        </ng-template>
-      </ion-popover>
-    </ng-container>
-  </div>
-</ion-footer>
+@if (groupUnderSelection) {
+  <ion-footer>
+    <div style="overflow-x: scroll; display: flex">
+      @for (eventInfo of dataForm.get('selectedCheckboxes').value; track eventInfo) {
+        <img
+          [src]="emojiService.getEmoji(eventInfo.icon)"
+          class="twemoji"
+          slot="start"
+          aria-hidden="true"
+          loading="lazy"
+          id="{{eventInfo.id}}-triger'" />
+        <ion-popover trigger="{{eventInfo.id}}-triger'" triggerAction="click">
+          <ng-template>
+            <ion-content class="ion-padding">{{eventInfo.name}}</ion-content>
+          </ng-template>
+        </ion-popover>
+      }
+    </div>
+  </ion-footer>
+}
 
 <ion-modal [keepContentsMounted]="true">
   <ng-template>

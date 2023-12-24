@@ -1,17 +1,36 @@
-import { NavController, ToastController } from '@ionic/angular';
+import { NavController, ToastController } from '@ionic/angular/standalone';
 import { Component, inject, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { map, Observable, take, combineLatest } from 'rxjs';
 import { EventItem } from '../../shared/services/event';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
+import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { MajorEventItem } from '../../shared/services/major-event.service';
 
 import { serverTimestamp, arrayRemove } from '@angular/fire/firestore';
 import { Auth, user } from '@angular/fire/auth';
+import { AsyncPipe } from '@angular/common';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonContent,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent,
+  IonItem,
+  IonLabel,
+  IonInput,
+  IonProgressBar,
+  IonText,
+} from '@ionic/angular/standalone';
 
 interface EventInfo {
   name: string;
@@ -22,6 +41,27 @@ interface EventInfo {
   selector: 'app-confirm-attendance',
   templateUrl: './confirm-attendance.html',
   styleUrls: ['./confirm-attendance.scss'],
+  standalone: true,
+  imports: [
+    AsyncPipe,
+    ReactiveFormsModule,
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonContent,
+    IonCard,
+    IonCardHeader,
+    IonCardTitle,
+    IonCardContent,
+    IonItem,
+    IonLabel,
+    IonInput,
+    IonProgressBar,
+    IonText,
+    SweetAlert2Module,
+  ],
 })
 export class ConfirmAttendancePage {
   eventID: string;
@@ -48,7 +88,7 @@ export class ConfirmAttendancePage {
     private router: Router,
     private toastController: ToastController
   ) {
-    this.eventID = this.route.snapshot.params.eventID;
+    this.eventID = this.route.snapshot.params['eventID'];
     this.dataForm = this.formBuilder.group({
       code: ['', [Validators.required, this.codeValidator]],
     });
@@ -210,7 +250,7 @@ export class ConfirmAttendancePage {
             .valueChanges()
             .pipe(take(1), trace('firestore'))
             .subscribe((subscriptionItem) => {
-              if (subscriptionItem?.payment.status == 2) {
+              if (subscriptionItem['payment'].status == 2) {
                 // Escrevendo na coleção 'attendance'
                 this.eventRef.collection('attendance').doc(userID).set({
                   // @ts-ignore
@@ -256,5 +296,6 @@ export class ConfirmAttendancePage {
         console.error(error);
       }
     });
+    return;
   }
 }

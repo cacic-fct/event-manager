@@ -12,11 +12,13 @@
     </span>
   </ion-item>
 
-  <ion-item lines="none" *ngIf="majorEventItem.subscriptionStartDate && majorEventItem.subscriptionEndDate">
-    Inscrição
-    <!-- prettier-ignore -->
-    <span slot="end">
-      {{ dateService.getDateFromTimestamp(majorEventItem.subscriptionStartDate) | date: 'dd/MM' }} {{ majorEventItem.subscriptionEndDate && '- ' + (dateService.getDateFromTimestamp(majorEventItem.subscriptionEndDate) | date: 'dd/MM') }}
-    </span>
-  </ion-item>
+  @if (majorEventItem.subscriptionStartDate && majorEventItem.subscriptionEndDate) {
+    <ion-item lines="none">
+      Inscrição
+      <!-- prettier-ignore -->
+      <span slot="end">
+        {{ dateService.getDateFromTimestamp(majorEventItem.subscriptionStartDate) | date: 'dd/MM' }} {{ majorEventItem.subscriptionEndDate && '- ' + (dateService.getDateFromTimestamp(majorEventItem.subscriptionEndDate) | date: 'dd/MM') }}
+      </span>
+    </ion-item>
+  }
 </div>

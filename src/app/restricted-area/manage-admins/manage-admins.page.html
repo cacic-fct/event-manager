@@ -35,13 +35,17 @@
 
     <h1 class="ion-padding-horizontal">Lista de admins</h1>
 
-    <ion-list *ngIf="adminList$ | async as adminList">
-      <ion-item *ngFor="let admin of adminList">
-        <ion-label>{{ admin }}</ion-label>
-        <ion-button slot="end" (click)="removeConfirmationAlert(admin)" color="danger">
-          <ion-icon name="trash-outline"></ion-icon>
-        </ion-button>
-      </ion-item>
-    </ion-list>
+    @if (adminList$ | async; as adminList) {
+      <ion-list>
+        @for (admin of adminList; track admin) {
+          <ion-item>
+            <ion-label>{{ admin }}</ion-label>
+            <ion-button slot="end" (click)="removeConfirmationAlert(admin)" color="danger">
+              <ion-icon name="trash-outline"></ion-icon>
+            </ion-button>
+          </ion-item>
+        }
+      </ion-list>
+    }
   </ion-grid>
 </ion-content>

@@ -19,7 +19,7 @@ import {
 } from '@angular/fire/auth';
 import { Analytics, logEvent, setUserId } from '@angular/fire/analytics';
 
-import { ModalController, ToastController } from '@ionic/angular';
+import { ModalController, ToastController } from '@ionic/angular/standalone';
 import { GlobalConstantsService } from './global-constants.service';
 import { take, Observable, map, switchMap } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
@@ -68,7 +68,7 @@ export class AuthService {
                 const claims = idTokenResult.claims;
 
                 // If role is not set, set it to professor (3000)
-                if (!claims.role || claims.role < 3000) {
+                if (!claims['role'] || (claims['role'] as number) < 3000) {
                   const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
                   const userData: User = {
                     associateStatus: 'professor',
@@ -282,6 +282,7 @@ export class AuthService {
               })
             );
         }
+        return null;
       }),
       switchMap((value) => value)
     );
@@ -319,33 +320,33 @@ export class AuthService {
 
   /* UNUSED */
   /*
-   async verifyPhoneModal(phone: string): Promise<boolean> {
-    const modal = await this.modalController.create({
-      component: VerifyPhonePage,
-      componentProps: {
-        phone: phone,
-      },
-      backdropDismiss: false,
-      keyboardClose: false,
-    });
-
-    await modal.present();
-
-    return modal.onDidDismiss().then((response) => {
-      const data = response.data;
-      if (data) {
-        return new Promise<boolean>((resolve) => {
-          resolve(true);
-        });
-      }
-      return new Promise<boolean>((resolve) => {
-        resolve(false);
+     async verifyPhoneModal(phone: string): Promise<boolean> {
+      const modal = await this.modalController.create({
+        component: VerifyPhonePage,
+        componentProps: {
+          phone: phone,
+        },
+        backdropDismiss: false,
+        keyboardClose: false,
       });
-    });
-  }
-
-  async phoneUnlink() {
-    unlink(this.userData, PhoneAuthProvider.PROVIDER_ID);
-  }
-*/
+  
+      await modal.present();
+  
+      return modal.onDidDismiss().then((response) => {
+        const data = response.data;
+        if (data) {
+          return new Promise<boolean>((resolve) => {
+            resolve(true);
+          });
+        }
+        return new Promise<boolean>((resolve) => {
+          resolve(false);
+        });
+      });
+    }
+  
+    async phoneUnlink() {
+      unlink(this.userData, PhoneAuthProvider.PROVIDER_ID);
+    }
+  */
 }

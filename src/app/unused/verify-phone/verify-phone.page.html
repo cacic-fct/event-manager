@@ -30,8 +30,10 @@
             minlength="6"></ion-input>
         </ion-item>
 
-        <ion-text color="danger" *ngIf="invalidCode"><p>Código inválido</p></ion-text>
-        <ion-text color="danger" *ngIf="phoneAlreadyRegistered"
+        @if (invalidCode) {
+        <ion-text color="danger"><p>Código inválido</p></ion-text>
+        } @if (phoneAlreadyRegistered) {
+        <ion-text color="danger"
           ><p>Este número de celular pertence a outro usuário</p>
           <p>
             <b
@@ -41,6 +43,7 @@
             </b>
           </p></ion-text
         >
+        }
       </ion-col>
     </ion-row>
     <ion-row>
@@ -55,10 +58,8 @@
           (click)="linkOrUpdatePhone()"
           [disabled]="cooldown || phoneAlreadyRegistered"
           id="resend-sms">
-          Reenviar SMS
-          <ng-container *ngIf="cooldown && countdownSeconds">
-            ({{countdownMinutes | number: '2.0-0'}}:{{countdownSeconds | number: '2.0-0' }})
-          </ng-container>
+          Reenviar SMS @if (cooldown && countdownSeconds) { ({{countdownMinutes | number: '2.0-0'}}:{{countdownSeconds |
+          number: '2.0-0' }}) }
         </ion-button>
       </ion-col>
     </ion-row>

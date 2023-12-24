@@ -3,10 +3,16 @@ import { Component } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, catchError, Observable, retry, throwError } from 'rxjs';
 
+import { IonText, IonSpinner } from '@ionic/angular/standalone';
+
+import { AsyncPipe } from '@angular/common';
+
 @Component({
   selector: 'app-display-licenses',
   templateUrl: './display-licenses.component.html',
   styleUrls: ['./display-licenses.component.scss'],
+  standalone: true,
+  imports: [IonText, IonSpinner, AsyncPipe],
 })
 export class DisplayLicensesComponent {
   licenses: Observable<string>;

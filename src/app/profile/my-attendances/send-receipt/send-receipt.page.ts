@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
 import { finalize, take } from 'rxjs/operators';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { NgxImageCompressService } from 'ngx-image-compress';
-import { ToastController } from '@ionic/angular';
+import { ToastController } from '@ionic/angular/standalone';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
@@ -14,17 +14,65 @@ import { fromUnixTime } from 'date-fns';
 
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { Timestamp } from '@firebase/firestore';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
+import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 
 import { EnrollmentTypesService } from '../../../shared/services/enrollment-types.service';
 import { DateService } from 'src/app/shared/services/date.service';
 import { Auth, user } from '@angular/fire/auth';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonContent,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardSubtitle,
+  IonCardContent,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonButton,
+  IonIcon,
+  IonProgressBar,
+  IonText,
+} from '@ionic/angular/standalone';
+import { AsyncPipe, CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 
 @UntilDestroy()
 @Component({
   selector: 'app-send-receipt',
   templateUrl: './send-receipt.page.html',
   styleUrls: ['./send-receipt.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonContent,
+    IonCard,
+    IonCardHeader,
+    IonCardTitle,
+    IonCardSubtitle,
+    IonCardContent,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonButton,
+    IonIcon,
+    IonProgressBar,
+    IonText,
+    SweetAlert2Module,
+    DecimalPipe,
+    CurrencyPipe,
+    DatePipe,
+    AsyncPipe,
+  ],
 })
 export class SendReceiptPage implements OnInit {
   @ViewChild('eventNotFound')
@@ -67,7 +115,7 @@ export class SendReceiptPage implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.eventID = this.route.snapshot.params.eventID;
+    this.eventID = this.route.snapshot.params['eventID'];
 
     // If eventID is not valid, redirect
     this.afs

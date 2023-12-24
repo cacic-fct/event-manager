@@ -1,7 +1,8 @@
+import { AsyncPipe } from '@angular/common';
 import { CertificateStoreData } from 'src/app/shared/services/certificates.service';
 import { MailtoService, Mailto } from 'src/app/shared/services/mailto.service';
 import { Component, inject, OnInit } from '@angular/core';
-import { ModalController, ToastController } from '@ionic/angular';
+import { ModalController, ToastController } from '@ionic/angular/standalone';
 import { filterNullish } from 'src/app/shared/services/rxjs.service';
 
 import { User } from '@firebase/auth';
@@ -12,10 +13,44 @@ import { Auth, user } from '@angular/fire/auth';
 import { Analytics, logEvent } from '@angular/fire/analytics';
 import { Firestore, collection, collectionData, doc, docData } from '@angular/fire/firestore';
 
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonButton,
+  IonBackButton,
+  IonTitle,
+  IonContent,
+  IonSpinner,
+  IonItem,
+  IonIcon,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonProgressBar,
+} from '@ionic/angular/standalone';
+
 @Component({
   selector: 'app-list-certificates',
   templateUrl: './list-certificates.component.html',
   styleUrls: ['./list-certificates.component.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonButton,
+    IonTitle,
+    IonContent,
+    IonSpinner,
+    IonItem,
+    IonIcon,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonProgressBar,
+    AsyncPipe,
+  ],
 })
 export class ListCertificatesComponent implements OnInit {
   private auth: Auth = inject(Auth);

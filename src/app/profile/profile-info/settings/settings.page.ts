@@ -6,11 +6,41 @@ import { User } from 'src/app/shared/services/user';
 
 import { Mailto, MailtoService } from 'src/app/shared/services/mailto.service';
 import { Auth, authState } from '@angular/fire/auth';
+import { RouterLink } from '@angular/router';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonContent,
+  IonCard,
+  IonItem,
+  IonIcon,
+  IonLabel,
+  IonRouterLink,
+} from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-settings',
   templateUrl: './settings.page.html',
   styleUrls: ['./settings.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonContent,
+    IonCard,
+    IonItem,
+    IonIcon,
+    IonLabel,
+    RouterLink,
+    IonRouterLink,
+  ],
 })
 export class SettingsPage implements OnInit {
   private auth: Auth = inject(Auth);

@@ -10,10 +10,47 @@ import { MajorEventSubscription } from 'src/app/shared/services/major-event.serv
 import { DateService } from 'src/app/shared/services/date.service';
 import { user, Auth } from '@angular/fire/auth';
 
+import { AsyncPipe } from '@angular/common';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonCard,
+  IonButton,
+  IonIcon,
+  IonProgressBar,
+  IonRouterLink,
+} from '@ionic/angular/standalone';
+import { RouterLink } from '@angular/router';
+import { HeaderComponent } from 'src/app/shared/modules/major-event-display/header/header.component';
+import { DescriptionComponent } from 'src/app/shared/modules/major-event-display/description/description.component';
+import { DateComponent } from 'src/app/shared/modules/major-event-display/date/date.component';
+import { PriceComponent } from 'src/app/shared/modules/major-event-display/price/price.component';
+
 @Component({
   selector: 'app-major-events-display',
   templateUrl: 'major-events-display.page.html',
   styleUrls: ['major-events-display.page.scss'],
+  standalone: true,
+  imports: [
+    AsyncPipe,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonContent,
+    IonCard,
+    IonButton,
+    IonIcon,
+    IonProgressBar,
+    RouterLink,
+    IonRouterLink,
+    HeaderComponent,
+    DescriptionComponent,
+    DateComponent,
+    PriceComponent,
+  ],
 })
 export class MajorEventsDisplayPage {
   private auth: Auth = inject(Auth);

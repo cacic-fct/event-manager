@@ -1,3 +1,4 @@
+import { IonIcon, IonLabel, IonTabs, IonTabBar, IonTabButton } from '@ionic/angular/standalone';
 import { Component, inject } from '@angular/core';
 import { getBooleanChanges, RemoteConfig } from '@angular/fire/remote-config';
 import { BehaviorSubject, Observable } from 'rxjs';
@@ -5,12 +6,15 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { trace } from '@angular/fire/compat/performance';
 import { Auth, user, getIdTokenResult } from '@angular/fire/auth';
+import { AsyncPipe } from '@angular/common';
 
 @UntilDestroy()
 @Component({
   selector: 'app-tabs',
   templateUrl: 'tabs.page.html',
   styleUrls: ['tabs.page.scss'],
+  standalone: true,
+  imports: [AsyncPipe, IonLabel, IonIcon, IonTabs, IonTabBar, IonTabButton],
 })
 export class TabsPage {
   private remoteConfig: RemoteConfig = inject(RemoteConfig);
@@ -30,7 +34,7 @@ export class TabsPage {
         getIdTokenResult(user).then((idTokenResult) => {
           if (idTokenResult) {
             const claims = idTokenResult.claims;
-            if (claims.role < 3000) {
+            if ((claims['role'] as number) < 3000) {
               this._allowRestrictedArea.next(true);
             }
           }

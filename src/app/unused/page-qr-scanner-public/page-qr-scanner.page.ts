@@ -2,15 +2,42 @@
 import { Component, OnInit } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
 import { BehaviorSubject } from 'rxjs';
-import { ModalController } from '@ionic/angular';
+import { ModalController } from '@ionic/angular/standalone';
 
-import { IonRouterOutlet, AlertController } from '@ionic/angular';
-import { ToastController } from '@ionic/angular';
+import { IonRouterOutlet, AlertController } from '@ionic/angular/standalone';
+import { ToastController } from '@ionic/angular/standalone';
+import { AsyncPipe } from '@angular/common';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonBackButton,
+  IonContent,
+  IonFooter,
+  IonButton,
+  IonIcon,
+} from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-page-qr-scanner',
   templateUrl: './page-qr-scanner.page.html',
   styleUrls: ['./page-qr-scanner.page.scss'],
+  standalone: true,
+  imports: [
+    AsyncPipe,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonFooter,
+    IonToolbar,
+    IonButton,
+    IonIcon,
+  ],
 })
 export class PageQrScannerPage implements OnInit {
   constructor(
@@ -31,24 +58,24 @@ export class PageQrScannerPage implements OnInit {
 
   alertController: AlertController;
   /*
-  async presentModal(userID: string) {
-    const modal = await this.modalController.create({
-      component: PageProfileCardPage,
-      cssClass: 'my-custom-class',
-      componentProps: {
-        userID: userID,
-      },
-      presentingElement: this.routerOutlet.nativeEl,
-    });
-    this.showScanner = false;
-
-    modal.onDidDismiss().then(() => {
-      this.showScanner = true;
-    });
-
-    return await modal.present();
-  }
-*/
+    async presentModal(userID: string) {
+      const modal = await this.modalController.create({
+        component: PageProfileCardPage,
+        cssClass: 'my-custom-class',
+        componentProps: {
+          userID: userID,
+        },
+        presentingElement: this.routerOutlet.nativeEl,
+      });
+      this.showScanner = false;
+  
+      modal.onDidDismiss().then(() => {
+        this.showScanner = true;
+      });
+  
+      return await modal.present();
+    }
+  */
   ngOnInit() {}
 
   changeCamera(): void {
@@ -78,6 +105,7 @@ export class PageQrScannerPage implements OnInit {
     } else {
       this.toastInvalid();
     }
+    return null;
   }
 
   onTorchCompatible(isCompatible: boolean): void {

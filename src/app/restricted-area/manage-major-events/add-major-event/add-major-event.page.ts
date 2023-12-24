@@ -1,7 +1,7 @@
 // @ts-strict-ignore
 import { Router } from '@angular/router';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
-import { ModalController } from '@ionic/angular';
+import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
+import { IonButton, ModalController } from '@ionic/angular/standalone';
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { CoursesService } from 'src/app/shared/services/courses.service';
@@ -16,10 +16,64 @@ import { ConfirmModalComponent } from './components/confirm-modal/confirm-modal.
 import { serverTimestamp } from '@angular/fire/firestore';
 import { Auth, user } from '@angular/fire/auth';
 
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonContent,
+  IonCardHeader,
+  IonCardTitle,
+  IonItem,
+  IonLabel,
+  IonSelect,
+  IonSelectOption,
+  IonInput,
+  IonDatetimeButton,
+  IonToggle,
+  IonModal,
+  IonDatetime,
+  IonText,
+} from '@ionic/angular/standalone';
+
+import { ReactiveFormsModule } from '@angular/forms';
+import { AsyncPipe, CurrencyPipe, KeyValuePipe } from '@angular/common';
+
 @Component({
   selector: 'app-add-major-event',
   templateUrl: './add-major-event.page.html',
   styleUrls: ['./add-major-event.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonCardHeader,
+    IonCardTitle,
+    IonItem,
+    IonLabel,
+    IonSelect,
+    IonSelectOption,
+    IonItem,
+    IonLabel,
+    IonInput,
+    IonCardHeader,
+    IonDatetimeButton,
+    IonToggle,
+    IonModal,
+    IonDatetime,
+    IonText,
+    ReactiveFormsModule,
+    KeyValuePipe,
+    SweetAlert2Module,
+    AsyncPipe,
+    IonButton,
+    CurrencyPipe,
+  ],
 })
 export class AddMajorEventPage implements OnInit {
   @ViewChild('successSwal') private successSwal: SwalComponent;
@@ -180,6 +234,7 @@ export class AddMajorEventPage implements OnInit {
           });
       });
     });
+    return null;
   }
 
   validatorButton(control: AbstractControl): ValidationErrors | null {

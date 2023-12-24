@@ -9,7 +9,7 @@ import { map } from 'rxjs/operators';
 @Injectable({
   providedIn: 'root',
 })
-export class DevelopmentOnlyGuard  {
+export class DevelopmentOnlyGuard {
   canActivate(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): boolean {
     return !environment.production;
   }
@@ -26,11 +26,11 @@ export const redirectLoggedInToMenu = () => redirectLoggedInTo(['menu']);
 export const caAndGreater = () =>
   pipe(
     customClaims,
-    map((claims) => claims.role < 3000)
+    map((claims: { [key: string]: any }) => (claims['role'] as number) < 3000)
   );
 
 export const adminOnly = () =>
   pipe(
     customClaims,
-    map((claims) => claims.role === 1000)
+    map((claims: { [key: string]: any }) => (claims['role'] as number) === 1000)
   );

@@ -7,11 +7,49 @@ import { CoursesService } from 'src/app/shared/services/courses.service';
 import { take, Observable, BehaviorSubject } from 'rxjs';
 import { User } from 'src/app/shared/services/user';
 import { trace } from '@angular/fire/compat/performance';
+import { AsyncPipe } from '@angular/common';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonIcon,
+  IonContent,
+  IonCard,
+  IonAvatar,
+  IonCardTitle,
+  IonSkeletonText,
+  IonButton,
+  IonRouterLink,
+} from '@ionic/angular/standalone';
+import { QrCodeModule } from 'ng-qrcode';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-profile-info',
   templateUrl: './profile-info.page.html',
   styleUrls: ['./profile-info.page.scss'],
+  standalone: true,
+  imports: [
+    IonRouterLink,
+    RouterLink,
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonIcon,
+    IonContent,
+    IonCard,
+    IonAvatar,
+    IonCardTitle,
+    IonSkeletonText,
+    IonButton,
+    AsyncPipe,
+    QrCodeModule,
+  ],
 })
 export class ProfileInfoPage implements OnInit {
   private auth: Auth = inject(Auth);
@@ -37,7 +75,7 @@ export class ProfileInfoPage implements OnInit {
     this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
       if (user) {
         getIdTokenResult(user).then((idTokenResult) => {
-          if (idTokenResult.claims.role === 3000) {
+          if (idTokenResult.claims['role'] === 3000) {
             this._isProfessor.next(true);
           }
         });

@@ -3,13 +3,53 @@ import { Component, inject, OnInit } from '@angular/core';
 
 import { Functions, httpsCallable } from '@angular/fire/functions';
 
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+import { DecimalPipe } from '@angular/common';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonIcon,
+  IonProgressBar,
+  IonContent,
+  IonList,
+  IonItemGroup,
+  IonItemDivider,
+  IonLabel,
+  IonCheckbox,
+  IonItem,
+  IonButton,
+} from '@ionic/angular/standalone';
+
 @UntilDestroy()
 @Component({
   selector: 'app-populate-database',
   templateUrl: './populate-database.page.html',
   styleUrls: ['./populate-database.page.scss'],
+  standalone: true,
+  imports: [
+    DecimalPipe,
+    ReactiveFormsModule,
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonIcon,
+    IonProgressBar,
+    IonContent,
+    IonList,
+    IonItemGroup,
+    IonItemDivider,
+    IonLabel,
+    IonCheckbox,
+    IonItem,
+    IonButton,
+  ],
 })
 export class PopulateDatabasePage implements OnInit {
   private functions: Functions = inject(Functions);

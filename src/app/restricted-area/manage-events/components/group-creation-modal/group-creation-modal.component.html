@@ -18,28 +18,31 @@
     </form>
   </ion-list>
   <ion-list>
-    <ion-item *ngFor="let event of eventGroup; index as i">
-      <img [src]="emojiService.getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
-
-      <ion-grid>
-        <ion-row>
-          <ion-col>
-            <ion-label>
-              <h1 class="ion-text-wrap">{{ event.name }}</h1>
-              <h4 class="date-item">
-                Data do evento: {{ dateService.getDateFromTimestamp(event.eventStartDate) | date : 'dd/MM HH:mm' }}
-                {{
+    @for (event of eventGroup; track event; let i = $index) {
+      <ion-item>
+        <img [src]="emojiService.getEmoji(event.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
+        <ion-grid>
+          <ion-row>
+            <ion-col>
+              <ion-label>
+                <h1 class="ion-text-wrap">{{ event.name }}</h1>
+                <h4 class="date-item">
+                  Data do evento: {{ dateService.getDateFromTimestamp(event.eventStartDate) | date : 'dd/MM HH:mm' }}
+                  {{
                   event.eventEndDate
-                    ? ' - ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date : 'dd/MM HH:mm')
-                    : ''
-                }}
-              </h4>
-              <h4 *ngIf="i === 0">Evento principal</h4>
-            </ion-label>
-          </ion-col>
-        </ion-row>
-      </ion-grid>
-    </ion-item>
+                  ? ' - ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date : 'dd/MM HH:mm')
+                  : ''
+                  }}
+                </h4>
+                @if (i === 0) {
+                  <h4>Evento principal</h4>
+                }
+              </ion-label>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-item>
+    }
   </ion-list>
   <div class="ion-padding">
     <ion-button [disabled]="!dataForm.valid" expand="block" (click)="createGroup()">Criar grupo</ion-button>

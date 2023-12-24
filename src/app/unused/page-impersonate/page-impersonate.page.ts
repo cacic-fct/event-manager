@@ -1,14 +1,47 @@
 // @ts-strict-ignore
 import { Component, inject, OnInit } from '@angular/core';
 import { Auth, signInWithCustomToken } from '@angular/fire/auth';
-import { FormGroup, FormBuilder } from '@angular/forms';
-import { ToastController } from '@ionic/angular';
+import { FormGroup, FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { ToastController } from '@ionic/angular/standalone';
 import { Functions, httpsCallable } from '@angular/fire/functions';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonBackButton,
+  IonContent,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonItem,
+  IonLabel,
+  IonInput,
+  IonButton,
+} from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-page-impersonate',
   templateUrl: './page-impersonate.page.html',
   styleUrls: ['./page-impersonate.page.scss'],
+  standalone: true,
+  imports: [
+    ReactiveFormsModule
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonItem,
+    IonLabel,
+    IonInput,
+    IonButton,
+  ],
 })
 export class PageImpersonatePage implements OnInit {
   impersonateForm: FormGroup;

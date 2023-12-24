@@ -1,4 +1,4 @@
-import { ModalController } from '@ionic/angular';
+import { ModalController } from '@ionic/angular/standalone';
 import {
   participationTypes,
   eventTypes,
@@ -7,10 +7,25 @@ import {
 } from '../../../../../shared/services/certificates.service';
 import { Component, Input, OnInit } from '@angular/core';
 
+import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonChip,
+  IonLabel,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonButton,
+} from '@ionic/angular/standalone';
+
 @Component({
   selector: 'app-certificate-preview-modal',
   templateUrl: './certificate-preview-modal.component.html',
   styleUrls: ['./certificate-preview-modal.component.scss'],
+  standalone: true,
+  imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonChip, IonLabel, IonGrid, IonRow, IonCol, IonButton],
 })
 export class CertificatePreviewModalComponent implements OnInit {
   @Input() certificateData!: CertificateTemplateData;

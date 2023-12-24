@@ -1,4 +1,4 @@
-import { ToastController, AlertController } from '@ionic/angular';
+import { ToastController, AlertController } from '@ionic/angular/standalone';
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
@@ -7,10 +7,26 @@ import { take, map, Observable } from 'rxjs';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
-import { SwalComponent } from '@sweetalert2/ngx-sweetalert2';
+import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { Timestamp } from '@firebase/firestore-types';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { DateService } from 'src/app/shared/services/date.service';
+
+import {
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonBackButton,
+  IonContent,
+  IonButton,
+  IonItem,
+  IonLabel,
+  IonText,
+  IonProgressBar,
+  IonIcon,
+} from '@ionic/angular/standalone';
+import { AsyncPipe, DatePipe, DecimalPipe } from '@angular/common';
 
 interface Attendance {
   user: Observable<User>;
@@ -23,6 +39,25 @@ interface Attendance {
   selector: 'app-list',
   templateUrl: './list.page.html',
   styleUrls: ['./list.page.scss'],
+  standalone: true,
+  imports: [
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonContent,
+    IonButton,
+    IonItem,
+    IonLabel,
+    IonText,
+    IonProgressBar,
+    IonIcon,
+    SweetAlert2Module,
+    DatePipe,
+    DecimalPipe,
+    AsyncPipe,
+  ],
 })
 export class ListPage implements OnInit {
   @ViewChild('mySwal')
@@ -41,7 +76,7 @@ export class ListPage implements OnInit {
     private alertController: AlertController,
     public dateService: DateService
   ) {
-    this.eventID = this.route.snapshot.params.eventID;
+    this.eventID = this.route.snapshot.params['eventID'];
     this.afs
       .collection('events')
       .doc(this.eventID)
