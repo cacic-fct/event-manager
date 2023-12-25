@@ -32,7 +32,7 @@ export const routes: Routes = [
       },
       {
         path: 'area-restrita',
-        title: 'Área restrita',
+        title: 'Ferramentas administrativas',
         loadChildren: () => import('src/app/restricted-area/restricted-area.routes').then((m) => m.routes),
         ...canActivate(caAndGreater),
       },

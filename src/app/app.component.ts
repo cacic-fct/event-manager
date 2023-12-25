@@ -78,6 +78,7 @@ import {
   albumsOutline,
   schoolOutline,
   peopleCircleOutline,
+  buildOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -166,6 +167,7 @@ export class AppComponent {
       albumsOutline,
       schoolOutline,
       peopleCircleOutline,
+      buildOutline,
     });
   }
 }
