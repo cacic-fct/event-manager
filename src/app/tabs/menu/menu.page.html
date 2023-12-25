@@ -1,81 +1,96 @@
 <ion-header>
   <ion-toolbar>
     @if (authState$ | async) {
-      <ion-buttons slot="primary">
-        <ion-button fill="clear" (click)="authService.SignOut()">
-          <ion-icon slot="start" name="log-in-outline"></ion-icon>
-          Sair
-        </ion-button>
-      </ion-buttons>
-      <ion-title> Olá, {{ firstName }}! </ion-title>
+    <ion-buttons slot="primary">
+      <ion-button fill="clear" (click)="authService.SignOut()">
+        <ion-icon slot="start" name="log-in-outline"></ion-icon>
+        Sair
+      </ion-button>
+    </ion-buttons>
+    <ion-title> Olá, {{ firstName }}! </ion-title>
     } @else {
-      <ion-buttons slot="primary">
-        <ion-button fill="clear" [routerLink]="'/login'">
-          <ion-icon slot="start" name="log-out-outline"></ion-icon>
-          Entrar
-        </ion-button>
-      </ion-buttons>
-      <ion-title> Menu </ion-title>
+    <ion-buttons slot="primary">
+      <ion-button fill="clear" [routerLink]="'/login'">
+        <ion-icon slot="start" name="log-out-outline"></ion-icon>
+        Entrar
+      </ion-button>
+    </ion-buttons>
+    <ion-title> Menu </ion-title>
     }
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  @if (authState$ | async) {
-    <ion-card>
-      <ion-item routerLink="/perfil">
-        <ion-icon name="person-circle-outline" slot="start" aria-hidden="true"></ion-icon>
-        <ion-label>Meu perfil</ion-label>
-      </ion-item>
-      <!--<ion-item routerLink="/scan">
+  <ion-grid>
+    <ion-row class="ion-align-items-start">
+      @if (authState$ | async) {
+      <ion-col size="12" size-lg="4">
+        <ion-card>
+          <ion-item routerLink="/perfil">
+            <ion-icon name="person-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Meu perfil</ion-label>
+          </ion-item>
+          <!--<ion-item routerLink="/scan">
       <ion-icon
         name="qr-code-outline"
         slot="start"
       aria-hidden="true"></ion-icon>
       <ion-label>Leitor de QR Code</ion-label>
     </ion-item>-->
-    <ion-item routerLink="/inscricoes" lines="none">
-      <ion-icon name="albums-outline" slot="start" aria-hidden="true"></ion-icon>
-      <ion-label>Minhas participações</ion-label>
-    </ion-item>
-  </ion-card>
-}
+          <ion-item routerLink="/inscricoes" lines="none">
+            <ion-icon name="albums-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Minhas participações</ion-label>
+          </ion-item>
+        </ion-card>
+      </ion-col>
+      }
+      <ion-col size="12" size-lg="4">
+        <ion-card>
+          <ion-item [routerLink]="['/calouros']">
+            <ion-icon name="people-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Página do calouro</ion-label>
+          </ion-item>
+          <ion-item [routerLink]="['/manual-do-calouro']" lines="none">
+            <ion-icon name="book-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Manual do calouro</ion-label>
+          </ion-item>
+        </ion-card>
+      </ion-col>
 
-<ion-card>
-  <ion-item [routerLink]="['/calouros']">
-    <ion-icon name="people-outline" slot="start" aria-hidden="true"></ion-icon>
-    <ion-label>Página do calouro</ion-label>
-  </ion-item>
-  <ion-item [routerLink]="['/manual-do-calouro']" lines="none">
-    <ion-icon name="book-outline" slot="start" aria-hidden="true"></ion-icon>
-    <ion-label>Manual do calouro</ion-label>
-  </ion-item>
-</ion-card>
+      <ion-col size="12" size-lg="4">
+        <ion-card>
+          <ion-item href="https://fct.unesp.br" target="_blank">
+            <ion-icon name="school-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Site da FCT-Unesp</ion-label>
+          </ion-item>
+          <ion-item [routerLink]="['/entidades']" lines="none">
+            <ion-icon name="people-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Entidades estudantis</ion-label>
+          </ion-item>
+        </ion-card>
+      </ion-col>
 
-<ion-card>
-  <ion-item href="https://fct.unesp.br" target="_blank">
-    <ion-icon name="school-outline" slot="start" aria-hidden="true"></ion-icon>
-    <ion-label>Site da FCT-Unesp</ion-label>
-  </ion-item>
-  <ion-item [routerLink]="['/entidades']" lines="none">
-    <ion-icon name="people-circle-outline" slot="start" aria-hidden="true"></ion-icon>
-    <ion-label>Entidades estudantis</ion-label>
-  </ion-item>
-</ion-card>
+      <ion-col size="12" size-lg="4">
+        <ion-card>
+          <ion-item [routerLink]="['/sobre']" lines="none">
+            <ion-icon name="information-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Sobre este app</ion-label>
+          </ion-item>
+        </ion-card>
+      </ion-col>
+    </ion-row>
 
-<ion-card>
-  <ion-item [routerLink]="['/sobre']" lines="none">
-    <ion-icon name="information-circle-outline" slot="start" aria-hidden="true"></ion-icon>
-    <ion-label>Sobre este app</ion-label>
-  </ion-item>
-</ion-card>
-
-@if (!isProduction) {
-  <ion-card>
-    <ion-item [routerLink]="['/development-tools']" lines="none">
-      <ion-icon name="hammer-outline" slot="start" aria-hidden="true"></ion-icon>
-      <ion-label>Ferramentas de desenvolvedor</ion-label>
-    </ion-item>
-  </ion-card>
-}
+    @if (!isProduction) {
+    <ion-row class="ion-align-items-start">
+      <ion-col size="12" size-lg="4">
+        <ion-card>
+          <ion-item [routerLink]="['/development-tools']" lines="none">
+            <ion-icon name="hammer-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Ferramentas de desenvolvedor</ion-label>
+          </ion-item>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+    }
+  </ion-grid>
 </ion-content>

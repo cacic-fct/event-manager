@@ -23,6 +23,9 @@ import {
   IonItem,
   IonLabel,
   IonRouterLink,
+  IonGrid,
+  IonCol,
+  IonRow,
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
 
@@ -46,6 +49,9 @@ import { RouterLink } from '@angular/router';
     IonLabel,
     IonRouterLink,
     RouterLink,
+    IonGrid,
+    IonCol,
+    IonRow,
   ],
 })
 export class MenuPage {
