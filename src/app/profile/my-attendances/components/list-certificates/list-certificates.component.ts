@@ -72,7 +72,9 @@ export class ListCertificatesComponent implements OnInit {
     this.user$ = user(this.auth);
     this.majorEventID = this.route.snapshot.paramMap.get('majorEventID') as string;
     this.userData = JSON.parse(localStorage.getItem('user') as string);
+
     this.certificatesColletion$ = this.user$.pipe(
+      take(1),
       filterNullish(),
       map((user) => {
         const colRef = collection(
@@ -140,7 +142,7 @@ export class ListCertificatesComponent implements OnInit {
     }
   }
 
-  async copyValidationUrl(certificateID: string) {
+  async copyValidationUrl(certificateID: string, certificateDoc: string) {
     const toast = await this.toastController.create({
       header: 'Compartilhar certificado',
       message: 'Link copiado para a área de transferência.',
@@ -156,12 +158,14 @@ export class ListCertificatesComponent implements OnInit {
       ],
     });
 
-    navigator.clipboard.writeText(`https://fct-pp.web.app/certificado/validar/${this.majorEventID}-${certificateID}`);
+    const encoded = this.certificateService.encodeCertificateCode(this.majorEventID, certificateID, certificateDoc);
+
+    navigator.clipboard.writeText(`https://fct-pp.web.app/certificado/verificar/${encoded}`);
     toast.present();
 
     logEvent(this.analytics, 'share', {
       content_type: 'certificate',
-      item_id: `${this.majorEventID}-${certificateID}`,
+      item_id: `${encoded}`,
     });
   }
 }

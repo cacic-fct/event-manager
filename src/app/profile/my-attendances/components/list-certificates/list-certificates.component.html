@@ -20,7 +20,7 @@
       @if (certificate.certificateData | async; as certificateData) {
         <ion-item lines="inset">
           {{ certificateData.certificateName }}
-          <ion-button slot="end" fill="clear" (click)="copyValidationUrl(certificate.id)">
+          <ion-button slot="end" fill="clear" (click)="copyValidationUrl(certificate.id, certificate.certificateDoc)">
             <ion-icon md="share-social-outline" ios="share-outline" slot="icon-only"></ion-icon>
           </ion-button>
           <ion-button slot="end" fill="clear" (click)="getCertificate($event, certificateData, certificate)">

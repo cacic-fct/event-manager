@@ -117,7 +117,7 @@ export class CertificateService {
             break;
         }
 
-        const encodedString: string = encodeCertificateCode(
+        const encodedString: string = this.encodeCertificateCode(
           eventID,
           certificateStoreData.id!,
           certificateUserData.certificateDoc
@@ -204,6 +204,11 @@ export class CertificateService {
         }
       })
     );
+  }
+
+  encodeCertificateCode(eventID: string, certificateID: string, certificateDoc: string): string {
+    const base64 = Buffer.from(`${eventID}#${certificateID}#${certificateDoc}`).toString('base64');
+    return base64.replace(/=/g, '');
   }
 }
 function generateContent(
@@ -412,11 +417,6 @@ function formatTimestamp(date: Timestamp): string {
 interface CertificateOptionsTypes {
   custom: string;
   [key: string]: string;
-}
-
-function encodeCertificateCode(eventID: string, certificateID: string, certificateDoc: string): string {
-  const base64 = Buffer.from(`${eventID}#${certificateID}#${certificateDoc}`).toString('base64');
-  return base64.replace(/=/g, '');
 }
 
 export function decodeCertificateCode(base64: string) {
