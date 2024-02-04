@@ -204,7 +204,7 @@ export class ConfirmAttendancePage {
 
   async errorToast() {
     const toast = await this.toastController.create({
-      message: 'Ocorreu um erro. Por favor, tente novamente.',
+      message: 'Ocorreu um erro. Tente novamente.',
       duration: 2000,
       buttons: [
         {
