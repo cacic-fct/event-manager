@@ -219,7 +219,7 @@ export class AuthService {
     let message: string;
     if (error.code === 'auth/credential-already-in-use') {
       header = 'Esta conta já está vinculada a um usuário';
-      message = 'Tente novamente com outra cont ou entre em contato conosco.';
+      message = 'Tente novamente com outra conta ou entre em contato conosco.';
     }
     const toast = await this.toastController.create({
       header: header || 'Ocorreu um erro ao vincular sua conta',
