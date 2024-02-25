@@ -24,7 +24,7 @@
   <ion-grid>
     <ion-row class="ion-align-items-start">
       @if (authState$ | async) {
-      <ion-col size="12" size-lg="4">
+      <ion-col size="12" size-lg="6">
         <ion-card>
           <ion-item routerLink="/perfil">
             <ion-icon name="person-circle-outline" slot="start" aria-hidden="true"></ion-icon>
@@ -44,7 +44,7 @@
         </ion-card>
       </ion-col>
       }
-      <ion-col size="12" size-lg="4">
+      <ion-col size="12" size-lg="6">
         <ion-card>
           <ion-item [routerLink]="['/calouros']">
             <ion-icon name="people-outline" slot="start" aria-hidden="true"></ion-icon>
@@ -57,7 +57,7 @@
         </ion-card>
       </ion-col>
 
-      <ion-col size="12" size-lg="4">
+      <ion-col size="12" size-lg="6">
         <ion-card>
           <ion-item href="https://fct.unesp.br" target="_blank">
             <ion-icon name="school-outline" slot="start" aria-hidden="true"></ion-icon>
@@ -70,7 +70,7 @@
         </ion-card>
       </ion-col>
 
-      <ion-col size="12" size-lg="4">
+      <ion-col size="12" size-lg="6">
         <ion-card>
           <ion-item [routerLink]="['/sobre']" lines="none">
             <ion-icon name="information-circle-outline" slot="start" aria-hidden="true"></ion-icon>
@@ -82,7 +82,7 @@
 
     @if (!isProduction) {
     <ion-row class="ion-align-items-start">
-      <ion-col size="12" size-lg="4">
+      <ion-col size="12" size-lg="6">
         <ion-card>
           <ion-item [routerLink]="['/development-tools']" lines="none">
             <ion-icon name="hammer-outline" slot="start" aria-hidden="true"></ion-icon>
