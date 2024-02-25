@@ -8,71 +8,57 @@
 </ion-header>
 
 <ion-content>
-  @if (subscriptions$ | async; as subscriptions) {
-    @if (subscriptions.length === 0) {
-      <h1 class="ion-text-center">Nenhuma participação encontrada</h1>
-    }
-    @for (subscription of subscriptions; track subscription) {
-      <ion-list>
-        @if (subscription.majorEvent | async; as majorEventData) {
-          @if (subscription.userData | async; as subscriptionData) {
-            @switch (getCardType(majorEventData, subscriptionData)) {
-              @case (-1) {
-                <div>
-                  <ng-container
-                    *ngTemplateOutlet="pastEvent; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-                  </ng-container>
-                </div>
-              }
-              @case (0) {
-                <div>
-                  <ng-container
-                    *ngTemplateOutlet="waitingPayment; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-                  </ng-container>
-                </div>
-              }
-              @case (1) {
-                <div>
-                  <ng-container
-                    *ngTemplateOutlet="waitingConfirmation; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-                  </ng-container>
-                </div>
-              }
-              @case (2) {
-                <div>
-                  <ng-container
-                    *ngTemplateOutlet="paymentConfirmed; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-                  </ng-container>
-                </div>
-              }
-              @case (3) {
-                <div>
-                  <ng-container
-                    *ngTemplateOutlet="paymentError; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-                  </ng-container>
-                </div>
-              }
-              @case (4) {
-                <div>
-                  <ng-container
-                    *ngTemplateOutlet="eventFull; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-                  </ng-container>
-                </div>
-              }
-              @case (5) {
-                <div>
-                  <ng-container
-                    *ngTemplateOutlet="scheduleConflict; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
-                  </ng-container>
-                </div>
-              }
-            }
-          }
-        }
-      </ion-list>
-    }
-  } @else {
-    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  @if (subscriptions$ | async; as subscriptions) { @if (subscriptions.length === 0) {
+  <h1 class="ion-text-center">Nenhuma participação encontrada</h1>
+  } @for (subscription of subscriptions; track subscription) {
+  <ion-list>
+    @if (subscription.majorEvent | async; as majorEventData) { @if (subscription.userData | async; as subscriptionData)
+    { @switch (getCardType(majorEventData, subscriptionData)) { @case (-1) {
+    <div>
+      <ng-container
+        *ngTemplateOutlet="pastEvent; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+      </ng-container>
+    </div>
+    } @case (0) {
+    <div>
+      <ng-container
+        *ngTemplateOutlet="waitingPayment; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+      </ng-container>
+    </div>
+    } @case (1) {
+    <div>
+      <ng-container
+        *ngTemplateOutlet="waitingConfirmation; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+      </ng-container>
+    </div>
+    } @case (2) {
+    <div>
+      <ng-container
+        *ngTemplateOutlet="paymentConfirmed; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+      </ng-container>
+    </div>
+    } @case (3) {
+    <div>
+      <ng-container
+        *ngTemplateOutlet="paymentError; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+      </ng-container>
+    </div>
+    } @case (4) {
+    <div>
+      <ng-container
+        *ngTemplateOutlet="eventFull; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+      </ng-container>
+    </div>
+    } @case (5) {
+    <div>
+      <ng-container
+        *ngTemplateOutlet="scheduleConflict; context: {majorEventData: majorEventData, subscriptionData: subscriptionData}">
+      </ng-container>
+    </div>
+    } } } }
+  </ion-list>
+  } } @else {
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
   <app-event-card-display-main-page [eventSubscriptionsInput]="eventSubscriptions$"></app-event-card-display-main-page>
@@ -91,7 +77,7 @@
     <ion-card-content>
       <ion-card-subtitle [color]="color">
         @if (subType) {
-          <p>{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
+        <p>{{ enrollmentTypes.getEnrollmentType(subType) }} - {{ price | currency: 'BRL' }}</p>
         }
         <!-- prettier-ignore -->
         <p>
@@ -105,42 +91,41 @@
     </ion-card-content>
   </ng-template>
 
-
   <ng-template #waitingPayment let-majorEventData="majorEventData" let-subscriptionData="subscriptionData">
     <ion-card>
       <ng-container
         *ngTemplateOutlet="ionCardHeader; context: {majorEventData: majorEventData, subType: subscriptionData.subscriptionType, price: subscriptionData.payment.price, color: ''}">
       </ng-container>
       @if (isInSubscriptionPeriod(majorEventData.subscriptionEndDate)) {
-        <!-- prettier-ignore -->
-        <ion-card-content>
+      <!-- prettier-ignore -->
+      <ion-card-content>
           Aguardando o pagamento e envio do comprovante <br />
           Efetue o pagamento e envio do comprovante até {{ dateService.getDateFromTimestamp(majorEventData.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }}
         </ion-card-content>
-        <ion-grid>
-          <ion-row>
-            <ion-col>
-              <ion-button [routerLink]="['pagar', majorEventData.id]">
-                <ion-icon slot="start" name="cash"></ion-icon>
-                Efetuar pagamento
-              </ion-button>
-              <ion-button [routerLink]="['pagar', majorEventData.id]">
-                <ion-icon slot="start" name="paper-plane"></ion-icon>
-                Enviar comprovante
-              </ion-button>
-              <ion-button [routerLink]="['/eventos/inscrever', majorEventData.id]" disabled="">
-                <ion-icon slot="start" name="pencil"></ion-icon>
-                Editar inscrição
-              </ion-button>
-              <ion-button [routerLink]="['detalhes', majorEventData.id]">
-                <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
-                Mais detalhes
-              </ion-button>
-            </ion-col>
-          </ion-row>
-        </ion-grid>
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-button [routerLink]="['pagar', majorEventData.id]">
+              <ion-icon slot="start" name="cash"></ion-icon>
+              Efetuar pagamento
+            </ion-button>
+            <ion-button [routerLink]="['pagar', majorEventData.id]">
+              <ion-icon slot="start" name="paper-plane"></ion-icon>
+              Enviar comprovante
+            </ion-button>
+            <ion-button [routerLink]="['/eventos/inscrever', majorEventData.id]" disabled="">
+              <ion-icon slot="start" name="pencil"></ion-icon>
+              Editar inscrição
+            </ion-button>
+            <ion-button [routerLink]="['detalhes', majorEventData.id]">
+              <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
+              Mais detalhes
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
       } @else {
-        <ion-card-content> Fora do período de pagamento. </ion-card-content>
+      <ion-card-content> Fora do período de pagamento. </ion-card-content>
       }
     </ion-card>
   </ng-template>
@@ -189,7 +174,10 @@
         <br />
         <!-- prettier-ignore -->
         @if (subscriptionData.payment.validationTime) {
-          <span>Pagamento confirmado em {{ dateService.getDateFromTimestamp(subscriptionData.payment.validationTime) | date: 'dd/MM/yyyy — HH:mm'}}</span>
+        <span
+          >Pagamento confirmado em {{ dateService.getDateFromTimestamp(subscriptionData.payment.validationTime) | date:
+          'dd/MM/yyyy — HH:mm'}}</span
+        >
         }
         <br />
         Para editar a sua inscrição, entre em contato conosco.
@@ -225,22 +213,22 @@
       </ion-card-content>
 
       @if (isInSubscriptionPeriod(majorEventData.subscriptionEndDate)) {
-        <ion-grid>
-          <ion-row>
-            <ion-col>
-              <ion-button color="danger" [routerLink]="['pagar', majorEventData.id]">
-                <ion-icon slot="start" name="paper-plane"></ion-icon>
-                Reenviar comprovante
-              </ion-button>
-              <ion-button [routerLink]="['/eventos/inscrever', majorEventData.id]" disabled="">
-                <ion-icon slot="start" name="pencil"></ion-icon>
-                Editar inscrição
-              </ion-button>
-            </ion-col>
-          </ion-row>
-        </ion-grid>
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-button color="danger" [routerLink]="['pagar', majorEventData.id]">
+              <ion-icon slot="start" name="paper-plane"></ion-icon>
+              Reenviar comprovante
+            </ion-button>
+            <ion-button [routerLink]="['/eventos/inscrever', majorEventData.id]" disabled="">
+              <ion-icon slot="start" name="pencil"></ion-icon>
+              Editar inscrição
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
       } @else {
-        <ion-card-content> Fora do período de pagamento. </ion-card-content>
+      <ion-card-content> Fora do período de pagamento. </ion-card-content>
       }
     </ion-card>
   </ng-template>

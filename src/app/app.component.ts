@@ -79,6 +79,7 @@ import {
   schoolOutline,
   peopleCircleOutline,
   buildOutline,
+  search,
 } from 'ionicons/icons';
 
 @Component({
@@ -168,6 +169,7 @@ export class AppComponent {
       schoolOutline,
       peopleCircleOutline,
       buildOutline,
+      search,
     });
   }
 }
