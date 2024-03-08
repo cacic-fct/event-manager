@@ -1,3 +1,8 @@
+### 2024.03.08.14.52
+
+- Atualização de dependências;
+- Alterado data de copyright.
+
 ### 2024.02.24.23.52
 
 ### 2023.12.24.23.32
@@ -6,14 +11,14 @@
 
 ### 2023.12.23.00.19
 
-- Atualização de dependências das Cloud Functions
-- Refatorado estrutura de armazenamento dos certificados ([#133](https://github.com/cacic-fct/fct-app/pull/133))
-- Removido informação sobre Google Drive ilimitado na página dos calouros
+- Atualização de dependências das Cloud Functions;
+- Refatorado estrutura de armazenamento dos certificados ([#133](https://github.com/cacic-fct/fct-app/pull/133));
+- Removido informação sobre Google Drive ilimitado na página dos calouros.
 
 ### 2023.12.07.12.07
 
-- Atualização de dependências
-- Ano de Copyright não é mais automático
+- Atualização de dependências;
+- Ano de Copyright não é mais automático.
 
 ### 2023.09.27.18.08
 
