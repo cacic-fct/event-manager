@@ -27,7 +27,7 @@ import {
   styleUrls: ['./page-impersonate.page.scss'],
   standalone: true,
   imports: [
-    ReactiveFormsModule
+    ReactiveFormsModule,
     IonHeader,
     IonToolbar,
     IonTitle,
