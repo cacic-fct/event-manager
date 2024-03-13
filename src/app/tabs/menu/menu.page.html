@@ -3,7 +3,7 @@
     @if (authState$ | async) {
     <ion-buttons slot="primary">
       <ion-button fill="clear" (click)="authService.SignOut()">
-        <ion-icon slot="start" name="log-in-outline"></ion-icon>
+        <ion-icon slot="start" name="log-out-outline"></ion-icon>
         Sair
       </ion-button>
     </ion-buttons>
@@ -11,7 +11,7 @@
     } @else {
     <ion-buttons slot="primary">
       <ion-button fill="clear" [routerLink]="'/login'">
-        <ion-icon slot="start" name="log-out-outline"></ion-icon>
+        <ion-icon slot="start" name="log-in-outline"></ion-icon>
         Entrar
       </ion-button>
     </ion-buttons>
