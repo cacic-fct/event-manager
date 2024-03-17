@@ -11,6 +11,7 @@ on:
 
 jobs:
   build_functions:
+    if: ${{ github.ref_type == 'tag' }}
     runs-on: ubuntu-latest
 
     steps:
