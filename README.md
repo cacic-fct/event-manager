@@ -20,12 +20,6 @@ Para iniciar o website localmente, primeiro instale as dependências:
 yarn
 ```
 
-Configure o ionic-cli para utilizar o yarn:
-
-```bash
-ionic config set -g npmClient yarn
-```
-
 Depois, inicie o servidor de desenvolvimento:
 
 ```bash
