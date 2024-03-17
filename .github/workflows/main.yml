@@ -22,7 +22,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Build for production
-        run: yarn build -- --configuration=production
+        run: yarn build --configuration=production
         
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
