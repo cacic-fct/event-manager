@@ -29,37 +29,16 @@ jobs:
           cache-dependency-path: functions/yarn.lock
 
       - name: Install dependencies
-        run: cd functions && yarn install --frozen-lockfile
+        working-directory: ./functions
+        run: yarn install --frozen-lockfile
         
       - name: Build functions
-        run: yarn build
+        working-directory: ./functions
+        run: cd functions yarn build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
+        working-directory: ./functions
         with:
           name: Functions-artifacts
-          path: functions/dist/
-
-  # Attribution: Dave Sugden
-  # https://davelms.medium.com/deploy-firebase-functions-using-github-actions-7dbafbd4df77
-  deploy:
-    if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
-    needs: build_functions
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: Functions-artifacts
-          path: functions/dist/
-
-      - name: Create Service Account key
-        run: echo '${{ secrets.FIREBASE_FUNCTIONS_ACCOUNT }}' > $HOME/gcloud.json
-         
-      - name: Deploy Cloud Functions
-        run: export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud.json && npx firebase-tools deploy --only functions --json
-
+          path: dist/

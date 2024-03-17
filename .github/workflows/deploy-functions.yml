@@ -26,16 +26,19 @@ jobs:
           cache-dependency-path: functions/yarn.lock
 
       - name: Install dependencies
-        run: cd functions && yarn install --frozen-lockfile && yarn add @angular/cli@latest
+        working-directory: ./functions
+        run: yarn install --frozen-lockfile
         
       - name: Build functions
-        run: yarn build
+        working-directory: ./functions
+        run: cd functions yarn build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
+        working-directory: ./functions
         with:
           name: Functions-artifacts
-          path: functions/dist/
+          path: dist/
 
   deploy:
     needs: build_functions
@@ -47,12 +50,15 @@ jobs:
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
+        working-directory: ./functions
         with:
           name: Functions-artifacts
-          path: functions/dist/
+          path: dist/
 
       - name: Create Service Account key
+        working-directory: ./functions
         run: echo '${{ secrets.FIREBASE_FUNCTIONS_ACCOUNT }}' > $HOME/gcloud.json
          
       - name: Deploy Cloud Functions
+        working-directory: ./functions
         run: export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud.json && npx firebase-tools deploy --only functions --json
