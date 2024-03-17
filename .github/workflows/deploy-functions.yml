@@ -25,7 +25,7 @@ jobs:
           cache-dependency-path: functions/yarn.lock
 
       - name: Install dependencies
-        run: cd functions && yarn install --frozen-lockfile
+        run: cd functions && yarn install --frozen-lockfile && yarn add @angular/cli@latest
         
       - name: Build functions
         run: yarn build
