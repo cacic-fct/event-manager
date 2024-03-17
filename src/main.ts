@@ -59,7 +59,7 @@ bootstrapApplication(AppComponent, {
       SweetAlert2Module.forRoot(),
       // AngularFire
       AngularFireModule.initializeApp(environment.firebase),
-      AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
+      AngularFirestoreModule, //.enablePersistence({ synchronizeTabs: true }),
       AngularFirePerformanceModule,
       provideFirebaseApp(() => initializeApp(environment.firebase)),
       provideAppCheck(() => {
@@ -123,7 +123,7 @@ bootstrapApplication(AppComponent, {
       provideFirestore(() => {
         const firestore = initializeFirestore(getApp(), {
           ignoreUndefinedProperties: true,
-          localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+          // localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
         });
         if (environment.useEmulators) {
           connectFirestoreEmulator(firestore, 'localhost', 8081);
