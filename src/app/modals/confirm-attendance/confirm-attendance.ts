@@ -72,6 +72,7 @@ export class ConfirmAttendancePage {
   private majorEventRef: AngularFirestoreDocument<MajorEventItem> | undefined;
   private isPaid: boolean | undefined;
   private attendanceCode: string | undefined;
+  private belongsToMajorEvent: boolean | undefined;
   @ViewChild('swalConfirm') private swalConfirm!: SwalComponent;
   @ViewChild('swalNotFound') private swalNotFound!: SwalComponent;
   @ViewChild('swalNotOnTime') private swalNotOnTime!: SwalComponent;
@@ -229,7 +230,7 @@ export class ConfirmAttendancePage {
 
   onSubmit() {
     this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
-      if (!user || !this.majorEventRef) {
+      if (!user) {
         return;
       }
 
@@ -243,6 +244,9 @@ export class ConfirmAttendancePage {
 
       try {
         if (isPaymentNecessary) {
+          if (!this.majorEventRef) {
+            return;
+          }
           // Check if user payment status = 2
           this.majorEventRef
             .collection('subscriptions')
