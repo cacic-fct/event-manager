@@ -181,6 +181,7 @@ export class ConfirmAttendancePage {
           });
       } else {
         this.isSubEvent = false;
+        this.isPaid = false;
       }
     });
 
