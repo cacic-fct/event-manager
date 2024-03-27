@@ -20,11 +20,12 @@
   </div>
 }
 
+<div class="ion-padding-vertical">
 @if (displaySubscriptionAttendanceButtons === true) {
+  <div class="ion-padding-bottom">
   @if (eventItem.eventEndDate) {
     @if (dateService.today() < dateService.getDateFromTimestamp(eventItem.eventEndDate)) {
       @if (eventItem.allowSubscription && (isUserAuthenticated | async)) {
-        <div class="ion-padding-vertical">
           @if (!subscribedToEvent && !disableSubscriptionNoSlotsLeft) {
             <ion-button
               expand="block"
@@ -50,10 +51,8 @@
               <ion-icon name="checkmark" slot="start"></ion-icon> <span slot="end">Inscrito</span>
             </ion-button>
           }
-        </div>
       }
       @if (eventItem.allowSubscription && !(isUserAuthenticated | async)) {
-        <div class="ion-padding-vertical">
           @if (!disableSubscriptionNoSlotsLeft) {
             <ion-button
               expand="block"
@@ -70,21 +69,19 @@
               Não há mais vagas
             </ion-button>
           }
-        </div>
       }
     }
   }
+  </div>
+
   @if (eventItem.collectAttendance) {
     @if (eventItem.attendanceCollectionStart && !eventItem.attendanceCollectionEnd) {
       @if (eventItem.allowSubscription && (isUserAuthenticated | async)) {
-        <div class="ion-padding-vertical">
           <ion-button expand="block" color="primary" target="_blank" [routerLink]="['/confirmar-presenca', eventItem.id]">
             Confirmar presença
           </ion-button>
-        </div>
       }
       @if (eventItem.allowSubscription && !(isUserAuthenticated | async)) {
-        <div class="ion-padding-vertical">
           <ion-button
             expand="block"
             color="primary"
@@ -93,8 +90,8 @@
             [queryParams]="{ redirect: '/confirmar-presenca/' + eventItem.id }">
             Confirmar presença
           </ion-button>
-        </div>
       }
     }
   }
 }
+</div>
