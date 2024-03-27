@@ -8,13 +8,13 @@ Todos podem contribuir para o "FCT App".
 
 Leia o [guia de contribuição do CACiC](https://github.com/cacic-fct/.github/blob/main/Contributing.md).
 
-## Website
+## Site
 
 O aplicativo é construído com Angular e pode ser acessado em [fct-pp.web.app](https://fct-pp.web.app).
 
 ### Desenvolvimento
 
-Para iniciar o website localmente, primeiro instale as dependências:
+Para iniciar o site localmente, primeiro instale as dependências:
 
 ```bash
 yarn
