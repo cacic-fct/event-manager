@@ -35,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Functions-artifacts
-          path: functions/dist/
+          path: functions/lib/
 
   deploy:
     needs: build_functions
@@ -49,7 +49,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: Functions-artifacts
-          path: functions/dist/
+          path: functions/lib/
 
       - name: Create Service Account key
         working-directory: ./functions
