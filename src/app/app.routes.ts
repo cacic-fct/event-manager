@@ -115,22 +115,6 @@ export const routes: Routes = [
     path: 'certificado/verificar/:param',
     loadChildren: () => import('./validate-certificate/validate-certificate.routes').then((m) => m.routes),
   },
-  // Legacy routes
-  {
-    path: 'entidades',
-    title: 'Entidades estudantis',
-    redirectTo: 'https://cacic-fct.github.io/manual-do-calouro/contatos',
-  },
-  {
-    path: 'manual-do-calouro',
-    title: 'Manual do calouro',
-    redirectTo: 'https://cacic-fct.github.io/manual-do-calouro',
-  },
-  {
-    path: 'calouros',
-    title: 'Página do calouro',
-    redirectTo: 'https://cacic-fct.github.io/manual-do-calouro/pagina-do-calouro',
-  },
   // Redirect not found routes (404) to index
   // Must be the last route
   {
