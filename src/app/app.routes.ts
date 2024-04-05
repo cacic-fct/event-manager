@@ -67,16 +67,6 @@ export const routes: Routes = [
     title: 'Licenças',
     loadChildren: () => import('./about/licenses/licenses.routes').then((m) => m.routes),
   },
-  {
-    path: 'manual-do-calouro',
-    title: 'Manual do Calouro',
-    loadChildren: () => import('src/app/freshmen/manual/manual.routes').then((m) => m.routes),
-  },
-  {
-    path: 'calouros',
-    title: 'Página dos calouros',
-    loadChildren: () => import('src/app/freshmen/welcome/welcome.routes').then((m) => m.routes),
-  },
   // Unused route
   // {
   //   path: 'scan',
@@ -104,12 +94,6 @@ export const routes: Routes = [
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {
-    path: 'entidades',
-    title: 'Entidades estudantis',
-    loadChildren: () =>
-      import('src/app/freshmen/student-organizations/student-organizations.routes').then((m) => m.routes),
-  },
-  {
     path: 'eventos/inscrever/:eventID',
     title: 'Inscrição',
     loadChildren: () => import('src/app/tabs/major-events-display/subscribe/subscribe.routes').then((m) => m.routes),
@@ -130,6 +114,22 @@ export const routes: Routes = [
   {
     path: 'certificado/verificar/:param',
     loadChildren: () => import('./validate-certificate/validate-certificate.routes').then((m) => m.routes),
+  },
+  // Legacy routes
+  {
+    path: 'entidades',
+    title: 'Entidades estudantis',
+    redirectTo: 'https://cacic-fct.github.io/manual-do-calouro/contatos',
+  },
+  {
+    path: 'manual-do-calouro',
+    title: 'Manual do calouro',
+    redirectTo: 'https://cacic-fct.github.io/manual-do-calouro',
+  },
+  {
+    path: 'calouros',
+    title: 'Página do calouro',
+    redirectTo: 'https://cacic-fct.github.io/manual-do-calouro/pagina-do-calouro',
   },
   // Redirect not found routes (404) to index
   // Must be the last route
