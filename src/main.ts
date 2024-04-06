@@ -59,7 +59,10 @@ bootstrapApplication(AppComponent, {
       SweetAlert2Module.forRoot(),
       // AngularFire
       AngularFireModule.initializeApp(environment.firebase),
+
+      // TODO: https://github.com/cacic-fct/fct-app/issues/172
       AngularFirestoreModule, //.enablePersistence({ synchronizeTabs: true }),
+
       AngularFirePerformanceModule,
       provideFirebaseApp(() => initializeApp(environment.firebase)),
       provideAppCheck(() => {
@@ -123,6 +126,8 @@ bootstrapApplication(AppComponent, {
       provideFirestore(() => {
         const firestore = initializeFirestore(getApp(), {
           ignoreUndefinedProperties: true,
+
+          // TODO: https://github.com/cacic-fct/fct-app/issues/172
           // localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
         });
         if (environment.useEmulators) {
