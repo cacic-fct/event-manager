@@ -1,3 +1,7 @@
+> [!WARNING]  
+> Leia as discussões sobre migrar do Firebase para uma hospedagem própria ([#180](https://github.com/cacic-fct/fct-app/issues/180)) antes de desenvolver um recurso novo.
+
+
 # FCT App
 
 O "FCT App" facilita a vida dos alunos da FCT, com o acesso aos eventos do câmpus. Tem alto potencial de expansão. 
