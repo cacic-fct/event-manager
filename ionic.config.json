@@ -2,5 +2,5 @@
   "name": "fct-app",
   "integrations": {},
   "type": "angular",
-  "npmClient": "yarn"
+  "npmClient": "bun"
 }

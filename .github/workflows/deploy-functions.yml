@@ -16,20 +16,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: 'yarn'
-          cache-dependency-path: functions/yarn.lock
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
         working-directory: ./functions
-        run: yarn install --frozen-lockfile
+        run: bun install --frozen-lockfile
         
       - name: Build functions
         working-directory: ./functions
-        run: yarn build
+        run: bun build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -173,7 +173,8 @@
     "analytics": false,
     "schematicCollections": [
       "@ionic/angular-toolkit"
-    ]
+    ],
+    "packageManager": "bun"
   },
   "schematics": {
     "@ionic/angular-toolkit:component": {

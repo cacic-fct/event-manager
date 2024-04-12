@@ -18,12 +18,12 @@ O aplicativo é construído com Angular e pode ser acessado em [fct-pp.web.app](
 
 ### Desenvolvimento
 
-Para iniciar o site localmente, primeiro instale o [Ionic CLI](https://ionicframework.com/docs/cli)
+Para iniciar o site localmente, primeiro instale o [Ionic CLI](https://ionicframework.com/docs/cli) e o [Bun](https://bun.sh/).
 
 Depois, instale as dependências:
 
 ```bash
-yarn
+bun install
 ```
 
 Em seguida, inicie o servidor de desenvolvimento:
@@ -53,12 +53,12 @@ cd functions
 Depois, instale as dependências:
 
 ```bash
-yarn # --ignore-engines caso não funcione
+bun install
 ```
 
 Em seguida, compile com:
 ```bash
-yarn build
+bun build
 ```
 
 Não é necessário reiniciar o simulador após compilar.
