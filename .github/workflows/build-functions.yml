@@ -30,7 +30,7 @@ jobs:
         
       - name: Build functions
         working-directory: ./functions
-        run: bun build
+        run: bun run build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
