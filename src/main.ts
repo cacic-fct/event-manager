@@ -75,7 +75,7 @@ bootstrapApplication(AppComponent, {
       provideAuth(() => {
         const auth = getAuth();
         useDeviceLanguage(auth);
-        if (environment.useEmulators) {
+        if (environment.firebase.useEmulators) {
           connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
         }
         return auth;
@@ -111,14 +111,14 @@ bootstrapApplication(AppComponent, {
       }),
       provideStorage(() => {
         const storage = getStorage();
-        if (environment.useEmulators) {
+        if (environment.firebase.useEmulators) {
           connectStorageEmulator(storage, 'localhost', 9199);
         }
         return storage;
       }),
       provideFunctions(() => {
         const functions = getFunctions(getApp(), 'southamerica-east1');
-        if (environment.useEmulators) {
+        if (environment.firebase.useEmulators) {
           connectFunctionsEmulator(functions, 'localhost', 5001);
         }
         return functions;
@@ -130,7 +130,7 @@ bootstrapApplication(AppComponent, {
           // TODO: https://github.com/cacic-fct/fct-app/issues/172
           // localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
         });
-        if (environment.useEmulators) {
+        if (environment.firebase.useEmulators) {
           connectFirestoreEmulator(firestore, 'localhost', 8081);
         }
         return firestore;
@@ -139,7 +139,7 @@ bootstrapApplication(AppComponent, {
     PerformanceMonitoringService,
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     { provide: FIRESTORE_SETTINGS, useValue: { ignoreUndefinedProperties: true, merge: true } },
-    { provide: USE_FIRESTORE_EMULATOR, useValue: environment.useEmulators ? ['localhost', 8081] : undefined },
+    { provide: USE_FIRESTORE_EMULATOR, useValue: environment.firebase.useEmulators ? ['localhost', 8081] : undefined },
     provideHttpClient(withInterceptorsFromDi()),
   ],
 }).catch((err) => console.log(err));

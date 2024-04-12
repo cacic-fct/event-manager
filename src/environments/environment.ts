@@ -13,9 +13,13 @@ export const environment = {
     authDomain: 'fct-pp.web.app',
     messagingSenderId: '169157391934',
     measurementId: 'G-BKYCC0GR6G',
+    useEmulators: true,
   },
   recaptcha3SiteKey: '6LcFr9AdAAAAANB7MbCks-nBVqfZZYp8bGp6Kcto',
-  useEmulators: true,
+  supabase: {
+    url: 'https://supabase.yudi.me',
+    anonKey: process.env['ANON_KEY'],
+  },
 };
 
 /*
