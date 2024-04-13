@@ -12,8 +12,4 @@ export const environment = {
     useEmulators: false,
   },
   recaptcha3SiteKey: '6LcFr9AdAAAAANB7MbCks-nBVqfZZYp8bGp6Kcto',
-  supabase: {
-    url: 'https://supabase.yudi.me',
-    anonKey: process.env['ANON_KEY'],
-  },
 };
