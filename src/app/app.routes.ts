@@ -82,7 +82,7 @@ export const routes: Routes = [
   },
   {
     path: 'register',
-    title: 'Registro',
+    title: 'Registrar-se',
     loadComponent: () => import('src/app/auth/register/register.page').then((m) => m.RegisterPage),
     ...canActivate(redirectUnauthorizedToLogin),
   },
