@@ -106,13 +106,6 @@ export class CalendarPage {
     this.generateCalendarData();
   }
 
-  ionViewDidEnter() {
-    if (localStorage.getItem('user') === null && sessionStorage.getItem('calendarLoginToast') !== 'true') {
-      sessionStorage.setItem('calendarLoginToast', 'true');
-      this.presentToast();
-    }
-  }
-
   originalOrder = (a: KeyValue<any, any>, b: KeyValue<any, any>): number => {
     return 0;
   };
@@ -206,28 +199,5 @@ export class CalendarPage {
   }
   viewToggle() {
     this.itemView = !this.itemView;
-  }
-
-  async presentToast() {
-    const toast = await this.toastController.create({
-      header: 'Você tem vínculo com a Unesp?',
-      message: 'Faça login no menu para visualizar todos os eventos',
-      position: 'bottom',
-      buttons: [
-        {
-          side: 'end',
-          text: 'Menu',
-          handler: () => {
-            this.router.navigate(['/menu']);
-          },
-        },
-        {
-          side: 'end',
-          text: 'Fechar',
-          role: 'cancel',
-        },
-      ],
-    });
-    await toast.present();
   }
 }
