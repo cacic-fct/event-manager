@@ -3,5 +3,13 @@ ion-grid {
   top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
+  width: 350px;
+}
+.legal-footer {
+  margin: auto;
+  position: absolute;
+  text-align: center;
+  bottom: 20px;
   width: 100%;
+  font-size: 0.8rem;
 }
