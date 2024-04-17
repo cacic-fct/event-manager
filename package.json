@@ -28,6 +28,7 @@
     "@ngneat/until-destroy": "^10.0.0",
     "@pdfme/generator": "^3.4.3",
     "@sweetalert2/ngx-sweetalert2": "^12.3.0",
+    "@types/google-one-tap": "^1.2.6",
     "@types/twemoji-parser": "^13.1.4",
     "@zxing/browser": "^0.1.4",
     "@zxing/library": "^0.20.0",
