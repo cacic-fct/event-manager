@@ -15,6 +15,7 @@ import {
   getIdTokenResult,
   AuthProvider,
   signInWithPopup,
+  signInWithCredential,
   linkWithPopup,
 } from '@angular/fire/auth';
 import { Analytics, logEvent, setUserId } from '@angular/fire/analytics';
@@ -28,6 +29,7 @@ import { getStringChanges, RemoteConfig, getBooleanChanges } from '@angular/fire
 import { arrayRemove } from '@angular/fire/firestore';
 import { gt as versionGreaterThan } from 'semver';
 import { Functions, httpsCallable } from '@angular/fire/functions';
+import { CredentialResponse } from 'google-one-tap';
 
 @Injectable({
   providedIn: 'root',
@@ -142,6 +144,25 @@ export class AuthService {
     return this.LinkProfile(new GoogleAuthProvider());
   }
 
+  async GoogleOneTap(token: CredentialResponse) {
+    const credential = GoogleAuthProvider.credential(token.credential);
+
+    signInWithCredential(this.auth, credential).then((result) => {
+      this.SetUserData(result.user);
+      logEvent(this.analytics, 'login');
+      setUserId(this.analytics, result.user.uid);
+
+      this.route.queryParams.pipe(take(1)).subscribe((params) => {
+        const redirect = params['redirect'];
+        if (redirect) {
+          this.router.navigate([redirect]);
+        } else {
+          this.router.navigate(['menu']);
+        }
+      });
+    });
+  }
+
   async anonAuth() {
     try {
       await signInAnonymously(this.auth);
@@ -239,6 +260,7 @@ export class AuthService {
   }
 
   private SetUserData(user: UserAuth) {
+    console.log(user);
     const userRef: AngularFirestoreDocument<User> = this.afs.doc(`users/${user.uid}`);
     const userData: User = {
       uid: user.uid,
