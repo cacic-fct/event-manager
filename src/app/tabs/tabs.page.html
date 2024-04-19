@@ -12,10 +12,6 @@
     <ion-tab-button tab="mapa">
       <ion-icon name="map"></ion-icon>
     </ion-tab-button>
-    } @if (this.manual$ | async) {
-    <ion-tab-button href="/manual-do-calouro">
-      <ion-icon name="book-outline"></ion-icon>
-    </ion-tab-button>
     } @if (allowRestrictedArea$ | async) {
     <ion-tab-button tab="area-restrita">
       <ion-icon name="build-outline"></ion-icon>
