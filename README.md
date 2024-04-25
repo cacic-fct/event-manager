@@ -1,5 +1,5 @@
 > [!WARNING]  
-> Leia as discussões sobre migrar do Firebase para uma hospedagem própria ([#180](https://github.com/cacic-fct/fct-app/issues/180)) antes de desenvolver um recurso novo.
+> Leia as discussões sobre migrar do Firebase para uma hospedagem própria ([#182](https://github.com/cacic-fct/fct-app/discussions/182)) antes de desenvolver um recurso novo.
 
 
 # FCT App
