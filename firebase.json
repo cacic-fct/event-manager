@@ -1,10 +1,10 @@
 {
   "hosting": {
     "public": "dist/browser",
-    "rewrites": [
+    "redirects": [
       {
         "source": "**",
-        "destination": "https://fctapp.yudi.me/",
+        "destination": "https://fctapp.yudi.me",
         "type": 301
       }
     ]
