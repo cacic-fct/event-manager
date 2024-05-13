@@ -1,0 +1,64 @@
+services:
+  fctapp:
+    image: ghcr.io/cacic-fct/fct-app:main
+    restart: always
+    ports:
+      - '8101:80'
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    networks:
+      - traefik
+    labels:
+      - 'com.centurylinklabs.watchtower.scope=fctapp'
+      # Traefik - Proxy
+      - 'traefik.enable=true'
+      # websecure route
+      - 'traefik.http.routers.fctapp.entryPoints=websecure'
+      - 'traefik.http.routers.fctapp.rule=Host(`fctapp.yudi.me`)'
+      - 'traefik.http.routers.fctapp.tls=true'
+      - 'traefik.http.routers.fctapp.tls.certResolver=letsencrypt'
+      - 'traefik.http.routers.fctapp.tls.domains=fctapp.yudi.me'
+      # Middlewares
+      - 'traefik.http.routers.fctapp.middlewares=fctapp-mw-compression, fctapp-mw-ratelimit, fctapp-mw-errors, fctapp-mw-securityheaders'
+      ## Compression
+      - 'traefik.http.middlewares.fctapp-mw-compression.compress=true'
+      ## Rate limit
+      - 'traefik.http.middlewares.fctapp-mw-ratelimit.ratelimit.average=100'
+      - 'traefik.http.middlewares.fctapp-mw-ratelimit.ratelimit.burst=200'
+      ## Errors
+      - 'traefik.http.middlewares.fctapp-mw-errors.errors.status=400'
+      - 'traefik.http.middlewares.fctapp-mw-errors.errors.service=fctapp-svc'
+      - 'traefik.http.middlewares.fctapp-mw-errors.errors.query=/{status}'
+      ## Security
+      - 'traefik.http.middlewares.fctapp-mw-securityheaders.headers.STSSeconds=315360000'
+      - 'traefik.http.middlewares.fctapp-mw-securityheaders.headers.STSIncludeSubdomains=true'
+      - 'traefik.http.middlewares.fctapp-mw-securityheaders.headers.STSPreload=true'
+      - 'traefik.http.middlewares.fctapp-mw-securityheaders.headers.forceSTSHeader=true'
+      - 'traefik.http.middlewares.fctapp-mw-securityheaders.headers.sslProxyHeaders.X-Forwarded-Proto=https'
+      - 'traefik.http.middlewares.fctapp-mw-securityheaders.headers.contentTypeNosniff=true'
+      # HTTP Service
+      - 'traefik.http.services.fctapp-svc.loadBalancer.server.port=80'
+      - 'traefik.http.services.fctapp-svc.loadBalancer.passHostHeader=true'
+      # Insecure redirect
+      - 'traefik.http.routers.fctapp-insecure.entryPoints=web'
+      - 'traefik.http.routers.fctapp-insecure.rule=Host(`fctapp.yudi.me`)'
+      - 'traefik.http.routers.fctapp-insecure.middlewares=fctapp-insecure-mw'
+      - 'traefik.http.middlewares.fctapp-insecure-mw.redirectregex.regex=^http://fctapp.yudi.me/(.*)'
+      - 'traefik.http.middlewares.fctapp-insecure-mw.redirectregex.replacement=https://fctapp.yudi.me$${1}'
+      - 'traefik.http.routers.fctapp-insecure.service=noop@internal'
+
+  fctapp_watchtower:
+    image: containrrr/watchtower
+    restart: always
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCOPE=fctapp
+      - WATCHTOWER_POLL_INTERVAL=300
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - 'com.centurylinklabs.watchtower.scope=fctapp'
+
+networks:
+  traefik:
+    external: true
