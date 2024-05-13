@@ -1,15 +1,11 @@
 {
   "hosting": {
     "public": "dist/browser",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
     "rewrites": [
       {
         "source": "**",
-        "destination": "/index.html"
+        "destination": "https://fctapp.yudi.me/",
+        "type": 301
       }
     ]
   },
