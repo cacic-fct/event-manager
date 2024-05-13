@@ -105,7 +105,6 @@ bootstrapApplication(AppComponent, {
         const analytics = getAnalytics();
         logEvent(analytics, 'app_version', {
           app_name: GlobalConstantsService.appName,
-          app_version: GlobalConstantsService.appVersion,
         });
         return analytics;
       }),
@@ -134,7 +133,7 @@ bootstrapApplication(AppComponent, {
           connectFirestoreEmulator(firestore, 'localhost', 8081);
         }
         return firestore;
-      })
+      }),
     ),
     PerformanceMonitoringService,
     { provide: LOCALE_ID, useValue: 'pt-BR' },
