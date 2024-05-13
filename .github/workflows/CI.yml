@@ -1,0 +1,26 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build for production
+        run: bun run build --configuration=production
+        
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build-artifacts
+          path: dist/

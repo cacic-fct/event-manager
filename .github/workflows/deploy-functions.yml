@@ -4,12 +4,13 @@ name: Deploy functions
 
 on:
   push:
-    tags:
-      - '*'
+    paths:
+     — 'functions/**'
+    branches:
+     - 'main'
 
 jobs:
   build_functions:
-    if: ${{ github.ref_type == 'tag' }}
     runs-on: ubuntu-latest
 
     steps:
