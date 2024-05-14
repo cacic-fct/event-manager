@@ -39,10 +39,12 @@ registerLocaleData(localePt);
 
 import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
 import { setNonce } from '@ionic/core/loader';
+import { setNonce as ioniconsSetnonce } from 'ionicons/dist/types/stencil-public-runtime';
 
 if (environment.production) {
   enableProdMode();
   setNonce('NGINX_CSP_NONCE');
+  ioniconsSetnonce('NGINX_CSP_NONCE');
 }
 
 bootstrapApplication(AppComponent, {
