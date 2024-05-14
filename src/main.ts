@@ -37,6 +37,8 @@ import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 registerLocaleData(localePt);
 
+import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
+
 if (environment.production) {
   enableProdMode();
 }
@@ -50,7 +52,7 @@ bootstrapApplication(AppComponent, {
     provideRouter(routes, withPreloading(PreloadingStrategyService), withComponentInputBinding()),
     importProvidersFrom(
       BrowserModule,
-      ServiceWorkerModule.register('ngsw-worker.js', {
+      ServiceWorkerModule.register(unwrapResourceUrl(trustedResourceUrl`/ngsw-worker.js`) as string, {
         enabled: environment.production,
         registrationStrategy: 'registerImmediately',
       }),
