@@ -1,41 +1,40 @@
 {
-    "$schema": "./node_modules/@angular/service-worker/config/schema.json",
-    "index": "/index.html",
-    "assetGroups": [
-        {
-            "name": "app",
-            "installMode": "prefetch",
-            "resources": {
-                "files": [
-                    "/favicon.png",
-                    "/index.html",
-                    "/manifest.webmanifest",
-                    "/*.css",
-                    "/*.js",
-                    "/3rdpartylicenses.txt"
-                ]
-            }
-        },
-        {
-            "name": "assets",
-            "installMode": "lazy",
-            "updateMode": "prefetch",
-            "resources": {
-                "files": [
-                    "/assets/**",
-                    "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
-                ]
-            }
-        },
-        {
-            "name": "icons",
-            "installMode": "prefetch",
-            "updateMode": "prefetch",
-            "resources": {
-                "files": [
-                    "/svg/**"
-                ]
-            }
-        }
-    ]
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.png",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js",
+          "/3rdpartylicenses.txt"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/assets/**",
+          "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
+        ]
+      }
+    },
+    {
+      "name": "icons",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/svg/**"
+        ]
+      }
+    }
+  ]
 }
