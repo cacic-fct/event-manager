@@ -31,7 +31,7 @@ import { RouterLink } from '@angular/router';
 
 @UntilDestroy()
 @Component({
-  selector: 'app-tab3',
+  selector: 'app-menu',
   templateUrl: 'menu.page.html',
   styleUrls: ['menu.page.scss'],
   standalone: true,
