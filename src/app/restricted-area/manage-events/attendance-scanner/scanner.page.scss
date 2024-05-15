@@ -7,7 +7,10 @@
 ion-backdrop {
   opacity: 0;
   visibility: hidden;
-  transition: background-color 1s, opacity 1s, visibility 1s;
+  transition:
+    background-color 1s,
+    opacity 1s,
+    visibility 1s;
 }
 
 .success {
@@ -25,4 +28,10 @@ ion-backdrop {
 .backdropvisible {
   opacity: 0.5;
   visibility: visible;
+}
+
+.list-container {
+  max-width: 1600px;
+  display: block;
+  overflow-y: scroll;
 }

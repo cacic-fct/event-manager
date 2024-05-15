@@ -1,21 +1,17 @@
-<img
-  class="margin-horizontal-auto"
-  style="width: 72px; height: 72px; display: block; padding: 10px"
-  [src]="emojiService.getEmoji(eventItem.icon)"
-  (click)="presentToast()" />
+<img class="margin-horizontal-auto emoji" [src]="emojiService.getEmoji(eventItem.icon)" (click)="presentToast()" />
 
 <div class="ion-text-center">
-  <h1 style="margin: 0">{{ eventItem.name }}</h1>
-  <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ eventItem.shortDescription }}</h5>
-  <h5 style="margin: 0; margin-bottom: 5px; font-weight: 500">{{ coursesService.getCourse(eventItem.course) }}</h5>
-  <h4 style="margin: 0; font-weight: 400">
+  <h1 class="no-margin">{{ eventItem.name }}</h1>
+  <h5 class="no-margin margin-bottom-5 font-500">{{ eventItem.shortDescription }}</h5>
+  <h5 class="no-margin margin-bottom-5 font-500">{{ coursesService.getCourse(eventItem.course) }}</h5>
+  <h4 class="no-margin margin-bottom-5 font-400">
     <!-- prettier-ignore -->
     {{ stringService.toUppercase(dateService.getDateFromTimestamp(eventItem.eventStartDate) | date: "EEEE, dd 'de' MMMM 'de' y") }}
   </h4>
-  <h3 style="margin: 0; font-weight: 400">
-    {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date : 'HH:mm' }}
+  <h3 class="no-margin font-400">
+    {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date: 'HH:mm' }}
     @if (eventItem.eventEndDate) {
-      - {{ dateService.getDateFromTimestamp(eventItem.eventEndDate) | date : 'HH:mm' }}
+      - {{ dateService.getDateFromTimestamp(eventItem.eventEndDate) | date: 'HH:mm' }}
     }
   </h3>
 

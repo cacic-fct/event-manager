@@ -47,7 +47,7 @@
           <ion-item [formGroupName]="i">
             <ion-label>{{ i + 1 }}.</ion-label>
             @if (dataForm.get('issueList').get(i.toString()).errors['notFound']) {
-            <ion-label color="danger" style="padding-left: 8px"> Não encontrado </ion-label>
+            <ion-label color="danger" class="not-found"> Não encontrado </ion-label>
             }
             <ion-input formControlName="userData" placeholder="E-mail, celular ou UID"> </ion-input>
             <ion-button fill="clear" color="danger" (click)="removeIssueList(i)">
@@ -158,7 +158,7 @@
       <ion-button class="ion-padding" type="submit" (click)="onSubmit()" [disabled]="!dataForm.valid">
         Emitir certificados
       </ion-button>
-      <p style="font-size: 0.75em" class="ion-padding-horizontal">Ao continuar, confira os dados com atenção.</p>
+      <p class="ion-padding-horizontal footnote">Ao continuar, confira os dados com atenção.</p>
     </div>
 
     <ion-modal [keepContentsMounted]="true">

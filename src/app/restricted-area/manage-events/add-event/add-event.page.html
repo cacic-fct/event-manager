@@ -17,9 +17,9 @@
       <ion-label position="floating">Curso</ion-label>
       <ion-select interface="popover" formControlName="course">
         @for (course of courses | keyvalue; track course) {
-          <ion-select-option slot="start" class="course" [value]="course.key">
-            {{ course.value.name }}
-          </ion-select-option>
+        <ion-select-option slot="start" class="course" [value]="course.key">
+          {{ course.value.name }}
+        </ion-select-option>
         }
       </ion-select>
     </ion-item>
@@ -55,22 +55,20 @@
         formControlName="hasDateEndForm"
         [checked]="hasDateEnd"
         (ionChange)="hasDateEndChange()"
-      formControlName="hasDateEndForm"></ion-toggle>
+        formControlName="hasDateEndForm"></ion-toggle>
       <ion-datetime-button
         [disabled]="!this.dataForm.value.hasDateEndForm"
-      datetime="eventDateEnd"></ion-datetime-button>
+        datetime="eventDateEnd"></ion-datetime-button>
     </ion-item>
 
     <ion-item>
       <ion-label position="floating">Pertence ao grande evento</ion-label>
       <ion-select interface="popover" formControlName="inMajorEvent">
         <ion-select-option slot="start" value="none">Nenhum</ion-select-option>
-        @if (majorEventsData$ | async; as items) {
-          @for (mEvent of items; track mEvent) {
-            <ion-select-option slot="start" [value]="mEvent.id"> {{ mEvent.name }} </ion-select-option>
-          }
-        } @else {
-          <ion-select-option slot="start" value="none" disabled>Carregando eventos...</ion-select-option>
+        @if (majorEventsData$ | async; as items) { @for (mEvent of items; track mEvent) {
+        <ion-select-option slot="start" [value]="mEvent.id"> {{ mEvent.name }} </ion-select-option>
+        } } @else {
+        <ion-select-option slot="start" value="none" disabled>Carregando eventos...</ion-select-option>
         }
       </ion-select>
     </ion-item>
@@ -84,7 +82,6 @@
       </ion-select>
     </ion-item>
 
-
     <ion-card-header>
       <ion-card-title>Localização (opcional)</ion-card-title>
     </ion-card-header>
@@ -92,12 +89,10 @@
     <ion-item>
       <ion-label position="floating">Predefinição</ion-label>
       <ion-select (ionChange)="placeChange($event)" interface="popover" placeholder="Personalizado" #selectPlace>
-        @if (places$ | async; as places) {
-          @for (place of places | keyvalue; track place) {
-            <ion-select-option slot="start" [value]="place.key"> {{ place.value.name }} </ion-select-option>
-          }
-        } @else {
-          <ion-select-option slot="start" value="none" disabled>Carregando locais...</ion-select-option>
+        @if (places$ | async; as places) { @for (place of places | keyvalue; track place) {
+        <ion-select-option slot="start" [value]="place.key"> {{ place.value.name }} </ion-select-option>
+        } } @else {
+        <ion-select-option slot="start" value="none" disabled>Carregando locais...</ion-select-option>
         }
       </ion-select>
     </ion-item>
@@ -145,10 +140,10 @@
     </ion-item>
 
     @if (dataForm.get('inMajorEvent').value === 'none') {
-      <ion-item>
-        <ion-label>Permitir inscrição</ion-label>
-        <ion-toggle slot="end" formControlName="allowSubscription"></ion-toggle>
-      </ion-item>
+    <ion-item>
+      <ion-label>Permitir inscrição</ion-label>
+      <ion-toggle slot="end" formControlName="allowSubscription"></ion-toggle>
+    </ion-item>
     }
 
     <ion-item>
@@ -157,27 +152,24 @@
     </ion-item>
 
     @if (dataForm.get('collectAttendance').value) {
-      <ion-item>
-        @if (dataForm.get('inMajorEvent').value === 'none') {
-          <ion-label>Emite certificado de participação</ion-label>
-        }
-        @if (dataForm.get('inMajorEvent').value !== 'none') {
-          <ion-label>
-            Consta no certificado de participação
-          </ion-label>
-        }
-        <ion-toggle slot="end" formControlName="issueCertificate" checked="off"></ion-toggle>
-      </ion-item>
-      @if (dataForm.get('issueCertificate').value) {
-        <ion-item>
-          <ion-label>Carga horária deste dia</ion-label>
-          <ion-input formControlName="creditHours" numeric="decimal" placeholder="Em horas"></ion-input>
-        </ion-item>
+    <ion-item>
+      @if (dataForm.get('inMajorEvent').value === 'none') {
+      <ion-label>Emite certificado de participação</ion-label>
+      } @if (dataForm.get('inMajorEvent').value !== 'none') {
+      <ion-label> Consta no certificado de participação </ion-label>
       }
-      <ion-item>
-        <ion-label position="floating">Vagas</ion-label>
-        <ion-input formControlName="slotsAvailable"></ion-input>
-      </ion-item>
+      <ion-toggle slot="end" formControlName="issueCertificate" checked="off"></ion-toggle>
+    </ion-item>
+    @if (dataForm.get('issueCertificate').value) {
+    <ion-item>
+      <ion-label>Carga horária deste dia</ion-label>
+      <ion-input formControlName="creditHours" numeric="decimal" placeholder="Em horas"></ion-input>
+    </ion-item>
+    }
+    <ion-item>
+      <ion-label position="floating">Vagas</ion-label>
+      <ion-input formControlName="slotsAvailable"></ion-input>
+    </ion-item>
     }
 
     <ion-item>
@@ -194,9 +186,7 @@
       <ion-button class="ion-padding" type="submit" (click)="onSubmit()" [disabled]="!dataForm.valid">
         Criar evento
       </ion-button>
-      <p style="font-size: 0.75em" class="ion-padding-horizontal">
-        Ao continuar, seu nome será gravado junto ao evento.
-      </p>
+      <p class="ion-padding-horizontal name-notice">Ao continuar, seu nome será gravado junto ao evento.</p>
     </div>
 
     <ion-modal [keepContentsMounted]="true">
@@ -229,7 +219,7 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-[showConfirmButton]="false"></swal>
+  [showConfirmButton]="false"></swal>
 
 <swal
   #errorSwal
@@ -239,7 +229,7 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-[showConfirmButton]="true"></swal>
+  [showConfirmButton]="true"></swal>
 
 <swal
   #errorMajorEventSwal
@@ -249,4 +239,4 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-[showConfirmButton]="true"></swal>
+  [showConfirmButton]="true"></swal>

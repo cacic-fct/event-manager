@@ -1,7 +1,7 @@
 <ion-header>
   <ion-toolbar>
     <ion-title>Confirmar inscrição</ion-title>
-    <ion-buttons style="max-width: 100px" slot="end">
+    <ion-buttons class="cancel-button-container" slot="end">
       <ion-button (click)="closeModal()">Cancelar</ion-button>
     </ion-buttons>
   </ion-toolbar>
@@ -26,10 +26,10 @@
         <ion-item lines="none">
           Evento
           <span slot="end">
-            {{ dateService.getDateFromTimestamp(majorEvent.eventStartDate) | date : 'dd/MM' }}
+            {{ dateService.getDateFromTimestamp(majorEvent.eventStartDate) | date: 'dd/MM' }}
             {{
-            majorEvent.eventEndDate &&
-            '- ' + (dateService.getDateFromTimestamp(majorEvent.eventEndDate) | date : 'dd/MM')
+              majorEvent.eventEndDate &&
+                '- ' + (dateService.getDateFromTimestamp(majorEvent.eventEndDate) | date: 'dd/MM')
             }}
           </span>
         </ion-item>
@@ -37,10 +37,10 @@
           <ion-item lines="none">
             Inscrição
             <span slot="end">
-              {{ dateService.getDateFromTimestamp(majorEvent.subscriptionStartDate) | date : 'dd/MM' }}
+              {{ dateService.getDateFromTimestamp(majorEvent.subscriptionStartDate) | date: 'dd/MM' }}
               {{
-              majorEvent.subscriptionEndDate &&
-              '- ' + (dateService.getDateFromTimestamp(majorEvent.subscriptionEndDate) | date : 'dd/MM')
+                majorEvent.subscriptionEndDate &&
+                  '- ' + (dateService.getDateFromTimestamp(majorEvent.subscriptionEndDate) | date: 'dd/MM')
               }}
             </span>
           </ion-item>
@@ -60,25 +60,25 @@
             @if (majorEvent.price.single) {
               <ion-item lines="none">
                 Preço único
-                <span slot="end">{{ majorEvent.price.single | currency : 'BRL' }}</span>
+                <span slot="end">{{ majorEvent.price.single | currency: 'BRL' }}</span>
               </ion-item>
             } @else {
               @if (subscriptionType === '0' && majorEvent.price.students) {
                 <ion-item lines="none">
                   {{ enrollmentTypes.getEnrollmentType(0) }}
-                  <span slot="end">{{ majorEvent.price.students | currency : 'BRL' }}</span>
+                  <span slot="end">{{ majorEvent.price.students | currency: 'BRL' }}</span>
                 </ion-item>
               }
               @if (subscriptionType === '1' && majorEvent.price.otherStudents) {
                 <ion-item lines="none">
                   {{ enrollmentTypes.getEnrollmentType(1) }}
-                  <span slot="end">{{ majorEvent.price.otherStudents | currency : 'BRL' }}</span>
+                  <span slot="end">{{ majorEvent.price.otherStudents | currency: 'BRL' }}</span>
                 </ion-item>
               }
               @if (subscriptionType === '2' && majorEvent.price.professors) {
                 <ion-item lines="none">
                   {{ enrollmentTypes.getEnrollmentType(2) }}
-                  <span slot="end">{{ majorEvent.price.professors | currency : 'BRL' }}</span>
+                  <span slot="end">{{ majorEvent.price.professors | currency: 'BRL' }}</span>
                 </ion-item>
               }
             }
@@ -87,11 +87,11 @@
       }
       <div class="card-section ion-padding-horizontal">
         <p>
-          {{ minicursosCount | number : '2.0-0' }} de {{ majorEvent.maxCourses | number : '2.0-0' }} minicursos
+          {{ minicursosCount | number: '2.0-0' }} de {{ majorEvent.maxCourses | number: '2.0-0' }} minicursos
           selecionados
         </p>
         <p>
-          {{ palestrasCount | number : '2.0-0' }} de {{ majorEvent.maxLectures | number : '2.0-0' }} palestras
+          {{ palestrasCount | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }} palestras
           selecionados
         </p>
       </div>
@@ -102,10 +102,7 @@
     @if (eventsSelected; as eventsArray) {
       @for (event of eventsArray; track event; let i = $index) {
         @if (i == 0 || !dateService.compareDayTimestamp(eventsArray[i - 1].eventStartDate, event.eventStartDate)) {
-          <ion-item-divider
-            mode="ios"
-            sticky="true"
-            >
+          <ion-item-divider mode="ios" sticky="true">
             <ion-label> {{ formatDate(dateService.getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
           </ion-item-divider>
         }
@@ -120,9 +117,9 @@
             <ion-label>
               <h3>{{ event.name }}</h3>
               <h4>
-                {{ dateService.getDateFromTimestamp(event.eventStartDate) | date : 'HH:mm' }}
+                {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: 'HH:mm' }}
                 {{
-                event.eventEndDate && ' às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date : 'HH:mm')
+                  event.eventEndDate && ' às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date: 'HH:mm')
                 }}
               </h4>
             </ion-label>
@@ -131,7 +128,7 @@
       }
     }
 
-    <ion-button (click)="onSubmit()" style="margin-top: 12px; margin-bottom: 24px">Confirmar</ion-button>
+    <ion-button (click)="onSubmit()" class="submit-button">Confirmar</ion-button>
   </div>
 
   <ng-template #loading>
@@ -147,4 +144,4 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-[showConfirmButton]="true"></swal>
+  [showConfirmButton]="true"></swal>

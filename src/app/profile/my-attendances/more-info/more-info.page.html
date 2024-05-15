@@ -8,51 +8,44 @@
 </ion-header>
 
 <ion-content>
-  @if (majorEvent$ | async; as majorEvent) {
-    @if (majorEventSubscription$ | async; as majorEventSubscription) {
-      <div class="event-container">
-        <app-major-event-display-header [majorEventItem]="majorEvent"></app-major-event-display-header>
-        <app-major-event-display-description [majorEventItem]="majorEvent"></app-major-event-display-description>
-        <app-major-event-display-date [majorEventItem]="majorEvent"></app-major-event-display-date>
-        @if (majorEvent.price) {
-          <div class="card-section ion-padding-horizontal">
-            <div class="card-label">
-              <ion-icon name="wallet-outline" aria-hidden="true"></ion-icon>
-              Valores
-            </div>
-            @if (majorEvent.price.isFree) {
-              <ion-item lines="none">
-                <ion-label>Gratuito</ion-label>
-              </ion-item>
-            } @else {
-              @if (majorEvent.price.single) {
-                <ion-item lines="none">
-                  Preço único
-                  <span slot="end">{{ majorEvent.price.single | currency: 'BRL' }}</span>
-                </ion-item>
-              } @else {
-                @if (majorEventSubscription.subscriptionType !== undefined || majorEventSubscription.subscriptionType !== null) {
-                  <ion-item lines="none">
-                    {{ enrollmentTypes.getEnrollmentType(majorEventSubscription.subscriptionType) }}
-                    <span slot="end"> {{ majorEventSubscription.payment.price | currency: 'BRL' }} </span>
-                  </ion-item>
-                }
-              }
-              <ion-item lines="none">
-                Status
-                <span slot="end">
-                  @if (majorEventSubscription.payment.status === 0) {
-                    Não pago
-                  }
-                  @if (majorEventSubscription.payment.status === 1) {
-                    <!-- prettier-ignore -->
-                    Comprovante enviado em {{ dateService.getDateFromTimestamp(majorEventSubscription.payment.time) | date: 'dd/MM/yyyy' }}
-                    <br />
-                    Aguardando confirmação
-                  }
-                  @if (majorEventSubscription.payment.status === 2) {
-                    <!-- prettier-ignore -->
-                    Pagamento validado em {{ dateService.getDateFromTimestamp(majorEventSubscription.payment.time) | date: 'dd/MM/yyyy' }}
+  @if (majorEvent$ | async; as majorEvent) { @if (majorEventSubscription$ | async; as majorEventSubscription) {
+  <div class="event-container">
+    <app-major-event-display-header [majorEventItem]="majorEvent"></app-major-event-display-header>
+    <app-major-event-display-description [majorEventItem]="majorEvent"></app-major-event-display-description>
+    <app-major-event-display-date [majorEventItem]="majorEvent"></app-major-event-display-date>
+    @if (majorEvent.price) {
+    <div class="card-section ion-padding-horizontal">
+      <div class="card-label">
+        <ion-icon name="wallet-outline" aria-hidden="true"></ion-icon>
+        Valores
+      </div>
+      @if (majorEvent.price.isFree) {
+      <ion-item lines="none">
+        <ion-label>Gratuito</ion-label>
+      </ion-item>
+      } @else { @if (majorEvent.price.single) {
+      <ion-item lines="none">
+        Preço único
+        <span slot="end">{{ majorEvent.price.single | currency: 'BRL' }}</span>
+      </ion-item>
+      } @else { @if (majorEventSubscription.subscriptionType !== undefined || majorEventSubscription.subscriptionType
+      !== null) {
+      <ion-item lines="none">
+        {{ enrollmentTypes.getEnrollmentType(majorEventSubscription.subscriptionType) }}
+        <span slot="end"> {{ majorEventSubscription.payment.price | currency: 'BRL' }} </span>
+      </ion-item>
+      } }
+      <ion-item lines="none">
+        Status
+        <span slot="end">
+          @if (majorEventSubscription.payment.status === 0) { Não pago } @if (majorEventSubscription.payment.status ===
+          1) {
+          <!-- prettier-ignore -->
+          Comprovante enviado em {{ dateService.getDateFromTimestamp(majorEventSubscription.payment.time) | date: 'dd/MM/yyyy' }}
+          <br />
+          Aguardando confirmação } @if (majorEventSubscription.payment.status === 2) {
+          <!-- prettier-ignore -->
+          Pagamento validado em {{ dateService.getDateFromTimestamp(majorEventSubscription.payment.time) | date: 'dd/MM/yyyy' }}
                   }
                   @if (majorEventSubscription.payment.status === 3) {
                     Erro no pagamento
@@ -60,49 +53,44 @@
                   @if (majorEventSubscription.payment.status === 4) {
                     Erro na inscrição
                   }
-                </span>
-              </ion-item>
-            }
-          </div>
-        }
-        @if (dateService.isInThePast(dateService.getDateFromTimestamp(majorEvent.eventStartDate)) ) {
-          <div
-            class="card-section ion-padding-horizontal"
-            >
-            <div class="card-label">
-              <ion-icon name="document-text-outline" aria-hidden="true"></ion-icon>
-              Certificados
-            </div>
-            <div class="ion-padding-top">
-              <ion-button color="primary" (click)="getCertificateList()">
-                <ion-icon name="list" slot="start"></ion-icon>Listar certificados
-              </ion-button>
-            </div>
-          </div>
-        }
-        <div class="ion-padding">
-          <h2>Inscrito</h2>
-          <app-event-list [eventInput]="subscribedEvents$" [isSubscribedList]="true"></app-event-list>
-          <ion-accordion-group>
-            <ion-accordion value="notSubscribed">
-              <ion-item slot="header" color="light">
-                <h1>Não inscrito</h1>
-              </ion-item>
-              <app-event-list
-                slot="content"
-                [eventInput]="notSubscribedEvents$"
-              [isSubscribedList]="false"></app-event-list>
-            </ion-accordion>
-          </ion-accordion-group>
-        </div>
+        </span>
+      </ion-item>
+      }
+    </div>
+    } @if (dateService.isInThePast(dateService.getDateFromTimestamp(majorEvent.eventStartDate)) ) {
+    <div class="card-section ion-padding-horizontal">
+      <div class="card-label">
+        <ion-icon name="document-text-outline" aria-hidden="true"></ion-icon>
+        Certificados
       </div>
+      <div class="ion-padding-top">
+        <ion-button color="primary" (click)="getCertificateList()">
+          <ion-icon name="list" slot="start"></ion-icon>Listar certificados
+        </ion-button>
+      </div>
+    </div>
     }
-  } @else {
-    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+    <div class="ion-padding">
+      <h2>Inscrito</h2>
+      <app-event-list [eventInput]="subscribedEvents$" [isSubscribedList]="true"></app-event-list>
+      <ion-accordion-group>
+        <ion-accordion value="notSubscribed">
+          <ion-item slot="header" color="light">
+            <h1>Não inscrito</h1>
+          </ion-item>
+          <app-event-list
+            slot="content"
+            [eventInput]="notSubscribedEvents$"
+            [isSubscribedList]="false"></app-event-list>
+        </ion-accordion>
+      </ion-accordion-group>
+    </div>
+  </div>
+  } } @else {
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
-
   <ng-template #loadingSpinner>
-    <ion-spinner name="dots" style="margin: 0 auto; display: block"></ion-spinner>
+    <ion-spinner name="dots" class="ion-spinner-default"></ion-spinner>
   </ng-template>
 </ion-content>

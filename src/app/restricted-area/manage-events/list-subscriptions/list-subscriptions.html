@@ -10,9 +10,9 @@
 <ion-content>
   @if (subscriptions$ | async; as subscriptions) { @if (event$ | async; as event) {
   <div class="ion-padding">
-    <h3 style="margin-bottom: 0">{{ event.name }}</h3>
-    <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-    <h5 style="margin-top: 0">
+    <h3 class="no-margin-bottom">{{ event.name }}</h3>
+    <h4 class="no-margin">{{ event.shortDescription }}</h4>
+    <h5 class="no-margin-top">
       {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
     </h5>
     <ion-button (click)="generateCSV()">Baixar CSV</ion-button>

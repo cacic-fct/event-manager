@@ -35,6 +35,11 @@
   margin-right: auto;
 }
 
+.margin-vertical-auto {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
 .text-black {
   color: #000;
 }
@@ -79,6 +84,35 @@
   margin-bottom: 0;
 }
 
+.no-margin-top {
+  margin-top: 0;
+}
+
+.no-margin {
+  margin: 0;
+}
+
+.inherit-color {
+  color: inherit;
+}
+
+.ion-spinner-default {
+  margin: 0 auto;
+  display: block;
+}
+
+.width-100 {
+  width: 100%;
+}
+
+.font-400 {
+  font-weight: 400;
+}
+
+.font-500 {
+  font-weight: 500;
+}
+
 // https://github.com/ionic-team/ionic-framework/issues/17269
 .alert-tappable.alert-radio {
   height: auto;
@@ -92,4 +126,12 @@
 
 .sc-ion-label-md-h {
   white-space: normal !important;
+}
+
+.course-background-color-me-25 {
+  --background: #ff6b6b25;
+}
+
+.course-background-color-computacao-25 {
+  --background: #51aaf225;
 }

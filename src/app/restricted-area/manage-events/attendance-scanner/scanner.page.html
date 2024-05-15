@@ -33,12 +33,12 @@
     </zxing-scanner>
   </div>
   <div>
-    <ion-list style="max-width: 1600px; display: block; overflow-y: scroll" class="margin-horizontal-auto">
+    <ion-list class="margin-horizontal-auto list-container">
       <ng-container *ngIf="attendanceCollection$ | async as attendancePeople; else: loading">
         <div *ngIf="event$ | async as event" class="ion-padding-horizontal">
-          <h3 style="margin-bottom: 0">{{ event.name }}</h3>
-          <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-          <h5 style="margin-top: 0">
+          <h3 class="no-margin-bottom">{{ event.name }}</h3>
+          <h4 class="no-margin">{{ event.shortDescription }}</h4>
+          <h5 class="no-margin-top">
             {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
           </h5>
 

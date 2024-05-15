@@ -18,9 +18,9 @@
         <ion-label position="floating">Curso</ion-label>
         <ion-select interface="popover" formControlName="course">
           @for (course of courses | keyvalue; track course) {
-            <ion-select-option slot="start" class="course" [value]="course.key">
-              {{ course.value.name }}
-            </ion-select-option>
+          <ion-select-option slot="start" class="course" [value]="course.key">
+            {{ course.value.name }}
+          </ion-select-option>
           }
         </ion-select>
       </ion-item>
@@ -73,7 +73,7 @@
           formControlName="maxCourses"
           inputmode="numeric"
           (keypress)="inputNumbersOnly($event)"
-        placeholder="Somente números"></ion-input>
+          placeholder="Somente números"></ion-input>
       </ion-item>
 
       <ion-item>
@@ -82,7 +82,7 @@
           formControlName="maxLectures"
           inputmode="numeric"
           (keypress)="inputNumbersOnly($event)"
-        placeholder="Somente números"></ion-input>
+          placeholder="Somente números"></ion-input>
       </ion-item>
     </ng-container>
 
@@ -96,102 +96,102 @@
         slot="end"
         [checked]="isEventPaid"
         (ionChange)="isEventPaidChange()"
-      formControlName="isEventPaidForm"></ion-toggle>
+        formControlName="isEventPaidForm"></ion-toggle>
     </ion-item>
 
     @if ((isEventPaid$ | async);) {
-      <ion-item>
-        <ion-label class="ion-text-wrap">Diferenciar preço por tipo de inscrição</ion-label>
-        <ion-toggle slot="end" [checked]="priceDifferentiate" (ionChange)="priceDifferentiateChange()"></ion-toggle>
-      </ion-item>
-      @if ((priceDifferentiate$ | async)) {
-        <ion-item>
-          <ion-label position="floating">Aluno da Unesp</ion-label>
-          <ion-input
-            formControlName="priceStudents"
-            inputmode="decimal"
-            (ionInput)="validatePrice($event, 'priceStudents')"
-            (ionInput)="inputCurrency($event)"
-          replaceCommaWithPeriod></ion-input>
-          <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceStudents | currency: 'BRL'}}</p></ion-text>
-        </ion-item>
-        <ion-item>
-          <ion-label class="ion-text-nowrap" position="floating"> Aluno de outras IES </ion-label>
-          <ion-input
-            formControlName="priceOtherStudents"
-            inputmode="decimal"
-            (ionInput)="validatePrice($event, 'priceOtherStudents')"
-            (ionInput)="inputCurrency($event)"
-          replaceCommaWithPeriod></ion-input>
-          <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceOtherStudents | currency: 'BRL'}}</p></ion-text>
-        </ion-item>
-        <ion-item>
-          <ion-label position="floating">Professores e profissionais</ion-label>
-          <ion-input
-            formControlName="priceProfessors"
-            inputmode="decimal"
-            (ionInput)="validatePrice($event, 'priceProfessors')"
-            (ionInput)="inputCurrency($event)"
-          replaceCommaWithPeriod></ion-input>
-          <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceProfessors | currency: 'BRL'}}</p></ion-text>
-        </ion-item>
-      } @else {
-        <ion-item>
-          <ion-label position="floating">Preço único</ion-label>
-          <ion-input
-            formControlName="priceSingle"
-            inputmode="decimal"
-            (ionInput)="validatePrice($event, 'priceSingle')"
-            (ionInput)="inputCurrency($event)"
-          replaceCommaWithPeriod></ion-input>
-          <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceSingle | currency: 'BRL'}}</p></ion-text>
-        </ion-item>
-      }
-      <ion-card-header>
-        <ion-card-title>Informações de pagamento</ion-card-title>
-      </ion-card-header>
-      <ion-item>
-        <ion-label position="floating">Nome completo do beneficiário</ion-label>
-        <ion-input formControlName="accountName"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label position="floating">CPF ou CNPJ</ion-label>
-        <ion-input
-          formControlName="document"
-          placeholder="Somente números"
-          inputmode="numeric"
-          maxlength="14"
+    <ion-item>
+      <ion-label class="ion-text-wrap">Diferenciar preço por tipo de inscrição</ion-label>
+      <ion-toggle slot="end" [checked]="priceDifferentiate" (ionChange)="priceDifferentiateChange()"></ion-toggle>
+    </ion-item>
+    @if ((priceDifferentiate$ | async)) {
+    <ion-item>
+      <ion-label position="floating">Aluno da Unesp</ion-label>
+      <ion-input
+        formControlName="priceStudents"
+        inputmode="decimal"
+        (ionInput)="validatePrice($event, 'priceStudents')"
+        (ionInput)="inputCurrency($event)"
+        replaceCommaWithPeriod></ion-input>
+      <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceStudents | currency: 'BRL'}}</p></ion-text>
+    </ion-item>
+    <ion-item>
+      <ion-label class="ion-text-nowrap" position="floating"> Aluno de outras IES </ion-label>
+      <ion-input
+        formControlName="priceOtherStudents"
+        inputmode="decimal"
+        (ionInput)="validatePrice($event, 'priceOtherStudents')"
+        (ionInput)="inputCurrency($event)"
+        replaceCommaWithPeriod></ion-input>
+      <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceOtherStudents | currency: 'BRL'}}</p></ion-text>
+    </ion-item>
+    <ion-item>
+      <ion-label position="floating">Professores e profissionais</ion-label>
+      <ion-input
+        formControlName="priceProfessors"
+        inputmode="decimal"
+        (ionInput)="validatePrice($event, 'priceProfessors')"
+        (ionInput)="inputCurrency($event)"
+        replaceCommaWithPeriod></ion-input>
+      <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceProfessors | currency: 'BRL'}}</p></ion-text>
+    </ion-item>
+    } @else {
+    <ion-item>
+      <ion-label position="floating">Preço único</ion-label>
+      <ion-input
+        formControlName="priceSingle"
+        inputmode="decimal"
+        (ionInput)="validatePrice($event, 'priceSingle')"
+        (ionInput)="inputCurrency($event)"
+        replaceCommaWithPeriod></ion-input>
+      <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceSingle | currency: 'BRL'}}</p></ion-text>
+    </ion-item>
+    }
+    <ion-card-header>
+      <ion-card-title>Informações de pagamento</ion-card-title>
+    </ion-card-header>
+    <ion-item>
+      <ion-label position="floating">Nome completo do beneficiário</ion-label>
+      <ion-input formControlName="accountName"></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-label position="floating">CPF ou CNPJ</ion-label>
+      <ion-input
+        formControlName="document"
+        placeholder="Somente números"
+        inputmode="numeric"
+        maxlength="14"
         (keypress)="inputNumbersOnly($event)"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label position="floating">Instituição bancária</ion-label>
-        <ion-input formControlName="bankName" placeholder="Inclua o número e nome extenso do banco"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label position="floating">Agência - Sem dígito verificador</ion-label>
-        <ion-input
-          formControlName="agency"
-          placeholder="XXXX"
-          maxLength="4"
-          inputmode="numeric"
+    </ion-item>
+    <ion-item>
+      <ion-label position="floating">Instituição bancária</ion-label>
+      <ion-input formControlName="bankName" placeholder="Inclua o número e nome extenso do banco"></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-label position="floating">Agência - Sem dígito verificador</ion-label>
+      <ion-input
+        formControlName="agency"
+        placeholder="XXXX"
+        maxLength="4"
+        inputmode="numeric"
         (keypress)="inputNumbersOnly($event)"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label position="floating">Conta - Com dígito verificador</ion-label>
-        <ion-input
-          formControlName="accountNumber"
-          placeholder="XXXX-X"
-          (keypress)="inputBankAccountNumber($event)"
+    </ion-item>
+    <ion-item>
+      <ion-label position="floating">Conta - Com dígito verificador</ion-label>
+      <ion-input
+        formControlName="accountNumber"
+        placeholder="XXXX-X"
+        (keypress)="inputBankAccountNumber($event)"
         (ionInput)="validateAccountNumber($event)"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label position="floating">Chave Pix</ion-label>
-        <ion-input formControlName="chavePix"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label position="floating">Informações adicionais (opcional)</ion-label>
-        <ion-textarea formControlName="additionalPaymentInformation"></ion-textarea>
-      </ion-item>
+    </ion-item>
+    <ion-item>
+      <ion-label position="floating">Chave Pix</ion-label>
+      <ion-input formControlName="chavePix"></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-label position="floating">Informações adicionais (opcional)</ion-label>
+      <ion-textarea formControlName="additionalPaymentInformation"></ion-textarea>
+    </ion-item>
     }
 
     <ion-card-header>
@@ -223,9 +223,7 @@
     </ion-item>
     <div class="ion-padding-bottom">
       <ion-button class="ion-padding" type="submit" [disabled]="!dataForm.valid"> Criar evento </ion-button>
-      <p style="font-size: 0.75em" class="ion-padding-horizontal">
-        Ao continuar, seu nome será gravado junto ao evento.
-      </p>
+      <p class="ion-padding-horizontal name-notice">Ao continuar, seu nome será gravado junto ao evento.</p>
     </div>
   </form>
 </ion-content>
@@ -281,7 +279,7 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-[showConfirmButton]="false"></swal>
+  [showConfirmButton]="false"></swal>
 
 <swal
   #errorSwal
@@ -291,4 +289,4 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-[showConfirmButton]="true"></swal>
+  [showConfirmButton]="true"></swal>

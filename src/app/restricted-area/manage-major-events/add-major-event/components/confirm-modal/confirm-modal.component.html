@@ -58,14 +58,10 @@
   }
 
   @if (dataForm.value.maxCourses) {
-    <p class="ion-padding-horizontal">
-      Pode se inscrever em até {{ dataForm.value.maxCourses }} minicursos
-    </p>
+    <p class="ion-padding-horizontal">Pode se inscrever em até {{ dataForm.value.maxCourses }} minicursos</p>
   }
   @if (dataForm.value.maxLectures) {
-    <p class="ion-padding-horizontal">
-      Pode se inscrever em até {{ dataForm.value.maxLectures }} palestras
-    </p>
+    <p class="ion-padding-horizontal">Pode se inscrever em até {{ dataForm.value.maxLectures }} palestras</p>
   }
 
   <div class="ion-padding">
@@ -79,13 +75,13 @@
   </div>
 </div>
 
-<ion-grid style="width: 100%">
+<ion-grid class="width-100">
   <ion-row>
     <ion-col>
-      <ion-button style="width: 100%" fill="clear" (click)="closeModal()">Cancelar</ion-button>
+      <ion-button class="width-100" fill="clear" (click)="closeModal()">Cancelar</ion-button>
     </ion-col>
     <ion-col>
-      <ion-button style="width: 100%" fill="clear" (click)="onSubmit()">Confirmar</ion-button>
+      <ion-button class="width-100" fill="clear" (click)="onSubmit()">Confirmar</ion-button>
     </ion-col>
   </ion-row>
 </ion-grid>

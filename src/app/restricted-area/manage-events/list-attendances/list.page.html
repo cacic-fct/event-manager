@@ -9,81 +9,72 @@
 
 <ion-content>
   @if (event$ | async; as event) {
-    <div class="ion-padding">
-      <h3 style="margin-bottom: 0">{{ event.name }}</h3>
-      <h4 style="margin: 0">{{ event.shortDescription }}</h4>
-      <h5 style="margin-top: 0">
-        {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
-      </h5>
-      <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
-    </div>
-  }
-  @if (attendanceCollection$ | async; as attendancePeople) {
-    <div class="ion-padding-horizontal">
-      <p><b>Total de presenças coletadas:</b> {{attendancePeople.length | number: '2.0-0'}}</p>
-    </div>
-    <!-- <ion-button (click)="orderByDesc = !orderByDesc" class="ion-margin-bottom" fill="clear">
+  <div class="ion-padding">
+    <h3 class="no-margin-bottom">{{ event.name }}</h3>
+    <h4 class="no-margin">{{ event.shortDescription }}</h4>
+    <h5 class="no-margin-top">
+      {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+    </h5>
+    <ion-button (click)="generateCSV()">Baixar CSV</ion-button>
+  </div>
+  } @if (attendanceCollection$ | async; as attendancePeople) {
+  <div class="ion-padding-horizontal">
+    <p><b>Total de presenças coletadas:</b> {{attendancePeople.length | number: '2.0-0'}}</p>
+  </div>
+  <!-- <ion-button (click)="orderByDesc = !orderByDesc" class="ion-margin-bottom" fill="clear">
     <ion-icon slot="start" [name]="orderByDesc ? 'arrow-down' : 'arrow-up'"></ion-icon>
     Data
   </ion-button> -->
   @for (attendancePerson of attendancePeople; track attendancePerson) {
-    <ion-item>
-      @if ((attendancePerson.user | async); as user) {
-        <ion-label>
-          @if (user.fullName) {
-            <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
-          }
-          @if (!user.fullName) {
-            <h2 class="ion-text-wrap">
-              <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
-            </h2>
-          }
-          @if (user.academicID) {
-            <h3 class="ion-text-wrap">
-              {{ courses.getCourse(user.academicID) || "RA inválido" }} | {{ user.academicID }}
-            </h3>
-          } @else {
-            @if (user.email.includes('@unesp.br')) {
-              <h3 class="ion-text-wrap">Sem RA cadastrado</h3>
-            } @else {
-              <h3 class="ion-text-wrap">Usuário externo</h3>
-            }
-          }
-          <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
-          <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
-          <h3 class="ion-text-wrap">
-            {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
-          </h3>
-        </ion-label>
-        <ion-button
-          color="danger"
-          slot="end"
-          (click)="deleteAlert(attendancePerson.id, (user.fullName || user.displayName))">
-          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-        </ion-button>
+  <ion-item>
+    @if ((attendancePerson.user | async); as user) {
+    <ion-label>
+      @if (user.fullName) {
+      <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
+      } @if (!user.fullName) {
+      <h2 class="ion-text-wrap">
+        <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+      </h2>
+      } @if (user.academicID) {
+      <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) || "RA inválido" }} | {{ user.academicID }}</h3>
+      } @else { @if (user.email.includes('@unesp.br')) {
+      <h3 class="ion-text-wrap">Sem RA cadastrado</h3>
       } @else {
-        <ion-label>
-          <h2 class="ion-text-wrap">
-            <ion-text color="danger">Usuário não encontrado</ion-text>
-          </h2>
-          <h2 class="ion-text-wrap">
-            <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
-          </h2>
-          <h2>UID: {{ attendancePerson.id }}</h2>
-        </ion-label>
-        <ion-button
-          color="danger"
-          slot="end"
-          (click)="deleteAlert(attendancePerson.id, 'Usuário não encontrado.<br>Confira os dados no banco de dados antes de remover a presença')">
-          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-        </ion-button>
-      }
-    </ion-item>
-  }
-} @else {
+      <h3 class="ion-text-wrap">Usuário externo</h3>
+      } }
+      <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+      <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
+      <h3 class="ion-text-wrap">
+        {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
+      </h3>
+    </ion-label>
+    <ion-button
+      color="danger"
+      slot="end"
+      (click)="deleteAlert(attendancePerson.id, (user.fullName || user.displayName))">
+      <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+    </ion-button>
+    } @else {
+    <ion-label>
+      <h2 class="ion-text-wrap">
+        <ion-text color="danger">Usuário não encontrado</ion-text>
+      </h2>
+      <h2 class="ion-text-wrap">
+        <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
+      </h2>
+      <h2>UID: {{ attendancePerson.id }}</h2>
+    </ion-label>
+    <ion-button
+      color="danger"
+      slot="end"
+      (click)="deleteAlert(attendancePerson.id, 'Usuário não encontrado.<br>Confira os dados no banco de dados antes de remover a presença')">
+      <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+    </ion-button>
+    }
+  </ion-item>
+  } } @else {
   <ion-progress-bar type="indeterminate"></ion-progress-bar>
-}
-
+  }
 </ion-content>
 
 <swal
@@ -93,4 +84,4 @@
   [heightAuto]="false"
   [showCancelButton]="false"
   [showCloseButton]="false"
-[showConfirmButton]="false"></swal>
+  [showConfirmButton]="false"></swal>

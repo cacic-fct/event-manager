@@ -10,11 +10,11 @@ export class CoursesService {
     },
     a2: {
       name: 'Movimento estudantil',
-      color: '#ff6b6b',
+      color: 'course-background-color-me',
     },
     '12': {
       name: 'Ciência da computação',
-      color: '#51aaf2',
+      color: 'course-background-color-computacao',
     },
   };
 

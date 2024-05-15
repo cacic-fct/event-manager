@@ -8,16 +8,16 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-grid class="ion-padding ion-text-center" style="max-width: 700px">
+  <ion-grid class="ion-padding ion-text-center">
     <ion-row>
       <ion-col>
-        <img src="assets/icon/favicon.png" alt="Logo" style="width: 64px" />
+        <img src="assets/icon/favicon.png" alt="Logo" class="logo" />
       </ion-col>
     </ion-row>
     <ion-row>
       <ion-col>
-        <h5 style="margin: 0">{{globalConstants.appName}}</h5>
-        <p style="font-size: 1em; margin: 5px 0 0 0">
+        <h5 class="no-margin">{{globalConstants.appName}}</h5>
+        <p class="p-copyright">
           Copyright (c) CACIC - Centro Acadêmico de Ciência da Computação "Alan Turing" da Faculdade de Ciências e
           Tecnologia, Câmpus de Presidente Prudente, Universidade Estadual Paulista "Júlio de Mesquita Filho"
         </p>
@@ -25,9 +25,9 @@
     </ion-row>
     <ion-row>
       <ion-col>
-        <p style="margin: 0">
+        <p class="no-margin">
           Este aplicativo web é uma realização dos seus
-          <a href="https://github.com/cacic-fct/fct-app/contributors" target="_blank" style="color: inherit"
+          <a href="https://github.com/cacic-fct/fct-app/contributors" target="_blank" class="inherit-color"
             >contribuidores</a
           >.
         </p>
@@ -35,16 +35,18 @@
     </ion-row>
   </ion-grid>
 
-  <div style="text-align: center">
-    <p color="medium" style="text-decoration: underline; cursor: pointer">
-      <a style="color: inherit" href="https://github.com/cacic-fct/fct-app" target="_blank">Código-fonte</a>
+  <div class="ion-text-center">
+    <p color="medium">
+      <a href="https://github.com/cacic-fct/fct-app" target="_blank" class="inherit-color">Código-fonte</a>
     </p>
-    <p color="medium" style="text-decoration: underline; cursor: pointer">
-      <a style="color: inherit" [routerLink]="['/privacidade']">Política de privacidade</a>
+    <p color="medium">
+      <a [routerLink]="['/privacidade']" class="inherit-color">Política de privacidade</a>
     </p>
-    <p color="medium" style="text-decoration: underline; cursor: pointer" [routerLink]="['licencas']">Licenças</p>
-    <p color="medium" style="text-decoration: underline; cursor: pointer">
-      <a style="color: inherit" [routerLink]="['suporte']">Suporte</a>
+    <p color="medium">
+      <a [routerLink]="['licencas']" class="inherit-color"> Licenças </a>
+    </p>
+    <p color="medium">
+      <a [routerLink]="['suporte']" class="inherit-color">Suporte</a>
     </p>
   </div>
 </ion-content>

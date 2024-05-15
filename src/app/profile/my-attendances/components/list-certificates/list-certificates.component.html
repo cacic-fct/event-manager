@@ -9,7 +9,7 @@
 
 <ion-content>
   <ng-template #loadingSpinner>
-    <ion-spinner name="dots" style="margin: 0 auto; display: block"></ion-spinner>
+    <ion-spinner name="dots" class="ion-spinner-default"></ion-spinner>
   </ng-template>
 
   @if (certificatesColletion$ | async; as certificatesCollection) {
@@ -41,4 +41,3 @@
     </ion-row>
   </ion-grid>
 </ion-content>
-

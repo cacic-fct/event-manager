@@ -5,7 +5,7 @@
 </ion-header>
 
 <ion-content>
-  <ion-grid style="margin-top: 30px; max-width: 500px; overflow: scroll">
+  <ion-grid>
     <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
       @if (isUnesp) {
       <ion-item>
@@ -90,33 +90,28 @@
       </ion-item>
 
       @if (isUnesp) {
-      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+      <p class="ion-padding-horizontal footnote">
         Para não perder o acesso à sua conta quando o seu e-mail institucional for desativado, vincule o seu e-mail
         pessoal nas configurações do perfil.
       </p>
       }
 
-      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+      <p class="ion-padding-horizontal footnote">
         Poderemos entrar em contato para confirmar ou complementar estas informações ou para informar sobre eventuais
         problemas com pagamentos.
       </p>
 
-      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+      <p class="ion-padding-horizontal footnote">
         Se você está tendo problemas com a sua inscrição,
-        <a style="cursor: pointer" (click)="mailtoIssues()">entre em contato com o CACiC</a>.
+        <a (click)="mailtoIssues()">entre em contato com o CACiC</a>.
       </p>
 
-      <p style="font-size: 0.75em" class="ion-padding-horizontal">
+      <p class="ion-padding-horizontal footnote">
         Se você não possui CPF ou um número de celular brasileiro,
-        <a style="cursor: pointer" (click)="mailtoDocumentPhone()">entre em contato com o CACiC</a>.
+        <a (click)="mailtoDocumentPhone()">entre em contato com o CACiC</a>.
       </p>
 
-      <ion-button
-        style="margin-top: 30px"
-        expand="block"
-        id="continue-button"
-        type="submit"
-        [disabled]="!this.dataForm.valid">
+      <ion-button expand="block" id="continue-button" type="submit" [disabled]="!this.dataForm.valid">
         Continuar
       </ion-button>
     </form>

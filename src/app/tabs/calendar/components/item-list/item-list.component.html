@@ -1,8 +1,8 @@
 <ion-item
   (click)="openItem(eventItem)"
-  style="cursor: pointer"
-  [style.--background]="courses[eventItem.course] ? courses[eventItem.course].color + '25' : undefined">
-  <img [src]="emojiService.getEmoji(eventItem.icon)" class="twemoji" slot="start" aria-hidden="true" loading="lazy" />
+  class="item-fake-button"
+  [class]="courses[eventItem.course] ? courses[eventItem.course].color + '-25' : undefined">
+  <img [src]="emojiService.getEmoji(eventItem.icon)" class="emoji" slot="start" aria-hidden="true" loading="lazy" />
 
   <ion-label>
     <h2 class="ion-text-wrap">{{ eventItem.name }}</h2>
@@ -14,13 +14,13 @@
     }
   </ion-label>
   <div slot="end">
-    <h4 style="font-weight: 400; margin: 5px 0 0 0" class="ion-text-center">
-      {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date : 'HH:mm' }}
+    <h4 class="ion-text-center font-400 margin-top-5">
+      {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date: 'HH:mm' }}
     </h4>
     @if (eventItem.eventEndDate) {
-      <p style="font-size: 10px; margin: 0" class="ion-text-center">–</p>
-      <h4 style="font-weight: 400; margin: 0 0 5px 0" class="ion-text-center">
-        {{ dateService.getDateFromTimestamp(eventItem.eventEndDate) | date : 'HH:mm' }}
+      <p class="ion-text-center no-margin hour-range">–</p>
+      <h4 class="font-400 no-margin margin-bottom-5 ion-text-center">
+        {{ dateService.getDateFromTimestamp(eventItem.eventEndDate) | date: 'HH:mm' }}
       </h4>
     }
   </div>
