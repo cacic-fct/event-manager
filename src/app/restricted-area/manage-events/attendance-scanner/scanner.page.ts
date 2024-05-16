@@ -121,6 +121,9 @@ export class ScannerPage implements OnInit {
   attendanceSessionScans: number = 0;
 
   audioSuccess: HTMLAudioElement;
+  audioDuplicate: HTMLAudioElement;
+  audioInvalid: HTMLAudioElement;
+  audioNotPaid: HTMLAudioElement;
 
   adminID: string | undefined;
 
@@ -131,7 +134,7 @@ export class ScannerPage implements OnInit {
     public courses: CoursesService,
     private toastController: ToastController,
     private authService: AuthService,
-    public dateService: DateService
+    public dateService: DateService,
   ) {
     this.eventID = this.route.snapshot.params['eventID'];
 
@@ -182,8 +185,8 @@ export class ScannerPage implements OnInit {
               .doc<User>(item.id)
               .get()
               .pipe(map((document) => document.data())),
-          }))
-        )
+          })),
+        ),
       );
 
     // Get non-paying-attendance list
@@ -206,8 +209,8 @@ export class ScannerPage implements OnInit {
               .doc<User>(item.id)
               .get()
               .pipe(map((document) => document.data())),
-          }))
-        )
+          })),
+        ),
       );
 
     // Load audio asset (beep)
@@ -216,8 +219,14 @@ export class ScannerPage implements OnInit {
   }
 
   ngOnInit() {
-    this.audioSuccess.src = 'assets/sounds/scanner-beep.mp3';
+    this.audioSuccess.src = 'assets/sounds/scanner-beeps/ok.mp3';
+    this.audioDuplicate.src = 'assets/sounds/scanner-beeps/duplicate.mp3';
+    this.audioInvalid.src = 'assets/sounds/scanner-beeps/invalid.mp3';
+    this.audioNotPaid.src = 'assets/sounds/scanner-beeps/not-paid.mp3';
     this.audioSuccess.load();
+    this.audioDuplicate.load();
+    this.audioInvalid.load();
+    this.audioNotPaid.load();
   }
 
   changeCamera(): void {
@@ -304,7 +313,7 @@ export class ScannerPage implements OnInit {
       .pipe(
         take(1),
         trace('firestore'),
-        map((userDocument) => userDocument.exists)
+        map((userDocument) => userDocument.exists),
       );
   }
 
@@ -326,7 +335,7 @@ export class ScannerPage implements OnInit {
           } else {
             return false;
           }
-        })
+        }),
       );
   }
 
@@ -429,6 +438,7 @@ export class ScannerPage implements OnInit {
       .subscribe((document) => {
         // If document with user uid already exists in non-paying-attendance collection
         if (document.exists) {
+          this.audioDuplicate.play();
           this.backdropColor('duplicate');
           this.toastDuplicate();
           return false;
@@ -438,7 +448,7 @@ export class ScannerPage implements OnInit {
           time: serverTimestamp(),
           author: this.adminID,
         });
-        this.audioSuccess.play();
+        this.audioNotPaid.play();
         this.toastSucess();
         this.backdropColor('success');
         this.attendanceSessionScans++;
@@ -452,6 +462,7 @@ export class ScannerPage implements OnInit {
     this.manualInput = '';
 
     if (!response.success) {
+      this.audioInvalid.play();
       this.backdropColor('invalid');
       this.toastRequestError(response.message);
       console.error(response.message);
