@@ -27,6 +27,8 @@ import {
 import { QrCodeModule } from 'ng-qrcode';
 import { RouterLink } from '@angular/router';
 
+import { getServiceWorkerStatus } from 'src/app/shared/services/service-worker/service-worker.service';
+
 @Component({
   selector: 'app-profile-info',
   templateUrl: './profile-info.page.html',
@@ -61,14 +63,11 @@ export class ProfileInfoPage implements OnInit {
   _isProfessor = new BehaviorSubject<boolean>(false);
   isProfessor$: Observable<boolean> = this._isProfessor.asObservable();
 
-  constructor(public courses: CoursesService, private afs: AngularFirestore) {
-    // If browser supports service worker
-    if ('serviceWorker' in navigator) {
-      // If service worker is "activated" or "activating"
-      if (navigator.serviceWorker.controller) {
-        this.serviceWorkerActive = true;
-      }
-    }
+  constructor(
+    public courses: CoursesService,
+    private afs: AngularFirestore,
+  ) {
+    this.serviceWorkerActive = getServiceWorkerStatus();
   }
 
   ngOnInit() {

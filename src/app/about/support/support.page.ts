@@ -18,6 +18,12 @@ import {
   IonText,
 } from '@ionic/angular/standalone';
 
+import {
+  getServiceWorkerStatus,
+  updateServiceWorker,
+  unregisterServiceWorker,
+} from 'src/app/shared/services/service-worker/service-worker.service';
+
 @Component({
   selector: 'app-support',
   templateUrl: './support.page.html',
@@ -46,13 +52,7 @@ export class SupportPage implements OnInit {
   constructor(private alertController: AlertController) {}
 
   ngOnInit() {
-    // If browser supports service worker
-    if ('serviceWorker' in navigator) {
-      // If service worker is "activated" or "activating"
-      if (navigator.serviceWorker.controller) {
-        this.serviceWorkerActive = true;
-      }
-    }
+    this.serviceWorkerActive = getServiceWorkerStatus();
   }
 
   async alertUpdate() {
@@ -64,7 +64,7 @@ export class SupportPage implements OnInit {
           text: 'Sim',
           role: 'confirm',
           handler: () => {
-            this.updateServiceWorker();
+            updateServiceWorker();
           },
         },
         {
@@ -86,7 +86,7 @@ export class SupportPage implements OnInit {
           text: 'Sim',
           role: 'confirm',
           handler: () => {
-            this.unregisterServiceWorker();
+            unregisterServiceWorker();
           },
         },
         {
@@ -97,35 +97,5 @@ export class SupportPage implements OnInit {
     });
 
     await alert.present();
-  }
-
-  updateServiceWorker() {
-    if (this.serviceWorkerActive) {
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((registrations) => {
-          for (const registration of registrations) {
-            registration.update();
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-        });
-    }
-  }
-
-  unregisterServiceWorker() {
-    if (this.serviceWorkerActive) {
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((registrations) => {
-          for (const registration of registrations) {
-            registration.unregister();
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-        });
-    }
   }
 }
