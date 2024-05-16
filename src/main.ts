@@ -38,11 +38,9 @@ import localePt from '@angular/common/locales/pt';
 registerLocaleData(localePt);
 
 import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
-import { setNonce } from '@ionic/core/loader';
 
 if (environment.production) {
   enableProdMode();
-  setNonce('NGINX_CSP_NONCE');
 }
 
 bootstrapApplication(AppComponent, {
