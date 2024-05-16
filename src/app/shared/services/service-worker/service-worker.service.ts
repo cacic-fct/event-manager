@@ -66,6 +66,7 @@ export class ServiceWorkerService {
           role: 'cancel',
           handler: () => {
             unregisterServiceWorker();
+            document.location.reload();
           },
         },
         {
