@@ -65,7 +65,7 @@ export class ServiceWorkerService {
           text: 'Cancelar registro',
           role: 'cancel',
           handler: () => {
-            unregisterServiceWorker();
+            this.unregisterServiceWorker();
             document.location.reload();
           },
         },
@@ -103,56 +103,56 @@ export class ServiceWorkerService {
 
     await alert.present();
   }
-}
 
-/**
- * Checks the status of the service worker.
- *
- * @returns {boolean} Returns `true` if the service worker is "activated" or "activating", otherwise `false`.
- */
-export function getServiceWorkerStatus(): boolean {
-  // If browser supports service worker
-  if ('serviceWorker' in navigator) {
-    // If service worker is "activated" or "activating"
-    if (navigator.serviceWorker.controller) {
-      return true;
+  /**
+   * Checks the status of the service worker.
+   *
+   * @returns {boolean} Returns `true` if the service worker is "activated" or "activating", otherwise `false`.
+   */
+  getServiceWorkerStatus(): boolean {
+    // If browser supports service worker
+    if ('serviceWorker' in navigator) {
+      // If service worker is "activated" or "activating"
+      if (navigator.serviceWorker.controller) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Updates the service worker if it is active.
+   */
+  updateServiceWorker(): void {
+    if (this.getServiceWorkerStatus()) {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => {
+          for (const registration of registrations) {
+            registration.update();
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+        });
     }
   }
-  return false;
-}
 
-/**
- * Updates the service worker if it is active.
- */
-export function updateServiceWorker(): void {
-  if (this.serviceWorkerActive) {
-    navigator.serviceWorker
-      .getRegistrations()
-      .then((registrations) => {
-        for (const registration of registrations) {
-          registration.update();
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  }
-}
-
-/**
- * Unregisters the service worker if it is active.
- */
-export function unregisterServiceWorker(): void {
-  if (this.serviceWorkerActive) {
-    navigator.serviceWorker
-      .getRegistrations()
-      .then((registrations) => {
-        for (const registration of registrations) {
-          registration.unregister();
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-      });
+  /**
+   * Unregisters the service worker if it is active.
+   */
+  unregisterServiceWorker(): void {
+    if (this.getServiceWorkerStatus()) {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    }
   }
 }

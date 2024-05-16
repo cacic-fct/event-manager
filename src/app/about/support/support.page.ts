@@ -18,11 +18,7 @@ import {
   IonText,
 } from '@ionic/angular/standalone';
 
-import {
-  getServiceWorkerStatus,
-  updateServiceWorker,
-  unregisterServiceWorker,
-} from 'src/app/shared/services/service-worker/service-worker.service';
+import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 
 @Component({
   selector: 'app-support',
@@ -49,11 +45,14 @@ import {
 export class SupportPage implements OnInit {
   serviceWorkerActive: boolean = false;
 
-  constructor(private alertController: AlertController) {}
-
-  ngOnInit() {
-    this.serviceWorkerActive = getServiceWorkerStatus();
+  constructor(
+    private alertController: AlertController,
+    private sw: ServiceWorkerService,
+  ) {
+    this.serviceWorkerActive = this.sw.getServiceWorkerStatus();
   }
+
+  ngOnInit() {}
 
   async alertUpdate() {
     const alert = await this.alertController.create({
@@ -64,7 +63,7 @@ export class SupportPage implements OnInit {
           text: 'Sim',
           role: 'confirm',
           handler: () => {
-            updateServiceWorker();
+            this.sw.updateServiceWorker();
           },
         },
         {
@@ -86,7 +85,7 @@ export class SupportPage implements OnInit {
           text: 'Sim',
           role: 'confirm',
           handler: () => {
-            unregisterServiceWorker();
+            this.sw.unregisterServiceWorker();
           },
         },
         {

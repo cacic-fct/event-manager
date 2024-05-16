@@ -27,7 +27,7 @@ import {
 import { QrCodeModule } from 'ng-qrcode';
 import { RouterLink } from '@angular/router';
 
-import { getServiceWorkerStatus } from 'src/app/shared/services/service-worker/service-worker.service';
+import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 
 @Component({
   selector: 'app-profile-info',
@@ -59,15 +59,16 @@ export class ProfileInfoPage implements OnInit {
   user$ = user(this.auth);
   userFirestore$: Observable<User>;
   academicID$: Observable<string>;
-  serviceWorkerActive: boolean = false;
+  public serviceWorkerActive: boolean = false;
   _isProfessor = new BehaviorSubject<boolean>(false);
   isProfessor$: Observable<boolean> = this._isProfessor.asObservable();
 
   constructor(
     public courses: CoursesService,
     private afs: AngularFirestore,
+    private sw: ServiceWorkerService,
   ) {
-    this.serviceWorkerActive = getServiceWorkerStatus();
+    this.serviceWorkerActive = this.sw.getServiceWorkerStatus();
   }
 
   ngOnInit() {
