@@ -30,6 +30,8 @@ import {
 } from '@ionic/angular/standalone';
 import { ActivatedRoute } from '@angular/router';
 
+import { environment } from 'src/environments/environment';
+
 @Component({
   selector: 'app-list-certificates',
   templateUrl: './list-certificates.component.html',
@@ -52,7 +54,7 @@ import { ActivatedRoute } from '@angular/router';
     AsyncPipe,
   ],
 })
-export class ListCertificatesComponent implements OnInit {
+export class ListCertificatesComponent {
   private auth: Auth = inject(Auth);
   private firestore: Firestore = inject(Firestore);
   private analytics: Analytics = inject(Analytics);
@@ -67,7 +69,7 @@ export class ListCertificatesComponent implements OnInit {
     private mailtoService: MailtoService,
     private certificateService: CertificateService,
     private toastController: ToastController,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
   ) {
     this.user$ = user(this.auth);
     this.majorEventID = this.route.snapshot.paramMap.get('majorEventID') as string;
@@ -79,7 +81,7 @@ export class ListCertificatesComponent implements OnInit {
       map((user) => {
         const colRef = collection(
           this.firestore,
-          `/users/${user.uid}/userCertificates/majorEvents/${this.majorEventID}`
+          `/users/${user.uid}/userCertificates/majorEvents/${this.majorEventID}`,
         );
         const col$ = collectionData(colRef, { idField: 'id' }) as Observable<UserCertificateDocument[]>;
 
@@ -89,7 +91,7 @@ export class ListCertificatesComponent implements OnInit {
             certificates.map((certificate) => {
               const docRef = doc(
                 this.firestore,
-                `/majorEvents/${this.majorEventID}/majorEventCertificates/${certificate.id}`
+                `/majorEvents/${this.majorEventID}/majorEventCertificates/${certificate.id}`,
               );
               const docData$ = docData(docRef, { idField: 'id' }) as Observable<CertificateStoreData>;
 
@@ -102,18 +104,16 @@ export class ListCertificatesComponent implements OnInit {
                       ...(certificateData as CertificateStoreData),
                       id: certificateData.id,
                     };
-                  })
+                  }),
                 ),
               };
-            })
-          )
+            }),
+          ),
         );
       }),
-      switchMap((value) => value)
+      switchMap((value) => value),
     );
   }
-
-  ngOnInit() {}
 
   closeModal() {
     this.modalController.dismiss();
@@ -160,7 +160,7 @@ export class ListCertificatesComponent implements OnInit {
 
     const encoded = this.certificateService.encodeCertificateCode(this.majorEventID, certificateID, certificateDoc);
 
-    navigator.clipboard.writeText(`https://fct-pp.web.app/certificado/verificar/${encoded}`);
+    navigator.clipboard.writeText(`${environment.baseUrl}certificado/verificar/${encoded}`);
     toast.present();
 
     logEvent(this.analytics, 'share', {

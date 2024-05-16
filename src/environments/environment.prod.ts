@@ -12,4 +12,6 @@ export const environment = {
     useEmulators: false,
   },
   recaptcha3SiteKey: '6LcFr9AdAAAAANB7MbCks-nBVqfZZYp8bGp6Kcto',
+  // Also change OGP image in index.html
+  baseUrl: 'https://fctapp.yudi.me/',
 };

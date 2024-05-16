@@ -30,6 +30,7 @@ import { HeaderComponent } from 'src/app/shared/modules/event-display/header/hea
 import { DescriptionComponent } from 'src/app/shared/modules/event-display/description/description.component';
 import { MapComponent } from 'src/app/shared/modules/event-display/map/map.component';
 import { ButtonsComponent } from 'src/app/shared/modules/event-display/buttons/buttons.component';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-event-info-display',
@@ -64,7 +65,7 @@ export class EventInfoDisplayPage implements OnInit {
     private toastController: ToastController,
     private router: Router,
     private route: ActivatedRoute,
-    private afs: AngularFirestore
+    private afs: AngularFirestore,
   ) {}
 
   ngOnInit() {
@@ -90,7 +91,8 @@ export class EventInfoDisplayPage implements OnInit {
         },
       ],
     });
-    navigator.clipboard.writeText('https://fct-pp.web.app' + this.router.url);
+    const baseUrlNoSlash = environment.baseUrl.replace(/\/$/, '');
+    navigator.clipboard.writeText(`${baseUrlNoSlash}${this.router.url}`);
     toast.present();
 
     logEvent(this.analytics, 'share', {

@@ -15,17 +15,21 @@ import { HttpClient } from '@angular/common/http';
 import { ptBR } from 'date-fns/locale';
 
 import { Buffer } from 'buffer';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CertificateService {
-  constructor(private afs: AngularFirestore, private http: HttpClient) {}
+  constructor(
+    private afs: AngularFirestore,
+    private http: HttpClient,
+  ) {}
 
   generateCertificate(
     eventID: string,
     certificateStoreData: CertificateStoreData,
-    certificateUserData: UserCertificateDocument
+    certificateUserData: UserCertificateDocument,
   ) {
     if (!certificateUserData || !certificateStoreData) {
       throw new Error('Request is malformed');
@@ -47,7 +51,7 @@ export class CertificateService {
 
     const certificateData$ = this.afs
       .doc<CertificateDocPublic>(
-        `/certificates/${eventID}/${certificateStoreData.id}/${certificateUserData.certificateDoc}`
+        `/certificates/${eventID}/${certificateStoreData.id}/${certificateUserData.certificateDoc}`,
       )
       .get();
 
@@ -59,7 +63,7 @@ export class CertificateService {
           const content$ = this.getCertificateContent(
             eventID,
             certificateStoreData.id!,
-            certificateUserData.certificateDoc!
+            certificateUserData.certificateDoc!,
           );
           const InterRegular$ = this.http
             .get('https://cdn.jsdelivr.net/gh/cacic-fct/fonts@main/Inter/latin-ext/inter-v12-latin-ext-regular.woff', {
@@ -86,7 +90,7 @@ export class CertificateService {
             InterMedium$,
             InterLight$,
           ]);
-        })
+        }),
       )
       .pipe(take(1))
       .subscribe(async ([certificateData, pdf, majorEvent, content, InterRegular, InterMedium, InterLight]) => {
@@ -120,11 +124,11 @@ export class CertificateService {
         const encodedString: string = this.encodeCertificateCode(
           eventID,
           certificateStoreData.id!,
-          certificateUserData.certificateDoc
+          certificateUserData.certificateDoc,
         );
 
-        const verificationURLQR = `https://fct-pp.web.app/certificado/verificar/${encodedString}`;
-        const verificationURLString = `https://fct-pp.web.app/certificado/verificar/\n${encodedString}`;
+        const verificationURLQR = `${environment.baseUrl}certificado/verificar/${encodedString}`;
+        const verificationURLString = `${environment.baseUrl}certificado/verificar/\n${encodedString}`;
 
         const majorEventData = majorEvent.data();
 
@@ -203,7 +207,7 @@ export class CertificateService {
         } else {
           throw new Error('Unable to generate content, certificate does not exist');
         }
-      })
+      }),
     );
   }
 
@@ -214,7 +218,7 @@ export class CertificateService {
 }
 function generateContent(
   eventInfoCache: Observable<EventItemLocal | undefined>[],
-  eventsUserAttended: string[]
+  eventsUserAttended: string[],
 ): Observable<string> {
   const eventInfo$ = combineLatest(eventInfoCache);
 
@@ -344,7 +348,7 @@ function generateContent(
       content += `\nObservações:\nDatas em formato "dia/mês/ano".`;
 
       return content;
-    })
+    }),
   );
 }
 

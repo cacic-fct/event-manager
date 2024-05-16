@@ -55,6 +55,8 @@ import {
 } from '@ionic/angular/standalone';
 import { AsyncPipe, CurrencyPipe, DatePipe } from '@angular/common';
 
+import { environment } from 'src/environments/environment';
+
 @UntilDestroy()
 @Component({
   selector: 'app-validate-receipt',
@@ -117,7 +119,7 @@ export class ValidateReceiptPage implements OnInit {
     private formBuilder: FormBuilder,
     private alertController: AlertController,
     public dateService: DateService,
-    private toastController: ToastController
+    private toastController: ToastController,
   ) {}
 
   ngOnInit() {
@@ -125,7 +127,7 @@ export class ValidateReceiptPage implements OnInit {
     const eventRef = this.afs.collection('majorEvents').doc<MajorEventItem>(this.majorEventID);
     this.eventName$ = eventRef.valueChanges().pipe(map((event) => event.name));
     this.subscriptionsQuery = eventRef.collection<Subscription>('subscriptions', (ref) =>
-      ref.where('payment.status', '==', 1).orderBy('payment.time')
+      ref.where('payment.status', '==', 1).orderBy('payment.time'),
     );
     this.subscriptions$ = this.subscriptionsQuery.valueChanges({ idField: 'id' }).pipe(
       untilDestroyed(this),
@@ -137,7 +139,7 @@ export class ValidateReceiptPage implements OnInit {
               .collection('events')
               .doc<EventItem>(subEventID)
               .valueChanges({ idField: 'id' })
-              .pipe(take(1), trace('firestore'))
+              .pipe(take(1), trace('firestore')),
           );
 
           let observableArrayOfEvents: Observable<EventItem[]> = combineLatest(arrayOfEvents);
@@ -147,7 +149,7 @@ export class ValidateReceiptPage implements OnInit {
               return events.sort((a, b) => {
                 return a.eventStartDate.toMillis() - b.eventStartDate.toMillis();
               });
-            })
+            }),
           );
 
           return {
@@ -156,8 +158,8 @@ export class ValidateReceiptPage implements OnInit {
             userData$: this.userDataByID(sub.id),
             image: this.imgURL(sub.id),
           };
-        })
-      )
+        }),
+      ),
     );
     this.imgBaseHref = [this.majorEventID, 'payment-receipts'].join('/');
     this.refuseForm = this.formBuilder.group(
@@ -167,7 +169,7 @@ export class ValidateReceiptPage implements OnInit {
       },
       {
         validators: [this.validatorRadio],
-      }
+      },
     );
   }
 
@@ -288,7 +290,7 @@ export class ValidateReceiptPage implements OnInit {
                       firstName,
                       user.phone,
                       eventName,
-                      this.refuseForm.get('errorMessage').value
+                      this.refuseForm.get('errorMessage').value,
                     );
                   });
                 });
@@ -376,7 +378,7 @@ export class ValidateReceiptPage implements OnInit {
           handler: () => {
             const formattedPhone = this.formatPhoneWhatsApp(phone);
 
-            const text: string = `Olá, ${name}! O seu comprovante de pagamento do evento "${event}" foi recusado.%0aA justificativa é "${message}".%0a%0aRealize o envio novamente pelo link:%0ahttps://fct-pp.web.app/inscricoes/pagar/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=payment_error`;
+            const text: string = `Olá, ${name}! O seu comprovante de pagamento do evento "${event}" foi recusado.%0aA justificativa é "${message}".%0a%0aRealize o envio novamente pelo link:%0a${environment.baseUrl}inscricoes/pagar/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=payment_error`;
 
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
@@ -403,7 +405,7 @@ export class ValidateReceiptPage implements OnInit {
           handler: () => {
             const formattedPhone = this.formatPhoneWhatsApp(phone);
 
-            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aNão há mais vagas em uma das atividades selecionadas.%0a%0aVocê precisa editar a sua inscrição pelo link:%0ahttps://fct-pp.web.app/eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=no_slots`;
+            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aNão há mais vagas em uma das atividades selecionadas.%0a%0aVocê precisa editar a sua inscrição pelo link:%0a${environment.baseUrl}eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=no_slots`;
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
           },
@@ -429,7 +431,7 @@ export class ValidateReceiptPage implements OnInit {
           handler: () => {
             const formattedPhone = this.formatPhoneWhatsApp(phone);
 
-            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aHá um choque de horário nos eventos que você selecionou.%0a%0aVocê precisa editar a sua inscrição pelo link:%0ahttps://fct-pp.web.app/eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=schedule_conflict`;
+            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aHá um choque de horário nos eventos que você selecionou.%0a%0aVocê precisa editar a sua inscrição pelo link:%0a${environment.baseUrl}eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=schedule_conflict`;
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
           },
