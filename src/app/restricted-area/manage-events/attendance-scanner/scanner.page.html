@@ -6,156 +6,135 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="area-restrita/coletar-presenca"></ion-back-button>
     </ion-buttons>
-  </ion-toolbar>
-</ion-header>
-
-<ion-content>
-  <div class="ion-padding-horizontal">
-    <h2 *ngIf="hasPermission === false">Você não concedeu permissão para acessar a câmera.</h2>
-
-    <h2 *ngIf="hasDevices === false">
-      Nenhuma câmera foi detectada. Verifique se o dispositivo está conectado e se o app tem permissão para acessar a
-      câmera.
-    </h2>
-  </div>
-
-  <div *ngIf="showScanner">
-    <zxing-scanner
-      [formats]="allowedFormats"
-      (permissionResponse)="onHasPermission($event)"
-      (camerasFound)="onCamerasFound($event)"
-      (scanSuccess)="onCodeResult($event)"
-      [torch]="torchEnabled"
-      [(device)]="currentDevice"
-      [delayBetweenScanSuccess]="1000"
-      class="scanner"
-      #scanner>
-    </zxing-scanner>
-  </div>
-  <div>
-    <ion-list class="margin-horizontal-auto list-container">
-      <ng-container *ngIf="attendanceCollection$ | async as attendancePeople; else: loading">
-        <div *ngIf="event$ | async as event" class="ion-padding-horizontal">
-          <h3 class="no-margin-bottom">{{ event.name }}</h3>
-          <h4 class="no-margin">{{ event.shortDescription }}</h4>
-          <h5 class="no-margin-top">
-            {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
-          </h5>
-
-          <p>
-            <b>Scans desta sessão:</b> {{ attendanceSessionScans | number: '2.0-0' }}
-            <br />
-            <!-- TODO: FIX THIS NUMBER -->
-            <!-- <b>Total de presentes:</b> {{ attendancePeople.length | number: '2.0-0'}} -->
-          </p>
-
-          <ion-item>
-            <ion-label position="stacked">Inserção manual de presença</ion-label>
-            <ion-textarea
-              type="text"
-              placeholder="Celular com DDD (somente números) ou e-mail do cadastro"
-              [(ngModel)]="manualInput"></ion-textarea>
-            <ion-button fill="clear" slot="end" (click)="manualAttendance()">
-              <ion-icon slot="icon-only" name="send-outline"></ion-icon>
-            </ion-button>
-          </ion-item>
-        </div>
-        <ion-item *ngFor="let attendancePerson of attendancePeople">
-          <ion-label>
-            <ng-container *ngIf="(attendancePerson.user | async) as user; else userNotFound">
-              <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
-              <h2 class="ion-text-wrap" *ngIf="!user.fullName">
-                <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
-              </h2>
-              <ng-container *ngIf="user.academicID; else notUnesp">
-                <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
-              </ng-container>
-
-              <ng-template #notUnesp>
-                <h3 class="ion-text-wrap" *ngIf="user.academicID">Usuário externo</h3>
-              </ng-template>
-
-              <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
-            </ng-container>
-
-            <ng-template #userNotFound>
-              <ion-label>
-                <h2 class="ion-text-wrap">
-                  <ion-text color="danger">Usuário não encontrado</ion-text>
-                </h2>
-                <h2 class="ion-text-wrap">
-                  <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
-                </h2>
-                <h2>UID: {{ attendancePerson.id }}</h2>
-              </ion-label>
-            </ng-template>
-
-            <h3 class="ion-text-wrap">
-              {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
-            </h3>
-          </ion-label>
-        </ion-item>
-
-        <h1 *ngIf="attendancePeople.length === 0" class="ion-text-center">Nenhum usuário encontrado</h1>
-      </ng-container>
-      <ng-container *ngIf="nonPayingAttendanceCollection$ | async as nonPayingAttendancePeople; else: loading">
-        <div>
-          <p><b>Total de presentes não-pagantes:</b> {{ nonPayingAttendancePeople.length }}</p>
-        </div>
-        <ion-item *ngFor="let nonPayingAttendancePerson of nonPayingAttendancePeople">
-          <ion-label>
-            <ng-container *ngIf="(nonPayingAttendancePerson.user | async) as user">
-              <h2 class="ion-text-wrap" *ngIf="user.fullName">{{ user.fullName }}</h2>
-              <h2 class="ion-text-wrap" *ngIf="!user.fullName">
-                <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
-              </h2>
-              <ng-container *ngIf="user.academicID; else noAcademicID">
-                <h3 class="ion-text-wrap">
-                  {{ courses.getCourse(user.academicID) || "RA inválido" }} | {{ user.academicID }}
-                </h3>
-              </ng-container>
-
-              <ng-template #noAcademicID>
-                <h3 class="ion-text-wrap" *ngIf="user.email.includes('@unesp.br'); else notUnesp">Sem RA cadastrado</h3>
-              </ng-template>
-
-              <ng-template #notUnesp>
-                <h3 class="ion-text-wrap">Usuário externo</h3>
-              </ng-template>
-
-              <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
-              <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
-            </ng-container>
-            <h3 class="ion-text-wrap">
-              {{ dateService.getDateFromTimestamp(nonPayingAttendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
-            </h3>
-          </ion-label>
-        </ion-item>
-
-        <h1 *ngIf="nonPayingAttendancePeople.length === 0" class="ion-text-center">
-          Nenhum usuário não-pagante encontrado
-        </h1>
-      </ng-container>
-
-      <ng-template #loading>
-        <ion-progress-bar type="indeterminate"></ion-progress-bar>
-      </ng-template>
-    </ion-list>
-  </div>
-</ion-content>
-
-<ion-footer>
-  <ion-toolbar>
     <ion-buttons slot="primary">
-      <ion-button (click)="toggleTorch()" *ngIf="torchAvailable | async">
-        <ion-icon name="flash-outline"></ion-icon>
-      </ion-button>
       <ion-button (click)="changeCamera()">
         <ion-icon name="camera-reverse-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
-</ion-footer>
+</ion-header>
+
+<ion-content>
+  <div class="ion-padding-horizontal">
+    @if (hasPermission === false) {
+    <h2>Você não concedeu permissão para acessar a câmera.</h2>
+    } @if (hasDevices === false) {
+    <h2>
+      Nenhuma câmera foi detectada. Verifique se o dispositivo está conectado e se o app tem permissão para acessar a
+      câmera.
+    </h2>
+    }
+  </div>
+
+  <app-aztec-scanner
+    (scanSuccess)="onCodeResult($event)"
+    (deviceList)="onDeviceList($event)"
+    (hasPermission)="onHasPermission($event)"
+    [device]="currentDevice"
+    [delaySeconds]="3"
+    class="scanner"
+    #scanner>
+  </app-aztec-scanner>
+
+  <div>
+    <ion-list class="margin-horizontal-auto list-container">
+      @if (attendanceCollection$ | async; as attendancePeople) { @if (event$ | async; as event) {
+      <div class="ion-padding-horizontal">
+        <h3 class="no-margin-bottom">{{ event.name }}</h3>
+        <h4 class="no-margin">{{ event.shortDescription }}</h4>
+        <h5 class="no-margin-top">
+          {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+        </h5>
+        <p>
+          <b>Scans desta sessão:</b> {{ attendanceSessionScans | number: '2.0-0' }}
+          <br />
+          <!-- TODO: FIX THIS NUMBER -->
+          <!-- <b>Total de presentes:</b> {{ attendancePeople.length | number: '2.0-0'}} -->
+        </p>
+        <ion-item>
+          <ion-label position="stacked">Inserção manual de presença</ion-label>
+          <ion-textarea
+            type="text"
+            placeholder="Celular com DDD (somente números) ou e-mail do cadastro"
+            [(ngModel)]="manualInput"></ion-textarea>
+          <ion-button fill="clear" slot="end" (click)="manualAttendance()">
+            <ion-icon slot="icon-only" name="send-outline"></ion-icon>
+          </ion-button>
+        </ion-item>
+      </div>
+      } @for (attendancePerson of attendancePeople; track attendancePerson) {
+      <ion-item>
+        <ion-label>
+          @if ((attendancePerson.user | async); as user) { @if (user.fullName) {
+          <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
+          } @if (!user.fullName) {
+          <h2 class="ion-text-wrap">
+            <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+          </h2>
+          } @if (user.academicID) {
+          <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+          } @else { @if (user.academicID) {
+          <h3 class="ion-text-wrap">Usuário externo</h3>
+          } }
+          <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+          } @else {
+          <ion-label>
+            <h2 class="ion-text-wrap">
+              <ion-text color="danger">Usuário não encontrado</ion-text>
+            </h2>
+            <h2 class="ion-text-wrap">
+              <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
+            </h2>
+            <h2>UID: {{ attendancePerson.id }}</h2>
+          </ion-label>
+          }
+          <h3 class="ion-text-wrap">
+            {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
+          </h3>
+        </ion-label>
+      </ion-item>
+      } @if (attendancePeople.length === 0) {
+      <h1 class="ion-text-center">Nenhum usuário encontrado</h1>
+      } } @else {
+      <ion-progress-bar type="indeterminate"></ion-progress-bar>
+      } @if (nonPayingAttendanceCollection$ | async; as nonPayingAttendancePeople) {
+      <div>
+        <p><b>Total de presentes não-pagantes:</b> {{ nonPayingAttendancePeople.length }}</p>
+      </div>
+      @for (nonPayingAttendancePerson of nonPayingAttendancePeople; track nonPayingAttendancePerson) {
+      <ion-item>
+        <ion-label>
+          @if ((nonPayingAttendancePerson.user | async); as user) { @if (user.fullName) {
+          <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
+          } @if (!user.fullName) {
+          <h2 class="ion-text-wrap">
+            <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+          </h2>
+          } @if (user.academicID) {
+          <h3 class="ion-text-wrap">
+            {{ courses.getCourse(user.academicID) || "RA inválido" }} | {{ user.academicID }}
+          </h3>
+          } @else { @if (user.email.includes('@unesp.br')) {
+          <h3 class="ion-text-wrap">Sem RA cadastrado</h3>
+          } @else {
+          <h3 class="ion-text-wrap">Usuário externo</h3>
+          } }
+          <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+          <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
+          }
+          <h3 class="ion-text-wrap">
+            {{ dateService.getDateFromTimestamp(nonPayingAttendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
+          </h3>
+        </ion-label>
+      </ion-item>
+      } @if (nonPayingAttendancePeople.length === 0) {
+      <h1 class="ion-text-center">Nenhum usuário não-pagante encontrado</h1>
+      } } @else {
+      <ion-progress-bar type="indeterminate"></ion-progress-bar>
+      }
+    </ion-list>
+  </div>
+</ion-content>
 
 <swal
   #mySwal

@@ -1,5 +1,4 @@
-// @ts-strict-ignore
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, WritableSignal } from '@angular/core';
 
 import { AuthService } from '../../shared/services/auth.service';
 
@@ -26,8 +25,10 @@ import {
   IonGrid,
   IonCol,
   IonRow,
+  IonAvatar,
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
+import { ClickStopPropagation } from 'src/app/shared/directives/click-stop-propagation';
 
 @UntilDestroy()
 @Component({
@@ -36,6 +37,7 @@ import { RouterLink } from '@angular/router';
   styleUrls: ['menu.page.scss'],
   standalone: true,
   imports: [
+    IonAvatar,
     AsyncPipe,
     IonHeader,
     IonToolbar,
@@ -52,6 +54,7 @@ import { RouterLink } from '@angular/router';
     IonGrid,
     IonCol,
     IonRow,
+    ClickStopPropagation,
   ],
 })
 export class MenuPage {
@@ -60,16 +63,19 @@ export class MenuPage {
   authState$ = authState(this.auth);
 
   isProduction: boolean = environment.production;
-  userData: User;
-  firstName: string;
+  userData: WritableSignal<User | null> = signal(null);
+  firstName: WritableSignal<string | null> = signal(null);
+  lastName: WritableSignal<string | null> = signal(null);
+  fullNameAbbreviation: WritableSignal<string | null> = signal(null);
 
   constructor(public authService: AuthService) {}
 
   ngOnInit() {
     this.user$.pipe(untilDestroyed(this), trace('auth')).subscribe((user) => {
       if (user) {
-        this.userData = user;
-        this.firstName = this.userData.displayName.split(' ')[0];
+        this.userData.set(user);
+      } else {
+        this.userData.set(null);
       }
     });
   }

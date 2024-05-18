@@ -1,0 +1,60 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/menu"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Meu perfil</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-grid>
+    <ion-row class="ion-align-items-start">
+      <ion-col size="12" size-lg="6">
+        <ion-card>
+          <ion-item button [routerLink]="['carteira']">
+            <ion-icon name="qr-code-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Carteira</ion-label>
+          </ion-item>
+          <ion-item button lines="none" [routerLink]="['/inscricoes']">
+            <ion-icon name="albums-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Minhas participações</ion-label>
+          </ion-item>
+        </ion-card>
+      </ion-col>
+
+      <ion-col size="12" size-lg="6">
+        <ion-card>
+          <ion-item [routerLink]="['/register']">
+            <ion-icon name="pencil" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Informações pessoais</ion-label>
+          </ion-item>
+          @if (isUnesp && !alreadyLinked) {
+          <ion-item (click)="authService.GoogleLink()" button lines="none">
+            <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Vincular e-mail pessoal</ion-label>
+          </ion-item>
+          } @if (alreadyLinked) {
+          <ion-item button disabled="" lines="none">
+            <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>E-mail pessoal já vinculado</ion-label>
+          </ion-item>
+          }
+        </ion-card>
+      </ion-col>
+
+      <ion-col size="12" size-lg="6">
+        <ion-card>
+          <ion-item button>
+            <ion-icon name="trash-outline" slot="start" aria-hidden="true" (click)="mailtoDeleteAccount()"></ion-icon>
+            <ion-label>Excluir conta</ion-label>
+          </ion-item>
+          <ion-item button lines="none" (click)="logout()">
+            <ion-icon name="log-out-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label>Sair</ion-label>
+          </ion-item>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

@@ -52,7 +52,7 @@ export class AuthService {
     public ngZone: NgZone,
     public modalController: ModalController,
     public toastController: ToastController,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
   ) {
     this.authState$.pipe(trace('auth')).subscribe((user) => {
       if (user) {
@@ -133,6 +133,7 @@ export class AuthService {
 
   async SignOut() {
     await this.auth.signOut();
+
     localStorage.removeItem('user');
   }
 
@@ -301,12 +302,12 @@ export class AuthService {
                   }
                 }
                 return true;
-              })
+              }),
             );
         }
         return null;
       }),
-      switchMap((value) => value)
+      switchMap((value) => value),
     );
   }
 

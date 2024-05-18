@@ -1,5 +1,5 @@
 import { IonIcon, IonTabs, IonTabBar, IonTabButton } from '@ionic/angular/standalone';
-import { Component, inject } from '@angular/core';
+import { Component, WritableSignal, inject, signal } from '@angular/core';
 import { getBooleanChanges, RemoteConfig } from '@angular/fire/remote-config';
 import { BehaviorSubject, Observable } from 'rxjs';
 
@@ -22,8 +22,7 @@ export class TabsPage {
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
 
-  _allowRestrictedArea: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
-  allowRestrictedArea$: Observable<boolean> = this._allowRestrictedArea.asObservable();
+  allowRestrictedArea: WritableSignal<boolean> = signal(false);
   readonly manual$: Observable<boolean>;
   readonly events$: Observable<boolean>;
   readonly map$: Observable<boolean>;
@@ -35,24 +34,26 @@ export class TabsPage {
           if (idTokenResult) {
             const claims = idTokenResult.claims;
             if ((claims['role'] as number) < 3000) {
-              this._allowRestrictedArea.next(true);
+              this.allowRestrictedArea.set(true);
             }
           }
         });
+      } else {
+        this.allowRestrictedArea.set(false);
       }
     });
 
     this.map$ = getBooleanChanges(this.remoteConfig, 'mapTabEnabled').pipe(
       untilDestroyed(this),
-      trace('remote-config')
+      trace('remote-config'),
     );
     this.manual$ = getBooleanChanges(this.remoteConfig, 'manualTabEnabled').pipe(
       untilDestroyed(this),
-      trace('remote-config')
+      trace('remote-config'),
     );
     this.events$ = getBooleanChanges(this.remoteConfig, 'eventsTabEnabled').pipe(
       untilDestroyed(this),
-      trace('remote-config')
+      trace('remote-config'),
     );
   }
 }

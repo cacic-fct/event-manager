@@ -1,0 +1,54 @@
+ion-card {
+  max-width: 540px;
+}
+
+.aztec-code {
+  padding: 25px;
+  background-color: #fff;
+  display: block;
+  overflow: hidden;
+  max-height: 300px;
+  max-width: 300px;
+}
+
+.info-text {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.info-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+
+.font-20 {
+  font-size: 20px;
+}
+
+.skeleton-1 {
+  width: 200px;
+  height: 24px;
+}
+
+.skeleton-2 {
+  width: 250px;
+  height: 20px;
+}
+
+.skeleton-3 {
+  width: 300px;
+  height: 20px;
+}
+
+.skeleton-aztec {
+  width: 320px;
+  height: 320px;
+}
+
+.ru-barcode {
+  display: block;
+  width: 150px;
+  padding: 5px;
+  margin-bottom: 16px;
+}

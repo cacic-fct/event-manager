@@ -1,56 +1,71 @@
 <ion-header>
   <ion-toolbar>
-    @if (authState$ | async) {
-    <ion-buttons slot="primary">
-      <ion-button fill="clear" (click)="authService.SignOut()">
-        <ion-icon slot="start" name="log-out-outline"></ion-icon>
-        Sair
-      </ion-button>
-    </ion-buttons>
-    <ion-title> Olá, {{ firstName }}! </ion-title>
-    } @else {
-    <ion-buttons slot="primary">
-      <ion-button fill="clear" [routerLink]="'/login'">
-        <ion-icon slot="start" name="log-in-outline"></ion-icon>
-        Entrar
-      </ion-button>
-    </ion-buttons>
-    <ion-title> Menu </ion-title>
-    }
+    <ion-title>Menu</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
   <ion-grid>
-    <ion-row class="ion-align-items-start">
-      @if (authState$ | async) {
-      <ion-col size="12" size-lg="6">
+    @if (userData()) {
+    <ion-row class="ion-align-items-start user-card">
+      <ion-col>
         <ion-card>
-          <ion-item routerLink="/perfil">
-            <ion-icon name="person-circle-outline" slot="start" aria-hidden="true"></ion-icon>
-            <ion-label>Meu perfil</ion-label>
-          </ion-item>
-          <!--<ion-item routerLink="/scan">
-      <ion-icon
-        name="qr-code-outline"
-        slot="start"
-      aria-hidden="true"></ion-icon>
-      <ion-label>Leitor de QR Code</ion-label>
-    </ion-item>-->
-          <ion-item routerLink="/inscricoes" lines="none">
-            <ion-icon name="albums-outline" slot="start" aria-hidden="true"></ion-icon>
-            <ion-label>Minhas participações</ion-label>
+          <ion-item class="user-card" [routerLink]="['/perfil']" lines="none">
+            <ion-avatar slot="start">
+              <img [src]="userData().photoURL" />
+            </ion-avatar>
+            <ion-label class="ion-text-wrap"> <h1 class="no-margin">{{userData().displayName}}</h1></ion-label>
+
+            <ion-row class="quick-buttons">
+              <ion-col>
+                <ion-button
+                  fill="clear"
+                  [routerLink]="['/perfil','carteira']"
+                  click-stop-propagation
+                  aria-label="Carteira">
+                  <ion-icon slot="icon-only" name="qr-code-outline"></ion-icon>
+                </ion-button>
+              </ion-col>
+              <ion-col>
+                <ion-button
+                  fill="clear"
+                  [routerLink]="'/inscricoes'"
+                  click-stop-propagation
+                  aria-label="Minhas participações">
+                  <ion-icon slot="icon-only" name="albums-outline"></ion-icon>
+                </ion-button>
+              </ion-col>
+            </ion-row>
           </ion-item>
         </ion-card>
       </ion-col>
-      }
+    </ion-row>
+    } @else {
+    <ion-row class="ion-align-items-start user-card">
+      <ion-col>
+        <ion-card>
+          <ion-item [routerLink]="['/login']" lines="none">
+            <ion-avatar slot="start" aria-hidden="true">
+              <img src="assets/images/avatar-placeholder.webp" />
+            </ion-avatar>
+            <ion-label class="ion-text-wrap">
+              <h1 class="no-margin">Entrar</h1>
+              <p>Conecte-se com a sua conta Google</p>
+            </ion-label>
+            <ion-icon name="log-in-outline" slot="end" aria-hidden="true"></ion-icon>
+          </ion-item>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+    }
+    <ion-row class="ion-align-items-start">
       <ion-col size="12" size-lg="6">
         <ion-card>
-          <ion-item href="https://cacic-fct.github.io/manual-do-calouro/pagina-do-calouro">
+          <ion-item href="https://cacic-fct.github.io/manual-do-calouro/pagina-do-calouro" target="_blank">
             <ion-icon name="people-outline" slot="start" aria-hidden="true"></ion-icon>
             <ion-label>Página do calouro</ion-label>
           </ion-item>
-          <ion-item href="https://cacic-fct.github.io/manual-do-calouro" lines="none">
+          <ion-item href="https://cacic-fct.github.io/manual-do-calouro" lines="none" target="_blank">
             <ion-icon name="book-outline" slot="start" aria-hidden="true"></ion-icon>
             <ion-label>Manual do calouro</ion-label>
           </ion-item>

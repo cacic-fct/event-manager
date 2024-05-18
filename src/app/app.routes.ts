@@ -91,7 +91,7 @@ export const routes: Routes = [
     path: 'perfil',
     title: 'Perfil',
     data: { preload: true },
-    loadChildren: () => import('src/app/profile/profile-info/profile-info.routes').then((m) => m.routes),
+    loadChildren: () => import('src/app/profile/profile-info.routes').then((m) => m.routes),
     ...canActivate(redirectUnauthorizedToLogin),
   },
   {

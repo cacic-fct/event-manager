@@ -1,18 +1,15 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/menu"></ion-back-button>
+      <ion-back-button defaultHref="/perfil"></ion-back-button>
     </ion-buttons>
-    <ion-title>Meu perfil</ion-title>
-    <ion-buttons slot="primary">
-      <ion-button [routerLink]="'./settings'">
-        <ion-icon slot="icon-only" name="settings-outline"></ion-icon
-      ></ion-button>
-    </ion-buttons>
+    <ion-title>Carteira</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
+  <!-- <swiper-container> -->
+  <!-- <swiper-slide> -->
   @if (user$ | async; as user) {
   <ion-card class="margin-horizontal-auto">
     @if (userFirestore$ | async; as userFirestore) {
@@ -34,11 +31,8 @@
         }
       </ion-card-title>
     </div>
-    <qr-code
-      class="qr-code ion-text-center"
-      [value]="'uid:' + (user.uid)"
-      size="320"
-      errorCorrectionLevel="H"></qr-code>
+
+    <object class="aztec-code margin-horizontal-auto" [innerHTML]="profileBarcode | safe: 'html'"></object>
     @if (serviceWorkerActive) {
     <div class="ion-text-center ion-padding">
       <ion-icon name="information-circle-outline" class="info-icon"></ion-icon>
@@ -63,8 +57,8 @@
             </p>
           </ion-card-title>
         </div>
-        <div class="qr-code ion-text-center">
-          <ion-skeleton-text [animated]="false" class="margin-horizontal-auto" id="skeleton-qr"></ion-skeleton-text>
+        <div class="aztec-code ion-text-center">
+          <ion-skeleton-text [animated]="false" class="margin-horizontal-auto" id="skeleton-aztec"></ion-skeleton-text>
         </div>
       </ng-container>
     </ion-card>
@@ -95,4 +89,31 @@
     </ng-container>
   </ion-card>
   }
+  <!-- </swiper-slide> -->
+  <!-- <swiper-slide>
+      @if (user$ | async; as user) {
+      <ion-card class="margin-horizontal-auto">
+        @if (userFirestore$ | async; as userFirestore) {
+        <div class="ion-text-center ion-padding-horizontal ion-padding-top">
+          <h1>Cartão do RU</h1>
+          <ion-avatar class="margin-horizontal-auto">
+            <img [src]="user.photoURL" />
+          </ion-avatar>
+          <ion-card-title>
+            <h2 class="margin-horizontal-auto">{{ (userFirestore$ | async)?.fullName || user.displayName }}</h2>
+
+            <p class="ion-text-wrap no-margin-bottom">
+              {{ courses.getAssociateStatus(userFirestore.associateStatus) }}
+            </p>
+
+            <h1>123321</h1>
+          </ion-card-title>
+        </div>
+
+        <object class="ru-barcode margin-horizontal-auto" [innerHTML]="restaurantBarcode | safe: 'html'"></object>
+        }
+      </ion-card>
+      }
+    </swiper-slide> -->
+  <!-- </swiper-container> -->
 </ion-content>

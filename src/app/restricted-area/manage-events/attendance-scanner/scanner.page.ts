@@ -1,5 +1,4 @@
 import { Component, inject, Input, OnInit, ViewChild } from '@angular/core';
-import { BarcodeFormat } from '@zxing/library';
 import { BehaviorSubject, take, map, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -17,8 +16,7 @@ import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { DateService } from 'src/app/shared/services/date.service';
 import { Auth, user } from '@angular/fire/auth';
 import { FormsModule } from '@angular/forms';
-import { ZXingScannerModule } from '@zxing/ngx-scanner';
-import { NgIf, NgFor, AsyncPipe, DecimalPipe, DatePipe } from '@angular/common';
+import { AsyncPipe, DecimalPipe, DatePipe } from '@angular/common';
 import { addIcons } from 'ionicons';
 import { sendOutline, flashOutline, cameraReverseOutline } from 'ionicons/icons';
 import {
@@ -40,6 +38,8 @@ import {
   IonFooter,
 } from '@ionic/angular/standalone';
 
+import { ScannerVideoComponent } from '../../../shared/components/aztec-scanner/aztec-scanner.component';
+
 interface Attendance {
   user: Observable<User | undefined>;
   time: TimestampType;
@@ -53,10 +53,7 @@ interface Attendance {
   styleUrls: ['./scanner.page.scss'],
   standalone: true,
   imports: [
-    NgIf,
-    ZXingScannerModule,
     FormsModule,
-    NgFor,
     SweetAlert2Module,
     AsyncPipe,
     DecimalPipe,
@@ -77,25 +74,23 @@ interface Attendance {
     IonText,
     IonProgressBar,
     IonFooter,
-  ],
+    ScannerVideoComponent
+],
 })
 export class ScannerPage implements OnInit {
   @Input('manualInput') manualInput!: string;
-  @ViewChild('mySwal')
-  private mySwal!: SwalComponent;
+  @ViewChild('mySwal') mySwal: SwalComponent;
+  @ViewChild('scannerCanvas') scannerCanvas: HTMLCanvasElement;
+
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
 
   // QR Code scanner
   availableDevices!: MediaDeviceInfo[];
   currentDevice: MediaDeviceInfo | null = null;
-  allowedFormats = [BarcodeFormat.QR_CODE];
-  torchEnabled = false;
-  torchAvailable = new BehaviorSubject<boolean>(false);
   hasDevices: boolean = false;
   hasPermission: boolean = false;
   deviceIndex: number = -1;
-  showScanner = true;
 
   attendanceCollection$: Observable<Attendance[]>;
   /**
@@ -213,8 +208,11 @@ export class ScannerPage implements OnInit {
         ),
       );
 
-    // Load audio asset (beep)
     this.audioSuccess = new Audio();
+    this.audioDuplicate = new Audio();
+    this.audioInvalid = new Audio();
+    this.audioNotPaid = new Audio();
+
     addIcons({ sendOutline, flashOutline, cameraReverseOutline });
   }
 
@@ -248,18 +246,11 @@ export class ScannerPage implements OnInit {
       this.writeUserAttendance(uid);
     } else {
       this.backdropColor('invalid');
+      this.audioInvalid.play();
       this.toastInvalid();
       return false;
     }
     return true;
-  }
-
-  onTorchCompatible(isCompatible: boolean): void {
-    this.torchAvailable.next(isCompatible || false);
-  }
-
-  toggleTorch(): void {
-    this.torchEnabled = !this.torchEnabled;
   }
 
   onHasPermission(has: boolean) {
@@ -409,6 +400,7 @@ export class ScannerPage implements OnInit {
         // If document with user uid already exists in attendance list
         if (document.exists) {
           this.backdropColor('duplicate');
+          this.audioDuplicate.play();
           this.toastDuplicate();
           return false;
         }
@@ -503,9 +495,9 @@ export class ScannerPage implements OnInit {
 
   async toastInvalid() {
     const toast = await this.toastController.create({
-      header: 'QR Code incompatível ou perfil não encontrado no banco de dados',
+      header: 'Código incompatível ou perfil não encontrado no banco de dados',
       message: 'Solicite que o usuário faça logoff e login novamente ou insira os dados manualmente.',
-      icon: 'close-circle',
+      icon: 'close-circle-outline',
       position: 'top',
       duration: 5000,
       buttons: [
@@ -550,5 +542,10 @@ export class ScannerPage implements OnInit {
     this._backdropVisibleSubject.next(false);
     // Remove backdrop class
     document.querySelector('ion-backdrop')!.classList.remove(color);
+  }
+
+  onDeviceList(event: MediaDeviceInfo[]) {
+    this.availableDevices = event;
+    this.hasDevices = Boolean(event && event.length);
   }
 }

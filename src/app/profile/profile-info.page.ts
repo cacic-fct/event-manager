@@ -1,12 +1,10 @@
-// @ts-strict-ignore
-import { Component, inject, OnInit } from '@angular/core';
-import { AuthService } from 'src/app/shared/services/auth.service';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { User } from 'src/app/shared/services/user';
-
-import { Mailto, MailtoService } from 'src/app/shared/services/mailto.service';
+import { Component, inject, OnInit } from '@angular/core';
 import { Auth, authState } from '@angular/fire/auth';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
+
+import { User } from 'src/app/shared/services/user';
+import { AsyncPipe } from '@angular/common';
 
 import {
   IonHeader,
@@ -14,39 +12,63 @@ import {
   IonButtons,
   IonBackButton,
   IonTitle,
+  IonIcon,
   IonContent,
   IonCard,
-  IonItem,
-  IonIcon,
-  IonLabel,
+  IonAvatar,
+  IonCardTitle,
+  IonSkeletonText,
+  IonButton,
   IonRouterLink,
+  IonLabel,
+  IonCol,
+  IonItem,
+  IonGrid,
+  IonRow,
 } from '@ionic/angular/standalone';
+import { RouterLink } from '@angular/router';
+
+import { Mailto, MailtoService } from 'src/app/shared/services/mailto.service';
+import { AuthService } from 'src/app/shared/services/auth.service';
 
 @Component({
-  selector: 'app-settings',
-  templateUrl: './settings.page.html',
-  styleUrls: ['./settings.page.scss'],
+  selector: 'app-profile-info',
+  templateUrl: './profile-info.page.html',
+  styleUrls: ['./profile-info.page.scss'],
   standalone: true,
   imports: [
+    IonRow,
+    IonGrid,
+    IonItem,
+    IonCol,
+    IonLabel,
+    IonRouterLink,
+    RouterLink,
     IonHeader,
     IonToolbar,
     IonButtons,
     IonBackButton,
     IonTitle,
+    IonIcon,
     IonContent,
     IonCard,
-    IonItem,
-    IonIcon,
-    IonLabel,
-    RouterLink,
-    IonRouterLink,
+    IonAvatar,
+    IonCardTitle,
+    IonSkeletonText,
+    IonButton,
+    AsyncPipe,
   ],
 })
-export class SettingsPage implements OnInit {
+export class ProfileInfoPage implements OnInit {
   private auth: Auth = inject(Auth);
   authState$ = authState(this.auth);
 
-  constructor(public authService: AuthService, private afs: AngularFirestore, private mailtoService: MailtoService) {}
+  constructor(
+    public authService: AuthService,
+    private afs: AngularFirestore,
+    private mailtoService: MailtoService,
+    private router: Router,
+  ) {}
 
   alreadyLinked: boolean = false;
   isUnesp: boolean = false;
@@ -83,5 +105,11 @@ export class SettingsPage implements OnInit {
       }`,
     };
     this.mailtoService.open(mailto);
+  }
+
+  logout() {
+    this.authService.SignOut();
+
+    this.router.navigate(['/login']);
   }
 }

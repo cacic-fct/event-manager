@@ -8,7 +8,7 @@ export const routes: Routes = [
     component: ProfileInfoPage,
   },
   {
-    path: 'settings',
-    loadChildren: () => import('src/app/profile/profile-info/settings/settings.routes').then((m) => m.routes),
+    path: 'carteira',
+    loadComponent: () => import('./wallet/wallet.page').then((m) => m.WalletPage),
   },
 ];
