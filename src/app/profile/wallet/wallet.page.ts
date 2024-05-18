@@ -95,7 +95,7 @@ export class WalletPage implements OnInit {
   }
 
   ngOnInit() {
-    registerSwiper();
+    /* registerSwiper();
     const swiperEl = document.querySelector('swiper-container');
 
     const swiperParams: SwiperOptions = {
@@ -125,7 +125,7 @@ export class WalletPage implements OnInit {
     // and now initialize it
     swiperEl.initialize();
 
-    this.render2DBarcode('123321');
+    this.render2DBarcode('123321');*/
   }
 
   renderAztecCode(uid: string) {
