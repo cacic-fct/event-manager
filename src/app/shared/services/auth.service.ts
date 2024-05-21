@@ -27,7 +27,6 @@ import { trace } from '@angular/fire/compat/performance';
 
 import { getStringChanges, RemoteConfig, getBooleanChanges } from '@angular/fire/remote-config';
 import { arrayRemove } from '@angular/fire/firestore';
-import { gt as versionGreaterThan } from 'semver';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { CredentialResponse } from 'google-one-tap';
 
@@ -292,7 +291,7 @@ export class AuthService {
 
                   if (data === undefined) {
                     return true;
-                  } else if (remoteDataVersion && versionGreaterThan(remoteDataVersion, this.localDataVersion)) {
+                  } else if (remoteDataVersion && remoteDataVersion > this.localDataVersion) {
                     return true;
                   } else if (!remoteDataVersion || remoteDataVersion !== this.localDataVersion) {
                     this.router.navigate(['/register']);
