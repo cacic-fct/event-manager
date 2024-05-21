@@ -86,6 +86,7 @@ import {
   checkmarkCircle,
   closeCircle,
   hourglass,
+  cloudyNight,
 } from 'ionicons/icons';
 
 @Component({
@@ -182,6 +183,7 @@ export class AppComponent {
       checkmarkCircle,
       closeCircle,
       hourglass,
+      cloudyNight,
     });
   }
 }
