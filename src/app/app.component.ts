@@ -82,6 +82,7 @@ import {
   buildOutline,
   search,
   closeCircleOutline,
+  hourglass,
 } from 'ionicons/icons';
 
 @Component({
@@ -174,6 +175,7 @@ export class AppComponent {
       buildOutline,
       search,
       closeCircleOutline,
+      hourglass,
     });
   }
 }
