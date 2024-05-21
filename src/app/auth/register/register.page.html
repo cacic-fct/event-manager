@@ -9,16 +9,15 @@
     <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
       @if (isUnesp) {
       <ion-item>
-        <ion-label class="ion-text-wrap">Nome completo</ion-label>
-        <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
+        <ion-input class="ion-text-wrap" type="text" value="{{userData.displayName}}" label="Nome completo" readonly>
+        </ion-input>
       </ion-item>
       <ion-item>
-        <ion-label class="ion-text-wrap">E-mail</ion-label>
-        <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
+        <ion-input class="ion-text-wrap" type="text" value="{{userData.email}}" label="E-mail" readonly> </ion-input>
       </ion-item>
       <ion-item>
-        <ion-label class="ion-text-wrap">Eu sou</ion-label>
         <ion-select
+          label="Vínculo"
           formControlName="associateStatus"
           interface="popover"
           placeholder="Selecione seu vínculo"
@@ -34,8 +33,9 @@
       </ion-item>
       @if (isUndergraduate) {
       <ion-item>
-        <ion-label class="ion-text-wrap">Registro acadêmico</ion-label>
         <ion-input
+          class="ion-text-wrap"
+          label="Registro acadêmico"
           formControlName="academicID"
           inputmode="numeric"
           type="text"
@@ -47,37 +47,46 @@
       </ion-item>
       } } @else {
       <ion-item>
-        <ion-label class="ion-text-wrap">Nome da conta</ion-label>
-        <ion-input type="text" value="{{userData.displayName}}" readonly> </ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label class="ion-text-wrap">Nome completo</ion-label>
-        <ion-input type="text" value="{{userData.fullName}}" formControlName="fullName" placeholder="Sem abreviações">
+        <ion-input class="ion-text-wrap" label="Nome da conta" type="text" value="{{userData.displayName}}" readonly>
         </ion-input>
-        <ion-note slot="helper">
-          Utilizamos o seu nome completo para a geração de certificados de participação.
-        </ion-note>
       </ion-item>
       <ion-item>
-        <ion-label class="ion-text-wrap">E-mail</ion-label>
-        <ion-input type="text" value="{{userData.email}}" readonly> </ion-input>
+        <ion-input
+          class="ion-text-wrap"
+          label="Nome completo"
+          helperText="Usamos o seu nome completo para a geração de certificados de participação"
+          type="text"
+          value="{{userData.fullName}}"
+          formControlName="fullName"
+          placeholder="Sem abreviações">
+        </ion-input>
       </ion-item>
       <ion-item>
-        <ion-label class="ion-text-wrap">Vínculo com a Unesp</ion-label>
-        <ion-input type="text" value="Não possui" readonly> </ion-input>
+        <ion-input class="ion-text-wrap" label="E-mail" type="text" value="{{userData.email}}" readonly> </ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input class="ion-text-wrap" label="Vínculo com a Unesp" type="text" value="Não possui" readonly>
+        </ion-input>
       </ion-item>
       }
 
       <ion-item>
-        <ion-label class="ion-text-wrap">CPF</ion-label>
-        <ion-input formControlName="cpf" inputmode="numeric" maxlength="14" (ionChange)="formatCPF()"> </ion-input>
-        <ion-note slot="helper"> Utilizamos o seu CPF apenas para a geração de certificados de participação. </ion-note>
-        <ion-note slot="error"> Utilizamos o seu CPF apenas para a geração de certificados de participação. </ion-note>
+        <ion-input
+          class="ion-text-wrap"
+          label="CPF"
+          helperText="Usamos seu CPF apenas para a geração de certificados de participação"
+          errorText="CPF inválido"
+          formControlName="cpf"
+          inputmode="numeric"
+          maxlength="14"
+          (ionChange)="formatCPF()">
+        </ion-input>
       </ion-item>
 
       <ion-item>
-        <ion-label class="ion-text-wrap">Celular</ion-label>
         <ion-input
+          class="ion-text-wrap"
+          label="Celular"
           formControlName="phone"
           inputmode="numeric"
           type="tel"

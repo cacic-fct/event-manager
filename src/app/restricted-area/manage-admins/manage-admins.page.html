@@ -25,8 +25,12 @@
       <ion-col>
         <form [formGroup]="addAdminForm" (ngSubmit)="addAdmin()">
           <ion-item>
-            <ion-label position="floating">Adicionar admin</ion-label>
-            <ion-input type="text" formControlName="adminEmail" placeholder="E-mail institucional"></ion-input>
+            <ion-input
+              label="Adicionar admin"
+              labelPlacement="floating"
+              type="text"
+              formControlName="adminEmail"
+              placeholder="E-mail institucional"></ion-input>
           </ion-item>
           <ion-button expand="block" type="submit">Adicionar</ion-button>
         </form>
@@ -36,16 +40,16 @@
     <h1 class="ion-padding-horizontal">Lista de admins</h1>
 
     @if (adminList$ | async; as adminList) {
-      <ion-list>
-        @for (admin of adminList; track admin) {
-          <ion-item>
-            <ion-label>{{ admin }}</ion-label>
-            <ion-button slot="end" (click)="removeConfirmationAlert(admin)" color="danger">
-              <ion-icon name="trash-outline"></ion-icon>
-            </ion-button>
-          </ion-item>
-        }
-      </ion-list>
+    <ion-list>
+      @for (admin of adminList; track admin) {
+      <ion-item>
+        <ion-label>{{ admin }}</ion-label>
+        <ion-button slot="end" (click)="removeConfirmationAlert(admin)" color="danger">
+          <ion-icon name="trash-outline"></ion-icon>
+        </ion-button>
+      </ion-item>
+      }
+    </ion-list>
     }
   </ion-grid>
 </ion-content>

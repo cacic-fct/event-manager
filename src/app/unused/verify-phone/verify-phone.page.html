@@ -19,8 +19,9 @@
     <ion-row>
       <ion-col size-xs="12" size-sm="12" size-md="12" size-lg="12" size-xl="12">
         <ion-item>
-          <ion-label position="floating">Código de verificação</ion-label>
           <ion-input
+            label="Código de verificação"
+            labelPlacement="floating"
             [(ngModel)]="verificationCode"
             (ionChange)="verificationCodeChange()"
             inputmode="numeric"

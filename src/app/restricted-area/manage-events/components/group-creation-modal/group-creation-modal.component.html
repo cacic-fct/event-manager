@@ -12,8 +12,11 @@
   <ion-list>
     <form [formGroup]="dataForm">
       <ion-item>
-        <ion-label position="stacked">Nome do grupo</ion-label>
-        <ion-input type="text" formControlName="groupDisplayName"></ion-input>
+        <ion-input
+          label="Nome do grupo"
+          labelPlacement="stacked"
+          type="text"
+          formControlName="groupDisplayName"></ion-input>
       </ion-item>
     </form>
   </ion-list>
@@ -27,11 +30,11 @@
               <ion-label>
                 <h1 class="ion-text-wrap">{{ event.name }}</h1>
                 <h4 class="date-item">
-                  Data do evento: {{ dateService.getDateFromTimestamp(event.eventStartDate) | date : 'dd/MM HH:mm' }}
+                  Data do evento: {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: 'dd/MM HH:mm' }}
                   {{
-                  event.eventEndDate
-                  ? ' - ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date : 'dd/MM HH:mm')
-                  : ''
+                    event.eventEndDate
+                      ? ' - ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date: 'dd/MM HH:mm')
+                      : ''
                   }}
                 </h4>
                 @if (i === 0) {

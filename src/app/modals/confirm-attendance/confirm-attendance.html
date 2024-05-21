@@ -16,8 +16,12 @@
     <ion-card-content>
       <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
         <ion-item>
-          <ion-label position="floating">Insira o código informado</ion-label>
-          <ion-input formControlName="code" type="text" maxlength="4"></ion-input>
+          <ion-input
+            label="Insira o código informado"
+            labelPlacement="floating"
+            formControlName="code"
+            type="text"
+            maxlength="4"></ion-input>
         </ion-item>
       </form>
     </ion-card-content>

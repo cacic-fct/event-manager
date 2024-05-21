@@ -97,12 +97,10 @@ export class AddMajorEventPage implements OnInit {
     public formBuilder: FormBuilder,
     private modalController: ModalController,
     private afs: AngularFirestore,
-    private router: Router
+    private router: Router,
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
-  }
 
-  ngOnInit() {
     const tzoffset: number = new Date().getTimezoneOffset() * 60000;
     const dateISO: string = new Date(Date.now() - tzoffset).toISOString().slice(0, -1);
     const dateISOHourOffset: string = addHours(new Date(Date.now() - tzoffset), 1)
@@ -138,8 +136,11 @@ export class AddMajorEventPage implements OnInit {
       },
       {
         validators: [this.validatorButton, this.requirePaymentDetails, this.validatorDateEnd],
-      }
+      },
     );
+  }
+
+  ngOnInit() {
     this.userData.displayName.replace(/%20/g, ' ');
   }
 

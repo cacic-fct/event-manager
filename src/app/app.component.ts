@@ -82,6 +82,9 @@ import {
   buildOutline,
   search,
   closeCircleOutline,
+  cloudUpload,
+  checkmarkCircle,
+  closeCircle,
   hourglass,
 } from 'ionicons/icons';
 
@@ -175,6 +178,9 @@ export class AppComponent {
       buildOutline,
       search,
       closeCircleOutline,
+      cloudUpload,
+      checkmarkCircle,
+      closeCircle,
       hourglass,
     });
   }

@@ -146,6 +146,7 @@
           }
           <ion-checkbox
             name="{{event.eventType}}"
+            [attr.aria-label]="event.name"
             [formControlName]="event.id"
             (ionChange)="countCheckeds($event, event)"
             (ionChange)="checkForScheduleConflict($event, event)"></ion-checkbox>

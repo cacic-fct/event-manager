@@ -26,13 +26,11 @@
       </ion-item>
 
       <ion-item>
-        <ion-label position="floating">Nome do evento</ion-label>
-        <ion-input formControlName="name"></ion-input>
+        <ion-input label="Nome do evento" labelPlacement="floating" formControlName="name"></ion-input>
       </ion-item>
 
       <ion-item>
-        <ion-label position="floating">Descrição do evento</ion-label>
-        <ion-input formControlName="description"></ion-input>
+        <ion-input label="Descrição do evento" labelPlacement="floating" formControlName="description"></ion-input>
       </ion-item>
     </ng-container>
 
@@ -58,7 +56,6 @@
       </ion-card-header>
       <ion-item>
         <ion-label class="ion-text-wrap">Data do início das inscrições</ion-label>
-
         <ion-datetime-button datetime="subscriptionStartDate"></ion-datetime-button>
       </ion-item>
 
@@ -68,8 +65,10 @@
       </ion-item>
 
       <ion-item>
-        <ion-label class="ion-text-wrap" position="floating">Limite de minicursos para inscrição (opcional)</ion-label>
         <ion-input
+          class="ion-text-wrap"
+          label="Limite de minicursos para inscrição (opcional)"
+          labelPlacement="floating"
           formControlName="maxCourses"
           inputmode="numeric"
           (keypress)="inputNumbersOnly($event)"
@@ -77,8 +76,10 @@
       </ion-item>
 
       <ion-item>
-        <ion-label class="ion-text-wrap" position="floating">Limite de palestras para inscrição (opcional)</ion-label>
         <ion-input
+          class="ion-text-wrap"
+          label="Limite de palestras para inscrição (opcional)"
+          labelPlacement="floating"
           formControlName="maxLectures"
           inputmode="numeric"
           (keypress)="inputNumbersOnly($event)"
@@ -91,23 +92,27 @@
     </ion-card-header>
 
     <ion-item>
-      <ion-label class="ion-text-wrap">Evento pago</ion-label>
       <ion-toggle
-        slot="end"
+        class="ion-text-wrap"
         [checked]="isEventPaid"
         (ionChange)="isEventPaidChange()"
-        formControlName="isEventPaidForm"></ion-toggle>
+        formControlName="isEventPaidForm"
+        >Evento pago</ion-toggle
+      >
     </ion-item>
 
     @if ((isEventPaid$ | async);) {
     <ion-item>
-      <ion-label class="ion-text-wrap">Diferenciar preço por tipo de inscrição</ion-label>
-      <ion-toggle slot="end" [checked]="priceDifferentiate" (ionChange)="priceDifferentiateChange()"></ion-toggle>
+      <ion-toggle class="ion-text-wrap" [checked]="priceDifferentiate" (ionChange)="priceDifferentiateChange()"
+        >Diferenciar preço por tipo de inscrição</ion-toggle
+      >
     </ion-item>
     @if ((priceDifferentiate$ | async)) {
     <ion-item>
-      <ion-label position="floating">Aluno da Unesp</ion-label>
+      <!-- TODO: replaceCommaWithPeriod directive not working. Formatting with validatePrice -->
       <ion-input
+        label="Aluno da Unesp"
+        labelPlacement="floating"
         formControlName="priceStudents"
         inputmode="decimal"
         (ionInput)="validatePrice($event, 'priceStudents')"
@@ -116,8 +121,10 @@
       <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceStudents | currency: 'BRL'}}</p></ion-text>
     </ion-item>
     <ion-item>
-      <ion-label class="ion-text-nowrap" position="floating"> Aluno de outras IES </ion-label>
       <ion-input
+        class="ion-text-nowrap"
+        label="Aluno de outras IES"
+        labelPlacement="floating"
         formControlName="priceOtherStudents"
         inputmode="decimal"
         (ionInput)="validatePrice($event, 'priceOtherStudents')"
@@ -126,8 +133,9 @@
       <ion-text slot="end" color="medium"><p>{{ dataForm.value.priceOtherStudents | currency: 'BRL'}}</p></ion-text>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">Professores e profissionais</ion-label>
       <ion-input
+        label="Professores e profissionais"
+        labelPlacement="floating"
         formControlName="priceProfessors"
         inputmode="decimal"
         (ionInput)="validatePrice($event, 'priceProfessors')"
@@ -137,8 +145,9 @@
     </ion-item>
     } @else {
     <ion-item>
-      <ion-label position="floating">Preço único</ion-label>
       <ion-input
+        label="Preço único"
+        labelPlacement="floating"
         formControlName="priceSingle"
         inputmode="decimal"
         (ionInput)="validatePrice($event, 'priceSingle')"
@@ -151,12 +160,15 @@
       <ion-card-title>Informações de pagamento</ion-card-title>
     </ion-card-header>
     <ion-item>
-      <ion-label position="floating">Nome completo do beneficiário</ion-label>
-      <ion-input formControlName="accountName"></ion-input>
+      <ion-input
+        label="Nome completo do beneficiário"
+        labelPlacement="floating"
+        formControlName="accountName"></ion-input>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">CPF ou CNPJ</ion-label>
       <ion-input
+        label="CPF ou CNPJ"
+        labelPlacement="floating"
         formControlName="document"
         placeholder="Somente números"
         inputmode="numeric"
@@ -164,12 +176,16 @@
         (keypress)="inputNumbersOnly($event)"></ion-input>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">Instituição bancária</ion-label>
-      <ion-input formControlName="bankName" placeholder="Inclua o número e nome extenso do banco"></ion-input>
+      <ion-input
+        label="Instituição bancária"
+        labelPlacement="floating"
+        formControlName="bankName"
+        placeholder="Inclua o número e nome extenso do banco"></ion-input>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">Agência - Sem dígito verificador</ion-label>
       <ion-input
+        label="Agência – Sem dígito verificador"
+        labelPlacement="floating"
         formControlName="agency"
         placeholder="XXXX"
         maxLength="4"
@@ -177,20 +193,23 @@
         (keypress)="inputNumbersOnly($event)"></ion-input>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">Conta - Com dígito verificador</ion-label>
       <ion-input
+        label="Conta – Com dígito verificador"
+        labelPlacement="floating"
         formControlName="accountNumber"
         placeholder="XXXX-X"
         (keypress)="inputBankAccountNumber($event)"
         (ionInput)="validateAccountNumber($event)"></ion-input>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">Chave Pix</ion-label>
-      <ion-input formControlName="chavePix"></ion-input>
+      <ion-input label="Chave Pix" labelPlacement="floating" formControlName="chavePix"></ion-input>
     </ion-item>
     <ion-item>
-      <ion-label position="floating">Informações adicionais (opcional)</ion-label>
-      <ion-textarea formControlName="additionalPaymentInformation"></ion-textarea>
+      <ion-textarea
+        class="ion-textarea-label-wrap"
+        label="Informações adicionais (opcional)"
+        labelPlacement="floating"
+        formControlName="additionalPaymentInformation"></ion-textarea>
     </ion-item>
     }
 
@@ -199,13 +218,15 @@
     </ion-card-header>
 
     <ion-item>
-      <ion-label position="floating">Texto (opcional)</ion-label>
-      <ion-input formControlName="buttonText" placeholder="Saiba mais"></ion-input>
+      <ion-input
+        label="Texto (opcional)"
+        labelPlacement="floating"
+        formControlName="buttonText"
+        placeholder="Saiba mais"></ion-input>
     </ion-item>
 
     <ion-item>
-      <ion-label position="floating">Link</ion-label>
-      <ion-input formControlName="buttonUrl"></ion-input>
+      <ion-input label="Link" labelPlacement="floating" formControlName="buttonUrl"></ion-input>
     </ion-item>
 
     <ion-card-header>
@@ -213,13 +234,17 @@
     </ion-card-header>
 
     <ion-item>
-      <ion-label>Evento aberto ao público</ion-label>
-      <ion-toggle slot="end" formControlName="public" checked="on"></ion-toggle>
+      <ion-toggle formControlName="public" checked="on">Evento aberto ao público</ion-toggle>
     </ion-item>
 
     <ion-item>
-      <ion-label position="stacked">Criador do evento</ion-label>
-      <ion-input value="{{ userData.displayName }}" color="medium" readonly> </ion-input>
+      <ion-input
+        label="Criador do evento"
+        labelPlacement="stacked"
+        value="{{ userData.displayName }}"
+        color="medium"
+        readonly>
+      </ion-input>
     </ion-item>
     <div class="ion-padding-bottom">
       <ion-button class="ion-padding" type="submit" [disabled]="!dataForm.valid"> Criar evento </ion-button>

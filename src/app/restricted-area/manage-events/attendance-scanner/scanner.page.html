@@ -52,8 +52,9 @@
           <!-- <b>Total de presentes:</b> {{ attendancePeople.length | number: '2.0-0'}} -->
         </p>
         <ion-item>
-          <ion-label position="stacked">Inserção manual de presença</ion-label>
           <ion-textarea
+            label="Inserção manual de presença"
+            labelPlacement="stacked"
             type="text"
             placeholder="Celular com DDD (somente números) ou e-mail do cadastro"
             [(ngModel)]="manualInput"></ion-textarea>

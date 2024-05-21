@@ -22,8 +22,11 @@
       <ion-col>
         <form [formGroup]="impersonateForm" (ngSubmit)="impersonate()">
           <ion-item>
-            <ion-label position="floating">UID do usuário</ion-label>
-            <ion-input type="text" formControlName="userID"></ion-input>
+            <ion-input
+              label="UID do usuário"
+              labelPlacement="floating"
+              type="text"
+              formControlName="userID"></ion-input>
           </ion-item>
           <ion-button expand="block" type="submit">Impersonate</ion-button>
         </form>

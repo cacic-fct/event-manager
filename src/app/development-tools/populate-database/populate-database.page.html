@@ -12,8 +12,8 @@
       </ion-button>
     </ion-buttons>
     @if (populateStarted) {
-      <ion-progress-bar
-        [value]="progress"
+    <ion-progress-bar
+      [value]="progress"
       [color]="parseFloat(progress | number: '1.0-1') >= 1 ? 'success': ''"></ion-progress-bar>
     }
   </ion-toolbar>
@@ -28,7 +28,7 @@
         </ion-item-divider>
 
         <ion-item>
-          <ion-checkbox slot="start" formControlName="createAdmin"></ion-checkbox>
+          <ion-checkbox slot="start" formControlName="createAdmin" aria-label="Conta de admin"></ion-checkbox>
           <ion-label>
             Conta de admin
             <p>1x - Aluno da graduação com claim de admin</p>
@@ -36,12 +36,15 @@
         </ion-item>
 
         <ion-item>
-          <ion-checkbox slot="start" formControlName="createUndergraduate"></ion-checkbox>
+          <ion-checkbox
+            slot="start"
+            formControlName="createUndergraduate"
+            aria-label="Conta de graduação"></ion-checkbox>
           <ion-label>Conta de graduação</ion-label>
         </ion-item>
 
         <ion-item>
-          <ion-checkbox slot="start" formControlName="createProfessor"></ion-checkbox>
+          <ion-checkbox slot="start" formControlName="createProfessor" aria-label="Conta de professor"></ion-checkbox>
           <ion-label>
             Conta de professor
             <p>1x - Conta &#64;unesp.br com claim de professor</p>
@@ -49,7 +52,10 @@
         </ion-item>
 
         <ion-item>
-          <ion-checkbox slot="start" formControlName="createExternal"></ion-checkbox>
+          <ion-checkbox
+            slot="start"
+            formControlName="createExternal"
+            aria-label="Conta de usuário externo"></ion-checkbox>
           <ion-label>
             Conta de usuário externo
             <p>E-mail sem sufixo &#64;unesp.br</p>
@@ -62,7 +68,7 @@
           <ion-label>Eventos</ion-label>
         </ion-item-divider>
         <ion-item>
-          <ion-checkbox slot="start" formControlName="createPaidMajorEvent"></ion-checkbox>
+          <ion-checkbox slot="start" formControlName="createPaidMajorEvent" aria-label="Grande evento"></ion-checkbox>
           <ion-label>
             Grande evento
             <p>1x - Pago, com inscrição aberta e data futura</p>
@@ -75,7 +81,7 @@
           </ion-label>
         </ion-item>
         <ion-item>
-          <ion-checkbox slot="start" formControlName="createEvent"></ion-checkbox>
+          <ion-checkbox slot="start" formControlName="createEvent" aria-label="Eventos comuns"></ion-checkbox>
           <ion-label>
             Eventos comuns
             <p>1x - Evento com inscrição aberta</p>
@@ -83,7 +89,7 @@
           </ion-label>
         </ion-item>
         <ion-item>
-          <ion-checkbox slot="start" formControlName="createEventGroup"></ion-checkbox>
+          <ion-checkbox slot="start" formControlName="createEventGroup" aria-label="Grupo de eventos"></ion-checkbox>
           <ion-label>
             Grupo de eventos
             <p>2x - Eventos</p>

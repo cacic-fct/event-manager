@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { ActivatedRoute } from '@angular/router';
@@ -52,6 +51,7 @@ import {
   IonRadio,
   IonLabel,
   IonCardContent,
+  IonInput,
 } from '@ionic/angular/standalone';
 import { AsyncPipe, CurrencyPipe, DatePipe } from '@angular/common';
 
@@ -64,6 +64,7 @@ import { environment } from 'src/environments/environment';
   styleUrls: ['./validate-receipt.page.scss'],
   standalone: true,
   imports: [
+    IonInput,
     IonHeader,
     IonToolbar,
     IonButtons,

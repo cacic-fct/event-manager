@@ -14,8 +14,7 @@
     </ion-card-header>
 
     <ion-item>
-      <ion-label position="floating">Curso</ion-label>
-      <ion-select interface="popover" formControlName="course">
+      <ion-select label="Curso" labelPlacement="floating" interface="popover" formControlName="course">
         @for (course of courses | keyvalue; track course) {
         <ion-select-option slot="start" class="course" [value]="course.key">
           {{ course.value.name }}
@@ -25,45 +24,48 @@
     </ion-item>
 
     <ion-item>
-      <ion-label position="floating">Nome do evento</ion-label>
-      <ion-input formControlName="name"></ion-input>
+      <ion-input label="Nome do evento" labelPlacement="floating" formControlName="name"></ion-input>
     </ion-item>
 
     <ion-item>
-      <ion-label position="floating">Descrição curta do evento</ion-label>
-      <ion-input formControlName="shortDescription"></ion-input>
+      <ion-input
+        label="Descrição curta do evento"
+        labelPlacement="floating"
+        formControlName="shortDescription"></ion-input>
     </ion-item>
 
     <ion-item>
-      <ion-label position="floating">Descrição do evento</ion-label>
-      <ion-textarea formControlName="description"></ion-textarea>
+      <ion-textarea label="Descrição do evento" labelPlacement="floating" formControlName="description"></ion-textarea>
     </ion-item>
 
     <ion-item>
-      <ion-label position="floating">Emoji do evento</ion-label>
-      <ion-input formControlName="icon"> </ion-input>
+      <ion-input label="Emoji do evento" labelPlacement="floating" formControlName="icon"> </ion-input>
     </ion-item>
 
     <ion-item>
-      <ion-label class="ion-text-wrap">Data do evento</ion-label>
+      <ion-label>Data do evento</ion-label>
       <ion-datetime-button datetime="eventDate"></ion-datetime-button>
     </ion-item>
 
     <ion-item>
-      <ion-label class="ion-text-wrap">Fim do evento</ion-label>
       <ion-toggle
         formControlName="hasDateEndForm"
         [checked]="hasDateEnd"
         (ionChange)="hasDateEndChange()"
-        formControlName="hasDateEndForm"></ion-toggle>
+        formControlName="hasDateEndForm"
+        >Fim do evento</ion-toggle
+      >
       <ion-datetime-button
         [disabled]="!this.dataForm.value.hasDateEndForm"
         datetime="eventDateEnd"></ion-datetime-button>
     </ion-item>
 
     <ion-item>
-      <ion-label position="floating">Pertence ao grande evento</ion-label>
-      <ion-select interface="popover" formControlName="inMajorEvent">
+      <ion-select
+        label="Pertence ao grande evento"
+        labelPlacement="floating"
+        interface="popover"
+        formControlName="inMajorEvent">
         <ion-select-option slot="start" value="none">Nenhum</ion-select-option>
         @if (majorEventsData$ | async; as items) { @for (mEvent of items; track mEvent) {
         <ion-select-option slot="start" [value]="mEvent.id"> {{ mEvent.name }} </ion-select-option>
@@ -74,8 +76,7 @@
     </ion-item>
 
     <ion-item>
-      <ion-label position="floating">Tipo de evento</ion-label>
-      <ion-select interface="popover" formControlName="eventType">
+      <ion-select label="Tipo de evento" labelPlacement="floating" interface="popover" formControlName="eventType">
         <ion-select-option slot="start" value="none">Não especificado</ion-select-option>
         <ion-select-option slot="start" value="minicurso">Minicurso</ion-select-option>
         <ion-select-option slot="start" value="palestra">Palestra</ion-select-option>
@@ -87,8 +88,13 @@
     </ion-card-header>
 
     <ion-item>
-      <ion-label position="floating">Predefinição</ion-label>
-      <ion-select (ionChange)="placeChange($event)" interface="popover" placeholder="Personalizado" #selectPlace>
+      <ion-select
+        label="Predefinição"
+        labelPlacement="floating"
+        (ionChange)="placeChange($event)"
+        interface="popover"
+        placeholder="Personalizado"
+        #selectPlace>
         @if (places$ | async; as places) { @for (place of places | keyvalue; track place) {
         <ion-select-option slot="start" [value]="place.key"> {{ place.value.name }} </ion-select-option>
         } } @else {
@@ -99,18 +105,19 @@
 
     <ng-container formGroupName="location">
       <ion-item>
-        <ion-label position="floating">Endereço ou descrição</ion-label>
-        <ion-input formControlName="description" (ionInput)="placeInputKeyDown()"></ion-input>
+        <ion-input
+          label="Endereço ou descrição"
+          labelPlacement="floating"
+          formControlName="description"
+          (ionInput)="placeInputKeyDown()"></ion-input>
       </ion-item>
 
       <ion-item>
-        <ion-label position="floating">Latitude</ion-label>
-        <ion-input formControlName="lat"></ion-input>
+        <ion-input label="Latitude" labelPlacement="floating" formControlName="lat"></ion-input>
       </ion-item>
 
       <ion-item>
-        <ion-label position="floating">Longitude</ion-label>
-        <ion-input formControlName="lon"></ion-input>
+        <ion-input label="Longitude" labelPlacement="floating" formControlName="lon"></ion-input>
       </ion-item>
     </ng-container>
 
@@ -120,13 +127,11 @@
 
     <ng-container formGroupName="button">
       <ion-item>
-        <ion-label position="floating">Texto (opcional)</ion-label>
-        <ion-input formControlName="text"></ion-input>
+        <ion-input label="Texto (opcional)" labelPlacement="floating" formControlName="text"></ion-input>
       </ion-item>
 
       <ion-item>
-        <ion-label position="floating">Link</ion-label>
-        <ion-input formControlName="url"></ion-input>
+        <ion-input label="Link" labelPlacement="floating" formControlName="url"></ion-input>
       </ion-item>
     </ng-container>
 
@@ -135,51 +140,57 @@
     </ion-card-header>
 
     <ion-item>
-      <ion-label position="floating">Código do YouTube</ion-label>
-      <ion-input formControlName="youtubeCode" placeholder="Código do vídeo no YouTube"></ion-input>
+      <ion-input
+        label="Código do YouTube"
+        labelPlacement="floating"
+        formControlName="youtubeCode"
+        placeholder="Código do vídeo no YouTube"></ion-input>
     </ion-item>
 
     @if (dataForm.get('inMajorEvent').value === 'none') {
     <ion-item>
-      <ion-label>Permitir inscrição</ion-label>
-      <ion-toggle slot="end" formControlName="allowSubscription"></ion-toggle>
+      <ion-toggle formControlName="allowSubscription">Permitir inscrição</ion-toggle>
     </ion-item>
     }
 
     <ion-item>
-      <ion-label>Coletar presença para este evento</ion-label>
-      <ion-toggle slot="end" formControlName="collectAttendance"></ion-toggle>
+      <ion-toggle formControlName="collectAttendance">Coletar presença para este evento</ion-toggle>
     </ion-item>
 
     @if (dataForm.get('collectAttendance').value) {
     <ion-item>
       @if (dataForm.get('inMajorEvent').value === 'none') {
-      <ion-label>Emite certificado de participação</ion-label>
+      <ion-toggle formControlName="issueCertificate" checked="off">Emite certificado de participação</ion-toggle>
       } @if (dataForm.get('inMajorEvent').value !== 'none') {
-      <ion-label> Consta no certificado de participação </ion-label>
+      <ion-toggle formControlName="issueCertificate" checked="off">Consta no certificado de participação</ion-toggle>
       }
-      <ion-toggle slot="end" formControlName="issueCertificate" checked="off"></ion-toggle>
     </ion-item>
     @if (dataForm.get('issueCertificate').value) {
     <ion-item>
-      <ion-label>Carga horária deste dia</ion-label>
-      <ion-input formControlName="creditHours" numeric="decimal" placeholder="Em horas"></ion-input>
+      <ion-input
+        label="Carga horário deste dia"
+        formControlName="creditHours"
+        numeric="decimal"
+        placeholder="Em horas"></ion-input>
     </ion-item>
     }
     <ion-item>
-      <ion-label position="floating">Vagas</ion-label>
-      <ion-input formControlName="slotsAvailable"></ion-input>
+      <ion-input label="Vagas" labelPlacement="floating" formControlName="slotsAvailable"></ion-input>
     </ion-item>
     }
 
     <ion-item>
-      <ion-label>Evento aberto ao público</ion-label>
-      <ion-toggle slot="end" formControlName="public" checked="off"></ion-toggle>
+      <ion-toggle formControlName="public" checked="off">Evento aberto ao público</ion-toggle>
     </ion-item>
 
     <ion-item>
-      <ion-label position="stacked">Criador do evento</ion-label>
-      <ion-input value="{{ userData.displayName }}" color="medium" readonly> </ion-input>
+      <ion-input
+        label="Criador do evento"
+        labelPlacement="stacked"
+        value="{{ userData.displayName }}"
+        color="medium"
+        readonly>
+      </ion-input>
     </ion-item>
 
     <div class="ion-padding-bottom">

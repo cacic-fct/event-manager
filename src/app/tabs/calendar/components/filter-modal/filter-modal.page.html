@@ -20,7 +20,8 @@
         slot="start"
         class="course"
         [id]="course.key"
-        (click)="checkBoxClickCourse(course.key)"></ion-checkbox>
+        (click)="checkBoxClickCourse(course.key)"
+        [attr.aria-label]="course.value.name"></ion-checkbox>
     </ion-item>
     }
   </ion-list>

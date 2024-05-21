@@ -135,24 +135,20 @@
       <form [formGroup]="refuseForm" (ngSubmit)="refuse()">
         <ion-radio-group formControlName="radioGroup">
           <ion-item>
-            <ion-label>Erro no comprovante</ion-label>
-            <ion-radio slot="start" value="invalidReceipt"></ion-radio>
+            <ion-radio value="invalidReceipt">Erro no comprovante</ion-radio>
           </ion-item>
 
           <ion-item>
-            <ion-label>Não há mais vagas</ion-label>
-            <ion-radio slot="start" value="noSlots"></ion-radio>
+            <ion-radio value="noSlots">Não há mais vagas</ion-radio>
           </ion-item>
 
           <ion-item>
-            <ion-label>Choque de horário</ion-label>
-            <ion-radio slot="start" value="scheduleConflict"></ion-radio>
+            <ion-radio value="scheduleConflict">Choque de horário</ion-radio>
           </ion-item>
         </ion-radio-group>
         @if (refuseForm.get('radioGroup').value == 'invalidReceipt') {
         <ion-item>
-          <ion-label position="floating">Motivo da recusa</ion-label>
-          <ion-input formControlName="errorMessage"></ion-input>
+          <ion-input label="Motivo da recusa" labelPlacement="floating" formControlName="errorMessage"></ion-input>
         </ion-item>
         }
       </form>

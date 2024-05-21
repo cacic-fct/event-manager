@@ -25,6 +25,9 @@
 @import '@ionic/angular/css/text-transformation.css';
 @import '@ionic/angular/css/flex-utils.css';
 
+/* Dark theme */
+@import '@ionic/angular/css/palettes/dark.system.css';
+
 /* Map */
 @import 'ol/ol.css';
 
@@ -134,4 +137,8 @@
 
 .course-background-color-computacao-25 {
   --background: #51aaf225;
+}
+
+.ion-textarea-label-wrap .label-text {
+  white-space: normal;
 }

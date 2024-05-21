@@ -31,8 +31,8 @@ import { RouterLink } from '@angular/router';
 
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 
-import { register as registerSwiper } from 'swiper/element/bundle';
-import { SwiperOptions } from 'swiper/types';
+// import { register as registerSwiper } from 'swiper/element/bundle';
+// import { SwiperOptions } from 'swiper/types';
 
 @Component({
   selector: 'app-wallet',

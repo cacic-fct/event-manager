@@ -99,7 +99,7 @@ export class CertificateService {
           throw new Error('Certificate data is missing');
         }
 
-        const template = pdf as Template;
+        const template: Template = pdf as Template;
 
         let font = {};
 
@@ -159,6 +159,8 @@ export class CertificateService {
         const inputs = [input];
 
         PDFGenerate({
+          // TODO: Remove me when upstream fixes i
+          // @ts-ignore
           template,
           inputs,
           options: { font },
