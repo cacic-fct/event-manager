@@ -33,7 +33,7 @@ export const adminDataFirestoreDocument = {
   linkedPersonalEmail: false,
   associateStatus: 'undergraduate',
   academicID: '201200000',
-  dataVersion: '1,
+  dataVersion: '1',
   uid: adminData.uid,
   cpf: '159.762.260-51',
 };
