@@ -116,6 +116,18 @@ export const routes: Routes = [
     path: 'certificado/verificar/:param',
     loadChildren: () => import('./validate-certificate/validate-certificate.routes').then((m) => m.routes),
   },
+  {
+    path: 'docs',
+    redirectTo: 'https://cacic-fct.github.io/fct-app-docs',
+  },
+  {
+    path: 'documentacao',
+    redirectTo: 'https://cacic-fct.github.io/fct-app-docs',
+  },
+  {
+    path: 'documentation',
+    redirectTo: 'https://cacic-fct.github.io/fct-app-docs',
+  },
   // Redirect not found routes (404) to index
   // Must be the last route
   {

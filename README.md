@@ -12,6 +12,10 @@ Todos podem contribuir para o "FCT App".
 
 Leia o [guia de contribuição do CACiC](https://github.com/cacic-fct/.github/blob/main/Contributing.md).
 
+## Documentação
+
+A documentação do projeto está disponível em [cacic-fct/fct-app-docs](https://github.com/cacic-fct/fct-app-docs).
+
 ## Site
 
 O aplicativo é construído com Angular e pode ser acessado em [fct-pp.web.app](https://fct-pp.web.app).
