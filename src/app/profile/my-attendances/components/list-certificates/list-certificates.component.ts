@@ -71,7 +71,7 @@ export class ListCertificatesComponent {
     private toastController: ToastController,
     private route: ActivatedRoute,
   ) {
-    this.user$ = user(this.auth);
+    this.user$ = user(this.auth).pipe(filterNullish());
     this.majorEventID = this.route.snapshot.paramMap.get('majorEventID') as string;
     this.userData = JSON.parse(localStorage.getItem('user') as string);
 
