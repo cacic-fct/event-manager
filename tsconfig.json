@@ -22,6 +22,7 @@
       "dom"
     ],
     "skipLibCheck": true,
+    "strict": false,
     "plugins": [
       {
        "name": "typescript-strict-plugin"

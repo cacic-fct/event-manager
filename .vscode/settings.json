@@ -1,6 +1,7 @@
 {
     // Use project's version of TypeScript
-    "typescript.tsdk": "node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "typescript.tsdk": "./node_modules/typescript/lib",
 
     // Exclude Modular Angular imports
     "typescript.preferences.autoImportFileExcludePatterns": ["@ionic/angular/common", "@ionic/angular"],
