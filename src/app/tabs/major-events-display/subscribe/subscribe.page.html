@@ -77,8 +77,11 @@
     <div class="card-section ion-padding-horizontal">
       @if (!majorEvent.price.single) {
       <ion-item>
-        <ion-label>Tipo de inscrição</ion-label>
-        <ion-select placeholder="Selecionar" [(ngModel)]="opSelected" [disabled]="paymentStatus !== undefined">
+        <ion-select
+          label="Tipo de inscrição"
+          placeholder="Selecionar"
+          [(ngModel)]="opSelected"
+          [disabled]="paymentStatus !== undefined">
           <ion-select-option value="0">{{ enrollmentTypes.getEnrollmentType(0) }}</ion-select-option>
           <ion-select-option value="1">{{ enrollmentTypes.getEnrollmentType(1) }}</ion-select-option>
           <ion-select-option value="2">{{ enrollmentTypes.getEnrollmentType(2) }}</ion-select-option>
@@ -139,12 +142,13 @@
             <!-- <p>Conflito de horário com "item 2"</p>-->
           </ion-label>
           @if (event.description) {
-          <ion-button color="primary" fill="clear" (click)="showEventInfo(event)">
+          <ion-button color="primary" fill="clear" (click)="showEventInfo(event)" slot="end">
             <ion-icon name="information-circle-outline" aria-hidden="true" slot="start"></ion-icon>
             <p slot="end">INFO</p>
           </ion-button>
           }
           <ion-checkbox
+            slot="end"
             name="{{event.eventType}}"
             [attr.aria-label]="event.name"
             [formControlName]="event.id"
