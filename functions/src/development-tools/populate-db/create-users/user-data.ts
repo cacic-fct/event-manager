@@ -33,7 +33,7 @@ export const adminDataFirestoreDocument = {
   linkedPersonalEmail: false,
   associateStatus: 'undergraduate',
   academicID: '201200000',
-  dataVersion: '0.3.0',
+  dataVersion: '1,
   uid: adminData.uid,
   cpf: '159.762.260-51',
 };
@@ -71,7 +71,7 @@ export const undergraduateDataFirestoreDocument = {
   photoURL: undergraduateData.photoURL,
   associateStatus: 'undergraduate',
   academicID: '201200000',
-  dataVersion: '0.3.0',
+  dataVersion: '1',
   uid: undergraduateData.uid,
   cpf: '159.762.260-51',
 };
@@ -108,7 +108,7 @@ export const professorDataFirestoreDocument = {
   phone: professorData.phoneNumber,
   photoURL: professorData.photoURL,
   associateStatus: 'professor',
-  dataVersion: '0.3.0',
+  dataVersion: '1',
   uid: professorData.uid,
   cpf: '159.762.260-51',
 };
@@ -145,7 +145,7 @@ export const externalDataFirestoreDocument = {
   phone: externalData.phoneNumber,
   photoURL: externalData.photoURL,
   associateStatus: 'external',
-  dataVersion: '0.3.0',
+  dataVersion: '1',
   uid: externalData.uid,
   cpf: '159.762.260-51',
 };
