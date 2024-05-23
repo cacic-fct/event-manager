@@ -16,9 +16,8 @@ import {
   signInWithPopup,
   signInWithCredential,
   linkWithPopup,
+  GoogleAuthProvider,
 } from '@angular/fire/auth';
-// TODO: This should be imported from '@angular/fire/auth' but it's not available
-import { GoogleAuthProvider } from 'firebase/auth';
 
 import { Analytics, logEvent, setUserId } from '@angular/fire/analytics';
 

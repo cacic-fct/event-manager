@@ -31,9 +31,7 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 
-import { Auth } from '@angular/fire/auth';
-// TODO: This should be imported from '@angular/fire/auth' but it's not available
-import { RecaptchaVerifier } from 'firebase/auth';
+import { Auth, RecaptchaVerifier } from '@angular/fire/auth';
 
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { SweetAlert2Module, SwalComponent } from '@sweetalert2/ngx-sweetalert2';

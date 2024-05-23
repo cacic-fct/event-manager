@@ -23,9 +23,7 @@ import { provideAuth, getAuth, useDeviceLanguage, connectAuthEmulator } from '@a
 import { provideRemoteConfig, getRemoteConfig, fetchAndActivate } from '@angular/fire/remote-config';
 import { getApp, provideFirebaseApp, initializeApp } from '@angular/fire/app';
 
-import { provideAppCheck, initializeAppCheck } from '@angular/fire/app-check';
-// TODO: This should be imported from '@angular/fire/app-check' but it's not available
-import { ReCaptchaV3Provider } from 'firebase/app-check';
+import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
 
 import { AngularFireModule } from '@angular/fire/compat';
 import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
