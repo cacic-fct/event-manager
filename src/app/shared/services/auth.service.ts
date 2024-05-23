@@ -308,7 +308,7 @@ export class AuthService {
         }
         return null;
       }),
-      switchMap((value: any) => value),
+      switchMap((value) => value),
     );
   }
 
