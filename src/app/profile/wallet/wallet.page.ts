@@ -8,7 +8,7 @@ import { User } from 'src/app/shared/services/user';
 import { trace } from '@angular/fire/compat/performance';
 import { AsyncPipe } from '@angular/common';
 
-import { azteccode, interleaved2of5, drawingSVG } from 'node_modules/bwip-js/dist/bwip-js.js';
+import { azteccode, interleaved2of5, drawingSVG } from 'bwip-js';
 
 import { SafePipe } from 'src/app/shared/pipes/safe.pipe';
 
@@ -32,6 +32,7 @@ import {
 import { RouterLink } from '@angular/router';
 
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
+import { filterNullish } from 'src/app/shared/services/rxjs.service';
 
 // import { register as registerSwiper } from 'swiper/element/bundle';
 // import { SwiperOptions } from 'swiper/types';
@@ -67,7 +68,7 @@ export class WalletPage implements OnInit {
 
   private auth: Auth = inject(Auth);
 
-  user$: Observable<AuthUser> = user(this.auth);
+  user$: Observable<AuthUser | null> = user(this.auth);
   userFirestore$: Observable<User> | undefined;
   academicID$: Observable<string> | undefined;
   public serviceWorkerActive: boolean = false;
@@ -81,7 +82,7 @@ export class WalletPage implements OnInit {
   ) {
     this.serviceWorkerActive = this.sw.getServiceWorkerStatus();
 
-    this.user$.pipe(take(1), trace('auth')).subscribe((user: AuthUser) => {
+    this.user$.pipe(filterNullish(), take(1), trace('auth')).subscribe((user: AuthUser) => {
       if (user) {
         getIdTokenResult(user).then((idTokenResult) => {
           if (idTokenResult.claims['role'] === 3000) {
@@ -140,13 +141,13 @@ export class WalletPage implements OnInit {
   renderAztecCode(uid: string) {
     try {
       let svg: string = String(
-        // @ts-ignore - Required since eclevel actually exists
         azteccode(
           {
             bcid: 'interleaved2of5',
             text: `uid:${uid}`,
             scale: 3,
             includetext: false,
+            // @ts-ignore - Required since eclevel actually exists
             eclevel: '23',
           },
           drawingSVG(),
