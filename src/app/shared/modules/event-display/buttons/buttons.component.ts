@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { EventItem } from 'src/app/shared/services/event';
 import { DateService } from './../../../services/date.service';
 import { IonRouterLink, ToastController } from '@ionic/angular/standalone';
@@ -8,7 +9,7 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-import { Auth, user } from '@angular/fire/auth';
+import { Auth, user, User } from '@angular/fire/auth';
 
 import { IonButton, IonIcon } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
@@ -31,7 +32,7 @@ export class ButtonsComponent implements OnInit {
   @Input() displaySubscriptionAttendanceButtons: boolean | undefined;
 
   private auth: Auth = inject(Auth);
-  user$ = user(this.auth);
+  user$: Observable<User> = user(this.auth);
 
   userID: string | undefined;
   subscribedToEvent: boolean | undefined;
@@ -41,7 +42,7 @@ export class ButtonsComponent implements OnInit {
   constructor(
     private toastController: ToastController,
     private afs: AngularFirestore,
-    public dateService: DateService
+    public dateService: DateService,
   ) {
     this.isUserAuthenticated = this.user$.pipe(
       trace('auth'),
@@ -51,7 +52,7 @@ export class ButtonsComponent implements OnInit {
           return true;
         }
         return false;
-      })
+      }),
     );
 
     // Check if user is already subscribed to event

@@ -1,5 +1,5 @@
-import { StringDataReturnType } from './cloud-functions.service';
 // @ts-strict-ignore
+import { StringDataReturnType } from './cloud-functions.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { Injectable, NgZone, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -9,7 +9,6 @@ import { User } from '../services/user';
 import {
   Auth,
   signInAnonymously,
-  GoogleAuthProvider,
   authState,
   User as UserAuth,
   getIdTokenResult,
@@ -18,6 +17,9 @@ import {
   signInWithCredential,
   linkWithPopup,
 } from '@angular/fire/auth';
+// TODO: This should be imported from '@angular/fire/auth' but it's not available
+import { GoogleAuthProvider } from 'firebase/auth';
+
 import { Analytics, logEvent, setUserId } from '@angular/fire/analytics';
 
 import { ModalController, ToastController } from '@ionic/angular/standalone';
@@ -306,7 +308,7 @@ export class AuthService {
         }
         return null;
       }),
-      switchMap((value) => value),
+      switchMap(async (value) => value),
     );
   }
 

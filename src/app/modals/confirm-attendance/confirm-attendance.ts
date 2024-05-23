@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import { NavController, ToastController } from '@ionic/angular/standalone';
 import { Component, inject, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';

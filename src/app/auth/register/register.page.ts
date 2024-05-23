@@ -31,7 +31,9 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 
-import { Auth, RecaptchaVerifier } from '@angular/fire/auth';
+import { Auth } from '@angular/fire/auth';
+// TODO: This should be imported from '@angular/fire/auth' but it's not available
+import { RecaptchaVerifier } from 'firebase/auth';
 
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { SweetAlert2Module, SwalComponent } from '@sweetalert2/ngx-sweetalert2';
@@ -89,7 +91,7 @@ export class RegisterPage implements OnInit {
     public router: Router,
     private mailtoService: MailtoService,
     private win: WindowService,
-    private toastController: ToastController
+    private toastController: ToastController,
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
 

@@ -107,7 +107,7 @@ export class AddEventPage implements OnInit {
     private modalController: ModalController,
     public majorEvents: MajorEventsService,
     private afs: AngularFirestore,
-    private router: Router
+    private router: Router,
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
   }
@@ -156,20 +156,20 @@ export class AddEventPage implements OnInit {
       },
       {
         validators: [this.validatorLatLong, this.validatorButton, this.validatorDateEnd],
-      }
+      },
     );
     this.userData.displayName.replace(/%20/g, ' ');
     this.majorEventsData$ = this.majorEvents.getCurrentAndFutureMajorEvents();
 
     this.places$ = getStringChanges(this.remoteConfig, 'placesMap').pipe(
-      map((places) => {
+      map((places: string) => {
         if (places) {
           const parsed: placesRemoteConfig = JSON.parse(places);
           this.parsedPlaces = parsed;
           return parsed;
         }
         return {};
-      })
+      }),
     );
   }
 
@@ -369,7 +369,9 @@ export class AddEventPage implements OnInit {
       .get('description')
       .setValue(
         this.parsedPlaces[ev.detail.value].name +
-          (this.parsedPlaces[ev.detail.value].description ? ' - ' + this.parsedPlaces[ev.detail.value].description : '')
+          (this.parsedPlaces[ev.detail.value].description
+            ? ' - ' + this.parsedPlaces[ev.detail.value].description
+            : ''),
       );
     this.dataForm.get('location').get('lat').setValue(this.parsedPlaces[ev.detail.value].lat);
     this.dataForm.get('location').get('lon').setValue(this.parsedPlaces[ev.detail.value].lon);
@@ -387,7 +389,7 @@ export class AddEventPage implements OnInit {
   onDateStartChange() {
     const newTime = setDayOfYear(
       parseISO(this.dataForm.get('eventEndDate').value),
-      getDayOfYear(parseISO(this.dataForm.get('eventStartDate').value))
+      getDayOfYear(parseISO(this.dataForm.get('eventStartDate').value)),
     );
     this.dataForm.get('eventEndDate').setValue(subMilliseconds(newTime, this.tzoffset).toISOString().slice(0, -1));
   }
