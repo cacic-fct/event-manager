@@ -111,9 +111,9 @@ export class MyAttendancesPage implements OnInit {
                 userData: docData(
                   doc(this.firestore, `majorEvents/${subscription.id}/subscriptions/${user.uid}`),
                 ) as Observable<MajorEventSubscription>,
-                majorEvent: docData(
-                  doc(this.firestore, `majorEvents/${subscription.id}`),
-                ) as Observable<MajorEventItem>,
+                majorEvent: docData(doc(this.firestore, `majorEvents/${subscription.id}`), {
+                  idField: 'id',
+                }) as Observable<MajorEventItem>,
               };
             });
           }),
