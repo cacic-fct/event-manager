@@ -6,23 +6,21 @@
           <app-event-card [eventSubscription]="eventSubscription"></app-event-card>
         } @else {
           <ion-card>
-            @if (eventItem.eventGroup) {
-              @if (eventItem.eventGroup.mainEventID === eventItem.id) {
-                <ion-card-header>
-                  <ion-card-title>{{ eventItem.eventGroup.groupDisplayName }}</ion-card-title>
-                </ion-card-header>
-                <ion-grid>
-                  <ion-row>
-                    <ion-col>
-                      <!-- TODO: Implementar -->
-                      <ion-button disabled="">
-                        <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
-                        Mais detalhes
-                      </ion-button>
-                    </ion-col>
-                  </ion-row>
-                </ion-grid>
-              }
+            @if (eventItem.eventGroup.mainEventID === eventItem.id) {
+              <ion-card-header>
+                <ion-card-title>{{ eventItem.eventGroup.groupDisplayName }}</ion-card-title>
+              </ion-card-header>
+              <ion-grid>
+                <ion-row>
+                  <ion-col>
+                    <!-- TODO: Implementar -->
+                    <ion-button disabled="">
+                      <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
+                      Mais detalhes
+                    </ion-button>
+                  </ion-col>
+                </ion-row>
+              </ion-grid>
             }
           </ion-card>
         }
