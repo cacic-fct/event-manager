@@ -8,7 +8,6 @@
       "installMode": "prefetch",
       "resources": {
         "files": [
-          "/index.html",
           "/favicon.png",
           "/manifest.webmanifest",
           "/*.css",
