@@ -101,7 +101,7 @@ export class PageManageEvents implements OnInit {
     public emojiService: EmojiService,
     public dateService: DateService,
     private formBuilder: FormBuilder,
-    private modalController: ModalController
+    private modalController: ModalController,
   ) {
     this.dataForm = this.formBuilder.group({
       selectedCheckboxes: this.formBuilder.array([]),
@@ -128,10 +128,10 @@ export class PageManageEvents implements OnInit {
                 if (eventObject.inMajorEvent)
                   eventObject.inMajorEventName = this.getMajorEventName$(event.inMajorEvent);
                 return eventObject;
-              })
-            )
+              }),
+            ),
           );
-      })
+      }),
     );
   }
 
@@ -142,7 +142,7 @@ export class PageManageEvents implements OnInit {
       .get()
       .pipe(
         take(1),
-        map((doc) => doc.data()?.name)
+        map((doc) => doc.data()?.name),
       );
   }
 
@@ -248,7 +248,43 @@ export class PageManageEvents implements OnInit {
 
   openOnlineAttendance(eventID: string) {
     const alphabet = GlobalConstantsService.nonAmbiguousAlphabetCapitalizedNumbers;
-    const code = Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+    const bannedCodes = [
+      '2222',
+      '3333',
+      '4444',
+      '5555',
+      '6666',
+      '7777',
+      '8888',
+      '9999',
+      'AAAA',
+      'BBBB',
+      'CCCC',
+      'DDDD',
+      'EEEE',
+      'FFFF',
+      'GGGG',
+      'HHHH',
+      'KKKK',
+      'MMMM',
+      'NNNN',
+      'PPPP',
+      'QQQQ',
+      'RRRR',
+      'SSSS',
+      'TTTT',
+      'WWWW',
+      'XXXX',
+      'YYYY',
+      'ZZZZ',
+      'PENS',
+      'ANWS',
+    ];
+    let code: string;
+
+    do {
+      code = Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+    } while (bannedCodes.includes(code));
 
     this.afs.doc<EventItem>(`events/${eventID}`).update({
       // @ts-ignore
@@ -302,7 +338,7 @@ export class PageManageEvents implements OnInit {
           name: eventItem.name,
           eventStartDate: eventItem.eventStartDate,
           eventEndDate: eventItem.eventEndDate,
-        })
+        }),
       );
     } else {
       let i = 0;
