@@ -8,10 +8,10 @@
           <p>
             Data do evento: {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date: 'dd/MM/yyyy - HH:mm' }} {{ eventItem.eventEndDate && '– ' + (dateService.getDateFromTimestamp(eventItem.eventEndDate) | date: 'dd/MM/yyyy - HH:mm') }}
           </p>
-          @if (eventSubscription.userData | async; as userData) {
+          @if (eventSubscription.userData; as userData) {
             <p>
               Data de inscrição:
-              {{ dateService.getDateFromTimestamp(userData.time) | date : 'dd/MM/yyyy - HH:mm' }}
+              {{ dateService.getDateFromTimestamp(userData.time) | date: 'dd/MM/yyyy - HH:mm' }}
             </p>
           }
         </ion-card-subtitle>

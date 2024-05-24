@@ -1,12 +1,17 @@
-// @ts-strict-ignore
 import { EventItem, EventSubscription } from 'src/app/shared/services/event';
-import { Timestamp } from '@firebase/firestore-types';
 import { MajorEventItem, MajorEventSubscription } from '../../shared/services/major-event.service';
 import { Component, inject, OnInit } from '@angular/core';
-import { map, Observable, switchMap, combineLatest } from 'rxjs';
-import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
+import { map, Observable, switchMap, combineLatest, shareReplay, catchError } from 'rxjs';
 
-import { trace } from '@angular/fire/compat/performance';
+import {
+  Firestore,
+  collection,
+  collectionData,
+  doc,
+  docData,
+  DocumentReference,
+  Timestamp,
+} from '@angular/fire/firestore';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { EnrollmentTypesService } from '../../shared/services/enrollment-types.service';
@@ -78,79 +83,90 @@ import { EventCardDisplayMainPageComponent } from 'src/app/profile/my-attendance
 })
 export class MyAttendancesPage implements OnInit {
   private auth: Auth = inject(Auth);
-  user$ = user(this.auth);
+  user$ = user(this.auth).pipe(shareReplay(1), untilDestroyed(this));
 
-  subscriptions$!: Observable<Subscription[]>;
-  eventSubscriptions$!: Observable<EventSubscriptionLocal[]>;
+  private firestore: Firestore = inject(Firestore);
+
+  subscriptions$: Observable<Subscription[]>;
+  eventSubscriptions$: Observable<EventSubscriptionLocal[]>;
 
   today: Date = new Date();
 
   constructor(
-    public afs: AngularFirestore,
     public enrollmentTypes: EnrollmentTypesService,
-    public dateService: DateService
+    public dateService: DateService,
   ) {
-    this.user$.pipe(untilDestroyed(this)).subscribe((user) => {
-      if (user) {
-        this.subscriptions$ = this.afs
-          .collection<Subscription>(`users/${user.uid}/majorEventSubscriptions`)
-          .valueChanges({ idField: 'id' })
-          .pipe(
-            untilDestroyed(this),
-            trace('firestore'),
-            map((subscriptions) => {
-              return subscriptions.map((subscription) => {
-                return {
-                  id: subscription.id,
-                  userData: this.afs
-                    .doc<MajorEventSubscription>(`majorEvents/${subscription.id}/subscriptions/${user.uid}`)
-                    .valueChanges(),
-                  majorEvent: this.afs
-                    .doc<MajorEventItem>(`majorEvents/${subscription.id}`)
-                    .valueChanges({ idField: 'id' }),
-                };
-              });
-            })
-          );
+    this.subscriptions$ = this.user$.pipe(
+      switchMap((user) => {
+        if (!user) {
+          return [];
+        }
 
-        this.eventSubscriptions$ = this.afs
-          .collection<EventSubscriptionLocal>(`users/${user.uid}/eventSubscriptions`)
-          .valueChanges({ idField: 'id' })
-          .pipe(
-            trace('firestore'),
-            map((subscriptions) => {
-              const arrayOfEvents: Observable<EventItem>[] = subscriptions.map((subscription) => {
-                return this.afs.doc<EventItem>(`events/${subscription.id}`).valueChanges({ idField: 'id' });
-              });
+        const subscriptionCol = collection(this.firestore, `users/${user.uid}/majorEventSubscriptions`);
+        return collectionData(subscriptionCol, { idField: 'id' }).pipe(
+          map((subscriptions) => {
+            return subscriptions.map((subscription) => {
+              return {
+                id: subscription.id,
+                userData: docData(
+                  doc(this.firestore, `majorEvents/${subscription.id}/subscriptions/${user.uid}`),
+                ) as Observable<MajorEventSubscription>,
+                majorEvent: docData(
+                  doc(this.firestore, `majorEvents/${subscription.id}`),
+                ) as Observable<MajorEventItem>,
+              };
+            });
+          }),
+        );
+      }),
+    );
 
-              let observableArrayOfEvents: Observable<EventItem[]> = combineLatest(arrayOfEvents);
+    this.eventSubscriptions$ = this.user$.pipe(
+      switchMap((user) => {
+        if (!user) {
+          return [];
+        }
+        const eventsCol = collection(this.firestore, `users/${user.uid}/eventSubscriptions`);
+        return collectionData(eventsCol, { idField: 'id' }).pipe(
+          switchMap((subscriptions) => {
+            if (subscriptions.length === 0) {
+              return [];
+            }
 
-              observableArrayOfEvents = observableArrayOfEvents.pipe(
-                map((events) => {
-                  return events.sort((a, b) => {
-                    return a.eventStartDate.seconds - b.eventStartDate.seconds;
-                  });
-                })
-              );
+            const arrayOfEvents: Observable<EventItem>[] = subscriptions.map((subscription) => {
+              return docData(doc(this.firestore, `events/${subscription.id}`)) as Observable<EventItem>;
+            });
 
-              return observableArrayOfEvents.pipe(
-                map((events) => {
-                  return events.map((event) => {
-                    return {
+            return combineLatest(arrayOfEvents).pipe(
+              map((events) => {
+                return events.sort((a, b) => a.eventStartDate.seconds - b.eventStartDate.seconds);
+              }),
+              switchMap((sortedEvents) => {
+                const eventsWithUserData = sortedEvents.map((event) => {
+                  return docData(doc(this.firestore, `events/${event.id}/subscriptions/${user.uid}`)).pipe(
+                    map((userData) => ({
                       id: event.id,
                       event: event,
-                      userData: this.afs
-                        .doc<EventSubscription>(`events/${event.id}/subscriptions/${user.uid}`)
-                        .valueChanges(),
-                    };
-                  });
-                })
-              );
-            }),
-            switchMap((observable) => observable)
-          );
-      }
-    });
+                      userData: userData as EventSubscription,
+                    })),
+                  );
+                });
+
+                return combineLatest(eventsWithUserData).pipe(
+                  map((eventsWithUserData) => {
+                    return eventsWithUserData;
+                  }),
+                );
+              }),
+            );
+          }),
+          catchError((error) => {
+            console.error('Error fetching data:', error);
+            return [];
+          }),
+        );
+      }),
+    );
   }
 
   ngOnInit() {}
@@ -188,6 +204,6 @@ interface Subscription {
 export interface EventSubscriptionLocal {
   id?: string;
   reference?: DocumentReference<any>;
-  userData?: Observable<EventSubscription>;
+  userData?: EventSubscription;
   event?: EventItem;
 }

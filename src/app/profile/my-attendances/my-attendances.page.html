@@ -9,6 +9,7 @@
 
 <ion-content>
   @if (subscriptions$ | async; as subscriptions) { @if (subscriptions.length === 0) {
+
   <h1 class="ion-text-center">Nenhuma participação encontrada</h1>
   } @for (subscription of subscriptions; track subscription) {
   <ion-list>
