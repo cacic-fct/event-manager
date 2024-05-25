@@ -87,6 +87,9 @@ import {
   closeCircle,
   hourglass,
   cloudyNight,
+  arrowForward,
+  chevronDown,
+  openOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -184,6 +187,9 @@ export class AppComponent {
       closeCircle,
       hourglass,
       cloudyNight,
+      arrowForward,
+      chevronDown,
+      openOutline,
     });
   }
 }

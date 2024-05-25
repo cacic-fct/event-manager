@@ -1,0 +1,212 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <div class="logo" slot="start">
+      <img src="/assets/icon/favicon.png" alt="FCT App" />
+      <span>FCT App</span>
+    </div>
+
+    <ion-buttons slot="primary">
+      <ion-button fill="clear" routerLink="/login">
+        <ion-icon slot="start" name="log-in-outline"></ion-icon>
+        Entrar
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="content-container">
+    <section class="hero margin-horizontal-auto">
+      <ion-grid>
+        <ion-row>
+          <ion-col size-lg="6" size="12">
+            <h1>Gerencie eventos universitários de forma simples</h1>
+            <p>Organize eventos, colete presenças e emita certificados com eficiência.</p>
+            <ion-button routerLink="/calendario" fill="outline">Ir para o app</ion-button>
+            <ion-button class="right-button" routerLink="/login">
+              <ion-icon slot="start" name="log-in-outline"></ion-icon>
+              Entrar
+            </ion-button>
+          </ion-col>
+          <ion-col size-lg="6" size="12">
+            <img src="/assets/landing/placeholder.jpg" alt="Placeholder" />
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </section>
+
+    <section class="see-what-you-can-do" (click)="jumpTo('features')">
+      <p><ion-text color="medium"> Veja o que você pode fazer com o FCT App</ion-text></p>
+      <ion-icon name="chevron-down" color="medium"> </ion-icon>
+    </section>
+
+    <section class="features-container margin-horizontal-auto" id="features">
+      <ion-grid>
+        <ion-row class="img-first">
+          <ion-col size-lg="6" size="12">
+            <img src="/assets/landing/placeholder.jpg" alt="Placeholder" />
+          </ion-col>
+          <ion-col size-lg="6" size="12">
+            <h1>Preencher formulário é coisa do passado</h1>
+            <p>Faça inscrições rápidas, sem precisar solicitar os mesmos dados em todos os eventos.</p>
+            <p>Inscrever-se é tão fácil como o apertar de um botão.</p>
+          </ion-col>
+        </ion-row>
+
+        <ion-row>
+          <ion-col size-lg="6" size="12">
+            <h1>Entenda seu público</h1>
+            <p>Tome decisões mais informadas e melhore a experiência das pessoas.</p>
+            <p>Forneça dados automaticamente para os organizadores.</p>
+            <p>Saiba quem são os participantes dos seus eventos e como eles avaliam a qualidade deles.</p>
+          </ion-col>
+          <ion-col size-lg="6" size="12">
+            <img src="/assets/landing/placeholder.jpg" alt="Placeholder" />
+          </ion-col>
+        </ion-row>
+
+        <ion-row class="img-first">
+          <ion-col size-lg="6" size="12">
+            <img src="/assets/landing/placeholder.jpg" alt="Placeholder" />
+          </ion-col>
+          <ion-col size-lg="6" size="12">
+            <h1>Diga adeus para as listas de presenças</h1>
+            <p>
+              Perdeu o papel com as assinaturas?
+              <br />
+              Não entendeu o que a pessoa escreveu?
+            </p>
+            <p>Colete presenças de forma digital e evite problemas comuns ao método do papel e caneta.</p>
+            <p>Acompanhe em tempo real quem está presente.</p>
+          </ion-col>
+        </ion-row>
+
+        <ion-row>
+          <ion-col size-lg="6" size="12">
+            <h1>Emita certificados em segundos</h1>
+            <p>Não perca tempo para preencher e enviar os certificados.</p>
+            <p>Emita certificados e disponibilize-os automaticamente para os participantes.</p>
+          </ion-col>
+          <ion-col size-lg="6" size="12">
+            <img src="/assets/landing/placeholder.jpg" alt="Placeholder" />
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </section>
+    <section class="import-data margin-horizontal-auto">
+      <h1>Continue de onde parou</h1>
+      <p>Coletou inscrições por formulário ou tem presenças no papel?</p>
+      <p>Importe tudo por meio de uma planilha.</p>
+
+      <ul>
+        <li>
+          <img src="/assets/landing/forms.svg" />
+          <p>Google Forms</p>
+        </li>
+        <li>
+          <img src="/assets/landing/sheets.svg" />
+          <p>Planilhas (CSV)</p>
+        </li>
+      </ul>
+    </section>
+    <section class="developers margin-horizontal-auto">
+      <h1 class="ion-text-center">É desenvolvedor?</h1>
+      <div class="dev-intro-container margin-horizontal-auto">
+        <p>O FCT App é uma iniciativa de código aberto.</p>
+        <p>Não é necessário pedir permissão para contribuir!</p>
+      </div>
+
+      <div class="dev-buttons-container margin-horizontal-auto">
+        <ion-button fill="clear" href="https://cacic-fct.github.io/fct-app-docs" target="_blank">
+          Docs <ion-icon slot="end" name="open-outline"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" href="https://github.com/cacic-fct/fct-app" target="_blank">
+          Repo
+          <ion-icon slot="end" name="open-outline"></ion-icon>
+        </ion-button>
+      </div>
+
+      <ion-grid class="ion-text-justify">
+        <ion-row>
+          <ion-col size-lg="6" size="12">
+            <h2>Por que colaborar?</h2>
+            <p>
+              <strong>Inovação colaborativa:</strong>
+              Trabalhe com colegas estudantes para apresentar novos recursos, aprimorar funcionalidades e aperfeiçoar
+              ferramentas existentes.
+            </p>
+
+            <p>
+              <strong>Aperfeiçoamento de habilidades:</strong>
+              Ganhe experiência prática e desenvolva suas habilidades contribuindo para um projeto que é usado na vida
+              real, em nossa faculdade.
+            </p>
+
+            <p>
+              <strong>Impacto na comunidade:</strong>
+              Cause impacto direto na vida universitária, ajudando organizadores e estudantes a administrar eventos com
+              mais eficiência.
+            </p>
+          </ion-col>
+
+          <ion-col size-lg="6" size="12">
+            <h2>Como se envolver?</h2>
+            <p>
+              <strong>Explore o código:</strong>
+              Visite nosso
+              <a href="https://github.com/cacic-fct/fct-app" target="_blank"> repositório no GitHub</a> para explorar a
+              estrutura do projeto, revisar a documentação e entender os recursos e as funcionalidades atuais.
+            </p>
+            <p>
+              <strong>Entre na discussão:</strong>
+              Participe de discussões em nosso repositório no GitHub. Compartilhe suas ideias, relate bugs e sugira
+              melhorias.
+            </p>
+            <p>
+              <strong>Submeta contribuições:</strong>
+              Faça um fork do repositório, programe suas alterações e envie uma pull request. Nossa equipe revisará e
+              dará merge na sua contribuição.
+            </p>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </section>
+  </div>
+
+  <footer>
+    <ion-grid>
+      <ion-row>
+        <ion-col size-sm="6" size="12">
+          <p>FCT App</p>
+          <ul>
+            <li>
+              <a [routerLink]="['/sobre', 'suporte']"> <ion-text color="medium"> Suporte </ion-text></a>
+            </li>
+            <li>
+              <a routerLink="/privacy"> <ion-text color="medium"> Política de privacidade </ion-text> </a>
+            </li>
+            <li>
+              <a routerLink="/licenses"> <ion-text color="medium"> Licenças </ion-text> </a>
+            </li>
+          </ul>
+        </ion-col>
+
+        <ion-col size-sm="6" size="12">
+          <p>Desenvolvedores</p>
+          <ul>
+            <li>
+              <a href="https://github.com/cacic-fct/fct-app" target="_blank">
+                <ion-text color="medium"> Repositório </ion-text>
+              </a>
+            </li>
+            <li>
+              <a href="https://cacic-fct.github.io/fct-app-docs" target="_blank">
+                <ion-text color="medium"> Documentação </ion-text>
+              </a>
+            </li>
+          </ul>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </footer>
+</ion-content>

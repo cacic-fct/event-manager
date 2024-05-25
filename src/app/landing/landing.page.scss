@@ -1,0 +1,164 @@
+.logo {
+  margin-left: 0.5em;
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+
+  span {
+    padding-left: 10px;
+    font-weight: 500;
+    font-size: 1.25rem;
+  }
+
+  img {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+.content-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+section {
+  max-width: 1096px;
+  margin: 3em 2em 0 2em;
+
+  @media screen and (max-width: 590px) {
+    margin: 3em 1em 0 1em;
+  }
+}
+
+.hero {
+  margin-top: 80px;
+  max-height: 900px;
+  .right-button {
+    margin-left: 1em;
+  }
+}
+
+.import-data {
+  text-align: center;
+  ul {
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+
+    li {
+      margin: 0 1em;
+
+      list-style: none;
+      text-align: center;
+      p {
+        margin: 0;
+      }
+    }
+
+    img {
+      display: inline-table;
+      width: 36px;
+      height: 36px;
+    }
+  }
+}
+
+.developers {
+  .dev-intro-container {
+    p {
+      margin: 0;
+      text-align: center;
+    }
+  }
+  .dev-buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+.img-first {
+  @media screen and (max-width: 991px) {
+    ion-col:nth-child(1) {
+      order: 2; /* Change the order of the first grid item */
+    }
+
+    ion-col:nth-child(2) {
+      order: 1; /* Change the order of the second grid item */
+    }
+  }
+}
+
+.features-container {
+  scroll-margin-top: 60px;
+  ion-icon {
+    width: 100%;
+    height: 100%;
+
+    @media screen and (max-width: 991px) {
+      display: none;
+    }
+  }
+}
+
+h1 {
+  font-size: 2.5rem;
+  font-weight: 400;
+}
+
+p {
+  font-size: 18px;
+}
+
+.see-what-you-can-do {
+  display: inline-grid;
+
+  p {
+    font-size: 1.25rem;
+    font-weight: 400;
+    text-align: center;
+    margin-bottom: 0;
+  }
+  ion-icon {
+    width: 28px;
+    height: 28px;
+    margin: 0 auto 0 auto;
+  }
+}
+
+footer {
+  margin: 80px 2em;
+
+  @media screen and (max-width: 590px) {
+    margin: 80px 1em;
+  }
+
+  ion-grid {
+    max-width: 1024px;
+    padding: 0;
+    margin: 0 auto;
+  }
+
+  p {
+    font-weight: 500;
+    font-size: 1.25rem;
+    margin-bottom: 0;
+  }
+  ul {
+    padding: 0;
+    li {
+      list-style: none;
+      margin: 0 0 16px 0;
+      a {
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+        text-decoration-color: #5f5f5f;
+      }
+    }
+  }
+}

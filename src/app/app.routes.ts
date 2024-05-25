@@ -1,5 +1,5 @@
 import { canActivate } from '@angular/fire/compat/auth-guard';
-import { Routes } from '@angular/router';
+import { RouteReuseStrategy, Routes } from '@angular/router';
 
 import {
   DevelopmentOnlyGuard,
@@ -92,7 +92,7 @@ export const routes: Routes = [
     title: 'Perfil',
     data: { preload: true },
     loadChildren: () => import('src/app/profile/profile-info.routes').then((m) => m.routes),
-    ...canActivate(redirectUnauthorizedToLogin),
+    canActivate: [redirectUnauthorizedToLogin],
   },
   {
     path: 'eventos/inscrever/:eventID',

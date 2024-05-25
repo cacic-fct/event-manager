@@ -1,12 +1,13 @@
 import { IonIcon, IonTabs, IonTabBar, IonTabButton } from '@ionic/angular/standalone';
 import { Component, WritableSignal, inject, signal } from '@angular/core';
 import { getBooleanChanges, RemoteConfig } from '@angular/fire/remote-config';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { trace } from '@angular/fire/compat/performance';
 import { Auth, user, getIdTokenResult } from '@angular/fire/auth';
 import { AsyncPipe } from '@angular/common';
+import { Router } from '@angular/router';
 
 @UntilDestroy()
 @Component({
@@ -21,6 +22,9 @@ export class TabsPage {
 
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
+  public router = inject(Router);
+
+  public regex = new RegExp(/^\/{1}(#{1}.*|#?)$/g);
 
   allowRestrictedArea: WritableSignal<boolean> = signal(false);
   readonly manual$: Observable<boolean>;
