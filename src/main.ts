@@ -5,6 +5,7 @@ import {
   importProvidersFrom,
   provideExperimentalZonelessChangeDetection,
   CSP_NONCE,
+  APP_INITIALIZER,
 } from '@angular/core';
 import { RouteReuseStrategy, provideRouter, withComponentInputBinding, withPreloading } from '@angular/router';
 import { environment } from './environments/environment';
@@ -48,15 +49,33 @@ registerLocaleData(localePt);
 import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
 import { setNonce } from '@ionic/core/loader';
 
+import { firstValueFrom } from 'rxjs';
+import { NonceService } from 'src/app/shared/services/nonce.service';
+
+export function fetchNonceFactory(nonceService: NonceService) {
+  return () =>
+    firstValueFrom(nonceService.fetchNonce()).then((nonce) => {
+      (window as any).NONCE = nonce;
+      setNonce((window as any).NONCE);
+    });
+}
+
 if (environment.production) {
   enableProdMode();
-  setNonce('NGINX_CSP_NONCE');
 }
 
 bootstrapApplication(AppComponent, {
   providers: [
+    {
+      provide: APP_INITIALIZER,
+      useFactory: fetchNonceFactory,
+      deps: [NonceService],
+      multi: true,
+    },
+
     provideExperimentalZonelessChangeDetection(),
-    { provide: CSP_NONCE, useValue: 'NGINX_CSP_NONCE' },
+
+    { provide: CSP_NONCE, useValue: (window as any).NONCE },
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     provideIonicAngular({
       backButtonText: isPlatform('ios') ? 'Voltar' : undefined,
