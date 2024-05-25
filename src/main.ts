@@ -49,10 +49,6 @@ registerLocaleData(localePt);
 import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
 import { setNonce } from '@ionic/core/loader';
 
-if (environment.production) {
-  enableProdMode();
-}
-
 function fetchNonce(): string {
   const regex = new RegExp(`s*nonce=`);
   const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
@@ -70,9 +66,8 @@ setNonce(nonce);
 
 bootstrapApplication(AppComponent, {
   providers: [
+    { provide: CSP_NONCE, useFactory: () => fetchNonce() },
     provideExperimentalZonelessChangeDetection(),
-
-    { provide: CSP_NONCE, useValue: nonce },
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     provideIonicAngular({
       backButtonText: isPlatform('ios') ? 'Voltar' : undefined,
