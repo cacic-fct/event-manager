@@ -69,7 +69,7 @@ fetchNonce().then((nonce) => {
     providers: [
       provideExperimentalZonelessChangeDetection(),
 
-      { provide: CSP_NONCE, useValue: (window as any).NONCE },
+      { provide: CSP_NONCE, useValue: nonce },
       { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
       provideIonicAngular({
         backButtonText: isPlatform('ios') ? 'Voltar' : undefined,
