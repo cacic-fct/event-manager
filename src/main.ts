@@ -54,7 +54,8 @@ if (environment.production) {
 }
 
 function fetchNonce(): string {
-  const nonce = document.cookie.split(';').find((cookie) => cookie.match('/s*nonce=/'));
+  const regex = new RegExp(`s*nonce=`);
+  const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
   if (!nonce) {
     throw new Error('Nonce not found in cookies');
   }
