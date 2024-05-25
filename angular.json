@@ -70,10 +70,14 @@
                 }
               ]
             },
-            "ci": {
-              "progress": false
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true
             }
-          }
+          },
+          "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
@@ -84,10 +88,11 @@
             "production": {
               "buildTarget": "app:build:production"
             },
-            "ci": {
-              "progress": false
+            "development": {
+              "buildTarget": "app:build:development"
             }
-          }
+          },
+          "defaultConfiguration": "development"
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
