@@ -51,11 +51,11 @@ function fetchNonce(): string {
   const regex = new RegExp(`s*nonce=`);
   const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
   if (!nonce) {
+    if (isDevMode()) {
+      return 'development-nonce';
+    }
     throw new Error('Nonce not found in cookies');
   }
-
-  console.log('Nonce:', nonce);
-
   return nonce.split('=')[1];
 }
 
@@ -65,12 +65,16 @@ setNonce(nonce);
 bootstrapApplication(AppComponent, {
   providers: [
     { provide: CSP_NONCE, useValue: nonce },
+
     provideExperimentalZonelessChangeDetection(),
+
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     provideIonicAngular({
       backButtonText: isPlatform('ios') ? 'Voltar' : undefined,
     }),
+
     provideRouter(routes, withPreloading(PreloadingStrategyService), withComponentInputBinding()),
+
     importProvidersFrom(
       BrowserModule,
       ServiceWorkerModule.register(unwrapResourceUrl(trustedResourceUrl`/ngsw-worker.js`) as string, {
