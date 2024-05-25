@@ -62,6 +62,7 @@ async function fetchNonce(): Promise<string> {
 }
 
 fetchNonce().then((nonce) => {
+  console.log('Fetched nonce:', nonce);
   setNonce(nonce);
 
   bootstrapApplication(AppComponent, {
