@@ -1,11 +1,9 @@
 import {
-  enableProdMode,
   LOCALE_ID,
   isDevMode,
   importProvidersFrom,
   provideExperimentalZonelessChangeDetection,
   CSP_NONCE,
-  APP_INITIALIZER,
 } from '@angular/core';
 import { RouteReuseStrategy, provideRouter, withComponentInputBinding, withPreloading } from '@angular/router';
 import { environment } from './environments/environment';
@@ -66,7 +64,7 @@ setNonce(nonce);
 
 bootstrapApplication(AppComponent, {
   providers: [
-    { provide: CSP_NONCE, useFactory: () => fetchNonce() },
+    { provide: CSP_NONCE, useValue: nonce },
     provideExperimentalZonelessChangeDetection(),
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     provideIonicAngular({
