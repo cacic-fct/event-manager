@@ -4,6 +4,7 @@ import {
   isDevMode,
   importProvidersFrom,
   provideExperimentalZonelessChangeDetection,
+  CSP_NONCE,
 } from '@angular/core';
 import { RouteReuseStrategy, provideRouter, withComponentInputBinding, withPreloading } from '@angular/router';
 import { environment } from './environments/environment';
@@ -45,14 +46,17 @@ import localePt from '@angular/common/locales/pt';
 registerLocaleData(localePt);
 
 import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
+import { setNonce } from '@ionic/core/loader';
 
 if (environment.production) {
   enableProdMode();
+  setNonce('NGINX_CSP_NONCE');
 }
 
 bootstrapApplication(AppComponent, {
   providers: [
     provideExperimentalZonelessChangeDetection(),
+    { provide: CSP_NONCE, useValue: 'NGINX_CSP_NONCE' },
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     provideIonicAngular({
       backButtonText: isPlatform('ios') ? 'Voltar' : undefined,
