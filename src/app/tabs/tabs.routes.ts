@@ -18,11 +18,13 @@ export const routes: Routes = [
       {
         path: 'calendario',
         title: 'Calendário de eventos',
+        data: { preload: true },
         loadChildren: () => import('src/app/tabs/calendar/calendar.routes').then((m) => m.routes),
       },
       {
         path: 'eventos',
         title: 'Lista de eventos',
+        data: { preload: true },
         loadChildren: () =>
           import('src/app/tabs/major-events-display/major-events-display.routes').then((m) => m.routes),
       },
@@ -34,6 +36,7 @@ export const routes: Routes = [
       {
         path: 'menu',
         title: 'Menu',
+        data: { preload: true },
         loadChildren: () => import('src/app/tabs/menu/menu.routes').then((m) => m.routes),
       },
       {
