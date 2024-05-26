@@ -8,7 +8,6 @@ export const environment = {
     apiKey: 'AIzaSyAGtd5nwgEC68dvzTtA1TvCt9LGZ9luWhk',
     authDomain: 'fct-pp.firebaseapp.com',
     messagingSenderId: '169157391934',
-    measurementId: 'G-BKYCC0GR6G',
     useEmulators: false,
   },
   recaptcha3SiteKey: '6LcFr9AdAAAAANB7MbCks-nBVqfZZYp8bGp6Kcto',

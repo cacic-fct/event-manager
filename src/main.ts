@@ -18,7 +18,6 @@ import {
 import { provideFunctions, getFunctions, connectFunctionsEmulator } from '@angular/fire/functions';
 import { provideStorage, getStorage, connectStorageEmulator } from '@angular/fire/storage';
 import { GlobalConstantsService } from './app/shared/services/global-constants.service';
-import { provideAnalytics, getAnalytics, logEvent } from '@angular/fire/analytics';
 import { provideAuth, getAuth, useDeviceLanguage, connectAuthEmulator } from '@angular/fire/auth';
 import { provideRemoteConfig, getRemoteConfig, fetchAndActivate } from '@angular/fire/remote-config';
 import { getApp, provideFirebaseApp, initializeApp } from '@angular/fire/app';
@@ -46,18 +45,6 @@ registerLocaleData(localePt);
 
 import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
 import { setNonce } from '@ionic/core/loader';
-
-function fetchNonce(): string {
-  const regex = new RegExp(`s*nonce=`);
-  const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
-  if (!nonce) {
-    if (isDevMode()) {
-      return 'development-nonce';
-    }
-    throw new Error('Nonce not found in cookies');
-  }
-  return nonce.split('=')[1];
-}
 
 const nonce = fetchNonce();
 setNonce(nonce);
@@ -128,13 +115,6 @@ bootstrapApplication(AppComponent, {
       });
       return remoteConfig;
     }),
-    provideAnalytics(() => {
-      const analytics = getAnalytics();
-      logEvent(analytics, 'app_version', {
-        app_name: GlobalConstantsService.appName,
-      });
-      return analytics;
-    }),
     provideStorage(() => {
       const storage = getStorage();
       if (environment.firebase.useEmulators) {
@@ -170,3 +150,15 @@ bootstrapApplication(AppComponent, {
     provideHttpClient(withInterceptorsFromDi()),
   ],
 }).catch((err) => console.log(err));
+
+function fetchNonce(): string {
+  const regex = new RegExp(`s*nonce=`);
+  const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
+  if (!nonce) {
+    if (isDevMode()) {
+      return 'development-nonce';
+    }
+    throw new Error('Nonce not found in cookies');
+  }
+  return nonce.split('=')[1];
+}

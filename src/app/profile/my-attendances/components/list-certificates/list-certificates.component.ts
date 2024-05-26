@@ -10,7 +10,6 @@ import { User } from '@firebase/auth';
 import { map, Observable, take, switchMap } from 'rxjs';
 import { UserCertificateDocument, CertificateService } from 'src/app/shared/services/certificates.service';
 import { Auth, user } from '@angular/fire/auth';
-import { Analytics, logEvent } from '@angular/fire/analytics';
 import { Firestore, collection, collectionData, doc, docData } from '@angular/fire/firestore';
 
 import {
@@ -31,6 +30,7 @@ import {
 import { ActivatedRoute } from '@angular/router';
 
 import { environment } from 'src/environments/environment';
+import { PlausibleService } from '@notiz/ngx-plausible';
 
 @Component({
   selector: 'app-list-certificates',
@@ -57,7 +57,7 @@ import { environment } from 'src/environments/environment';
 export class ListCertificatesComponent {
   private auth: Auth = inject(Auth);
   private firestore: Firestore = inject(Firestore);
-  private analytics: Analytics = inject(Analytics);
+  private plausible: PlausibleService = inject(PlausibleService);
   user$: Observable<User>;
 
   majorEventID: string;
@@ -163,9 +163,8 @@ export class ListCertificatesComponent {
     navigator.clipboard.writeText(`${environment.baseUrl}certificado/verificar/${encoded}`);
     toast.present();
 
-    logEvent(this.analytics, 'share', {
-      content_type: 'certificate',
-      item_id: `${encoded}`,
+    this.plausible.event('Share Certificate', {
+      props: { method: 'button', page: 'user-certificates-listing', certificateId: `${encoded}` },
     });
   }
 }

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -91,6 +91,7 @@ import {
   chevronDown,
   openOutline,
 } from 'ionicons/icons';
+import { PlausibleLocalService } from 'src/app/shared/services/plausible.service';
 
 @Component({
   selector: 'app-root',
@@ -100,7 +101,10 @@ import {
   imports: [IonApp, IonRouterOutlet],
 })
 export class AppComponent {
+  private plausibleLocal = inject(PlausibleLocalService);
   constructor(private swService: ServiceWorkerService) {
+    this.plausibleLocal.registerPlausible();
+
     // TODO: Não importar tudo em app.component.ts
     addIcons({
       bookOutline,

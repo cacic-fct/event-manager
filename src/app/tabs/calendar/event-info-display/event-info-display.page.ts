@@ -12,8 +12,6 @@ import { take, Observable, map } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 
-import { Analytics, logEvent } from '@angular/fire/analytics';
-
 import {
   IonHeader,
   IonToolbar,
@@ -31,6 +29,7 @@ import { DescriptionComponent } from 'src/app/shared/modules/event-display/descr
 import { MapComponent } from 'src/app/shared/modules/event-display/map/map.component';
 import { ButtonsComponent } from 'src/app/shared/modules/event-display/buttons/buttons.component';
 import { environment } from 'src/environments/environment';
+import { PlausibleService } from '@notiz/ngx-plausible';
 
 @Component({
   selector: 'app-event-info-display',
@@ -55,7 +54,7 @@ import { environment } from 'src/environments/environment';
   ],
 })
 export class EventInfoDisplayPage implements OnInit {
-  private analytics: Analytics = inject(Analytics);
+  private plausible: PlausibleService = inject(PlausibleService);
   courses = CoursesService.courses;
   item: EventItem;
   item$: Observable<EventItem>;
@@ -95,9 +94,6 @@ export class EventInfoDisplayPage implements OnInit {
     navigator.clipboard.writeText(`${baseUrlNoSlash}${this.router.url}`);
     toast.present();
 
-    logEvent(this.analytics, 'share', {
-      content_type: 'event',
-      item_id: this.eventID,
-    });
+    this.plausible.event('Share Event', { props: { method: 'button', eventId: this.eventID } });
   }
 }

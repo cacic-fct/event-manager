@@ -12,7 +12,6 @@ export const environment = {
     apiKey: 'AIzaSyAGtd5nwgEC68dvzTtA1TvCt9LGZ9luWhk',
     authDomain: 'localhost',
     messagingSenderId: '169157391934',
-    measurementId: 'G-BKYCC0GR6G',
     useEmulators: true,
   },
   recaptcha3SiteKey: '6LcFr9AdAAAAANB7MbCks-nBVqfZZYp8bGp6Kcto',
