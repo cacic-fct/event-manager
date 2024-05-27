@@ -1,14 +1,15 @@
 import { Component, OnInit } from '@angular/core';
-import { IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent } from '@ionic/angular/standalone';
+import { PrivacyCardsComponent } from 'src/app/about/privacy-policy/privacy-cards/privacy-cards.component';
 
 import { environment } from 'src/environments/environment';
+import { IonHeader, IonButtons, IonToolbar, IonBackButton, IonContent, IonTitle } from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-privacy-policy',
   templateUrl: './privacy-policy.page.html',
   styleUrls: ['./privacy-policy.page.scss'],
   standalone: true,
-  imports: [IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent],
+  imports: [IonTitle, IonContent, IonBackButton, IonToolbar, IonButtons, IonHeader, PrivacyCardsComponent],
 })
 export class PrivacyPolicyPage implements OnInit {
   public baseUrl = environment.baseUrl;
