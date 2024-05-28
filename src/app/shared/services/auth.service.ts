@@ -61,6 +61,10 @@ export class AuthService {
         localStorage.setItem('user', JSON.stringify(this.userData));
         JSON.parse(localStorage.getItem('user'));
 
+        H.identify(user.email, {
+          id: user.uid,
+        });
+
         getStringChanges(this.remoteConfig, 'professors').subscribe((professors) => {
           if (professors) {
             const professorsList: string[] = JSON.parse(professors);
@@ -153,10 +157,6 @@ export class AuthService {
       const user = result.user;
       this.SetUserData(user);
 
-      H.identify(user.email, {
-        id: user.uid,
-      });
-
       this.route.queryParams.pipe(take(1)).subscribe((params) => {
         const redirect = params['redirect'];
         if (redirect) {
@@ -185,10 +185,6 @@ export class AuthService {
       signInWithPopup(this.auth, provider).then((result) => {
         const user = result.user;
         this.SetUserData(user);
-
-        H.identify(user.email, {
-          id: user.uid,
-        });
 
         this.route.queryParams.pipe(take(1)).subscribe((params) => {
           const redirect = params['redirect'];
