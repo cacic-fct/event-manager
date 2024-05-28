@@ -56,6 +56,8 @@ H.init('1jdkoe52', {
     recordHeadersAndBody: true,
     urlBlocklist: [],
   },
+  privacySetting: 'none',
+  sendMode: 'local',
 });
 
 const nonce = fetchNonce();
