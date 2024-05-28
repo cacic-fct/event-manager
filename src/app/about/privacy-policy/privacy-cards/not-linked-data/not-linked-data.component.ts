@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { IonList, IonItem, IonLabel, IonIcon, IonNote } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { analyticsOutline, navigateOutline, searchOutline } from 'ionicons/icons';
+import { analyticsOutline, ellipsisHorizontalCircleOutline, navigateOutline, searchOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-not-linked-data',
@@ -16,6 +16,7 @@ export class NotLinkedDataComponent implements OnInit {
       navigateOutline,
       analyticsOutline,
       searchOutline,
+      ellipsisHorizontalCircleOutline,
     });
   }
 

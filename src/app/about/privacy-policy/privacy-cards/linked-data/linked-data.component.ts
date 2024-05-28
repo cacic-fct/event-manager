@@ -7,7 +7,9 @@ import {
   idCardOutline,
   imageOutline,
   informationCircleOutline,
+  personCircleOutline,
   schoolOutline,
+  settingsOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -26,6 +28,8 @@ export class LinkedDataComponent implements OnInit {
       imageOutline,
       idCardOutline,
       bagOutline,
+      settingsOutline,
+      personCircleOutline,
     });
   }
 

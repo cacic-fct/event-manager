@@ -46,6 +46,18 @@ registerLocaleData(localePt);
 import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
 import { setNonce } from '@ionic/core/loader';
 
+import { H } from 'highlight.run';
+
+H.init('1jdkoe52', {
+  environment: isDevMode() ? 'dev' : 'production',
+  backendUrl: 'https://api.highlight.fctapp.yudi.me/public',
+  networkRecording: {
+    enabled: true,
+    recordHeadersAndBody: true,
+    urlBlocklist: [],
+  },
+});
+
 const nonce = fetchNonce();
 setNonce(nonce);
 

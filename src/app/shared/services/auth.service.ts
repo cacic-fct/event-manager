@@ -30,6 +30,8 @@ import { Functions, httpsCallable } from '@angular/fire/functions';
 import { CredentialResponse } from 'google-one-tap';
 import { PlausibleService } from '@notiz/ngx-plausible';
 
+import { H } from 'highlight.run';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -148,7 +150,12 @@ export class AuthService {
     const credential = GoogleAuthProvider.credential(token.credential);
 
     signInWithCredential(this.auth, credential).then((result) => {
-      this.SetUserData(result.user);
+      const user = result.user;
+      this.SetUserData(user);
+
+      H.identify(user.email, {
+        id: user.uid,
+      });
 
       this.route.queryParams.pipe(take(1)).subscribe((params) => {
         const redirect = params['redirect'];
@@ -176,7 +183,12 @@ export class AuthService {
     this.auth.useDeviceLanguage();
     try {
       signInWithPopup(this.auth, provider).then((result) => {
-        this.SetUserData(result.user);
+        const user = result.user;
+        this.SetUserData(user);
+
+        H.identify(user.email, {
+          id: user.uid,
+        });
 
         this.route.queryParams.pipe(take(1)).subscribe((params) => {
           const redirect = params['redirect'];
