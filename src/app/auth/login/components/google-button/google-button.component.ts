@@ -1,6 +1,5 @@
 import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, WritableSignal, signal } from '@angular/core';
 import { AuthService } from 'src/app/shared/services/auth.service';
-import { CredentialResponse } from 'google-one-tap';
 import { environment } from 'src/environments/environment';
 import { IonSpinner, IonButton, IonSkeletonText } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
@@ -21,21 +20,8 @@ export class GoogleButtonComponent implements AfterViewInit {
 
   constructor(public authService: AuthService) {}
 
-  handleCredentialResponse(response: CredentialResponse) {
-    this.authService.GoogleOneTap(response);
-  }
-
   ngAfterViewInit() {
-    if (environment.production) {
-      //@ts-ignore
-      google.accounts.id.initialize({
-        // Ref: https://developers.google.com/identity/gsi/web/reference/js-reference#IdConfiguration
-        client_id: '169157391934-n61n94q5pdv1uloqnejher4v9fudd9g7.apps.googleusercontent.com',
-        callback: this.handleCredentialResponse.bind(this),
-        auto_select: true,
-        cancel_on_tap_outside: false,
-      });
-
+    if (!environment.firebase.useEmulators) {
       //@ts-ignore
       google.accounts.id.renderButton(this.googleButton.nativeElement, {
         theme: 'outline',

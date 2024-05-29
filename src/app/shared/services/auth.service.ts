@@ -138,6 +138,9 @@ export class AuthService {
 
   async SignOut() {
     await this.auth.signOut();
+    // Disable auto login to prevent login loop
+    // @ts-ignore
+    google.accounts.id.disableAutoSelect();
 
     localStorage.removeItem('user');
   }
