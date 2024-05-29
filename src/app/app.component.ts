@@ -92,9 +92,6 @@ import {
   openOutline,
 } from 'ionicons/icons';
 import { PlausibleLocalService } from 'src/app/shared/services/plausible.service';
-import { CredentialResponse } from 'google-one-tap';
-import { AuthService } from 'src/app/shared/services/auth.service';
-import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -105,27 +102,8 @@ import { environment } from 'src/environments/environment';
 })
 export class AppComponent {
   private plausibleLocal = inject(PlausibleLocalService);
-  constructor(
-    private swService: ServiceWorkerService,
-    private authService: AuthService,
-  ) {
+  constructor(private swService: ServiceWorkerService) {
     this.plausibleLocal.registerPlausible();
-
-    if (!environment.firebase.useEmulators) {
-      //@ts-ignore
-      google.accounts.id.initialize({
-        // Ref: https://developers.google.com/identity/gsi/web/reference/js-reference#IdConfiguration
-        client_id: '169157391934-n61n94q5pdv1uloqnejher4v9fudd9g7.apps.googleusercontent.com',
-        callback: this.handleCredentialResponse.bind(this),
-        auto_select: true,
-        cancel_on_tap_outside: false,
-        ux_mode: 'redirect',
-        prompt_parent_id: 'oneTap',
-      });
-
-      // @ts-ignore
-      google.accounts.id.prompt();
-    }
 
     // TODO: Não importar tudo em app.component.ts
     addIcons({
@@ -217,9 +195,5 @@ export class AppComponent {
       chevronDown,
       openOutline,
     });
-  }
-
-  handleCredentialResponse(response: CredentialResponse) {
-    this.authService.GoogleOneTap(response);
   }
 }
