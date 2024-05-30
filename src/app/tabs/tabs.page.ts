@@ -1,4 +1,4 @@
-import { IonIcon, IonTabs, IonTabBar, IonTabButton } from '@ionic/angular/standalone';
+import { IonIcon, IonTabs, IonTabBar, IonTabButton, IonLabel } from '@ionic/angular/standalone';
 import { Component, WritableSignal, inject, signal } from '@angular/core';
 import { getBooleanChanges, RemoteConfig } from '@angular/fire/remote-config';
 import { Observable } from 'rxjs';
@@ -15,7 +15,7 @@ import { Router } from '@angular/router';
   templateUrl: 'tabs.page.html',
   styleUrls: ['tabs.page.scss'],
   standalone: true,
-  imports: [AsyncPipe, IonIcon, IonTabs, IonTabBar, IonTabButton],
+  imports: [IonLabel, AsyncPipe, IonIcon, IonTabs, IonTabBar, IonTabButton],
 })
 export class TabsPage {
   private remoteConfig: RemoteConfig = inject(RemoteConfig);
