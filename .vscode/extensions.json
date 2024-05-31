@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "Angular.ng-template",
+    "dineug.vuerd-vscode",
+    "Ionic.ionic",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint"
+  ]
+}
