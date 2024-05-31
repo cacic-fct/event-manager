@@ -24,10 +24,10 @@ import {
   IonRouterLink,
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
-import { HeaderComponent } from 'src/app/shared/modules/major-event-display/header/header.component';
-import { DescriptionComponent } from 'src/app/shared/modules/major-event-display/description/description.component';
-import { DateComponent } from 'src/app/shared/modules/major-event-display/date/date.component';
-import { PriceComponent } from 'src/app/shared/modules/major-event-display/price/price.component';
+import { HeaderComponent } from 'src/app/shared/components/major-event-display/header/header.component';
+import { DescriptionComponent } from 'src/app/shared/components/major-event-display/description/description.component';
+import { DateComponent } from 'src/app/shared/components/major-event-display/date/date.component';
+import { PriceComponent } from 'src/app/shared/components/major-event-display/price/price.component';
 
 @Component({
   selector: 'app-major-events-display',
@@ -63,7 +63,10 @@ export class MajorEventsDisplayPage {
   >;
   today: Date = new Date();
 
-  constructor(public afs: AngularFirestore, public dateService: DateService) {}
+  constructor(
+    public afs: AngularFirestore,
+    public dateService: DateService,
+  ) {}
 
   ngOnInit() {
     this.user$.pipe(take(1)).subscribe((user) => {
@@ -97,12 +100,12 @@ export class MajorEventsDisplayPage {
                             }
                           }
                           return doc.exists;
-                        })
+                        }),
                       )
                   : null,
               };
             });
-          })
+          }),
         );
     });
   }

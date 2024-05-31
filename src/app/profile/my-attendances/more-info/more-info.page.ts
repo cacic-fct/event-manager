@@ -34,9 +34,9 @@ import {
   IonSpinner,
   ModalController,
 } from '@ionic/angular/standalone';
-import { HeaderComponent } from 'src/app/shared/modules/major-event-display/header/header.component';
-import { DescriptionComponent } from 'src/app/shared/modules/major-event-display/description/description.component';
-import { DateComponent } from 'src/app/shared/modules/major-event-display/date/date.component';
+import { HeaderComponent } from 'src/app/shared/components/major-event-display/header/header.component';
+import { DescriptionComponent } from 'src/app/shared/components/major-event-display/description/description.component';
+import { DateComponent } from 'src/app/shared/components/major-event-display/date/date.component';
 import { EventListComponent } from 'src/app/profile/my-attendances/more-info/event-list/event-list.component';
 
 @Component({
@@ -88,7 +88,7 @@ export class MoreInfoPage implements OnInit {
     public enrollmentTypes: EnrollmentTypesService,
     private route: ActivatedRoute,
     public dateService: DateService,
-    private modalController: ModalController
+    private modalController: ModalController,
   ) {}
 
   ngOnInit() {
@@ -103,7 +103,7 @@ export class MoreInfoPage implements OnInit {
     this.user$.pipe(take(1), trace('auth')).subscribe((user) => {
       if (user) {
         const query = this.afs.doc<MajorEventSubscription>(
-          `majorEvents/${this.majorEventID}/subscriptions/${user.uid}`
+          `majorEvents/${this.majorEventID}/subscriptions/${user.uid}`,
         );
 
         query
@@ -116,10 +116,10 @@ export class MoreInfoPage implements OnInit {
               subscribedEventsObservables.push(
                 this.afs
                   .collection<EventItem>('events', (ref) =>
-                    ref.where(documentId(), 'in', data.subscribedToEvents.slice(i, i + 10))
+                    ref.where(documentId(), 'in', data.subscribedToEvents.slice(i, i + 10)),
                   )
                   .valueChanges({ idField: 'id' })
-                  .pipe(trace('firestore'), take(1))
+                  .pipe(trace('firestore'), take(1)),
               );
             }
 
@@ -127,7 +127,7 @@ export class MoreInfoPage implements OnInit {
               map((events) => {
                 const data = events.flat();
                 return data.sort((a, b) => a.eventStartDate.seconds - b.eventStartDate.seconds);
-              })
+              }),
             );
 
             const notSubscribedEventsObservables: Array<Observable<EventItem[]>> = [];
@@ -137,10 +137,10 @@ export class MoreInfoPage implements OnInit {
                   .collection<EventItem>('events', (ref) =>
                     ref
                       .where(documentId(), 'not-in', data.subscribedToEvents.slice(i, i + 10))
-                      .where('inMajorEvent', '==', this.majorEventID)
+                      .where('inMajorEvent', '==', this.majorEventID),
                   )
                   .valueChanges({ idField: 'id' })
-                  .pipe(trace('firestore'), take(1))
+                  .pipe(trace('firestore'), take(1)),
               );
             }
 
@@ -148,7 +148,7 @@ export class MoreInfoPage implements OnInit {
               map((events) => {
                 const data = events.flat();
                 return data.sort((a, b) => a.eventStartDate.seconds - b.eventStartDate.seconds);
-              })
+              }),
             );
           });
 
