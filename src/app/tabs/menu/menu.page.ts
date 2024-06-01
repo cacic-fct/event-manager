@@ -1,4 +1,4 @@
-import { Component, inject, signal, WritableSignal } from '@angular/core';
+import { Component, inject, signal, WritableSignal, OnInit } from '@angular/core';
 
 import { AuthService } from '../../shared/services/auth.service';
 
@@ -28,7 +28,7 @@ import {
   IonAvatar,
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
-import { ClickStopPropagation } from 'src/app/shared/directives/click-stop-propagation';
+import { ClickStopPropagationDirective } from 'src/app/shared/directives/click-stop-propagation';
 
 @UntilDestroy()
 @Component({
@@ -54,10 +54,10 @@ import { ClickStopPropagation } from 'src/app/shared/directives/click-stop-propa
     IonGrid,
     IonCol,
     IonRow,
-    ClickStopPropagation,
+    ClickStopPropagationDirective,
   ],
 })
-export class MenuPage {
+export class MenuPage implements OnInit {
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
   authState$ = authState(this.auth);

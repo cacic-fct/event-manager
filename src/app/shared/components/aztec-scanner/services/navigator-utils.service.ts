@@ -3,9 +3,7 @@ import { Injectable } from '@angular/core';
 @Injectable({
   providedIn: 'root',
 })
-export class NavigatorUtilsService {
-  constructor() {}
-}
+export class NavigatorUtilsService {}
 
 /**
  * If navigator is present.
@@ -23,7 +21,5 @@ function isMediaDevicesSupported() {
  * If enumerateDevices under navigator is supported.
  */
 export function canEnumerateDevices() {
-  return !!(
-    isMediaDevicesSupported() && navigator.mediaDevices.enumerateDevices
-  );
+  return !!(isMediaDevicesSupported() && navigator.mediaDevices.enumerateDevices);
 }

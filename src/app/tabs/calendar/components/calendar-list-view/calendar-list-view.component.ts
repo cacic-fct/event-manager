@@ -46,15 +46,15 @@ import { ItemListComponent } from 'src/app/tabs/calendar/components/item-list/it
 })
 export class CalendarListViewComponent implements OnInit, OnChanges {
   @Input() filter: {
-    courses: Array<string>;
+    courses: string[];
   };
 
-  courseFilter$: BehaviorSubject<{
-    courses: Array<string>;
-  } | null> = new BehaviorSubject(null);
-  dateFilter$: BehaviorSubject<Date | null> = new BehaviorSubject(null);
+  courseFilter$ = new BehaviorSubject<{
+    courses: string[];
+  } | null>(null);
+  dateFilter$ = new BehaviorSubject<Date | null>(null);
 
-  loadOlderCount: number = 0;
+  loadOlderCount = 0;
 
   items$: Observable<EventItem[]>;
 
@@ -73,6 +73,7 @@ export class CalendarListViewComponent implements OnInit, OnChanges {
       switchMap(([filter, date]) => {
         return this.afs
           .collection<EventItem>('events', (ref) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let query: any = ref;
             if (date) {
               query = query.where('eventStartDate', '>=', this.baseDate);
@@ -108,7 +109,7 @@ export class CalendarListViewComponent implements OnInit, OnChanges {
   }
 
   loadOlderEvents() {
-    if (this.loadOlderCount == 0) {
+    if (this.loadOlderCount === 0) {
       this.baseDate = startOfWeek(this.baseDate);
     }
 
@@ -125,7 +126,7 @@ export class CalendarListViewComponent implements OnInit, OnChanges {
   async presentToast() {
     const toast = await this.toastController.create({
       header: 'Procurando por eventos mais antigos...',
-      message: 'De até ' + this.loadOlderCount + (this.loadOlderCount == 1 ? ' semana ' : ' semanas ') + 'atrás',
+      message: 'De até ' + this.loadOlderCount + (this.loadOlderCount === 1 ? ' semana ' : ' semanas ') + 'atrás',
       icon: 'search',
       position: 'bottom',
       duration: 1000,

@@ -1,4 +1,4 @@
-import { Routes, RouterModule } from '@angular/router';
+import { Routes } from '@angular/router';
 
 import { IssueCertificatePage } from './issue-certificate.page';
 

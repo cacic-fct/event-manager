@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { Observable } from 'rxjs';
 import { EventSubscriptionLocal } from 'src/app/profile/my-attendances/my-attendances.page';
 import { AsyncPipe } from '@angular/common';
@@ -35,10 +35,6 @@ import { EventCardComponent } from 'src/app/profile/my-attendances/components/ev
     EventCardComponent,
   ],
 })
-export class EventCardDisplayMainPageComponent implements OnInit {
+export class EventCardDisplayMainPageComponent {
   @Input() eventSubscriptionsInput!: Observable<EventSubscriptionLocal[]>;
-
-  constructor() {}
-
-  ngOnInit() {}
 }

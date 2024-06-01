@@ -12,7 +12,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 
-import { ConfirmModalComponent } from './components/confirm-modal/confirm-modal.component';
+import { ConfirmAddEventModalComponent } from './components/confirm-add-event-modal/confirm-add-event-modal.component';
 import { serverTimestamp } from '@angular/fire/firestore';
 import { Auth, user } from '@angular/fire/auth';
 
@@ -83,21 +83,22 @@ export class AddMajorEventPage implements OnInit {
   user$ = user(this.auth);
 
   courses = CoursesService.courses;
-  priceDifferentiate: boolean = true;
+  priceDifferentiate = true;
   _priceDifferentiateSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(this.priceDifferentiate);
   priceDifferentiate$: Observable<boolean> = this._priceDifferentiateSubject.asObservable();
-  isEventPaid: boolean = true;
+  isEventPaid = true;
   _isEventPaidSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(this.isEventPaid);
   isEventPaid$: Observable<boolean> = this._isEventPaidSubject.asObservable();
 
   dataForm: FormGroup;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userData: any;
   constructor(
     public formBuilder: FormBuilder,
     private modalController: ModalController,
     private afs: AngularFirestore,
-    private router: Router,
+    private router: Router
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
 
@@ -136,7 +137,7 @@ export class AddMajorEventPage implements OnInit {
       },
       {
         validators: [this.validatorButton, this.requirePaymentDetails, this.validatorDateEnd],
-      },
+      }
     );
   }
 
@@ -175,7 +176,7 @@ export class AddMajorEventPage implements OnInit {
         price = { isFree: true };
       }
 
-      let buttonUrl = this.dataForm.get('buttonUrl').value;
+      const buttonUrl = this.dataForm.get('buttonUrl').value;
 
       if (buttonUrl) {
         const pattern = /^((http|https):\/\/)/;
@@ -217,7 +218,7 @@ export class AddMajorEventPage implements OnInit {
               : null,
             public: this.dataForm.get('public').value === '' || false,
             createdBy: user.uid,
-            // @ts-ignore
+            // @ts-expect-error - This works
             createdOn: serverTimestamp(),
             events: [],
           })
@@ -303,7 +304,7 @@ export class AddMajorEventPage implements OnInit {
 
   async openConfirmModal(): Promise<boolean> {
     const modal = await this.modalController.create({
-      component: ConfirmModalComponent,
+      component: ConfirmAddEventModalComponent,
       componentProps: {
         dataForm: this.dataForm,
         isEventPaid: this.isEventPaid,

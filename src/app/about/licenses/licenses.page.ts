@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { DisplayLicensesComponent } from './display-licenses/display-licenses.component';
 import { MarkdownModule } from 'ngx-markdown';
 import { IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent } from '@ionic/angular/standalone';
@@ -19,8 +19,4 @@ import { IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle, IonContent 
     IonContent,
   ],
 })
-export class LicensesPage implements OnInit {
-  constructor() {}
-
-  ngOnInit() {}
-}
+export class LicensesPage {}

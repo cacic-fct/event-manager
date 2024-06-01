@@ -3,14 +3,13 @@ import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { Storage, ref, uploadBytesResumable, getDownloadURL } from '@angular/fire/storage';
 
 import { Observable } from 'rxjs';
-import { finalize, take } from 'rxjs/operators';
+import { take } from 'rxjs/operators';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { NgxImageCompressService } from 'ngx-image-compress';
 import { ToastController } from '@ionic/angular/standalone';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { fromUnixTime } from 'date-fns';
 
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { Timestamp } from '@firebase/firestore';
@@ -102,7 +101,7 @@ export class SendReceiptPage implements OnInit {
   rawFile: string;
   userSubscription$: Promise<MajorEventSubscription>;
   today: Date = new Date();
-  outOfDate: boolean = false;
+  outOfDate = false;
 
   constructor(
     private imageCompress: NgxImageCompressService,
@@ -235,6 +234,7 @@ export class SendReceiptPage implements OnInit {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   uploadFile(result: string, format: string) {
     // Attribution: Harsh Mittal
     // https://stackoverflow.com/questions/68324916/resize-compress-selected-image-before-uploading-to-firebase-in-angular
@@ -282,6 +282,7 @@ export class SendReceiptPage implements OnInit {
 
   updateUser() {
     this.afs
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .doc<any>(`/majorEvents/${this.eventID}/subscriptions/${this.uid}`)
       .update({
         'payment.status': 1,
@@ -374,6 +375,7 @@ export class SendReceiptPage implements OnInit {
 
 interface Subscription {
   id?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   reference?: DocumentReference<any>;
 }
 

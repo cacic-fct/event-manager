@@ -2,7 +2,13 @@
   (click)="openItem(eventItem)"
   class="item-fake-button"
   [class]="courses[eventItem.course] ? courses[eventItem.course].color + '-25' : undefined">
-  <img [src]="emojiService.getEmoji(eventItem.icon)" class="emoji" slot="start" aria-hidden="true" loading="lazy" />
+  <img
+    [src]="emojiService.getEmoji(eventItem.icon)"
+    class="emoji"
+    alt="Emoji do evento"
+    slot="start"
+    aria-hidden="true"
+    loading="lazy" />
 
   <ion-label>
     <h2 class="ion-text-wrap">{{ eventItem.name }}</h2>

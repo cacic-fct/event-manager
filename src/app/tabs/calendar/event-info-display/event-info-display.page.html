@@ -7,21 +7,21 @@
     <ion-buttons slot="primary">
       <ion-button fill="clear" (click)="presentToastShare()"
         ><ion-icon slot="icon-only" ios="share-outline" md="share-social"></ion-icon></ion-button
-      ></ion-buttons>
-    </ion-toolbar>
-  </ion-header>
+    ></ion-buttons>
+  </ion-toolbar>
+</ion-header>
 
-  <ion-content>
-    @if (item$ | async; as items) {
-      <div class="margin-horizontal-auto content-container ion-padding">
-        <app-event-display-header [eventItem]="items" [displayWeather]="true"></app-event-display-header>
-        <app-event-display-description [eventItem]="items"></app-event-display-description>
-        <app-event-display-map [eventItem]="items"></app-event-display-map>
-        <app-event-display-buttons
-          [eventItem]="items"
-        [displaySubscriptionAttendanceButtons]="true"></app-event-display-buttons>
-      </div>
-    } @else {
-      <ion-progress-bar type="indeterminate"></ion-progress-bar>
-    }
-  </ion-content>
+<ion-content>
+  @if (item$ | async; as items) {
+  <div class="margin-horizontal-auto content-container ion-padding">
+    <app-event-header [eventItem]="items" [displayWeather]="true"></app-event-header>
+    <app-event-description [eventItem]="items"></app-event-description>
+    <app-event-display-map [eventItem]="items"></app-event-display-map>
+    <app-event-display-buttons
+      [eventItem]="items"
+      [displaySubscriptionAttendanceButtons]="true"></app-event-display-buttons>
+  </div>
+  } @else {
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+</ion-content>

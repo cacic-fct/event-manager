@@ -38,7 +38,7 @@ import {
   IonFooter,
 } from '@ionic/angular/standalone';
 
-import { ScannerVideoComponent } from '../../../shared/components/aztec-scanner/aztec-scanner.component';
+import { AztecScannerComponent } from '../../../shared/components/aztec-scanner/aztec-scanner.component';
 
 interface Attendance {
   user: Observable<User | undefined>;
@@ -74,13 +74,13 @@ interface Attendance {
     IonText,
     IonProgressBar,
     IonFooter,
-    ScannerVideoComponent
-],
+    AztecScannerComponent,
+  ],
 })
 export class ScannerPage implements OnInit {
-  @Input('manualInput') manualInput!: string;
-  @ViewChild('mySwal') mySwal: SwalComponent;
-  @ViewChild('scannerCanvas') scannerCanvas: HTMLCanvasElement;
+  @Input() manualInput!: string;
+  @ViewChild('mySwal') mySwal!: SwalComponent;
+  @ViewChild('scannerCanvas') scannerCanvas!: HTMLCanvasElement;
 
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
@@ -88,9 +88,9 @@ export class ScannerPage implements OnInit {
   // QR Code scanner
   availableDevices!: MediaDeviceInfo[];
   currentDevice: MediaDeviceInfo | null = null;
-  hasDevices: boolean = false;
-  hasPermission: boolean = false;
-  deviceIndex: number = -1;
+  hasDevices = false;
+  hasPermission = false;
+  deviceIndex = -1;
 
   attendanceCollection$: Observable<Attendance[]>;
   /**
@@ -98,7 +98,7 @@ export class ScannerPage implements OnInit {
    */
   nonPayingAttendanceCollection$: Observable<Attendance[]>;
   eventID: string;
-  event$: Observable<EventItem>;
+  event$: Observable<EventItem | undefined>;
   /**
    * Variable initialized at this.checkIfEventIsPaid();
    * Variável inicializada no método this.checkIfEventIsPaid()
@@ -113,7 +113,7 @@ export class ScannerPage implements OnInit {
   _backdropVisibleSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   backdropVisible$: Observable<boolean> = this._backdropVisibleSubject.asObservable();
 
-  attendanceSessionScans: number = 0;
+  attendanceSessionScans = 0;
 
   audioSuccess: HTMLAudioElement;
   audioDuplicate: HTMLAudioElement;
@@ -129,7 +129,7 @@ export class ScannerPage implements OnInit {
     public courses: CoursesService,
     private toastController: ToastController,
     private authService: AuthService,
-    public dateService: DateService,
+    public dateService: DateService
   ) {
     this.eventID = this.route.snapshot.params['eventID'];
 
@@ -153,12 +153,7 @@ export class ScannerPage implements OnInit {
         }
       });
 
-    this.event$ = this.afs
-      .collection('events')
-      .doc<EventItem>(this.eventID)
-      .valueChanges()
-      // @ts-ignore
-      .pipe(trace('firestore'));
+    this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges();
     this.checkIfEventIsPaid();
 
     // Get attendance list
@@ -180,8 +175,8 @@ export class ScannerPage implements OnInit {
               .doc<User>(item.id)
               .get()
               .pipe(map((document) => document.data())),
-          })),
-        ),
+          }))
+        )
       );
 
     // Get non-paying-attendance list
@@ -204,8 +199,8 @@ export class ScannerPage implements OnInit {
               .doc<User>(item.id)
               .get()
               .pipe(map((document) => document.data())),
-          })),
-        ),
+          }))
+        )
       );
 
     this.audioSuccess = new Audio();
@@ -271,7 +266,7 @@ export class ScannerPage implements OnInit {
           // Verify if event is a part of majorEvent
           const majorEventID = event.data()?.inMajorEvent;
           this.majorEventID = majorEventID;
-          const isSubEvent = majorEventID != null;
+          const isSubEvent = majorEventID !== null;
           // If it is a subEvent, check if majorEvent is paid
           if (isSubEvent) {
             this.afs
@@ -304,7 +299,7 @@ export class ScannerPage implements OnInit {
       .pipe(
         take(1),
         trace('firestore'),
-        map((userDocument) => userDocument.exists),
+        map((userDocument) => userDocument.exists)
       );
   }
 
@@ -313,21 +308,24 @@ export class ScannerPage implements OnInit {
    * @param uid User ID, ID do usuário
    */
   userPaid$(uid: string): Observable<boolean> {
-    return this.afs
-      .collection<any>(`majorEvents/${this.majorEventID}/subscriptions`)
-      .doc(uid)
-      .valueChanges()
-      .pipe(
-        untilDestroyed(this),
-        trace('firestore'),
-        map((subscription) => {
-          if (subscription) {
-            return subscription.payment.status == 2;
-          } else {
-            return false;
-          }
-        }),
-      );
+    return (
+      this.afs
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .collection<any>(`majorEvents/${this.majorEventID}/subscriptions`)
+        .doc(uid)
+        .valueChanges()
+        .pipe(
+          untilDestroyed(this),
+          trace('firestore'),
+          map((subscription) => {
+            if (subscription) {
+              return subscription.payment.status === 2;
+            } else {
+              return false;
+            }
+          })
+        )
+    );
   }
 
   /**
@@ -405,7 +403,6 @@ export class ScannerPage implements OnInit {
           return false;
         }
         this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
-          // @ts-ignore
           time: serverTimestamp(),
           author: this.adminID,
         });
@@ -436,7 +433,6 @@ export class ScannerPage implements OnInit {
           return false;
         }
         this.afs.collection(`events/${this.eventID}/non-paying-attendance`).doc(uid).set({
-          // @ts-ignore
           time: serverTimestamp(),
           author: this.adminID,
         });

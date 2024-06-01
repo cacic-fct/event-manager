@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
 import { compareAsc, subMonths, startOfDay } from 'date-fns';
@@ -24,8 +24,8 @@ import {
   IonRouterLink,
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
-import { HeaderComponent } from 'src/app/shared/components/major-event-display/header/header.component';
-import { DescriptionComponent } from 'src/app/shared/components/major-event-display/description/description.component';
+import { MajorEventHeaderComponent } from 'src/app/shared/components/major-event-display/major-event-header/major-event-header.component';
+import { MajorEventDescriptionComponent } from 'src/app/shared/components/major-event-display/major-event-description/major-event-description.component';
 import { DateComponent } from 'src/app/shared/components/major-event-display/date/date.component';
 import { PriceComponent } from 'src/app/shared/components/major-event-display/price/price.component';
 
@@ -46,13 +46,13 @@ import { PriceComponent } from 'src/app/shared/components/major-event-display/pr
     IonProgressBar,
     RouterLink,
     IonRouterLink,
-    HeaderComponent,
-    DescriptionComponent,
+    MajorEventHeaderComponent,
+    MajorEventDescriptionComponent,
     DateComponent,
     PriceComponent,
   ],
 })
-export class MajorEventsDisplayPage {
+export class MajorEventsDisplayPage implements OnInit {
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
 
@@ -63,15 +63,13 @@ export class MajorEventsDisplayPage {
   >;
   today: Date = new Date();
 
-  constructor(
-    public afs: AngularFirestore,
-    public dateService: DateService,
-  ) {}
+  constructor(public afs: AngularFirestore, public dateService: DateService) {}
 
   ngOnInit() {
     this.user$.pipe(take(1)).subscribe((user) => {
       this.majorEvents$ = this.afs
         .collection<MajorEventItem>('majorEvents', (ref) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let query: any = ref;
 
           // TODO: Show events in which the subscription opens in the next 2 weeks AND events that ended in the last 2 weeks
@@ -100,12 +98,12 @@ export class MajorEventsDisplayPage {
                             }
                           }
                           return doc.exists;
-                        }),
+                        })
                       )
                   : null,
               };
             });
-          }),
+          })
         );
     });
   }

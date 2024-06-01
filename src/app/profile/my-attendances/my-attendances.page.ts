@@ -1,6 +1,6 @@
 import { EventItem, EventSubscription } from 'src/app/shared/services/event';
 import { MajorEventItem, MajorEventSubscription } from '../../shared/services/major-event.service';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { map, Observable, switchMap, combineLatest, shareReplay, catchError } from 'rxjs';
 
 import {
@@ -81,7 +81,7 @@ import { EventCardDisplayMainPageComponent } from 'src/app/profile/my-attendance
     NgTemplateOutlet,
   ],
 })
-export class MyAttendancesPage implements OnInit {
+export class MyAttendancesPage {
   private auth: Auth = inject(Auth);
   user$ = user(this.auth).pipe(shareReplay(1), untilDestroyed(this));
 
@@ -92,10 +92,7 @@ export class MyAttendancesPage implements OnInit {
 
   today: Date = new Date();
 
-  constructor(
-    public enrollmentTypes: EnrollmentTypesService,
-    public dateService: DateService,
-  ) {
+  constructor(public enrollmentTypes: EnrollmentTypesService, public dateService: DateService) {
     this.subscriptions$ = this.user$.pipe(
       switchMap((user) => {
         if (!user) {
@@ -109,16 +106,16 @@ export class MyAttendancesPage implements OnInit {
               return {
                 id: subscription.id,
                 userData: docData(
-                  doc(this.firestore, `majorEvents/${subscription.id}/subscriptions/${user.uid}`),
+                  doc(this.firestore, `majorEvents/${subscription.id}/subscriptions/${user.uid}`)
                 ) as Observable<MajorEventSubscription>,
                 majorEvent: docData(doc(this.firestore, `majorEvents/${subscription.id}`), {
                   idField: 'id',
                 }) as Observable<MajorEventItem>,
               };
             });
-          }),
+          })
         );
-      }),
+      })
     );
 
     this.eventSubscriptions$ = this.user$.pipe(
@@ -148,28 +145,26 @@ export class MyAttendancesPage implements OnInit {
                       id: event.id,
                       event: event,
                       userData: userData as EventSubscription,
-                    })),
+                    }))
                   );
                 });
 
                 return combineLatest(eventsWithUserData).pipe(
                   map((eventsWithUserData) => {
                     return eventsWithUserData;
-                  }),
+                  })
                 );
-              }),
+              })
             );
           }),
           catchError((error) => {
             console.error('Error fetching data:', error);
             return [];
-          }),
+          })
         );
-      }),
+      })
     );
   }
-
-  ngOnInit() {}
 
   isInSubscriptionPeriod(endDateTimestamp: Timestamp): boolean {
     if (endDateTimestamp) {
@@ -203,6 +198,7 @@ interface Subscription {
 
 export interface EventSubscriptionLocal {
   id?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   reference?: DocumentReference<any>;
   userData?: EventSubscription;
   event?: EventItem;

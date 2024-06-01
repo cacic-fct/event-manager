@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { PrivacyCardsComponent } from 'src/app/about/privacy-policy/privacy-cards/privacy-cards.component';
 
 import { environment } from 'src/environments/environment';
@@ -21,9 +21,6 @@ import { MarkdownModule } from 'ngx-markdown';
     MarkdownModule,
   ],
 })
-export class PrivacyPolicyPage implements OnInit {
+export class PrivacyPolicyPage {
   public baseUrl = environment.baseUrl;
-  constructor() {}
-
-  ngOnInit() {}
 }

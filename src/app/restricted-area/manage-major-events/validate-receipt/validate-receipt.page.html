@@ -5,7 +5,7 @@
     </ion-buttons>
     <ion-title>Comprovantes de {{ eventName$ | async }}</ion-title>
     <ion-buttons slot="primary">
-      <ion-button (click)="arrayIndexBackward()" [disabled]="arrayIndex == 0" aria-label="Comprovante anterior">
+      <ion-button (click)="arrayIndexBackward()" [disabled]="arrayIndex === 0" aria-label="Comprovante anterior">
         <ion-icon name="chevron-back"></ion-icon>
       </ion-button>
       {{ arrayIndex + 1 }}º @if ((subscriptions$ | async); as subscriptionsArray) {
@@ -21,7 +21,7 @@
 </ion-header>
 
 <ion-content>
-  @if (subscriptions$ | async; as subscriptions) { @if (subscriptions.length == 0) {
+  @if (subscriptions$ | async; as subscriptions) { @if (subscriptions.length === 0) {
   <h4 class="ion-text-center">Não há nenhuma aprovação pendente.</h4>
   } @else { @if (subscriptions[arrayIndex]; as subscription;) {
   <ion-card>
@@ -62,12 +62,12 @@
         <ion-button
           size="small"
           (click)="copyEventIDs(subscription.subscribedToEvents)"
-          [disabled]="subscription.subscribedToEvents.length == 0">
+          [disabled]="subscription.subscribedToEvents.length === 0">
           Copiar IDs
         </ion-button>
       </p>
       <br />
-      @if (subscription.subEventsInfo | async; as subEventsInfo) { @if (subEventsInfo.length != 0) { @for (subEventInfo
+      @if (subscription.subEventsInfo | async; as subEventsInfo) { @if (subEventsInfo.length !== 0) { @for (subEventInfo
       of subEventsInfo; track subEventInfo) {
       <ion-text
         [color]="subEventInfo.slotsAvailable > 0? '' : 'danger'"
@@ -85,7 +85,7 @@
       }
       <div class="img-container">
         @if (subscription.image | async; as url) {
-        <img [src]="url" loading="lazy" />
+        <img alt="Comprovante enviado pelo usuário" [src]="url" loading="lazy" />
         } @else {
         <h1>Imagem não encontrada</h1>
         }
@@ -146,7 +146,7 @@
             <ion-radio value="scheduleConflict">Choque de horário</ion-radio>
           </ion-item>
         </ion-radio-group>
-        @if (refuseForm.get('radioGroup').value == 'invalidReceipt') {
+        @if (refuseForm.get('radioGroup').value === 'invalidReceipt') {
         <ion-item>
           <ion-input label="Motivo da recusa" labelPlacement="floating" formControlName="errorMessage"></ion-input>
         </ion-item>

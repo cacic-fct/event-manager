@@ -1,0 +1,39 @@
+<img
+  class="margin-horizontal-auto emoji"
+  alt="Emoji do evento"
+  [src]="emojiService.getEmoji(eventItem.icon)"
+  (click)="presentToast()"
+  (keypress)="presentToast()"
+  tabindex="0" />
+
+<div class="ion-text-center">
+  <h1 class="no-margin">{{ eventItem.name }}</h1>
+  <h5 class="no-margin margin-bottom-5 font-500">{{ eventItem.shortDescription }}</h5>
+  <h5 class="no-margin margin-bottom-5 font-500">{{ coursesService.getCourse(eventItem.course) }}</h5>
+  <h4 class="no-margin margin-bottom-5 font-400">
+    <!-- prettier-ignore -->
+    {{ stringService.toUppercase(dateService.getDateFromTimestamp(eventItem.eventStartDate) | date: "EEEE, dd 'de' MMMM 'de' y") }}
+  </h4>
+  <h3 class="no-margin font-400">
+    {{ dateService.getDateFromTimestamp(eventItem.eventStartDate) | date : 'HH:mm' }}
+    @if (eventItem.eventEndDate) { - {{ dateService.getDateFromTimestamp(eventItem.eventEndDate) | date : 'HH:mm' }}
+    }
+  </h3>
+
+  @if (displayWeather === true) {
+  <div class="weather-container">
+    @if (weather | async; as weatherInfo) { @if (!weatherInfo.error) {
+    <ion-icon class="weather-icon" [name]="weatherInfo.icon"></ion-icon>
+    <span class="weather-text">{{ weatherInfo.temperature }}°C – {{ weatherInfo.text }}</span>
+    } }
+  </div>
+  }
+</div>
+
+@if (weather | async) {
+<div class="ion-text-center weather-attribution">
+  <ion-text color="medium">
+    <a href="https://open-meteo.com/" target="_blank">Weather data by Open-Meteo.com</a>
+  </ion-text>
+</div>
+}

@@ -37,7 +37,7 @@ export class ButtonsComponent implements OnInit {
   userID: string | undefined;
   subscribedToEvent: boolean | undefined;
   isUserAuthenticated: Observable<boolean>;
-  disableSubscriptionNoSlotsLeft: boolean = false;
+  disableSubscriptionNoSlotsLeft = false;
 
   constructor(
     private toastController: ToastController,
@@ -102,7 +102,6 @@ export class ButtonsComponent implements OnInit {
           this.afs
             .doc(`events/${eventID}/subscriptions/${user.uid}`)
             .set({
-              // @ts-ignore
               time: serverTimestamp(),
             })
             .then(() => {
@@ -121,7 +120,6 @@ export class ButtonsComponent implements OnInit {
         this.afs
           .doc(`events/${this.eventItem.id}/subscriptions/${user.uid}`)
           .set({
-            // @ts-ignore
             time: serverTimestamp(),
           })
           .then(() => {

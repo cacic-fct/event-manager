@@ -8,7 +8,6 @@ import { Timestamp } from '@firebase/firestore';
 })
 export class DateService {
   parseISO = parseISO;
-  constructor() {}
 
   isBetweenDates(date1: Date, date2: Date, dateToCompare: Date): boolean {
     return compareAsc(date1, dateToCompare) === -1 && compareAsc(dateToCompare, date2) === -1;

@@ -1,4 +1,4 @@
-import { RouterModule, Routes } from '@angular/router';
+import { Routes } from '@angular/router';
 import { CalendarPage } from './calendar.page';
 
 export const routes: Routes = [

@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { EventItem } from '../../../../shared/services/event';
 import { EmojiService } from '../../../../shared/services/emoji.service';
 import { CoursesService } from 'src/app/shared/services/courses.service';
@@ -19,7 +19,7 @@ import { DatePipe } from '@angular/common';
   standalone: true,
   imports: [IonItem, IonLabel, DatePipe],
 })
-export class ItemListComponent implements OnInit {
+export class ItemListComponent {
   courses = CoursesService.courses;
 
   @Input()
@@ -27,8 +27,7 @@ export class ItemListComponent implements OnInit {
 
   constructor(public emojiService: EmojiService, private navCtrl: NavController, public dateService: DateService) {}
 
-  ngOnInit() {}
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public openItem(item: any): void {
     this.navCtrl.navigateForward(['calendario/evento', item.id], {
       state: { item: item },

@@ -116,7 +116,7 @@
       </p>
     </div>
     <form [formGroup]="dataForm">
-      @if (events$ | async; as eventsArray) { @for (event of eventsArray; track event; let i = $index) { @if (i == 0 ||
+      @if (events$ | async; as eventsArray) { @for (event of eventsArray; track event; let i = $index) { @if (i === 0 ||
       !dateService.compareDayTimestamp(eventsArray[i - 1].eventStartDate, event.eventStartDate)) {
       <ion-item-divider mode="ios" sticky="true">
         <ion-label> {{ formatDate(dateService.getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
@@ -127,6 +127,7 @@
           <img
             [src]="emojiService.getEmoji(event.icon)"
             class="twemoji"
+            alt="Emoji do evento"
             slot="start"
             aria-hidden="true"
             loading="lazy" />

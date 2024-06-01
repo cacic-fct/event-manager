@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { IonLabel, IonList, IonItem, IonIcon, IonNote } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -19,7 +19,7 @@ import {
   imports: [IonNote, IonIcon, IonList, IonItem, IonLabel],
   standalone: true,
 })
-export class LinkedDataComponent implements OnInit {
+export class LinkedDataComponent {
   constructor() {
     addIcons({
       schoolOutline,
@@ -32,6 +32,4 @@ export class LinkedDataComponent implements OnInit {
       personCircleOutline,
     });
   }
-
-  ngOnInit() {}
 }

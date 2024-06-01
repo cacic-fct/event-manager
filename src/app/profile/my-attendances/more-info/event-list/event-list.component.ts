@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { EventItem } from 'src/app/shared/services/event';
@@ -27,13 +27,14 @@ import { RouterLink } from '@angular/router';
     DatePipe,
   ],
 })
-export class EventListComponent implements OnInit {
+export class EventListComponent {
   @Input() eventInput!: Observable<EventItem[]>;
   @Input() isSubscribedList!: boolean;
 
-  constructor(public emojiService: EmojiService, public dateService: DateService) {}
-
-  ngOnInit() {}
+  constructor(
+    public emojiService: EmojiService,
+    public dateService: DateService,
+  ) {}
 
   formatDate(date: Date): string {
     let formated = formatDate(date, "EEEE, dd 'de' MMMM 'de' yyyy", 'pt-BR');

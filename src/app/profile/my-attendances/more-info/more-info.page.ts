@@ -34,8 +34,8 @@ import {
   IonSpinner,
   ModalController,
 } from '@ionic/angular/standalone';
-import { HeaderComponent } from 'src/app/shared/components/major-event-display/header/header.component';
-import { DescriptionComponent } from 'src/app/shared/components/major-event-display/description/description.component';
+import { MajorEventHeaderComponent } from 'src/app/shared/components/major-event-display/major-event-header/major-event-header.component';
+import { MajorEventDescriptionComponent } from 'src/app/shared/components/major-event-display/major-event-description/major-event-description.component';
 import { DateComponent } from 'src/app/shared/components/major-event-display/date/date.component';
 import { EventListComponent } from 'src/app/profile/my-attendances/more-info/event-list/event-list.component';
 
@@ -61,8 +61,8 @@ import { EventListComponent } from 'src/app/profile/my-attendances/more-info/eve
     IonAccordion,
     IonProgressBar,
     IonSpinner,
-    HeaderComponent,
-    DescriptionComponent,
+    MajorEventDescriptionComponent,
+    MajorEventHeaderComponent,
     DateComponent,
     EventListComponent,
     DatePipe,
@@ -111,7 +111,7 @@ export class MoreInfoPage implements OnInit {
           .pipe(trace('firestore'), take(1))
           .subscribe((document) => {
             const data = document.data() as MajorEventSubscription;
-            const subscribedEventsObservables: Array<Observable<EventItem[]>> = [];
+            const subscribedEventsObservables: Observable<EventItem[]>[] = [];
             for (let i = 0; i < data.subscribedToEvents.length; i += 10) {
               subscribedEventsObservables.push(
                 this.afs
@@ -130,7 +130,7 @@ export class MoreInfoPage implements OnInit {
               }),
             );
 
-            const notSubscribedEventsObservables: Array<Observable<EventItem[]>> = [];
+            const notSubscribedEventsObservables: Observable<EventItem[]>[] = [];
             for (let i = 0; i < data.subscribedToEvents.length; i += 10) {
               notSubscribedEventsObservables.push(
                 this.afs

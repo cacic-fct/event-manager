@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { BarcodeFormat } from '@zxing/library';
 import { BehaviorSubject } from 'rxjs';
 import { ModalController } from '@ionic/angular/standalone';
@@ -39,11 +39,11 @@ import {
     IonIcon,
   ],
 })
-export class PageQrScannerPage implements OnInit {
+export class PageQrScannerPage {
   constructor(
     public modalController: ModalController,
     private routerOutlet: IonRouterOutlet,
-    public toastController: ToastController
+    public toastController: ToastController,
   ) {}
   availableDevices: MediaDeviceInfo[];
   currentDevice: MediaDeviceInfo = null;
@@ -76,7 +76,6 @@ export class PageQrScannerPage implements OnInit {
       return await modal.present();
     }
   */
-  ngOnInit() {}
 
   changeCamera(): void {
     this.deviceIndex++;

@@ -12,7 +12,7 @@
         <ion-card>
           <ion-item class="user-card" [routerLink]="['/perfil']" lines="none">
             <ion-avatar slot="start">
-              <img [src]="userData().photoURL" />
+              <img alt="Avatar do usuário" [src]="userData().photoURL" />
             </ion-avatar>
             <ion-label class="ion-text-wrap"> <h1 class="no-margin">{{userData().displayName}}</h1></ion-label>
 
@@ -21,7 +21,7 @@
                 <ion-button
                   fill="clear"
                   [routerLink]="['/perfil','carteira']"
-                  click-stop-propagation
+                  appClickStopPropagation
                   aria-label="Carteira">
                   <ion-icon slot="icon-only" name="qr-code-outline"></ion-icon>
                 </ion-button>
@@ -46,7 +46,7 @@
         <ion-card>
           <ion-item [routerLink]="['/login']" lines="none">
             <ion-avatar slot="start" aria-hidden="true">
-              <img src="assets/images/avatar-placeholder.webp" />
+              <img alt="Avatar padrão" src="assets/images/avatar-placeholder.webp" />
             </ion-avatar>
             <ion-label class="ion-text-wrap">
               <h1 class="no-margin">Entrar</h1>
