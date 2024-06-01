@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { Timestamp } from '@firebase/firestore-types';
+import { Timestamp } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { startOfDay } from 'date-fns';
 

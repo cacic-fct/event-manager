@@ -8,7 +8,7 @@ import { CoursesService } from 'src/app/shared/services/courses.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
 import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
-import { Timestamp } from '@firebase/firestore-types';
+import { Timestamp } from '@angular/fire/firestore';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { DateService } from 'src/app/shared/services/date.service';
 

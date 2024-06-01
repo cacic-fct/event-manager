@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { compareAsc, fromUnixTime, isSameDay, isSameMonth, parseISO } from 'date-fns';
-import { Timestamp as TimestampType } from '@firebase/firestore-types';
-import { Timestamp } from '@firebase/firestore';
+import { Timestamp } from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root',
@@ -35,19 +34,19 @@ export class DateService {
 
   // Firestore Timestamp
 
-  getDateFromTimestamp(Timestamp: TimestampType): Date {
+  getDateFromTimestamp(Timestamp: Timestamp): Date {
     return fromUnixTime(Timestamp.seconds);
   }
 
-  compareDayTimestamp(date1: TimestampType, date2: TimestampType): boolean {
+  compareDayTimestamp(date1: Timestamp, date2: Timestamp): boolean {
     return isSameDay(this.getDateFromTimestamp(date1), this.getDateFromTimestamp(date2));
   }
 
-  compareMonthTimestamp(date1: TimestampType, date2: TimestampType): boolean {
+  compareMonthTimestamp(date1: Timestamp, date2: Timestamp): boolean {
     return isSameMonth(fromUnixTime(date1.seconds), fromUnixTime(date2.seconds));
   }
 
-  TimestampFromDate(date: Date): TimestampType {
+  TimestampFromDate(date: Date): Timestamp {
     return Timestamp.fromDate(date);
   }
 }

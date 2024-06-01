@@ -12,7 +12,7 @@ import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firest
 import { trace } from '@angular/fire/compat/performance';
 
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
-import { Timestamp } from '@firebase/firestore';
+import { Timestamp } from '@angular/fire/firestore';
 import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 
 import { EnrollmentTypesService } from '../../../shared/services/enrollment-types.service';

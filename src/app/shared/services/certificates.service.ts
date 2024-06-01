@@ -2,7 +2,7 @@ import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { DocumentReference } from '@angular/fire/firestore';
-import { Timestamp } from '@firebase/firestore-types';
+import { Timestamp } from '@angular/fire/firestore';
 import { Observable, take, switchMap, combineLatest, map, mergeMap, forkJoin } from 'rxjs';
 import { Injectable, isDevMode } from '@angular/core';
 import { format as formatDate } from 'date-fns';

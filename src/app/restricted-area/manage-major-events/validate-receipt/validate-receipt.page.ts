@@ -2,7 +2,7 @@
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { ActivatedRoute } from '@angular/router';
-import { Timestamp as TimestampType } from '@firebase/firestore-types';
+import { Timestamp } from '@firebase/firestore-types';
 import { Observable, map, take, combineLatest } from 'rxjs';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { User } from 'src/app/shared/services/user';
@@ -501,10 +501,10 @@ export class ValidateReceiptPage implements OnInit {
 interface Subscription {
   id: string;
   userData$: Observable<User>;
-  time: TimestampType;
+  time: Timestamp;
   payment: {
     status: number;
-    time: TimestampType;
+    time: Timestamp;
     error?: string;
     price?: number;
     author?: string;

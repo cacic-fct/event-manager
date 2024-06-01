@@ -4,7 +4,7 @@ import { parseISO, getUnixTime } from 'date-fns';
 
 import { ModalController } from '@ionic/angular/standalone';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
-import { Timestamp } from '@firebase/firestore';
+import { Timestamp } from '@angular/fire/firestore';
 
 import {
   IonIcon,

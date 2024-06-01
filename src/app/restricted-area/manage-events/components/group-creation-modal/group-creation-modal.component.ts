@@ -2,7 +2,7 @@ import { EventItem } from 'src/app/shared/services/event';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { ModalController } from '@ionic/angular/standalone';
 import { FormGroup, FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Timestamp } from '@firebase/firestore';
+import { Timestamp } from '@angular/fire/firestore';
 import { DateService } from 'src/app/shared/services/date.service';
 import { EmojiService } from '../../../../shared/services/emoji.service';
 import { Component, Input, OnInit } from '@angular/core';

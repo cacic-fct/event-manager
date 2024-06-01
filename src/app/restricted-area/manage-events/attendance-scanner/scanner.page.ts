@@ -9,9 +9,8 @@ import { trace } from '@angular/fire/compat/performance';
 import { EventItem } from 'src/app/shared/services/event';
 import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { AuthService } from 'src/app/shared/services/auth.service';
-import { serverTimestamp } from '@angular/fire/firestore';
+import { serverTimestamp, Timestamp } from '@angular/fire/firestore';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { DateService } from 'src/app/shared/services/date.service';
 import { Auth, user } from '@angular/fire/auth';
@@ -42,7 +41,7 @@ import { AztecScannerComponent } from '../../../shared/components/aztec-scanner/
 
 interface Attendance {
   user: Observable<User | undefined>;
-  time: TimestampType;
+  time: Timestamp;
   id?: string;
 }
 

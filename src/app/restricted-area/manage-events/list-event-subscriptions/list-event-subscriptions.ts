@@ -5,7 +5,7 @@ import { trace } from '@angular/fire/compat/performance';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
-import { Timestamp } from '@firebase/firestore-types';
+import { Timestamp } from '@angular/fire/firestore';
 import { first, map, Observable } from 'rxjs';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
@@ -69,7 +69,7 @@ export class ListEventSubscriptionsPage {
     private router: Router,
     private route: ActivatedRoute,
     public courses: CoursesService,
-    public dateService: DateService,
+    public dateService: DateService
   ) {
     this.eventID = this.route.snapshot.params['eventID'];
     this.afs
@@ -103,8 +103,8 @@ export class ListEventSubscriptionsPage {
               .doc(item.id)
               .get()
               .pipe(map((document) => document.data())),
-          })),
-        ),
+          }))
+        )
       );
   }
 
