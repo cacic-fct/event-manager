@@ -8,7 +8,7 @@ import { log } from 'firebase-functions/logger';
 exports.addAdminRole = onCall(async (request): Promise<MainReturnType> => {
   const data = request.data;
   const context = request;
-  if (context.app == undefined) {
+  if (context.app === undefined) {
     throw new HttpsError('failed-precondition', 'The function must be called from an App Check verified app.');
   }
 
@@ -50,7 +50,7 @@ exports.removeAdminRole = onCall(async (request): Promise<MainReturnType> => {
   const context = request;
   const remoteConfig = getRemoteConfig();
 
-  if (context.app == undefined) {
+  if (context.app === undefined) {
     throw new HttpsError('failed-precondition', 'The function must be called from an App Check verified app.');
   }
 
@@ -65,7 +65,7 @@ exports.removeAdminRole = onCall(async (request): Promise<MainReturnType> => {
   // Get whitelist array as string from remote config
   const template = await remoteConfig.getTemplate();
 
-  // @ts-ignore
+  // @ts-expect-error
   const whitelist: string = template.parameters.adminWhitelist.defaultValue?.value;
   // Check if email is included in whitelist array
   if (whitelist.includes(data.email)) {
@@ -110,7 +110,7 @@ exports.addProfessorRole = onCall(async (request): Promise<MainReturnType> => {
   const context = request;
   const db = getFirestore();
 
-  if (context.app == undefined) {
+  if (context.app === undefined) {
     throw new HttpsError('failed-precondition', 'The function must be called from an App Check verified app.');
   }
 
@@ -128,7 +128,7 @@ exports.addProfessorRole = onCall(async (request): Promise<MainReturnType> => {
   return remoteConfig
     .getTemplate()
     .then((template) => {
-      // @ts-ignore
+      // @ts-expect-error
       const professors: string = template.parameters.professors.defaultValue?.value;
 
       // Check if email is included in professors array

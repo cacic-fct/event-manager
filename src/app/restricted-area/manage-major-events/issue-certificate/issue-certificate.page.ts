@@ -321,6 +321,7 @@ export class IssueCertificatePage implements OnInit {
         };
 
         const issueData = httpsCallable(this.functions, 'certificates-issueMajorEventCertificate');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         issueData(payload).then((response: HttpsCallableResult<any>) => {
           const responseData: { success: boolean; data: string; message: string } = response.data;
 
@@ -352,7 +353,8 @@ export class IssueCertificatePage implements OnInit {
     return;
   }
 
-  async openConfirmModal(certificateData: { [key: string]: any }): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async openConfirmModal(certificateData: Record<string, any>): Promise<boolean> {
     const modal = await this.modalController.create({
       component: CertificatePreviewModalComponent,
       componentProps: {

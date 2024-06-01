@@ -107,10 +107,8 @@ export interface WeatherInfo {
   error?: boolean;
 }
 
-interface WeatherCodesList {
-  [key: number]: {
+type WeatherCodesList = Record<number, {
     icon?: string;
     icon_night?: string;
     text: string;
-  };
-}
+  }>;

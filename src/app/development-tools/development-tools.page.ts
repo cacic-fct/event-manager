@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { addIcons } from 'ionicons';
 import { serverOutline } from 'ionicons/icons';
@@ -36,10 +36,8 @@ import {
     IonLabel,
   ],
 })
-export class DevelopmentToolsPage implements OnInit {
+export class DevelopmentToolsPage {
   constructor() {
     addIcons({ serverOutline });
   }
-
-  ngOnInit() {}
 }

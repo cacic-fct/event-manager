@@ -68,9 +68,7 @@ export class CoursesService {
   }
 }
 
-interface courseList {
-  [key: string]: {
+type courseList = Record<string, {
     name: string;
     color?: string;
-  };
-}
+  }>;

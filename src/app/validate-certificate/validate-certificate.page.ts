@@ -1,6 +1,6 @@
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { ActivatedRoute } from '@angular/router';
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CertificateDocPublic } from 'src/app/shared/services/certificates.service';
 import { decodeCertificateCode } from 'src/app/shared/services/certificates.service';
@@ -38,14 +38,17 @@ import { AsyncPipe } from '@angular/common';
     AsyncPipe,
   ],
 })
-export class ValidateCertificatePage implements OnInit {
+export class ValidateCertificatePage {
   param: string;
   eventID: string;
   certificateID: string;
   certificateDoc: string;
   certificatePublic$: Observable<CertificateDocPublic | undefined>;
 
-  constructor(private route: ActivatedRoute, private afs: AngularFirestore) {
+  constructor(
+    private route: ActivatedRoute,
+    private afs: AngularFirestore,
+  ) {
     this.param = this.route.snapshot.paramMap.get('param') as string;
 
     const object = decodeCertificateCode(this.param);
@@ -61,6 +64,4 @@ export class ValidateCertificatePage implements OnInit {
       .doc<CertificateDocPublic>(`certificates/${this.eventID}/${this.certificateID}/${this.certificateDoc}`)
       .valueChanges({ idField: 'id' });
   }
-
-  ngOnInit() {}
 }

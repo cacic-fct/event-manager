@@ -29,8 +29,6 @@ export class EnrollmentTypesService {
   }
 }
 
-interface enrollmentTypesList {
-  [key: number]: {
+type enrollmentTypesList = Record<number, {
     name: string;
-  };
-}
+  }>;

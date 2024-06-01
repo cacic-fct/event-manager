@@ -48,6 +48,7 @@
         @for (item of eventList; track item) {
         <ion-item>
           <img
+            alt="Emoji do evento"
             [src]="emojiService.getEmoji(item.icon)"
             class="twemoji"
             slot="start"
@@ -152,6 +153,7 @@
   <div class="footer-container">
     @for (eventInfo of dataForm.get('selectedCheckboxes').value; track eventInfo) {
     <img
+      alt="Emoji do evento"
       [src]="emojiService.getEmoji(eventInfo.icon)"
       class="twemoji"
       slot="start"

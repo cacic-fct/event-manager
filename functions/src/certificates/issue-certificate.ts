@@ -11,7 +11,7 @@ exports.issueMajorEventCertificate = onCall(
     const data: MajorEventCertificateData = request.data;
     const context = request;
 
-    if (context.app == undefined) {
+    if (context.app === undefined) {
       throw new HttpsError('failed-precondition', 'The function must be called from an App Check verified app.');
     }
 

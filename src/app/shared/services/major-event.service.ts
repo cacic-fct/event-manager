@@ -16,6 +16,7 @@ export class MajorEventsService {
     const date = Date.now();
     return this.afs
       .collection<MajorEventItem>('majorEvents', (ref) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let query: any = ref;
         query = query.where('eventStartDate', '>=', startOfDay(date));
         return query.orderBy('eventStartDate', 'asc');
@@ -27,6 +28,7 @@ export class MajorEventsService {
     const date = Date.now();
     return this.afs
       .collection<MajorEventItem>('majorEvents', (ref) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let query: any = ref;
         query = query.where('eventEndDate', '>=', startOfDay(date));
         // TODO: Order by eventStartDate

@@ -14,13 +14,11 @@ import { format, getDayOfYear, isEqual, parseISO, setDayOfYear, subMilliseconds 
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
 import { take, Observable, map } from 'rxjs';
-import { Timestamp, arrayUnion } from '@firebase/firestore';
 import { EventItem } from 'src/app/shared/services/event';
-import { Timestamp as TimestampType } from '@firebase/firestore-types';
 import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
-import { ConfirmModalPage } from './confirm-modal/confirm-modal.page';
+import { ConfirmAddEventModalPage } from './confirm-add-event-modal/confirm-add-event-modal.page';
 import { getStringChanges, RemoteConfig } from '@angular/fire/remote-config';
-import { serverTimestamp } from '@angular/fire/firestore';
+import { serverTimestamp, Timestamp, arrayUnion } from '@angular/fire/firestore';
 import { Auth, user } from '@angular/fire/auth';
 import {
   IonSelect,
@@ -89,10 +87,11 @@ export class AddEventPage implements OnInit {
   courses = CoursesService.courses;
   majorEventsData$: Observable<MajorEventItem[]>;
 
-  hasDateEnd: boolean = false;
+  hasDateEnd = false;
 
   dataForm: FormGroup;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userData: any;
 
   places$: Observable<placesRemoteConfig>;
@@ -107,7 +106,7 @@ export class AddEventPage implements OnInit {
     private modalController: ModalController,
     public majorEvents: MajorEventsService,
     private afs: AngularFirestore,
-    private router: Router,
+    private router: Router
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
   }
@@ -156,7 +155,7 @@ export class AddEventPage implements OnInit {
       },
       {
         validators: [this.validatorLatLong, this.validatorButton, this.validatorDateEnd],
-      },
+      }
     );
     this.userData.displayName.replace(/%20/g, ' ');
     this.majorEventsData$ = this.majorEvents.getCurrentAndFutureMajorEvents();
@@ -169,7 +168,7 @@ export class AddEventPage implements OnInit {
           return parsed;
         }
         return {};
-      }),
+      })
     );
   }
 
@@ -189,7 +188,7 @@ export class AddEventPage implements OnInit {
             majorEvent = null;
           }
 
-          let dateEnd: TimestampType | null;
+          let dateEnd: Timestamp | null;
 
           if (this.hasDateEnd) {
             dateEnd = Timestamp.fromDate(new Date(this.dataForm.get('eventEndDate').value));
@@ -197,7 +196,7 @@ export class AddEventPage implements OnInit {
             dateEnd = null;
           }
 
-          let buttonUrl: string = this.dataForm.get('button').get('url').value;
+          const buttonUrl: string = this.dataForm.get('button').get('url').value;
 
           if (buttonUrl) {
             const pattern = /^((http|https):\/\/)/;
@@ -209,7 +208,7 @@ export class AddEventPage implements OnInit {
             }
           }
 
-          let location: { description: any; lat: any; lon: any } | null;
+          let location: { description: string; lat: number; lon: number } | null;
 
           if (
             !this.dataForm.get('location.description').value &&
@@ -220,8 +219,8 @@ export class AddEventPage implements OnInit {
           } else {
             location = {
               description: this.dataForm.get('location.description').value,
-              lat: this.dataForm.get('location.lat').value || null,
-              lon: this.dataForm.get('location.lon').value || null,
+              lat: Number.parseInt(this.dataForm.get('location.lat').value) || null,
+              lon: Number.parseInt(this.dataForm.get('location.lon').value) || null,
             };
           }
 
@@ -250,7 +249,7 @@ export class AddEventPage implements OnInit {
               collectAttendance: this.dataForm.get('collectAttendance').value,
               creditHours: Number.parseInt(this.dataForm.get('creditHours').value) || null,
               createdBy: user.uid,
-              // @ts-ignore
+              // @ts-expect-error - This works
               createdOn: serverTimestamp(),
               slotsAvailable: Number.parseInt(this.dataForm.get('slotsAvailable').value) || 0,
               numberOfSubscriptions: 0,
@@ -297,7 +296,7 @@ export class AddEventPage implements OnInit {
 
   async openConfirmModal(): Promise<boolean> {
     const modal = await this.modalController.create({
-      component: ConfirmModalPage,
+      component: ConfirmAddEventModalPage,
       componentProps: {
         dataForm: this.dataForm,
         hasDateEnd: this.hasDateEnd,
@@ -339,7 +338,7 @@ export class AddEventPage implements OnInit {
     return null;
   }
 
-  validatorDateEnd(control: AbstractControl): { [key: string]: boolean } | null {
+  validatorDateEnd(control: AbstractControl): Record<string, boolean> | null {
     if (control.get('hasDateEndForm').value) {
       const dateStart = parseISO(control.get('eventStartDate').value);
       const dateEnd = parseISO(control.get('eventEndDate').value);
@@ -359,6 +358,7 @@ export class AddEventPage implements OnInit {
     return null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   placeChange(ev: any) {
     if (this.parsedPlaces[ev.detail.value] === undefined) {
       return 1;
@@ -369,9 +369,7 @@ export class AddEventPage implements OnInit {
       .get('description')
       .setValue(
         this.parsedPlaces[ev.detail.value].name +
-          (this.parsedPlaces[ev.detail.value].description
-            ? ' - ' + this.parsedPlaces[ev.detail.value].description
-            : ''),
+          (this.parsedPlaces[ev.detail.value].description ? ' - ' + this.parsedPlaces[ev.detail.value].description : '')
       );
     this.dataForm.get('location').get('lat').setValue(this.parsedPlaces[ev.detail.value].lat);
     this.dataForm.get('location').get('lon').setValue(this.parsedPlaces[ev.detail.value].lon);
@@ -389,17 +387,18 @@ export class AddEventPage implements OnInit {
   onDateStartChange() {
     const newTime = setDayOfYear(
       parseISO(this.dataForm.get('eventEndDate').value),
-      getDayOfYear(parseISO(this.dataForm.get('eventStartDate').value)),
+      getDayOfYear(parseISO(this.dataForm.get('eventStartDate').value))
     );
     this.dataForm.get('eventEndDate').setValue(subMilliseconds(newTime, this.tzoffset).toISOString().slice(0, -1));
   }
 }
 
-interface placesRemoteConfig {
-  [key: string]: {
+type placesRemoteConfig = Record<
+  string,
+  {
     name: string;
     description: string;
     lat: string;
     lon: string;
-  };
-}
+  }
+>;

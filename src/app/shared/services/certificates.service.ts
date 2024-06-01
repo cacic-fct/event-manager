@@ -21,15 +21,12 @@ import { environment } from 'src/environments/environment';
   providedIn: 'root',
 })
 export class CertificateService {
-  constructor(
-    private afs: AngularFirestore,
-    private http: HttpClient,
-  ) {}
+  constructor(private afs: AngularFirestore, private http: HttpClient) {}
 
   generateCertificate(
     eventID: string,
     certificateStoreData: CertificateStoreData,
-    certificateUserData: UserCertificateDocument,
+    certificateUserData: UserCertificateDocument
   ) {
     if (!certificateUserData || !certificateStoreData) {
       throw new Error('Request is malformed');
@@ -37,7 +34,7 @@ export class CertificateService {
       throw new Error('Request is malformed: id is missing');
     }
 
-    let pdfJson: Observable<Object>;
+    let pdfJson: Observable<object>;
     const pdfPath = `assets/certificates/templates/${certificateStoreData.certificateTemplate}.json`;
     if (isDevMode()) {
       pdfJson = this.http.get(pdfPath, {
@@ -51,7 +48,7 @@ export class CertificateService {
 
     const certificateData$ = this.afs
       .doc<CertificateDocPublic>(
-        `/certificates/${eventID}/${certificateStoreData.id}/${certificateUserData.certificateDoc}`,
+        `/certificates/${eventID}/${certificateStoreData.id}/${certificateUserData.certificateDoc}`
       )
       .get();
 
@@ -63,7 +60,7 @@ export class CertificateService {
           const content$ = this.getCertificateContent(
             eventID,
             certificateStoreData.id!,
-            certificateUserData.certificateDoc!,
+            certificateUserData.certificateDoc!
           );
           const InterRegular$ = this.http
             .get('https://cdn.jsdelivr.net/gh/cacic-fct/fonts@main/Inter/latin-ext/inter-v12-latin-ext-regular.woff', {
@@ -90,7 +87,7 @@ export class CertificateService {
             InterMedium$,
             InterLight$,
           ]);
-        }),
+        })
       )
       .pipe(take(1))
       .subscribe(async ([certificateData, pdf, majorEvent, content, InterRegular, InterMedium, InterLight]) => {
@@ -124,7 +121,7 @@ export class CertificateService {
         const encodedString: string = this.encodeCertificateCode(
           eventID,
           certificateStoreData.id!,
-          certificateUserData.certificateDoc,
+          certificateUserData.certificateDoc
         );
 
         const verificationURLQR = `${environment.baseUrl}certificado/verificar/${encodedString}`;
@@ -136,7 +133,7 @@ export class CertificateService {
           throw new Error('Major event is missing');
         }
 
-        let input = {
+        const input = {
           name: certificateDataSnapshot.fullName,
           name_small: certificateDataSnapshot.fullName,
           event_name: majorEventData.name,
@@ -159,7 +156,7 @@ export class CertificateService {
         const inputs = [input];
 
         PDFGenerate({
-          // TODO: Remove me when upstream fixes i
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           template,
           inputs,
@@ -209,7 +206,7 @@ export class CertificateService {
         } else {
           throw new Error('Unable to generate content, certificate does not exist');
         }
-      }),
+      })
     );
   }
 
@@ -220,7 +217,7 @@ export class CertificateService {
 }
 function generateContent(
   eventInfoCache: Observable<EventItemLocal | undefined>[],
-  eventsUserAttended: string[],
+  eventsUserAttended: string[]
 ): Observable<string> {
   const eventInfo$ = combineLatest(eventInfoCache);
 
@@ -261,7 +258,10 @@ function generateContent(
 
           // Get the events the user attended from the group
           const groupEventsAttended = groupEvents.filter((e) => {
-            return eventsUserAttended.includes(e?.id!);
+            if (e?.id === undefined) {
+              throw new Error('Event ID is missing');
+            }
+            return eventsUserAttended.includes(e?.id);
           });
 
           // Append all events of group to skip array
@@ -277,9 +277,9 @@ function generateContent(
             continue;
           }
 
-          let creditHours: number = 0;
+          let creditHours = 0;
           // let creditHoursTotal: number = 0;
-          let eventDays: Timestamp[] = [];
+          const eventDays: Timestamp[] = [];
 
           // Sum credit hours of all events in group
           for (const e of groupEventsAttended) {
@@ -350,7 +350,7 @@ function generateContent(
       content += `\nObservações:\nDatas em formato "dia/mês/ano".`;
 
       return content;
-    }),
+    })
   );
 }
 

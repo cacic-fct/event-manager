@@ -56,11 +56,11 @@ export class PopulateDatabasePage implements OnInit {
   parseFloat = parseFloat;
   dataForm: FormGroup;
 
-  progress: number = 0;
+  progress = 0;
 
-  populateStarted: boolean = false;
+  populateStarted = false;
 
-  numberOfSelectedCheckboxes: number = 0;
+  numberOfSelectedCheckboxes = 0;
   progressPerItem: number;
 
   constructor(private formBuilder: FormBuilder) {

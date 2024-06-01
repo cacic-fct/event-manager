@@ -70,8 +70,8 @@ export class ProfileInfoPage implements OnInit {
     private router: Router,
   ) {}
 
-  alreadyLinked: boolean = false;
-  isUnesp: boolean = false;
+  alreadyLinked = false;
+  isUnesp = false;
   userData: User;
 
   ngOnInit() {

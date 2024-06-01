@@ -10,8 +10,8 @@
 <ion-content>
   @if (majorEvent$ | async; as majorEvent) { @if (majorEventSubscription$ | async; as majorEventSubscription) {
   <div class="event-container">
-    <app-major-event-display-header [majorEventItem]="majorEvent"></app-major-event-display-header>
-    <app-major-event-display-description [majorEventItem]="majorEvent"></app-major-event-display-description>
+    <app-major-event-header [majorEventItem]="majorEvent"></app-major-event-header>
+    <app-major-event-description [majorEventItem]="majorEvent"></app-major-event-description>
     <app-major-event-display-date [majorEventItem]="majorEvent"></app-major-event-display-date>
     @if (majorEvent.price) {
     <div class="card-section ion-padding-horizontal">

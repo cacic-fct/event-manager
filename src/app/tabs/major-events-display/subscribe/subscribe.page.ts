@@ -16,7 +16,7 @@ import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { ModalController, ToastController } from '@ionic/angular/standalone';
 
-import { ConfirmModalComponent } from './confirm-modal/confirm-modal.component';
+import { ConfirmSubscriptionModalComponent } from './confirm-subscription-modal/confirm-subscription-modal.component';
 import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { trace } from '@angular/fire/compat/performance';
 
@@ -116,12 +116,12 @@ export class SubscribePage implements OnInit {
 
   dataForm: FormGroup;
 
-  eventsSelected: { [key: string]: EventItem[] } = {
+  eventsSelected: Record<string, EventItem[]> = {
     minicurso: [],
     palestra: [],
   };
 
-  eventGroupMinicursoCount: number = 0;
+  eventGroupMinicursoCount = 0;
 
   opSelected: string;
 
@@ -130,7 +130,7 @@ export class SubscribePage implements OnInit {
   majorEventID: string;
 
   eventSchedule: EventItem[] = [];
-  isEventScheduleBeingChecked: boolean = false;
+  isEventScheduleBeingChecked = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -329,6 +329,7 @@ export class SubscribePage implements OnInit {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   countCheckeds(e: any, event: EventItem) {
     const checked: boolean = e.currentTarget.checked;
     const name: string = e.currentTarget.name;
@@ -478,7 +479,7 @@ export class SubscribePage implements OnInit {
               .doc<Subscription>(`users/${user.uid}/majorEventSubscriptions/${this.majorEventID}`)
               .valueChanges({ idField: 'id' })
               .pipe(take(1), trace('firestore'))
-              .subscribe((subscription) => {
+              .subscribe(() => {
                 if (this.paymentStatus !== 2) {
                   // Merge eventsSelected arrays
                   const eventsSelected = Object.values(this.eventsSelected).reduce((acc, val) => acc.concat(val), []);
@@ -486,7 +487,7 @@ export class SubscribePage implements OnInit {
                   // Create array with event IDs from eventsSelected
                   const eventsSelectedID = eventsSelected.map((event) => event.id);
 
-                  let status: number = 0;
+                  let status = 0;
 
                   if (this.paymentStatus !== undefined) {
                     switch (this.paymentStatus) {
@@ -524,7 +525,7 @@ export class SubscribePage implements OnInit {
                     .collection(`majorEvents/${this.majorEventID}/subscriptions`)
                     .doc<MajorEventSubscription>(user.uid)
                     .get()
-                    .subscribe((doc) => {
+                    .subscribe(() => {
                       if (status === 0) {
                         this.afs
                           .collection(`majorEvents/${this.majorEventID}/subscriptions`)
@@ -532,12 +533,12 @@ export class SubscribePage implements OnInit {
                           .set({
                             subscriptionType: subscriptionType,
                             subscribedToEvents: eventsSelectedID,
-                            // @ts-ignore
+                            // @ts-expect-error - This works
                             time: serverTimestamp(),
                             payment: {
                               price: price,
                               status: status,
-                              // @ts-ignore
+                              // @ts-expect-error - This works
                               time: serverTimestamp(),
                               author: user.uid,
                             },
@@ -552,7 +553,7 @@ export class SubscribePage implements OnInit {
                             payment: {
                               price: price,
                               status: status,
-                              // @ts-ignore
+                              // @ts-expect-error - This works
                               time: serverTimestamp(),
                               author: user.uid,
                             },
@@ -611,7 +612,7 @@ export class SubscribePage implements OnInit {
     });
 
     const modal = await this.modalController.create({
-      component: ConfirmModalComponent,
+      component: ConfirmSubscriptionModalComponent,
       componentProps: {
         majorEvent$: this.majorEvent$,
         eventsSelected: eventsSelected,
@@ -782,5 +783,6 @@ export class SubscribePage implements OnInit {
 
 interface Subscription {
   id?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   reference?: DocumentReference<any>;
 }

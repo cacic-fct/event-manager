@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges } from '@angular/core';
 
 import Map from 'ol/Map';
 import View from 'ol/View';
@@ -6,7 +6,7 @@ import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
 import OSM from 'ol/source/OSM';
 import Feature from 'ol/Feature';
 import { Icon, Style } from 'ol/style';
-import { fromLonLat, useGeographic } from 'ol/proj';
+import { useGeographic } from 'ol/proj';
 import Point from 'ol/geom/Point';
 import VectorSource from 'ol/source/Vector';
 
@@ -24,11 +24,9 @@ import { IonItem, IonIcon, IonLabel } from '@ionic/angular/standalone';
   standalone: true,
   imports: [IonItem, IonIcon, IonLabel],
 })
-export class MapComponent implements OnInit {
+export class MapComponent implements OnInit, OnDestroy, OnChanges {
   map: Map | undefined | null;
   @Input() eventItem!: EventItem;
-
-  constructor() {}
 
   ngOnInit() {
     this.generateMap();
@@ -62,7 +60,7 @@ export class MapComponent implements OnInit {
         }),
       });
 
-      let iconFeature = new Feature({
+      const iconFeature = new Feature({
         geometry: new Point([this.eventItem.location.lon, this.eventItem.location.lat]),
         name: this.eventItem.name,
       });

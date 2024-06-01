@@ -50,13 +50,13 @@ import { DatePipe } from '@angular/common';
   ],
 })
 export class GroupCreationModalComponent implements OnInit {
-  @Input() eventGroup!: Array<{
+  @Input() eventGroup!: {
     id: string;
     name: string;
     icon: string;
     eventStartDate: Timestamp;
     eventEndDate: Timestamp;
-  }>;
+  }[];
 
   dataForm: FormGroup;
 

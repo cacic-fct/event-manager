@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { IonList, IonItem, IonLabel, IonIcon, IonNote } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { analyticsOutline, ellipsisHorizontalCircleOutline, navigateOutline, searchOutline } from 'ionicons/icons';
@@ -10,7 +10,7 @@ import { analyticsOutline, ellipsisHorizontalCircleOutline, navigateOutline, sea
   imports: [IonList, IonItem, IonLabel, IonIcon, IonNote],
   standalone: true,
 })
-export class NotLinkedDataComponent implements OnInit {
+export class NotLinkedDataComponent {
   constructor() {
     addIcons({
       navigateOutline,
@@ -19,6 +19,4 @@ export class NotLinkedDataComponent implements OnInit {
       ellipsisHorizontalCircleOutline,
     });
   }
-
-  ngOnInit() {}
 }

@@ -1,7 +1,7 @@
 import { AsyncPipe } from '@angular/common';
 import { CertificateStoreData } from 'src/app/shared/services/certificates.service';
 import { MailtoService, Mailto } from 'src/app/shared/services/mailto.service';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ModalController, ToastController } from '@ionic/angular/standalone';
 import { filterNullish } from 'src/app/shared/services/rxjs.service';
 
@@ -69,7 +69,7 @@ export class ListCertificatesComponent {
     private mailtoService: MailtoService,
     private certificateService: CertificateService,
     private toastController: ToastController,
-    private route: ActivatedRoute,
+    private route: ActivatedRoute
   ) {
     this.user$ = user(this.auth).pipe(filterNullish());
     this.majorEventID = this.route.snapshot.paramMap.get('majorEventID') as string;
@@ -81,7 +81,7 @@ export class ListCertificatesComponent {
       map((user) => {
         const colRef = collection(
           this.firestore,
-          `/users/${user.uid}/userCertificates/majorEvents/${this.majorEventID}`,
+          `/users/${user.uid}/userCertificates/majorEvents/${this.majorEventID}`
         );
         const col$ = collectionData(colRef, { idField: 'id' }) as Observable<UserCertificateDocument[]>;
 
@@ -91,7 +91,7 @@ export class ListCertificatesComponent {
             certificates.map((certificate) => {
               const docRef = doc(
                 this.firestore,
-                `/majorEvents/${this.majorEventID}/majorEventCertificates/${certificate.id}`,
+                `/majorEvents/${this.majorEventID}/majorEventCertificates/${certificate.id}`
               );
               const docData$ = docData(docRef, { idField: 'id' }) as Observable<CertificateStoreData>;
 
@@ -104,14 +104,14 @@ export class ListCertificatesComponent {
                       ...(certificateData as CertificateStoreData),
                       id: certificateData.id,
                     };
-                  }),
+                  })
                 ),
               };
-            }),
-          ),
+            })
+          )
         );
       }),
-      switchMap((value) => value),
+      switchMap((value) => value)
     );
   }
 
@@ -128,6 +128,7 @@ export class ListCertificatesComponent {
     this.mailtoService.open(mailto);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getCertificate(event: any, certificateData: CertificateStoreData, certificate: UserCertificateDocumentLocal) {
     event.target.disabled = true;
 

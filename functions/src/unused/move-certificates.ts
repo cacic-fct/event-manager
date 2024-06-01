@@ -7,7 +7,7 @@ exports.moveCertificates = onCall({ timeoutSeconds: 540, memory: '1GiB' }, async
     throw new HttpsError('failed-precondition', 'The function must be called while authenticated.');
   }
 
-  if (context.app == undefined) {
+  if (context.app === undefined) {
     throw new HttpsError('failed-precondition', 'The function must be called from an App Check verified app.');
   }
 

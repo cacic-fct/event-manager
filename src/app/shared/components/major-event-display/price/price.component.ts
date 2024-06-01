@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { IonIcon, IonItem, IonLabel } from '@ionic/angular/standalone';
 import { CurrencyPipe } from '@angular/common';
@@ -13,10 +13,6 @@ import { CurrencyPipe } from '@angular/common';
   standalone: true,
   imports: [IonIcon, IonItem, IonLabel, CurrencyPipe],
 })
-export class PriceComponent implements OnInit {
+export class PriceComponent {
   @Input() majorEventItem!: MajorEventItem;
-
-  constructor() {}
-
-  ngOnInit() {}
 }

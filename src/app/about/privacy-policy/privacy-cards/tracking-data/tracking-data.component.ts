@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { IonItem, IonIcon, IonLabel, IonList, IonNote } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { analyticsOutline, fingerPrintOutline, idCardOutline, searchOutline } from 'ionicons/icons';
@@ -10,7 +10,7 @@ import { analyticsOutline, fingerPrintOutline, idCardOutline, searchOutline } fr
   standalone: true,
   imports: [IonNote, IonList, IonItem, IonIcon, IonLabel],
 })
-export class TrackingDataComponent implements OnInit {
+export class TrackingDataComponent {
   constructor() {
     addIcons({
       fingerPrintOutline,
@@ -19,6 +19,4 @@ export class TrackingDataComponent implements OnInit {
       idCardOutline,
     });
   }
-
-  ngOnInit() {}
 }

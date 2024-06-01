@@ -112,12 +112,14 @@
 
       <p class="ion-padding-horizontal footnote">
         Se você está tendo problemas com a sua inscrição,
-        <a (click)="mailtoIssues()">entre em contato com o CACiC</a>.
+        <a (keypress)="mailtoIssues()" (click)="mailtoIssues()" tabindex="0">entre em contato com o CACiC</a>.
       </p>
 
       <p class="ion-padding-horizontal footnote">
         Se você não possui CPF ou um número de celular brasileiro,
-        <a (click)="mailtoDocumentPhone()">entre em contato com o CACiC</a>.
+        <a (keypress)="mailtoDocumentPhone()" (click)="mailtoDocumentPhone()" tabindex="0"
+          >entre em contato com o CACiC</a
+        >.
       </p>
 
       <ion-button expand="block" id="continue-button" type="submit" [disabled]="!this.dataForm.valid">

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -38,12 +38,8 @@ import { Router, RouterLink } from '@angular/router';
     RouterLink,
   ],
 })
-export class LandingPage implements OnInit {
+export class LandingPage {
   router = inject(Router);
-
-  constructor() {}
-
-  ngOnInit() {}
 
   jumpTo(anchor: string) {
     const element = document.querySelector(`#${anchor}`);

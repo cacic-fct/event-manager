@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { AlertController } from '@ionic/angular/standalone';
 
 import {
@@ -42,8 +42,8 @@ import { ServiceWorkerService } from 'src/app/shared/services/service-worker/ser
     IonText,
   ],
 })
-export class SupportPage implements OnInit {
-  serviceWorkerActive: boolean = false;
+export class SupportPage {
+  serviceWorkerActive = false;
 
   constructor(
     private alertController: AlertController,
@@ -51,8 +51,6 @@ export class SupportPage implements OnInit {
   ) {
     this.serviceWorkerActive = this.sw.getServiceWorkerStatus();
   }
-
-  ngOnInit() {}
 
   async alertUpdate() {
     const alert = await this.alertController.create({

@@ -87,11 +87,11 @@ interface EventItemQuery extends EventItem {
   ],
 })
 export class PageManageEvents implements OnInit {
-  groupUnderSelection: boolean = false;
+  groupUnderSelection = false;
   dataForm: FormGroup;
   today: Date = new Date();
   currentMonth: string = this.today.toISOString();
-  currentMonth$: BehaviorSubject<string | null> = new BehaviorSubject(this.currentMonth);
+  currentMonth$ = new BehaviorSubject<string | null>(this.currentMonth);
   events$: Observable<EventItemQuery[]>;
   constructor(
     private afs: AngularFirestore,
@@ -101,7 +101,7 @@ export class PageManageEvents implements OnInit {
     public emojiService: EmojiService,
     public dateService: DateService,
     private formBuilder: FormBuilder,
-    private modalController: ModalController,
+    private modalController: ModalController
   ) {
     this.dataForm = this.formBuilder.group({
       selectedCheckboxes: this.formBuilder.array([]),
@@ -113,6 +113,7 @@ export class PageManageEvents implements OnInit {
       switchMap(([date]) => {
         return this.afs
           .collection<EventItem>('events', (ref) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let query: any = ref;
             query = query
               .where('eventStartDate', '<=', endOfMonth(parseISO(date)))
@@ -124,14 +125,14 @@ export class PageManageEvents implements OnInit {
             trace('firestore'),
             map((events) =>
               events.map((event) => {
-                let eventObject: EventItemQuery = event;
+                const eventObject: EventItemQuery = event;
                 if (eventObject.inMajorEvent)
                   eventObject.inMajorEventName = this.getMajorEventName$(event.inMajorEvent);
                 return eventObject;
-              }),
-            ),
+              })
+            )
           );
-      }),
+      })
     );
   }
 
@@ -142,7 +143,7 @@ export class PageManageEvents implements OnInit {
       .get()
       .pipe(
         take(1),
-        map((doc) => doc.data()?.name),
+        map((doc) => doc.data()?.name)
       );
   }
 
@@ -287,7 +288,7 @@ export class PageManageEvents implements OnInit {
     } while (bannedCodes.includes(code));
 
     this.afs.doc<EventItem>(`events/${eventID}`).update({
-      // @ts-ignore
+      // @ts-expect-error - This works
       attendanceCollectionStart: serverTimestamp(),
       attendanceCollectionEnd: null,
       attendanceCode: code,
@@ -299,7 +300,7 @@ export class PageManageEvents implements OnInit {
       .subscribe((subscriptions) => {
         subscriptions.forEach((subscription) => {
           this.afs.doc<User>(`users/${subscription.id}`).update({
-            // @ts-ignore
+            // @ts-expect-error - This works
             'pending.onlineAttendance': arrayUnion(eventID),
           });
         });
@@ -310,7 +311,7 @@ export class PageManageEvents implements OnInit {
 
   closeOnlineAttendance(eventID: string) {
     this.afs.doc<EventItem>(`events/${eventID}`).update({
-      // @ts-ignore
+      // @ts-expect-error - This works
       attendanceCollectionEnd: serverTimestamp(),
     });
 
@@ -320,13 +321,14 @@ export class PageManageEvents implements OnInit {
       .subscribe((subscriptions) => {
         subscriptions.forEach((subscription) => {
           this.afs.doc<User>(`users/${subscription.id}`).update({
-            // @ts-ignore
+            // @ts-expect-error - This works
             'pending.onlineAttendance': arrayRemove(eventID),
           });
         });
       });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onCheckBoxChange(e: any, eventItem: EventItem) {
     const checkArray: FormArray = this.dataForm.get('selectedCheckboxes') as FormArray;
 
@@ -338,7 +340,7 @@ export class PageManageEvents implements OnInit {
           name: eventItem.name,
           eventStartDate: eventItem.eventStartDate,
           eventEndDate: eventItem.eventEndDate,
-        }),
+        })
       );
     } else {
       let i = 0;
@@ -399,7 +401,7 @@ export class PageManageEvents implements OnInit {
       .subscribe((events) => {
         events.forEach((event) => {
           this.afs.doc<EventItem>(`events/${event.id}`).update({
-            // @ts-ignore
+            // @ts-expect-error - This works
             eventGroup: deleteField(),
           });
         });

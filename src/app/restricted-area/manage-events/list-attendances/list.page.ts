@@ -1,5 +1,5 @@
 import { ToastController, AlertController } from '@ionic/angular/standalone';
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
@@ -27,6 +27,7 @@ import {
   IonIcon,
 } from '@ionic/angular/standalone';
 import { AsyncPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { filterNullish } from 'src/app/shared/services/rxjs.service';
 
 interface Attendance {
   user: Observable<User>;
@@ -59,13 +60,13 @@ interface Attendance {
     AsyncPipe,
   ],
 })
-export class ListPage implements OnInit {
+export class ListPage {
   @ViewChild('mySwal')
   private mySwal!: SwalComponent;
 
   attendanceCollection$: Observable<Attendance[]>;
   eventID: string;
-  event$: Observable<EventItem>;
+  event$: Observable<EventItem | undefined>;
 
   constructor(
     private afs: AngularFirestore,
@@ -92,12 +93,7 @@ export class ListPage implements OnInit {
         }
       });
 
-    this.event$ = this.afs
-      .collection('events')
-      .doc<EventItem>(this.eventID)
-      .valueChanges()
-      // @ts-ignore
-      .pipe(trace('firestore'));
+    this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges();
 
     this.attendanceCollection$ = this.afs
       .collection<Attendance>(`events/${this.eventID}/attendance`, (ref) => {
@@ -111,15 +107,12 @@ export class ListPage implements OnInit {
           return attendance.map((item) => {
             return {
               ...item,
-              // @ts-ignore
-              user: this.afs.collection('users').doc<User>(item.id).valueChanges().pipe(trace('firestore'), take(1)),
+              user: this.afs.collection('users').doc<User>(item.id).valueChanges().pipe(filterNullish(), take(1)),
             };
           });
         })
       );
   }
-
-  ngOnInit() {}
 
   deleteAttendance(attendanceID: string) {
     this.afs
@@ -223,6 +216,9 @@ export class ListPage implements OnInit {
           });
 
           this.event$.pipe(take(1)).subscribe((event) => {
+            if (!event) {
+              return;
+            }
             const csvString = csv.map((row) => row.join(',')).join('\n');
             const a = document.createElement('a');
             a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));

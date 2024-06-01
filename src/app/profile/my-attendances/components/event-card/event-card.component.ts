@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { DateService } from 'src/app/shared/services/date.service';
 import { EventSubscriptionLocal } from 'src/app/profile/my-attendances/my-attendances.page';
 import { AsyncPipe, DatePipe } from '@angular/common';
@@ -38,10 +38,8 @@ import { RouterLink } from '@angular/router';
     IonIcon,
   ],
 })
-export class EventCardComponent implements OnInit {
+export class EventCardComponent {
   @Input() eventSubscription!: EventSubscriptionLocal;
 
   constructor(public dateService: DateService) {}
-
-  ngOnInit() {}
 }

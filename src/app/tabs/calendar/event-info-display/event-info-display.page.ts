@@ -8,7 +8,7 @@ import { ToastController } from '@ionic/angular/standalone';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { EventItem } from '../../../shared/services/event';
-import { take, Observable, map } from 'rxjs';
+import { Observable } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 
@@ -24,8 +24,8 @@ import {
   IonProgressBar,
 } from '@ionic/angular/standalone';
 import { AsyncPipe } from '@angular/common';
-import { HeaderComponent } from 'src/app/shared/components/event-display/header/header.component';
-import { DescriptionComponent } from 'src/app/shared/components/event-display/description/description.component';
+import { EventHeaderComponent } from 'src/app/shared/components/event-display/event-header/event-header.component';
+import { EventDescriptionComponent } from 'src/app/shared/components/event-display/event-description/event-description.component';
 import { MapComponent } from 'src/app/shared/components/event-display/map/map.component';
 import { ButtonsComponent } from 'src/app/shared/components/event-display/buttons/buttons.component';
 import { environment } from 'src/environments/environment';
@@ -47,8 +47,8 @@ import { PlausibleService } from '@notiz/ngx-plausible';
     IonContent,
     IonProgressBar,
     AsyncPipe,
-    HeaderComponent,
-    DescriptionComponent,
+    EventHeaderComponent,
+    EventDescriptionComponent,
     MapComponent,
     ButtonsComponent,
   ],
@@ -64,7 +64,7 @@ export class EventInfoDisplayPage implements OnInit {
     private toastController: ToastController,
     private router: Router,
     private route: ActivatedRoute,
-    private afs: AngularFirestore,
+    private afs: AngularFirestore
   ) {}
 
   ngOnInit() {

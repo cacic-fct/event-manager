@@ -113,7 +113,7 @@ export class ValidateReceiptPage implements OnInit {
   @ViewChild('swalConfirm') private swalConfirm: SwalComponent;
   @ViewChild('refuseModal') private refuseModal: IonModal;
 
-  arrayIndex: number = 0;
+  arrayIndex = 0;
 
   constructor(
     private route: ActivatedRoute,
@@ -121,7 +121,7 @@ export class ValidateReceiptPage implements OnInit {
     private formBuilder: FormBuilder,
     private alertController: AlertController,
     public dateService: DateService,
-    private toastController: ToastController,
+    private toastController: ToastController
   ) {}
 
   ngOnInit() {
@@ -129,7 +129,7 @@ export class ValidateReceiptPage implements OnInit {
     const eventRef = this.afs.collection('majorEvents').doc<MajorEventItem>(this.majorEventID);
     this.eventName$ = eventRef.valueChanges().pipe(map((event) => event.name));
     this.subscriptionsQuery = eventRef.collection<Subscription>('subscriptions', (ref) =>
-      ref.where('payment.status', '==', 1).orderBy('payment.time'),
+      ref.where('payment.status', '==', 1).orderBy('payment.time')
     );
     this.subscriptions$ = this.subscriptionsQuery.valueChanges({ idField: 'id' }).pipe(
       untilDestroyed(this),
@@ -141,7 +141,7 @@ export class ValidateReceiptPage implements OnInit {
               .collection('events')
               .doc<EventItem>(subEventID)
               .valueChanges({ idField: 'id' })
-              .pipe(take(1), trace('firestore')),
+              .pipe(take(1), trace('firestore'))
           );
 
           let observableArrayOfEvents: Observable<EventItem[]> = combineLatest(arrayOfEvents);
@@ -151,7 +151,7 @@ export class ValidateReceiptPage implements OnInit {
               return events.sort((a, b) => {
                 return a.eventStartDate.toMillis() - b.eventStartDate.toMillis();
               });
-            }),
+            })
           );
 
           return {
@@ -160,8 +160,8 @@ export class ValidateReceiptPage implements OnInit {
             userData$: this.userDataByID(sub.id),
             image: this.imgURL(sub.id),
           };
-        }),
-      ),
+        })
+      )
     );
     this.imgBaseHref = [this.majorEventID, 'payment-receipts'].join('/');
     this.refuseForm = this.formBuilder.group(
@@ -171,7 +171,7 @@ export class ValidateReceiptPage implements OnInit {
       },
       {
         validators: [this.validatorRadio],
-      },
+      }
     );
   }
 
@@ -198,7 +198,7 @@ export class ValidateReceiptPage implements OnInit {
         .subscribe((col) => {
           const subscriberID = col.docs[this.arrayIndex].id;
           this.subscriptionsQuery.doc(subscriberID).update({
-            // @ts-ignore
+            // @ts-expect-error - This works
             'payment.status': 2, // Novo status: pagamento aprovado
             'payment.time': serverTimestamp(),
             'payment.author': adminUser.uid, // Autor da mudança
@@ -217,7 +217,6 @@ export class ValidateReceiptPage implements OnInit {
                   .collection('subscriptions')
                   .doc(subscriberID)
                   .set({
-                    // @ts-ignore
                     time: serverTimestamp(),
                   });
 
@@ -266,7 +265,7 @@ export class ValidateReceiptPage implements OnInit {
           switch (this.refuseForm.value.radioGroup) {
             case 'invalidReceipt':
               this.subscriptionsQuery.doc(subscriberID).update({
-                // @ts-ignore
+                // @ts-expect-error - This works
                 'payment.status': 3,
                 'payment.validationTime': serverTimestamp(),
                 'payment.validationAuthor': user.uid,
@@ -292,14 +291,14 @@ export class ValidateReceiptPage implements OnInit {
                       firstName,
                       user.phone,
                       eventName,
-                      this.refuseForm.get('errorMessage').value,
+                      this.refuseForm.get('errorMessage').value
                     );
                   });
                 });
               break;
             case 'noSlots':
               this.subscriptionsQuery.doc(subscriberID).update({
-                // @ts-ignore
+                // @ts-expect-error - This works
                 'payment.status': 4,
                 'payment.validationTime': serverTimestamp(),
                 'payment.validationAuthor': user.uid,
@@ -330,7 +329,7 @@ export class ValidateReceiptPage implements OnInit {
 
             case 'scheduleConflict':
               this.subscriptionsQuery.doc(subscriberID).update({
-                // @ts-ignore
+                // @ts-expect-error - This works
                 'payment.status': 5,
                 'payment.validationTime': serverTimestamp(),
                 'payment.validationAuthor': user.uid,
@@ -380,7 +379,7 @@ export class ValidateReceiptPage implements OnInit {
           handler: () => {
             const formattedPhone = this.formatPhoneWhatsApp(phone);
 
-            const text: string = `Olá, ${name}! O seu comprovante de pagamento do evento "${event}" foi recusado.%0aA justificativa é "${message}".%0a%0aRealize o envio novamente pelo link:%0a${environment.baseUrl}inscricoes/pagar/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=payment_error`;
+            const text = `Olá, ${name}! O seu comprovante de pagamento do evento "${event}" foi recusado.%0aA justificativa é "${message}".%0a%0aRealize o envio novamente pelo link:%0a${environment.baseUrl}inscricoes/pagar/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=payment_error`;
 
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
@@ -407,7 +406,7 @@ export class ValidateReceiptPage implements OnInit {
           handler: () => {
             const formattedPhone = this.formatPhoneWhatsApp(phone);
 
-            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aNão há mais vagas em uma das atividades selecionadas.%0a%0aVocê precisa editar a sua inscrição pelo link:%0a${environment.baseUrl}eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=no_slots`;
+            const text = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aNão há mais vagas em uma das atividades selecionadas.%0a%0aVocê precisa editar a sua inscrição pelo link:%0a${environment.baseUrl}eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=no_slots`;
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
           },
@@ -433,7 +432,7 @@ export class ValidateReceiptPage implements OnInit {
           handler: () => {
             const formattedPhone = this.formatPhoneWhatsApp(phone);
 
-            const text: string = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aHá um choque de horário nos eventos que você selecionou.%0a%0aVocê precisa editar a sua inscrição pelo link:%0a${environment.baseUrl}eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=schedule_conflict`;
+            const text = `Olá, ${name}! Ocorreu um problema com a sua inscrição no evento "${event}".%0aHá um choque de horário nos eventos que você selecionou.%0a%0aVocê precisa editar a sua inscrição pelo link:%0a${environment.baseUrl}eventos/inscrever/${this.majorEventID}?utm_source=whatsapp%26utm_medium=message%26utm_campaign=schedule_conflict`;
             const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${text}`;
             window.open(url, '_blank');
           },
@@ -478,7 +477,7 @@ export class ValidateReceiptPage implements OnInit {
     let string = array.join('\n');
 
     // Remove all quotes and brackets
-    string = string.replace(/[\[\]"]+/g, '');
+    string = string.replace(/[[\]"]+/g, '');
 
     const toast = await this.toastController.create({
       header: 'IDs dos eventos',

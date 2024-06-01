@@ -5,42 +5,36 @@
 </ion-header>
 
 <ion-content>
-  @if (majorEvents$ | async; as majorEventsList) {
-    @if (majorEventsList.length === 0) {
-      <h1 class="ion-text-center">Nenhum evento disponível</h1>
-    }
-    @if (majorEventsList.length > 0) {
-      <div class="event-container">
-        @for (event of majorEventsList; track event) {
-          <ion-card>
-            <app-major-event-display-header [majorEventItem]="event"></app-major-event-display-header>
-            <app-major-event-display-description [majorEventItem]="event"></app-major-event-display-description>
-            <app-major-event-display-date [majorEventItem]="event"></app-major-event-display-date>
-            <app-major-event-display-price [majorEventItem]="event"></app-major-event-display-price>
-            <div class="ion-padding">
-              @if ((event.subscriptionStartDate && event.subscriptionEndDate) && isTodayBetweenDates(dateService.getDateFromTimestamp(event.subscriptionStartDate), dateService.getDateFromTimestamp(event.subscriptionEndDate))) {
-                @if (event.isSubscribed | async; as isSubscribed) {
-                  @if (isSubscribed) {
-                    <ion-button [routerLink]="['/inscricoes']">
-                      <ion-icon slot="start" name="checkmark"></ion-icon> Inscrito
-                    </ion-button>
-                  }
-                } @else {
-                  <ion-button [routerLink]="['inscrever', event.id]"> Inscreva-se </ion-button>
-                }
-              }
-              @if (event.button?.url) {
-                <ion-button [href]="event.button.url" fill="clear" target="_blank">
-                  {{ event.button.text || 'Saiba mais' }}
-                </ion-button>
-              }
-            </div>
-          </ion-card>
+  @if (majorEvents$ | async; as majorEventsList) { @if (majorEventsList.length === 0) {
+  <h1 class="ion-text-center">Nenhum evento disponível</h1>
+  } @if (majorEventsList.length > 0) {
+  <div class="event-container">
+    @for (event of majorEventsList; track event) {
+    <ion-card>
+      <app-major-event-header [majorEventItem]="event"></app-major-event-header>
+      <app-major-event-description [majorEventItem]="event"></app-major-event-description>
+      <app-major-event-display-date [majorEventItem]="event"></app-major-event-display-date>
+      <app-major-event-display-price [majorEventItem]="event"></app-major-event-display-price>
+      <div class="ion-padding">
+        @if ((event.subscriptionStartDate && event.subscriptionEndDate) &&
+        isTodayBetweenDates(dateService.getDateFromTimestamp(event.subscriptionStartDate),
+        dateService.getDateFromTimestamp(event.subscriptionEndDate))) { @if (event.isSubscribed | async; as
+        isSubscribed) { @if (isSubscribed) {
+        <ion-button [routerLink]="['/inscricoes']">
+          <ion-icon slot="start" name="checkmark"></ion-icon> Inscrito
+        </ion-button>
+        } } @else {
+        <ion-button [routerLink]="['inscrever', event.id]"> Inscreva-se </ion-button>
+        } } @if (event.button?.url) {
+        <ion-button [href]="event.button.url" fill="clear" target="_blank">
+          {{ event.button.text || 'Saiba mais' }}
+        </ion-button>
         }
       </div>
+    </ion-card>
     }
-  } @else {
-    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  </div>
+  } } @else {
+  <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
-
 </ion-content>
