@@ -4,6 +4,9 @@
 
 # FCT App
 
+[![Build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/main.yml?branch=main)](https://github.com/cacic-fct/fct-app/actions)
+[![Coverage](https://img.shields.io/codecov/c/github/cacic-fct/fct-app/main)](https://codecov.io/gh/cacic-fct/fct-app)
+
 O "FCT App" facilita a vida dos alunos da FCT, com o acesso aos eventos do câmpus. Tem alto potencial de expansão. 
 
 ## Contribuindo
