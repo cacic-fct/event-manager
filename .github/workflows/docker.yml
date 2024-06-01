@@ -4,6 +4,8 @@ on:
   workflow_run:
     workflows: ["ci"]
     branches: [main]
+    types:
+      - completed
 
 env:
   REGISTRY: ghcr.io
