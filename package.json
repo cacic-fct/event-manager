@@ -61,7 +61,7 @@
     "@types/twemoji-parser": "^13.1.4",
     "@web/test-runner": "^0.18.2",
     "angular-eslint": "18.0.1",
-    "eslint": "^9.3.0",
+    "eslint": "^9.4.0",
     "eslint-plugin-import": "2.29.1",
     "eslint-plugin-jsdoc": "48.2.7",
     "eslint-plugin-prefer-arrow": "1.2.3",
