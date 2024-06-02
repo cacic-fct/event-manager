@@ -32,8 +32,6 @@ body:
           required: true
         - label: O título e a descrição são suficientemente descritivos
           required: true
-        - label: Tenho certeza que este bug é reproduzível na última versão
-          required: true
         - label: Não li nada do que está escrito e só selecionei tudo para enviar logo
           required: false
         - label: Entendo que recursos que tangenciam o propósito do projeto podem ser rejeitados
