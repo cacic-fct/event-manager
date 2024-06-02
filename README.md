@@ -1,13 +1,15 @@
+# FCT App
+
+[![Documentation](https://img.shields.io/badge/docs-blue)](https://cacic-fct.github.io/fct-app-docs)
+[![Build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/ci.yml?branch=main&logo=github)](https://github.com/cacic-fct/fct-app/actions)
+[![Coverage](https://img.shields.io/codecov/c/github/cacic-fct/fct-app/main?logo=codecov)](https://codecov.io/gh/cacic-fct/fct-app)
+[![License](https://img.shields.io/badge/license-AGPL–3.0–only-red)](https://github.com/cacic-fct/fct-app/blob/main/License.txt)
+
+O "FCT App" facilita a vida dos alunos da FCT, com o acesso aos eventos do câmpus. Tem alto potencial de expansão. 
+
 > [!WARNING]  
 > Leia as discussões sobre migrar do Firebase para uma hospedagem própria ([#182](https://github.com/cacic-fct/fct-app/discussions/182)) antes de desenvolver um recurso novo.
 
-
-# FCT App
-
-[![Build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/ci.yml?branch=main)](https://github.com/cacic-fct/fct-app/actions)
-[![Coverage](https://img.shields.io/codecov/c/github/cacic-fct/fct-app/main)](https://codecov.io/gh/cacic-fct/fct-app)
-
-O "FCT App" facilita a vida dos alunos da FCT, com o acesso aos eventos do câmpus. Tem alto potencial de expansão. 
 
 ## Contribuindo
 
@@ -19,7 +21,7 @@ Leia o [guia de contribuição do CACiC](https://github.com/cacic-fct/.github/bl
 
 A documentação do projeto está disponível em [cacic-fct/fct-app-docs](https://github.com/cacic-fct/fct-app-docs).
 
-## Site
+## Aplicativo
 
 O aplicativo é construído com Angular e pode ser acessado em [fct-pp.web.app](https://fct-pp.web.app).
 
