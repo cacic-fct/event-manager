@@ -13,7 +13,7 @@ body:
         - Mantenha sua issue focada em um único recurso. Se você tiver várias sugestões, crie uma issue separada para cada uma delas.
         - Lembre-se de que o **FCT App** é um projeto de código aberto, que é mantido por voluntários. Se você puder, envie um pull request com o recurso que deseja adicionar.
 
----
+        ___
 
   - type: textarea
     attributes:

@@ -11,7 +11,8 @@ body:
         - Mantenha sua issue focada em um único problema. Se você tiver vários relatórios de bugs, crie uma issue separada para cada um deles.
         - Lembre-se de que o **FCT App** é um projeto de código aberto, que é mantido por voluntários. Se você puder, resolva o problema e envie um pull request.
 
----
+        ___
+
   - type: textarea
     attributes:
       label: Descrição

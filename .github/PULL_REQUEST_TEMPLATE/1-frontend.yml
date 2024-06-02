@@ -10,7 +10,7 @@ body:
         - Se o recurso que você alterou não possuir um teste, crie um arquivo `.spec.ts` válido.
         - Se o seu pull request fecha uma issue, adicione `Closes #<número da issue>`.
 
----
+        ___
 
   - type: textarea
     attributes:

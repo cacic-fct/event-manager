@@ -9,7 +9,7 @@ body:
         - Mantenha seu pull request focado em um único recurso. Se você tiver várias sugestões, crie um pull request separada para cada uma delas.
         - Se o seu pull request fecha uma issue, adicione `Closes #<número da issue>`.
 
----
+        ___
 
   - type: textarea
     attributes:
