@@ -1,0 +1,40 @@
+# Attribution: Oleksii Holub - https://github.com/Tyrrrz
+# License: MIT
+
+name: ✨ Pedido de recurso novo
+description: Solicite a adição de um novo recurso ao projeto.
+labels: ["enhancement", "triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        - Evite descrições e títulos vagos como "Quero isso" ou "Alguns sugestões" — seja o mais descritivo possível.
+        - Mantenha sua issue focada em um único recurso. Se você tiver várias sugestões, crie uma issue separada para cada uma delas.
+        - Lembre-se de que o **FCT App** é um projeto de código aberto, que é mantido por voluntários. Se você puder, envie um pull request com o recurso que deseja adicionar.
+
+---
+
+  - type: textarea
+    attributes:
+      label: Detalhes
+      description: Descrição detalhada do recurso.
+    validations:
+      required: true
+
+  - type: checkboxes
+    attributes:
+      label: Checklist
+      options:
+        - label: Eu escrevi a issue em português
+          required: true
+        - label: Eu conferi se esta funcionalidade já foi solicitada antes
+          required: true
+        - label: O título e a descrição são suficientemente descritivos
+          required: true
+        - label: Tenho certeza que este bug é reproduzível na última versão
+          required: true
+        - label: Não li nada do que está escrito e só selecionei tudo para enviar logo
+          required: false
+        - label: Entendo que recursos que tangenciam o propósito do projeto podem ser rejeitados
+          required: true

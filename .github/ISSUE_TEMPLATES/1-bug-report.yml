@@ -1,0 +1,70 @@
+# Attribution: Oleksii Holub - https://github.com/Tyrrrz
+# License: MIT
+
+name: 🐞 Relatório de bug
+description: Reporte um problema ou erro.
+labels: ["bug", "triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        - Evite descrições e títulos vagos como "Algo não está funcionando" ou "Alguns problemas" — seja o mais descritivo possível.
+        - Issues devem conter informações suficientes para serem reproduzíveis. Se você tem dificuldades para reproduzir o problema, inicie uma [discussão](https://github.com/cacic-fct/fct-app/discussions/new).
+        - Mantenha sua issue focada em um único problema. Se você tiver vários relatórios de bugs, crie uma issue separada para cada um deles.
+        - Lembre-se de que o **FCT App** é um projeto de código aberto, que é mantido por voluntários. Se você puder, resolva o problema e envie um pull request.
+
+---
+
+  - type: input
+    attributes:
+      label: Navegador e plataforma
+      description: Qual navegador e plataforma você está usando?
+      placeholder: Chrome no Android
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Passos para reproduzir
+      description: >
+        Passos mínimos necessários para reproduzir o bug, incluindo pré-requisitos, configurações ou outros itens relevantes.  
+        Qualquer pessoa deve ser capaz de reproduzir o bug seguindo os passos especificados.
+        Se o bug depender de fatores externos (como uma instabilidade na rede, extensão instalada no navegador, etc), esta seção deve incluir todas as informações relevantes.
+      placeholder: |
+        Passos:
+        - Passo 1:
+        - Passo 2:
+        - Passo 3:
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Detalhes
+      description: >
+        Explicação detalhada do bug, incluindo qualquer informação adicional que você considere relevante.
+      placeholder: |
+        - Comportamento esperado: …
+        - Comportamento observado: …
+    validations:
+      required: true
+
+  - type: checkboxes
+    attributes:
+      label: Checklist
+      options:
+        - label: Eu escrevi a issue em português
+          required: true
+        - label: Eu conferi se este bug já foi relatado
+          required: true
+        - label: O título e a descrição são suficientemente descritivos
+          required: true
+        - label: Tenho certeza que este bug é reproduzível na última versão
+          required: true
+        - label: Não estou reportando uma vulnerabilidade de segurança em uma issue pública
+          required: true
+        - label: Não li nada do que está escrito e só selecionei tudo para enviar logo
+          required: false
+        - label: Provi todas as informações necessárias para reproduzir o bug
+          required: true

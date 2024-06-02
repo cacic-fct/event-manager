@@ -1,0 +1,51 @@
+name: ⚙️ DevOps
+description: Solicite uma alteração ou correção no código da infraestrutura.
+labels: ["enhancement", "triage", "devops"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        - Mantenha seu pull request focado em um único recurso. Se você tiver várias sugestões, crie um pull request separada para cada uma delas.
+        - Se o seu pull request fecha uma issue, adicione `Closes #<número da issue>`.
+
+---
+
+  - type: textarea
+    attributes:
+      label: Descrição
+      description: >
+        Explicação clara e detalhada do pull request, incluindo qualquer informação adicional que você considere relevante, como imagens ou vídeos.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Closes issues
+      description: >
+        Insira todas as issues que este pull request fecha.
+      placeholder: |
+        Closes #
+        Closes #
+        ...
+    validations:
+      required: false
+
+  - type: checkboxes
+    attributes:
+      label: Checklist
+      options:
+        - label: Eu conferi se esta funcionalidade já foi solicitada antes
+          required: true
+        - label: Eu escrevi o título em inglês
+          required: true
+        - label: Eu escrevi a descrição em português
+          required: true
+        - label: O título e a descrição são suficientemente descritivos
+          required: true
+        - label: Meu pull request tem foco em um único recurso
+          required: true
+        - label: Não li nada do que está escrito e só selecionei tudo para enviar logo
+          required: false
+        - label: Entendo que recursos que tangenciam o propósito do projeto podem ser rejeitados
+          required: true
