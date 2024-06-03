@@ -44,7 +44,7 @@ import localePt from '@angular/common/locales/pt';
 registerLocaleData(localePt);
 
 import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
-import { setNonce } from '@ionic/core/loader';
+import { setNonce } from '@ionic/core/components';
 
 import { H } from 'highlight.run';
 
@@ -89,7 +89,7 @@ bootstrapApplication(AppComponent, {
       AngularFireModule.initializeApp(environment.firebase),
 
       // TODO: https://github.com/cacic-fct/fct-app/issues/172
-      AngularFirestoreModule, //.enablePersistence({ synchronizeTabs: true }),
+      AngularFirestoreModule //.enablePersistence({ synchronizeTabs: true }),
     ),
 
     provideFirebaseApp(() => initializeApp(environment.firebase)),
