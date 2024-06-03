@@ -48,6 +48,7 @@ import { setNonce } from '@ionic/core/components';
 
 import { H } from 'highlight.run';
 
+console.debug('DEBUG: Nonce: Will fetch nonce');
 const nonce = fetchNonce();
 setNonce(nonce);
 
@@ -178,10 +179,7 @@ function fetchNonce(): string {
     const message =
       'Ocorreu um erro ao validar a integridade do aplicativo.\nRecarregue a página.\nErro: Nonce não encontrado';
 
-    // @ts-expect-error - Alert is globally available in the browser
-    if (!alert(message)) {
-      window.location.reload();
-    }
+    window.location.reload();
 
     throw new Error('Nonce not found in cookies');
   }
