@@ -48,6 +48,9 @@ import { setNonce } from '@ionic/core/components';
 
 import { H } from 'highlight.run';
 
+const nonce = fetchNonce();
+setNonce(nonce);
+
 H.init('1jdkoe52', {
   environment: isDevMode() ? 'dev' : 'production',
   backendUrl: 'https://api.highlight.fctapp.yudi.me/public',
@@ -59,9 +62,6 @@ H.init('1jdkoe52', {
   privacySetting: 'none',
   sendMode: 'local',
 });
-
-const nonce = fetchNonce();
-setNonce(nonce);
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -183,5 +183,6 @@ function fetchNonce(): string {
 
     throw new Error('Nonce not found in cookies');
   }
+  console.debug('Nonce:', nonce);
   return nonce.split('=')[1];
 }
