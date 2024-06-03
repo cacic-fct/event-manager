@@ -57,7 +57,7 @@
     "@types/google-one-tap": "^1.2.6",
     "@types/jasmine": "^5.1.4",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.13.0",
+    "@types/node": "^20.14.0",
     "@types/twemoji-parser": "^13.1.4",
     "@web/test-runner": "^0.18.2",
     "angular-eslint": "18.0.1",
