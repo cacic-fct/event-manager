@@ -179,6 +179,8 @@ function fetchNonce(): string {
     const message =
       'Ocorreu um erro ao validar a integridade do aplicativo.\nRecarregue a página.\nErro: Nonce não encontrado';
 
+    window.alert(message);
+
     window.location.reload();
 
     throw new Error('Nonce not found in cookies');
