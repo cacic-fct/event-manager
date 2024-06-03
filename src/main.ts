@@ -168,8 +168,10 @@ bootstrapApplication(AppComponent, {
 function fetchNonce(): string {
   const regex = new RegExp(`s*nonce=`);
   const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
+  console.debug('DEBUG: Nonce:', nonce);
   if (!nonce) {
     if (isDevMode()) {
+      console.debug('DEBUG: Nonce: Using development-nonce');
       return 'development-nonce';
     }
 
@@ -183,6 +185,5 @@ function fetchNonce(): string {
 
     throw new Error('Nonce not found in cookies');
   }
-  console.debug('Nonce:', nonce);
   return nonce.split('=')[1];
 }
