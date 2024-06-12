@@ -28,7 +28,9 @@
               },
               "src/googlee453356471cb5ac4.html",
               "src/manifest.webmanifest",
-              "src/robots.txt"
+              "src/robots.txt",
+              "src/humans.txt",
+              "src/.well-known/security.txt"
             ],
             "styles": [
               "src/global.scss"
