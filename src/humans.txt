@@ -1,1 +1,1 @@
-https://github.com/cacic-fct/fct-app/graphs/contributors
+Confira a rota humans.txt em app.routes.ts.
