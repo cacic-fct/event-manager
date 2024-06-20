@@ -4,7 +4,7 @@
     "redirects": [
       {
         "source": "**",
-        "destination": "https://fctapp.yudi.me",
+        "destination": "https://fctapp.cacic.dev.br",
         "type": 301
       }
     ]

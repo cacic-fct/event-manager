@@ -54,7 +54,7 @@ setNonce(nonce);
 
 H.init('1jdkoe52', {
   environment: isDevMode() ? 'dev' : 'production',
-  backendUrl: 'https://api.highlight.fctapp.yudi.me/public',
+  backendUrl: 'https://api.highlight.cacic.dev.br/public',
   networkRecording: {
     enabled: true,
     recordHeadersAndBody: true,
@@ -90,7 +90,7 @@ bootstrapApplication(AppComponent, {
       AngularFireModule.initializeApp(environment.firebase),
 
       // TODO: https://github.com/cacic-fct/fct-app/issues/172
-      AngularFirestoreModule //.enablePersistence({ synchronizeTabs: true }),
+      AngularFirestoreModule, //.enablePersistence({ synchronizeTabs: true }),
     ),
 
     provideFirebaseApp(() => initializeApp(environment.firebase)),

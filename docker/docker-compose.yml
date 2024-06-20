@@ -14,10 +14,10 @@ services:
       - 'traefik.enable=true'
       # websecure route
       - 'traefik.http.routers.fctapp.entryPoints=websecure'
-      - 'traefik.http.routers.fctapp.rule=Host(`fctapp.yudi.me`)'
+      - 'traefik.http.routers.fctapp.rule=Host(`fctapp.cacic.dev.br`)'
       - 'traefik.http.routers.fctapp.tls=true'
       - 'traefik.http.routers.fctapp.tls.certResolver=letsencrypt'
-      - 'traefik.http.routers.fctapp.tls.domains=fctapp.yudi.me'
+      - 'traefik.http.routers.fctapp.tls.domains=fctapp.cacic.dev.br'
       # Middlewares
       - 'traefik.http.routers.fctapp.middlewares=fctapp-mw-compression, fctapp-mw-ratelimit, fctapp-mw-errors, fctapp-mw-securityheaders'
       ## Compression
@@ -46,10 +46,10 @@ services:
       - 'traefik.http.services.fctapp-svc.loadBalancer.passHostHeader=true'
       # Insecure redirect
       - 'traefik.http.routers.fctapp-insecure.entryPoints=web'
-      - 'traefik.http.routers.fctapp-insecure.rule=Host(`fctapp.yudi.me`)'
+      - 'traefik.http.routers.fctapp-insecure.rule=Host(`fctapp.cacic.dev.br`)'
       - 'traefik.http.routers.fctapp-insecure.middlewares=fctapp-insecure-mw'
-      - 'traefik.http.middlewares.fctapp-insecure-mw.redirectregex.regex=^http://fctapp.yudi.me/(.*)'
-      - 'traefik.http.middlewares.fctapp-insecure-mw.redirectregex.replacement=https://fctapp.yudi.me$${1}'
+      - 'traefik.http.middlewares.fctapp-insecure-mw.redirectregex.regex=^http://fctapp.cacic.dev.br/(.*)'
+      - 'traefik.http.middlewares.fctapp-insecure-mw.redirectregex.replacement=https://fctapp.cacic.dev.br$${1}'
       - 'traefik.http.routers.fctapp-insecure.service=noop@internal'
 
   fctapp_watchtower:
