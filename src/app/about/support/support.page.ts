@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AlertController } from '@ionic/angular/standalone';
 
 import {
@@ -40,6 +41,7 @@ import { ServiceWorkerService } from 'src/app/shared/services/service-worker/ser
     IonAccordion,
     IonList,
     IonText,
+    RouterLink,
   ],
 })
 export class SupportPage {

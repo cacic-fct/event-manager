@@ -115,19 +115,19 @@ export const routes: Routes = [
   },
   {
     path: 'docs',
-    redirectTo: 'https://cacic-fct.github.io/fct-app-docs',
+    loadComponent: () => import('./redirects/docs/docs.page').then((m) => m.DocsPage),
   },
   {
     path: 'documentacao',
-    redirectTo: 'https://cacic-fct.github.io/fct-app-docs',
+    redirectTo: 'docs',
   },
   {
     path: 'documentação',
-    redirectTo: 'https://cacic-fct.github.io/fct-app-docs',
+    redirectTo: 'docs',
   },
   {
     path: 'documentation',
-    redirectTo: 'https://cacic-fct.github.io/fct-app-docs',
+    redirectTo: 'docs',
   },
   // Redirect not found routes (404) to index
   // Must be the last route
