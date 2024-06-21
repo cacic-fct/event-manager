@@ -62,7 +62,7 @@ H.init('1jdkoe52', {
     urlBlocklist: [],
   },
   privacySetting: 'none',
-  sendMode: 'local',
+  sendMode: 'webworker',
 });
 
 bootstrapApplication(AppComponent, {
