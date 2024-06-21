@@ -13,6 +13,7 @@ env:
 
 jobs:
   pack:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     name: Build and push Docker image
     runs-on: ubuntu-latest
     timeout-minutes: 10
