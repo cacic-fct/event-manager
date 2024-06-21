@@ -9,6 +9,7 @@ export const routes: Routes = [
   },
   {
     path: 'carteira',
+    data: { preload: true },
     loadComponent: () => import('./wallet/wallet.page').then((m) => m.WalletPage),
   },
 ];

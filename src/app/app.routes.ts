@@ -17,18 +17,15 @@ export const routes: Routes = [
   // General routes
   {
     path: '',
-    data: { preload: true },
     loadChildren: () => import('./tabs/tabs.routes').then((m) => m.routes),
   },
   {
     path: 'sobre',
-    data: { preload: true },
     title: 'Sobre',
     loadChildren: () => import('./about/about.routes').then((m) => m.routes),
   },
   {
     path: 'privacidade',
-    data: { preload: true },
     title: 'Política de privacidade',
     loadChildren: () => import('./about/privacy-policy/privacy-policy.routes').then((m) => m.routes),
   },
@@ -122,6 +119,10 @@ export const routes: Routes = [
   },
   {
     path: 'documentacao',
+    redirectTo: 'https://cacic-fct.github.io/fct-app-docs',
+  },
+  {
+    path: 'documentação',
     redirectTo: 'https://cacic-fct.github.io/fct-app-docs',
   },
   {

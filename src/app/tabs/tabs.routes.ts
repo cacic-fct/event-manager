@@ -11,7 +11,6 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        data: { preload: true },
         loadComponent: () => import('src/app/landing/landing.page').then((m) => m.LandingPage),
         ...canActivate(redirectLoggedInToCalendar),
       },
@@ -24,7 +23,6 @@ export const routes: Routes = [
       {
         path: 'eventos',
         title: 'Lista de eventos',
-        data: { preload: true },
         loadChildren: () =>
           import('src/app/tabs/major-events-display/major-events-display.routes').then((m) => m.routes),
       },

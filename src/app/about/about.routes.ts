@@ -10,6 +10,7 @@ export const routes: Routes = [
   {
     path: 'suporte',
     title: 'Suporte',
+    data: { preload: true },
     loadChildren: () => import('src/app/about/support/support.routes').then((m) => m.routes),
   },
 ];
