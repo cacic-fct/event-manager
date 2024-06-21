@@ -1,4 +1,4 @@
-import { Mailto, MailtoService } from 'src/app/shared/services/mailto.service';
+import { MailtoService } from 'src/app/shared/services/mailto.service';
 
 describe('MailtoService', () => {
   let service: MailtoService;
