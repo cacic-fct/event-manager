@@ -47,6 +47,7 @@ import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
 import { setNonce } from '@ionic/core/components';
 
 import { H } from 'highlight.run';
+import { provideLottieOptions } from 'ngx-lottie';
 
 console.debug('DEBUG: Nonce: Will fetch nonce');
 const nonce = fetchNonce();
@@ -163,6 +164,9 @@ bootstrapApplication(AppComponent, {
       useValue: environment.firebase.useEmulators ? ['localhost', 8081] : undefined,
     },
     provideHttpClient(withInterceptorsFromDi()),
+    provideLottieOptions({
+      player: () => import('lottie-web'),
+    }),
   ],
 }).catch((err) => console.log(err));
 

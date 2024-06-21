@@ -1,33 +1,37 @@
 <ion-content>
   <ion-list class="list-container margin-horizontal-auto">
     @if (items$ | async; as items) {
-    <ion-button
-      (click)="loadOlderEvents()"
-      expand="block"
-      [disabled]="loadOlderCount > 3"
-      class="margin-horizontal-auto button-width">
-      <ion-label> Mostrar eventos mais antigos </ion-label>
-    </ion-button>
-    @for (item of items; track item; let i = $index) { @if (i === 0 || !dateService.compareMonthTimestamp(items[i -
-    1].eventStartDate, items[i].eventStartDate)) {
-    <ion-list-header mode="ios">
-      <ion-label>{{ formatMonth(dateService.getDateFromTimestamp(item.eventStartDate)) }}</ion-label>
-    </ion-list-header>
-    } @if (i === 0 || !dateService.compareDayTimestamp(items[i - 1].eventStartDate, items[i].eventStartDate)) {
-    <ion-item-divider mode="ios" sticky="true">
-      <ion-label>
-        {{ formatDate(dateService.getDateFromTimestamp(item.eventStartDate)) }}
-      </ion-label>
-    </ion-item-divider>
-    }
-    <app-event-item-list [eventItem]="item"></app-event-item-list>
-    } @if (items.length === 0) {
-    <h1 class="ion-text-center">Nenhum evento encontrado</h1>
-    } } @else {
-    <ion-button expand="block" disabled="true" class="margin-horizontal-auto button-width">
-      <ion-label> <ion-skeleton-text animated class="skeleton-200"> </ion-skeleton-text> </ion-label>
-    </ion-button>
-    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+      <ion-button
+        (click)="loadOlderEvents()"
+        expand="block"
+        [disabled]="loadOlderCount > 3"
+        class="margin-horizontal-auto button-width">
+        <ion-label> Mostrar eventos mais antigos </ion-label>
+      </ion-button>
+      @for (item of items; track item; let i = $index) {
+        @if (i === 0 || !dateService.compareMonthTimestamp(items[i - 1].eventStartDate, items[i].eventStartDate)) {
+          <ion-list-header mode="ios">
+            <ion-label>{{ formatMonth(dateService.getDateFromTimestamp(item.eventStartDate)) }}</ion-label>
+          </ion-list-header>
+        }
+        @if (i === 0 || !dateService.compareDayTimestamp(items[i - 1].eventStartDate, items[i].eventStartDate)) {
+          <ion-item-divider mode="ios" sticky="true">
+            <ion-label>
+              {{ formatDate(dateService.getDateFromTimestamp(item.eventStartDate)) }}
+            </ion-label>
+          </ion-item-divider>
+        }
+        <app-event-item-list [eventItem]="item"></app-event-item-list>
+      }
+      @if (items.length === 0) {
+        <h1 class="ion-text-center">Nenhum evento encontrado</h1>
+        <ng-lottie [options]="lottieOptions" width="200px" containerClass=" margin-horizontal-auto" />
+      }
+    } @else {
+      <ion-button expand="block" disabled="true" class="margin-horizontal-auto button-width">
+        <ion-label> <ion-skeleton-text animated class="skeleton-200"> </ion-skeleton-text> </ion-label>
+      </ion-button>
+      <ion-progress-bar type="indeterminate"></ion-progress-bar>
     }
   </ion-list>
 </ion-content>

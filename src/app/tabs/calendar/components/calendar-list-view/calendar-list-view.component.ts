@@ -13,6 +13,8 @@ import { AsyncPipe, formatDate, KeyValuePipe } from '@angular/common';
 import { EventItem } from 'src/app/shared/services/event';
 import { trace } from '@angular/fire/compat/performance';
 
+import { AnimationOptions, LottieComponent } from 'ngx-lottie';
+
 import {
   IonContent,
   IonList,
@@ -42,6 +44,7 @@ import { ItemListComponent } from 'src/app/tabs/calendar/components/item-list/it
     AsyncPipe,
     ItemListComponent,
     KeyValuePipe,
+    LottieComponent,
   ],
 })
 export class CalendarListViewComponent implements OnInit, OnChanges {
@@ -60,10 +63,14 @@ export class CalendarListViewComponent implements OnInit, OnChanges {
 
   baseDate: Date = startOfDay(new Date());
 
+  lottieOptions: AnimationOptions = {
+    path: '/assets/animations/no-results.json',
+  };
+
   constructor(
     private afs: AngularFirestore,
     private toastController: ToastController,
-    public dateService: DateService
+    public dateService: DateService,
   ) {}
 
   ngOnInit() {
@@ -86,7 +93,7 @@ export class CalendarListViewComponent implements OnInit, OnChanges {
           })
           .valueChanges({ idField: 'id' })
           .pipe(trace('firestore'));
-      })
+      }),
     );
   }
 

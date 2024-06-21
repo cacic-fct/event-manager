@@ -17,13 +17,14 @@ import { DateService } from 'src/app/shared/services/date.service';
 import { IonList, IonProgressBar } from '@ionic/angular/standalone';
 import { ItemListComponent } from 'src/app/tabs/calendar/components/item-list/item-list.component';
 import { AsyncPipe } from '@angular/common';
+import { AnimationOptions, LottieComponent } from 'ngx-lottie';
 
 @Component({
   selector: 'app-item-list-view',
   templateUrl: './item-list-view.component.html',
   styleUrls: ['./item-list-view.component.scss'],
   standalone: true,
-  imports: [IonList, IonProgressBar, ItemListComponent, AsyncPipe],
+  imports: [IonList, IonProgressBar, ItemListComponent, AsyncPipe, LottieComponent],
 })
 export class ItemListViewComponent implements OnInit, OnChanges {
   courses = CoursesService.courses;
@@ -40,7 +41,15 @@ export class ItemListViewComponent implements OnInit, OnChanges {
 
   items$: Observable<EventItem[]>;
 
-  constructor(private afs: AngularFirestore, public emojiService: EmojiService, public dateService: DateService) {}
+  lottieOptions: AnimationOptions = {
+    path: '/assets/animations/no-results.json',
+  };
+
+  constructor(
+    private afs: AngularFirestore,
+    public emojiService: EmojiService,
+    public dateService: DateService,
+  ) {}
 
   ngOnInit() {
     this.items$ = combineLatest([this.dateFilter$, this.courseFilter$]).pipe(
@@ -62,7 +71,7 @@ export class ItemListViewComponent implements OnInit, OnChanges {
           })
           .valueChanges({ idField: 'id' })
           .pipe(trace('firestore'));
-      })
+      }),
     );
   }
 

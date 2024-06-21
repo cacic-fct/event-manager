@@ -5,6 +5,7 @@
     }
     @if (items.length === 0) {
       <h1 class="ion-text-center">Nenhum evento encontrado</h1>
+      <ng-lottie [options]="lottieOptions" width="200px" containerClass=" margin-horizontal-auto" />
     }
   } @else {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
