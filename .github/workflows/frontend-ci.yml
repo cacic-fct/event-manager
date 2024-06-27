@@ -2,12 +2,14 @@ name: frontend-ci
 
 on:
   push:
-    paths: — 'frontend/**'
+    paths-ignore:
+      - "backend/**"
     branches:
       - "**"
 
   pull_request:
-    paths: — 'froentend/**'
+    paths-ignore:
+      - "backend/**"
     branches:
       - "**"
 
