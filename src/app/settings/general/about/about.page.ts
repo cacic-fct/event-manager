@@ -56,7 +56,7 @@ export class AboutPage {
   analytics: boolean;
   monitoring: boolean;
   environment = environment;
-  versionHash: string = '';
+  versionHash: string;
 
   constructor() {
     const analytics = localStorage.getItem('disable-analytics');
