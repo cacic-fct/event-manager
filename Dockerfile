@@ -17,7 +17,7 @@ ENV COMMIT_HASH=${COMMIT_HASH}
 
 RUN sed -i "s/commitHash-placeholder/${COMMIT_HASH}/g" src/environments/environment.prod.ts
 
-RUN ng build --prod
+RUN bun run build --prod
 
 # Serve
 FROM nginx:stable as serve
