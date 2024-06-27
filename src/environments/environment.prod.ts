@@ -13,5 +13,5 @@ export const environment = {
   recaptcha3SiteKey: '6LcFr9AdAAAAANB7MbCks-nBVqfZZYp8bGp6Kcto',
   // Also change OGP image in index.html
   baseUrl: 'https://fctapp.cacic.dev.br/',
-  commitHash: 'placeholder',
+  commitHash: 'commitHash-placeholder',
 };
