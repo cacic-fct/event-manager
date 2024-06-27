@@ -24,7 +24,7 @@ A documentação do projeto está disponível em [cacic-fct/fct-app-docs](https:
 
 ## Aplicativo
 
-O aplicativo é construído com Angular e pode ser acessado em [fct-pp.web.app](https://fct-pp.web.app).
+O aplicativo é construído com Angular e pode ser acessado em [fctapp.cacic.dev.br](https://fctapp.cacic.dev.br).
 
 
 ### Desenvolvimento
