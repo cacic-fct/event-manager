@@ -55,7 +55,7 @@ setNonce(nonce);
 
 H.init('1jdkoe52', {
   environment: isDevMode() ? 'dev' : 'production',
-  backendUrl: 'https://api.highlight.cacic.dev.br/public',
+  backendUrl: 'https://api-highlight.cacic.dev.br/public',
   networkRecording: {
     enabled: true,
     recordHeadersAndBody: true,
