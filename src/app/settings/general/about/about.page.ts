@@ -21,7 +21,7 @@ import {
 } from '@ionic/angular/standalone';
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 import { addIcons } from 'ionicons';
-import { bookOutline, libraryOutline, peopleOutline } from 'ionicons/icons';
+import { bookOutline, folderOpenOutline, peopleOutline } from 'ionicons/icons';
 
 import { environment } from 'src/environments/environment';
 
@@ -78,7 +78,7 @@ export class AboutPage {
 
     addIcons({
       bookOutline,
-      libraryOutline,
+      folderOpenOutline,
       peopleOutline,
     });
   }
