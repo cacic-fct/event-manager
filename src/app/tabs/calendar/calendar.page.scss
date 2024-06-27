@@ -1,7 +1,7 @@
 .hcal {
-  font-size: 20px;
   font-family: 'HelveticaNeue-Light', 'Helvetica Neue Light', 'Helvetica Neue',
     Helvetica, 'Roboto', arial, sans-serif;
+  font-size: 1.25rem;
   position: relative;
   max-width: 1600px;
   display: block;
@@ -22,7 +22,7 @@
 }
 
 .hcal .hcal-header-days {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .hcal .hcal-header-days,
@@ -65,7 +65,7 @@
 
 .hcal .hcal-header-today {
   margin-top: 10px;
-  font-size: 15px;
+  font-size: 0.938rem;
   padding-bottom: 10px;
 }
 
