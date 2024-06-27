@@ -3,17 +3,17 @@ name: backend-ci
 on:
   push:
     paths:
-      - "frontend/**"
-      - ".github/workflows"
+      - 'frontend/**'
+      - '.github/workflows'
     branches:
-      - "**"
+      - '**'
 
   pull_request:
     paths:
-      - "frontend/**"
-      - ".github/workflows"
+      - 'frontend/**'
+      - '.github/workflows'
     branches:
-      - "**"
+      - '**'
 
 jobs:
   build_functions:

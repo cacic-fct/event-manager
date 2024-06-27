@@ -32,5 +32,5 @@ jobs:
           crawler-api-key: ${{ secrets.ALGOLIA_CRAWLER_API_KEY }}
           algolia-app-id: ${{ secrets.ALGOLIA_APP_ID }}
           algolia-api-key: ${{ secrets.ALGOLIA_API_KEY }}
-          site-url: "https://docs.fctapp.cacic.dev.br"
-          crawler-name: "fctapp-yudi"
+          site-url: 'https://docs.fctapp.cacic.dev.br'
+          crawler-name: 'fctapp-yudi'

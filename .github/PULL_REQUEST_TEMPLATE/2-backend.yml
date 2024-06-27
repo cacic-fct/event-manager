@@ -1,6 +1,6 @@
 name: 🗄️ Back end
 description: Solicite uma alteração ou correção no código do back end.
-labels: ["enhancement", "triage", "backend"]
+labels: ['enhancement', 'triage', 'backend']
 
 body:
   - type: markdown
@@ -20,7 +20,6 @@ body:
         Explicação clara e detalhada do pull request, incluindo qualquer informação adicional que você considere relevante, como imagens ou vídeos.
     validations:
       required: true
-
 
   - type: textarea
     attributes:

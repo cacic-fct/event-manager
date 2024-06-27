@@ -4,7 +4,7 @@ name: backend-deploy
 
 on:
   workflow_run:
-    workflows: ["backend-ci"]
+    workflows: ['backend-ci']
     branches: [main]
     types:
       - completed

@@ -1,8 +1,6 @@
 {
   "index_name": "fct-app-docs",
-  "start_urls": [
-    "https://docs.fctapp.cacic.dev.br/"
-  ],
+  "start_urls": ["https://docs.fctapp.cacic.dev.br/"],
   "selectors": {
     "lvl0": {
       "selector": "/html/body/div/header/div/div[1]/a/span",
@@ -21,22 +19,9 @@
   "strip_chars": " .,;:#",
   "custom_settings": {
     "separatorsToIndex": "_",
-    "attributesForFaceting": [
-      "language",
-      "version",
-      "type"
-    ],
-    "attributesToRetrieve": [
-      "hierarchy",
-      "content",
-      "anchor",
-      "url",
-      "url_without_anchor",
-      "type"
-    ]
+    "attributesForFaceting": ["language", "version", "type"],
+    "attributesToRetrieve": ["hierarchy", "content", "anchor", "url", "url_without_anchor", "type"]
   },
-  "conversation_id": [
-    "833762294"
-  ],
+  "conversation_id": ["833762294"],
   "nb_hits": 46250
 }

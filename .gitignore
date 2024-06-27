@@ -20,7 +20,7 @@ npm-debug.log*
 .versions
 coverage
 dist
-*/node_modules
+node_modules
 platforms
 plugins
 

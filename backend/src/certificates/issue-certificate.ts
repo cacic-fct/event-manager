@@ -53,7 +53,7 @@ exports.issueMajorEventCertificate = onCall(
 
     const certificateAdmin = await db
       .doc(
-        `majorEvents/${majorEventID}/majorEventCertificates/${data.certificateData.certificateID}/certificateDataAdmin/data`
+        `majorEvents/${majorEventID}/majorEventCertificates/${data.certificateData.certificateID}/certificateDataAdmin/data`,
       )
       .get();
 
@@ -156,7 +156,7 @@ exports.issueMajorEventCertificate = onCall(
       deleteCollection(db, `certificates/${majorEventID}/${majorEventData.currentTask.documentID}`, 10);
       await db
         .doc(
-          `users/${majorEventData.currentTask.uid}/userCertificates/majorEvents/${majorEventID}/${majorEventData.currentTask.documentID}`
+          `users/${majorEventData.currentTask.uid}/userCertificates/majorEvents/${majorEventID}/${majorEventData.currentTask.documentID}`,
         )
         .delete();
       iStored = majorEventData.currentTask.index;
@@ -184,7 +184,7 @@ exports.issueMajorEventCertificate = onCall(
               certificateID: data.certificateData.certificateID,
             },
           },
-          { merge: true }
+          { merge: true },
         );
         const result = await issueCertificate(data.certificateData, uid, majorEventID, context.auth.uid, documentID);
         if (!result.success) {
@@ -193,7 +193,7 @@ exports.issueMajorEventCertificate = onCall(
             {
               currentTaskFailedList: FieldValue.arrayUnion({ uid: uid, error: result.message }),
             },
-            { merge: true }
+            { merge: true },
           );
         }
       }
@@ -204,20 +204,20 @@ exports.issueMajorEventCertificate = onCall(
         currentTask: FieldValue.delete(),
         currentTaskFailedList: FieldValue.delete(),
       },
-      { merge: true }
+      { merge: true },
     );
 
     if (failed.length > 0) {
       // Store failed in database
       await db
         .doc(
-          `majorEvents/${majorEventID}/majorEventCertificates/${data.certificateData.certificateID}/certificateDataAdmin/data`
+          `majorEvents/${majorEventID}/majorEventCertificates/${data.certificateData.certificateID}/certificateDataAdmin/data`,
         )
         .set(
           {
             failed: failed,
           },
-          { merge: true }
+          { merge: true },
         );
 
       return {
@@ -231,7 +231,7 @@ exports.issueMajorEventCertificate = onCall(
       success: true,
       message: 'Certificates issued successfully.',
     };
-  }
+  },
 );
 
 const issueCertificate = async (
@@ -239,7 +239,7 @@ const issueCertificate = async (
   userUID: string,
   eventID: string,
   adminUID: string,
-  documentID: string
+  documentID: string,
 ) => {
   const db = getFirestore();
   const auth = getAuth();

@@ -1,17 +1,17 @@
 {
-    // Use project's version of TypeScript
-    "typescript.enablePromptUseWorkspaceTsdk": true,
-    "typescript.tsdk": "./node_modules/typescript/lib",
+  // Use project's version of TypeScript
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.tsdk": "./node_modules/typescript/lib",
 
-    // Exclude Modular Angular imports
-    "typescript.preferences.autoImportFileExcludePatterns": ["@ionic/angular/common", "@ionic/angular"],
+  // Exclude Modular Angular imports
+  "typescript.preferences.autoImportFileExcludePatterns": ["@ionic/angular/common", "@ionic/angular"],
 
-    // Use 2 spaces for indentation
-    // Disable editor indentation detection
-    "editor.insertSpaces": true,
-    "editor.tabSize": 2,
-    "editor.detectIndentation": false,
+  // Use 2 spaces for indentation
+  // Disable editor indentation detection
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false,
 
-    // ESLint
-    "eslint.useFlatConfig": false
+  // ESLint
+  "eslint.useFlatConfig": false
 }

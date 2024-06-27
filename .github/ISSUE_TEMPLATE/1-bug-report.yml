@@ -3,7 +3,7 @@
 
 name: 🐞 Relatório de bug
 description: Reporte um problema ou erro.
-labels: ["bug", "triage"]
+labels: ['bug', 'triage']
 
 body:
   - type: markdown

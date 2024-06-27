@@ -1,6 +1,6 @@
 name: ⚙️ DevOps
 description: Solicite uma alteração ou correção no código da infraestrutura.
-labels: ["enhancement", "triage", "devops"]
+labels: ['enhancement', 'triage', 'devops']
 
 body:
   - type: markdown

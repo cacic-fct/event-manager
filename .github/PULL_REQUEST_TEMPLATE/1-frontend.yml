@@ -1,6 +1,6 @@
 name: 🌐 Front end
 description: Solicite uma alteração ou correção no código do front end.
-labels: ["enhancement", "triage", "frontend"]
+labels: ['enhancement', 'triage', 'frontend']
 
 body:
   - type: markdown

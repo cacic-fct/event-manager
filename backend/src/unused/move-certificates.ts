@@ -135,7 +135,7 @@ exports.moveCertificates = onCall({ timeoutSeconds: 540, memory: '1GiB' }, async
                         .doc(certificateID)
                         .set({
                           certificateReference: db.doc(
-                            `certificates/${eventIDDocument.id}/${certificateID}/${userCertificateID.id}`
+                            `certificates/${eventIDDocument.id}/${certificateID}/${userCertificateID.id}`,
                           ),
                           certificateDoc: userCertificateID.id,
                         });

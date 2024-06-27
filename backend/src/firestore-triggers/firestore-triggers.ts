@@ -13,7 +13,7 @@ exports.createEventSubscription = onDocumentCreated(
       return;
     }
     eventRef.update({ numberOfSubscriptions: FieldValue.increment(1) });
-  }
+  },
 );
 
 exports.createMajorEventSubscription = onDocumentCreated(
@@ -38,7 +38,7 @@ exports.createMajorEventSubscription = onDocumentCreated(
         slotsAvailable: FieldValue.increment(-1),
       });
     });
-  }
+  },
 );
 
 exports.updateMajorEventSubscription = onDocumentUpdated(
@@ -58,12 +58,12 @@ exports.updateMajorEventSubscription = onDocumentUpdated(
     if (beforeChange.subscribedToEvents !== afterChange.subscribedToEvents) {
       // previouslySelectedEvents - eventsSelectedID = events that were removed
       const removedEvents = beforeChange.subscribedToEvents.filter(
-        (event: string) => !afterChange.subscribedToEvents.includes(event)
+        (event: string) => !afterChange.subscribedToEvents.includes(event),
       );
 
       // eventsSelectedID - previouslySelectedEvents = events that were added
       const addedEvents = afterChange.subscribedToEvents.filter(
-        (event: string) => !beforeChange.subscribedToEvents.includes(event)
+        (event: string) => !beforeChange.subscribedToEvents.includes(event),
       );
 
       // For every removed event, decrement the number of subscribed users
@@ -82,5 +82,5 @@ exports.updateMajorEventSubscription = onDocumentUpdated(
         });
       });
     }
-  }
+  },
 );

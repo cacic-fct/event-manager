@@ -29,7 +29,7 @@ exports.createAdminUser = onCall(async (): Promise<MainReturnType> => {
         {
           admins: FieldValue.arrayUnion(adminData.uid),
         },
-        { merge: true }
+        { merge: true },
       );
     await db.collection('users').doc(adminData.uid).set(adminDataFirestoreDocument);
     return { success: true, message: 'Successfully created admin user' };
@@ -68,7 +68,7 @@ exports.createProfessorUser = onCall(async (): Promise<MainReturnType> => {
         {
           professors: FieldValue.arrayUnion(professorData.uid),
         },
-        { merge: true }
+        { merge: true },
       );
     await db.collection('users').doc(professorData.uid).set(professorDataFirestoreDocument);
   } catch (error) {

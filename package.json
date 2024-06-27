@@ -1,0 +1,17 @@
+{
+  "name": "fct-app",
+  "scripts": {
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "check-format": "prettier --check .",
+    "commitlint": "commitlint --edit $1"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-angular": "^19.3.0",
+    "@commitlint/format": "^19.3.0",
+    "prettier": "^3.3.2",
+    "prettier-plugin-astro": "^0.14.0",
+    "prettier-plugin-tailwindcss": "^0.6.5"
+  }
+}

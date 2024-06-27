@@ -37,7 +37,6 @@ O código de barras é gerado a partir da identificação única (uuid) do usuá
 
 O prefixo `uid:` é utilizado para identificar o tipo de dado que está sendo lido.
 
-
 #### Aztec Code
 
 O código é um Aztec Code, um tipo de código de barras bidimensional.  
@@ -47,7 +46,7 @@ Isso permite a leitura de códigos em distâncias maiores e evita a formação d
 <Image src={comparison} alt="Comparação entre os códigos." />
 
 > O mesmo dado está representado nos três códigos.  
-  Há uma margem maior no Aztec Code, que pode ser usada para o algoritmo de correção de erros.
+>  Há uma margem maior no Aztec Code, que pode ser usada para o algoritmo de correção de erros.
 
 #### Edge cases
 
@@ -63,7 +62,7 @@ Isso permite a leitura de códigos em distâncias maiores e evita a formação d
 
 ###### Tamanho da tela
 
-<Image src={devices} alt="Dispositivos de tamanhos diferentes mostrando um Aztec Code."/>
+<Image src={devices} alt="Dispositivos de tamanhos diferentes mostrando um Aztec Code." />
 
 Quanto menor a tela, menor é a margem disponível para uma Quiet Zone.
 
@@ -80,9 +79,8 @@ No Aztec Code, isso não é um problema.
 <Image src={damagedQR} alt="Uma representação gráfica de um QR Code com uma das Finder Patterns cobertas" width="200" />
 > Apesar de estar preservado, não é possível ler este QR Code, pois uma das Finder Patterns está incompleta.
 
-
-<Image src={damagedAztec} alt="Uma representação gráfica de um Aztec Code rasgado" width="200" />
-> É possível ler um Aztec code desde que o Finder Pattern (quadrado no centro) esteja preservado.
+<Image src={damagedAztec} alt="Uma representação gráfica de um Aztec Code rasgado" width="200" />> É possível ler um
+Aztec code desde que o Finder Pattern (quadrado no centro) esteja preservado.
 
 Caso os professores desejem a volta do crachá impresso, o Aztec Code também é a opção mais ideal, já que pode ser lido mesmo que o crachá esteja amassado, sujo ou rasgado.
 
