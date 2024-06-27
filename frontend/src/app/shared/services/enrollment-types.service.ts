@@ -29,6 +29,9 @@ export class EnrollmentTypesService {
   }
 }
 
-type enrollmentTypesList = Record<number, {
+type enrollmentTypesList = Record<
+  number,
+  {
     name: string;
-  }>;
+  }
+>;

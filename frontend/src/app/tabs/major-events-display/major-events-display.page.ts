@@ -63,7 +63,10 @@ export class MajorEventsDisplayPage implements OnInit {
   >;
   today: Date = new Date();
 
-  constructor(public afs: AngularFirestore, public dateService: DateService) {}
+  constructor(
+    public afs: AngularFirestore,
+    public dateService: DateService,
+  ) {}
 
   ngOnInit() {
     this.user$.pipe(take(1)).subscribe((user) => {
@@ -98,12 +101,12 @@ export class MajorEventsDisplayPage implements OnInit {
                             }
                           }
                           return doc.exists;
-                        })
+                        }),
                       )
                   : null,
               };
             });
-          })
+          }),
         );
     });
   }

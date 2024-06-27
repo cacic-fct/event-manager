@@ -110,7 +110,7 @@ export class SendReceiptPage implements OnInit {
     private route: ActivatedRoute,
     public afs: AngularFirestore,
     public enrollmentTypes: EnrollmentTypesService,
-    public dateService: DateService
+    public dateService: DateService,
   ) {}
 
   ngOnInit() {
@@ -230,7 +230,7 @@ export class SendReceiptPage implements OnInit {
           this.uploadFile(result, format);
           this.rawFile = result;
         }
-      }
+      },
     );
   }
 
@@ -276,7 +276,7 @@ export class SendReceiptPage implements OnInit {
             console.error('Failed to get download URL', err);
             this.toastUploadError();
           });
-      }
+      },
     );
   }
 

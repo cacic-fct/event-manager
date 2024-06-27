@@ -7,14 +7,7 @@
       "name": "app",
       "installMode": "prefetch",
       "resources": {
-        "files": [
-          "/favicon.png",
-          "/index.html",
-          "/manifest.webmanifest",
-          "/*.css",
-          "/*.js",
-          "/3rdpartylicenses.txt"
-        ]
+        "files": ["/favicon.png", "/index.html", "/manifest.webmanifest", "/*.css", "/*.js", "/3rdpartylicenses.txt"]
       }
     },
     {
@@ -22,10 +15,7 @@
       "installMode": "lazy",
       "updateMode": "prefetch",
       "resources": {
-        "files": [
-          "/assets/**",
-          "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
-        ]
+        "files": ["/assets/**", "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"]
       }
     },
     {
@@ -33,9 +23,7 @@
       "installMode": "prefetch",
       "updateMode": "prefetch",
       "resources": {
-        "files": [
-          "/svg/**"
-        ]
+        "files": ["/svg/**"]
       }
     }
   ]

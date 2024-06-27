@@ -69,7 +69,11 @@ export class ManageMajorEventsPage implements OnInit {
   currentMonth$ = new BehaviorSubject<string | null>(this.currentMonth);
   majorEvents$: Observable<MajorEventItem[]>;
 
-  constructor(private afs: AngularFirestore, public courses: CoursesService, public dateService: DateService) {}
+  constructor(
+    private afs: AngularFirestore,
+    public courses: CoursesService,
+    public dateService: DateService,
+  ) {}
 
   ngOnInit() {
     this.majorEvents$ = combineLatest([this.currentMonth$]).pipe(
@@ -85,7 +89,7 @@ export class ManageMajorEventsPage implements OnInit {
           })
           .valueChanges({ idField: 'id' })
           .pipe(trace('firestore'));
-      })
+      }),
     );
   }
 

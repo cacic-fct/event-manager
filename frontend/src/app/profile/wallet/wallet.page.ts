@@ -79,7 +79,11 @@ export class WalletPage {
   _isProfessor = new BehaviorSubject<boolean>(false);
   isProfessor$: Observable<boolean> = this._isProfessor.asObservable();
 
-  constructor(public courses: CoursesService, private afs: AngularFirestore, private sw: ServiceWorkerService) {
+  constructor(
+    public courses: CoursesService,
+    private afs: AngularFirestore,
+    private sw: ServiceWorkerService,
+  ) {
     this.serviceWorkerActive = this.sw.getServiceWorkerStatus();
 
     this.user$.pipe(filterNullish(), take(1), trace('auth')).subscribe((user: AuthUser) => {
@@ -96,7 +100,7 @@ export class WalletPage {
           .pipe(
             take(1),
             trace('firestore'),
-            filter((user): user is User => user !== undefined)
+            filter((user): user is User => user !== undefined),
           );
 
         this.renderAztecCode(user.uid);
@@ -150,8 +154,8 @@ export class WalletPage {
             // @ts-expect-error - Required since eclevel actually exists
             eclevel: '23',
           },
-          drawingSVG()
-        )
+          drawingSVG(),
+        ),
       );
 
       this.profileBarcode = svg;

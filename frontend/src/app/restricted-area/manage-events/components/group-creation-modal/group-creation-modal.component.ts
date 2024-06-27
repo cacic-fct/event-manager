@@ -65,7 +65,7 @@ export class GroupCreationModalComponent implements OnInit {
     public dateService: DateService,
     private formBuilder: FormBuilder,
     private modalController: ModalController,
-    private afs: AngularFirestore
+    private afs: AngularFirestore,
   ) {
     this.dataForm = this.formBuilder.group({
       groupDisplayName: ['', Validators.required],

@@ -92,7 +92,7 @@ export class CalendarPage implements OnInit {
   constructor(
     private modalController: ModalController,
     public router: Router,
-    public toastController: ToastController
+    public toastController: ToastController,
   ) {
     getBooleanChanges(this.remoteConfig, 'calendarItemViewDefault')
       .pipe(untilDestroyed(this), trace('remote-config'))

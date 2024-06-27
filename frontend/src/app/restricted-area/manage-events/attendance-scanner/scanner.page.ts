@@ -128,7 +128,7 @@ export class ScannerPage implements OnInit {
     public courses: CoursesService,
     private toastController: ToastController,
     private authService: AuthService,
-    public dateService: DateService
+    public dateService: DateService,
   ) {
     this.eventID = this.route.snapshot.params['eventID'];
 
@@ -174,8 +174,8 @@ export class ScannerPage implements OnInit {
               .doc<User>(item.id)
               .get()
               .pipe(map((document) => document.data())),
-          }))
-        )
+          })),
+        ),
       );
 
     // Get non-paying-attendance list
@@ -198,8 +198,8 @@ export class ScannerPage implements OnInit {
               .doc<User>(item.id)
               .get()
               .pipe(map((document) => document.data())),
-          }))
-        )
+          })),
+        ),
       );
 
     this.audioSuccess = new Audio();
@@ -298,7 +298,7 @@ export class ScannerPage implements OnInit {
       .pipe(
         take(1),
         trace('firestore'),
-        map((userDocument) => userDocument.exists)
+        map((userDocument) => userDocument.exists),
       );
   }
 
@@ -322,7 +322,7 @@ export class ScannerPage implements OnInit {
             } else {
               return false;
             }
-          })
+          }),
         )
     );
   }

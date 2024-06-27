@@ -29,12 +29,12 @@ export const caAndGreater = () =>
   pipe(
     customClaims,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    map((claims: Record<string, any>) => (claims['role'] as number) < 3000)
+    map((claims: Record<string, any>) => (claims['role'] as number) < 3000),
   );
 
 export const adminOnly = () =>
   pipe(
     customClaims,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    map((claims: Record<string, any>) => (claims['role'] as number) === 1000)
+    map((claims: Record<string, any>) => (claims['role'] as number) === 1000),
   );

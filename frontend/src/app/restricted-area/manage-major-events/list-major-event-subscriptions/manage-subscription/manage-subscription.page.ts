@@ -83,7 +83,7 @@ export class ManageSubscriptionPage {
     private route: ActivatedRoute,
     private afs: AngularFirestore,
     public dateService: DateService,
-    private alertController: AlertController
+    private alertController: AlertController,
   ) {
     this.subscriptionID = this.route.snapshot.paramMap.get('subscriptionID');
     this.majorEventID = this.route.snapshot.paramMap.get('eventID');
@@ -103,7 +103,7 @@ export class ManageSubscriptionPage {
 
       data.subscribedToEvents.map((event) => {
         tempArray.push(
-          this.afs.doc<EventItem>(`events/${event}`).valueChanges({ idField: 'id' }).pipe(take(1), trace('firestore'))
+          this.afs.doc<EventItem>(`events/${event}`).valueChanges({ idField: 'id' }).pipe(take(1), trace('firestore')),
         );
       });
 
@@ -117,7 +117,7 @@ export class ManageSubscriptionPage {
             }
             return a.eventStartDate.toMillis() - b.eventStartDate.toMillis();
           });
-        })
+        }),
       );
 
       this.eventsUserIsSubscribedTo$ = observableArrayOfEvents;

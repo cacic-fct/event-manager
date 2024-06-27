@@ -50,7 +50,7 @@ export class WeatherService {
     const eventDateStringFormat = format(date, 'yyyy-MM-dd');
     const req = this.http.get<WeatherApiResponse>(
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode&timezone=America%2FSao_Paulo&start_date=${eventDateStringFormat}&end_date=${eventDateStringFormat}`,
-      { responseType: 'json' }
+      { responseType: 'json' },
     );
 
     return req.pipe(
@@ -70,7 +70,7 @@ export class WeatherService {
         }
 
         return { temperature: temperature, icon: weather.icon, text: weather.text };
-      })
+      }),
     );
   }
 
@@ -107,8 +107,11 @@ export interface WeatherInfo {
   error?: boolean;
 }
 
-type WeatherCodesList = Record<number, {
+type WeatherCodesList = Record<
+  number,
+  {
     icon?: string;
     icon_night?: string;
     text: string;
-  }>;
+  }
+>;

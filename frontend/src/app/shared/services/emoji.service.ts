@@ -26,7 +26,7 @@ export class EmojiService {
       return this.sanitizer.bypassSecurityTrustResourceUrl(
         parse('❔', {
           buildUrl: buildUrl,
-        })[0].url
+        })[0].url,
       );
     }
     return this.sanitizer.bypassSecurityTrustResourceUrl(parse(emoji, { buildUrl: buildUrl })[0].url);

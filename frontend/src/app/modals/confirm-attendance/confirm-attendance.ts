@@ -88,7 +88,7 @@ export class ConfirmAttendancePage {
     private afs: AngularFirestore,
     private navController: NavController,
     private router: Router,
-    private toastController: ToastController
+    private toastController: ToastController,
   ) {
     this.eventID = this.route.snapshot.params['eventID'];
     this.dataForm = this.formBuilder.group({
@@ -112,7 +112,7 @@ export class ConfirmAttendancePage {
         .pipe(map((doc) => doc.exists));
 
       const evaluateBool = combineLatest([payingAttendance, nonPayingAttendance]).pipe(
-        map(([paying, nonPaying]) => paying || nonPaying)
+        map(([paying, nonPaying]) => paying || nonPaying),
       );
 
       evaluateBool.subscribe((isAttendanceAlreadyCollected) => {
@@ -201,7 +201,7 @@ export class ConfirmAttendancePage {
       untilDestroyed(this),
       map((event) => ({
         name: event?.name || 'Evento indefinido',
-      }))
+      })),
     );
   }
 

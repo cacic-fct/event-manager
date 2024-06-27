@@ -1,64 +1,83 @@
 @if (eventItem.button) {
-<div class="ion-padding-vertical">
-  <ion-button expand="block" color="primary" [href]="eventItem.button.url" target="_blank">{{
-    eventItem.button.text || 'Acompanhe o evento'
-  }}</ion-button>
-</div>
-} @if (eventItem.youtubeCode) {
-<div>
-  <h2>Transmissão do evento</h2>
-  <iframe
-    width="400"
-    height="225"
-    [src]="'https://www.youtube-nocookie.com/embed/' + eventItem.youtubeCode | safe : 'resourceUrl'"
-    title="YouTube"
-    frameborder="0"
-    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
-    allowfullscreen></iframe>
-</div>
+  <div class="ion-padding-vertical">
+    <ion-button expand="block" color="primary" [href]="eventItem.button.url" target="_blank">{{
+      eventItem.button.text || 'Acompanhe o evento'
+    }}</ion-button>
+  </div>
+}
+@if (eventItem.youtubeCode) {
+  <div>
+    <h2>Transmissão do evento</h2>
+    <iframe
+      width="400"
+      height="225"
+      [src]="'https://www.youtube-nocookie.com/embed/' + eventItem.youtubeCode | safe: 'resourceUrl'"
+      title="YouTube"
+      frameborder="0"
+      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+      allowfullscreen></iframe>
+  </div>
 }
 
 <div class="ion-padding-vertical">
   @if (displaySubscriptionAttendanceButtons === true) {
-  <div class="ion-padding-bottom">
-    @if (eventItem.eventEndDate) { @if (dateService.today() < dateService.getDateFromTimestamp(eventItem.eventEndDate))
-    { @if (eventItem.allowSubscription && (isUserAuthenticated | async)) { @if (!subscribedToEvent &&
-    !disableSubscriptionNoSlotsLeft) {
-    <ion-button expand="block" color="primary" target="_blank" (click)="subscribeToEvent()"> Inscrever-se </ion-button>
-    } @else if (!subscribedToEvent && disableSubscriptionNoSlotsLeft) {
-    <ion-button expand="block" color="primary" target="_blank" disabled=""> Não há mais vagas </ion-button>
-    } @else if (subscribedToEvent) {
-    <ion-button expand="block" color="primary" target="_blank" disabled="">
-      <ion-icon name="checkmark" slot="start"></ion-icon> <span slot="end">Inscrito</span>
-    </ion-button>
-    } } @if (eventItem.allowSubscription && (isUserAuthenticated | async) === undefined) { @if
-    (!disableSubscriptionNoSlotsLeft) {
-    <ion-button
-      expand="block"
-      color="primary"
-      target="_blank"
-      [routerLink]="['/login']"
-      [queryParams]="{ redirect: '/calendario/evento/' + eventItem.id }">
-      Inscrever-se
-    </ion-button>
-    } @if (disableSubscriptionNoSlotsLeft) {
-    <ion-button expand="block" color="primary" target="_blank" disabled=""> Não há mais vagas </ion-button>
-    } } } }
-  </div>
+    <div class="ion-padding-bottom">
+      @if (eventItem.eventEndDate) {
+        @if (dateService.today() < dateService.getDateFromTimestamp(eventItem.eventEndDate)) {
+          @if (eventItem.allowSubscription && (isUserAuthenticated | async)) {
+            @if (!subscribedToEvent && !disableSubscriptionNoSlotsLeft) {
+              <ion-button expand="block" color="primary" target="_blank" (click)="subscribeToEvent()">
+                Inscrever-se
+              </ion-button>
+            } @else if (!subscribedToEvent && disableSubscriptionNoSlotsLeft) {
+              <ion-button expand="block" color="primary" target="_blank" disabled=""> Não há mais vagas </ion-button>
+            } @else if (subscribedToEvent) {
+              <ion-button expand="block" color="primary" target="_blank" disabled="">
+                <ion-icon name="checkmark" slot="start"></ion-icon> <span slot="end">Inscrito</span>
+              </ion-button>
+            }
+          }
+          @if (eventItem.allowSubscription && (isUserAuthenticated | async) === undefined) {
+            @if (!disableSubscriptionNoSlotsLeft) {
+              <ion-button
+                expand="block"
+                color="primary"
+                target="_blank"
+                [routerLink]="['/login']"
+                [queryParams]="{ redirect: '/calendario/evento/' + eventItem.id }">
+                Inscrever-se
+              </ion-button>
+            }
+            @if (disableSubscriptionNoSlotsLeft) {
+              <ion-button expand="block" color="primary" target="_blank" disabled=""> Não há mais vagas </ion-button>
+            }
+          }
+        }
+      }
+    </div>
 
-  @if (eventItem.collectAttendance) { @if (eventItem.attendanceCollectionStart && !eventItem.attendanceCollectionEnd) {
-  @if (eventItem.allowSubscription && (isUserAuthenticated | async)) {
-  <ion-button expand="block" color="primary" target="_blank" [routerLink]="['/confirmar-presenca', eventItem.id]">
-    Confirmar presença
-  </ion-button>
-  } @if (eventItem.allowSubscription && (isUserAuthenticated | async) === undefined) {
-  <ion-button
-    expand="block"
-    color="primary"
-    target="_blank"
-    [routerLink]="['/login']"
-    [queryParams]="{ redirect: '/confirmar-presenca/' + eventItem.id }">
-    Confirmar presença
-  </ion-button>
-  } } } }
+    @if (eventItem.collectAttendance) {
+      @if (eventItem.attendanceCollectionStart && !eventItem.attendanceCollectionEnd) {
+        @if (eventItem.allowSubscription && (isUserAuthenticated | async)) {
+          <ion-button
+            expand="block"
+            color="primary"
+            target="_blank"
+            [routerLink]="['/confirmar-presenca', eventItem.id]">
+            Confirmar presença
+          </ion-button>
+        }
+        @if (eventItem.allowSubscription && (isUserAuthenticated | async) === undefined) {
+          <ion-button
+            expand="block"
+            color="primary"
+            target="_blank"
+            [routerLink]="['/login']"
+            [queryParams]="{ redirect: '/confirmar-presenca/' + eventItem.id }">
+            Confirmar presença
+          </ion-button>
+        }
+      }
+    }
+  }
 </div>

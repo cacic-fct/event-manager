@@ -69,7 +69,7 @@ export class ListEventSubscriptionsPage {
     private router: Router,
     private route: ActivatedRoute,
     public courses: CoursesService,
-    public dateService: DateService
+    public dateService: DateService,
   ) {
     this.eventID = this.route.snapshot.params['eventID'];
     this.afs
@@ -103,8 +103,8 @@ export class ListEventSubscriptionsPage {
               .doc(item.id)
               .get()
               .pipe(map((document) => document.data())),
-          }))
-        )
+          })),
+        ),
       );
   }
 

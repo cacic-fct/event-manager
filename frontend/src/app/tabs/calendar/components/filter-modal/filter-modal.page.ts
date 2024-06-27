@@ -50,7 +50,7 @@ export class FilterModalPage implements AfterViewInit {
 
   ngAfterViewInit() {
     const elements: HTMLCollectionOf<HTMLInputElement> = document.getElementsByClassName(
-      'course'
+      'course',
     ) as HTMLCollectionOf<HTMLInputElement>;
 
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
@@ -76,7 +76,7 @@ export class FilterModalPage implements AfterViewInit {
     // Get elements with course.key id
 
     const elements: HTMLCollectionOf<HTMLInputElement> = document.getElementsByClassName(
-      'course'
+      'course',
     ) as HTMLCollectionOf<HTMLInputElement>;
     // Uncheck all elements
     // eslint-disable-next-line @typescript-eslint/prefer-for-of
