@@ -1,35 +1,38 @@
-@if (eventInput | async; as eventsArray) { @if (eventsArray.length === 0) {
-<p>Você inscreveu-se em todos os eventos</p>
-} @for (event of eventsArray; track event; let i = $index) { @if (i===0 ||
-!dateService.compareDayTimestamp(eventsArray[i - 1].eventStartDate, event.eventStartDate)) {
-<ion-item-divider mode="ios" sticky="true">
-  <ion-label class="wrap-no-change">
-    {{ formatDate(dateService.getDateFromTimestamp(event.eventStartDate)) }}
-  </ion-label>
-</ion-item-divider>
-}
-<ion-list>
-  <ion-item [routerLink]="['evento', event.id]" routerDirection="forward">
-    <img
-      [src]="emojiService.getEmoji(event.icon)"
-      alt="Emoji do evento"
-      class="twemoji"
-      slot="start"
-      aria-hidden="true"
-      loading="lazy" />
-    <ion-label>
-      <h2 class="ion-text-wrap">{{ event.name }}</h2>
-      <h3 class="ion-text-wrap">{{ event.shortDescription }}</h3>
-      <h3>
-        {{ dateService.getDateFromTimestamp(event.eventStartDate) | date : 'HH:mm' }}
-        {{ event.eventEndDate && ' às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date : 'HH:mm') }}
-      </h3>
-      <!-- TODO: Indicar se o usuário esteve presente ou não -->
-      <!-- <h3><ion-icon name="checkmark" class="attendance-checkmark-icon"></ion-icon> Presente</h3> -->
-      @if (isSubscribedList) {}
-    </ion-label>
-  </ion-item>
-</ion-list>
-} } @else {
-<ion-spinner name="dots" class="ion-spinner-default"></ion-spinner>
+@if (eventInput | async; as eventsArray) {
+  @if (eventsArray.length === 0) {
+    <p>Você inscreveu-se em todos os eventos</p>
+  }
+  @for (event of eventsArray; track event; let i = $index) {
+    @if (i === 0 || !dateService.compareDayTimestamp(eventsArray[i - 1].eventStartDate, event.eventStartDate)) {
+      <ion-item-divider mode="ios" sticky="true">
+        <ion-label class="wrap-no-change">
+          {{ formatDate(dateService.getDateFromTimestamp(event.eventStartDate)) }}
+        </ion-label>
+      </ion-item-divider>
+    }
+    <ion-list>
+      <ion-item [routerLink]="['evento', event.id]" routerDirection="forward">
+        <img
+          [src]="emojiService.getEmoji(event.icon)"
+          alt="Emoji do evento"
+          class="twemoji"
+          slot="start"
+          aria-hidden="true"
+          loading="lazy" />
+        <ion-label>
+          <h2 class="ion-text-wrap">{{ event.name }}</h2>
+          <h3 class="ion-text-wrap">{{ event.shortDescription }}</h3>
+          <h3>
+            {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: 'HH:mm' }}
+            {{ event.eventEndDate && ' às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date: 'HH:mm') }}
+          </h3>
+          <!-- TODO: Indicar se o usuário esteve presente ou não -->
+          <!-- <h3><ion-icon name="checkmark" class="attendance-checkmark-icon"></ion-icon> Presente</h3> -->
+          @if (isSubscribedList) {}
+        </ion-label>
+      </ion-item>
+    </ion-list>
+  }
+} @else {
+  <ion-spinner name="dots" class="ion-spinner-default"></ion-spinner>
 }

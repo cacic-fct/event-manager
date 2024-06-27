@@ -121,7 +121,7 @@ export class ValidateReceiptPage implements OnInit {
     private formBuilder: FormBuilder,
     private alertController: AlertController,
     public dateService: DateService,
-    private toastController: ToastController
+    private toastController: ToastController,
   ) {}
 
   ngOnInit() {
@@ -129,7 +129,7 @@ export class ValidateReceiptPage implements OnInit {
     const eventRef = this.afs.collection('majorEvents').doc<MajorEventItem>(this.majorEventID);
     this.eventName$ = eventRef.valueChanges().pipe(map((event) => event.name));
     this.subscriptionsQuery = eventRef.collection<Subscription>('subscriptions', (ref) =>
-      ref.where('payment.status', '==', 1).orderBy('payment.time')
+      ref.where('payment.status', '==', 1).orderBy('payment.time'),
     );
     this.subscriptions$ = this.subscriptionsQuery.valueChanges({ idField: 'id' }).pipe(
       untilDestroyed(this),
@@ -141,7 +141,7 @@ export class ValidateReceiptPage implements OnInit {
               .collection('events')
               .doc<EventItem>(subEventID)
               .valueChanges({ idField: 'id' })
-              .pipe(take(1), trace('firestore'))
+              .pipe(take(1), trace('firestore')),
           );
 
           let observableArrayOfEvents: Observable<EventItem[]> = combineLatest(arrayOfEvents);
@@ -151,7 +151,7 @@ export class ValidateReceiptPage implements OnInit {
               return events.sort((a, b) => {
                 return a.eventStartDate.toMillis() - b.eventStartDate.toMillis();
               });
-            })
+            }),
           );
 
           return {
@@ -160,8 +160,8 @@ export class ValidateReceiptPage implements OnInit {
             userData$: this.userDataByID(sub.id),
             image: this.imgURL(sub.id),
           };
-        })
-      )
+        }),
+      ),
     );
     this.imgBaseHref = [this.majorEventID, 'payment-receipts'].join('/');
     this.refuseForm = this.formBuilder.group(
@@ -171,7 +171,7 @@ export class ValidateReceiptPage implements OnInit {
       },
       {
         validators: [this.validatorRadio],
-      }
+      },
     );
   }
 
@@ -291,7 +291,7 @@ export class ValidateReceiptPage implements OnInit {
                       firstName,
                       user.phone,
                       eventName,
-                      this.refuseForm.get('errorMessage').value
+                      this.refuseForm.get('errorMessage').value,
                     );
                   });
                 });

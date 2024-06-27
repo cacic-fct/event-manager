@@ -41,5 +41,5 @@ module.exports = tseslint.config(
   },
   {
     ignores: ['functions/*', 'src/app/unused/*'],
-  }
+  },
 );

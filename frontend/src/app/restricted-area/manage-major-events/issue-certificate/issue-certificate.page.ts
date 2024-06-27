@@ -102,7 +102,7 @@ export class IssueCertificatePage implements OnInit {
     private afs: AngularFirestore,
     private dateService: DateService,
     private modalController: ModalController,
-    private authService: AuthService
+    private authService: AuthService,
   ) {
     this.eventID = this.route.snapshot.paramMap.get('eventID');
 
@@ -122,7 +122,7 @@ export class IssueCertificatePage implements OnInit {
         },
         {
           validators: [this.batchIssueValidator],
-        }
+        },
       ),
       certificateName: ['', Validators.required],
       certificateID: ['', Validators.required],
@@ -141,7 +141,7 @@ export class IssueCertificatePage implements OnInit {
         },
         {
           validators: [this.customGroupValidator],
-        }
+        },
       ),
 
       eventType: this.formBuilder.group(
@@ -151,7 +151,7 @@ export class IssueCertificatePage implements OnInit {
         },
         {
           validators: [this.customGroupValidator],
-        }
+        },
       ),
 
       contentType: this.formBuilder.group(
@@ -161,7 +161,7 @@ export class IssueCertificatePage implements OnInit {
         },
         {
           validators: [this.customGroupValidator],
-        }
+        },
       ),
     });
 
@@ -381,7 +381,7 @@ export class IssueCertificatePage implements OnInit {
     issueList.push(
       this.formBuilder.group({
         userData: ['', Validators.required],
-      })
+      }),
     );
   }
 

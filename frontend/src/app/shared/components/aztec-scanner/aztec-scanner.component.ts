@@ -293,7 +293,7 @@ export class AztecScannerComponent implements AfterViewInit {
     const timeout = !result ? 0 : delay;
     setTimeout(
       () => requestAnimationFrame(this.processFrame.bind(this, delay)), // Bind the processFrame method to the current instance of the class.
-      timeout
+      timeout,
     );
   }
 

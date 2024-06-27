@@ -95,7 +95,7 @@ export class VerifyPhonePage implements OnInit {
     public afs: AngularFirestore,
     private win: WindowService,
     public modalController: ModalController,
-    private mailtoService: MailtoService
+    private mailtoService: MailtoService,
   ) {}
 
   ngOnInit() {

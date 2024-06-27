@@ -68,7 +68,10 @@ export class CoursesService {
   }
 }
 
-type courseList = Record<string, {
+type courseList = Record<
+  string,
+  {
     name: string;
     color?: string;
-  }>;
+  }
+>;

@@ -92,7 +92,10 @@ export class MyAttendancesPage {
 
   today: Date = new Date();
 
-  constructor(public enrollmentTypes: EnrollmentTypesService, public dateService: DateService) {
+  constructor(
+    public enrollmentTypes: EnrollmentTypesService,
+    public dateService: DateService,
+  ) {
     this.subscriptions$ = this.user$.pipe(
       switchMap((user) => {
         if (!user) {
@@ -106,16 +109,16 @@ export class MyAttendancesPage {
               return {
                 id: subscription.id,
                 userData: docData(
-                  doc(this.firestore, `majorEvents/${subscription.id}/subscriptions/${user.uid}`)
+                  doc(this.firestore, `majorEvents/${subscription.id}/subscriptions/${user.uid}`),
                 ) as Observable<MajorEventSubscription>,
                 majorEvent: docData(doc(this.firestore, `majorEvents/${subscription.id}`), {
                   idField: 'id',
                 }) as Observable<MajorEventItem>,
               };
             });
-          })
+          }),
         );
-      })
+      }),
     );
 
     this.eventSubscriptions$ = this.user$.pipe(
@@ -145,24 +148,24 @@ export class MyAttendancesPage {
                       id: event.id,
                       event: event,
                       userData: userData as EventSubscription,
-                    }))
+                    })),
                   );
                 });
 
                 return combineLatest(eventsWithUserData).pipe(
                   map((eventsWithUserData) => {
                     return eventsWithUserData;
-                  })
+                  }),
                 );
-              })
+              }),
             );
           }),
           catchError((error) => {
             console.error('Error fetching data:', error);
             return [];
-          })
+          }),
         );
-      })
+      }),
     );
   }
 

@@ -16,9 +16,7 @@
             "outputPath": "dist",
             "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": [
-              "zone.js"
-            ],
+            "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
@@ -31,9 +29,7 @@
               "src/robots.txt",
               "src/.well-known/security.txt"
             ],
-            "styles": [
-              "src/global.scss"
-            ],
+            "styles": ["src/global.scss"],
             "scripts": [],
             "aot": true,
             "extractLicenses": true,
@@ -102,16 +98,11 @@
           "builder": "@angular-devkit/build-angular:karma",
           "options": {
             "codeCoverage": true,
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ],
+            "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
             "styles": [],
             "scripts": [],
-            "exclude": [
-              "src/app/unused/**/*.ts"
-            ],
+            "exclude": ["src/app/unused/**/*.ts"],
             "assets": [
               {
                 "glob": "favicon.ico",
@@ -136,10 +127,7 @@
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": [
-              "src/**/*.ts",
-              "src/**/*.html"
-            ]
+            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
           }
         },
         "e2e": {
@@ -162,9 +150,7 @@
   },
   "cli": {
     "analytics": false,
-    "schematicCollections": [
-      "@ionic/angular-toolkit"
-    ],
+    "schematicCollections": ["@ionic/angular-toolkit"],
     "packageManager": "bun"
   },
   "schematics": {

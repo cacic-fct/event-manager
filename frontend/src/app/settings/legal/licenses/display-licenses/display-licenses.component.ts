@@ -25,7 +25,7 @@ export class DisplayLicensesComponent {
       catchError((err) => {
         this._error.next(true);
         return this.handleError(err);
-      })
+      }),
     );
   }
 

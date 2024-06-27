@@ -9,33 +9,25 @@
 
 <ion-content>
   @if (hasPermission === false) {
-    <h2>Você não concedeu permissão para acessar a câmera.</h2>
-  }
-
-  @if (hasDevices === undefined) {
-    <p>
-      Verifique se o app tem permissão para acessar a câmera e se o dispositivo está conectado.
-    </p>
-  }
-
-  @if (hasDevices === false) {
-    <h2>
-      Nenhuma câmera foi detectada. Verifique se o dispositivo está conectado e se o app tem permissão para acessar a
-      câmera.
-    </h2>
-  }
-
-  @if (showScanner) {
-    <div>
-      <zxing-scanner
-        [formats]="allowedFormats"
-        (permissionResponse)="onHasPermission($event)"
-        (camerasFound)="onCamerasFound($event)"
-        (scanSuccess)="onCodeResult($event)"
-        [torch]="torchEnabled"
-        [(device)]="currentDevice">
-      </zxing-scanner>
-    </div>
+  <h2>Você não concedeu permissão para acessar a câmera.</h2>
+  } @if (hasDevices === undefined) {
+  <p>Verifique se o app tem permissão para acessar a câmera e se o dispositivo está conectado.</p>
+  } @if (hasDevices === false) {
+  <h2>
+    Nenhuma câmera foi detectada. Verifique se o dispositivo está conectado e se o app tem permissão para acessar a
+    câmera.
+  </h2>
+  } @if (showScanner) {
+  <div>
+    <zxing-scanner
+      [formats]="allowedFormats"
+      (permissionResponse)="onHasPermission($event)"
+      (camerasFound)="onCamerasFound($event)"
+      (scanSuccess)="onCodeResult($event)"
+      [torch]="torchEnabled"
+      [(device)]="currentDevice">
+    </zxing-scanner>
+  </div>
   }
 </ion-content>
 
@@ -43,9 +35,9 @@
   <ion-toolbar>
     <ion-buttons slot="primary">
       @if (torchAvailable | async) {
-        <ion-button (click)="toggleTorch()">
-          <ion-icon name="flash-outline"></ion-icon>
-        </ion-button>
+      <ion-button (click)="toggleTorch()">
+        <ion-icon name="flash-outline"></ion-icon>
+      </ion-button>
       }
       <ion-button (click)="changeCamera()">
         <ion-icon name="camera-reverse-outline"></ion-icon>

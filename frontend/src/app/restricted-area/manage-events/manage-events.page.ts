@@ -101,7 +101,7 @@ export class PageManageEvents implements OnInit {
     public emojiService: EmojiService,
     public dateService: DateService,
     private formBuilder: FormBuilder,
-    private modalController: ModalController
+    private modalController: ModalController,
   ) {
     this.dataForm = this.formBuilder.group({
       selectedCheckboxes: this.formBuilder.array([]),
@@ -129,10 +129,10 @@ export class PageManageEvents implements OnInit {
                 if (eventObject.inMajorEvent)
                   eventObject.inMajorEventName = this.getMajorEventName$(event.inMajorEvent);
                 return eventObject;
-              })
-            )
+              }),
+            ),
           );
-      })
+      }),
     );
   }
 
@@ -143,7 +143,7 @@ export class PageManageEvents implements OnInit {
       .get()
       .pipe(
         take(1),
-        map((doc) => doc.data()?.name)
+        map((doc) => doc.data()?.name),
       );
   }
 
@@ -340,7 +340,7 @@ export class PageManageEvents implements OnInit {
           name: eventItem.name,
           eventStartDate: eventItem.eventStartDate,
           eventEndDate: eventItem.eventEndDate,
-        })
+        }),
       );
     } else {
       let i = 0;

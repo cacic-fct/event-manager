@@ -12,25 +12,25 @@
       @if (majorEventItem.price.single) {
         <ion-item lines="none">
           Preço único
-          <span slot="end">{{ majorEventItem.price.single | currency : 'BRL' }}</span>
+          <span slot="end">{{ majorEventItem.price.single | currency: 'BRL' }}</span>
         </ion-item>
       } @else {
         @if (majorEventItem.price.students) {
           <ion-item lines="none">
             Alunos da Unesp
-            <span slot="end">{{ majorEventItem.price.students | currency : 'BRL' }}</span>
+            <span slot="end">{{ majorEventItem.price.students | currency: 'BRL' }}</span>
           </ion-item>
         }
         @if (majorEventItem.price.otherStudents) {
           <ion-item lines="none">
             Alunos
-            <span slot="end">{{ majorEventItem.price.otherStudents | currency : 'BRL' }}</span>
+            <span slot="end">{{ majorEventItem.price.otherStudents | currency: 'BRL' }}</span>
           </ion-item>
         }
         @if (majorEventItem.price.professors) {
           <ion-item lines="none">
             Professores
-            <span slot="end">{{ majorEventItem.price.professors | currency : 'BRL' }}</span>
+            <span slot="end">{{ majorEventItem.price.professors | currency: 'BRL' }}</span>
           </ion-item>
         }
       }

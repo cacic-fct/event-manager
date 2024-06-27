@@ -98,7 +98,7 @@ export class AddMajorEventPage implements OnInit {
     public formBuilder: FormBuilder,
     private modalController: ModalController,
     private afs: AngularFirestore,
-    private router: Router
+    private router: Router,
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
 
@@ -137,7 +137,7 @@ export class AddMajorEventPage implements OnInit {
       },
       {
         validators: [this.validatorButton, this.requirePaymentDetails, this.validatorDateEnd],
-      }
+      },
     );
   }
 

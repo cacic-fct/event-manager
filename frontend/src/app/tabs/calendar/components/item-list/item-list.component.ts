@@ -25,7 +25,11 @@ export class ItemListComponent {
   @Input()
   eventItem!: EventItem;
 
-  constructor(public emojiService: EmojiService, private navCtrl: NavController, public dateService: DateService) {}
+  constructor(
+    public emojiService: EmojiService,
+    private navCtrl: NavController,
+    public dateService: DateService,
+  ) {}
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public openItem(item: any): void {

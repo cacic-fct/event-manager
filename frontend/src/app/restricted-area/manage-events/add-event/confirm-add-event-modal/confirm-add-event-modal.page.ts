@@ -29,7 +29,7 @@ export class ConfirmAddEventModalPage {
     public emojiService: EmojiService,
     public coursesService: CoursesService,
     public stringService: StringManagementService,
-    public dateService: DateService
+    public dateService: DateService,
   ) {}
 
   onSubmit() {

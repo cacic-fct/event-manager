@@ -64,7 +64,7 @@ export class EventInfoDisplayPage implements OnInit {
     private toastController: ToastController,
     private router: Router,
     private route: ActivatedRoute,
-    private afs: AngularFirestore
+    private afs: AngularFirestore,
   ) {}
 
   ngOnInit() {

@@ -78,7 +78,7 @@ export class ListMajorEventSubscriptionsPage {
     private router: Router,
     private route: ActivatedRoute,
     public courses: CoursesService,
-    public dateService: DateService
+    public dateService: DateService,
   ) {
     this.eventID = this.route.snapshot.params['eventID'];
 
@@ -106,8 +106,8 @@ export class ListMajorEventSubscriptionsPage {
         subscription.map((item) => ({
           ...item,
           user: docData(doc(this.firestore, 'users', item.id)) as Observable<User | undefined>,
-        }))
-      )
+        })),
+      ),
     );
   }
 
@@ -154,7 +154,7 @@ export class ListMajorEventSubscriptionsPage {
           events.push(
             (
               docData(doc(this.firestore, 'events', event), { idField: 'id' }) as Observable<MajorEventItem | undefined>
-            ).pipe(take(1))
+            ).pipe(take(1)),
           );
         });
 
