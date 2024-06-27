@@ -27,6 +27,7 @@ jobs:
         uses: withastro/action@v2
         with:
           package-manager: bun@latest
+          path: docs
 
   scrape:
     if: ${{github.ref == 'refs/heads/main'}}
