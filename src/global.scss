@@ -132,3 +132,10 @@
 .ion-textarea-label-wrap .label-text {
   white-space: normal;
 }
+
+.lottie-animation {
+  @media (prefers-reduced-motion: reduce) {
+    // Use visibility instead of display to avoid displacing other elements
+    visibility: hidden;
+  }
+}
