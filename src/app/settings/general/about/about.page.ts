@@ -23,6 +23,8 @@ import { ServiceWorkerService } from 'src/app/shared/services/service-worker/ser
 import { addIcons } from 'ionicons';
 import { bookOutline, libraryOutline, peopleOutline } from 'ionicons/icons';
 
+import { environment } from 'src/environments/environment';
+
 @Component({
   selector: 'app-about',
   templateUrl: './about.page.html',
@@ -53,6 +55,8 @@ export class AboutPage {
   gc = GlobalConstantsService;
   analytics: boolean;
   monitoring: boolean;
+  environment = environment;
+  versionHash: string = '';
 
   constructor() {
     const analytics = localStorage.getItem('disable-analytics');
@@ -70,10 +74,16 @@ export class AboutPage {
       this.monitoring = true;
     }
 
+    this.versionHash = this.formatVersion(environment.commitHash);
+
     addIcons({
       bookOutline,
       libraryOutline,
       peopleOutline,
     });
+  }
+
+  formatVersion(hash: string): string {
+    return hash.substring(0, 7);
   }
 }

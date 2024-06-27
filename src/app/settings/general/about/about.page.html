@@ -32,6 +32,10 @@
     <ion-note class="ion-text-uppercase ion-padding"> App state </ion-note>
     <ion-card>
       <ion-item>
+        <ion-label> App version </ion-label>
+        <ion-note slot="end"> {{ versionHash }} </ion-note>
+      </ion-item>
+      <ion-item>
         <ion-label> User data version </ion-label>
         <ion-note slot="end"> {{ gc.userDataVersion }} </ion-note>
       </ion-item>
