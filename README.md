@@ -1,15 +1,15 @@
 # FCT App
 
 [![Documentation](https://img.shields.io/badge/docs-blue)](https://cacic-fct.github.io/fct-app-docs)
-[![Build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/ci.yml?branch=main&logo=github)](https://github.com/cacic-fct/fct-app/actions)
+[![Front end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/frontend-ci.yml?branch=main&logo=github)](https://github.com/cacic-fct/fct-app/actions)
+[![Back end Build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/backend-ci.yml?branch=main&logo=github)](https://github.com/cacic-fct/fct-app/actions)
 [![Coverage](https://img.shields.io/codecov/c/github/cacic-fct/fct-app/main?logo=codecov)](https://codecov.io/gh/cacic-fct/fct-app)
 [![License](https://img.shields.io/badge/license-AGPL–3.0–only-red)](https://github.com/cacic-fct/fct-app/blob/main/License.txt)
 
-O "FCT App" facilita a vida dos alunos da FCT, com o acesso aos eventos do câmpus. Tem alto potencial de expansão. 
+O "FCT App" facilita a vida dos alunos da FCT, com o acesso aos eventos do câmpus. Tem alto potencial de expansão.
 
 > [!WARNING]  
 > Leia as discussões sobre migrar do Firebase para uma hospedagem própria ([#182](https://github.com/cacic-fct/fct-app/discussions/182)) antes de desenvolver um recurso novo.
-
 
 ## Contribuindo
 
@@ -54,7 +54,7 @@ firebase emulators:start --project fct-pp --import=./emulator-data --export-on-e
 ##### Cloud Functions
 
 Para testar as Cloud Functions, primeiro altere o diretório para `functions`:
-    
+
 ```bash
 cd functions
 ```
@@ -66,6 +66,7 @@ bun install
 ```
 
 Em seguida, compile com:
+
 ```bash
 bun build
 ```
