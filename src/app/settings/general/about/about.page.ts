@@ -84,6 +84,6 @@ export class AboutPage {
   }
 
   formatVersion(hash: string): string {
-    return hash.substring(0, 7);
+    return hash.substring(0, 8);
   }
 }
