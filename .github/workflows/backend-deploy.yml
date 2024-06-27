@@ -33,7 +33,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Functions-artifacts
-          path: functions/lib/
+          path: backend/lib/
 
   deploy:
     needs: build_functions
