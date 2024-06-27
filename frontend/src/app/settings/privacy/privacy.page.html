@@ -15,25 +15,27 @@
       aplicativo.
     </app-explanation-card>
     <ion-card>
-      <ion-item button lines="none">
+      <ion-item lines="none">
         <ion-icon name="analytics-outline" slot="start" aria-hidden="true"> </ion-icon>
-        <ion-toggle [checked]="isAnalyticsEnabled">
+        <ion-toggle [checked]="isAnalyticsEnabled" (click)="toggleAnalytics()">
           <ion-label>Compartilhar dados de análise</ion-label>
         </ion-toggle>
       </ion-item>
     </ion-card>
     <ion-note class="ion-padding"> Ajude-nos a melhorar o aplicativo ao automaticamente enviar dados de uso. </ion-note>
     <ion-card>
-      <ion-item button lines="none">
+      <ion-item lines="none">
         <ion-icon name="build-outline" slot="start" aria-hidden="true"> </ion-icon>
-        <ion-toggle [checked]="isMonitoringEnabled">
+        <ion-toggle [checked]="isMonitoringEnabled" (click)="toggleMonitoring()">
           <ion-label>Compartilhar dados de diagnóstico</ion-label>
         </ion-toggle>
       </ion-item>
     </ion-card>
-    <ion-note class="ion-padding">
-      Ajude-nos a melhorar o aplicativo e a fornecer um melhor suporte a você ao automaticamente enviar dados de uso e
-      erros.
-    </ion-note>
+    <div class="ion-padding-horizontal">
+      <ion-note>
+        Ajude-nos a melhorar o aplicativo e a fornecer um melhor suporte a você ao automaticamente enviar dados de uso e
+        erros.
+      </ion-note>
+    </div>
   </div>
 </ion-content>

@@ -21,6 +21,8 @@ import {
   IonRow,
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
+import { addIcons } from 'ionicons';
+import { albumsOutline, cogOutline, qrCodeOutline, settingsOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-profile-info',
@@ -49,4 +51,13 @@ import { RouterLink } from '@angular/router';
     AsyncPipe,
   ],
 })
-export class ProfileInfoPage {}
+export class ProfileInfoPage {
+  constructor() {
+    addIcons({
+      qrCodeOutline,
+      albumsOutline,
+      cogOutline,
+      settingsOutline,
+    });
+  }
+}

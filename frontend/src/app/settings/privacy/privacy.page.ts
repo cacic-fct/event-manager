@@ -14,6 +14,8 @@ import {
   IonBackButton,
   IonButtons,
   IonToggle,
+  IonList,
+  IonCardContent,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { analyticsOutline, buildOutline, handLeftOutline } from 'ionicons/icons';
@@ -25,6 +27,8 @@ import { ExplanationCardComponent } from 'src/app/settings/components/explanatio
   styleUrls: ['./privacy.page.scss'],
   standalone: true,
   imports: [
+    IonCardContent,
+    IonList,
     IonToggle,
     IonButtons,
     IonBackButton,
@@ -69,11 +73,13 @@ export class PrivacyPage {
 
   toggleAnalytics() {
     this.isAnalyticsEnabled = !this.isAnalyticsEnabled;
+    console.debug('DEBUG: Analytics:', this.isAnalyticsEnabled);
     localStorage.setItem('disable-analytics', this.isAnalyticsEnabled ? '' : 'true');
   }
 
   toggleMonitoring() {
     this.isMonitoringEnabled = !this.isMonitoringEnabled;
+    console.debug('DEBUG: Monitoring:', this.isMonitoringEnabled);
     localStorage.setItem('disable-monitoring', this.isMonitoringEnabled ? '' : 'true');
   }
 }
