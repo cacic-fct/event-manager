@@ -35,6 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Wait for Cloudflare to deploy the site
+      - name: Sleep for 4 minutes
+        run: sleep 4m
+        shell: bash
 
       - name: Algolia crawler creation and crawl
         uses: algolia/algoliasearch-crawler-github-actions@v1.1.10
