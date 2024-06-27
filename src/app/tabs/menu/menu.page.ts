@@ -1,13 +1,5 @@
-import { Component, inject, signal, WritableSignal, OnInit } from '@angular/core';
+import { Component, inject, isDevMode } from '@angular/core';
 
-import { AuthService } from '../../shared/services/auth.service';
-
-import { trace } from '@angular/fire/compat/performance';
-
-import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-
-import { environment } from 'src/environments/environment';
-import { Auth, authState, user, User } from '@angular/fire/auth';
 import { AsyncPipe } from '@angular/common';
 
 import {
@@ -28,9 +20,20 @@ import {
   IonAvatar,
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
-import { ClickStopPropagationDirective } from 'src/app/shared/directives/click-stop-propagation';
+import { ProfileItemCardComponent } from 'src/app/shared/components/profile-item-card/profile-item-card.component';
+import { addIcons } from 'ionicons';
+import {
+  bookOutline,
+  cogOutline,
+  hammerOutline,
+  logOutOutline,
+  peopleCircleOutline,
+  peopleOutline,
+  schoolOutline,
+  settingsOutline,
+} from 'ionicons/icons';
+import { AuthService } from 'src/app/shared/services/auth.service';
 
-@UntilDestroy()
 @Component({
   selector: 'app-menu',
   templateUrl: 'menu.page.html',
@@ -54,29 +57,23 @@ import { ClickStopPropagationDirective } from 'src/app/shared/directives/click-s
     IonGrid,
     IonCol,
     IonRow,
-    ClickStopPropagationDirective,
+    ProfileItemCardComponent,
   ],
 })
-export class MenuPage implements OnInit {
-  private auth: Auth = inject(Auth);
-  user$ = user(this.auth);
-  authState$ = authState(this.auth);
+export class MenuPage {
+  isDevMode: boolean = isDevMode();
+  authService = inject(AuthService);
 
-  isProduction: boolean = environment.production;
-  userData: WritableSignal<User | null> = signal(null);
-  firstName: WritableSignal<string | null> = signal(null);
-  lastName: WritableSignal<string | null> = signal(null);
-  fullNameAbbreviation: WritableSignal<string | null> = signal(null);
-
-  constructor(public authService: AuthService) {}
-
-  ngOnInit() {
-    this.user$.pipe(untilDestroyed(this), trace('auth')).subscribe((user) => {
-      if (user) {
-        this.userData.set(user);
-      } else {
-        this.userData.set(null);
-      }
+  constructor() {
+    addIcons({
+      peopleOutline,
+      bookOutline,
+      schoolOutline,
+      peopleCircleOutline,
+      hammerOutline,
+      cogOutline,
+      settingsOutline,
+      logOutOutline,
     });
   }
 }

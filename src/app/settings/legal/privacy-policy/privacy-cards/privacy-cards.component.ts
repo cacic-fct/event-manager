@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import { IonList, IonItem } from '@ionic/angular/standalone';
-import { LinkedDataComponent } from 'src/app/about/privacy-policy/privacy-cards/linked-data/linked-data.component';
-import { NotLinkedDataComponent } from 'src/app/about/privacy-policy/privacy-cards/not-linked-data/not-linked-data.component';
-import { TrackingDataComponent } from 'src/app/about/privacy-policy/privacy-cards/tracking-data/tracking-data.component';
+import { LinkedDataComponent } from 'src/app/settings/legal/privacy-policy/privacy-cards/linked-data/linked-data.component';
+import { NotLinkedDataComponent } from 'src/app/settings/legal/privacy-policy/privacy-cards/not-linked-data/not-linked-data.component';
+import { TrackingDataComponent } from 'src/app/settings/legal/privacy-policy/privacy-cards/tracking-data/tracking-data.component';
 
 @Component({
   selector: 'app-privacy-cards',

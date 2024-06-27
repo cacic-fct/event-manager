@@ -1,0 +1,11 @@
+<ion-card>
+  <ion-card-title>
+    <ion-icon [name]="icon" class="explanation-icon"></ion-icon>
+    <br />
+    <ion-label class="explanation-title">{{ title }}</ion-label>
+  </ion-card-title>
+
+  <p>
+    <ng-content></ng-content>
+  </p>
+</ion-card>

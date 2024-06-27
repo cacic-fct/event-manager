@@ -1,0 +1,28 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/ajustes"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Geral</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="content-max-width margin-horizontal-auto">
+    <ion-card>
+      <ion-item [routerLink]="['sobre']" button lines="none">
+        <ion-icon name="information-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>Sobre</ion-label>
+      </ion-item>
+    </ion-card>
+
+    @if (isServiceWorkerActive || isDevMode) {
+    <ion-card>
+      <ion-item [routerLink]="['service-worker']" button lines="none">
+        <ion-icon name="hammer-outline" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>Service Worker</ion-label>
+      </ion-item>
+    </ion-card>
+    }
+  </div>
+</ion-content>

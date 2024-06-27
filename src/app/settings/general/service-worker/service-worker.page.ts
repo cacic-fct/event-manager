@@ -1,57 +1,61 @@
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { AlertController } from '@ionic/angular/standalone';
-
+import { Component, isDevMode } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
-  IonHeader,
-  IonToolbar,
-  IonButtons,
-  IonBackButton,
-  IonTitle,
   IonContent,
-  IonCard,
+  IonHeader,
+  IonTitle,
+  IonToolbar,
+  IonCardContent,
   IonItem,
   IonIcon,
   IonLabel,
-  IonAccordionGroup,
-  IonAccordion,
-  IonList,
+  IonCard,
+  IonBackButton,
+  IonButtons,
   IonText,
 } from '@ionic/angular/standalone';
-
+import { ExplanationCardComponent } from 'src/app/settings/components/explanation-card/explanation-card.component';
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 
+import { AlertController } from '@ionic/angular/standalone';
+import { Router } from '@angular/router';
+
 @Component({
-  selector: 'app-support',
-  templateUrl: './support.page.html',
-  styleUrls: ['./support.page.scss'],
+  selector: 'app-service-worker',
+  templateUrl: './service-worker.page.html',
+  styleUrls: ['./service-worker.page.scss'],
   standalone: true,
   imports: [
-    IonHeader,
-    IonToolbar,
+    IonText,
     IonButtons,
     IonBackButton,
-    IonTitle,
-    IonContent,
     IonCard,
-    IonItem,
-    IonIcon,
     IonLabel,
-    IonAccordionGroup,
-    IonAccordion,
-    IonList,
-    IonText,
-    RouterLink,
+    IonIcon,
+    IonItem,
+    IonCardContent,
+    IonContent,
+    IonHeader,
+    IonTitle,
+    IonToolbar,
+    CommonModule,
+    FormsModule,
+    ExplanationCardComponent,
   ],
 })
-export class SupportPage {
-  serviceWorkerActive = false;
-
+export class ServiceWorkerPage {
+  isServiceWorkerActive = false;
   constructor(
     private alertController: AlertController,
     private sw: ServiceWorkerService,
+    private router: Router,
   ) {
-    this.serviceWorkerActive = this.sw.getServiceWorkerStatus();
+    this.isServiceWorkerActive = this.sw.getServiceWorkerStatus();
+    if (!this.isServiceWorkerActive && !isDevMode()) {
+      this.alertNotActive();
+      this.router.navigate(['/ajustes/geral']);
+    }
   }
 
   async alertUpdate() {
@@ -91,6 +95,20 @@ export class SupportPage {
         {
           text: 'Não',
           role: 'cancel',
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
+  async alertNotActive() {
+    const alert = await this.alertController.create({
+      header: 'O serviço de atualização não está ativo',
+      message: 'Deseja ativar o serviço de atualização?',
+      buttons: [
+        {
+          text: 'Ok',
         },
       ],
     });

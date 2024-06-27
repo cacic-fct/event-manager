@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { PrivacyCardsComponent } from 'src/app/about/privacy-policy/privacy-cards/privacy-cards.component';
+import { PrivacyCardsComponent } from 'src/app/settings/legal/privacy-policy/privacy-cards/privacy-cards.component';
 
 import { environment } from 'src/environments/environment';
 import { IonHeader, IonButtons, IonToolbar, IonBackButton, IonContent, IonTitle } from '@ionic/angular/standalone';

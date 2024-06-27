@@ -13,6 +13,7 @@ import {
   IonRow,
   IonCol,
 } from '@ionic/angular/standalone';
+import { GlobalConstantsService } from 'src/app/shared/services/global-constants.service';
 
 @Component({
   selector: 'app-login',
@@ -34,4 +35,6 @@ import {
     IonCol,
   ],
 })
-export class LoginPage {}
+export class LoginPage {
+  gc = GlobalConstantsService;
+}

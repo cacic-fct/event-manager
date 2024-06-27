@@ -1,0 +1,53 @@
+@if (userData()) {
+  <ion-card>
+    <ion-item class="user-card" [routerLink]="routerLinkTo" lines="none" button>
+      <ion-avatar slot="start">
+        <img alt="Avatar do usuário" [src]="userData().photoURL" />
+      </ion-avatar>
+      <ion-label class="ion-text-wrap">
+        <h1 class="no-margin">{{ userData().displayName }}</h1></ion-label
+      >
+
+      @if (displayShortcutButtons) {
+        <ion-row class="quick-buttons">
+          <ion-col>
+            <ion-button
+              fill="clear"
+              [routerLink]="['/perfil', 'carteira']"
+              appClickStopPropagation
+              aria-label="Carteira">
+              <ion-icon slot="icon-only" name="qr-code-outline"></ion-icon>
+            </ion-button>
+          </ion-col>
+          <ion-col>
+            <ion-button
+              fill="clear"
+              [routerLink]="'/inscricoes'"
+              appClickStopPropagation
+              aria-label="Minhas participações">
+              <ion-icon slot="icon-only" name="albums-outline"></ion-icon>
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      }
+    </ion-item>
+  </ion-card>
+} @else {
+  <ion-card>
+    <!-- 
+      If ion-item is set as button, iOS has a chevron, but MD doesn't have anything to show that it's clickable
+      Therefore, we need an ion-icon
+    -->
+    <ion-item routerLink="/login" lines="none">
+      <ion-avatar slot="start" aria-hidden="true">
+        <img alt="Avatar padrão" src="assets/images/avatar-placeholder.webp" />
+      </ion-avatar>
+      <ion-label class="ion-text-wrap">
+        <h1 class="no-margin">Entrar</h1>
+        <p>Conecte-se com a sua conta Google</p>
+      </ion-label>
+
+      <ion-icon name="log-in-outline" slot="end" aria-hidden="true"></ion-icon>
+    </ion-item>
+  </ion-card>
+}

@@ -1,0 +1,39 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/ajustes"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Conta FCT App</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-card>
+    <ion-item [routerLink]="['/register']" button>
+      <ion-icon name="id-card-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Informações pessoais</ion-label>
+    </ion-item>
+    @if (isUnesp && !alreadyLinked) {
+    <ion-item (click)="authService.GoogleLink()" button lines="none">
+      <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Vincular e-mail pessoal</ion-label>
+    </ion-item>
+    } @if (alreadyLinked) {
+    <ion-item button disabled="" lines="none">
+      <ion-icon name="mail-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>E-mail pessoal já vinculado</ion-label>
+    </ion-item>
+    }
+  </ion-card>
+
+  <ion-card>
+    <ion-item button>
+      <ion-icon name="trash-outline" slot="start" aria-hidden="true" (click)="mailtoDeleteAccount()"></ion-icon>
+      <ion-label>Excluir conta</ion-label>
+    </ion-item>
+    <ion-item button lines="none" (click)="logout()">
+      <ion-icon name="log-out-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Sair</ion-label>
+    </ion-item>
+  </ion-card>
+</ion-content>

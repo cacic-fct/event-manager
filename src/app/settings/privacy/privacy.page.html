@@ -1,0 +1,39 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/ajustes"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Privacidade</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="content-max-width margin-horizontal-auto">
+    <app-explanation-card title="Privacidade" icon="hand-left-outline">
+      Os dados de uso e diagnóstico nos ajudam a entender como as pessoas usam o aplicativo, para que possamos
+      melhora-lo e diagnosticar problemas. As configurações entram em vigor na próxima vez que você iniciar o
+      aplicativo.
+    </app-explanation-card>
+    <ion-card>
+      <ion-item button lines="none">
+        <ion-icon name="analytics-outline" slot="start" aria-hidden="true"> </ion-icon>
+        <ion-toggle [checked]="isAnalyticsEnabled">
+          <ion-label>Compartilhar dados de análise</ion-label>
+        </ion-toggle>
+      </ion-item>
+    </ion-card>
+    <ion-note class="ion-padding"> Ajude-nos a melhorar o aplicativo ao automaticamente enviar dados de uso. </ion-note>
+    <ion-card>
+      <ion-item button lines="none">
+        <ion-icon name="build-outline" slot="start" aria-hidden="true"> </ion-icon>
+        <ion-toggle [checked]="isMonitoringEnabled">
+          <ion-label>Compartilhar dados de diagnóstico</ion-label>
+        </ion-toggle>
+      </ion-item>
+    </ion-card>
+    <ion-note class="ion-padding">
+      Ajude-nos a melhorar o aplicativo e a fornecer um melhor suporte a você ao automaticamente enviar dados de uso e
+      erros.
+    </ion-note>
+  </div>
+</ion-content>

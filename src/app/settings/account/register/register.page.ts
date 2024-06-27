@@ -4,7 +4,7 @@ import { Component, inject, OnInit, ViewChild } from '@angular/core';
 
 import { Router } from '@angular/router';
 
-import { AuthService } from '../../shared/services/auth.service';
+import { AuthService } from '../../../shared/services/auth.service';
 import {
   AlertController,
   ToastController,
@@ -36,15 +36,15 @@ import { Auth, RecaptchaVerifier } from '@angular/fire/auth';
 import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
 import { SweetAlert2Module, SwalComponent } from '@sweetalert2/ngx-sweetalert2';
 
-import { GlobalConstantsService } from '../../shared/services/global-constants.service';
+import { GlobalConstantsService } from '../../../shared/services/global-constants.service';
 
 import { trace } from '@angular/fire/compat/performance';
 
-import { Mailto, MailtoService } from '../../shared/services/mailto.service';
+import { Mailto, MailtoService } from '../../../shared/services/mailto.service';
 
 import { take } from 'rxjs';
 
-import { WindowService } from '../../shared/services/window.service';
+import { WindowService } from '../../../shared/services/window.service';
 
 @Component({
   selector: 'app-page-register',
@@ -91,7 +91,7 @@ export class RegisterPage implements OnInit {
     public router: Router,
     private mailtoService: MailtoService,
     private win: WindowService,
-    private toastController: ToastController
+    private toastController: ToastController,
   ) {
     this.userData = JSON.parse(localStorage.getItem('user'));
 

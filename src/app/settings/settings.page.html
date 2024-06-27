@@ -1,0 +1,45 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/menu"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Ajustes</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" c>
+  <div class="content-max-width margin-horizontal-auto">
+    <ion-header collapse="condense">
+      <ion-toolbar>
+        <ion-title size="large">Ajustes</ion-title>
+      </ion-toolbar>
+    </ion-header>
+
+    <div class="card-margin">
+      <app-profile-item-card [routerLinkTo]="'conta'"> </app-profile-item-card>
+    </div>
+
+    <ion-card>
+      <ion-item [routerLink]="['geral']" button>
+        <ion-icon md="settings-outline" ios="cog-outline" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>Geral</ion-label>
+      </ion-item>
+      <ion-item [routerLink]="['privacidade']" lines="none" button>
+        <ion-icon name="hand-left-outline" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>Privacidade</ion-label>
+      </ion-item>
+    </ion-card>
+
+    <ion-card>
+      <ion-item [routerLink]="['suporte']" button>
+        <ion-icon name="help-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>Suporte</ion-label>
+      </ion-item>
+
+      <ion-item [routerLink]="['legal']" button lines="none">
+        <ion-icon name="document-text-outline" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>Legal</ion-label>
+      </ion-item>
+    </ion-card>
+  </div>
+</ion-content>

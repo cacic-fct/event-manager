@@ -14,20 +14,12 @@ export const routes: Routes = [
     loadChildren: () => import('./development-tools/development-tools.routes').then((m) => m.routes),
     canActivate: [DevelopmentOnlyGuard],
   },
-  // General routes
-  {
-    path: '',
-    loadChildren: () => import('./tabs/tabs.routes').then((m) => m.routes),
-  },
-  {
-    path: 'sobre',
-    title: 'Sobre',
-    loadChildren: () => import('./about/about.routes').then((m) => m.routes),
-  },
+  // Redirects
+
   {
     path: 'privacidade',
-    title: 'Política de privacidade',
-    loadChildren: () => import('./about/privacy-policy/privacy-policy.routes').then((m) => m.routes),
+    redirectTo: 'ajustes/legal/politica-de-privacidade',
+    pathMatch: 'full',
   },
   {
     path: 'privacy',
@@ -45,6 +37,16 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'sobre',
+    redirectTo: 'ajustes/geral/sobre',
+    pathMatch: 'full',
+  },
+  {
+    path: 'about',
+    redirectTo: 'sobre',
+    pathMatch: 'full',
+  },
+  {
     path: 'about',
     redirectTo: 'sobre',
     pathMatch: 'full',
@@ -56,22 +58,14 @@ export const routes: Routes = [
   },
   {
     path: 'licenses',
-    redirectTo: 'sobre/licencas',
+    redirectTo: 'ajustes/legal/licencas',
     pathMatch: 'full',
   },
+  // General routes
   {
-    path: 'sobre/licencas',
-    title: 'Licenças',
-    loadChildren: () => import('./about/licenses/licenses.routes').then((m) => m.routes),
+    path: '',
+    loadChildren: () => import('./tabs/tabs.routes').then((m) => m.routes),
   },
-  // Unused route
-  // {
-  //   path: 'scan',
-  //   title: 'Escanear',
-  //   loadComponent: () =>
-  //     import('./page-qr-scanner-public/page-qr-scanner.page').then((m) => m.PageQrScannerPage),
-  //   ...canActivate(redirectUnauthorizedToLogin),
-  // },
   {
     path: 'login',
     title: 'Entrar',
@@ -79,17 +73,12 @@ export const routes: Routes = [
     ...canActivate(redirectLoggedInToMenu),
   },
   {
-    path: 'register',
-    title: 'Registrar-se',
-    loadComponent: () => import('src/app/profile/register/register.page').then((m) => m.RegisterPage),
-    ...canActivate(redirectUnauthorizedToLogin),
-  },
-  {
     path: 'perfil',
     title: 'Perfil',
     data: { preload: true },
     loadChildren: () => import('src/app/profile/profile-info.routes').then((m) => m.routes),
-    canActivate: [redirectUnauthorizedToLogin],
+    // TODO: Commented out until we fix data being overwritten
+    // ...canActivate(redirectUnauthorizedToLogin),
   },
   {
     path: 'eventos/inscrever/:eventID',
@@ -112,6 +101,11 @@ export const routes: Routes = [
   {
     path: 'certificado/verificar/:param',
     loadChildren: () => import('./validate-certificate/validate-certificate.routes').then((m) => m.routes),
+  },
+  {
+    path: 'ajustes',
+    title: 'Ajustes',
+    loadChildren: () => import('./settings/settings.routes').then((m) => m.routes),
   },
   // Redirect not found routes (404) to index
   // Must be the last route

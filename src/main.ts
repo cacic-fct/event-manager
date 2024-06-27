@@ -53,17 +53,7 @@ console.debug('DEBUG: Nonce: Will fetch nonce');
 const nonce = fetchNonce();
 setNonce(nonce);
 
-H.init('1jdkoe52', {
-  environment: isDevMode() ? 'dev' : 'production',
-  backendUrl: 'https://api-highlight.cacic.dev.br/public',
-  networkRecording: {
-    enabled: true,
-    recordHeadersAndBody: true,
-    urlBlocklist: [],
-  },
-  privacySetting: 'none',
-  sendMode: 'webworker',
-});
+setupAnalytics(nonce);
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -190,4 +180,37 @@ function fetchNonce(): string {
     throw new Error('Nonce not found in cookies');
   }
   return nonce.split('=')[1];
+}
+
+function setupAnalytics(nonce: string): void {
+  if (localStorage.getItem('disable-monitoring') !== 'true') {
+    console.debug('DEBUG: Highlight Monitoring: Enabled');
+    H.init('1jdkoe52', {
+      environment: isDevMode() ? 'dev' : 'production',
+      backendUrl: 'https://api-highlight.cacic.dev.br/public',
+      networkRecording: {
+        enabled: true,
+        recordHeadersAndBody: true,
+        urlBlocklist: [],
+      },
+      privacySetting: 'none',
+      sendMode: 'webworker',
+    });
+  } else {
+    console.debug('DEBUG: Highlight Monitoring: Disabled');
+  }
+
+  if (localStorage.getItem('disable-analytics') !== 'true') {
+    const script = document.createElement('script');
+    script.setAttribute('nonce', nonce);
+    script.async = true;
+    script.defer = true;
+    script.src = 'https://plausible.cacic.dev.br/js/script.js';
+    script.setAttribute('data-domain', 'cacic.dev.br');
+    document.head.appendChild(script);
+
+    console.debug('DEBUG: Plausible Analytics: Enabled');
+  } else {
+    console.debug('DEBUG: Plausible Analytics: Disabled');
+  }
 }

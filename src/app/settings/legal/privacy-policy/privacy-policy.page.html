@@ -8,11 +8,12 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <app-privacy-cards></app-privacy-cards>
+  <div class="content-max-width margin-horizontal-auto">
+    <app-privacy-cards></app-privacy-cards>
 
-  <div class="ion-padding ion-text-justify">
-    <!-- prettier-ignore -->
-    <markdown ngPreserveWhitespaces >
+    <div class="ion-padding ion-text-justify">
+      <!-- prettier-ignore -->
+      <markdown ngPreserveWhitespaces >
     A política de privacidade on-line do site do **FCT App** ({{ baseUrl }}) e **FCT App Docs** (https://docs.fctapp.cacic.dev.br) foi criada para respeitar a [Lei Geral de Proteção de Dados (LGPD)](http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/L13709.htm) e afirmar o nosso compromisso com a segurança e a privacidade das informações coletadas dos visitantes do nosso site. 
     Esta política está sujeita a eventuais atualizações e recomendamos que ela seja consultada periodicamente. 
     Você pode visitar nosso site sem precisar fornecer nenhuma informação pessoal. 
@@ -51,8 +52,9 @@
         
 
   </markdown>
-    <p class="ion-text-right">
-      <em>Esta política de privacidade foi atualizada em 28/05/2024</em>
-    </p>
+      <p class="ion-text-right">
+        <em>Esta política de privacidade foi atualizada em 28/05/2024</em>
+      </p>
+    </div>
   </div>
 </ion-content>
