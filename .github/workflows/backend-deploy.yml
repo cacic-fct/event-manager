@@ -1,31 +1,32 @@
 # Attribution: Dave Sugden
 # https://davelms.medium.com/deploy-firebase-functions-using-github-actions-7dbafbd4df77
-name: Deploy functions
+name: backend-deploy
 
 on:
-  push:
-    paths:
-     — 'functions/**'
-    branches:
-     - 'main'
+  workflow_run:
+    workflows: ["backend-ci"]
+    branches: [main]
+    types:
+      - completed
 
 jobs:
   build_functions:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
-        working-directory: ./functions
+        working-directory: ./backend
         run: bun install --frozen-lockfile
-        
+
       - name: Build functions
-        working-directory: ./functions
+        working-directory: ./backend
         run: bun run build
 
       - name: Upload artifacts
@@ -49,9 +50,9 @@ jobs:
           path: functions/lib/
 
       - name: Create Service Account key
-        working-directory: ./functions
+        working-directory: ./backend
         run: echo '${{ secrets.FIREBASE_FUNCTIONS_ACCOUNT }}' > $HOME/gcloud.json
-         
+
       - name: Deploy Cloud Functions
-        working-directory: ./functions
+        working-directory: ./backend
         run: export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud.json && npx firebase-tools deploy --only functions --json
