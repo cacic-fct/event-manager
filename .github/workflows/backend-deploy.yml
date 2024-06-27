@@ -50,9 +50,9 @@ jobs:
           path: functions/lib/
 
       - name: Create Service Account key
-        working-directory: ./backend
+        working-directory: ./frontend
         run: echo '${{ secrets.FIREBASE_FUNCTIONS_ACCOUNT }}' > $HOME/gcloud.json
 
       - name: Deploy Cloud Functions
-        working-directory: ./backend
+        working-directory: ./frontend
         run: export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud.json && npx firebase-tools deploy --only functions --json
