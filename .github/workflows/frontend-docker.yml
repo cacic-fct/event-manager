@@ -1,4 +1,4 @@
-name: docker
+name: front-enddocker
 
 on:
   workflow_run:
