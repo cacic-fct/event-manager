@@ -6,6 +6,6 @@ end_of_line = lf
 insert_final_newline = true
 
 # 2-space indentation
-[*.{ts,html}]
+[*.{ts,html,json}]
 indent_style = space
 indent_size = 2
