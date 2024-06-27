@@ -11,7 +11,7 @@
   <!-- <swiper-container> -->
   <!-- <swiper-slide> -->
   @if (user$ | async; as user) {
-  <ion-card class="margin-horizontal-auto">
+  <ion-card class="margin-horizontal-auto ion-padding">
     @if (userFirestore$ | async; as userFirestore) {
     <div class="ion-text-center ion-padding-horizontal ion-padding-top">
       <ion-avatar class="margin-horizontal-auto">
@@ -43,7 +43,7 @@
       <span class="info-text">Esta página está disponível off-line</span>
     </div>
     } } @else {
-    <ion-card>
+    <ion-card class="margin-horizontal-auto ion-padding">
       <ng-container>
         <div class="ion-text-center ion-padding-horizontal ion-padding-top">
           <ion-avatar class="margin-horizontal-auto">
@@ -69,7 +69,7 @@
     }
   </ion-card>
   } @else {
-  <ion-card class="margin-horizontal-auto">
+  <ion-card class="margin-horizontal-auto ion-padding">
     <ng-container>
       <div class="ion-text-center ion-padding-horizontal ion-padding-top">
         <ion-avatar class="margin-horizontal-auto">
