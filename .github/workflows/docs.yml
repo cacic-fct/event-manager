@@ -35,17 +35,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Wait for Cloudflare to deploy the site
-      - name: Sleep for 5 minutes
-        run: sleep 5m
+      - name: Sleep for 4 minutes
+        run: sleep 4m
         shell: bash
 
       - name: Algolia crawler creation and crawl
         uses: algolia/algoliasearch-crawler-github-actions@v1.1.10
         id: algolia_crawler
         with:
-          crawler-user-id: ${{ secrets.ALGOLIA_CRAWLER_USER_ID }}
-          crawler-api-key: ${{ secrets.ALGOLIA_CRAWLER_API_KEY }}
-          algolia-app-id: ${{ secrets.ALGOLIA_APP_ID }}
-          algolia-api-key: ${{ secrets.ALGOLIA_API_KEY }}
+          crawler-user-id: ${{ secrets.DOCS_ALGOLIA_CRAWLER_USER_ID }}
+          crawler-api-key: ${{ secrets.DOCS_ALGOLIA_CRAWLER_API_KEY }}
+          algolia-app-id: ${{ secrets.DOCS_ALGOLIA_APP_ID }}
+          algolia-api-key: ${{ secrets.DOCS_ALGOLIA_API_KEY }}
           site-url: 'https://docs.fctapp.cacic.dev.br'
           crawler-name: 'fctapp-yudi'
