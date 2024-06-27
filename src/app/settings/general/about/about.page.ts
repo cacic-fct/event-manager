@@ -21,7 +21,7 @@ import {
 } from '@ionic/angular/standalone';
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 import { addIcons } from 'ionicons';
-import { bookOutline, folderOpenOutline, logoGithub, peopleOutline } from 'ionicons/icons';
+import { bookOutline, logoGithub, peopleOutline } from 'ionicons/icons';
 
 import { environment } from 'src/environments/environment';
 
