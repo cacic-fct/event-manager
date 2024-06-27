@@ -15,7 +15,7 @@ COPY . .
 
 ENV COMMIT_HASH=${COMMIT_HASH}
 
-RUN sed -i '$ s/};/commitHash: ${COMMIT_HASH}\n};/' src/environments/environment.prod.ts
+RUN sed -i "$ s/\ncommitHash: 'placeholder'};/commitHash: ${COMMIT_HASH}\n};/" src/environments/environment.prod.ts
 
 RUN bun run build --prod
 
