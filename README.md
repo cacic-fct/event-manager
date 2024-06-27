@@ -26,50 +26,15 @@ A documentação do projeto está disponível em [cacic-fct/fct-app-docs](https:
 
 O aplicativo é construído com Angular e pode ser acessado em [fct-pp.web.app](https://fct-pp.web.app).
 
+
 ### Desenvolvimento
 
-Para iniciar o site localmente, primeiro instale o [Ionic CLI](https://ionicframework.com/docs/cli) e o [Bun](https://bun.sh/).
+Antes de começar, instale o [Bun](https://bun.sh/).
 
-Depois, instale as dependências:
-
-```bash
-bun install
-```
-
-Em seguida, inicie o servidor de desenvolvimento:
-
-```bash
-ionic serve --ssl
-```
-
-#### Simulador do Firebase
-
-Instale o [Firebase CLI](https://firebase.google.com/docs/cli) e faça login.
-
-Depois, no diretório do projeto, inicie o emulador com o comando:
-
-```bash
-firebase emulators:start --project fct-pp --import=./emulator-data --export-on-exit
-```
-
-##### Cloud Functions
-
-Para testar as Cloud Functions, primeiro altere o diretório para `functions`:
-
-```bash
-cd functions
-```
-
-Depois, instale as dependências:
+Depois, instale as dependências comuns:
 
 ```bash
 bun install
 ```
 
-Em seguida, compile com:
-
-```bash
-bun build
-```
-
-Não é necessário reiniciar o simulador após compilar.
+Agora, siga as instruções que estão no projeto que você deseja contribuir para.
