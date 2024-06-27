@@ -36,24 +36,6 @@ O administrador também é aluno e, consequentemente, usuário do FCT App.
 Separar a área de administração por motivos de segurança é uma prática desnecessária.  
 O principal responsável pela segurança é o backend, não o frontend.
 
-### Monorepo
-
-Estamos programando em frameworks diferentes, com propósitos diferentes, necessidades diferentes e distribuições diferentes.  
-Consolidar tudo em um monorepo prejudica a organização e a manutenção dos projetos.
-
-Só admite-se "monorepos" nos casos em que os recursos estejam diretamente interligados e não possam ser separados.
-
-#### Exemplo positivo
-
-O funcionamento do frontend está diretamente ligado com o backend.  
-Para programar o frontend, é necessário ter o backend funcionando no ambiente de desenvolvimento.
-
-Logo, ambos devem estar no mesmo repositório.
-
-#### Exemplo negativo
-
-O funcionamento do FCT App Docs não depende do FCT App, logo, eles devem estar em repositórios separados.
-
 ## Perguntas
 
 ### O que não faz parte do projeto do FCT App?
