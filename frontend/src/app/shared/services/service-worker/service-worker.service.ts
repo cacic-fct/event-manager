@@ -110,16 +110,16 @@ export class ServiceWorkerService {
    * @returns {boolean} Returns `true` if the service worker is "activated" or "activating", otherwise `false`.
    */
   getServiceWorkerStatus(): boolean {
-    console.log('DEBUG: Checking service worker status');
+    console.debug('DEBUG: Checking service worker status');
     // If browser supports service worker
     if ('serviceWorker' in navigator) {
       // If service worker is "activated" or "activating"
       if (navigator.serviceWorker.controller) {
-        console.log('DEBUG: Service worker is active');
+        console.debug('DEBUG: Service worker is active');
         return true;
       }
     }
-    console.log('DEBUG: Service worker is not active');
+    console.debug('DEBUG: Service worker is not active');
     return false;
   }
 
@@ -128,7 +128,7 @@ export class ServiceWorkerService {
    */
   updateServiceWorker(): void {
     if (this.getServiceWorkerStatus()) {
-      console.log('DEBUG: Updating service worker');
+      console.debug('DEBUG: Updating service worker');
       navigator.serviceWorker
         .getRegistrations()
         .then((registrations) => {
@@ -147,7 +147,7 @@ export class ServiceWorkerService {
    * Unregisters the service worker if it is active.
    */
   unregisterServiceWorker(): void {
-    console.log('DEBUG: Unregistering service worker');
+    console.debug('DEBUG: Unregistering service worker');
     if (this.getServiceWorkerStatus()) {
       navigator.serviceWorker
         .getRegistrations()
