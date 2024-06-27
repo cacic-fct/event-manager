@@ -1,6 +1,6 @@
 # FCT App
 
-[![Documentation](https://img.shields.io/badge/docs-blue)](https://cacic-fct.github.io/fct-app-docs)
+[![Documentation](https://img.shields.io/badge/docs-blue)](https://docs.fctapp.cacic.dev.br)
 [![Front end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/frontend-ci.yml?branch=main&logo=github&label=front%20end%20build)](https://github.com/cacic-fct/fct-app/actions)
 [![Back end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/backend-ci.yml?branch=main&logo=github&label=back%20end%20build)](https://github.com/cacic-fct/fct-app/actions)
 [![Docs build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/docs.yml?branch=main&logo=github&label=back%20end%20build)](https://github.com/cacic-fct/fct-app/actions)

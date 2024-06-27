@@ -2,7 +2,7 @@
 
 ## Site
 
-O site é construído com [Starlight](https://starlight.astro.build/) e pode ser acessado em [cacic-fct.github.io/fct-app-docs](https://cacic-fct.github.io/fct-app-docs).
+O site é construído com [Starlight](https://starlight.astro.build/) e pode ser acessado em [docs.fctapp.cacic.dev.br](https://docs.fctapp.cacic.dev.br).
 
 ### Desenvolvimento
 

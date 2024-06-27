@@ -75,12 +75,12 @@ Os usuários também foram adicionados ao grupo `docker`, para não ser necessá
                      ++
                       ++
                         ++++
- ------------------------------------------
-|                                          |
-| Leia a documentação em:                  |
-| https://cacic-fct.github.io/fct-app-docs |
-|                                          |
- ------------------------------------------
+ ----------------------------------
+|                                  |
+| Leia a documentação em:          |
+| https://docs.fctapp.cacic.dev.br |
+|                                  |
+ ----------------------------------
 ```
 
 ## Pacote Docker

@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: 📚 Documentação
-    url: https://cacic-fct.github.io/fct-app-docs
+    url: https://docs.fctapp.cacic.dev.br
     about: Encontre guias e explicações para perguntas frequentes.
   - name: 🤓 Encontrou um problema na documentação?
     url: https://github.com/cacic-fct/fct-app-docs/issues/new
