@@ -1,6 +1,15 @@
-name: ci
+name: frontend-ci
 
-on: [push, pull_request]
+on:
+  push:
+    paths: — 'frontend/**'
+    branches:
+      - "**"
+
+  pull_request:
+    paths: — 'froentend/**'
+    branches:
+      - "**"
 
 jobs:
   build:
@@ -14,16 +23,19 @@ jobs:
         uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
+        working-directory: ./frontend
         run: bun install --frozen-lockfile
 
       - name: Build for production
+        working-directory: ./frontend
         run: bun run build --configuration=production --verbose
-        
+
       - name: Upload artifacts
+
         uses: actions/upload-artifact@v4
         with:
           name: Build-artifacts
-          path: dist/      
+          path: frontend/dist/
 
   lint:
     runs-on: ubuntu-latest
@@ -36,9 +48,11 @@ jobs:
         uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
+        working-directory: ./frontend
         run: bun install --frozen-lockfile
 
       - name: Lint
+        working-directory: ./frontend
         run: bun run lint
 
   unit-tests:
@@ -53,11 +67,12 @@ jobs:
         uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
+        working-directory: ./frontend
         run: bun install --frozen-lockfile
 
       - name: Unit tests
+        working-directory: ./frontend
         run: bun run test --no-watch --no-progress --browsers=ChromeHeadless
-
 
   unit-tests-upload:
     # This job uses a secret
@@ -74,13 +89,15 @@ jobs:
         uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
+        working-directory: ./frontend
         run: bun install --frozen-lockfile
 
       - name: Unit tests
+        working-directory: ./frontend
         run: bun run test --no-watch --no-progress --browsers=ChromeHeadless
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          
+          files: frontend/coverage/lcov.info

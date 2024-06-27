@@ -14,40 +14,20 @@ $RECYCLE.BIN/
 log.txt
 npm-debug.log*
 
-/.idea
-/.ionic
-/.sass-cache
-/.sourcemaps
-/.versions
-/coverage
-/dist
-/node_modules
-/platforms
-/plugins
+.ionic
+.sass-cache
+.sourcemaps
+.versions
+coverage
+dist
+*/node_modules
+platforms
+plugins
 
-/dist/
-/bazel-out
-/integration/bazel/bazel-*
+dist/
+bazel-out
+integration/bazel/bazel-*
 *.log
-
-# Include when developing application packages.
-pubspec.lock
-.c9
-.idea/
-.devcontainer/*
-!.devcontainer/README.md
-!.devcontainer/recommended-devcontainer.json
-!.devcontainer/recommended-Dockerfile
-.settings/
-*.swo
-*.swp
-modules/.settings
-modules/.vscode
-.vimrc
-.nvimrc
-
-# Don't check in secret files
-*secret.js
 
 # Ignore npm/yarn debug log
 npm-debug.log
@@ -55,9 +35,6 @@ yarn-error.log
 
 # build-analytics
 .build-analytics
-
-# rollup-test output
-/modules/rollup-test/dist/
 
 # User specific bazel settings
 .bazelrc.user
@@ -72,16 +49,11 @@ baseline.json
 
 # Firebase
 .firebase
-*-debug.log
 .runtimeconfig.json
 firestore.rules
 emulator-data
 firebase-export-*
 storage.rules
-
-# ASDF
-.tool-versions
-.eslintcache
 
 # VSCode
 .vscode/**/*
@@ -96,7 +68,7 @@ storage.rules
 **/.history
 
 # next.js
-/.next/
+.next/
 /out/
 next-env.d.ts
 /test-results/
