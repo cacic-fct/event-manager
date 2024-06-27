@@ -40,7 +40,8 @@
             "sourceMap": true,
             "optimization": true,
             "namedChunks": true,
-            "serviceWorker": "ngsw-config.json"
+            "serviceWorker": "ngsw-config.json",
+            "statsJson": true
           },
           "configurations": {
             "production": {
