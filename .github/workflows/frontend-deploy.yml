@@ -1,4 +1,4 @@
-name: frontend-docker
+name: frontend-deploy
 
 on:
   workflow_run:
