@@ -59,17 +59,12 @@ jobs:
           name: Docs-artifacts
           path: docs/dist/
 
-      - name: Publish to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.DOCS_CLOUDFLARE_API_TOKEN }}
           accountId: 034f5089bb082eb57cefc432b42b984d
-          projectName: fct-app-docs
-          directory: dist/
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
-          workingDirectory: docs
-          wranglerVersion: '3'
+          command: pages deploy docs/dist --project-name=fct-app-docs --commit-dirty=true --branch=main --commit-hash=${{ github.sha }}
 
   scrape:
     if: ${{github.ref == 'refs/heads/main'}}
