@@ -70,7 +70,7 @@ jobs:
 
   scrape:
     if: ${{github.ref == 'refs/heads/main'}}
-    needs: build
+    needs: deploy
     runs-on: ubuntu-latest
     steps:
       - name: Algolia crawler creation and crawl
