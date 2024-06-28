@@ -1,5 +1,5 @@
 ---
-title: FCT App Docs
+title: Docs
 ---
 
 Organização padrão de um projeto Starlight.

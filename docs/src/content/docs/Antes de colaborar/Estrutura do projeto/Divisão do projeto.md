@@ -8,12 +8,11 @@ sidebar:
 
 O FCT App é um projeto único, mas está dividido em 3 repositórios:
 
-- [FCT App](https://github.com/cacic-fct/fct-app) - Frontend e backend;
-- [FCT App Docs](https://github.com/cacic-fct/fct-app-docs);
-- [FCT App Assets](https://github.com/cacic-fct/fct-app-assets) - Composição de imagens, sons e outros recursos;
+- [FCT App](https://github.com/cacic-fct/fct-app) - Frontend, backend e documentação;
+- [FCT App Assets](https://github.com/cacic-fct/fct-app-assets) - Composição de imagens, sons e outros recursos com armazenamento em arquivos binários.
 - [FCT App Credentials](https://github.com/cacic-fct/fct-app-credentials) - Credenciais e configurações sensíveis.
 
-O FCT App também pode fazer uso de outros projetos ou repositórios da organização do CACiC, mas estes não estarão listados aqui.
+O FCT App também pode fazer uso de outros projetos ou repositórios da organização do CACiC, mas estes não estarão listados aqui se não forem parte do projeto do FCT App.
 
 ## O que não é admitido
 

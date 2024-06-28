@@ -4,7 +4,7 @@ title: FCT App Assets
 
 O Git não é uma plataforma de versionamento de arquivos binários, da mesma forma que o Github não é uma plataforma de distribuição para estes arquivos.
 
-Dessa forma, é necessário um repositório separado para que o histórico de commits não fique poluído com alterações ilegíveis realizadas em arquivos binários.
+Assim, torna-se necessário um repositório separado para que o histórico de commits não fique poluído com alterações ilegíveis realizadas em arquivos binários.
 
 ## O que faz parte desse repositório
 

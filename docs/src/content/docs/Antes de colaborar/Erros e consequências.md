@@ -4,14 +4,7 @@ sidebar:
   order: -2
 ---
 
-## Complexidade
-
-O FCT App é um projeto complexo, que envolve vários conhecimentos da área da tecnologia, _incluindo tópicos que não são ensinados na graduação_.
-
-Apesar de ser feito por universitários, o FCT App é um aplicativo em produção que é utilizado por centenas de pessoas.  
-Dessas pessoas, dados, em tempo real, são coletados, processados, armazenados, distribuídos e reproduzidos.
-
-Por conta disso, são necessários rigorosos controles e cuidados especiais para que o aplicativo seja seguro, rápido e confiável.
+São necessários rigorosos controles e cuidados especiais para que o aplicativo seja seguro, rápido e confiável.
 
 ## Erros e consequências
 
@@ -51,7 +44,7 @@ Além disso, há a aplicação de multa prevista pela Lei Geral de Proteção de
 
 ### Uso de material protegido por direitos autorais
 
-O infringimento de direitos autorais pode levar a processos judiciais – até mesmo em outros países – e pode acarretar na cobrança de multas e de ações reparatórias, além da apreensão de bens.
+O infringimento de direitos autorais pode levar a processos judiciais – até mesmo em outros países.
 
 ### Danos de imagem
 

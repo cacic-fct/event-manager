@@ -20,13 +20,16 @@ Essa tabela é um adendo à [tabela de registros do CACiC](https://cacic.dev.br/
 | `CNAME` | docs.fctapp.cacic.dev.br               | cacic-fct.github.io | Não   |
 | `CNAME` | supabase-fctapp.cacic.dev.br           | fct.cacic.dev.br    | Sim   |
 | `CNAME` | analytics-supabase-fctapp.cacic.dev.br | fct.cacic.dev.br    | Sim   |
+| `CNAME` | watchtower.cacic.dev.br                | fct.cacic.dev.br    | Sim   |
 | `CAA`   | letsencrypt.org                        |                     | -     |
 
 É indispensável a inclusão do registro `CAA` para cada um dos domínios, a fim de garantir a segurança dos certificados SSL.
 
+
+
 ## Configurações do CloudFlare
 
-O CloudFlare não pode injetar conteúdo no HTML da página. Uma regra específica deve ser feita para impedir isso:
+Para que o caching do service worker funcione, o CloudFlare não pode injetar conteúdo no HTML da página do front end. Uma regra específica deve ser feita para impedir isso:
 
 ```
 (http.host eq "fctapp.cacic.dev.br")
