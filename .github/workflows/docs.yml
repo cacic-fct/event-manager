@@ -29,6 +29,18 @@ jobs:
           package-manager: bun@latest
           path: docs
 
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.DOCS_CLOUDFLARE_API_TOKEN }}
+          accountId: 034f5089bb082eb57cefc432b42b984d
+          projectName: fct-app-docs
+          directory: dist/
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+          workingDirectory: docs
+          wranglerVersion: '3'
+
   scrape:
     if: ${{github.ref == 'refs/heads/main'}}
     needs: build
