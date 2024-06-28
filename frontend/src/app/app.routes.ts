@@ -15,7 +15,6 @@ export const routes: Routes = [
     canActivate: [DevelopmentOnlyGuard],
   },
   // Redirects
-
   {
     path: 'privacidade',
     redirectTo: 'ajustes/legal/politica-de-privacidade',
@@ -23,17 +22,17 @@ export const routes: Routes = [
   },
   {
     path: 'privacy',
-    redirectTo: 'privacidade',
+    redirectTo: 'ajustes/legal/politica-de-privacidade',
     pathMatch: 'full',
   },
   {
     path: 'privacy-policy',
-    redirectTo: 'privacidade',
+    redirectTo: 'ajustes/legal/politica-de-privacidade',
     pathMatch: 'full',
   },
   {
     path: 'politica-de-privacidade',
-    redirectTo: 'privacidade',
+    redirectTo: 'ajustes/legal/politica-de-privacidade',
     pathMatch: 'full',
   },
   {
@@ -43,17 +42,12 @@ export const routes: Routes = [
   },
   {
     path: 'about',
-    redirectTo: 'sobre',
-    pathMatch: 'full',
-  },
-  {
-    path: 'about',
-    redirectTo: 'sobre',
+    redirectTo: 'ajustes/geral/sobre',
     pathMatch: 'full',
   },
   {
     path: 'humans.txt',
-    redirectTo: 'sobre',
+    redirectTo: 'ajustes/geral/sobre',
     pathMatch: 'full',
   },
   {
