@@ -69,4 +69,4 @@ jobs:
     steps:
       - name: Trigger deployment
         run: |
-          curl -H "Authorization: Bearer ${{ secrets.FRONTEND_WATCHTOWER_TOKEN }}" > /dev/null
+          curl -H "Authorization: Bearer ${{ secrets.FRONTEND_WATCHTOWER_TOKEN }}" https://watchtower.cacic.dev.br/fctapp/v1/update > /dev/null
