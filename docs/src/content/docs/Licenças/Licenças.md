@@ -14,7 +14,7 @@ O uso por meio de redes é considerado distribuição, e, portanto, deve seguir 
 
 ### FCT App Docs
 
-O software do FCT App Docs é distribuído sob a licença BSD 4-Clause.
+O software do FCT App Docs é distribuído sob a licença AGPL-3.0-only.
 
 O conteúdo do FCT App Docs é distribuído sob a licença CC BY-NC-SA 4.0.  
 Deve-se creditar o autor como "FCT App Docs" e fornecer um link para a documentação original.
