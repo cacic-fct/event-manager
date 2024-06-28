@@ -1,9 +1,9 @@
 # FCT App
 
-[![Documentation](https://img.shields.io/badge/docs-blue)](https://docs.fctapp.cacic.dev.br)
+[![Documentation](https://img.shields.io/badge/documentation-blue)](https://docs.fctapp.cacic.dev.br)
 [![Front end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/frontend-ci.yml?branch=main&logo=github&label=front%20end%20build)](https://github.com/cacic-fct/fct-app/actions)
 [![Back end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/backend-ci.yml?branch=main&logo=github&label=back%20end%20build)](https://github.com/cacic-fct/fct-app/actions)
-[![Docs build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/docs.yml?branch=main&logo=github&label=back%20end%20build)](https://github.com/cacic-fct/fct-app/actions)
+[![Docs build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/docs.yml?branch=main&logo=github&label=docs%20build)](https://github.com/cacic-fct/fct-app/actions)
 [![Coverage](https://img.shields.io/codecov/c/github/cacic-fct/fct-app/main?logo=codecov)](https://codecov.io/gh/cacic-fct/fct-app)
 [![License](https://img.shields.io/badge/license-AGPL–3.0–only-red)](https://github.com/cacic-fct/fct-app/blob/main/License.txt)
 
