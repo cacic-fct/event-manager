@@ -41,7 +41,7 @@ jobs:
 
         uses: actions/upload-artifact@v4
         with:
-          name: Build-artifacts
+          name: Docs-artifacts
           path: docs/dist/
 
   deploy:
@@ -54,7 +54,8 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v2
         with:
-          name: Build-artifacts
+          name: Docs-artifacts
+          path: docs/dist/
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
