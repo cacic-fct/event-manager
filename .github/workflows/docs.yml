@@ -68,7 +68,7 @@ jobs:
           apiToken: ${{ secrets.DOCS_CLOUDFLARE_API_TOKEN }}
           accountId: 034f5089bb082eb57cefc432b42b984d
           workingDirectory: 'docs'
-          command: pages deploy dist --project-name=fct-app-docs
+          command: pages deploy dist --project-name=fct-app-docs --commit-dirty=true
 
   scrape:
     if: ${{github.ref == 'refs/heads/main'}}
