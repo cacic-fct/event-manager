@@ -80,13 +80,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REQUEST_BODY: |
             {
-               "ref": "${{ github.sha }}",
-               "environment": "production",
-               "environment_url": "https://docs.fctapp.cacic.dev.br",
-               "description": "fct-app-docs",
-               "transient_environment": false,
-               "production_environment": true
-             }
+              "ref": "${{ github.ref }}",
+              "environment": "production",
+              "environment_url": "https://docs.fctapp.cacic.dev.br",
+              "description": "fct-app-docs",
+              "auto_merge": false,
+              "required_contexts": [],
+            }
 
   scrape:
     if: ${{github.ref == 'refs/heads/main'}}
