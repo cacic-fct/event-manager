@@ -75,17 +75,18 @@ jobs:
         with:
           route: POST /repos/:owner/:repo/deployments
           mediaType: '{"previews":["ant-man", "flash"]}'
-          body: |
-            {
-              "ref": "${{ github.sha }}",
-              "environment": "production",
-              "environment_url": "https://docs.fctapp.cacic.dev.br",
-              "description": "fct-app-docs",
-              "transient_environment": false,
-              "production_environment": true
-            }
+          body: ${{ toJSON(env.REQUEST_BODY) }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUEST_BODY: |
+            {
+               "ref": "${{ github.sha }}",
+               "environment": "production",
+               "environment_url": "https://docs.fctapp.cacic.dev.br",
+               "description": "fct-app-docs",
+               "transient_environment": false,
+               "production_environment": true
+             }
 
   scrape:
     if: ${{github.ref == 'refs/heads/main'}}
