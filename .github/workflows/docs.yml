@@ -71,10 +71,10 @@ jobs:
           command: pages deploy dist --project-name=fct-app-docs --commit-dirty=true
 
       - name: Create GitHub Deployment
-        uses: octokit/request-action@v2
+        uses: octokit/request-action@v2.x
         with:
           route: POST /repos/:owner/:repo/deployments
-          mediaType: '{"previews":["ant-man"]}'
+          mediaType: '{"previews":["ant-man", "flash"]}'
           deployment_payload: |
             {
               "ref": "${{ github.sha }}",
