@@ -75,15 +75,14 @@ jobs:
         with:
           route: POST /repos/:owner/:repo/deployments
           mediaType: '{"previews":["ant-man", "flash"]}'
-          deployment_payload: |
+          body: |
             {
               "ref": "${{ github.sha }}",
               "environment": "production",
               "environment_url": "https://docs.fctapp.cacic.dev.br",
-              "description": "Deploying Svelte site",
+              "description": "fct-app-docs",
               "transient_environment": false,
               "production_environment": true
-
             }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
