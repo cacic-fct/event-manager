@@ -81,9 +81,10 @@ jobs:
               repo: context.repo.repo,
               ref: ref,
               required_contexts: [],
-              environment: 'production',
+              environment: 'fct-app-docs (production)',
               description: 'fct-app-docs',
               auto_merge: false,
+              production_environment: true,
             });
 
             await github.rest.repos.createDeploymentStatus({
@@ -98,7 +99,7 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Algolia crawler creation and crawl
+      - name: Algolia Crawler creation and crawl
         uses: algolia/algoliasearch-crawler-github-actions@v1.1.10
         id: algolia_crawler
         with:
