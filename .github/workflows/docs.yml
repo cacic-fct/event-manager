@@ -70,6 +70,24 @@ jobs:
           workingDirectory: 'docs'
           command: pages deploy dist --project-name=fct-app-docs --commit-dirty=true
 
+      - name: Create GitHub Deployment
+        uses: octokit/request-action@v2
+        with:
+          route: POST /repos/:owner/:repo/deployments
+          mediaType: '{"previews":["ant-man"]}'
+          deployment_payload: |
+            {
+              "ref": "${{ github.sha }}",
+              "environment": "production",
+              "environment_url": "https://docs.fctapp.cacic.dev.br",
+              "description": "Deploying Svelte site",
+              "transient_environment": false,
+              "production_environment": true
+
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   scrape:
     if: ${{github.ref == 'refs/heads/main'}}
     needs: deploy
