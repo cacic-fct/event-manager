@@ -36,13 +36,13 @@ O `footer` é opcional.
 Textos sempre no tempo verbal presente:  
 "fix" ao invés de "fixed" ou "fixes"
 
-#### Header 
+#### Header
 
 ```
 <type>(<scope>): <short summary>
   │       │             │
-  │       │             └─⫸ Summary in present tense. 
-  |       |                  Not capitalized. 
+  │       │             └─⫸ Summary in present tense.
+  |       |                  Not capitalized.
   |       |                  No period at the end.
   │       │
   │       └─⫸ Commit Scope: frontend|backend|devops|docs
@@ -54,10 +54,10 @@ Textos sempre no tempo verbal presente:
 
 Limite o header a 72 caracteres.
 
-##### Type 
+##### Type
 
 - **build:** Alterações que afetam apenas build ou dependências externas
-- **ci:** Alterações nos scripts (workflows) de CI e CD 
+- **ci:** Alterações nos scripts (workflows) de CI e CD
 - **docs:** Alterações na documentação
 - **feat:** Um novo recurso
 - **fix:** Uma correção de bug
@@ -74,11 +74,11 @@ Limite o header a 72 caracteres.
 
 #### Body
 
-Esta mensagem de commit deve explicar o porquê de você estar fazendo a mudança. 
+Esta mensagem de commit deve explicar o porquê de você estar fazendo a mudança.
 
 Você pode incluir uma comparação do comportamento anterior com o novo comportamento para ilustrar o impacto da mudança.
 
-#### Footer 
+#### Footer
 
 The footer can contain information about breaking changes and deprecations and is also the place to reference GitHub issues, Jira tickets, and other PRs that this commit closes or is related to. For example:
 
@@ -101,10 +101,10 @@ A seção de Breaking Change deve começar com a frase "BREAKING CHANGE: ", segu
 
 Se o commit reverte um commit anterior, deve começar com `revert: ` seguido do `header` do commit revertido.
 
-O conteúdo do `body` deve conter: 
+O conteúdo do `body` deve conter:
+
 - `This reverts commit <SHA>`, onde `<SHA>` é o hash do commit revertido.
 - Uma explicação do motivo da reversão.
-
 
 ### Idioma
 
@@ -133,7 +133,6 @@ Branches sempre em inglês.
 
 Deve seguir o padrão:  
 `usuário-do-github/nome-da-funcionalidade`
-
 
 ## Issues
 

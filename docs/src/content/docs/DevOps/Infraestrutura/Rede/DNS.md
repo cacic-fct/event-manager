@@ -25,8 +25,6 @@ Essa tabela é um adendo à [tabela de registros do CACiC](https://cacic.dev.br/
 
 É indispensável a inclusão do registro `CAA` para cada um dos domínios, a fim de garantir a segurança dos certificados SSL.
 
-
-
 ## Configurações do CloudFlare
 
 Para que o caching do service worker funcione, o CloudFlare não pode injetar conteúdo no HTML da página do front end. Uma regra específica deve ser feita para impedir isso:

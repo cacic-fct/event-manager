@@ -2,19 +2,16 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import tailwind from '@astrojs/tailwind';
 import icon from 'astro-icon';
-
 import starlightDocSearch from '@astrojs/starlight-docsearch';
 import starlightLinksValidator from 'starlight-links-validator';
 
 // https://astro.build/config
 export default defineConfig({
   site: 'https://docs.fctapp.cacic.dev.br',
-
   integrations: [
     starlight({
       title: 'FCT App Docs',
       favicon: './favicon.png',
-
       locales: {
         root: {
           label: 'Português',
@@ -74,7 +71,6 @@ export default defineConfig({
             directory: 'Frontend',
           },
         },
-
         {
           label: 'Backend',
           collapsed: true,
@@ -124,6 +120,7 @@ export default defineConfig({
           link: 'https://fctapp.cacic.dev.br/privacy',
         },
       ],
+      customCss: ['./src/tailwind.css'],
       plugins: [
         starlightDocSearch({
           appId: 'XCRYMK5HFM',
