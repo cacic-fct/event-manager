@@ -3,9 +3,6 @@ contact_links:
   - name: 📚 Documentação
     url: https://docs.fctapp.cacic.dev.br
     about: Encontre guias e explicações para perguntas frequentes.
-  - name: 🤓 Encontrou um problema na documentação?
-    url: https://github.com/cacic-fct/fct-app-docs/issues/new
-    about: Abra a issue no repositório da documentação.
   - name: 💬 Discussões
-    url: https://github.com/Tyrrrz/DiscordChatExporter/discussions/new
+    url: https://github.com/cacic-fct/fct-app/discussions/new
     about: Pergunte e interaja com outros usuários.
