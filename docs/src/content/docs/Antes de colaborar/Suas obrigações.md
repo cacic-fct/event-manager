@@ -15,8 +15,8 @@ Antes de começar a desenvolver, é importante que você entenda o contexto do p
 
 Pode ser que você precise escrever a sua própria documentação neste site, então também é importante entender como ela está estruturada.
 
-## Você é obrigado a
+Além disso, é necessário:
 
-1. Concordar com o [contrato de concessão de licença (CLA) do CACiC](https://github.com/cacic-fct/.github/blob/main/legal/CLA.md);
+5. Concordar com o [contrato de concessão de licença (CLA) do CACiC](https://github.com/cacic-fct/.github/blob/main/legal/CLA.md);
 1. Certificar-se de que você não está usando, sem permissão _por escrito_, conteúdo protegido por direitos autorais ou por direitos de imagem.
 1. Documentar todas as suas contribuições, seja no código, seja na documentação.
