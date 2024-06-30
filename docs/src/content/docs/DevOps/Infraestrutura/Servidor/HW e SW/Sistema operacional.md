@@ -89,4 +89,16 @@ Enquanto não for disponibilizado um pacote Docker com o Compose v2 no repositó
 
 ## Backup
 
-A decidir.
+Enquanto uma solução de backup permanente não é implementada, o backup é feito manualmente.
+
+No diretório `/home/shared`, o arquivo `docker-compose-backup.zpaq` é incrementado com o comando:
+
+```bash
+zpaqfranz a docker-compose-backup.???.zpaq ./docker-compose -filelist
+```
+
+Este comando deve ser executado como root, por conta das permissões dos arquivos do Docker.
+
+Não delete os arquivos de números inferiores (antigos), pois eles são necessários para a restauração.
+
+Os arquivo são, então, movidos para o servidor de [Yudi](https://github.com/Yudi).
