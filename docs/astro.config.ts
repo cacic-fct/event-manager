@@ -5,6 +5,8 @@ import icon from 'astro-icon';
 import starlightDocSearch from '@astrojs/starlight-docsearch';
 import starlightLinksValidator from 'starlight-links-validator';
 
+import svelte from '@astrojs/svelte';
+
 // https://astro.build/config
 export default defineConfig({
   site: 'https://docs.fctapp.cacic.dev.br',
@@ -134,5 +136,6 @@ export default defineConfig({
       applyBaseStyles: false,
     }),
     icon(),
+    svelte(),
   ],
 });
