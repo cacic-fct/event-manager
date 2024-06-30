@@ -6,6 +6,7 @@ dist
 node_modules
 *.md
 .angular
+.astro
 .husky
 frontend/src/assets/animations/**/*
 frontend/src/assets/certificates/**/*
