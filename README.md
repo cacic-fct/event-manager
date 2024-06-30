@@ -20,7 +20,9 @@ Leia o [guia de contribuição do CACiC](https://github.com/cacic-fct/.github/bl
 
 ## Documentação
 
-A documentação do projeto está disponível em [cacic-fct/fct-app-docs](https://github.com/cacic-fct/fct-app-docs).
+A documentação do projeto está disponível em [docs.fctapp.cacic.dev.br](https://docs.fctapp.cacic.dev.br).
+
+O projeto da documentação está disponível na pasta `docs`.
 
 ## Aplicativo
 

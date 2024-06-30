@@ -21,10 +21,10 @@ export default defineConfig({
         },
       },
       social: {
-        github: 'https://github.com/cacic-fct/fct-app-docs/blob/main',
+        github: 'https://github.com/cacic-fct/fct-app/blob/main',
       },
       editLink: {
-        baseUrl: 'https://github.com/cacic-fct/fct-app-docs/edit/main',
+        baseUrl: 'https://github.com/cacic-fct/fct-app/edit/main/docs',
       },
       head: [
         {
