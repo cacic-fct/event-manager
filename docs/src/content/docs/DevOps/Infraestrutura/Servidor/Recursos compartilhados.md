@@ -49,3 +49,9 @@ API disponível em [typesense.cacic.dev.br](https://typesense.cacic.dev.br).
 Página de estado dos serviços do CACiC.
 
 Disponível em [status.cacic.dev.br](https://status.cacic.dev.br).
+
+## Vaultwarden (senhas)
+
+Gerenciador de senhas do CACiC.
+
+Disponível em [senhas.cacic.dev.br](https://senhas.cacic.dev.br).
