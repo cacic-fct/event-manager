@@ -206,7 +206,7 @@ function setupAnalytics(nonce: string): void {
     script.async = true;
     script.defer = true;
     script.src = 'https://plausible.cacic.dev.br/js/script.js';
-    script.setAttribute('data-domain', 'cacic.dev.br');
+    script.setAttribute('data-domain', 'fctapp.cacic.dev.br');
     document.head.appendChild(script);
 
     console.debug('DEBUG: Plausible Analytics: Enabled');
