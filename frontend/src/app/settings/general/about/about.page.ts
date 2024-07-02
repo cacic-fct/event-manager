@@ -21,8 +21,8 @@ import {
 } from '@ionic/angular/standalone';
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 import { addIcons } from 'ionicons';
-import { bookOutline, logoGithub, peopleOutline } from 'ionicons/icons';
-
+import { bookOutline, copy, logoGithub, peopleOutline } from 'ionicons/icons';
+import { ToastController } from '@ionic/angular/standalone';
 import { environment } from 'src/environments/environment';
 
 @Component({
@@ -58,6 +58,8 @@ export class AboutPage {
   environment = environment;
   versionHash: string;
 
+  private toastController = inject(ToastController);
+
   constructor() {
     const analytics = localStorage.getItem('disable-analytics');
     const monitoring = localStorage.getItem('disable-monitoring');
@@ -80,10 +82,33 @@ export class AboutPage {
       bookOutline,
       logoGithub,
       peopleOutline,
+      copy,
     });
   }
 
   formatVersion(hash: string): string {
     return hash.substring(0, 8);
+  }
+
+  copyAppVersion(version: string): void {
+    navigator.clipboard.writeText(version);
+  }
+
+  async presentToastCopyAppVersion() {
+    const toast = await this.toastController.create({
+      header: 'App Version',
+      message: 'Copiado para a área de transferência.',
+      icon: 'copy',
+      position: 'bottom',
+      duration: 2000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+    toast.present();
   }
 }

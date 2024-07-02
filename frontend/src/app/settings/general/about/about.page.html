@@ -31,7 +31,7 @@
 
     <ion-note class="ion-text-uppercase ion-padding"> App state </ion-note>
     <ion-card>
-      <ion-item>
+      <ion-item (click)="copyAppVersion(versionHash)">
         <ion-label> App version </ion-label>
         <ion-note slot="end"> {{ versionHash }} </ion-note>
       </ion-item>
