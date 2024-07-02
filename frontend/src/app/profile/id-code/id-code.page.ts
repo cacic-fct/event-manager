@@ -28,6 +28,7 @@ import { User } from 'src/app/shared/services/user';
 import { AlertController, ToastController } from '@ionic/angular/standalone';
 import { PlausibleService } from '@notiz/ngx-plausible';
 import { RouterLink } from '@angular/router';
+import { filterNullish } from 'src/app/shared/services/rxjs.service';
 
 @Component({
   selector: 'app-id-code',
@@ -88,14 +89,15 @@ export class IdCodePage implements OnInit {
     );
   }
 
-  ngOnInit(): void {
-    if (this.copy) {
+  async ngOnInit() {
+    const hasPermission = await navigator.permissions.query({ name: 'clipboard-read' as PermissionName });
+    if (this.copy && hasPermission.state === 'granted') {
       this.copyCode('alert');
     }
   }
 
   copyCode(mode: 'toast' | 'alert') {
-    this.userFirebase$.pipe(take(1)).subscribe((user) => {
+    this.userFirebase$.pipe(filterNullish(), take(1)).subscribe((user) => {
       if (user) {
         navigator.clipboard.writeText(user.uid);
         this.plausible.event('ID Copy Event', { props: { method: 'button', user: user.uid } });
