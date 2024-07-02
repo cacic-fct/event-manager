@@ -27,6 +27,20 @@ export class GoogleButtonComponent implements AfterViewInit {
 
   ngAfterViewInit() {
     if (environment.production) {
+      let attempt = 0;
+      //@ts-expect-error - google is defined by the script in index.html
+      while (!google) {
+        setTimeout(() => {
+          console.debug('DEBUG: GoogleButtonComponent: Waiting for google auth to load. Sleeping for 1 second.');
+        }, 1000);
+
+        attempt++;
+
+        if (attempt > 4) {
+          throw new Error('Google auth failed to load');
+        }
+      }
+
       //@ts-expect-error - google is defined by the script in index.html
       google.accounts.id.initialize({
         // Ref: https://developers.google.com/identity/gsi/web/reference/js-reference#IdConfiguration
