@@ -49,7 +49,7 @@ import { setNonce } from '@ionic/core/components';
 import { H } from 'highlight.run';
 import { provideLottieOptions } from 'ngx-lottie';
 
-console.debug('DEBUG: Nonce: Will fetch nonce');
+console.debug('DEBUG: main.ts: Nonce: Will fetch nonce');
 const nonce = fetchNonce();
 setNonce(nonce);
 
@@ -163,10 +163,10 @@ bootstrapApplication(AppComponent, {
 function fetchNonce(): string {
   const regex = new RegExp(`s*nonce=`);
   const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
-  console.debug('DEBUG: Nonce:', nonce?.split('=')[1].slice(0, 7));
+  console.debug('DEBUG: main.ts: Nonce:', nonce?.split('=')[1].slice(0, 7));
   if (!nonce) {
     if (isDevMode()) {
-      console.debug('DEBUG: Nonce: Using development-nonce');
+      console.debug('DEBUG: main.ts: Nonce: Using development-nonce');
       return 'development-nonce';
     }
 
@@ -184,7 +184,7 @@ function fetchNonce(): string {
 
 function setupAnalytics(nonce: string): void {
   if (localStorage.getItem('disable-monitoring') !== 'true') {
-    console.debug('DEBUG: Highlight Monitoring: Enabled');
+    console.debug('DEBUG: main.ts: Highlight Monitoring: Enabled');
     H.init('1jdkoe52', {
       environment: isDevMode() ? 'dev' : 'production',
       backendUrl: 'https://api-highlight.cacic.dev.br/public',
@@ -197,7 +197,7 @@ function setupAnalytics(nonce: string): void {
       sendMode: 'webworker',
     });
   } else {
-    console.debug('DEBUG: Highlight Monitoring: Disabled');
+    console.debug('DEBUG: main.ts: Highlight Monitoring: Disabled');
   }
 
   if (localStorage.getItem('disable-analytics') !== 'true') {
@@ -209,8 +209,8 @@ function setupAnalytics(nonce: string): void {
     script.setAttribute('data-domain', 'fctapp.cacic.dev.br');
     document.head.appendChild(script);
 
-    console.debug('DEBUG: Plausible Analytics: Enabled');
+    console.debug('DEBUG: main.ts: Plausible Analytics: Enabled');
   } else {
-    console.debug('DEBUG: Plausible Analytics: Disabled');
+    console.debug('DEBUG: main.ts: Plausible Analytics: Disabled');
   }
 }
