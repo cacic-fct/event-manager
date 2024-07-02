@@ -95,14 +95,14 @@ export class IdCodePage {
         this.plausible.event('ID Copy Event', { props: { method: 'button', user: user.uid } });
         switch (mode) {
           case 'toast':
-            this.presentToastShare();
+            this.presentToastCopy();
             break;
         }
       }
     });
   }
 
-  async presentToastShare() {
+  async presentToastCopy() {
     const toast = await this.toastController.create({
       header: 'Código de identificação',
       message: 'Copiado para a área de transferência.',
