@@ -90,11 +90,7 @@ export class AboutPage {
     return hash.substring(0, 8);
   }
 
-  copyAppVersion(version: string): void {
-    navigator.clipboard.writeText(version);
-  }
-
-  async presentToastCopyAppVersion() {
+  async copyAppVersion(version: string) {
     const toast = await this.toastController.create({
       header: 'App Version',
       message: 'Copiado para a área de transferência.',
@@ -109,6 +105,8 @@ export class AboutPage {
         },
       ],
     });
+    navigator.clipboard.writeText(version);
     toast.present();
+    return;
   }
 }
