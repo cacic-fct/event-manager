@@ -1,13 +1,13 @@
 import { Routes } from '@angular/router';
 
-import { ProfileInfoPage } from './profile-info.page';
+import { ProfilePage } from './profile.page';
 import { canActivate } from '@angular/fire/compat/auth-guard';
 import { redirectUnauthorizedToLogin } from 'src/app/shared/services/routing/guards.service';
 
 export const routes: Routes = [
   {
     path: '',
-    component: ProfileInfoPage,
+    component: ProfilePage,
   },
   {
     path: 'carteira',

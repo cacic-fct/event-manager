@@ -70,7 +70,7 @@ export const routes: Routes = [
     path: 'perfil',
     title: 'Perfil',
     data: { preload: true },
-    loadChildren: () => import('src/app/profile/profile-info.routes').then((m) => m.routes),
+    loadChildren: () => import('src/app/profile/profile.routes').then((m) => m.routes),
     // TODO: Commented out until we fix data being overwritten
     // ...canActivate(redirectUnauthorizedToLogin),
   },

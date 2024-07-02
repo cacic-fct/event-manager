@@ -26,8 +26,8 @@ import { albumsOutline, cogOutline, idCardOutline, qrCodeOutline, settingsOutlin
 
 @Component({
   selector: 'app-profile-info',
-  templateUrl: './profile-info.page.html',
-  styleUrls: ['./profile-info.page.scss'],
+  templateUrl: './profile.page.html',
+  styleUrls: ['./profile.page.scss'],
   standalone: true,
   imports: [
     IonRow,
@@ -51,7 +51,7 @@ import { albumsOutline, cogOutline, idCardOutline, qrCodeOutline, settingsOutlin
     AsyncPipe,
   ],
 })
-export class ProfileInfoPage {
+export class ProfilePage {
   constructor() {
     addIcons({
       qrCodeOutline,
