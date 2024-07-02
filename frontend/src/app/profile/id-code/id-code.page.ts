@@ -93,9 +93,7 @@ export class IdCodePage implements OnInit {
   }
 
   async ngOnInit() {
-    const hasPermission = await navigator.permissions.query({ name: 'clipboard-read' as PermissionName });
-    console.debug('DEBUG: IdCodePage: Clipboard permission:', hasPermission.state);
-    if (this.copy && hasPermission.state === 'granted') {
+    if (this.copy) {
       this.copyCode('alert');
     }
   }
