@@ -21,7 +21,7 @@ import {
 } from '@ionic/angular/standalone';
 import { ExplanationCardComponent } from 'src/app/settings/components/explanation-card/explanation-card.component';
 import { addIcons } from 'ionicons';
-import { copy, idCardOutline } from 'ionicons/icons';
+import { copy, idCardOutline, pencil } from 'ionicons/icons';
 import { Auth, user, User as FirebaseUser } from '@angular/fire/auth';
 import { Observable, of, switchMap, take } from 'rxjs';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
@@ -76,6 +76,7 @@ export class IdCodePage implements OnInit {
     addIcons({
       idCardOutline,
       copy,
+      pencil,
     });
 
     this.user$ = this.userFirebase$.pipe(
