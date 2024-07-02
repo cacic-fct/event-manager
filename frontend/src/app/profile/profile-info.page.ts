@@ -22,7 +22,7 @@ import {
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
 import { addIcons } from 'ionicons';
-import { albumsOutline, cogOutline, qrCodeOutline, settingsOutline } from 'ionicons/icons';
+import { albumsOutline, cogOutline, idCardOutline, qrCodeOutline, settingsOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-profile-info',
@@ -58,6 +58,7 @@ export class ProfileInfoPage {
       albumsOutline,
       cogOutline,
       settingsOutline,
+      idCardOutline,
     });
   }
 }
