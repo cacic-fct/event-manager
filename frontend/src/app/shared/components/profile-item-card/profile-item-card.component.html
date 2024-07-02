@@ -5,8 +5,11 @@
         <img alt="Avatar do usuário" [src]="userData().photoURL" />
       </ion-avatar>
       <ion-label class="ion-text-wrap">
-        <h1 class="no-margin">{{ userData().displayName }}</h1></ion-label
-      >
+        <h1 class="no-margin">{{ userData().displayName }}</h1>
+        @if (displayShortcutButtons) {
+          <p>Meu perfil</p>
+        }
+      </ion-label>
 
       @if (displayShortcutButtons) {
         <ion-row class="quick-buttons">
