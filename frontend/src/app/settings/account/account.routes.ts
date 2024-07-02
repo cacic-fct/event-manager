@@ -9,7 +9,7 @@ export const routes: Routes = [
     component: AccountPage,
   },
   {
-    path: 'register',
+    path: 'informacoes-pessoais',
     title: 'Informações pessoais',
     loadComponent: () => import('src/app/settings/account/register/register.page').then((m) => m.RegisterPage),
     ...canActivate(redirectUnauthorizedToLogin),
