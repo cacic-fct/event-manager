@@ -3,15 +3,19 @@ title: FCT App Docs
 description: Documentação de desenvolvimento do FCT App
 hero:
   tagline: Documentação de desenvolvimento e gerenciamento
-  image:
-    file: ../../assets/fct-app-icon.png
   actions:
+    - text: Ver repositório
+      link: https://github.com/cacic-fct/fct-app
+      icon: external
     - text: Voltar ao app
       link: https://fctapp.cacic.dev.br
       icon: external
 ---
 
+import AppIcon from '../../assets/fct-app-icon.png';
+import { Image } from 'astro:assets';
 import { CardGrid, Card } from '@astrojs/starlight/components';
+import '../../components/index/fixLogo.css';
 
 <CardGrid>
 	<Card title="Sou desenvolvedor" icon="seti:json">
