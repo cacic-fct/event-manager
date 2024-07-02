@@ -16,7 +16,7 @@ A segurança é dependente das diretorias do CACiC e da EJComp.
 As diretorias dessas entidades são eleitas de forma anual e podem não ter conhecimento técnico suficiente para manter a infraestrutura segura.
 
 Como não é possível garantir a continuidade das boas práticas pelas entidades, é necessário a presença de uma auditoria externa.  
-Isso é solucionado pela existência dos [_lead developers_](/devops/segurança/auditing/#lead-developers).
+Isso é solucionado pela existência dos [_lead developers_](/devops/segurança-geral/auditing/#lead-developers).
 
 ### Docker Breakout / Privilege Escalation
 

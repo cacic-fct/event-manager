@@ -26,7 +26,7 @@ Caso solicitado, a configuração do servidor deve ser disponibilizada para a au
 
 ### Lead developers
 
-Os _lead developers_ exercem o papel de auditoria externa _voluntária_ para evitar o problema descrito na seção [deficiências evidentes](/devops/segurança/vulnerabilidades/#deficiências-evidentes).  
+Os _lead developers_ exercem o papel de auditoria externa _voluntária_ para evitar o problema descrito na seção [deficiências evidentes](/devops/segurança-geral/vulnerabilidades/#deficiências-evidentes).  
 Por serem externos e voluntários, não podem ser responsabilizados por problemas de segurança.
 
 Seu trabalho é _preferencialmente_ passivo: por conta própria, podem revisar e sugerir mudanças para os responsáveis da infraestrutura e do código.
@@ -51,7 +51,6 @@ Podem renunciar voluntariamente, mas o nome permanecerá na lista com uma averba
 Possuirão acesso irrestrito e vitalício de leitura e escrita a todos códigos-fonte, ao servidor e ao banco de dados os _founding lead developers_ a seguir:
 
 - [@GuiBatalhoti](https://github.com/GuiBatalhoti)
-- [@karoldm](https://github.com/karoldm)
 - [@Salies](https://github.com/salies)
 - [@willshobwish](https://github.com/willshobwish)
 - [@Yudi](https://github.com/Yudi)\*

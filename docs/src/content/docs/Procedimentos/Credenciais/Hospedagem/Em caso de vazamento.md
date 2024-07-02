@@ -9,5 +9,5 @@ Caso algum administrador tenha alguma conta invadida ou tenha o seu computador s
 Em qualquer caso, notifique todos que possuírem cargos altos no projeto, incluindo _founding lead developers_.
 
 :::tip
-Confira as seções [responsabilidades](/devops/segurança/encarregados) e [consequências](/antes-de-colaborar/erros-e-consequências).
+Confira as seções [responsabilidades](/devops/segurança-geral/encarregados) e [consequências](/antes-de-colaborar/erros-e-consequências).
 :::
