@@ -292,16 +292,20 @@ export class AuthService {
               map((doc) => {
                 if (doc.exists) {
                   const data = doc.data();
-                  const remoteDataVersion = data.dataVersion;
+                  const userRemoteDataVersion = data.dataVersion;
 
                   if (data === undefined) {
+                    console.error('User data is undefined.');
                     return true;
-                  } else if (remoteDataVersion && remoteDataVersion > this.localDataVersion) {
+                  } else if (userRemoteDataVersion && userRemoteDataVersion > this.localDataVersion) {
+                    console.debug('DEBUG: Remote user data version is newer than local.');
                     return true;
-                  } else if (!remoteDataVersion || remoteDataVersion !== this.localDataVersion) {
-                    this.router.navigate(['/register']);
+                  } else if (!userRemoteDataVersion || userRemoteDataVersion !== this.localDataVersion) {
+                    console.debug('DEBUG: Remote user data version mismatch. Redirecting to register page.');
+                    this.router.navigate(['/ajustes/conta/informacoes-pessoais']);
                     return true;
                   } else {
+                    console.debug('DEBUG: Remote user data version matches local.');
                     return false;
                   }
                 }

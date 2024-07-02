@@ -157,10 +157,12 @@ export class SubscribePage implements OnInit {
           .subscribe((doc) => {
             if (doc.exists) {
               if (doc.data().dataVersion !== GlobalConstantsService.userDataVersion) {
-                this.router.navigate(['/register']);
+                console.debug("DEBUG: User's data is outdated, redirecting to update page");
+                this.router.navigate(['/ajustes/conta/informacoes-pessoais']);
               }
             } else {
-              this.router.navigate(['/register']);
+              console.debug("DEBUG: User's data doesn't exist, redirecting to update page");
+              this.router.navigate(['/ajustes/conta/informacoes-pessoais']);
             }
           });
       }
