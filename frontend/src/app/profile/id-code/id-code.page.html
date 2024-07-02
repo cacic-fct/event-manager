@@ -11,8 +11,8 @@
   <div class="content-max-width margin-horizontal-auto">
     <app-explanation-card title="Código de identificação" icon="id-card-outline">
       O código de identificação é utilizado pelas entidades estudantis para que você não precise preencher seus dados
-      pessoais (nome, e-mail, celular e RA) toda vez que for responder a um formulário. Confira se seus dados estão
-      atualizados antes de compartilhar seu código.
+      pessoais toda vez que for responder a um formulário. Confira se seus dados estão atualizados antes de compartilhar
+      seu código.
     </app-explanation-card>
     @if (user$ | async; as user) {
     <ion-card>
@@ -28,13 +28,19 @@
 
         <div class="id-code-container">
           <p>Seu código é:</p>
-          <h1><code>{{ (userFirebase$ | async).uid }}</code></h1>
+          <ion-card-title>
+            <h1><code>{{ (userFirebase$ | async).uid }}</code></h1>
+          </ion-card-title>
         </div>
 
-        <ion-button color="primary" (click)="copyCode('toast')">Copiar código</ion-button>
-        <ion-button color="secondary" [routerLink]="['/configuracoes', 'conta', 'informacoes-pessoais']"
-          >Editar dados</ion-button
-        >
+        <ion-button color="primary" (click)="copyCode('toast')">
+          <ion-icon slot="start" name="copy-outline"></ion-icon>
+          Copiar código
+        </ion-button>
+        <ion-button color="secondary" [routerLink]="['/ajustes', 'conta', 'informacoes-pessoais']">
+          <ion-icon slot="start" name="pencil-outline"></ion-icon>
+          Editar informações
+        </ion-button>
       </ion-card-content>
     </ion-card>
     }

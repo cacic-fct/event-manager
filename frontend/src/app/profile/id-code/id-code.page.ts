@@ -17,6 +17,7 @@ import {
   IonText,
   IonBackButton,
   IonButtons,
+  IonIcon,
 } from '@ionic/angular/standalone';
 import { ExplanationCardComponent } from 'src/app/settings/components/explanation-card/explanation-card.component';
 import { addIcons } from 'ionicons';
@@ -36,6 +37,7 @@ import { filterNullish } from 'src/app/shared/services/rxjs.service';
   styleUrls: ['./id-code.page.scss'],
   standalone: true,
   imports: [
+    IonIcon,
     IonButtons,
     IonBackButton,
     IonText,
@@ -91,6 +93,7 @@ export class IdCodePage implements OnInit {
 
   async ngOnInit() {
     const hasPermission = await navigator.permissions.query({ name: 'clipboard-read' as PermissionName });
+    console.debug('DEBUG: IdCodePage: Clipboard permission:', hasPermission.state);
     if (this.copy && hasPermission.state === 'granted') {
       this.copyCode('alert');
     }
@@ -116,7 +119,7 @@ export class IdCodePage implements OnInit {
   async presentToastShare() {
     const toast = await this.toastController.create({
       header: 'Código de identificação',
-      message: 'Código copiado para a área de transferência.',
+      message: 'Copiado para a área de transferência.',
       icon: 'copy',
       position: 'bottom',
       duration: 2000,
@@ -134,7 +137,7 @@ export class IdCodePage implements OnInit {
   async presentAlertShare() {
     const alert = await this.alertController.create({
       header: 'Código de identificação',
-      message: 'Código copiado para a área de transferência.',
+      message: 'Copiado para a área de transferência.',
       buttons: ['OK'],
     });
     alert.present();
