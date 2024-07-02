@@ -19,16 +19,16 @@ export class DevelopmentOnlyGuard {
 // Attribution: waternova
 // https://stackoverflow.com/questions/64456664/angularfireauthguard-redirecturl-after-login
 export const redirectUnauthorizedToLogin = (_next: ActivatedRouteSnapshot, state: RouterStateSnapshot) => {
-  console.debug('DEBUG: Redirecting unauthorized to login');
+  console.debug('DEBUG: Check redirectUnauthorizedTo');
   return redirectUnauthorizedTo(`/login?redirect=${state.url}`);
 };
 
 export const redirectLoggedInToMenu = () => {
-  console.debug('DEBUG: Redirecting logged in to menu');
+  console.debug('DEBUG: Check redirectLoggedInTo menu');
   return redirectLoggedInTo(['/menu']);
 };
 export const redirectLoggedInToCalendar = () => {
-  console.debug('DEBUG: Redirecting logged in to calendar');
+  console.debug('DEBUG: Check redirectLoggedInTo calendar');
   return redirectLoggedInTo(['/calendario']);
 };
 

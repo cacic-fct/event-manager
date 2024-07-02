@@ -163,7 +163,7 @@ bootstrapApplication(AppComponent, {
 function fetchNonce(): string {
   const regex = new RegExp(`s*nonce=`);
   const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
-  console.debug('DEBUG: Nonce:', nonce);
+  console.debug('DEBUG: Nonce:', nonce?.split('=')[1].slice(0, 7));
   if (!nonce) {
     if (isDevMode()) {
       console.debug('DEBUG: Nonce: Using development-nonce');
