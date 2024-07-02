@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -26,10 +26,9 @@ import { Auth, user, User as FirebaseUser } from '@angular/fire/auth';
 import { Observable, of, switchMap, take } from 'rxjs';
 import { doc, docData, Firestore } from '@angular/fire/firestore';
 import { User } from 'src/app/shared/services/user';
-import { AlertController, ToastController } from '@ionic/angular/standalone';
+import { ToastController } from '@ionic/angular/standalone';
 import { PlausibleService } from '@notiz/ngx-plausible';
 import { RouterLink } from '@angular/router';
-import { filterNullish } from 'src/app/shared/services/rxjs.service';
 
 @Component({
   selector: 'app-id-code',
@@ -59,16 +58,13 @@ import { filterNullish } from 'src/app/shared/services/rxjs.service';
     RouterLink,
   ],
 })
-export class IdCodePage implements OnInit {
-  @Input() copy?: boolean;
-
+export class IdCodePage {
   private auth: Auth = inject(Auth);
   private firestore: Firestore = inject(Firestore);
   user$: Observable<User | null>;
   userFirebase$: Observable<FirebaseUser | null> = user(this.auth);
 
   private toastController = inject(ToastController);
-  private alertController = inject(AlertController);
 
   private plausible: PlausibleService = inject(PlausibleService);
 
@@ -92,23 +88,14 @@ export class IdCodePage implements OnInit {
     );
   }
 
-  async ngOnInit() {
-    if (this.copy) {
-      this.copyCode('alert');
-    }
-  }
-
-  copyCode(mode: 'toast' | 'alert') {
-    this.userFirebase$.pipe(filterNullish(), take(1)).subscribe((user) => {
+  copyCode(mode: 'toast') {
+    this.userFirebase$.pipe(take(1)).subscribe((user) => {
       if (user) {
         navigator.clipboard.writeText(user.uid);
         this.plausible.event('ID Copy Event', { props: { method: 'button', user: user.uid } });
         switch (mode) {
           case 'toast':
             this.presentToastShare();
-            break;
-          case 'alert':
-            this.presentAlertShare();
             break;
         }
       }
@@ -131,14 +118,5 @@ export class IdCodePage implements OnInit {
       ],
     });
     toast.present();
-  }
-
-  async presentAlertShare() {
-    const alert = await this.alertController.create({
-      header: 'Código de identificação',
-      message: 'Copiado para a área de transferência.',
-      buttons: ['OK'],
-    });
-    alert.present();
   }
 }
