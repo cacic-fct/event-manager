@@ -11,6 +11,7 @@ export const routes: Routes = [
   },
   {
     path: 'carteira',
+    title: 'Carteira',
     data: { preload: true },
     loadComponent: () => import('./wallet/wallet.page').then((m) => m.WalletPage),
     // TODO: Commented out until we fix data being overwritten
@@ -18,6 +19,7 @@ export const routes: Routes = [
   },
   {
     path: 'codigo',
+    title: 'Código de identificação',
     loadComponent: () => import('./id-code/id-code.page').then((m) => m.IdCodePage),
     ...canActivate(redirectUnauthorizedToLogin),
   },
