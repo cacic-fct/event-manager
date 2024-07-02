@@ -102,11 +102,11 @@
 
     <h3 class="mt-0">O servidor responde ao acesso SSH?</h3>
     <code> ssh -i ~/.ssh/id_rsa &lt;user&gt;@38a.fct.unesp.br </code>
-    <div class="card-actions justify-start ">
+    <div class="card-actions justify-start">
       <button class="btn" on:click={() => setValue('sshAccessible', true)}>Sim</button>
       <button class="btn" on:click={() => setValue('sshAccessible', false)}>Não</button>
       <br />
-      <button class="btn " on:click={() => reset()}> Reiniciar </button>
+      <button class="btn" on:click={() => reset()}> Reiniciar </button>
     </div>
   {/if}
 
@@ -144,8 +144,8 @@
       <p>O servidor não responde a pings.</p>
     </blockquote>
 
-    <h3 class="mt-0"><i>Toda</i> a infraestrutura da DTI responde a pings?</h3>
-    <code>ping 200.145.181.53<br />ping 58a.fct.unesp.br<br />ping 152o.fct.unesp.br<br />ping 114b.fct.unesp.br<br />ping fct1-pp.net.unesp.br</code>
+    <h3 class="mt-0"><i>Toda</i> a infraestrutura de rede da DTI responde a pings?</h3>
+    <code>ping fct1-pp.net.unesp.br<br />ping pprudente.fct.unesp.br </code>
     <div class="card-actions justify-start">
       <button class="btn" on:click={() => setValue('pingDtiServersWorks', true)}>Sim</button>
       <button class="btn" on:click={() => setValue('pingDtiServersWorks', false)}>Não</button>
@@ -196,4 +196,3 @@
     margin-top: 0;
   }
 </style>
-

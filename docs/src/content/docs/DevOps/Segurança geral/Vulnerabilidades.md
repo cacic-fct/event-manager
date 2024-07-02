@@ -26,7 +26,9 @@ Pelos volumes dos containers do Compose estarem configurados corretamente, não 
 
 :::danger
 
-Mate o container com `docker kill <id>` em uma nova sessão ao invés de sair com `exit`, para evitar o registro dos comandos no `.bash_history`.  
+Mate o container com `docker kill <id>` em uma nova sessão ao invés de sair com `exit`, para evitar o registro dos comandos no `/root/.bash_history`.  
 O ID é a sequência de caracteres que está depois do `@`. Você também pode digitar `docker ps`.
+
+Remova o comando do seu `~/.bash_history`.
 
 :::
