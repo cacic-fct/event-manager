@@ -10,7 +10,7 @@
       if (statusPageAccessible) {
         return 'Faça login por SSH e reinicie os serviços afetados. Não entre em contato com a DTI.';
       } else {
-        return 'Faça login por SSH e inicie o uptime-kuma: ele auxiliará a identificar outros serviços que estão off-line, para que você possa reiniciá-los. Não entre em contato com a DTI.';
+        return 'Faça login por SSH e inicie o authentik e o uptime-kuma - ele auxiliará a identificar outros serviços que estão off-line, para que você possa reiniciá-los. Não entre em contato com a DTI.';
       }
     }
 
@@ -82,7 +82,7 @@
 <div class="card bg-base-100 shadow-xl card-body mb-10">
   {#if statusPageAccessible === null}
     <h3>
-      A <a href="https://status.cacic.dev.br" target="_blank">página de status</a> está acessível?
+      A <a href="https://status.cacic.dev.br" target="_blank">página de estado dos serviços</a> está acessível?
     </h3>
 
     <div class="card-actions justify-start">
@@ -94,9 +94,9 @@
   {#if statusPageAccessible !== null && sshAccessible === null}
     <blockquote>
       {#if statusPageAccessible === true}
-        <p>A página de status do servidor está acessível.</p>
+        <p>A página de estado dos serviços do servidor está acessível.</p>
       {:else}
-        <p>A página de status do servidor não está acessível.</p>
+        <p>A página de estado dos serviços do servidor não está acessível.</p>
       {/if}
     </blockquote>
 
@@ -113,9 +113,9 @@
   {#if statusPageAccessible !== null && sshAccessible === false && pingServerWorks === null}
     <blockquote>
       {#if statusPageAccessible === true}
-        A página de status do servidor está acessível.
+        A página de estado dos serviços do servidor está acessível.
       {:else}
-        A página de status do servidor não está acessível.
+        A página de estado dos serviços do servidor não está acessível.
       {/if}
       <br />
 
@@ -135,9 +135,9 @@
   {#if statusPageAccessible !== null && sshAccessible === false && pingServerWorks === false && pingDtiServersWorks === null}
     <blockquote>
       {#if statusPageAccessible === true}
-        <p>A página de status do servidor está acessível.</p>
+        <p>A página de estado dos serviços do servidor está acessível.</p>
       {:else}
-        <p>A página de status do servidor não está acessível.</p>
+        <p>A página de estado dos serviços do servidor não está acessível.</p>
       {/if}
 
       <p>O servidor não está acessível por SSH.</p>
@@ -157,9 +157,9 @@
   {#if stop === true}
     <blockquote>
       {#if statusPageAccessible === true}
-        <p>A página de status do servidor está acessível.</p>
+        <p>A página de estado dos serviços do servidor está acessível.</p>
       {:else if statusPageAccessible === false}
-        <p>A página de status do servidor não está acessível.</p>
+        <p>A página de estado dos serviços do servidor não está acessível.</p>
       {/if}
 
       {#if sshAccessible === true}
