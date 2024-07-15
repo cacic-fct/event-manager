@@ -34,6 +34,40 @@ e como entrar em contato com eles.
 
 ```
 
+## ZRam
+
+Para que o sistema utilize o ZRam corretamente, a partição de swap deve possuir a opção `pri=2` no lugar do `sw`.
+
+### /etc/default/zramswap
+
+```bash
+# Compression algorithm selection
+# speed: lz4 > zstd > lzo
+# compression: zstd > lzo > lz4
+# This is not inclusive of all that is available in latest kernels
+# See /sys/block/zram0/comp_algorithm (when zram module is loaded) to see
+# what is currently set and available for your kernel[1]
+# [1]  https://github.com/torvalds/linux/blob/master/Documentation/blockdev/zram.txt#L86
+ALGO=lz4
+
+# Specifies the amount of RAM that should be used for zram
+# based on a percentage the total amount of available memory
+# This takes precedence and overrides SIZE below
+#PERCENT=50
+
+# Specifies a static amount of RAM that should be used for
+# the ZRAM devices, this is in MiB
+SIZE=4096
+
+# Specifies the priority for the swap devices, see swapon(2)
+# for more details. Higher number = higher priority
+# This should probably be higher than hdd/ssd swaps.
+PRIORITY=100
+```
+
+
+
+
 ## Usuários
 
 Conforme norma da Unesp, cada pessoa possui seu próprio usuário.\*

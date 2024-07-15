@@ -31,4 +31,6 @@ O ID é a sequência de caracteres que está depois do `@`. Você também pode d
 
 Remova o comando do seu `~/.bash_history`.
 
+Limpe os containers inativos com `docker container prune`.
+
 :::
