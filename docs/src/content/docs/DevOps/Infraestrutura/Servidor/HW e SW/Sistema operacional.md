@@ -65,9 +65,6 @@ SIZE=4096
 PRIORITY=100
 ```
 
-
-
-
 ## Usuários
 
 Conforme norma da Unesp, cada pessoa possui seu próprio usuário.\*
