@@ -103,6 +103,7 @@ export const routes: Routes = [
   },
   {
     path: 'comissoes',
+    title: 'Comissões',
     loadComponent: () => import('./student-area/committees/committees.page').then((m) => m.CommitteesPage),
   },
   // Redirect not found routes (404) to index
