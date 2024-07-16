@@ -92,7 +92,7 @@ export class AboutPage {
 
   async copyAppVersion(version: string) {
     const toast = await this.toastController.create({
-      header: 'App Version',
+      header: 'App version',
       message: 'Copiado para a área de transferência.',
       icon: 'copy',
       position: 'bottom',
