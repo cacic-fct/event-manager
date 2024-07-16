@@ -1,0 +1,38 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button color="medium" (click)="close()">Fechar</ion-button>
+    </ion-buttons>
+    <ion-title>Sistemas SECOMPP</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <p>{{ committee.description }}</p>
+  <p>
+    Período de atividade: {{ committee.startDate | date: 'dd/MM/yyyy' }} -
+    {{ (committee.endDate | date: 'dd/MM/yyyy') || 'desconhecido' }}
+  </p>
+  <ion-row class="ion-align-items-center">
+    <ion-col class="ion-text-center">
+      <ion-button color="danger" (click)="reportAlert(committee.name)">Informar irregularidade</ion-button>
+      <br />
+      <ion-note>Sua denúncia será encaminhada para o CACiC</ion-note>
+    </ion-col>
+  </ion-row>
+  <h2>Integrantes</h2>
+  <ion-list [inset]="true">
+    @for (member of committee.members; track member) {
+      <ion-item>
+        <ion-label>
+          <h2>{{ member.name }}</h2>
+          <p>{{ member.role }}</p>
+          <p>
+            Período: {{ member.joinedDate | date: 'dd/MM/yyyy' }} -
+            {{ (member.leftDate | date: 'dd/MM/yyyy') || 'desconhecido' }}
+          </p>
+        </ion-label>
+      </ion-item>
+    }
+  </ion-list>
+</ion-content>
