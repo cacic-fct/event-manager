@@ -8,26 +8,28 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Comissões</ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <div class="content-max-width margin-horizontal-auto">
+    <ion-header collapse="condense">
+      <ion-toolbar>
+        <ion-title size="large">Comissões</ion-title>
+      </ion-toolbar>
+    </ion-header>
 
-  @for (committee of committeesService.committees; track committee) {
-  <ion-card>
-    <ion-card-header>
-      <ion-card-title>{{committee.name}}</ion-card-title>
-    </ion-card-header>
-    <ion-card-content>
-      <p>{{committee.description}}</p>
-      <p>
-        Período: {{ committee.startDate | date: 'dd/MM/yyyy' }} - {{ (committee.endDate | date: 'dd/MM/yyyy') ||
-        'desconhecido' }}
-      </p>
+    @for (committee of committeesService.committees; track committee) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{committee.name}}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>{{committee.description}}</p>
+        <p>
+          Período: {{ committee.startDate | date: 'dd/MM/yyyy' }} - {{ (committee.endDate | date: 'dd/MM/yyyy') ||
+          'desconhecido' }}
+        </p>
 
-      <ion-button fill="clear" (click)="openModal(committee)">Saber mais</ion-button>
-    </ion-card-content>
-  </ion-card>
-  }
+        <ion-button fill="clear" (click)="openModal(committee)">Saber mais</ion-button>
+      </ion-card-content>
+    </ion-card>
+    }
+  </div>
 </ion-content>
