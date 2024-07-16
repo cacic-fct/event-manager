@@ -60,7 +60,7 @@ export class SupportPage {
 
   mailDevelopers(): void {
     const mailto: Mailto = {
-      receiver: 'cacic.fct@gmail.com',
+      receiver: 'fctapp@googlegroups.com',
       subject: '[FCT-App] Contato sobre o app',
     };
     this.mailtoService.open(mailto);

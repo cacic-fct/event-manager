@@ -2,7 +2,7 @@
 Contact: https://github.com/cacic-fct/fct-app/security/advisories/new
 
 # Get in touch
-Contact: mailto:cacic.fct@gmail.com
+Contact: mailto:fctapp@googlegroups.com
 
 # We speak English and Portuguese
 Preferred-Languages: en, pt

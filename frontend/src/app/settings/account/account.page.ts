@@ -86,7 +86,7 @@ export class AccountPage {
 
   mailtoDeleteAccount(): void {
     const mailto: Mailto = {
-      receiver: 'cacic.fct@gmail.com',
+      receiver: 'fctapp@googlegroups.com',
       subject: '[FCT-App] Excluir meu cadastro',
       body: `Olá!\nEu gostaria que a minha conta fosse excluída.\n\n=== Não apague os dados abaixo ===\nE-mail: ${
         this.userData?.email
