@@ -21,7 +21,7 @@ Todo o tráfego HTTP é redirecionado para HTTPS. Isso é feito através dos com
 - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
 ```
 
-#### _Responsing timeouts_
+#### _Responding timeouts_
 
 https://github.com/traefik/traefik/wiki/respondingTimeouts-for-applications
 
@@ -31,7 +31,7 @@ https://github.com/traefik/traefik/wiki/respondingTimeouts-for-applications
 
 ### Certificados SSL
 
-Precisa ser HTTP Challenge, pois é emitido um certificado para o redirect do `38a.fct.unesp.br`, que não possuímos acesso.
+É necessário utilizar o HTTP Challenge, pois é emitido um certificado para o redirect do `38a.fct.unesp.br`, que não possuímos acesso.
 
 ## Acesso direto
 
@@ -41,11 +41,13 @@ Redirecionar para esta documentação.
 
 Por excesso de cautela, foi adicionado um _rate limit_.
 
-### Negar acesso direto ao IP do servidor
+### IP do servidor
 
-Para negar acesso direto ao IP do servidor, é necessário configurar o Traefik para que ele recuse requisições que não possuam uma extensão `server_name` válida.
+Nega-se acesso direto ao IP do servidor.
 
-No momento (julho de 2024), só é possível definir isto na configuração estática do Traefik.
+Para isso, é necessário configurar o Traefik para recusar requisições que não possuam uma extensão `server_name` válida.
+
+No momento (julho de 2024), só é possível definir isto na configuração estática.
 
 ```yaml
 # https://github.com/traefik/traefik/issues/5507
