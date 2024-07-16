@@ -14,7 +14,7 @@ import {
 import { AztecScannerComponent } from 'src/app/shared/components/aztec-scanner/aztec-scanner.component';
 import { ToastController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { qrCodeOutline } from 'ionicons/icons';
+import { cameraReverseOutline, qrCodeOutline } from 'ionicons/icons';
 @Component({
   selector: 'app-barcode-scanner',
   templateUrl: './barcode-scanner.page.html',
@@ -47,6 +47,7 @@ export class BarcodeScannerPage {
   constructor() {
     addIcons({
       qrCodeOutline,
+      cameraReverseOutline,
     });
   }
 
