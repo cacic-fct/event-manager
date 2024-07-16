@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { addIcons } from 'ionicons';
-import { serverOutline } from 'ionicons/icons';
+import { qrCodeOutline, serverOutline } from 'ionicons/icons';
 import {
   IonRouterLink,
   IonHeader,
@@ -38,6 +38,6 @@ import {
 })
 export class DevelopmentToolsPage {
   constructor() {
-    addIcons({ serverOutline });
+    addIcons({ serverOutline, qrCodeOutline });
   }
 }

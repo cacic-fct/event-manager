@@ -1,0 +1,31 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="development-tools"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Leitor de código de barras</ion-title>
+    <ion-buttons slot="primary">
+      <ion-button (click)="changeCamera()">
+        <ion-icon name="camera-reverse-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Leitor de código de barras</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <app-aztec-scanner
+    (scanSuccess)="onCodeResult($event)"
+    (deviceList)="onDeviceList($event)"
+    (hasPermission)="onHasPermission($event)"
+    [device]="currentDevice"
+    [delaySeconds]="3"
+    class="scanner"
+    #scanner>
+  </app-aztec-scanner>
+</ion-content>

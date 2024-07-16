@@ -10,9 +10,13 @@
 
 <ion-content>
   <ion-card>
-    <ion-item [routerLink]="['./populate-db']" lines="none">
+    <ion-item [routerLink]="['./populate-db']">
       <ion-icon name="server-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Popular banco de dados</ion-label>
+    </ion-item>
+    <ion-item [routerLink]="['./barcode-scanner']" lines="none">
+      <ion-icon name="qr-code-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Leitor de código de barras</ion-label>
     </ion-item>
   </ion-card>
 </ion-content>
