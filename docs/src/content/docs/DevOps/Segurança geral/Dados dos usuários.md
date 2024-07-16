@@ -29,6 +29,13 @@ Isso inclui:
 
 Leia a [Política de Privacidade](https://fctapp.cacic.dev.br/privacidade) para mais informações.
 
+### Dados sensíveis
+
+Considera-se "dado sensível" o que está disposto na [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm) e na [página de coleta de dados e formulários do CACiC](https://cacic.dev.br/docs/Centro%20Acad%C3%AAmico/Para%20diretores/Coleta%20de%20dados%20e%20formul%C3%A1rios#dados-sens%C3%ADveis).
+
+Não coletamos, nem armazenamos dados sensíveis dos usuários.
+
+
 ## Armazenamento de credenciais de usuários
 
 Não armazenamos nenhum tipo de credencial (senhas, tokens, etc) de usuários.  
