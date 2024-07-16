@@ -114,7 +114,8 @@ e como entrar em contato com eles.
 Para que o sistema utilize o ZRam corretamente, a partição de swap deve possuir a opção `pri=2` no lugar do `sw`.
 
 Referência:  
-https://makedebianfunagainandlearnhowtodoothercoolstufftoo.computer/doku.php?id=start:zramswap
+https://makedebianfunagainandlearnhowtodoothercoolstufftoo.computer/doku.php?id=start:zramswap  
+Acesso em 2024-07-14.
 
 #### /etc/default/zramswap
 
@@ -189,4 +190,5 @@ RandomizedDelaySec=0
 ```
 
 Referência:  
-https://unix.stackexchange.com/a/541431
+https://unix.stackexchange.com/a/541431  
+Acesso em 2024-07-16.
