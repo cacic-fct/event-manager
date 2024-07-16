@@ -55,3 +55,9 @@ Disponível em [status.cacic.dev.br](https://status.cacic.dev.br).
 Gerenciador de senhas do CACiC.
 
 Disponível em [senhas.cacic.dev.br](https://senhas.cacic.dev.br).
+
+:::danger
+
+Todos que possuem acesso ao servidor também possuem acesso às senhas armazenadas no Vaultwarden.
+
+:::
