@@ -46,8 +46,6 @@ body:
           required: true
         - label: Meu pull request tem foco em um único recurso
           required: true
-        - label: Criei um arquivo `.spec.ts` válido
-          required: true
         - label: Não li nada do que está escrito e só selecionei tudo para enviar logo
           required: false
         - label: Entendo que recursos que tangenciam o propósito do projeto podem ser rejeitados
