@@ -55,7 +55,7 @@ export class CommitteeMembersModalComponent {
     const alert = await this.alertController.create({
       header: 'Atenção',
       message:
-        'Sua denúncia será encaminhada para o e-mail do CACiC. Verifique se é mais oportuno entrar em contato com algum professor ou diretamente com algum diretor do CACiC.',
+        'Verifique se é mais oportuno entrar em contato com algum professor ou diretamente com algum diretor do CACiC.',
       buttons: [
         {
           text: 'Cancelar',
