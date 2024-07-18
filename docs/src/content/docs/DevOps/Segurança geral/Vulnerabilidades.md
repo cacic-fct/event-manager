@@ -22,7 +22,7 @@ Isso é solucionado pela existência dos [_lead developers_](/devops/segurança-
 
 Pelos volumes dos containers do Compose estarem configurados corretamente, não há risco de um Docker Breakout não intencional.
 
-<!-- Não remova a informação da nota abaixo -->
+<!-- Não remova as informações da nota abaixo -->
 
 :::danger
 

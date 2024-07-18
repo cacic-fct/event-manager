@@ -24,6 +24,19 @@ Serviço de armazenamento de fotos do CACiC, utilizado para divulgação de álb
 
 Disponível em [fotos.cacic.dev.br](https://fotos.cacic.dev.br).
 
+## Infisical (segredos)
+
+Serviço de armazenamento de segredos do CACiC.
+
+Disponível em [secrets.cacic.dev.br](https://secrets.cacic.dev.br).
+
+## Mailcatcher ("fake" SMTP)
+
+Serviço de SMTP utilizado para testes de envio de e-mails.
+
+Servidor disponível em `mailcatcher:1025` na rede Docker `smtp` e `traefik`.  
+Caixa de entrada disponível em [smtp.cacic.dev.br](https://smtp.cacic.dev.br).
+
 ## Plausible (analytics)
 
 Serviço de análise do CACiC.

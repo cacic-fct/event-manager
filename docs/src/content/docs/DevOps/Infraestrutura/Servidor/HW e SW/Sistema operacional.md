@@ -71,13 +71,15 @@ Enquanto não for disponibilizado um pacote Docker com o Compose v2 no repositó
 
 Enquanto uma solução de backup permanente não é implementada, o backup é feito manualmente.
 
-No diretório `/home/shared`, o arquivo `docker-compose-backup.zpaq` é incrementado com o comando:
+No diretório `/home/shared`, os arquivos `*-backup.zpaq` são incrementados com os comandos:
 
 ```bash
-zpaqfranz a docker-compose-backup.???.zpaq ./docker-compose -filelist
+sudo zpaqfranz a "/home/shared/docker-compose-backup.???.zpaq" /home/shared/docker-compose -index "/home/shared/docker-compose-backup.000.zpaq" -filelist
+
+sudo zpaqfranz a "/home/shared/docker-data-backup.???.zpaq" /home/shared/docker-data -index "/home/shared/docker-data-backup.000.zpaq" -filelist
 ```
 
-Este comando deve ser executado como root, por conta das permissões dos arquivos do Docker.
+Estes comandos deve ser executados com permissões elevadas, por conta das permissões dos arquivos do Docker.
 
 Não delete os arquivos de números inferiores (antigos), pois eles são necessários para a restauração.
 
@@ -85,6 +87,15 @@ Os arquivo são, então, movidos para o servidor de [Yudi](https://github.com/Yu
 
 
 ## Configurações
+
+### Agendamento de tarefas
+
+- **23:00** - Início do backup
+- **02:00–02:15** - Atualização da lista de pacotes
+- **03:00** - Atualização dos pacotes
+- **05:00** - Reinicialização do sistema, se necessário
+
+Os intervalos consideram que o servidor demora bastante para executar as tarefas.
 
 ### SSH
 
@@ -146,13 +157,6 @@ PRIORITY=100
 
 ### Unattended upgrades
 
-Horários de atualização:
-- **01:00–01:15** - Atualização da lista de pacotes
-- **02:00** - Atualização dos pacotes
-- **04:00** - Reinicialização do sistema, se necessário
-    - O servidor demora bastante para atualizar os pacotes, então há um tempo de espera grande para a reinicialização.
-
-
 #### /etc/apt/apt.conf.d/50unattended-upgrades
 
 Além das configurações padrão, foi adicionado o repositório do Docker e configurado o horário de reinicialização.
@@ -167,7 +171,7 @@ Unattended-Upgrade::Origins-Pattern {
   ...
 }
 
-Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+Unattended-Upgrade::Automatic-Reboot-Time "05:00";
 ```
 
 

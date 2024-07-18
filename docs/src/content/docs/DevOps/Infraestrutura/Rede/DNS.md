@@ -16,11 +16,11 @@ Essa tabela é um adendo à [tabela de registros do CACiC](https://cacic.dev.br/
 
 | Tipo    | Nome                                   | Destino             | Proxy |
 | ------- | -------------------------------------- | ------------------- | ----- |
-| `CNAME` | fctapp.cacic.dev.br                    | fct.cacic.dev.br    | Sim   |
+| `CNAME` | fctapp.cacic.dev.br                    | FCTDTIWEBXP01.cacic.dev.br    | Sim   |
 | `CNAME` | docs.fctapp.cacic.dev.br               | cacic-fct.github.io | Não   |
-| `CNAME` | supabase-fctapp.cacic.dev.br           | fct.cacic.dev.br    | Sim   |
-| `CNAME` | analytics-supabase-fctapp.cacic.dev.br | fct.cacic.dev.br    | Sim   |
-| `CNAME` | watchtower.cacic.dev.br                | fct.cacic.dev.br    | Sim   |
+| `CNAME` | supabase-fctapp.cacic.dev.br           | FCTDTIWEBXP01.cacic.dev.br    | Sim   |
+| `CNAME` | analytics-supabase-fctapp.cacic.dev.br | FCTDTIWEBXP01.cacic.dev.br    | Sim   |
+| `CNAME` | watchtower.cacic.dev.br                | FCTDTIWEBXP01.cacic.dev.br    | Sim   |
 | `CAA`   | letsencrypt.org                        |                     | -     |
 
 É indispensável a inclusão do registro `CAA` para cada um dos domínios, a fim de garantir a segurança dos certificados SSL.

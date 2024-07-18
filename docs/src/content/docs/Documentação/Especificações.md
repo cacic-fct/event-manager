@@ -4,9 +4,9 @@ sidebar:
   order: 2
 ---
 
-Este site deve ser hospedado em uma máquina diferente da do FCT App. Dessa forma, a documentação pode ser acessada mesmo que o FCT App esteja fora do ar.
+Este site deve ser hospedado em uma máquina diferente da do FCT App. Dessa forma, a documentação pode ser acessada mesmo que o servidor principal esteja fora do ar.
 
-O que pode ser documentado no código não estará documentado aqui, com exceção do esquema do Firestore.
+O que pode ser documentado no código não estará documentado aqui.
 
 ## Nomes dos arquivos
 

@@ -21,4 +21,4 @@ A estrutura de pastas do servidor do FCT App é organizada da seguinte forma:
 
 ## Datas
 
-Quaisquer datas devem ser escritas no formato `YYYY-MM-DD`, para facilitar a ordenação. Para incluir a hora, utilize o formato ISO 8601 em UTC: `YYYY-MM-DDTHH:MM:SSZ`.
+Quaisquer datas devem ser escritas no formato `YYYY-MM-DD`, para facilitar a ordenação. Para incluir a hora, utilize o formato ISO 8601 em UTC: `YYYY-MM-DDTHH:MM:SSZ`. Use `-` no lugar de `:` quando o caractere não for permitido.

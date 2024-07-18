@@ -51,6 +51,7 @@ Podem renunciar voluntariamente, mas o nome permanecerá na lista com uma averba
 Possuirão acesso irrestrito e vitalício de leitura e escrita a todos códigos-fonte, ao servidor e ao banco de dados os _founding lead developers_ a seguir:
 
 - [@GuiBatalhoti](https://github.com/GuiBatalhoti)
+- [@karoldm](https://github.com/karoldm)
 - [@Salies](https://github.com/salies)
 - [@willshobwish](https://github.com/willshobwish)
 - [@Yudi](https://github.com/Yudi)\*

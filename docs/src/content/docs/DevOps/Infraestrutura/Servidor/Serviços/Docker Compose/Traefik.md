@@ -35,7 +35,7 @@ https://github.com/traefik/traefik/wiki/respondingTimeouts-for-applications
 
 ## Acesso direto
 
-### 38a.fct.unesp.br e fct.cacic.dev.br
+### 38a.fct.unesp.br e FCTDTIWEBXP01.cacic.dev.br
 
 Redirecionar para esta documentação.
 
