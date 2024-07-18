@@ -121,7 +121,7 @@ export class ListCertificatesComponent {
 
   mailtoReportError(): void {
     const mailto: Mailto = {
-      receiver: 'fctapp@googlegroups.com',
+      receiver: 'fctapp@cacic.dev.br',
       subject: '[FCT-App] Problema com certificado',
       body: `Olá!\n\n\n\n\n=== Não apague os dados abaixo ===\nE-mail: ${this.userData.email}\nuid: ${this.userData.uid}\nmajorEventID: ${this.majorEventID}\n`,
     };

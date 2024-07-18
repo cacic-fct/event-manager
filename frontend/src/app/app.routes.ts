@@ -51,6 +51,13 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'login',
+    // No preceding slash to preserve query params
+    // https://github.com/angular/angular/issues/13315#issuecomment-427254639
+    redirectTo: 'entrar',
+    pathMatch: 'full',
+  },
+  {
     path: 'licenses',
     redirectTo: 'ajustes/legal/licencas',
     pathMatch: 'full',
@@ -61,7 +68,7 @@ export const routes: Routes = [
     loadChildren: () => import('./tabs/tabs.routes').then((m) => m.routes),
   },
   {
-    path: 'login',
+    path: 'entrar',
     title: 'Entrar',
     loadComponent: () => import('src/app/auth/login/login.page').then((m) => m.LoginPage),
     ...canActivate(redirectLoggedInToMenu),

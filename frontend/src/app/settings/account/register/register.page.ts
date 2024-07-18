@@ -297,7 +297,7 @@ export class RegisterPage implements OnInit {
 
   mailtoDocumentPhone(): void {
     const mailto: Mailto = {
-      receiver: 'fctapp@googlegroups.com',
+      receiver: 'fctapp@cacic.dev.br',
       subject: '[FCT-App] Validar meu cadastro',
       body: `Olá!\nEu não possuo (ESPECIFIQUE: CPF/celular), vocês poderiam validar o meu cadastro?\n\n=== Não apague os dados abaixo ===\nE-mail: ${
         this.userData.email
@@ -312,7 +312,7 @@ export class RegisterPage implements OnInit {
 
   mailtoIssues(): void {
     const mailto: Mailto = {
-      receiver: 'fctapp@googlegroups.com',
+      receiver: 'fctapp@cacic.dev.br',
       subject: '[FCT-App] Problemas no cadastro',
       body: `Olá!\n\n...\n\n=== Não apague os dados abaixo ===\nE-mail: ${this.userData.email}\nuid: ${
         this.userData.uid

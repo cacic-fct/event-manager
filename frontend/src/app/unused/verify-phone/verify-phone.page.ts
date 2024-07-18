@@ -282,7 +282,7 @@ export class VerifyPhonePage implements OnInit {
   mailto(): void {
     const userData = JSON.parse(localStorage.getItem('user'));
     const mailto: Mailto = {
-      receiver: 'fctapp@googlegroups.com',
+      receiver: 'fctapp@cacic.dev.br',
       subject: '[FCT-App] Celular já registrado',
       body: `Olá!\nRecebi a mensagem de que meu celular já pertence a outra conta. Vocês podem me ajudar?\n\n=== Não apague os dados abaixo ===\nE-mail: ${userData.email}\nuid: ${userData.uid}\nCelular: ${this.phone}`,
     };
