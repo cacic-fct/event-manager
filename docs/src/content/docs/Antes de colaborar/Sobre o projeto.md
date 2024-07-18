@@ -14,7 +14,7 @@ O FCT App surgiu para auxiliar o CACiC e ainda segue com as mesmas motivações:
 - Incluir pequenas funcionalidades que melhoram a experiência dos alunos da FCT;
 - Ser um _hub_ de informações para a comunidade de alunos da FCT.
 
-O app deu certo e foi adotado pelos alunos e pelos professores na SECOMPP, em substituição ao antigo SYSCOMPP, que era um sistema feito com tecnologias mais antigas e que era hospedado em um servidor obsoleto.  
+O app foi adotado pelos alunos e pelos professores na SECOMPP, em substituição ao antigo [SYSCOMPP](https://github.com/cacic-fct/syscompp), que era um sistema feito com tecnologias mais antigas e que era hospedado em um servidor obsoleto.  
 O FCT App é mais rápido, mais seguro, mais fácil de usar e de manter, já que está próximo das tecnologias mais utilizadas atualmente.
 
 ### Alterações com o tempo
