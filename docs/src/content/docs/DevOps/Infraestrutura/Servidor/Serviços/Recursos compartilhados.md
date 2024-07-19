@@ -12,9 +12,15 @@ Deve-se fazer login com a conta Google.
 
 Disponível em [auth.cacic.dev.br](https://auth.cacic.dev.br).
 
+## Grafana (painel de monitoramento)
+
+Painel de monitoramento do CACiC.
+
+Disponível em [grafana.cacic.dev.br](https://grafana.cacic.dev.br).
+
 ## Highlight (monitoramento)
 
-Platforma de monitoramento do CACiC.
+Platforma de monitoramento de erros e performance de projetos do CACiC.
 
 Disponível em [highlight.cacic.dev.br](https://highlight.cacic.dev.br).
 
