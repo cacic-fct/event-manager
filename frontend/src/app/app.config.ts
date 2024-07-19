@@ -50,30 +50,6 @@ import { provideLottieOptions } from 'ngx-lottie';
 
 import { nonce } from 'src/main';
 
-
-
-function fetchNonce(): string {
-  const regex = new RegExp(`s*nonce=`);
-  const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
-  console.debug('DEBUG: main.ts: Nonce:', nonce?.split('=')[1].slice(0, 7));
-  if (!nonce) {
-    if (isDevMode()) {
-      console.debug('DEBUG: main.ts: Nonce: Using development-nonce');
-      return 'development-nonce';
-    }
-
-    const message =
-      'Ocorreu um erro ao validar a integridade do aplicativo.\nRecarregue a página.\nErro: Nonce não encontrado';
-
-    window.alert(message);
-
-    window.location.reload();
-
-    throw new Error('Nonce not found in cookies');
-  }
-  return nonce.split('=')[1];
-}
-
 setupAnalytics(nonce);
 
 export const appConfig: ApplicationConfig = {
