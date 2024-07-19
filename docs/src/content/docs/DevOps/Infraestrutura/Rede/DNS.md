@@ -21,9 +21,8 @@ Essa tabela é um adendo à [tabela de registros do CACiC](https://cacic.dev.br/
 | `CNAME` | supabase-fctapp.cacic.dev.br           | FCTDTIWEBXP01.cacic.dev.br    | Sim   |
 | `CNAME` | analytics-supabase-fctapp.cacic.dev.br | FCTDTIWEBXP01.cacic.dev.br    | Sim   |
 | `CNAME` | watchtower.cacic.dev.br                | FCTDTIWEBXP01.cacic.dev.br    | Sim   |
-| `CAA`   | letsencrypt.org                        |                     | -     |
 
-É indispensável a inclusão do registro `CAA` para cada um dos domínios, a fim de garantir a segurança dos certificados SSL.
+É indispensável a inclusão do registro `CAA` para cada um dos domínios que não estão com proxy, a fim de garantir a segurança dos certificados SSL.
 
 ## Configurações do CloudFlare
 

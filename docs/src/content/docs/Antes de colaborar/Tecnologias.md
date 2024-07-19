@@ -27,7 +27,5 @@ O Firebase foi escolhido por ser uma plataforma _serverless_ e por permitir uma 
 :::note
 Há discussões sobre a substituição do Firebase por uma solução open-source, como o Supabase.
 
-Também há discussões sobre a substituição do Angular por uma solução mais popular, como o Next.js.
-
 Confira na discussão [cacic-fct/fct-app #182](https://github.com/cacic-fct/fct-app/discussions/182).
 :::
