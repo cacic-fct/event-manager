@@ -24,7 +24,9 @@ ionic serve --ssl
 
 Instale o [Firebase CLI](https://firebase.google.com/docs/cli) e faça login.
 
-Depois, no diretório do projeto, inicie o emulador com o comando:
+Obtenha os arquivos `firestore.rules` e `storage.rules` com algum mantenedor do projeto e coloque-os na raiz do diretório `frontend`.
+
+Depois, no diretório do `frontend`, inicie o emulador com o comando:
 
 ```bash
 firebase emulators:start --project fct-pp --import=./emulator-data --export-on-exit
