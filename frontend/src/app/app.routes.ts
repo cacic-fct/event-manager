@@ -17,22 +17,27 @@ export const routes: Routes = [
   // Redirects
   {
     path: 'privacidade',
-    redirectTo: 'ajustes/legal/politica-de-privacidade',
+    redirectTo: 'redirecionamento/privacy-policy',
     pathMatch: 'full',
   },
   {
     path: 'privacy',
-    redirectTo: 'ajustes/legal/politica-de-privacidade',
+    redirectTo: 'redirecionamento/privacy-policy',
     pathMatch: 'full',
   },
   {
     path: 'privacy-policy',
-    redirectTo: 'ajustes/legal/politica-de-privacidade',
+    redirectTo: 'redirecionamento/privacy-policy',
     pathMatch: 'full',
   },
   {
     path: 'politica-de-privacidade',
-    redirectTo: 'ajustes/legal/politica-de-privacidade',
+    redirectTo: 'redirecionamento/privacy-policy',
+    pathMatch: 'full',
+  },
+  {
+    path: 'docs',
+    redirectTo: 'redirecionamento/docs',
     pathMatch: 'full',
   },
   {
@@ -112,6 +117,11 @@ export const routes: Routes = [
     path: 'comissoes',
     title: 'Comissões',
     loadComponent: () => import('./student-area/committees/committees.page').then((m) => m.CommitteesPage),
+  },
+  {
+    path: 'redirecionamento/:id',
+    title: 'Redirecionamento',
+    loadComponent: () => import('./redirects/redirects.page').then((m) => m.RedirectsPage),
   },
   // Redirect not found routes (404) to index
   // Must be the last route

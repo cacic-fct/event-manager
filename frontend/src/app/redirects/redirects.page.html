@@ -1,0 +1,7 @@
+
+<ion-content class="ion-padding">
+  @if (shouldShowButton) {
+    <ion-button (click)="redirect()">Clique aqui se você não foi redirecionado</ion-button>
+  }
+  <ion-loading  message="Redirecionando..." spinner="dots" [isOpen]="loadingOpen"></ion-loading>
+</ion-content>
