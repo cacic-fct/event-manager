@@ -26,7 +26,7 @@ Caso solicitado, a configuração do servidor deve ser disponibilizada para a au
 
 ### Lead developers
 
-Os _lead developers_ exercem o papel de auditoria externa _voluntária_ para evitar o problema descrito na seção [deficiências evidentes](/devops/segurança-geral/vulnerabilidades/#deficiências-evidentes).  
+Os _lead developers_ exercem o papel de auditoria externa _voluntária_ para evitar o problema descrito na seção [deficiências evidentes](https://cacic.dev.br/docs/Recursos/Servidores/FCTDTIWEBXP01/Vulnerabilidades#deficiências-evidentes).  
 Por serem externos e voluntários, não podem ser responsabilizados por problemas de segurança.
 
 Seu trabalho é _preferencialmente_ passivo: por conta própria, podem revisar e sugerir mudanças para os responsáveis da infraestrutura e do código.
