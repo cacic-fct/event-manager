@@ -2,6 +2,12 @@
 title: Código
 ---
 
+## Interface
+
+A interface do FCT App deve se comportar como a de um aplicativo nativo.
+
+A única excessão é a página de _landing_.
+
 ## Gamificação
 
 > Também conhecida por "gameficação", ludificação ou gamification.

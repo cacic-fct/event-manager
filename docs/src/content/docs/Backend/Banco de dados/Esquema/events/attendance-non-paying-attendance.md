@@ -2,7 +2,7 @@
 title: attendance e non-paying-attendance
 ---
 
-Nome do documento: Igual do ID do usuário
+Nome do documento: Igual ao ID do usuário
 
 Caminhos:
 
