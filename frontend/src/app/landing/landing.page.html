@@ -29,7 +29,7 @@
             </ion-button>
           </ion-col>
           <ion-col size-lg="6" size="12">
-            <img src="/assets/landing/placeholder.avif" alt="Placeholder" />
+            <img src="/assets/landing/placeholder.avif" class="presentation-image" alt="Placeholder" />
           </ion-col>
         </ion-row>
       </ion-grid>
@@ -44,7 +44,8 @@
       <ion-grid>
         <ion-row class="img-first">
           <ion-col size-lg="6" size="12">
-            <img src="/assets/landing/placeholder.avif" alt="Placeholder" />
+            <!-- TODO: Replace placeholders with animations -->
+            <img src="/assets/landing/subscription.svg" class="presentation-image" alt="Placeholder" />
           </ion-col>
           <ion-col size-lg="6" size="12">
             <h1>Preencher formulário é coisa do passado</h1>
@@ -61,13 +62,13 @@
             <p>Saiba quem são os participantes dos seus eventos e como eles avaliam a qualidade deles.</p>
           </ion-col>
           <ion-col size-lg="6" size="12">
-            <img src="/assets/landing/placeholder.avif" alt="Placeholder" />
+            <img src="/assets/landing/data.svg" class="presentation-image" alt="Placeholder" />
           </ion-col>
         </ion-row>
 
         <ion-row class="img-first">
           <ion-col size-lg="6" size="12">
-            <img src="/assets/landing/placeholder.avif" alt="Placeholder" />
+            <img src="/assets/landing/attendance.svg" class="presentation-image" alt="Placeholder" />
           </ion-col>
           <ion-col size-lg="6" size="12">
             <h1>Diga adeus para as listas de presenças</h1>
@@ -88,7 +89,7 @@
             <p>Emita certificados e disponibilize-os automaticamente para os participantes.</p>
           </ion-col>
           <ion-col size-lg="6" size="12">
-            <img src="/assets/landing/placeholder.avif" alt="Placeholder" />
+            <img src="/assets/landing/certificates.svg" class="presentation-image" alt="Placeholder" />
           </ion-col>
         </ion-row>
       </ion-grid>
@@ -100,11 +101,11 @@
 
       <ul>
         <li>
-          <img src="/assets/landing/forms.svg" alt="Google Formulários" />
+          <img src="/assets/landing/google-forms.svg" alt="Google Formulários" />
           <p>Google Forms</p>
         </li>
         <li>
-          <img src="/assets/landing/sheets.svg" alt="Google Planilhas" />
+          <img src="/assets/landing/google-sheets.svg" alt="Google Planilhas" />
           <p>Planilhas (CSV)</p>
         </li>
       </ul>
@@ -118,17 +119,17 @@
 
       <div class="dev-buttons-container margin-horizontal-auto">
         <ion-button fill="clear" href="https://docs.fctapp.cacic.dev.br" target="_blank">
-          Docs <ion-icon slot="end" name="open-outline"></ion-icon>
+          Documentação <ion-icon slot="end" name="open-outline"></ion-icon>
         </ion-button>
         <ion-button fill="clear" href="https://github.com/cacic-fct/fct-app" target="_blank">
-          Repo
+          Repositório
           <ion-icon slot="end" name="open-outline"></ion-icon>
         </ion-button>
       </div>
 
-      <ion-grid class="ion-text-justify">
+      <ion-grid class="ion-text-justify dev-info-grid">
         <ion-row>
-          <ion-col size-lg="6" size="12">
+          <ion-col class="dev-info-col" size-lg="6" size="12">
             <h2>Por que colaborar?</h2>
             <p>
               <strong>Inovação colaborativa:</strong>
@@ -149,7 +150,7 @@
             </p>
           </ion-col>
 
-          <ion-col size-lg="6" size="12">
+          <ion-col class="dev-info-col" size-lg="6" size="12">
             <h2>Como se envolver?</h2>
             <p>
               <strong>Explore o código:</strong>
@@ -180,7 +181,7 @@
           <p>FCT App</p>
           <ul>
             <li>
-              <a [routerLink]="['/sobre', 'suporte']"> <ion-text color="medium"> Suporte </ion-text></a>
+              <a [routerLink]="['/ajustes', 'suporte']"> <ion-text color="medium"> Suporte </ion-text></a>
             </li>
             <li>
               <a routerLink="/privacy"> <ion-text color="medium"> Política de privacidade </ion-text> </a>

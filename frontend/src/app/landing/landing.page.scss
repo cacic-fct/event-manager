@@ -162,3 +162,15 @@ footer {
     }
   }
 }
+
+@media screen and (min-width: 992px) {
+  .presentation-image {
+    max-width: 100%;
+    width: 449px;
+    height: auto;
+  }
+}
+
+.dev-info-grid {
+  --ion-grid-column-padding: 0.8rem;
+}
