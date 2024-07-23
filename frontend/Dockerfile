@@ -27,8 +27,6 @@ RUN if [[ $(uname -m) == "aarch64" ]] ; \
 
 RUN yarn global add bun
 
-RUN bun add -g @angular/cli
-
 RUN bun install --frozen-lockfile
 
 COPY . .
