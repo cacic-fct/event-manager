@@ -1,4 +1,4 @@
-import { Component, inject, ViewEncapsulation } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -97,7 +97,6 @@ import { PlausibleLocalService } from 'src/app/shared/services/plausible.service
   selector: 'app-root',
   templateUrl: 'app.component.html',
   styleUrls: ['app.component.scss'],
-  encapsulation: ViewEncapsulation.None,
   standalone: true,
   imports: [IonApp, IonRouterOutlet],
 })
