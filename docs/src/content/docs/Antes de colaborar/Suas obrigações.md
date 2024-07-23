@@ -10,6 +10,8 @@ Antes de começar a desenvolver, é importante que você entenda o contexto do p
 
 1. A [landing page do FCT App](https://fctapp.cacic.dev.br) (necessário estar deslogado);
 1. O [README](https://github.com/cacic-fct/fct-app/blob/main/README.md) do repositório do projeto;
+1. A seção de [convenções gerais do CACiC](https://cacic.dev.br/docs/Projetos/Especifica%C3%A7%C3%B5es%20comuns/Conven%C3%A7%C3%B5es%20gerais/C%C3%B3digos);
+1. A seção de [especificações comuns para projetos web do CACiC](https://cacic.dev.br/docs/Projetos/Especifica%C3%A7%C3%B5es%20comuns/Projetos%20web/Efici%C3%AAncia%20de%20recursos)
 1. Toda a documentação geral;
 1. Toda a documentação relacionada à sua área de interesse.
 

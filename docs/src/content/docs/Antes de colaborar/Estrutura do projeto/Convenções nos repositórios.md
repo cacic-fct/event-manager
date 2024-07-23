@@ -1,5 +1,5 @@
 ---
-title: Nos repositórios
+title: Convenções nos repositórios
 ---
 
 :::tip
@@ -7,6 +7,12 @@ Quando em dúvida, tente lembrar:
 
 Indexar código? Sempre inglês.  
 Indexar conteúdo? Português.
+:::
+
+:::note
+
+Esta página é um adendo às [convenções do CACiC](https://cacic.dev.br/docs/Projetos/Especifica%C3%A7%C3%B5es%20comuns/Conven%C3%A7%C3%B5es%20gerais/C%C3%B3digos)
+
 :::
 
 ## Commits
