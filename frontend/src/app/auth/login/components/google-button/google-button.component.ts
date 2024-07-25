@@ -22,35 +22,20 @@ export class GoogleButtonComponent implements AfterViewInit {
   public isLoaded: WritableSignal<boolean> = signal(false);
 
   constructor(public authService: AuthService) {
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.nonce = fetchNonce();
-    this.document.body.appendChild(script);
+    this.loadGsiClient();
   }
 
-  handleCredentialResponse(response: CredentialResponse) {
+  handleCredentialResponse(response: CredentialResponse): void {
     this.authService.GoogleOneTap(response);
   }
 
-  ngAfterViewInit() {
+   ngAfterViewInit() {
     if (environment.production) {
-      let attempt = 0;
-      //@ts-expect-error - google is defined by the script in index.html
-      while (!google) {
-        setTimeout(() => {
-          console.debug('DEBUG: GoogleButtonComponent: Waiting for google auth to load. Sleeping for 1 second.');
-        }, 1000);
+      // @ts-expect-error - google is defined by loadGsiClient(); 
+      window.onGoogleLibraryLoad = () => {
+        console.debug('DEBUG: GoogleButtonComponent: GSI Client loaded');
 
-        attempt++;
-
-        if (attempt > 4) {
-          throw new Error('Google auth failed to load');
-        }
-      }
-
-      //@ts-expect-error - google is defined by the script in index.html
+      // @ts-expect-error - google is defined by loadGsiClient(); 
       google.accounts.id.initialize({
         // Ref: https://developers.google.com/identity/gsi/web/reference/js-reference#IdConfiguration
         client_id: '169157391934-n61n94q5pdv1uloqnejher4v9fudd9g7.apps.googleusercontent.com',
@@ -59,7 +44,7 @@ export class GoogleButtonComponent implements AfterViewInit {
         cancel_on_tap_outside: false,
       });
 
-      //@ts-expect-error - google is defined by the script in index.html
+      // @ts-expect-error - google is defined by loadGsiClient(); 
       google.accounts.id.renderButton(this.googleButton.nativeElement, {
         theme: 'outline',
         size: 'large',
@@ -70,6 +55,21 @@ export class GoogleButtonComponent implements AfterViewInit {
       });
 
       this.isLoaded.set(true);
+      };
     }
+  }
+
+  /**
+   * Loads the Google Sign-In (GSI) client by dynamically creating a script element and appending it to the document body.
+   * The GSI client script is fetched from 'https://accounts.google.com/gsi/client'.
+   * @returns {void}
+   */
+  loadGsiClient(): void {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.nonce = fetchNonce();
+    this.document.body.appendChild(script);
   }
 }
