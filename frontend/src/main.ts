@@ -19,7 +19,7 @@ setNonce(nonce);
 
 bootstrapApplication(AppComponent, appConfig).catch((err) => console.log(err));
 
-function fetchNonce(): string {
+export function fetchNonce(): string {
   const regex = new RegExp(`s*nonce=`);
   const nonce = document.cookie.split(';').find((cookie) => cookie.match(regex));
   console.debug('DEBUG: main.ts: Nonce:', nonce?.split('=')[1].slice(0, 7));

@@ -1,9 +1,10 @@
-import { AfterViewInit, Component, ElementRef, ViewChild, WritableSignal, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild, WritableSignal, inject, signal } from '@angular/core';
 import { AuthService } from 'src/app/shared/services/auth.service';
 import { CredentialResponse } from 'google-one-tap';
 import { environment } from 'src/environments/environment';
 import { IonSpinner, IonButton, IonSkeletonText } from '@ionic/angular/standalone';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
+import { fetchNonce } from 'src/main';
 
 @Component({
   selector: 'app-google-button',
@@ -14,12 +15,20 @@ import { CommonModule } from '@angular/common';
 })
 export class GoogleButtonComponent implements AfterViewInit {
   @ViewChild('googleButton') googleButton: ElementRef = new ElementRef({});
+  document = inject(DOCUMENT);
 
   public environment = environment;
 
   public isLoaded: WritableSignal<boolean> = signal(false);
 
-  constructor(public authService: AuthService) {}
+  constructor(public authService: AuthService) {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.nonce = fetchNonce();
+    this.document.body.appendChild(script);
+  }
 
   handleCredentialResponse(response: CredentialResponse) {
     this.authService.GoogleOneTap(response);
