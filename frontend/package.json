@@ -1,9 +1,10 @@
 {
   "name": "fct-app",
-  "description": "An Ionic project",
+  "description": "",
   "version": "0.0.1",
   "author": "cacic-fct",
   "homepage": "https://github.com/cacic-fct/fct-app",
+  "private": true,
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -12,7 +13,6 @@
     "lint": "ng lint",
     "e2e": "playwright test"
   },
-  "private": true,
   "dependencies": {
     "@angular/animations": "18.1.1",
     "@angular/common": "~18.1.1",
