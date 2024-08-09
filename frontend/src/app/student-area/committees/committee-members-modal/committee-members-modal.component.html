@@ -27,10 +27,14 @@
         <ion-label>
           <h2>{{ member.name }}</h2>
           <p>{{ member.role }}</p>
-          <p>
-            Período: {{ member.joinedDate | date: 'dd/MM/yyyy' }} -
-            {{ (member.leftDate | date: 'dd/MM/yyyy') || 'desconhecido' }}
-          </p>
+          @if (!committee.startDate && !committee.endDate) {
+            <p>Período: desconhecido</p>
+          } @else {
+            <p>
+              Período: {{ member.joinedDate | date: 'dd/MM/yyyy' }} -
+              {{ (member.leftDate | date: 'dd/MM/yyyy') || 'desconhecido' }}
+            </p>
+          }
         </ion-label>
       </ion-item>
     }
