@@ -10,3 +10,5 @@ node_modules
 .husky
 frontend/src/assets/animations/**/*
 frontend/src/assets/certificates/**/*
+backend/lib/**/*
+package.json
