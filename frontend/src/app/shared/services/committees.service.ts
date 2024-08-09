@@ -8,7 +8,7 @@ export interface Committee {
   contact: {
     type: 'email' | 'whatsapp';
     value: string;
-  };
+  } | null;
   members: {
     name: string;
     email: string | null;
@@ -31,7 +31,7 @@ export class CommitteesService {
         type: 'email',
         value: 'secompp@googlegroups.com',
       },
-      members: secomppCommittee24,
+      members: secomppCommittee2024,
     },
     {
       name: 'Sistemas SECOMPP24',
@@ -42,16 +42,48 @@ export class CommitteesService {
         type: 'email',
         value: 'fctapp@googlegroups.com',
       },
-      members: systemCommittee24,
+      members: secomppCommittee2024,
+    },
+    {
+      name: 'Kit Bixo 2024',
+      description: 'Comissão responsável pelo Kit Bixo 2024.',
+      startDate: null,
+      endDate: null,
+      contact: null,
+      members: kitBixo2024,
     },
   ];
 }
 
-const secomppCommittee24 = [
+const kitBixo2024 = [
+  {
+    name: 'Gustavo Ribeiro',
+    email: 'gustavo.r.mota@unesp.br',
+    role: 'Responsável',
+    joinedDate: null,
+    leftDate: null,
+  },
+  {
+    name: 'Mateus "Mavincas"',
+    email: null,
+    role: null,
+    joinedDate: null,
+    leftDate: null,
+  },
+];
+
+const secomppCommittee2024 = [
   {
     name: 'Giovanna Custodio',
     email: 'giovanna.s.custodio@unesp.br',
     role: 'Diretora de eventos do CACiC e responsável pela comissão',
+    joinedDate: new Date('2024-04-16'),
+    leftDate: null,
+  },
+  {
+    name: 'Julio Santana',
+    email: 'julio.o.santana@unesp.br',
+    role: 'Diretor de eventos do CACiC',
     joinedDate: new Date('2024-04-16'),
     leftDate: null,
   },
@@ -169,7 +201,7 @@ const secomppCommittee24 = [
   },
 ];
 
-const systemCommittee24 = [
+const systemCommittee2024 = [
   {
     name: 'Daniel Serezane',
     email: 'daniel.serezane@unesp.br',
