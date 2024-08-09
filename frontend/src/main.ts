@@ -1,8 +1,6 @@
-import {
-  isDevMode,
-} from '@angular/core';
+import { isDevMode } from '@angular/core';
 import { AppComponent } from './app/app.component';
-import { bootstrapApplication, } from '@angular/platform-browser';
+import { bootstrapApplication } from '@angular/platform-browser';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 registerLocaleData(localePt);
@@ -15,7 +13,6 @@ console.debug('DEBUG: main.ts: Nonce: Will fetch nonce');
 
 export const nonce = fetchNonce();
 setNonce(nonce);
-
 
 bootstrapApplication(AppComponent, appConfig).catch((err) => console.log(err));
 

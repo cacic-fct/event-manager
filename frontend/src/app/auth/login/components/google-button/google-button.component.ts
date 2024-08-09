@@ -29,32 +29,32 @@ export class GoogleButtonComponent implements AfterViewInit {
     this.authService.GoogleOneTap(response);
   }
 
-   ngAfterViewInit() {
+  ngAfterViewInit() {
     if (environment.production) {
-      // @ts-expect-error - google is defined by loadGsiClient(); 
+      // @ts-expect-error - google is defined by loadGsiClient();
       window.onGoogleLibraryLoad = () => {
         console.debug('DEBUG: GoogleButtonComponent: GSI Client loaded');
 
-      // @ts-expect-error - google is defined by loadGsiClient(); 
-      google.accounts.id.initialize({
-        // Ref: https://developers.google.com/identity/gsi/web/reference/js-reference#IdConfiguration
-        client_id: '169157391934-n61n94q5pdv1uloqnejher4v9fudd9g7.apps.googleusercontent.com',
-        callback: this.handleCredentialResponse.bind(this),
-        auto_select: true,
-        cancel_on_tap_outside: false,
-      });
+        // @ts-expect-error - google is defined by loadGsiClient();
+        google.accounts.id.initialize({
+          // Ref: https://developers.google.com/identity/gsi/web/reference/js-reference#IdConfiguration
+          client_id: '169157391934-n61n94q5pdv1uloqnejher4v9fudd9g7.apps.googleusercontent.com',
+          callback: this.handleCredentialResponse.bind(this),
+          auto_select: true,
+          cancel_on_tap_outside: false,
+        });
 
-      // @ts-expect-error - google is defined by loadGsiClient(); 
-      google.accounts.id.renderButton(this.googleButton.nativeElement, {
-        theme: 'outline',
-        size: 'large',
-        shape: 'rectangular',
-        type: 'standard',
-        logo_alignment: 'left',
-        width: 300,
-      });
+        // @ts-expect-error - google is defined by loadGsiClient();
+        google.accounts.id.renderButton(this.googleButton.nativeElement, {
+          theme: 'outline',
+          size: 'large',
+          shape: 'rectangular',
+          type: 'standard',
+          logo_alignment: 'left',
+          width: 300,
+        });
 
-      this.isLoaded.set(true);
+        this.isLoaded.set(true);
       };
     }
   }

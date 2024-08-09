@@ -153,12 +153,10 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptorsFromDi()),
     provideLottieOptions({
       player: () => import('lottie-web'),
-    }), provideClientHydration(),
+    }),
+    provideClientHydration(),
   ],
-}
-
-
-
+};
 
 function setupAnalytics(nonce: string): void {
   if (localStorage.getItem('disable-monitoring') !== 'true') {

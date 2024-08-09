@@ -8,7 +8,7 @@ import { IonContent, IonButton, IonLoading } from '@ionic/angular/standalone';
   templateUrl: './redirects.page.html',
   styleUrls: ['./redirects.page.scss'],
   standalone: true,
-  imports: [IonContent, IonButton, IonLoading ]
+  imports: [IonContent, IonButton, IonLoading],
 })
 export class RedirectsPage implements OnInit {
   @Input() id: string | undefined;
@@ -35,11 +35,10 @@ export class RedirectsPage implements OnInit {
       case 'privacy-policy':
         this.document.location.href = 'https://cacic.dev.br/legal/privacy-policy';
         break;
-      default: 
-      this.loadingOpen = false;
+      default:
+        this.loadingOpen = false;
         this.router.navigate(['/']);
         break;
-  }
+    }
   }
 }
-
