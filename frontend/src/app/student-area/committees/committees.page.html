@@ -22,11 +22,14 @@
       </ion-card-header>
       <ion-card-content>
         <p>{{committee.description}}</p>
+        @if (!committee.startDate && !committee.endDate) {
+        <p>Período: desconhecido</p>
+        } @else {
         <p>
           Período: {{ committee.startDate | date: 'dd/MM/yyyy' }} - {{ (committee.endDate | date: 'dd/MM/yyyy') ||
           'desconhecido' }}
         </p>
-
+        }
         <ion-button fill="clear" (click)="openModal(committee)">Saber mais</ion-button>
       </ion-card-content>
     </ion-card>
