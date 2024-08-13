@@ -42,7 +42,7 @@ export class CommitteesService {
         type: 'email',
         value: 'fctapp@googlegroups.com',
       },
-      members: secomppCommittee2024,
+      members: systemCommittee2024,
     },
     {
       name: 'Kit Bixo 2024',
