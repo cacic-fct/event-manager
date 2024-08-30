@@ -30,7 +30,7 @@
           @if (member.email) {
             <p>{{ member.email }}</p>
           }
-          @if (!committee.startDate && !committee.endDate) {
+          @if (!member.joinedDate && !member.leftDate) {
             <p>Período: desconhecido</p>
           } @else {
             <p>
