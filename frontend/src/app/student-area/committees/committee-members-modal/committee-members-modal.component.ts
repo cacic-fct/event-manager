@@ -55,7 +55,7 @@ export class CommitteeMembersModalComponent {
     const alert = await this.alertController.create({
       header: 'Atenção',
       message:
-        'Verifique se é mais oportuno entrar em contato com algum professor ou diretamente com algum diretor do CACiC.',
+        'Se a irregularidade é grave, contate a ouvidoria local. Também verifique se é mais oportuno entrar em contato com algum professor ou diretamente com algum diretor do CACiC ao invés de enviar um e-mail à caixa de entrada coletiva do CA.',
       buttons: [
         {
           text: 'Cancelar',
