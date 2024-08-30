@@ -318,7 +318,7 @@ export class AddEventPage implements OnInit {
   }
 
   validatorLatLong(control: AbstractControl): ValidationErrors | null {
-    if (control.get('location').get('lat').value == '' && control.get('location').get('lon').value == '') {
+    if (control.get('location').get('lat').value === '' && control.get('location').get('lon').value === '') {
       control.get('location').get('lat').removeValidators(Validators.required);
       control.get('location').get('lon').removeValidators(Validators.required);
       control.get('location').get('lat').updateValueAndValidity({ onlySelf: true });

@@ -55,17 +55,13 @@
           <span class="alert-text ion-text-wrap"> Antes de validar, verifique se não há choque de horário. </span>
         </ion-text>
       </p>
-      <p class="pre-wrap">
-        Eventos selecionados: <br />
-        <br />
-        <!-- Button copy event IDs -->
-        <ion-button
-          size="small"
-          (click)="copyEventIDs(subscription.subscribedToEvents)"
-          [disabled]="subscription.subscribedToEvents.length === 0">
-          Copiar IDs
-        </ion-button>
-      </p>
+      <h2>Eventos selecionados:</h2>
+      <ion-button
+        size="small"
+        (click)="copyEventIDs(subscription.subscribedToEvents)"
+        [disabled]="subscription.subscribedToEvents.length === 0">
+        Copiar IDs
+      </ion-button>
       <br />
       @if (subscription.subEventsInfo | async; as subEventsInfo) { @if (subEventsInfo.length !== 0) { @for (subEventInfo
       of subEventsInfo; track subEventInfo) {

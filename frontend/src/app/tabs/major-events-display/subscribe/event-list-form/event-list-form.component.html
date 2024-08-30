@@ -1,0 +1,55 @@
+<form [formGroup]="dataForm">
+  @if (events$ | async; as eventsArray) {
+    @for (event of eventsArray; track event; let i = $index) {
+      @if (i === 0 || !dateService.compareDayTimestamp(eventsArray[i - 1].eventStartDate, event.eventStartDate)) {
+        <ion-item-divider mode="ios" sticky="true">
+          <ion-label> {{ formatDate(dateService.getDateFromTimestamp(event.eventStartDate)) }} </ion-label>
+        </ion-item-divider>
+      }
+      <ion-list>
+        <ion-item [class.opacity-50]="dataForm.get(event.id!)?.disabled" (click)="itemClick(event)">
+          <img
+            [src]="emojiService.getEmoji(event.icon)"
+            class="twemoji"
+            slot="start"
+            aria-hidden="true"
+            alt="Emoji do evento"
+            loading="lazy" />
+          <ion-label>
+            <h3 class="ion-text-wrap">{{ event.name }}</h3>
+            <h3 class="ion-text-wrap">{{ event.shortDescription }}</h3>
+            <h4>
+              {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: 'HH:mm' }}
+              {{
+                event.eventEndDate &&
+                  '
+          às ' + (dateService.getDateFromTimestamp(event.eventEndDate) | date: 'HH:mm')
+              }}
+            </h4>
+            <p>{{ event.slotsAvailable }} vagas restantes</p>
+            <p>
+              Sua posição na fila:
+              {{ event.numberOfSubscriptions ? event.numberOfSubscriptions + 1 : ('desconhecida' | number: '1.0-0') }}
+            </p>
+            <!-- <p>Conflito de horário com "item 2"</p>-->
+          </ion-label>
+          @if (event.description) {
+            <ion-button appClickStopPropagation color="primary" fill="clear" (click)="showEventInfo(event)" slot="end">
+              <ion-icon name="information-circle-outline" aria-hidden="true" slot="start"></ion-icon>
+              <p slot="end">INFO</p>
+            </ion-button>
+          }
+          <ion-checkbox
+            appClickStopPropagation
+            slot="end"
+            name="{{ event.eventType }}"
+            [attr.aria-label]="event.name"
+            [formControlName]="event.id!"
+            (ionChange)="selectFromGroup(event, 'checkbox')"></ion-checkbox>
+        </ion-item>
+      </ion-list>
+    }
+  } @else {
+    <ion-spinner name="dots" class="ion-spinner-default"></ion-spinner>
+  }
+</form>

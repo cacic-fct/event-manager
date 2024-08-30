@@ -200,8 +200,8 @@ export class ValidateReceiptPage implements OnInit {
           this.subscriptionsQuery.doc(subscriberID).update({
             // @ts-expect-error - This works
             'payment.status': 2, // Novo status: pagamento aprovado
-            'payment.time': serverTimestamp(),
-            'payment.author': adminUser.uid, // Autor da mudança
+            'payment.validationTime': serverTimestamp(),
+            'payment.validationAuthor': adminUser.uid, // Autor da validação
           });
 
           // TODO: Move this to a cloud function

@@ -73,6 +73,7 @@ export interface MajorEventItem {
   createdBy: string;
   createdOn: Timestamp;
   events: string[];
+  mandatoryEvents?: string[];
   id?: string;
 }
 
@@ -84,9 +85,10 @@ export interface MajorEventSubscription {
     error?: string;
     price?: number;
     author: string;
-    validationTime: Timestamp;
-    validationAuthor: string;
+    validationTime: Timestamp | null;
+    validationAuthor: string | null;
   };
   subscriptionType: number;
   subscribedToEvents: string[];
+  id?: string;
 }

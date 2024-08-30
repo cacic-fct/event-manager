@@ -23,7 +23,7 @@
         }}
       </ion-card-subtitle>
       } @if (userInfo.subscriptionType === null || userInfo.subscriptionType === undefined) {
-      <ion-card-subtitle> Preço único - {{ userInfo.payment.price | currency: 'BRL' }} </ion-card-subtitle>
+      <ion-card-subtitle> Preço: {{ userInfo.payment.price | currency: 'BRL' }} </ion-card-subtitle>
       } }
       <!-- prettier-ignore -->
       <ion-card-subtitle>
