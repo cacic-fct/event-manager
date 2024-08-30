@@ -6,7 +6,7 @@ export interface Committee {
   startDate: Date | null;
   endDate: Date | null;
   contact: {
-    type: 'email' | 'whatsapp';
+    type: 'email' | 'whatsapp' | 'url';
     value: string;
   } | null;
   members: {

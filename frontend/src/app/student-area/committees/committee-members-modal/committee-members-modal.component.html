@@ -3,7 +3,7 @@
     <ion-buttons slot="start">
       <ion-button color="medium" (click)="close()">Fechar</ion-button>
     </ion-buttons>
-    <ion-title>Sistemas SECOMPP</ion-title>
+    <ion-title>{{ committee.name }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
@@ -27,6 +27,9 @@
         <ion-label>
           <h2>{{ member.name }}</h2>
           <p>{{ member.role }}</p>
+          @if (member.email) {
+            <p>{{ member.email }}</p>
+          }
           @if (!committee.startDate && !committee.endDate) {
             <p>Período: desconhecido</p>
           } @else {

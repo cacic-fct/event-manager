@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent,
@@ -14,10 +14,14 @@ import {
   IonButtons,
   IonBackButton,
   ModalController,
+  IonIcon,
 } from '@ionic/angular/standalone';
 
 import { CommitteeMembersModalComponent } from 'src/app/student-area/committees/committee-members-modal/committee-members-modal.component';
 import { Committee, CommitteesService } from 'src/app/shared/services/committees.service';
+import { addIcons } from 'ionicons';
+import { mail } from 'ionicons/icons';
+import { Mailto, MailtoService } from 'src/app/shared/services/mailto.service';
 
 @Component({
   selector: 'app-committees',
@@ -25,6 +29,7 @@ import { Committee, CommitteesService } from 'src/app/shared/services/committees
   styleUrls: ['./committees.page.scss'],
   standalone: true,
   imports: [
+    IonIcon,
     IonBackButton,
     IonButtons,
     IonButton,
@@ -43,6 +48,14 @@ import { Committee, CommitteesService } from 'src/app/shared/services/committees
 export class CommitteesPage {
   modalController = inject(ModalController);
   committeesService = inject(CommitteesService);
+  document = inject(DOCUMENT);
+  mailtoService = inject(MailtoService);
+
+  constructor() {
+    addIcons({
+      mail,
+    });
+  }
 
   async openModal(committee: Committee) {
     const modal = await this.modalController.create({
@@ -52,5 +65,29 @@ export class CommitteesPage {
       },
     });
     modal.present();
+  }
+
+  contact(committee: Committee) {
+    if (!committee.contact) {
+      return;
+    }
+
+    if (committee.contact.type === 'email') {
+      this.mailtoCommittee(committee);
+    } else if (committee.contact.type === 'whatsapp') {
+      this.document.location.href = `https://wa.me/${committee.contact.value}`;
+    } else if (committee.contact.type === 'url') {
+      this.document.location.href = committee.contact.value;
+    } else {
+      throw new Error('Invalid contact type');
+    }
+  }
+
+  mailtoCommittee(committee: Committee): void {
+    const mailto: Mailto = {
+      receiver: committee.contact?.value,
+      subject: `[${committee.name}] Contato com a comissão`,
+    };
+    this.mailtoService.open(mailto);
   }
 }

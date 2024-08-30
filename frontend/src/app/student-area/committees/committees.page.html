@@ -29,6 +29,12 @@
           Período: {{ committee.startDate | date: 'dd/MM/yyyy' }} - {{ (committee.endDate | date: 'dd/MM/yyyy') ||
           'desconhecido' }}
         </p>
+        } @if (committee.contact) {
+        <ion-button (click)="contact(committee)">
+          @if (committee.contact.type === 'email') {
+          <ion-icon slot="start" name="mail"></ion-icon>
+          } Contatar
+        </ion-button>
         }
         <ion-button fill="clear" (click)="openModal(committee)">Saber mais</ion-button>
       </ion-card-content>
