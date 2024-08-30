@@ -1,4 +1,4 @@
-import { Component, isDevMode } from '@angular/core';
+import { Component, inject, isDevMode } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -14,12 +14,16 @@ import {
   IonBackButton,
   IonButtons,
   IonText,
+  IonCardTitle,
+  IonCardHeader,
+  ModalController,
 } from '@ionic/angular/standalone';
 import { ExplanationCardComponent } from 'src/app/settings/components/explanation-card/explanation-card.component';
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 
 import { AlertController } from '@ionic/angular/standalone';
 import { Router } from '@angular/router';
+import { ServiceWorkerStatusModalComponent } from 'src/app/settings/general/service-worker/service-worker-status-modal/service-worker-status-modal.component';
 
 @Component({
   selector: 'app-service-worker',
@@ -27,6 +31,8 @@ import { Router } from '@angular/router';
   styleUrls: ['./service-worker.page.scss'],
   standalone: true,
   imports: [
+    IonCardHeader,
+    IonCardTitle,
     IonText,
     IonButtons,
     IonBackButton,
@@ -46,8 +52,10 @@ import { Router } from '@angular/router';
 })
 export class ServiceWorkerPage {
   isServiceWorkerActive = false;
+  private modalController = inject(ModalController);
+  private alertController = inject(AlertController);
+
   constructor(
-    private alertController: AlertController,
     private sw: ServiceWorkerService,
     private router: Router,
   ) {
@@ -114,5 +122,14 @@ export class ServiceWorkerPage {
     });
 
     await alert.present();
+  }
+
+  async openStatusModal() {
+    const modal = await this.modalController.create({
+      component: ServiceWorkerStatusModalComponent,
+    });
+    modal.present();
+
+    await modal.onWillDismiss();
   }
 }

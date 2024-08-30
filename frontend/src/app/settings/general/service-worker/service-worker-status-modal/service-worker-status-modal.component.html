@@ -1,0 +1,25 @@
+@let swStatus = ngswState$ | async;
+
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button color="medium" (click)="close()">
+        <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+
+    <ion-title> <div class="ion-text-wrap">Estado do Service Worker</div></ion-title>
+
+    <ion-buttons slot="end">
+      <ion-button color="medium" (click)="requestData()">
+        <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    @if (!swStatus) {
+      <ion-progress-bar type="indeterminate"></ion-progress-bar>
+    }
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <pre>{{ swStatus }}</pre>
+</ion-content>

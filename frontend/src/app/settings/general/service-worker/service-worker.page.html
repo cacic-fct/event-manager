@@ -15,22 +15,30 @@
     </app-explanation-card>
 
     @if (!isServiceWorkerActive) {
-    <h1><ion-text color="warning" class="ion-padding">O service worker está inativo</ion-text></h1>
-    <p class="ion-padding">As opções abaixo não funcionarão</p>
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-text color="warning">O service worker está inativo</ion-text>
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>As opções abaixo não funcionarão</p>
+      </ion-card-content>
+    </ion-card>
     }
 
     <ion-card>
-      <ion-item href="/ngsw/state" button>
+      <ion-item (click)="openStatusModal()" button>
         <ion-icon name="document-text-outline" slot="start" aria-hidden="true"></ion-icon>
-        <ion-label class="ion-text-wrap">Visualizar estado do Service Worker</ion-label>
+        <ion-label class="ion-text-wrap">Visualizar estado</ion-label>
       </ion-item>
       <ion-item (click)="alertUpdate()" button>
         <ion-icon name="refresh-outline" slot="start" aria-hidden="true"></ion-icon>
-        <ion-label class="ion-text-wrap">Forçar atualização do Service Worker</ion-label>
+        <ion-label class="ion-text-wrap">Forçar atualização</ion-label>
       </ion-item>
       <ion-item (click)="alertUnregister()" lines="none" button>
         <ion-icon name="ban-outline" slot="start" aria-hidden="true"></ion-icon>
-        <ion-label class="ion-text-wrap">Cancelar o registro do Service Worker</ion-label>
+        <ion-label class="ion-text-wrap">Cancelar registro</ion-label>
       </ion-item>
     </ion-card>
   </div>
