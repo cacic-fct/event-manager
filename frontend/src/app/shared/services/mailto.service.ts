@@ -1,12 +1,14 @@
 // Based on ngx-mailto by Anthony Nahas
 // https://github.com/AnthonyNahas/ngx-mailto
 
-import { Injectable } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { inject, Injectable } from '@angular/core';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MailtoService {
+  document = inject(DOCUMENT);
   compose(value: Mailto): string | void {
     let link = 'mailto:';
 
@@ -49,7 +51,7 @@ export class MailtoService {
   }
 
   open(mailto: Mailto): void {
-    window.location.href = this.compose(mailto) as string;
+    this.document.location.href = this.compose(mailto) as string;
   }
 }
 
