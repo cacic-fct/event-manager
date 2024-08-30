@@ -100,7 +100,6 @@ export default defineConfig({
         },
         {
           label: 'Perguntas frequentes',
-          collapsed: true,
           link: '/perguntas-frequentes',
         },
         {
