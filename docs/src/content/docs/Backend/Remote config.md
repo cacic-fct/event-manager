@@ -2,9 +2,6 @@
 title: Remote config
 ---
 
-O Remote Config não está presente no Firestore.  
-Ele é uma ferramenta separada, mas exerce um papel de banco de dados ágil.
-
 ```json
 {
   "placesMap": {
@@ -18,7 +15,7 @@ Ele é uma ferramenta separada, mas exerce um papel de banco de dados ágil.
   "mapTabEnabled": boolean,
   "calendarItemViewDefault": boolean,
   "eventsTabEnabled": boolean,
-  "adminWhitelist": string[], // E-mails dos administradores
+  "adminWhitelist": string[], // E-mails dos administradores que não podem ser removidos
   "professors": string[], // E-mails dos professores
   "calendarTabEnabled": boolean,
   "registerPrompt": boolean,
