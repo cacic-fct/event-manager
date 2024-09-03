@@ -29,7 +29,6 @@
               "src/robots.txt",
               "src/.well-known/security.txt"
             ],
-            "styles": ["src/global.scss"],
             "scripts": [],
             "aot": true,
             "extractLicenses": true,
