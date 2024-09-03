@@ -10,7 +10,7 @@ Além disso, não há limite de requisições.
 
 ## Biblioteca
 
-Usamos o OpenLayers, pois o Leaflet possui bugs estranhos, como o não carregamento do mapa ou CSS quebrado.
+Usamos o OpenLayers, pois o Leaflet possui bugs, como o não carregamento do mapa ou CSS quebrado.
 
 ## Mapa
 

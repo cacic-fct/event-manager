@@ -28,7 +28,7 @@ O pacote [@cacic-fct/starlight-typesense-docsearch](https://github.com/cacic-fct
 
 #### Exemplo negativo
 
-O painel de administração do FCT App não deve ser separado da parte de usuários do FCT App.  
+O painel de administração do FCT App não deve ser separado da parte de usuários do FCT App, exceto em casos de microfrontends.  
 O administrador também é aluno e, consequentemente, usuário do FCT App.
 
 Separar a área de administração por motivos de segurança é uma prática desnecessária.  
