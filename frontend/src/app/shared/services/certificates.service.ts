@@ -44,7 +44,7 @@ export class CertificateService {
         responseType: 'json',
       });
     } else {
-      pdfJson = this.http.get(`https://cdn.jsdelivr.net/gh/cacic-fct/fct-app@main/src/${pdfPath}`, {
+      pdfJson = this.http.get(`https://cdn.jsdelivr.net/gh/cacic-fct/fct-app@main/frontend/src/${pdfPath}`, {
         responseType: 'json',
       });
     }
