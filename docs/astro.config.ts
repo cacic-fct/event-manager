@@ -46,6 +46,9 @@ export default defineConfig({
       ],
       sidebar: [
         {
+          slug: 'sobre-o-projeto',
+        },
+        {
           label: 'Antes de colaborar',
           collapsed: true,
           autogenerate: {

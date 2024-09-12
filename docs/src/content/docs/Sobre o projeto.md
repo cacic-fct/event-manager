@@ -1,21 +1,29 @@
 ---
 title: Sobre o projeto
-sidebar:
-  order: -5
 ---
 
-## Motivações
+## O que é o FCT App?
 
-O FCT App surgiu para auxiliar o CACiC e ainda segue com as mesmas motivações:
+O FCT App é um aplicativo web desenvolvido pelo CACiC para a comunidade de alunos da FCT-Unesp.
 
-- Simplificar o fluxo de inscrição em eventos;
-- Emitir certificados de participação mais rapidamente;
-- Abolir o uso de papel, seja na confecção de crachás, certificados ou na coleta de presença;
-- Incluir pequenas funcionalidades que melhoram a experiência dos alunos da FCT;
-- Ser um _hub_ de informações para a comunidade de alunos da FCT.
+Ele é um sistema que facilita e automatiza etapas do gerenciamento de eventos, como inscrição, emissão de certificados e coleta de presença.
 
 O app foi adotado pelos alunos e pelos professores na SECOMPP, em substituição ao antigo [SYSCOMPP](https://github.com/cacic-fct/syscompp), que era um sistema feito com tecnologias mais antigas e que era hospedado em um servidor obsoleto.  
 O FCT App é mais rápido, mais seguro, mais fácil de usar e de manter, já que está próximo das tecnologias mais utilizadas atualmente.
+
+### Motivações
+
+1. Simplificar o fluxo de inscrição em eventos:
+    - O FCT App permite que o usuário faça a inscrição em um evento com poucos cliques, sem precisar preencher formulários extensos;
+1. Emitir certificados de participação mais rapidamente:
+    - Antes, certificados demoravam vários semestres para serem emitidos ou nem eram emitidos;
+1. Abolir o uso de papel, seja na confecção de crachás, certificados ou na coleta de presença:
+    - As presenças eram computadas manualmente;
+    - Os papéis das listas de presenças eram perdidos;
+    - Crachás comprometiam parte significativa do orçamento de eventos;
+1. Incluir pequenas funcionalidades que melhoram a experiência dos alunos da FCT:
+    - Mapa de fácil acesso;
+    - Links úteis.
 
 ### Alterações com o tempo
 
