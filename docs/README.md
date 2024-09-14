@@ -1,19 +1,41 @@
-# FCT App Docs
+# Website
 
-## Site
+This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
 
-O site é construído com [Starlight](https://starlight.astro.build/) e pode ser acessado em [docs.fctapp.cacic.dev.br](https://docs.fctapp.cacic.dev.br).
+### Installation
 
-### Desenvolvimento
-
-Para iniciar o site localmente, primeiro instale as dependências com o [Bun](https://bun.sh/):
-
-```bash
-bun install
+```
+$ yarn
 ```
 
-Depois, inicie o servidor de desenvolvimento:
+### Local Development
 
-```bash
-bun run dev
 ```
+$ yarn start
+```
+
+This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+
+### Build
+
+```
+$ yarn build
+```
+
+This command generates static content into the `build` directory and can be served using any static contents hosting service.
+
+### Deployment
+
+Using SSH:
+
+```
+$ USE_SSH=true yarn deploy
+```
+
+Not using SSH:
+
+```
+$ GIT_USER=<Your GitHub username> yarn deploy
+```
+
+If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.

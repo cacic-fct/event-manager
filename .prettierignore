@@ -6,7 +6,7 @@ dist
 node_modules
 *.md
 .angular
-.astro
+.docusaurus
 .husky
 frontend/src/assets/animations/**/*
 frontend/src/assets/certificates/**/*

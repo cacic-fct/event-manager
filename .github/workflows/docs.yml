@@ -32,14 +32,14 @@ jobs:
 
       - name: Build for production
         working-directory: ./docs
-        run: bun run build --configuration=production --verbose
+        run: bun run build
 
       - name: Upload artifacts
 
         uses: actions/upload-artifact@v4
         with:
           name: Docs-artifacts
-          path: docs/dist/
+          path: docs/build/
           if-no-files-found: error
 
   deploy:
@@ -58,7 +58,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: Docs-artifacts
-          path: docs/dist/
+          path: docs/build/
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -69,7 +69,7 @@ jobs:
           apiToken: ${{ secrets.DOCS_CLOUDFLARE_API_TOKEN }}
           accountId: 034f5089bb082eb57cefc432b42b984d
           workingDirectory: 'docs'
-          command: pages deploy dist --project-name=fct-app-docs --commit-dirty=true
+          command: pages deploy build --project-name=fct-app-docs --commit-dirty=true
 
       - name: Create GitHub Deployment
         uses: actions/github-script@v7
