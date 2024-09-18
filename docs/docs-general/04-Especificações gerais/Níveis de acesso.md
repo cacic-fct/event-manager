@@ -4,7 +4,7 @@ sidebar:
   badge: Planned
 ---
 
-Atualmente, o sistema só possui dois tipos de permissões: `admin` e `usuário`.
+Atualmente, o sistema só possui dois tipos de permissão: `admin` e `usuário`.
 
 ## admin
 
