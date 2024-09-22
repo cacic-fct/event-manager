@@ -45,7 +45,6 @@ registerLocaleData(localePt);
 
 import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
 
-import { H } from 'highlight.run';
 import { provideLottieOptions } from 'ngx-lottie';
 
 import { nonce } from 'src/main';
@@ -161,22 +160,10 @@ export const appConfig: ApplicationConfig = {
   ],
 };
 
-function setupAnalytics(nonce: string): void {
+function setupAnalytics(): void {
   if (localStorage.getItem('disable-monitoring') !== 'true') {
     console.debug('DEBUG: main.ts: Highlight Monitoring: Enabled');
-    H.init('1jdkoe52', {
-      environment: isDevMode() ? 'dev' : 'production',
-      backendUrl: 'https://api-highlight.cacic.dev.br/public',
-      networkRecording: {
-        enabled: true,
-        recordHeadersAndBody: true,
-        urlBlocklist: [],
-      },
-      privacySetting: 'none',
-      sendMode: 'webworker',
-    });
   } else {
-    console.debug('DEBUG: main.ts: Highlight Monitoring: Disabled');
   }
 
   if (localStorage.getItem('disable-analytics') !== 'true') {

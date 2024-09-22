@@ -31,7 +31,6 @@
     "buffer": "^6.0.3",
     "bwip-js": "^4.5.1",
     "date-fns": "^3.6.0",
-    "highlight.run": "^9.3.4",
     "ionicons": "^7.4.0",
     "lottie-web": "^5.12.2",
     "marked": "^14.1.2",
