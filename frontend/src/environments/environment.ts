@@ -15,5 +15,5 @@ export const environment = {
   },
   recaptcha3SiteKey: '6LcFr9AdAAAAANB7MbCks-nBVqfZZYp8bGp6Kcto',
   baseUrl: 'https://localhost:8100/',
-  commitHash: 'development-version',
+  appVersion: 'development-version',
 };

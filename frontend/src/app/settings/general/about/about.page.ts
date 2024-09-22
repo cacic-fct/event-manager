@@ -76,7 +76,7 @@ export class AboutPage {
       this.monitoring = true;
     }
 
-    this.versionHash = this.formatVersion(environment.commitHash);
+    this.versionHash = this.formatVersion(environment.appVersion);
 
     addIcons({
       bookOutline,
