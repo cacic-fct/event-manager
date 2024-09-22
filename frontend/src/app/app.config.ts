@@ -161,10 +161,11 @@ export const appConfig: ApplicationConfig = {
 };
 
 function setupAnalytics(): void {
-  if (localStorage.getItem('disable-monitoring') !== 'true') {
-    console.debug('DEBUG: main.ts: Highlight Monitoring: Enabled');
-  } else {
-  }
+  // if (localStorage.getItem('disable-monitoring') !== 'true') {
+  //   console.debug('DEBUG: main.ts: Glitchtip Monitoring: Enabled');
+  // } else {
+  //   console.debug('DEBUG: main.ts: Glitchtip Monitoring: Disabled');
+  // }
 
   if (localStorage.getItem('disable-analytics') !== 'true') {
     const script = document.createElement('script');
