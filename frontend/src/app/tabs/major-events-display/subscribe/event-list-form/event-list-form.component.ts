@@ -154,7 +154,11 @@ export class EventListFormComponent implements OnInit {
     });
   }
 
-  incrementAmountOfEventsSelected(event: EventItem) {
+  incrementAmountOfEventsSelected(event: EventItem | string) {
+    if (typeof event === 'string') {
+      event = this.eventList.find((e) => e.id === event);
+    }
+
     switch (event.eventType) {
       case 'minicurso':
         console.debug('DEBUG: Incrementing amount of courses selected');
@@ -207,6 +211,8 @@ export class EventListFormComponent implements OnInit {
       console.debug('DEBUG: autoSelectMandatory: Event', event, 'conflicts:', conflicts);
       this.blockEventGroup(conflicts);
 
+      this.incrementAmountOfEventsSelected(event);
+
       console.log(this.dataForm.get(event));
       console.log(this.dataForm.value);
 
@@ -229,6 +235,18 @@ export class EventListFormComponent implements OnInit {
   selectFromGroup(event: EventItem, startedBy: string) {
     console.debug('DEBUG: selectFromGroup():', event, 'started by', startedBy);
     if (!event.id) {
+      return;
+    }
+
+    // If there are no slots available, disable event
+    // TODO: should enable again if more slots become available, but should also check for conflicts
+    if (
+      !event.slotsAvailable ||
+      event.slotsAvailable <= 0 ||
+      // Or if event has already started, disable it
+      this.dateService.getDateFromTimestamp(event.eventStartDate) < this.today
+    ) {
+      this.blockEventGroup([event]);
       return;
     }
 
@@ -322,6 +340,7 @@ export class EventListFormComponent implements OnInit {
       } else {
         if (conflict.id) {
           this.dataForm.get(conflict.id)?.disable();
+          this.dataForm.get(conflict.id)?.setValue(false);
         }
       }
     });
