@@ -29,7 +29,7 @@
             <p>{{ event.slotsAvailable }} vagas restantes</p>
             <p>
               Sua posição na fila:
-              {{ event.numberOfSubscriptions ? event.numberOfSubscriptions + 1 : ('desconhecida' | number: '1.0-0') }}
+              {{ event.numberOfSubscriptions ? (event.numberOfSubscriptions + 1 | number: '1.0-0') : 'desconhecida' }}
             </p>
             <!-- <p>Conflito de horário com "item 2"</p>-->
           </ion-label>
