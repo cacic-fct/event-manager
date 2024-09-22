@@ -32,5 +32,10 @@ export const paidMajorEvent = {
   public: true,
   createdBy: 'populate-db',
   createdOn: timestampFromDate(new Date()),
-  events: ['paidMajorEvent-event1', 'paidMajorEvent-group-event1', 'paidMajorEvent-group-event2'],
+  events: [
+    'paidMajorEvent-event1',
+    'paidMajorEvent-event2',
+    'paidMajorEvent-group-event1',
+    'paidMajorEvent-group-event2',
+  ],
 };
