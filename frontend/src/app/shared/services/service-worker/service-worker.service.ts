@@ -1,16 +1,19 @@
 import { UpdateModalComponent } from './update-modal/update-modal.component';
-import { ApplicationRef, Injectable } from '@angular/core';
+import { ApplicationRef, Injectable, inject } from '@angular/core';
 import { SwUpdate } from '@angular/service-worker';
 import { AlertController, ModalController } from '@ionic/angular/standalone';
 import { first } from 'rxjs';
 
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
+import { DOCUMENT } from '@angular/common';
 
 @UntilDestroy()
 @Injectable({
   providedIn: 'root',
 })
 export class ServiceWorkerService {
+  private document = inject(DOCUMENT);
+
   constructor(
     private appRef: ApplicationRef,
     private swUpdate: SwUpdate,
@@ -30,7 +33,7 @@ export class ServiceWorkerService {
             case 'VERSION_READY':
               console.info(`Current app version: ${evt.currentVersion.hash}`);
               console.info(`New app version ready for use: ${evt.latestVersion.hash}`);
-              document.location.reload();
+              this.document.location.reload();
               break;
             case 'VERSION_INSTALLATION_FAILED':
               console.error(`Failed to install app version '${evt.version.hash}': ${evt.error}`);
@@ -66,14 +69,14 @@ export class ServiceWorkerService {
           role: 'cancel',
           handler: () => {
             this.unregisterServiceWorker();
-            document.location.reload();
+            this.document.location.reload();
           },
         },
         {
           text: 'OK',
           role: 'confirm',
           handler: () => {
-            document.location.reload();
+            this.document.location.reload();
           },
         },
       ],
@@ -93,7 +96,7 @@ export class ServiceWorkerService {
           text: 'OK',
           role: 'confirm',
           handler: () => {
-            document.location.reload();
+            this.document.location.reload();
           },
         },
       ],
