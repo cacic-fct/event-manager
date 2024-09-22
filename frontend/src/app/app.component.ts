@@ -92,6 +92,7 @@ import {
   openOutline,
 } from 'ionicons/icons';
 import { PlausibleLocalService } from 'src/app/shared/services/plausible.service';
+import { AuthService } from 'src/app/shared/services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -103,7 +104,10 @@ import { PlausibleLocalService } from 'src/app/shared/services/plausible.service
 })
 export class AppComponent {
   private plausibleLocal = inject(PlausibleLocalService);
-  constructor(private swService: ServiceWorkerService) {
+  constructor(
+    private swService: ServiceWorkerService,
+    private authService: AuthService,
+  ) {
     this.plausibleLocal.registerPlausible();
 
     // TODO: Não importar tudo em app.component.ts
