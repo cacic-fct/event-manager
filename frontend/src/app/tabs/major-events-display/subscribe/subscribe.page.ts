@@ -137,6 +137,7 @@ export class SubscribePage implements OnInit {
   isAlreadySubscribed: boolean | undefined;
   majorEventID: string;
   events$: Observable<EventItem[]>;
+  // Se o evento faz parte de um grupo, inclua os IDs de todos os eventos do grupo
   mandatoryEvents: string[] = [];
 
   private firestore: Firestore = inject(Firestore);

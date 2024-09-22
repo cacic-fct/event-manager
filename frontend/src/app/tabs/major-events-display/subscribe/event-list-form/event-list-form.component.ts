@@ -196,14 +196,15 @@ export class EventListFormComponent implements OnInit {
 
   autoSelectMandatory(mandatoryList: string[]) {
     if (mandatoryList.length === 0) {
+      console.debug('DEBUG: autoSelectMandatory: No events are mandatory');
       return;
     }
 
     mandatoryList.forEach((event) => {
-      console.debug('DEBUG: Event is mandatory:', event);
+      console.debug('DEBUG: autoSelectMandatory: Event is mandatory:', event);
       const conflicts = this.checkConflicts(event);
 
-      console.debug('DEBUG: Event', event, 'conflicts:', conflicts);
+      console.debug('DEBUG: autoSelectMandatory: Event', event, 'conflicts:', conflicts);
       this.blockEventGroup(conflicts);
 
       console.log(this.dataForm.get(event));
