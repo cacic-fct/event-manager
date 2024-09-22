@@ -1,15 +1,15 @@
 {
   "name": "fct-app",
-  "scripts": {
-    "prepare": "husky",
-    "format": "prettier --write .",
-    "check-format": "prettier --check .",
-    "commitlint": "commitlint --edit $1"
-  },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-angular": "^19.5.0",
     "@commitlint/format": "^19.5.0",
     "prettier": "^3.3.3"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "check-format": "prettier --check .",
+    "commitlint": "commitlint --edit $1"
   }
 }
