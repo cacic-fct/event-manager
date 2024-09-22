@@ -26,7 +26,7 @@ import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angul
 
 import { AngularFireModule } from '@angular/fire/compat';
 import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
-import { MarkdownModule } from 'ngx-markdown';
+import { provideMarkdown } from 'ngx-markdown';
 import { withInterceptorsFromDi, provideHttpClient, HttpClient } from '@angular/common/http';
 import { ServiceWorkerModule } from '@angular/service-worker';
 import { routes } from 'src/app/app.routes';
@@ -65,6 +65,10 @@ export const appConfig: ApplicationConfig = {
 
     provideRouter(routes, withPreloading(PreloadingStrategyService), withComponentInputBinding()),
 
+    provideMarkdown({
+      loader: HttpClient,
+    }),
+
     importProvidersFrom(
       BrowserModule,
       ServiceWorkerModule.register(unwrapResourceUrl(trustedResourceUrl`/ngsw-worker.js`) as string, {
@@ -72,7 +76,6 @@ export const appConfig: ApplicationConfig = {
         registrationStrategy: 'registerImmediately',
       }),
       // Other modules
-      MarkdownModule.forRoot({ loader: HttpClient }),
       SweetAlert2Module.forRoot(),
       // AngularFire
       AngularFireModule.initializeApp(environment.firebase),
