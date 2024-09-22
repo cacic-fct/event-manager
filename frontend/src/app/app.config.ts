@@ -50,7 +50,7 @@ import { provideLottieOptions } from 'ngx-lottie';
 
 import { nonce } from 'src/main';
 
-setupAnalytics(nonce);
+setupAnalytics();
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -181,13 +181,16 @@ function setupAnalytics(nonce: string): void {
 
   if (localStorage.getItem('disable-analytics') !== 'true') {
     const script = document.createElement('script');
-    script.setAttribute('nonce', nonce);
+    script.id = 'plausible-script';
     script.async = true;
     script.defer = true;
-    script.src = 'https://plausible.cacic.dev.br/js/script.js';
+    script.src = 'https://plausible.cacic.dev.br/js/script.file-downloads.pageview-props.outbound-links.js';
     script.setAttribute('data-domain', 'fctapp.cacic.dev.br');
-    document.head.appendChild(script);
 
+    // Pageview custom properties
+    script.setAttribute('event-app_version', environment.appVersion);
+
+    document.head.appendChild(script);
     console.debug('DEBUG: main.ts: Plausible Analytics: Enabled');
   } else {
     console.debug('DEBUG: main.ts: Plausible Analytics: Disabled');

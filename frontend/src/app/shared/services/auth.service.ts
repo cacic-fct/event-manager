@@ -29,8 +29,7 @@ import { arrayRemove } from '@angular/fire/firestore';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { CredentialResponse } from 'google-one-tap';
 import { PlausibleService } from '@notiz/ngx-plausible';
-
-import { H } from 'highlight.run';
+import { DOCUMENT } from '@angular/common';
 
 @Injectable({
   providedIn: 'root',
@@ -40,12 +39,15 @@ export class AuthService {
   private remoteConfig: RemoteConfig = inject(RemoteConfig);
 
   private auth: Auth = inject(Auth);
+  private document = inject(DOCUMENT);
   private functions: Functions = inject(Functions);
 
   authState$ = authState(this.auth);
 
   userData: UserAuth;
   localDataVersion: string = GlobalConstantsService.userDataVersion;
+
+  private plausibleScript = this.document.getElementById('plausible-script');
 
   constructor(
     public router: Router,
@@ -61,9 +63,8 @@ export class AuthService {
         localStorage.setItem('user', JSON.stringify(this.userData));
         JSON.parse(localStorage.getItem('user'));
 
-        H.identify(user.email, {
-          id: user.uid,
-        });
+        this.plausibleScript.setAttribute('event-author', user.uid);
+        this.plausibleScript.setAttribute('event-logged_in', 'true');
 
         getStringChanges(this.remoteConfig, 'professors').subscribe((professors) => {
           if (professors) {
@@ -132,6 +133,7 @@ export class AuthService {
           });
       } else {
         localStorage.removeItem('user');
+        this.plausibleScript.setAttribute('event-logged_in', 'false');
       }
     });
   }
