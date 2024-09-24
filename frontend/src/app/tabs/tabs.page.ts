@@ -24,6 +24,7 @@ export class TabsPage {
   user$ = user(this.auth);
   public router = inject(Router);
 
+  // If path is /{anything} except /#{anything}, then tabs will be hidden
   public regex = new RegExp(/^\/{1}(#{1}.*|#?)$/g);
 
   allowRestrictedArea: WritableSignal<boolean> = signal(false);
