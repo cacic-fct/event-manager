@@ -219,8 +219,8 @@ export class AddEventPage implements OnInit {
           } else {
             location = {
               description: this.dataForm.get('location.description').value,
-              lat: Number.parseInt(this.dataForm.get('location.lat').value) || null,
-              lon: Number.parseInt(this.dataForm.get('location.lon').value) || null,
+              lat: Number.parseFloat(this.dataForm.get('location.lat').value.replace(',', '.')) || null,
+              lon: Number.parseFloat(this.dataForm.get('location.lon').value.replace(',', '.')) || null,
             };
           }
 
