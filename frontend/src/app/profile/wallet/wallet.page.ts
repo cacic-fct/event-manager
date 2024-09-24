@@ -32,11 +32,14 @@ import {
   IonSkeletonText,
   IonButton,
   IonRouterLink,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
 
 import { ServiceWorkerService } from 'src/app/shared/services/service-worker/service-worker.service';
 import { filterNullish } from 'src/app/shared/services/rxjs.service';
+import { addIcons } from 'ionicons';
+import { cloudDoneOutline, cloudOfflineOutline } from 'ionicons/icons';
 
 // import { register as registerSwiper } from 'swiper/element/bundle';
 // import { SwiperOptions } from 'swiper/types';
@@ -71,6 +74,7 @@ export class WalletPage {
   // public restaurantBarcode: string;
 
   private auth: Auth = inject(Auth);
+  private toastController: ToastController = inject(ToastController);
 
   user$: Observable<AuthUser | null> = user(this.auth);
   userFirestore$: Observable<User> | undefined;
@@ -106,6 +110,47 @@ export class WalletPage {
         this.renderAztecCode(user.uid);
       }
     });
+
+    addIcons({
+      cloudDoneOutline,
+      cloudOfflineOutline,
+    });
+  }
+
+  async presentAvailableOfflineToast() {
+    const toast = await this.toastController.create({
+      header: 'Disponível off-line',
+      message: 'Você pode acessar este conteúdo mesmo sem conexão com a internet.',
+      icon: 'cloud-done-outline',
+      position: 'bottom',
+      duration: 5000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+    toast.present();
+  }
+
+  async presentNotAvailableOfflineToast() {
+    const toast = await this.toastController.create({
+      header: 'Disponível apenas on-line',
+      message: 'Você precisa de uma conexão com a internet para acessar este conteúdo.',
+      icon: 'cloud-offline-outline',
+      position: 'bottom',
+      duration: 5000,
+      buttons: [
+        {
+          side: 'end',
+          text: 'OK',
+          role: 'cancel',
+        },
+      ],
+    });
+    toast.present();
   }
 
   // ngOnInit() {

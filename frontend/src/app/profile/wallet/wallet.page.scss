@@ -9,6 +9,11 @@ ion-card {
   overflow: hidden;
   max-height: 300px;
   max-width: 300px;
+
+  ion-skeleton-text {
+    width: 200px;
+    height: 200px;
+  }
 }
 
 .info-text {

@@ -4,6 +4,19 @@
       <ion-back-button defaultHref="/perfil"></ion-back-button>
     </ion-buttons>
     <ion-title>Carteira</ion-title>
+
+    <ion-buttons slot="end">
+      @if (serviceWorkerActive) {
+      <ion-button (click)="presentAvailableOfflineToast()">
+        <ion-icon name="cloud-done-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+      } @else {
+      <ion-button (click)="presentNotAvailableOfflineToast()">
+        <ion-icon name="cloud-offline-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+
+      }
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
@@ -36,39 +49,8 @@
       alt="Código de barras"
       class="aztec-code margin-horizontal-auto"
       [innerHTML]="profileBarcode | safe: 'html'"></object>
-    @if (serviceWorkerActive) {
-    <div class="ion-text-center ion-padding">
-      <ion-icon name="information-circle-outline" class="info-icon"></ion-icon>
-      <span class="info-text">Esta página está disponível off-line</span>
-    </div>
-    } } @else {
-    <ion-card class="margin-horizontal-auto ion-padding">
-      <ng-container>
-        <div class="ion-text-center ion-padding-horizontal ion-padding-top">
-          <ion-avatar class="margin-horizontal-auto">
-            <ion-skeleton-text [animated]="true"></ion-skeleton-text>
-          </ion-avatar>
-          <ion-card-title>
-            <h2>
-              <ion-skeleton-text class="margin-horizontal-auto skeleton-1" [animated]="true"></ion-skeleton-text>
-            </h2>
-            <p class="no-margin-bottom">
-              <ion-skeleton-text class="margin-horizontal-auto skeleton-2" [animated]="true"></ion-skeleton-text>
-            </p>
-            <p class="margin-vertical-auto">
-              <ion-skeleton-text [animated]="true" class="margin-horizontal-auto skeleton-3"></ion-skeleton-text>
-            </p>
-          </ion-card-title>
-        </div>
-        <div class="aztec-code ion-text-center">
-          <ion-skeleton-text [animated]="false" class="margin-horizontal-auto" id="skeleton-aztec"></ion-skeleton-text>
-        </div>
-      </ng-container>
-    </ion-card>
-    }
-  </ion-card>
-  } @else {
-  <ion-card class="margin-horizontal-auto ion-padding">
+    } @else {
+
     <ng-container>
       <div class="ion-text-center ion-padding-horizontal ion-padding-top">
         <ion-avatar class="margin-horizontal-auto">
@@ -86,10 +68,34 @@
           </p>
         </ion-card-title>
       </div>
-      <div class="margin-horizontal-auto aztec-code">
-        <ion-skeleton-text [animated]="false" class="skeleton-aztec"></ion-skeleton-text>
+      <div class="aztec-code ion-text-center margin-horizontal-auto">
+        <ion-skeleton-text [animated]="false" class="margin-horizontal-auto" id="skeleton-aztec"></ion-skeleton-text>
       </div>
     </ng-container>
+
+    }
+  </ion-card>
+  } @else {
+  <ion-card class="margin-horizontal-auto ion-padding">
+    <div class="ion-text-center ion-padding-horizontal ion-padding-top">
+      <ion-avatar class="margin-horizontal-auto">
+        <ion-skeleton-text [animated]="true"></ion-skeleton-text>
+      </ion-avatar>
+      <ion-card-title>
+        <h2>
+          <ion-skeleton-text class="margin-horizontal-auto skeleton-1" [animated]="true"></ion-skeleton-text>
+        </h2>
+        <p class="no-margin-bottom">
+          <ion-skeleton-text class="margin-horizontal-auto skeleton-2" [animated]="true"></ion-skeleton-text>
+        </p>
+        <p class="margin-vertical-auto">
+          <ion-skeleton-text [animated]="true" class="margin-horizontal-auto skeleton-3"></ion-skeleton-text>
+        </p>
+      </ion-card-title>
+    </div>
+    <div class="margin-horizontal-auto aztec-code">
+      <ion-skeleton-text [animated]="false" class="skeleton-aztec"></ion-skeleton-text>
+    </div>
   </ion-card>
   }
   <!-- </swiper-slide> -->
