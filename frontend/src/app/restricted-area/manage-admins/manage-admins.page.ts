@@ -79,7 +79,7 @@ export class ManageAdminsPage {
 
     this.whitelist = whitelistString
       // Remove brackets and quotes
-      .replace(/[\[\]"']/g, '')
+      .replace(/[[\]"']/g, '')
       .split(',')
       // Remove whitespace
       .map((item) => item.trim());
