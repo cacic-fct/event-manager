@@ -14,7 +14,7 @@ console.debug('DEBUG: main.ts: Nonce: Will fetch nonce');
 export const nonce = fetchNonce();
 setNonce(nonce);
 
-bootstrapApplication(AppComponent, appConfig).catch((err) => console.log(err));
+bootstrapApplication(AppComponent, appConfig).catch((err) => console.error(err));
 
 export function fetchNonce(): string {
   const regex = new RegExp(`s*nonce=`);

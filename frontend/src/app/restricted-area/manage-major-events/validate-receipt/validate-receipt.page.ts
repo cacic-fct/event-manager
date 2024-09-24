@@ -181,7 +181,7 @@ export class ValidateReceiptPage implements OnInit {
       const url = await getDownloadURL(reference);
       return url;
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return '';
     }
   }

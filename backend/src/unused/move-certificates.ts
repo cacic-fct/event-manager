@@ -148,7 +148,7 @@ exports.moveCertificates = onCall({ timeoutSeconds: 540, memory: '1GiB' }, async
                   await publicDoc.ref.delete();
                 });
             } catch (error) {
-              console.log(error);
+              console.error(error);
               errors.push({
                 userCertificateID: userCertificateID.id,
                 error: error,
@@ -199,7 +199,7 @@ exports.moveCertificates = onCall({ timeoutSeconds: 540, memory: '1GiB' }, async
 
                 await certificateID.ref.delete();
               } catch (error) {
-                console.log(error);
+                console.error(error);
                 errors.push({
                   userCertificateID: certificateID.id,
                   error: error,
