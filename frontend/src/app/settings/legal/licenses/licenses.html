@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/"></ion-back-button>
@@ -7,9 +7,10 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="ion-padding">
-  <!-- prettier-ignore -->
-  <markdown ngPreserveWhitespaces>
+<ion-content [fullscreen]="true">
+  <div class="content-max-width margin-horizontal-auto ion-padding">
+    <!-- prettier-ignore -->
+    <markdown ngPreserveWhitespaces>
     # FCT App
     Copyright (c) CACIC - Centro Acadêmico de Ciência da Computação "Alan Turing" da
     Faculdade de Ciências e Tecnologia, Câmpus de Presidente Prudente,
@@ -20,8 +21,8 @@
 GNU Affero General Public License
 =================================
 
-_Version 3, 19 November 2007_
-_Copyright © 2007 Free Software Foundation, Inc. &lt;<http://fsf.org/>&gt;_
+_Version 3, 19 November 2007_  
+_Copyright © 2007 Free Software Foundation, Inc. &lt;http://fsf.org/&gt;_
 
 Everyone is permitted to copy and distribute verbatim copies
 of this license document, but changing it is not allowed.
@@ -628,8 +629,8 @@ copy of the Program in return for a fee.
 _END OF TERMS AND CONDITIONS_
   </markdown>
 
-  <!-- prettier-ignore -->
-  <markdown ngPreserveWhitespaces>
+    <!-- prettier-ignore -->
+    <markdown ngPreserveWhitespaces>
       Weather data is provided by [Open-Meteo.com](https://open-meteo.com/).
 
       
@@ -638,5 +639,6 @@ _END OF TERMS AND CONDITIONS_
       hcal - by valnub - https://github.com/valnub/hcal - MIT
   </markdown>
 
-  <app-display-licenses></app-display-licenses>
+    <app-display-licenses></app-display-licenses>
+  </div>
 </ion-content>

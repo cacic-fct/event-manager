@@ -27,6 +27,8 @@ import {
 } from '@ionic/angular/standalone';
 import { AsyncPipe } from '@angular/common';
 import { getString, RemoteConfig } from '@angular/fire/remote-config';
+import { addIcons } from 'ionicons';
+import { trashOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-manage-admins',
@@ -83,6 +85,10 @@ export class ManageAdminsPage {
       .split(',')
       // Remove whitespace
       .map((item) => item.trim());
+
+    addIcons({
+      trashOutline,
+    });
   }
 
   async errorToast(message: string) {

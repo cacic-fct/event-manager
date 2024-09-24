@@ -6,8 +6,8 @@
       </ion-avatar>
       <ion-label class="ion-text-wrap">
         <h1 class="no-margin">{{ userData().displayName }}</h1>
-        @if (displayShortcutButtons) {
-          <p>Meu perfil</p>
+        @if (text) {
+          <p>{{ text }}</p>
         }
       </ion-label>
 

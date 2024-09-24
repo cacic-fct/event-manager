@@ -33,10 +33,11 @@ import { logInOutline } from 'ionicons/icons';
 export class ProfileItemCardComponent implements OnInit {
   @Input() displayShortcutButtons = false;
   @Input() routerLinkTo = '/perfil';
+  @Input() text: string | undefined;
   private auth: Auth = inject(Auth);
-  user$ = user(this.auth);
+  private user$ = user(this.auth);
 
-  userData: WritableSignal<User | null> = signal(null);
+  public userData: WritableSignal<User | null> = signal(null);
 
   constructor() {
     addIcons({

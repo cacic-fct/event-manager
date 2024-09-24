@@ -8,50 +8,52 @@
 </ion-header>
 
 <ion-content>
-  <ion-grid>
-    <ion-row>
-      <ion-col>
-        <p class="ion-padding-horizontal">
-          Administrador é a permissão máxima e absoluta do aplicativo.
-          <br />
-          Só podem ter esta permissão pessoas confiáveis do CACiC que podem contribuir para o app e desenvolvedores
-          selecionados.
-          <br />
-          Toda adição e remoção é gravada nos registros e deve ser documentada em um arquivo interno.
-        </p>
-      </ion-col>
-    </ion-row>
-    <ion-row>
-      <ion-col>
-        <form [formGroup]="addAdminForm" (ngSubmit)="addAdmin()">
-          <ion-item>
-            <ion-input
-              label="Adicionar admin"
-              labelPlacement="floating"
-              type="text"
-              formControlName="adminEmail"
-              placeholder="E-mail institucional"></ion-input>
-          </ion-item>
-          <ion-button expand="block" type="submit">Adicionar</ion-button>
-        </form>
-      </ion-col>
-    </ion-row>
+  <div class="content-max-width margin-horizontal-auto">
+    <ion-grid>
+      <ion-row>
+        <ion-col>
+          <p class="ion-padding-horizontal">
+            Administrador é a permissão máxima e absoluta do aplicativo.
+            <br />
+            Só podem ter esta permissão pessoas confiáveis do CACiC que podem contribuir para o app e desenvolvedores
+            selecionados.
+            <br />
+            Toda adição e remoção é gravada nos registros e deve ser documentada em um arquivo interno.
+          </p>
+        </ion-col>
+      </ion-row>
+      <ion-row>
+        <ion-col>
+          <form [formGroup]="addAdminForm" (ngSubmit)="addAdmin()">
+            <ion-item>
+              <ion-input
+                label="Adicionar admin"
+                labelPlacement="floating"
+                type="text"
+                formControlName="adminEmail"
+                placeholder="E-mail institucional"></ion-input>
+            </ion-item>
+            <ion-button expand="block" type="submit">Adicionar</ion-button>
+          </form>
+        </ion-col>
+      </ion-row>
 
-    <h1 class="ion-padding-horizontal">Lista de admins</h1>
+      <h1 class="ion-padding-horizontal">Lista de admins</h1>
 
-    @if (adminList$ | async; as adminList) {
-    <ion-list>
-      @for (admin of adminList; track admin) {
-      <ion-item>
-        <ion-label>{{ admin }}</ion-label>
-        @if (!whitelist.includes(admin)) {
-        <ion-button slot="end" (click)="removeConfirmationAlert(admin)" color="danger">
-          <ion-icon name="trash-outline"></ion-icon>
-        </ion-button>
+      @if (adminList$ | async; as adminList) {
+      <ion-list>
+        @for (admin of adminList; track admin) {
+        <ion-item>
+          <ion-label>{{ admin }}</ion-label>
+          @if (!whitelist.includes(admin)) {
+          <ion-button slot="end" (click)="removeConfirmationAlert(admin)" color="danger">
+            <ion-icon name="trash-outline"></ion-icon>
+          </ion-button>
+          }
+        </ion-item>
         }
-      </ion-item>
+      </ion-list>
       }
-    </ion-list>
-    }
-  </ion-grid>
+    </ion-grid>
+  </div>
 </ion-content>
