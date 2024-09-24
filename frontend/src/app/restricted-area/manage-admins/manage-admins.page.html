@@ -44,9 +44,11 @@
       @for (admin of adminList; track admin) {
       <ion-item>
         <ion-label>{{ admin }}</ion-label>
+        @if (!whitelist.includes(admin)) {
         <ion-button slot="end" (click)="removeConfirmationAlert(admin)" color="danger">
           <ion-icon name="trash-outline"></ion-icon>
         </ion-button>
+        }
       </ion-item>
       }
     </ion-list>

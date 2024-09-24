@@ -26,6 +26,7 @@ import {
   IonIcon,
 } from '@ionic/angular/standalone';
 import { AsyncPipe } from '@angular/common';
+import { getString, RemoteConfig } from '@angular/fire/remote-config';
 
 @Component({
   selector: 'app-manage-admins',
@@ -55,12 +56,15 @@ import { AsyncPipe } from '@angular/common';
 export class ManageAdminsPage {
   private firestore: Firestore = inject(Firestore);
   private functions: Functions = inject(Functions);
+  private remoteConfig: RemoteConfig = inject(RemoteConfig);
 
-  adminList$: Observable<string[]>;
+  public adminList$: Observable<string[]>;
 
   addAdminForm: FormGroup = new FormGroup({
     adminEmail: new FormControl(''),
   });
+
+  public whitelist: string[];
 
   constructor(
     public toastController: ToastController,
@@ -69,6 +73,16 @@ export class ManageAdminsPage {
     this.adminList$ = docData(doc(this.firestore, 'claims', 'admin')).pipe(
       map((doc) => (doc ? doc['admins'] : [])),
     ) as Observable<string[]>;
+
+    // No need to be real-time getStringChanges, as the whitelist barely changes
+    const whitelistString = getString(this.remoteConfig, 'adminWhiteList');
+
+    this.whitelist = whitelistString
+      // Remove brackets and quotes
+      .replace(/[\[\]"']/g, '')
+      .split(',')
+      // Remove whitespace
+      .map((item) => item.trim());
   }
 
   async errorToast(message: string) {
