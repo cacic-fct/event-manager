@@ -77,7 +77,7 @@ export class ManageAdminsPage {
     ) as Observable<string[]>;
 
     // No need to be real-time getStringChanges, as the whitelist barely changes
-    const whitelistString = getString(this.remoteConfig, 'adminWhiteList');
+    const whitelistString = getString(this.remoteConfig, 'adminWhitelist');
 
     this.whitelist = whitelistString
       // Remove brackets and quotes
