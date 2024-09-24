@@ -27,6 +27,7 @@
     "@ngneat/until-destroy": "^10.0.0",
     "@notiz/ngx-plausible": "^0.7.0",
     "@pdfme/generator": "^4.5.0",
+    "@sentry/angular": "^8.31.0",
     "@sweetalert2/ngx-sweetalert2": "^12.4.0",
     "buffer": "^6.0.3",
     "bwip-js": "^4.5.1",

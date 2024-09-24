@@ -47,6 +47,8 @@ import { unwrapResourceUrl, trustedResourceUrl } from 'safevalues';
 
 import { provideLottieOptions } from 'ngx-lottie';
 
+import { init as initSentry } from '@sentry/angular';
+
 import { nonce } from 'src/main';
 
 setupAnalytics();
@@ -161,11 +163,16 @@ export const appConfig: ApplicationConfig = {
 };
 
 function setupAnalytics(): void {
-  // if (localStorage.getItem('disable-monitoring') !== 'true') {
-  //   console.debug('DEBUG: main.ts: Glitchtip Monitoring: Enabled');
-  // } else {
-  //   console.debug('DEBUG: main.ts: Glitchtip Monitoring: Disabled');
-  // }
+  if (localStorage.getItem('disable-monitoring') !== 'true') {
+    console.debug('DEBUG: main.ts: Glitchtip Monitoring: Enabled');
+    initSentry({
+      dsn: 'https://44b2480fd6cd4402b61590135a093fd6@glitchtip.cacic.dev.br/1',
+      environment: isDevMode() ? 'development' : 'production',
+      release: environment.appVersion,
+    });
+  } else {
+    console.debug('DEBUG: main.ts: Glitchtip Monitoring: Disabled');
+  }
 
   if (localStorage.getItem('disable-analytics') !== 'true') {
     const script = document.createElement('script');
