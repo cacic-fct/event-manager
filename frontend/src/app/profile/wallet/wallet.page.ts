@@ -120,7 +120,7 @@ export class WalletPage {
   async presentAvailableOfflineToast() {
     const toast = await this.toastController.create({
       header: 'Disponível off-line',
-      message: 'Você pode acessar este conteúdo mesmo sem conexão com a internet.',
+      message: 'Você pode acessar este conteúdo mesmo sem uma conexão com a internet.',
       icon: 'cloud-done-outline',
       position: 'bottom',
       duration: 5000,
