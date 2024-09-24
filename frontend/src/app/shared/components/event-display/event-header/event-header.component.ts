@@ -10,6 +10,8 @@ import { EmojiService } from '../../../services/emoji.service';
 import { EventItem } from '../../../services/event';
 import { IonCardHeader, IonCardTitle, IonIcon, IonText } from '@ionic/angular/standalone';
 import { DatePipe, AsyncPipe } from '@angular/common';
+import { addIcons } from 'ionicons';
+import { informationCircle } from 'ionicons/icons';
 
 /**
  * Requires the eventItem input to be passed in.
@@ -35,7 +37,11 @@ export class EventHeaderComponent implements OnInit {
     public dateService: DateService,
     public stringService: StringManagementService,
     public emojiService: EmojiService,
-  ) {}
+  ) {
+    addIcons({
+      informationCircle,
+    });
+  }
 
   ngOnInit() {
     if (

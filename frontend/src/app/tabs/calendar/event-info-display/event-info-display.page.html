@@ -13,7 +13,7 @@
 
 <ion-content>
   @if (item$ | async; as items) {
-  <div class="margin-horizontal-auto content-container ion-padding">
+  <div class="margin-horizontal-auto content-max-width ion-padding">
     <app-event-header [eventItem]="items" [displayWeather]="true"></app-event-header>
     <app-event-description [eventItem]="items"></app-event-description>
     <app-event-display-map [eventItem]="items"></app-event-display-map>
