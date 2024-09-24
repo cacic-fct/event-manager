@@ -75,8 +75,5 @@ export class MenuPage {
       settingsOutline,
       logOutOutline,
     });
-
-    // @ts-ignore
-    asdasd();
   }
 }
