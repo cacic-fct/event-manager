@@ -14,8 +14,6 @@ import {
   //persistentLocalCache,
   //persistentMultipleTabManager,
   connectFirestoreEmulator,
-  persistentLocalCache,
-  persistentMultipleTabManager,
 } from '@angular/fire/firestore';
 import { provideFunctions, getFunctions, connectFunctionsEmulator } from '@angular/fire/functions';
 import { provideStorage, getStorage, connectStorageEmulator } from '@angular/fire/storage';
@@ -143,7 +141,7 @@ export const appConfig: ApplicationConfig = {
         ignoreUndefinedProperties: true,
 
         // TODO: https://github.com/cacic-fct/fct-app/issues/172
-        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+        // localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
       });
       if (environment.firebase.useEmulators) {
         connectFirestoreEmulator(firestore, 'localhost', 8081);
