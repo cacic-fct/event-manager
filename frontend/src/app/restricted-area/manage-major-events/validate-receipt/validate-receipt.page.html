@@ -42,9 +42,11 @@
         <ion-button fill="clear" [href]="'mailto:' + userData.email">
           <ion-icon name="mail" slot="icon-only"></ion-icon>
         </ion-button>
+        @if (userData.phone) {
         <ion-button fill="clear" [href]="'https://wa.me/' + formatPhoneWhatsApp(userData.phone)">
           <ion-icon name="logo-whatsapp" slot="icon-only"></ion-icon>
         </ion-button>
+        }
       </ion-row>
     </ion-card-header>
     }
@@ -66,14 +68,14 @@
       @if (subscription.subEventsInfo | async; as subEventsInfo) { @if (subEventsInfo.length !== 0) { @for (subEventInfo
       of subEventsInfo; track subEventInfo) {
       <ion-text
-        [color]="subEventInfo.slotsAvailable > 0? '' : 'danger'"
+        [color]="(subEventInfo.slotsAvailable ?? 0) > 0 ? '' : 'danger'"
         [class]="subEventInfo.eventType === 'palestra' ? 'palestra-color' : ''">
         <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
         <p>{{ subEventInfo.id }}</p>
         <!-- prettier-ignore -->
         <p class="margin-bottom-24">
           {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} -
-          {{ dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
+          {{ subEventInfo.eventEndDate ? (dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm') : 'Término indefinido' }}
         </p>
       </ion-text>
       } } } @else {
@@ -142,7 +144,7 @@
             <ion-radio value="scheduleConflict">Choque de horário</ion-radio>
           </ion-item>
         </ion-radio-group>
-        @if (refuseForm.get('radioGroup').value === 'invalidReceipt') {
+        @if (refuseForm.get('radioGroup')?.value === 'invalidReceipt') {
         <ion-item>
           <ion-input label="Motivo da recusa" labelPlacement="floating" formControlName="errorMessage"></ion-input>
         </ion-item>

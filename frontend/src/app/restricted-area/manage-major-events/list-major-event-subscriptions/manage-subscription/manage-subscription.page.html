@@ -26,14 +26,17 @@
       @if (eventsUserIsSubscribedTo$ | async; as subEventsInfo) { @if (subEventsInfo.length !== 0) { @for (subEventInfo
       of subEventsInfo; track subEventInfo) {
       <div class="margin-bottom-24">
+        @if (subEventInfo) {
         <ion-text [color]="subEventInfo.slotsAvailable? '' : 'danger'">
           <p>{{ subEventInfo.name }}: {{ subEventInfo.slotsAvailable }} vagas disponíveis.</p>
           <p>
-            {{ dateService.getDateFromTimestamp( subEventInfo.eventStartDate ) | date:'dd/MM/yy - HH:mm'}} - {{
-            dateService.getDateFromTimestamp( subEventInfo.eventEndDate ) | date:'HH:mm'}}
+            {{ dateService.getDateFromTimestamp(subEventInfo.eventStartDate) | date:'dd/MM/yy - HH:mm' }} - {{
+            subEventInfo.eventEndDate ? (dateService.getDateFromTimestamp(subEventInfo.eventEndDate) | date:'HH:mm') :
+            'Término indefinido' }}
           </p>
           <p>{{ subEventInfo.id }}</p>
         </ion-text>
+        }
       </div>
       } } } @else {
       <ion-progress-bar type="indeterminate"></ion-progress-bar>
