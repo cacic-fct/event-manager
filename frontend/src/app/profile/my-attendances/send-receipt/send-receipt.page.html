@@ -1,70 +1,70 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons slot="start">
-      <!-- TODO: Alterar -->
       <ion-back-button defaultHref="/inscricoes"></ion-back-button>
     </ion-buttons>
     <ion-title>Realizar pagamento</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  @if (majorEvent$ | async; as majorEvent) {
-  <ion-card>
-    <ion-card-header>
-      <ion-card-title>{{majorEvent.name}}</ion-card-title>
-    </ion-card-header>
-    <div class="ion-padding-horizontal">
-      @if (userSubscription$ | async; as userInfo) {
-      <!-- prettier-ignore -->
-      @if (userInfo.subscriptionType !== undefined && userInfo.subscriptionType !== null) {
-      <ion-card-subtitle>
-        {{ enrollmentTypes.getEnrollmentType(userInfo.subscriptionType) }} - {{ userInfo.payment.price | currency: 'BRL'
-        }}
-      </ion-card-subtitle>
-      } @if (userInfo.subscriptionType === null || userInfo.subscriptionType === undefined) {
-      <ion-card-subtitle> Preço: {{ userInfo.payment.price | currency: 'BRL' }} </ion-card-subtitle>
-      } }
-      <!-- prettier-ignore -->
-      <ion-card-subtitle>
+<ion-content [fullscreen]="true">
+  <div class="content-max-width margin-horizontal-auto">
+    @if (majorEvent$ | async; as majorEvent) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{majorEvent.name}}</ion-card-title>
+      </ion-card-header>
+      <div class="ion-padding-horizontal">
+        @if (userSubscription$ | async; as userInfo) {
+        <!-- prettier-ignore -->
+        @if (userInfo.subscriptionType !== undefined && userInfo.subscriptionType !== null) {
+        <ion-card-subtitle>
+          {{ enrollmentTypes.getEnrollmentType(userInfo.subscriptionType) }} - {{ userInfo.payment.price | currency:
+          'BRL' }}
+        </ion-card-subtitle>
+        } @if (userInfo.subscriptionType === null || userInfo.subscriptionType === undefined) {
+        <ion-card-subtitle> Preço: {{ userInfo.payment.price | currency: 'BRL' }} </ion-card-subtitle>
+        } }
+        <!-- prettier-ignore -->
+        <ion-card-subtitle>
           Efetue o pagamento e envio do comprovante até {{ dateService.getDateFromTimestamp(majorEvent.subscriptionEndDate) | date: 'dd \'de\' MMMM \'de\' yyyy - HH:mm' }}
         </ion-card-subtitle>
-      <ion-card-content>
-        <h2>Dados para o pagamento</h2>
-        <div>
-          <p><b>Beneficiário</b> {{ majorEvent.paymentInfo.name }}</p>
-          @if (majorEvent.paymentInfo.chavePix) {
-          <p><b>Chave Pix</b> {{majorEvent.paymentInfo.chavePix}}</p>
+        <ion-card-content>
+          <h2>Dados para o pagamento</h2>
+          <div>
+            <p><b>Beneficiário</b> {{ majorEvent.paymentInfo.name }}</p>
+            @if (majorEvent.paymentInfo.chavePix) {
+            <p><b>Chave Pix</b> {{majorEvent.paymentInfo.chavePix}}</p>
+            }
+            <p><b>CPF/CNPJ</b> {{ majorEvent.paymentInfo.document }}</p>
+          </div>
+          <br />
+          <div>
+            <p><b>Instituição bancária</b> {{majorEvent.paymentInfo.bankName}}</p>
+            <p><b>Agência</b> {{ majorEvent.paymentInfo.agency }}</p>
+            <p><b>Conta</b> {{ majorEvent.paymentInfo.accountNumber }}</p>
+          </div>
+          <br />
+          @if (majorEvent.paymentInfo.additionalPaymentInformation) {
+          <div class="pre-wrap">{{ majorEvent.paymentInfo.additionalPaymentInformation }}</div>
           }
-          <p><b>CPF/CNPJ</b> {{ majorEvent.paymentInfo.document }}</p>
-        </div>
-        <br />
-        <div>
-          <p><b>Instituição bancária</b> {{majorEvent.paymentInfo.bankName}}</p>
-          <p><b>Agência</b> {{ majorEvent.paymentInfo.agency }}</p>
-          <p><b>Conta</b> {{ majorEvent.paymentInfo.accountNumber }}</p>
-        </div>
-        <br />
-        @if (majorEvent.paymentInfo.additionalPaymentInformation) {
-        <div class="pre-wrap">{{ majorEvent.paymentInfo.additionalPaymentInformation }}</div>
-        }
-      </ion-card-content>
-    </div>
-    @if (majorEvent.paymentInfo.chavePix) {
-    <ion-grid>
-      <ion-row>
-        <ion-col>
-          <ion-button (click)="copyPixToClipboard(majorEvent.paymentInfo.chavePix)">
-            <ion-icon slot="start" name="copy"></ion-icon>
-            Copiar chave Pix
-          </ion-button>
-        </ion-col>
-      </ion-row>
-    </ion-grid>
-    }
-  </ion-card>
-  <ion-card>
-    <!-- <ng-container>
+        </ion-card-content>
+      </div>
+      @if (majorEvent.paymentInfo.chavePix) {
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-button (click)="copyPixToClipboard(majorEvent.paymentInfo.chavePix)">
+              <ion-icon slot="start" name="copy"></ion-icon>
+              Copiar chave Pix
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+      }
+    </ion-card>
+    <ion-card>
+      <!-- <ng-container>
       TODO:
       <p class="ion-padding-horizontal">Você já enviou um comprovante.</p>
       <br />
@@ -73,54 +73,55 @@
         Visualizar comprovante
       </ion-button>
     </ng-container>-->
-    <ion-progress-bar [value]="uploadPercentage / 100"></ion-progress-bar>
-    <input type="file" class="file-input" accept="image/png, image/jpeg, image/webp" #fileUpload />
-    @if (!downloadURL()) {
-    <div>
-      <!-- prettier-ignore -->
-      <p class="ion-padding-horizontal">
+      <ion-progress-bar [value]="uploadPercentage / 100"></ion-progress-bar>
+      <input type="file" class="file-input" accept="image/png, image/jpeg, image/webp" #fileUpload />
+      @if (!downloadURL()) {
+      <div>
+        <!-- prettier-ignore -->
+        <p class="ion-padding-horizontal">
           {{ rawFile() ? ("Enviando… (" + (uploadPercentage | number: '1.0-0') + "%") + ")" : "Nenhuma imagem selecionada."}}
         </p>
-      <p class="ion-padding-horizontal">
-        <ion-text color="danger">
-          <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
-          <span class="alert-text ion-text-wrap">
-            Você não poderá enviar outro comprovante. Confira o arquivo antes de enviar
-          </span>
-        </ion-text>
-      </p>
-      <p class="ion-padding-horizontal">
-        <ion-text color="danger">
-          <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
-          <span class="alert-text ion-text-wrap">
-            Você não poderá editar a sua inscrição após ter o comprovante validado
-          </span>
-        </ion-text>
-      </p>
-      <ion-grid>
-        <ion-row>
-          <ion-col>
-            <ion-button (click)="compressFile()">
-              <ion-icon slot="start" name="cloud-upload"></ion-icon>
-              Enviar comprovante
-            </ion-button>
-          </ion-col>
-        </ion-row>
-      </ion-grid>
-    </div>
-    } @else {
-    <ion-progress-bar value="1"></ion-progress-bar>
-    <h3 class="ion-padding-horizontal">Comprovante enviado</h3>
-    <div class="img-container">
-      @if (downloadURL()) {
-      <img alt="Comprovante enviado" class="ion-padding" src="{{rawFile()}}" />
+        <p class="ion-padding-horizontal">
+          <ion-text color="danger">
+            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+            <span class="alert-text ion-text-wrap">
+              Você não poderá enviar outro comprovante. Confira o arquivo antes de enviar
+            </span>
+          </ion-text>
+        </p>
+        <p class="ion-padding-horizontal">
+          <ion-text color="danger">
+            <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
+            <span class="alert-text ion-text-wrap">
+              Você não poderá editar a sua inscrição após ter o comprovante validado
+            </span>
+          </ion-text>
+        </p>
+        <ion-grid>
+          <ion-row>
+            <ion-col>
+              <ion-button (click)="compressFile()">
+                <ion-icon slot="start" name="cloud-upload"></ion-icon>
+                Enviar comprovante
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </div>
+      } @else {
+      <ion-progress-bar value="1"></ion-progress-bar>
+      <h3 class="ion-padding-horizontal">Comprovante enviado</h3>
+      <div class="img-container">
+        @if (downloadURL()) {
+        <img alt="Comprovante enviado" class="ion-padding" src="{{rawFile()}}" />
+        }
+      </div>
       }
-    </div>
+    </ion-card>
+    } @else {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
     }
-  </ion-card>
-  } @else {
-  <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  }
+  </div>
 </ion-content>
 
 <swal
