@@ -2,7 +2,7 @@
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
 import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { ActivatedRoute } from '@angular/router';
-import { Timestamp } from '@angular/fire/firestore';
+import { increment, Timestamp } from '@angular/fire/firestore';
 import { Observable, map, take, combineLatest } from 'rxjs';
 import { MajorEventItem } from 'src/app/shared/services/major-event.service';
 import { User } from 'src/app/shared/services/user';
@@ -218,6 +218,14 @@ export class ValidateReceiptPage implements OnInit {
                   .doc(subscriberID)
                   .set({
                     time: serverTimestamp(),
+                  });
+
+                this.afs
+                  .collection('events')
+                  .doc<EventItem>(eventID)
+                  .update({
+                    // @ts-expect-error - This works
+                    slotsAvailable: increment(-1),
                   });
 
                 this.afs

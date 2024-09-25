@@ -30,12 +30,11 @@ exports.createMajorEventSubscription = onDocumentCreated(
 
     const data = snapshot.data();
 
-    // For each event in subscribedToEvents array, decrement the numberOfSubscriptions and slotsAvailable of the corresponding event
+    // For each event in subscribedToEvents array, increment the numberOfSubscriptions of the corresponding event
     data.subscribedToEvents.forEach((event: string) => {
       const document = db.doc(`events/${event}`);
       document.update({
-        numberOfSubscriptions: FieldValue.increment(-1),
-        slotsAvailable: FieldValue.increment(-1),
+        numberOfSubscriptions: FieldValue.increment(1),
       });
     });
   },
