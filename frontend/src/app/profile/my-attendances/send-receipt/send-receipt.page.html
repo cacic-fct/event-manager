@@ -75,7 +75,7 @@
     </ng-container>-->
     <ion-progress-bar [value]="uploadPercentage / 100"></ion-progress-bar>
     <input type="file" class="file-input" accept="image/png, image/jpeg, image/webp" #fileUpload />
-    @if (!downloadURL) {
+    @if (!downloadURL()) {
     <div>
       <!-- prettier-ignore -->
       <p class="ion-padding-horizontal">
