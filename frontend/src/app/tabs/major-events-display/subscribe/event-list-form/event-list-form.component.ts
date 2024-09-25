@@ -85,6 +85,7 @@ export class EventListFormComponent implements OnInit {
   }
 
   ngOnInit() {
+    // Do this every time the events change
     this.events$.pipe(untilDestroyed(this)).subscribe((events) => {
       this.eventList = events;
       events.forEach((event) => {
@@ -94,6 +95,7 @@ export class EventListFormComponent implements OnInit {
       });
     });
 
+    // Only do this once
     this.events$.pipe(take(1)).subscribe((events) => {
       this.autoSelectMandatory(this.mandatoryEvents);
 
@@ -125,7 +127,10 @@ export class EventListFormComponent implements OnInit {
         subscriptionData.pipe(take(1)).subscribe((subscription) => {
           if (subscription) {
             subscription.subscribedToEvents.forEach((eventID) => {
-              this.dataForm.get(eventID)?.setValue(true);
+              if (!this.dataForm.get(eventID)) {
+                throw new Error(`Event ${eventID} is in the subscription but not present in the form`);
+              }
+              this.dataForm.get(eventID)!.setValue(true);
 
               const event = this.eventList.find((event) => event.id === eventID);
               // Check if event is in mandatoryList
@@ -136,9 +141,9 @@ export class EventListFormComponent implements OnInit {
 
               if (this.mandatoryEvents.includes(eventID)) {
                 // If event is mandatory, disable it
-                this.dataForm.get(eventID)?.disable();
+                this.dataForm.get(eventID)!.disable();
               } else {
-                this.dataForm.get(eventID)?.enable();
+                this.dataForm.get(eventID)!.enable();
               }
 
               // If event is part of a group, but not the main event, don't count it
@@ -156,22 +161,28 @@ export class EventListFormComponent implements OnInit {
 
   incrementAmountOfEventsSelected(event: EventItem | string) {
     if (typeof event === 'string') {
-      event = this.eventList.find((e) => e.id === event);
+      // ts-expect-error - Type will be checked below
+      event = this.eventList.find((e) => e.id === event) || null;
     }
 
+    if (!event) {
+      return;
+    }
+
+    // ts-expect-error - Type was checked above
     switch (event.eventType) {
       case 'minicurso':
-        console.debug('DEBUG: Incrementing amount of courses selected');
+        console.debug('DEBUG: incrementAmountOfEventsSelected: Incrementing amount of courses selected');
         this.amountOfCoursesSelected++;
         this.totalAmountOfEventsSelected++;
         break;
       case 'palestra':
-        console.debug('DEBUG: Incrementing amount of lectures selected');
+        console.debug('DEBUG: incrementAmountOfEventsSelected: Incrementing amount of lectures selected');
         this.amountOfLecturesSelected++;
         this.totalAmountOfEventsSelected++;
         break;
       default:
-        console.debug('DEBUG: Incrementing amount of uncategorized selected');
+        console.debug('DEBUG: incrementAmountOfEventsSelected: Incrementing amount of uncategorized selected');
         this.amountOfUncategorizedSelected++;
         this.totalAmountOfEventsSelected++;
         break;
@@ -181,17 +192,17 @@ export class EventListFormComponent implements OnInit {
   decrementAmountOfEventsSelected(event: EventItem) {
     switch (event.eventType) {
       case 'minicurso':
-        console.debug('DEBUG: Decrementing amount of courses selected');
+        console.debug('DEBUG: decrementAmountOfEventsSelected: Decrementing amount of courses selected');
         this.amountOfCoursesSelected--;
         this.totalAmountOfEventsSelected--;
         break;
       case 'palestra':
-        console.debug('DEBUG: Decrementing amount of lectures selected');
+        console.debug('DEBUG: decrementAmountOfEventsSelected: Decrementing amount of lectures selected');
         this.amountOfLecturesSelected--;
         this.totalAmountOfEventsSelected--;
         break;
       default:
-        console.debug('DEBUG: Decrementing amount of uncategorized selected');
+        console.debug('DEBUG: decrementAmountOfEventsSelected: Decrementing amount of uncategorized selected');
         this.amountOfUncategorizedSelected--;
         this.totalAmountOfEventsSelected--;
         break;
@@ -204,20 +215,22 @@ export class EventListFormComponent implements OnInit {
       return;
     }
 
-    mandatoryList.forEach((event) => {
-      console.debug('DEBUG: autoSelectMandatory: Event is mandatory:', event);
-      const conflicts = this.checkConflicts(event);
+    mandatoryList.forEach((eventId) => {
+      if (!this.dataForm.get(eventId)) {
+        throw new Error(`Event ${eventId} is mandatory but not present in the form`);
+      }
+      console.debug('DEBUG: autoSelectMandatory: Event is mandatory:', eventId);
+      const conflicts = this.checkConflicts(eventId);
 
-      console.debug('DEBUG: autoSelectMandatory: Event', event, 'conflicts:', conflicts);
+      if (conflicts.length > 0) {
+        console.debug('DEBUG: autoSelectMandatory: Event', eventId, 'conflicts:', conflicts);
+      }
+
       this.blockEventGroup(conflicts);
+      this.incrementAmountOfEventsSelected(eventId);
 
-      this.incrementAmountOfEventsSelected(event);
-
-      console.log(this.dataForm.get(event));
-      console.log(this.dataForm.value);
-
-      this.dataForm.get(event)?.setValue(true);
-      this.dataForm.get(event)?.disable();
+      this.dataForm.get(eventId)!.setValue(true);
+      this.dataForm.get(eventId)!.disable();
     });
   }
 
