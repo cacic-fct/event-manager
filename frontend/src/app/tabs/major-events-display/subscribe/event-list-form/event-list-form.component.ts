@@ -1,5 +1,5 @@
 import { AsyncPipe, DatePipe, DecimalPipe, formatDate } from '@angular/common';
-import { Component, Input, OnInit, inject } from '@angular/core';
+import { Component, Input, OnInit, WritableSignal, inject, signal } from '@angular/core';
 import {
   IonItem,
   IonList,
@@ -65,10 +65,10 @@ export class EventListFormComponent implements OnInit {
   today: Date = new Date();
   public dataForm: FormGroup;
   private firestore: Firestore = inject(Firestore);
-  public amountOfUncategorizedSelected = 0;
-  public amountOfCoursesSelected = 0;
-  public amountOfLecturesSelected = 0;
-  public totalAmountOfEventsSelected = 0;
+  public readonly amountOfUncategorizedSelected: WritableSignal<number> = signal(0);
+  public readonly amountOfCoursesSelected: WritableSignal<number> = signal(0);
+  public readonly amountOfLecturesSelected: WritableSignal<number> = signal(0);
+  public readonly totalAmountOfEventsSelected: WritableSignal<number> = signal(0);
 
   constructor(
     private modalController: ModalController,
@@ -173,18 +173,17 @@ export class EventListFormComponent implements OnInit {
     switch (event.eventType) {
       case 'minicurso':
         console.debug('DEBUG: incrementAmountOfEventsSelected: Incrementing amount of courses selected');
-        this.amountOfCoursesSelected++;
-        this.totalAmountOfEventsSelected++;
+        this.amountOfCoursesSelected.update((value) => value + 1);
+        this.totalAmountOfEventsSelected.update((value) => value + 1);
         break;
       case 'palestra':
         console.debug('DEBUG: incrementAmountOfEventsSelected: Incrementing amount of lectures selected');
-        this.amountOfLecturesSelected++;
-        this.totalAmountOfEventsSelected++;
+        this.amountOfLecturesSelected.update((value) => value + 1);
+        this.totalAmountOfEventsSelected.update((value) => value + 1);
         break;
       default:
         console.debug('DEBUG: incrementAmountOfEventsSelected: Incrementing amount of uncategorized selected');
-        this.amountOfUncategorizedSelected++;
-        this.totalAmountOfEventsSelected++;
+        this.amountOfUncategorizedSelected.update((value) => value + 1);
         break;
     }
   }
@@ -193,18 +192,18 @@ export class EventListFormComponent implements OnInit {
     switch (event.eventType) {
       case 'minicurso':
         console.debug('DEBUG: decrementAmountOfEventsSelected: Decrementing amount of courses selected');
-        this.amountOfCoursesSelected--;
-        this.totalAmountOfEventsSelected--;
+        this.amountOfCoursesSelected.update((value) => value - 1);
+        this.totalAmountOfEventsSelected.update((value) => value - 1);
         break;
       case 'palestra':
         console.debug('DEBUG: decrementAmountOfEventsSelected: Decrementing amount of lectures selected');
-        this.amountOfLecturesSelected--;
-        this.totalAmountOfEventsSelected--;
+        this.amountOfLecturesSelected.update((value) => value - 1);
+        this.totalAmountOfEventsSelected.update((value) => value - 1);
         break;
       default:
         console.debug('DEBUG: decrementAmountOfEventsSelected: Decrementing amount of uncategorized selected');
-        this.amountOfUncategorizedSelected--;
-        this.totalAmountOfEventsSelected--;
+        this.amountOfUncategorizedSelected.update((value) => value - 1);
+        this.totalAmountOfEventsSelected.update((value) => value - 1);
         break;
     }
   }

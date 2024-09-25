@@ -34,16 +34,18 @@
       <!-- prettier-ignore -->
       @if (majorEvent.maxCourses && majorEvent.maxCourses > 0) {
       <p>
-        {{ formComponent.amountOfCoursesSelected | number: '2.0-0' }} de {{ majorEvent.maxCourses | number: '2.0-0' }}
+        {{ formComponent.amountOfCoursesSelected() | number: '2.0-0' }} de {{ majorEvent.maxCourses | number: '2.0-0' }}
         minicursos selecionados
       </p>
       } @if (majorEvent.maxLectures && majorEvent.maxLectures > 0) {
       <p>
-        {{ formComponent.amountOfLecturesSelected | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }}
-        palestras selecionados
+        {{ formComponent.amountOfLecturesSelected() | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0'
+        }} palestras selecionados
       </p>
-      } @if (formComponent.amountOfUncategorizedSelected > 0) {
-      <p>{{ formComponent.amountOfUncategorizedSelected | number: '2.0-0' }} eventos não categorizados selecionados</p>
+      } @if (formComponent.amountOfUncategorizedSelected() > 0) {
+      <p>
+        {{ formComponent.amountOfUncategorizedSelected() | number: '2.0-0' }} eventos não categorizados selecionados
+      </p>
       }
       <p>
         <ion-text color="danger">
