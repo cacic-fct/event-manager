@@ -120,6 +120,12 @@
                 <ion-icon slot="start" name="pencil"></ion-icon>
                 Editar inscrição
               </ion-button>
+              @if (majorEventData.contactInfo) {
+              <ion-button (click)="contactOrganizer(majorEventData)">
+                <ion-icon slot="start" name="mail"></ion-icon>
+                Contatar
+              </ion-button>
+              }
               <ion-button [routerLink]="['detalhes', majorEventData.id]">
                 <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
                 Mais detalhes
@@ -154,7 +160,8 @@
               </ion-button>
               <ion-button [routerLink]="['/eventos/inscrever', majorEventData.id]">
                 <ion-icon slot="start" name="pencil"></ion-icon>
-                Editar inscrição
+                Editar
+              @if (majorEventData.contactInfo) {
               </ion-button>
               <ion-button [routerLink]="['detalhes', majorEventData.id]">
                 <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
@@ -193,6 +200,7 @@
                 <ion-icon slot="start" name="checkmark"></ion-icon>
                 Inscrito
               </ion-button>
+              @if (majorEventData.contactInfo) {
               <ion-button [routerLink]="['detalhes', majorEventData.id]">
                 <ion-icon slot="start" name="ellipsis-horizontal"></ion-icon>
                 Mais detalhes

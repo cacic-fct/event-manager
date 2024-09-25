@@ -17,7 +17,7 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { EnrollmentTypesService } from '../../shared/services/enrollment-types.service';
 import { DateService } from 'src/app/shared/services/date.service';
 import { Auth, user } from '@angular/fire/auth';
-import { CurrencyPipe, DatePipe, AsyncPipe, NgTemplateOutlet } from '@angular/common';
+import { CurrencyPipe, DatePipe, AsyncPipe, NgTemplateOutlet, DOCUMENT } from '@angular/common';
 
 import {
   IonHeader,
@@ -41,9 +41,12 @@ import {
   IonText,
   IonSpinner,
   IonRouterLink,
+  AlertController,
+  AlertInput,
 } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
 import { EventCardDisplayMainPageComponent } from 'src/app/profile/my-attendances/components/event-card-display-main-page/event-card-display-main-page.component';
+import { Mailto, MailtoService } from 'src/app/shared/services/mailto.service';
 
 @UntilDestroy()
 @Component({
@@ -82,7 +85,10 @@ import { EventCardDisplayMainPageComponent } from 'src/app/profile/my-attendance
   ],
 })
 export class MyAttendancesPage {
+  private document = inject(DOCUMENT);
   private auth: Auth = inject(Auth);
+  private alertController: AlertController = inject(AlertController);
+  private mailtoService: MailtoService = inject(MailtoService);
   user$ = user(this.auth).pipe(shareReplay(1), untilDestroyed(this));
 
   private firestore: Firestore = inject(Firestore);
@@ -189,6 +195,99 @@ export class MyAttendancesPage {
     const eventEndDate = this.dateService.getDateFromTimestamp(majorEvent.eventEndDate);
     if (this.today > eventEndDate && subscription.payment.status === 2) return -1;
     return subscription.payment.status;
+  }
+
+  contactOrganizer(majorEvent: MajorEventItem): void {
+    const contactInfo = majorEvent.contactInfo;
+    if (!contactInfo) {
+      return;
+    }
+    const email = contactInfo.email;
+    const phone = contactInfo.phone;
+    const whatsapp = contactInfo.whatsapp;
+
+    // Count the number of non-empty contact methods
+    const contactMethods = [email, phone, whatsapp];
+    const availableContactMethods = contactMethods.filter(
+      (method) => method !== undefined && method !== null && method !== '',
+    ).length;
+
+    // Check if only one contact method is available
+    if (availableContactMethods === 1) {
+      if (email) {
+        this.contactChooser('email', majorEvent);
+      } else if (phone) {
+        this.contactChooser('phone', majorEvent);
+      } else if (whatsapp) {
+        this.contactChooser('whatsapp', majorEvent);
+      }
+    } else {
+      const alertInputs: AlertInput[] = [];
+
+      if (email) {
+        alertInputs.push({
+          type: 'radio',
+          label: 'E-mail',
+          value: 'email',
+        });
+      }
+
+      if (phone) {
+        alertInputs.push({
+          type: 'radio',
+          label: 'Ligação telefônica',
+          value: 'phone',
+        });
+      }
+
+      if (whatsapp) {
+        alertInputs.push({
+          type: 'radio',
+          label: 'WhatsApp',
+          value: 'whatsapp',
+        });
+      }
+
+      this.alertController
+        .create({
+          header: 'Contatar organizadores',
+          message: 'Selecione o método de contato',
+          inputs: alertInputs,
+          buttons: [
+            {
+              text: 'Ok',
+              handler: (input) => {
+                this.contactChooser(input, majorEvent);
+
+                return;
+              },
+            },
+          ],
+        })
+        .then((alert) => alert.present());
+    }
+  }
+
+  contactChooser(method: 'email' | 'phone' | 'whatsapp', majorEvent: MajorEventItem): void {
+    switch (method) {
+      case 'email':
+        this.contactThroughEmail(majorEvent);
+        break;
+      case 'phone':
+        this.document.location.href = `tel:${majorEvent.contactInfo!.phone}`;
+        break;
+      case 'whatsapp':
+        this.document.location.href = `https://wa.me/${majorEvent.contactInfo!.whatsapp}`;
+        break;
+    }
+  }
+
+  contactThroughEmail(majorEvent: MajorEventItem) {
+    const mailto: Mailto = {
+      receiver: majorEvent.contactInfo!.email,
+      subject: `[${majorEvent.name}] Contato sobre o evento`,
+    };
+    this.mailtoService.open(mailto);
   }
 }
 
