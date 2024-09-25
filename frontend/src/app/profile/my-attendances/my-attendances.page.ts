@@ -1,7 +1,7 @@
 import { EventItem, EventSubscription } from 'src/app/shared/services/event';
 import { MajorEventItem, MajorEventSubscription } from '../../shared/services/major-event.service';
 import { Component, inject } from '@angular/core';
-import { map, Observable, switchMap, combineLatest, shareReplay, catchError } from 'rxjs';
+import { map, Observable, switchMap, combineLatest, shareReplay, catchError, take } from 'rxjs';
 
 import {
   Firestore,
@@ -119,7 +119,7 @@ export class MyAttendancesPage {
                 ) as Observable<MajorEventSubscription>,
                 majorEvent: docData(doc(this.firestore, `majorEvents/${subscription.id}`), {
                   idField: 'id',
-                }) as Observable<MajorEventItem>,
+                }).pipe(take(1)) as Observable<MajorEventItem>,
               };
             });
           }),
@@ -140,7 +140,7 @@ export class MyAttendancesPage {
             }
 
             const arrayOfEvents: Observable<EventItem>[] = subscriptions.map((subscription) => {
-              return docData(doc(this.firestore, `events/${subscription.id}`)) as Observable<EventItem>;
+              return docData(doc(this.firestore, `events/${subscription.id}`)).pipe(take(1)) as Observable<EventItem>;
             });
 
             return combineLatest(arrayOfEvents).pipe(
@@ -150,6 +150,7 @@ export class MyAttendancesPage {
               switchMap((sortedEvents) => {
                 const eventsWithUserData = sortedEvents.map((event) => {
                   return docData(doc(this.firestore, `events/${event.id}/subscriptions/${user.uid}`)).pipe(
+                    take(1),
                     map((userData) => ({
                       id: event.id,
                       event: event,

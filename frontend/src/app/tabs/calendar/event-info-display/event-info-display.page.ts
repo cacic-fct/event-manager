@@ -8,7 +8,7 @@ import { ToastController } from '@ionic/angular/standalone';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { EventItem } from '../../../shared/services/event';
-import { Observable } from 'rxjs';
+import { Observable, take } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 
@@ -72,7 +72,7 @@ export class EventInfoDisplayPage implements OnInit {
     this.item$ = this.afs
       .doc<EventItem>(`events/${this.eventID}`)
       .valueChanges({ idField: 'id' })
-      .pipe(trace('firestore'));
+      .pipe(trace('firestore'), take(1));
   }
 
   async presentToastShare() {

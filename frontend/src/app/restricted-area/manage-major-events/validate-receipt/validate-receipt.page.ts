@@ -139,7 +139,7 @@ export class ValidateReceiptPage implements OnInit {
               .collection('events')
               .doc<EventItem>(subEventID)
               .valueChanges({ idField: 'id' })
-              .pipe(trace('firestore')),
+              .pipe(take(1), trace('firestore')),
           );
 
           let observableArrayOfEvents: Observable<EventItem[]> = combineLatest(arrayOfEvents);

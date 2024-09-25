@@ -1,5 +1,5 @@
 import { Component, inject, Input, OnInit, ViewChild } from '@angular/core';
-import { BehaviorSubject, take, map, Observable } from 'rxjs';
+import { BehaviorSubject, take, map, Observable, shareReplay } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular/standalone';
@@ -173,7 +173,11 @@ export class ScannerPage implements OnInit {
               .collection('users')
               .doc<User>(item.id)
               .get()
-              .pipe(map((document) => document.data())),
+              .pipe(
+                take(1),
+                shareReplay(1),
+                map((document) => document.data()),
+              ),
           })),
         ),
       );
@@ -197,7 +201,11 @@ export class ScannerPage implements OnInit {
               .collection('users')
               .doc<User>(item.id)
               .get()
-              .pipe(map((document) => document.data())),
+              .pipe(
+                take(1),
+                shareReplay(1),
+                map((document) => document.data()),
+              ),
           })),
         ),
       );

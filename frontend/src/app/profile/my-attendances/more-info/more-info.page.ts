@@ -2,7 +2,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
-import { Observable, take, combineLatest, map } from 'rxjs';
+import { Observable, take, combineLatest, map, shareReplay } from 'rxjs';
 import { EnrollmentTypesService } from 'src/app/shared/services/enrollment-types.service';
 import { EventItem } from 'src/app/shared/services/event';
 import { MajorEventItem, MajorEventSubscription } from 'src/app/shared/services/major-event.service';
@@ -119,7 +119,7 @@ export class MoreInfoPage implements OnInit {
                     ref.where(documentId(), 'in', data.subscribedToEvents.slice(i, i + 10)),
                   )
                   .valueChanges({ idField: 'id' })
-                  .pipe(trace('firestore'), take(1)),
+                  .pipe(trace('firestore'), take(1), shareReplay(1)),
               );
             }
 
@@ -131,6 +131,7 @@ export class MoreInfoPage implements OnInit {
             );
 
             const notSubscribedEventsObservables: Observable<EventItem[]>[] = [];
+            // Firestore 10-in limit workaround
             for (let i = 0; i < data.subscribedToEvents.length; i += 10) {
               notSubscribedEventsObservables.push(
                 this.afs
