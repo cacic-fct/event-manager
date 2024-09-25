@@ -226,6 +226,8 @@ export class ValidateReceiptPage implements OnInit {
                   .update({
                     // @ts-expect-error - This works
                     slotsAvailable: increment(-1),
+                    // @ts-expect-error - This works
+                    numberOfSubscriptions: increment(-1),
                   });
 
                 this.afs
