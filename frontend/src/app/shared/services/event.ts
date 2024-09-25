@@ -7,7 +7,7 @@ export interface EventItem {
   slotsAvailable?: number;
   numberOfSubscriptions?: number;
   eventStartDate: Timestamp;
-  eventEndDate: Timestamp;
+  eventEndDate?: Timestamp | null;
   location?: {
     lat?: number;
     lon?: number;
