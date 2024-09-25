@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject } from '@angular/core';
+import { Component, Input, OnInit, WritableSignal, inject } from '@angular/core';
 import { AsyncPipe, CurrencyPipe, DatePipe, DecimalPipe, formatDate } from '@angular/common';
 
 import { MajorEventItem } from '../../../../shared/services/major-event.service';
@@ -63,8 +63,8 @@ import { MajorEventInfoSubscriptionComponent } from 'src/app/tabs/major-events-d
 export class ConfirmSubscriptionModalComponent implements OnInit {
   @Input({ required: true }) majorEvent$!: Observable<MajorEventItem>;
   @Input({ required: true }) eventsSelected!: string[];
-  @Input({ required: true }) minicursosCount!: number;
-  @Input({ required: true }) palestrasCount!: number;
+  @Input({ required: true }) minicursosCount!: WritableSignal<number>;
+  @Input({ required: true }) palestrasCount!: WritableSignal<number>;
   @Input({ required: true }) subscriptionType!: string;
   @Input({ required: true }) events$!: Observable<EventItem[]>;
 

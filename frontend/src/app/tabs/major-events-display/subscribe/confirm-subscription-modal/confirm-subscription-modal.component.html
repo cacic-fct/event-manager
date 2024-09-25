@@ -14,11 +14,11 @@
 
       <div class="card-section ion-padding-horizontal">
         <p>
-          {{ minicursosCount | number: '2.0-0' }} de {{ majorEvent.maxCourses | number: '2.0-0' }} minicursos
+          {{ minicursosCount() | number: '2.0-0' }} de {{ majorEvent.maxCourses | number: '2.0-0' }} minicursos
           selecionados
         </p>
         <p>
-          {{ palestrasCount | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }} palestras
+          {{ palestrasCount() | number: '2.0-0' }} de {{ majorEvent.maxLectures | number: '2.0-0' }} palestras
           selecionados
         </p>
       </div>
