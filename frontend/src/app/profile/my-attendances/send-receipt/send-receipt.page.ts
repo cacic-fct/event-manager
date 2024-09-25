@@ -1,12 +1,11 @@
 // @ts-strict-ignore
-import { Component, inject, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild, WritableSignal } from '@angular/core';
 import { Storage, ref, uploadBytesResumable, getDownloadURL } from '@angular/fire/storage';
 
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { NgxImageCompressService } from 'ngx-image-compress';
-import { ToastController } from '@ionic/angular/standalone';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AngularFirestore, DocumentReference } from '@angular/fire/compat/firestore';
 import { trace } from '@angular/fire/compat/performance';
@@ -38,8 +37,11 @@ import {
   IonIcon,
   IonProgressBar,
   IonText,
+  ToastController,
+  ModalController,
 } from '@ionic/angular/standalone';
 import { AsyncPipe, CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { ConfirmImageModalComponent } from 'src/app/profile/my-attendances/send-receipt/components/confirm-image-modal/confirm-image-modal.component';
 
 @UntilDestroy()
 @Component({
@@ -90,6 +92,7 @@ export class SendReceiptPage implements OnInit {
   user$ = user(this.auth);
 
   private readonly storage: Storage = inject(Storage);
+  private readonly modalController: ModalController = inject(ModalController);
 
   uploadPercentage: number;
   downloadURL: string;
@@ -98,7 +101,7 @@ export class SendReceiptPage implements OnInit {
   fileName: string;
   uid: string;
 
-  rawFile: string;
+  rawFile: WritableSignal<string | null> = signal(null);
   userSubscription$: Promise<MajorEventSubscription>;
   today: Date = new Date();
   outOfDate = false;
@@ -213,25 +216,54 @@ export class SendReceiptPage implements OnInit {
     }
 
     const MAX_MEGABYTE = 8;
-    this.imageCompress.uploadAndGetImageWithMaxSize(MAX_MEGABYTE).then(
-      (result: string) => {
-        const format = result.split(';')[0].split('/')[1];
-        this.uploadFile(result, format);
-        this.rawFile = result;
-      },
-      (result: string) => {
-        if (this.imageCompress.byteCount(result) > 10_000_000) {
-          this.toastSize();
-          return;
-        }
-
-        if (this.imageCompress.byteCount(result) < 10_000_000) {
+    const acceptedFormats = ['jpeg', 'png', 'jpg', 'webp', 'avif'];
+    this.imageCompress
+      .uploadAndGetImageWithMaxSize(MAX_MEGABYTE)
+      .then(
+        (result: string) => {
           const format = result.split(';')[0].split('/')[1];
-          this.uploadFile(result, format);
-          this.rawFile = result;
-        }
-      },
-    );
+
+          if (!acceptedFormats.includes(format)) {
+            this.toastUploadError();
+            return;
+          }
+
+          this.openConfirmModal(result).then((response) => {
+            if (!response) {
+              return;
+            }
+            this.uploadFile(result, format);
+            this.rawFile.set(result);
+          });
+        },
+        (result: string) => {
+          if (this.imageCompress.byteCount(result) > 10_000_000) {
+            this.toastSize();
+            return;
+          }
+
+          if (this.imageCompress.byteCount(result) < 10_000_000) {
+            const format = result.split(';')[0].split('/')[1];
+
+            if (!acceptedFormats.includes(format)) {
+              this.toastUploadError();
+              return;
+            }
+
+            this.openConfirmModal(result).then((response) => {
+              if (!response) {
+                return;
+              }
+              this.uploadFile(result, format);
+              this.rawFile.set(result);
+            });
+          }
+        },
+      )
+      .catch((error) => {
+        console.error('Failed to compress image', error);
+        this.toastUploadError();
+      });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -370,6 +402,29 @@ export class SendReceiptPage implements OnInit {
       ],
     });
     toast.present();
+  }
+
+  async openConfirmModal(rawImage: string): Promise<boolean> {
+    const modal = await this.modalController.create({
+      component: ConfirmImageModalComponent,
+      componentProps: {
+        rawImage: rawImage,
+      },
+      showBackdrop: true,
+    });
+    await modal.present();
+
+    return modal.onDidDismiss().then((data) => {
+      console.debug('DEBUG: SendReceiptPage: Modal dismissed with data:', data);
+      if (data.data) {
+        return new Promise<boolean>((resolve) => {
+          resolve(true);
+        });
+      }
+      return new Promise<boolean>((resolve) => {
+        resolve(false);
+      });
+    });
   }
 }
 

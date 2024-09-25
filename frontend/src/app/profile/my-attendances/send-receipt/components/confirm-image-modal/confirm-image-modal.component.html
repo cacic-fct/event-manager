@@ -1,0 +1,16 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons class="cancel-button-container" slot="start">
+      <ion-button (click)="closeModal()">Cancelar</ion-button>
+    </ion-buttons>
+    <ion-buttons class="cancel-button-container" slot="end">
+      <ion-button (click)="onSubmit()">Enviar</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="container">
+    <img src="{{ rawImage }}" alt="Comprovante" class="img" />
+  </div>
+</ion-content>
