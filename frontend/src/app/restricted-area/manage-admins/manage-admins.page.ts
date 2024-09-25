@@ -146,14 +146,6 @@ export class ManageAdminsPage {
       });
   }
 
-  certificateMove() {
-    const moveCertificates = httpsCallable(this.functions, 'moveCertificates-moveCertificates');
-    moveCertificates()
-      .then(() => {
-        this.successToast();
-      })
-      .catch((err) => {
-        this.errorToast(err);
         console.error(err);
       });
   }
