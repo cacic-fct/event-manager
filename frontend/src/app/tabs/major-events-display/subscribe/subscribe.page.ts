@@ -330,7 +330,7 @@ export class SubscribePage implements OnInit {
   onSubmit() {
     const dataForm = this.formComponent.dataForm;
 
-    const eventsSelected: string[] = Object.keys(dataForm.value).filter((key) => dataForm.value[key]);
+    const eventsSelected: string[] = Object.keys(dataForm.getRawValue()).filter((key) => dataForm.getRawValue()[key]);
     const amountOfEventsSelected = eventsSelected.length;
 
     if (amountOfEventsSelected === 0) {
