@@ -100,7 +100,7 @@ export class ManageAdminsPage {
 
   async errorToast(message: string) {
     const toast = await this.toastController.create({
-      message: message,
+      message: message || 'Erro desconhecido',
       duration: 2000,
     });
     toast.present();
@@ -129,7 +129,7 @@ export class ManageAdminsPage {
         this.addAdminForm.reset();
       })
       .catch((err) => {
-        this.errorToast(err);
+        this.errorToast(err.message);
         console.error(err);
       });
   }
@@ -141,11 +141,7 @@ export class ManageAdminsPage {
         this.successToast();
       })
       .catch((err) => {
-        this.errorToast(err);
-        console.error(err);
-      });
-  }
-
+        this.errorToast(err.message);
         console.error(err);
       });
   }
