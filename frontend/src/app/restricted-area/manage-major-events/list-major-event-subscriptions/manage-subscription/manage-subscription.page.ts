@@ -6,7 +6,7 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { serverTimestamp, increment } from '@angular/fire/firestore';
 import { MajorEventSubscription } from '../../../../shared/services/major-event.service';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Component, inject } from '@angular/core';
 import { Observable, map, take, combineLatest } from 'rxjs';
 import { trace } from '@angular/fire/compat/performance';
@@ -65,6 +65,7 @@ import { AsyncPipe, CurrencyPipe, DatePipe } from '@angular/common';
 })
 export class ManageSubscriptionPage {
   private auth: Auth = inject(Auth);
+  private router: Router = inject(Router);
   user$ = user(this.auth);
 
   subscriptionID: string;
@@ -96,6 +97,8 @@ export class ManageSubscriptionPage {
 
     this.subscription$.subscribe((data) => {
       if (!data) {
+        // Go to path before this one
+        this.router.navigate(['../'], { relativeTo: this.route });
         return;
       }
 
@@ -141,6 +144,7 @@ export class ManageSubscriptionPage {
           this.afs
             .doc(`events/${event}/attendance/${this.subscriptionID}`)
             .get()
+            .pipe(untilDestroyed(this))
             .subscribe((doc) => {
               if (doc.exists) {
                 this.eventsUserAttended.push(event);
@@ -148,6 +152,7 @@ export class ManageSubscriptionPage {
                 this.afs
                   .doc(`events/${event}/non-paying-attendance/${this.subscriptionID}`)
                   .get()
+                  .pipe(untilDestroyed(this))
                   .subscribe((doc) => {
                     if (doc.exists) {
                       this.eventsUserAttendedNotPaying.push(event);
@@ -160,7 +165,7 @@ export class ManageSubscriptionPage {
   }
 
   forceSubscriptionEdit() {
-    this.user$.subscribe((user) => {
+    this.user$.pipe(take(1)).subscribe((user) => {
       this.afs
         .doc<MajorEventSubscription>(`majorEvents/${this.majorEventID}/subscriptions/${this.subscriptionID}`)
         .get()
@@ -196,11 +201,11 @@ export class ManageSubscriptionPage {
 
   // TODO: Add audit log
   deleteSubscription() {
-    this.user$.subscribe((user) => {
+    this.user$.pipe(take(1)).subscribe((user) => {
       this.afs
         .doc<MajorEventSubscription>(`majorEvents/${this.majorEventID}/subscriptions/${this.subscriptionID}`)
         .get()
-        .pipe(take(1))
+        .pipe(untilDestroyed(this))
         .subscribe((doc) => {
           const data = doc.data();
 
