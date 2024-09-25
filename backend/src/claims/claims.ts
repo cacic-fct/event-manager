@@ -8,6 +8,8 @@ import { log } from 'firebase-functions/logger';
 exports.addAdminRole = onCall(async (request): Promise<MainReturnType> => {
   const data = request.data;
   const context = request;
+  const remoteConfig = getRemoteConfig();
+
   if (context.app === undefined) {
     throw new HttpsError('failed-precondition', 'The function must be called from an App Check verified app.');
   }
@@ -19,6 +21,16 @@ exports.addAdminRole = onCall(async (request): Promise<MainReturnType> => {
 
   if (context.auth.token.role !== 1000) {
     throw new HttpsError('failed-precondition', 'The function must be called by an admin.');
+  }
+
+  // Get whitelist array as string from remote config
+  const template = await remoteConfig.getTemplate();
+
+  // @ts-expect-error
+  const blacklist: string = template.parameters.adminBlacklist.defaultValue?.value;
+  // Check if email is included in whitelist array
+  if (blacklist.includes(data.email)) {
+    throw new HttpsError('failed-precondition', 'You cannot add this user.');
   }
 
   // Get user and add custom claim (admin)

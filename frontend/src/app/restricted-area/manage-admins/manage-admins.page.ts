@@ -67,6 +67,7 @@ export class ManageAdminsPage {
   });
 
   public whitelist: string[];
+  public blacklist: string[];
 
   constructor(
     public toastController: ToastController,
@@ -76,14 +77,20 @@ export class ManageAdminsPage {
       map((doc) => (doc ? doc['admins'] : [])),
     ) as Observable<string[]>;
 
-    // No need to be real-time getStringChanges, as the whitelist barely changes
+    // No need to be real-time getStringChanges, as the lists barely change
     const whitelistString = getString(this.remoteConfig, 'adminWhitelist');
+    const blacklistString = getString(this.remoteConfig, 'adminBlacklist');
 
     this.whitelist = whitelistString
       // Remove brackets and quotes
       .replace(/[[\]"']/g, '')
       .split(',')
       // Remove whitespace
+      .map((item) => item.trim());
+
+    this.blacklist = blacklistString
+      .replace(/[[\]"']/g, '')
+      .split(',')
       .map((item) => item.trim());
 
     addIcons({
@@ -108,8 +115,15 @@ export class ManageAdminsPage {
   }
 
   addAdmin() {
+    const email = this.addAdminForm.value.adminEmail;
+    if (this.blacklist.includes(email)) {
+      this.errorToast('Permissão negada');
+      this.addAdminForm.reset();
+      return;
+    }
+
     const addAdminRole = httpsCallable(this.functions, 'claims-addAdminRole');
-    addAdminRole({ email: this.addAdminForm.value.adminEmail })
+    addAdminRole({ email: email })
       .then(() => {
         this.successToast();
         this.addAdminForm.reset();
