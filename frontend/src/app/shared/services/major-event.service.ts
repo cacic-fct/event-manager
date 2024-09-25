@@ -69,6 +69,11 @@ export interface MajorEventItem {
     text?: string;
     url: string;
   } | null;
+  contactInfo?: {
+    email?: string;
+    phone?: string;
+    whatsapp?: string;
+  } | null;
   public: boolean;
   createdBy: string;
   createdOn: Timestamp;
