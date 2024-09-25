@@ -82,7 +82,7 @@ export const appConfig: ApplicationConfig = {
       AngularFireModule.initializeApp(environment.firebase),
 
       // TODO: https://github.com/cacic-fct/fct-app/issues/172
-      AngularFirestoreModule, //.enablePersistence({ synchronizeTabs: true }),
+      AngularFirestoreModule.enablePersistence({ synchronizeTabs: true }),
     ),
 
     provideFirebaseApp(() => initializeApp(environment.firebase)),
