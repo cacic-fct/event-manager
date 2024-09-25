@@ -361,7 +361,7 @@ export class PageManageEvents implements OnInit {
       case 1:
         return 'Apenas 1 evento selecionado';
       default:
-        return `Agrupando ${length} eventos`;
+        return `Agrupar ${length} eventos`;
     }
   }
 

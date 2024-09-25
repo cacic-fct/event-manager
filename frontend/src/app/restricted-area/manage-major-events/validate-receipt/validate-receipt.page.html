@@ -26,11 +26,11 @@
   } @else { @if (subscriptions[arrayIndex]; as subscription;) {
   <ion-card>
     @if (subscription.userData$ | async; as userData) {
-    <ion-card-header>
+    <div class="ion-padding">
       <!-- prettier-ignore -->
       <ion-card-title>
                 {{ userData.fullName || userData.displayName}} - {{ subscription.payment.price | currency:'BRL':'symbol':'1.2-2' }}
-              </ion-card-title>
+      </ion-card-title>
       <ion-card-subtitle>
         Se inscreveu em: {{ dateService.getDateFromTimestamp(subscription.time) | date:'dd/MM/yy - HH:mm' }}
         <br />
@@ -48,7 +48,7 @@
         </ion-button>
         }
       </ion-row>
-    </ion-card-header>
+    </div>
     }
     <ion-card-content>
       <p>

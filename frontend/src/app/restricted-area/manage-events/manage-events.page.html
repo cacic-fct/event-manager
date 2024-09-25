@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   @if (!groupUnderSelection) {
   <ion-toolbar>
     <ion-buttons slot="start">
@@ -33,119 +33,122 @@
   }
 </ion-header>
 
-<ion-content>
-  <ion-item>
-    <ion-datetime-button datetime="dateSelector" class="margin-horizontal-auto"></ion-datetime-button>
-  </ion-item>
+<ion-content [fullscreen]="true">
+  <div class="content-max-width margin-horizontal-auto">
+    <ion-item>
+      <ion-datetime-button datetime="dateSelector" class="margin-horizontal-auto"></ion-datetime-button>
+    </ion-item>
 
-  @if (events$ | async; as eventList) {
-  <form [formGroup]="dataForm">
-    <ion-list>
-      @if (eventList.length === 0) {
-      <h1 class="ion-text-center">Nenhum evento encontrado</h1>
-      }
-      <div class="event-container">
-        @for (item of eventList; track item) {
-        <ion-item>
-          <img
-            alt="Emoji do evento"
-            [src]="emojiService.getEmoji(item.icon)"
-            class="twemoji"
-            slot="start"
-            aria-hidden="true"
-            loading="lazy" />
-          <ion-grid>
-            <ion-row>
-              <ion-col>
-                <ion-label>
-                  <h1 class="ion-text-wrap">{{item.name}}</h1>
-                  <!-- prettier-ignore -->
-                  <h4 class="date-item">
+    @if (events$ | async; as eventList) {
+    <form [formGroup]="dataForm">
+      <ion-list>
+        @if (eventList.length === 0) {
+        <h1 class="ion-text-center">Nenhum evento encontrado</h1>
+        }
+        <div class="event-container">
+          @for (item of eventList; track item) {
+          <ion-item>
+            <img
+              alt="Emoji do evento"
+              [src]="emojiService.getEmoji(item.icon)"
+              class="twemoji"
+              slot="start"
+              aria-hidden="true"
+              loading="lazy" />
+            <ion-grid>
+              <ion-row>
+                <ion-col>
+                  <ion-label>
+                    <h1 class="ion-text-wrap">{{item.name}}</h1>
+                    <!-- prettier-ignore -->
+                    <h4 class="date-item">
                         Data do evento: {{ dateService.getDateFromTimestamp(item.eventStartDate) | date: 'dd/MM HH:mm' }}
                         {{ item.eventEndDate ? ' - ' + (dateService.getDateFromTimestamp(item.eventEndDate) | date: 'dd/MM HH:mm') : ''}}
                       </h4>
-                  @if (item.course) {
-                  <p class="ion-text-wrap">{{courses.getCourse(item.course)}}</p>
-                  } @if (item.inMajorEventName | async; as majorEventName) {
-                  <p class="ion-text-wrap">Faz parte do grande evento "{{ majorEventName }}"</p>
-                  } @if (item.eventGroup; as eventGroup) {
-                  <p class="ion-text-wrap">Faz parte do grupo "{{ eventGroup.groupDisplayName }}"</p>
+                    @if (item.course) {
+                    <p class="ion-text-wrap">{{courses.getCourse(item.course)}}</p>
+                    } @if (item.inMajorEventName | async; as majorEventName) {
+                    <p class="ion-text-wrap">Faz parte do grande evento "{{ majorEventName }}"</p>
+                    } @if (item.eventGroup; as eventGroup) {
+                    <p class="ion-text-wrap">Faz parte do grupo "{{ eventGroup.groupDisplayName }}"</p>
+                    } @if (item.attendanceCollectionStart && !item.attendanceCollectionEnd) {
+                    <p class="ion-text-wrap">
+                      <ion-text color="danger"> Presença on-line aberta com código {{ item.attendanceCode }}</ion-text>
+                    </p>
+                    }
+                  </ion-label>
+                </ion-col>
+                <!-- If group is under selection, options to manage events are not shown -->
+                @if (!groupUnderSelection) {
+                <ion-col size="12" size-md="3">
+                  <ion-row>
+                    <ion-button [routerLink]="['./listar-inscritos', item.id]" fill="clear">
+                      <ion-icon name="list-outline" slot="start"></ion-icon>
+                      <p slot="end">Inscritos</p>
+                    </ion-button>
+                  </ion-row>
+                  <ion-row>
+                    <ion-button [routerLink]="['./coletar-presencas', item.id]" fill="clear">
+                      <ion-icon name="qr-code-outline" slot="start" aria-hidden="true"></ion-icon>
+                      <p slot="end">Coletar presenças</p>
+                    </ion-button>
+                  </ion-row>
+                  <ion-row>
+                    <ion-button [routerLink]="['./listar-presencas', item.id]" fill="clear">
+                      <ion-icon name="list-outline" slot="start" aria-hidden="true"></ion-icon>
+                      <p slot="end">Presentes</p>
+                    </ion-button>
+                  </ion-row>
+                </ion-col>
+
+                <ion-col size="12" size-md="3">
+                  @if (item.collectAttendance && (!item.attendanceCollectionStart || item.attendanceCollectionEnd)) {
+                  <ion-button fill="clear" color="tertiary" (click)="confirmOpenOnlineAttendance(item)">
+                    <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
+                    <p slot="end">Abrir presença on-line</p>
+                  </ion-button>
                   } @if (item.attendanceCollectionStart && !item.attendanceCollectionEnd) {
-                  <p class="ion-text-wrap">
-                    <ion-text color="danger"> Presença on-line aberta com código {{ item.attendanceCode }}</ion-text>
-                  </p>
+                  <ion-button fill="clear" color="tertiary" (click)="copyCode(item.attendanceCode)">
+                    <ion-icon name="copy" slot="start" aria-hidden="true"></ion-icon>
+                    <p slot="end">Copiar código de presença</p>
+                  </ion-button>
+                  } @if (item.attendanceCollectionStart && !item.attendanceCollectionEnd) {
+                  <ion-button fill="clear" color="tertiary" (click)="confirmCloseOnlineAttendance(item)">
+                    <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
+                    <p slot="end">Encerrar presença on-line</p>
+                  </ion-button>
                   }
-                </ion-label>
-              </ion-col>
-              @if (!groupUnderSelection) {
-              <ion-col>
-                <ion-row>
-                  <ion-button [routerLink]="['./listar-inscritos', item.id]" fill="clear">
-                    <ion-icon name="list-outline" slot="start"></ion-icon>
-                    <p slot="end">Listar inscritos</p>
+                </ion-col>
+
+                <ion-col size="12" size-md="3">
+                  @if (item.eventGroup) {
+                  <ion-button fill="clear" color="danger" (click)="confirmEventGroupDelete(item)">
+                    <ion-icon name="folder" slot="start" aria-hidden="true"></ion-icon>
+                    <p slot="end">Excluir grupo</p>
                   </ion-button>
-                </ion-row>
-                <ion-row>
-                  <ion-button [routerLink]="['./coletar-presencas', item.id]" fill="clear">
-                    <ion-icon name="qr-code-outline" slot="start" aria-hidden="true"></ion-icon>
-                    <p slot="end">Coleta de presenças</p>
-                  </ion-button>
-                </ion-row>
-                <ion-row>
-                  <ion-button [routerLink]="['./listar-presencas', item.id]" fill="clear">
-                    <ion-icon name="list-outline" slot="start" aria-hidden="true"></ion-icon>
-                    <p slot="end">Listagem de presenças</p>
-                  </ion-button>
-                </ion-row>
-              </ion-col>
-              } @if (!groupUnderSelection) {
-              <ion-col>
-                @if (item.collectAttendance && (!item.attendanceCollectionStart || item.attendanceCollectionEnd)) {
-                <ion-button fill="clear" color="tertiary" (click)="confirmOpenOnlineAttendance(item)">
-                  <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
-                  <p slot="end">Abrir presença on-line</p>
-                </ion-button>
-                } @if (item.attendanceCollectionStart && !item.attendanceCollectionEnd) {
-                <ion-button fill="clear" color="tertiary" (click)="copyCode(item.attendanceCode)">
-                  <ion-icon name="copy" slot="start" aria-hidden="true"></ion-icon>
-                  <p slot="end">Copiar código de presença</p>
-                </ion-button>
-                } @if (item.attendanceCollectionStart && !item.attendanceCollectionEnd) {
-                <ion-button fill="clear" color="tertiary" (click)="confirmCloseOnlineAttendance(item)">
-                  <ion-icon name="person" slot="start" aria-hidden="true"></ion-icon>
-                  <p slot="end">Encerrar presença on-line</p>
-                </ion-button>
+                  }
+                </ion-col>
                 }
-              </ion-col>
-              } @if (!groupUnderSelection) {
-              <ion-col>
-                @if (item.eventGroup) {
-                <ion-button fill="clear" color="danger" (click)="confirmEventGroupDelete(item)">
-                  <ion-icon name="folder" slot="start" aria-hidden="true"></ion-icon>
-                  <p slot="end">Excluir grupo</p>
-                </ion-button>
-                }
-              </ion-col>
-              }
-            </ion-row>
-          </ion-grid>
-          @if (groupUnderSelection && !item.eventGroup) {
-          <ion-checkbox
-            slot="end"
-            (ionChange)="onCheckBoxChange($event, item)"
-            [checked]="dataForm.get('selectedCheckboxes').value.includes(item.id)"></ion-checkbox>
+              </ion-row>
+            </ion-grid>
+            @if (groupUnderSelection && !item.eventGroup) {
+            <ion-checkbox
+              slot="end"
+              (ionChange)="onCheckBoxChange($event, item)"
+              [checked]="dataForm.get('selectedCheckboxes').value.includes(item.id)"></ion-checkbox>
+            }
+          </ion-item>
           }
-        </ion-item>
-        }
-      </div>
-    </ion-list>
-  </form>
-  } @else {
-  <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  }
-  <ng-template #loading>
+        </div>
+      </ion-list>
+    </form>
+    } @else {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  </ng-template>
+    }
+    <ng-template #loading>
+      <ion-progress-bar type="indeterminate"></ion-progress-bar>
+    </ng-template>
+  </div>
 </ion-content>
 
 @if (groupUnderSelection) {

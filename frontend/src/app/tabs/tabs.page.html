@@ -1,7 +1,7 @@
 <ion-tabs>
   <!-- TODO: Arrumar gambiarra -->
   @if (!this.router.url.match(regex)) {
-  <ion-tab-bar slot="bottom" id="tabBar">
+  <ion-tab-bar slot="bottom" id="tabBar" [translucent]="true">
     <ion-tab-button tab="calendario">
       <ion-icon aria-hidden="true" name="calendar"></ion-icon>
       <ion-label tabindex="0" class="sr-only" aria-label="Calendário" role="navigation"></ion-label>

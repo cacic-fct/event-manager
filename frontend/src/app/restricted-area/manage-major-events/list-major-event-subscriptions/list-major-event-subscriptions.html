@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-title>Lista de inscritos</ion-title>
     <ion-buttons slot="start">
@@ -7,55 +7,56 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  @if (subscriptions$ | async; as subscriptions) { @if (event$ | async; as event) {
-  <div class="ion-padding">
-    <h3 class="no-margin-bottom">{{ event.name }}</h3>
-    <h5 class="no-margin-top">
-      {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
-    </h5>
-    <ion-button (click)="generateCSV()" [disabled]="disableCSVDownloadButton">
-      @if (disableCSVDownloadButton) {
-      <ion-spinner slot="start"></ion-spinner>
-      } Baixar CSV
-    </ion-button>
-    <div class="ion-padding-horizontal">
-      <p><b>Total de inscritos:</b> {{subscriptions.length | number: '2.0-0'}}</p>
-    </div>
-    @for (subscriptionItem of subscriptions; track subscriptionItem) {
-    <ion-item>
-      <ion-label>
-        @if ((subscriptionItem.user | async); as user) { @if (user.fullName) {
-        <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
-        } @if (!user.fullName) {
-        <h2 class="ion-text-wrap">
-          <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
-        </h2>
-        } @if (user.academicID) {
-        <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
-        } @else { @if (!user.academicID) {
-        <h3 class="ion-text-wrap">Sem RA definido</h3>
-        } }
-        <h3 class="ion-text-wrap">{{ user.email }} | {{ user.phone || "Sem celular cadastrado" }}</h3>
-        <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
-        <!-- prettier-ignore -->
-        <h3 class="ion-text-wrap margin-top-8">
+<ion-content [fullscreen]="true">
+  <div class="content-max-width margin-horizontal-auto">
+    @if (subscriptions$ | async; as subscriptions) { @if (event$ | async; as event) {
+    <div class="ion-padding">
+      <h3 class="no-margin-bottom">{{ event.name }}</h3>
+      <h5 class="no-margin-top">
+        {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+      </h5>
+      <ion-button (click)="generateCSV()" [disabled]="disableCSVDownloadButton">
+        @if (disableCSVDownloadButton) {
+        <ion-spinner slot="start"></ion-spinner>
+        } Baixar CSV
+      </ion-button>
+      <div class="ion-padding-horizontal">
+        <p><b>Total de inscritos:</b> {{subscriptions.length | number: '2.0-0'}}</p>
+      </div>
+      @for (subscriptionItem of subscriptions; track subscriptionItem) {
+      <ion-item>
+        <ion-label>
+          @if ((subscriptionItem.user | async); as user) { @if (user.fullName) {
+          <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
+          } @if (!user.fullName) {
+          <h2 class="ion-text-wrap">
+            <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
+          </h2>
+          } @if (user.academicID) {
+          <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
+          } @else { @if (!user.academicID) {
+          <h3 class="ion-text-wrap">Sem RA definido</h3>
+          } }
+          <h3 class="ion-text-wrap">{{ user.email }} | {{ user.phone || "Sem celular cadastrado" }}</h3>
+          <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
+          <!-- prettier-ignore -->
+          <h3 class="ion-text-wrap margin-top-8">
           Criação da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.time) | date: "dd/MM/y - HH:mm:ss" }}
         </h3>
-        <!-- prettier-ignore -->
-        <h3 class="ion-text-wrap">
+          <!-- prettier-ignore -->
+          <h3 class="ion-text-wrap">
           Última edição da inscrição: {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: "dd/MM/y - HH:mm:ss" }}
         </h3>
-        @if (!event.price.isFree) {
-        <h3 class="ion-text-wrap">
-          Status da inscrição: @if (subscriptionItem.payment.status === 0) { Não pago } @if
-          (subscriptionItem.payment.status === 1) {
-          <!-- prettier-ignore -->
-          Comprovante enviado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }} - Aguardando confirmação
+          @if (!event.price.isFree) {
+          <h3 class="ion-text-wrap">
+            Status da inscrição: @if (subscriptionItem.payment.status === 0) { Não pago } @if
+            (subscriptionItem.payment.status === 1) {
+            <!-- prettier-ignore -->
+            Comprovante enviado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }} - Aguardando confirmação
                     }
                     @if (subscriptionItem.payment.status === 2) {
-          <!-- prettier-ignore -->
-          Pagamento validado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }}
+            <!-- prettier-ignore -->
+            Pagamento validado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }}
                     }
                     @if (subscriptionItem.payment.status === 3) {
                       Erro no pagamento
@@ -63,27 +64,28 @@
                     @if (subscriptionItem.payment.status === 4) {
                       Erro na inscrição
                     }
-          <br />
-          Autor: {{ subscriptionItem.payment.author === user.uid ? "O próprio" : subscriptionItem.payment.author }}
-        </h3>
-        }
-        <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
-        } @else {
-        <h2 class="ion-text-wrap">
-          <ion-text color="danger">Usuário não encontrado</ion-text>
-        </h2>
-        <h2 class="ion-text-wrap">
-          <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
-        </h2>
-        <h2>UID: {{ subscriptionItem.id }}</h2>
-        }
-      </ion-label>
-    </ion-item>
+            <br />
+            Autor: {{ subscriptionItem.payment.author === user.uid ? "O próprio" : subscriptionItem.payment.author }}
+          </h3>
+          }
+          <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
+          } @else {
+          <h2 class="ion-text-wrap">
+            <ion-text color="danger">Usuário não encontrado</ion-text>
+          </h2>
+          <h2 class="ion-text-wrap">
+            <ion-text color="danger">Confira os dados no banco de dados antes de remover a presença</ion-text>
+          </h2>
+          <h2>UID: {{ subscriptionItem.id }}</h2>
+          }
+        </ion-label>
+      </ion-item>
+      }
+    </div>
+    } } @else {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
     }
   </div>
-  } } @else {
-  <ion-progress-bar type="indeterminate"></ion-progress-bar>
-  }
 </ion-content>
 
 <swal
