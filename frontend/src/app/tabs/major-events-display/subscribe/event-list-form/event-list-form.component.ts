@@ -130,21 +130,19 @@ export class EventListFormComponent implements OnInit {
               if (!this.dataForm.get(eventID)) {
                 throw new Error(`Event ${eventID} is in the subscription but not present in the form`);
               }
-              this.dataForm.get(eventID)!.setValue(true);
 
               const event = this.eventList.find((event) => event.id === eventID);
-              // Check if event is in mandatoryList
 
               if (!event) {
-                return;
+                throw new Error(`Event ${eventID} is in the subscription but not present in the event list`);
               }
 
               if (this.mandatoryEvents.includes(eventID)) {
-                // If event is mandatory, disable it
-                this.dataForm.get(eventID)!.disable();
-              } else {
-                this.dataForm.get(eventID)!.enable();
+                // If event is mandatory, skip as it has already been selected on ngOnInit
+                return;
               }
+
+              this.dataForm.get(eventID)!.setValue(true);
 
               // If event is part of a group, but not the main event, don't count it
               if (event.eventGroup && event.eventGroup.mainEventID !== eventID) {
@@ -184,6 +182,7 @@ export class EventListFormComponent implements OnInit {
       default:
         console.debug('DEBUG: incrementAmountOfEventsSelected: Incrementing amount of uncategorized selected');
         this.amountOfUncategorizedSelected.update((value) => value + 1);
+        this.totalAmountOfEventsSelected.update((value) => value + 1);
         break;
     }
   }
@@ -262,29 +261,29 @@ export class EventListFormComponent implements OnInit {
       return;
     }
 
-    // If max amount of courses has been selected, unselect event
-    if (
-      this.maxCourses !== undefined &&
-      this.maxCourses !== null &&
-      event.eventType === 'minicurso' &&
-      this.amountOfCoursesSelected >= this.maxCourses
-    ) {
-      this.dataForm.get(event.id)?.setValue(false);
-      this.presentLimitReachedToast('minicursos', this.maxCourses.toString());
-      return;
-    } else if (
-      this.maxLectures !== undefined &&
-      this.maxLectures !== null &&
-      event.eventType === 'palestra' &&
-      this.amountOfLecturesSelected >= this.maxLectures
-    ) {
-      this.presentLimitReachedToast('palestras', this.maxLectures.toString());
-      this.dataForm.get(event.id)?.setValue(false);
-      return;
-    }
-
     // If event has been selected
     if (this.dataForm.get(event.id)?.value) {
+      // If max amount of courses has been selected, unselect event
+      if (
+        this.maxCourses !== undefined &&
+        this.maxCourses !== null &&
+        event.eventType === 'minicurso' &&
+        this.amountOfCoursesSelected() >= this.maxCourses
+      ) {
+        this.dataForm.get(event.id)?.setValue(false);
+        this.presentLimitReachedToast('minicursos', this.maxCourses.toString());
+        return;
+      } else if (
+        this.maxLectures !== undefined &&
+        this.maxLectures !== null &&
+        event.eventType === 'palestra' &&
+        this.amountOfLecturesSelected() >= this.maxLectures
+      ) {
+        this.presentLimitReachedToast('palestras', this.maxLectures.toString());
+        this.dataForm.get(event.id)?.setValue(false);
+        return;
+      }
+
       const conflicts = this.checkConflicts(event.id);
       this.blockEventGroup(conflicts);
 
