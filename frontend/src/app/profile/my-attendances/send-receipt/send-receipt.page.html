@@ -112,7 +112,7 @@
     <ion-progress-bar value="1"></ion-progress-bar>
     <h3 class="ion-padding-horizontal">Comprovante enviado</h3>
     <div class="img-container">
-      @if (downloadURL) {
+      @if (downloadURL()) {
       <img alt="Comprovante enviado" class="ion-padding" src="{{rawFile()}}" />
       }
     </div>

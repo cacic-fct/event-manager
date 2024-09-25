@@ -95,7 +95,7 @@ export class SendReceiptPage implements OnInit {
   private readonly modalController: ModalController = inject(ModalController);
 
   uploadPercentage: number;
-  downloadURL: string;
+  downloadURL: WritableSignal<string | null> = signal(null);
   majorEvent$: Observable<MajorEventItem>;
   eventID: string;
   fileName: string;
@@ -301,7 +301,7 @@ export class SendReceiptPage implements OnInit {
       () => {
         getDownloadURL(task.snapshot.ref)
           .then((downloadURL) => {
-            this.downloadURL = downloadURL;
+            this.downloadURL.set(downloadURL);
             this.updateUser();
           })
           .catch((err) => {
