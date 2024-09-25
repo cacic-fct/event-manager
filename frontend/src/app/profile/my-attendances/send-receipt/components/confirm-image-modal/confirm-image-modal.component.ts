@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnInit } from '@angular/core';
+import { Component, inject, Input } from '@angular/core';
 import {
   IonHeader,
   IonContent,
@@ -31,13 +31,10 @@ import {
   ],
   standalone: true,
 })
-export class ConfirmImageModalComponent implements OnInit {
+export class ConfirmImageModalComponent {
   @Input({ required: true }) rawImage!: string;
 
   private readonly modalController: ModalController = inject(ModalController);
-  constructor() {}
-
-  ngOnInit() {}
 
   onSubmit() {
     this.modalController.dismiss(true);
