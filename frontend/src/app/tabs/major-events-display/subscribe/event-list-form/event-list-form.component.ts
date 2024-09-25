@@ -144,6 +144,9 @@ export class EventListFormComponent implements OnInit {
 
               this.dataForm.get(eventID)!.setValue(true);
 
+              const conflicts = this.checkConflicts(eventID);
+              this.blockEventGroup(conflicts);
+
               // If event is part of a group, but not the main event, don't count it
               if (event.eventGroup && event.eventGroup.mainEventID !== eventID) {
                 return;
