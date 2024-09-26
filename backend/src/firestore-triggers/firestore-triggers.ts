@@ -9,9 +9,10 @@ exports.createEventSubscription = onDocumentCreated(
     const eventRef = db.collection('events').doc(context.params.eventId);
     const event = await eventRef.get();
     const numberOfSubscriptions = event.data()?.numberOfSubscriptions;
-    if (numberOfSubscriptions === undefined) {
+    if (numberOfSubscriptions === undefined || event.data()?.inMajorEvent) {
       return;
     }
+
     eventRef.update({ numberOfSubscriptions: FieldValue.increment(1) });
   },
 );
