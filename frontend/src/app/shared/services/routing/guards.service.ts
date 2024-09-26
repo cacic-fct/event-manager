@@ -31,6 +31,10 @@ export const redirectLoggedInToCalendar = () => {
   console.debug('DEBUG: GuardsService: Check redirectLoggedInTo calendar');
   return redirectLoggedInTo(['/calendario']);
 };
+export const redirectLoggedInToEvents = () => {
+  console.debug('DEBUG: GuardsService: Check redirectLoggedInTo calendar');
+  return redirectLoggedInTo(['/eventos']);
+};
 
 export const caAndGreater = () =>
   pipe(
