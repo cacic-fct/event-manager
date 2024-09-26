@@ -7,7 +7,7 @@ import { startOfDay, startOfWeek, sub } from 'date-fns';
 
 import { ToastController } from '@ionic/angular/standalone';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { switchMap } from 'rxjs/operators';
+import { shareReplay, switchMap, take } from 'rxjs/operators';
 import { AsyncPipe, formatDate, KeyValuePipe } from '@angular/common';
 
 import { EventItem } from 'src/app/shared/services/event';
@@ -92,7 +92,7 @@ export class CalendarListViewComponent implements OnInit, OnChanges {
             return query.orderBy('eventStartDate', 'asc');
           })
           .valueChanges({ idField: 'id' })
-          .pipe(trace('firestore'));
+          .pipe(trace('firestore'), take(1), shareReplay(1));
       }),
     );
   }

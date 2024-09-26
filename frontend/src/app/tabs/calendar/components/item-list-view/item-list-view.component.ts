@@ -6,7 +6,7 @@ import { CoursesService } from 'src/app/shared/services/courses.service';
 import { startOfDay, endOfDay } from 'date-fns';
 
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { switchMap } from 'rxjs/operators';
+import { shareReplay, switchMap, take } from 'rxjs/operators';
 
 import { EventItem } from 'src/app/shared/services/event';
 import { trace } from '@angular/fire/compat/performance';
@@ -70,7 +70,7 @@ export class ItemListViewComponent implements OnInit, OnChanges {
             return query.orderBy('eventStartDate', 'asc');
           })
           .valueChanges({ idField: 'id' })
-          .pipe(trace('firestore'));
+          .pipe(trace('firestore'), take(1), shareReplay(1));
       }),
     );
   }
