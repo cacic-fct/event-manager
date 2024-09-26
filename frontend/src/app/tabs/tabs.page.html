@@ -3,11 +3,6 @@
   @if (!this.router.url.match(regex)) {
   <ion-tab-bar slot="bottom" id="tabBar" [translucent]="true">
     @if (this.events$ | async) {
-    <ion-tab-button tab="calendario">
-      <ion-icon aria-hidden="true" name="calendar"></ion-icon>
-      <ion-label tabindex="0" class="sr-only" aria-label="Calendário" role="navigation"></ion-label>
-    </ion-tab-button>
-    } @if (this.events$ | async) {
     <ion-tab-button tab="eventos">
       <ion-icon aria-hidden="true" name="albums"></ion-icon>
       <ion-label tabindex="0" class="sr-only" aria-label="Eventos" role="navigation"></ion-label>
