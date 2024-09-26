@@ -162,7 +162,7 @@ export const appConfig: ApplicationConfig = {
   ],
 };
 
-function setupAnalytics(): void {
+export function setupAnalytics(): void {
   if (localStorage.getItem('disable-monitoring') !== 'true') {
     console.debug('DEBUG: main.ts: Glitchtip Monitoring: Enabled');
     initSentry({
@@ -174,7 +174,7 @@ function setupAnalytics(): void {
     console.debug('DEBUG: main.ts: Glitchtip Monitoring: Disabled');
   }
 
-  if (localStorage.getItem('disable-analytics') !== 'true') {
+  if (localStorage.getItem('disable-analytics') !== 'true' && !document.getElementById('plausible-script')) {
     const script = document.createElement('script');
     script.id = 'plausible-script';
     script.async = true;

@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent,
@@ -20,6 +20,10 @@ import {
 import { addIcons } from 'ionicons';
 import { analyticsOutline, buildOutline, handLeftOutline } from 'ionicons/icons';
 import { ExplanationCardComponent } from 'src/app/settings/components/explanation-card/explanation-card.component';
+import { PlausibleService } from '@notiz/ngx-plausible';
+import { AuthService } from 'src/app/shared/services/auth.service';
+import { setupAnalytics } from 'src/app/app.config';
+import { take } from 'rxjs';
 
 @Component({
   selector: 'app-privacy',
@@ -49,6 +53,9 @@ import { ExplanationCardComponent } from 'src/app/settings/components/explanatio
 export class PrivacyPage {
   isAnalyticsEnabled: boolean;
   isMonitoringEnabled: boolean;
+  private plausible = inject(PlausibleService);
+  private auth = inject(AuthService);
+  private document = inject(DOCUMENT);
   constructor() {
     addIcons({
       analyticsOutline,
@@ -75,11 +82,30 @@ export class PrivacyPage {
     this.isAnalyticsEnabled = !this.isAnalyticsEnabled;
     console.debug('DEBUG: Analytics:', this.isAnalyticsEnabled);
     localStorage.setItem('disable-analytics', this.isAnalyticsEnabled ? '' : 'true');
+
+    this.auth.authState$.pipe(take(1)).subscribe((user) => {
+      if (!this.isAnalyticsEnabled) {
+        this.plausible.event('Disable analytics', {
+          props: { method: 'button', page: 'privacy-settings', author: `${user || 'anonymous'}` },
+        });
+      } else {
+        setupAnalytics();
+      }
+    });
   }
 
   toggleMonitoring() {
     this.isMonitoringEnabled = !this.isMonitoringEnabled;
     console.debug('DEBUG: Monitoring:', this.isMonitoringEnabled);
     localStorage.setItem('disable-monitoring', this.isMonitoringEnabled ? '' : 'true');
+    this.auth.authState$.pipe(take(1)).subscribe((user) => {
+      if (!this.isMonitoringEnabled) {
+        this.plausible.event('Disable monitoring', {
+          props: { method: 'button', page: 'privacy-settings', author: `${user || 'anonymous'}` },
+        });
+      } else {
+        setupAnalytics();
+      }
+    });
   }
 }
