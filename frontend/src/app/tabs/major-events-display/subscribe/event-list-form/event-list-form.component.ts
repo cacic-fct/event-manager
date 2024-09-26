@@ -415,7 +415,7 @@ export class EventListFormComponent implements OnInit {
     console.debug('DEBUG: itemClick():', eventItem);
 
     if (!formEvent || formEvent?.disabled) {
-      this.presentDisabledToast();
+      this.presentDisabledToast(eventID);
       return;
     }
 
@@ -443,10 +443,18 @@ export class EventListFormComponent implements OnInit {
     toast.present();
   }
 
-  async presentDisabledToast() {
+  async presentDisabledToast(eventID: string) {
+    let header = `Evento indisponível`;
+    let message = `Confira o número de vagas ou se há choque de horário`;
+
+    if (this.mandatoryEvents.includes(eventID)) {
+      header = `Evento obrigatório`;
+      message = `Você não pode desmarcar este evento`;
+    }
+
     const toast = await this.toastController.create({
-      header: `Evento indisponível`,
-      message: `Confira o número de vagas ou se há choque de horário`,
+      header: header,
+      message: message,
       icon: 'alert-circle-outline',
       position: 'bottom',
       duration: 2000,
