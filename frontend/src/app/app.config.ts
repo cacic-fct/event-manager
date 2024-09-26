@@ -163,6 +163,11 @@ export const appConfig: ApplicationConfig = {
 };
 
 export function setupAnalytics(): void {
+  if (isDevMode()) {
+    console.debug('DEBUG: main.ts: setupAnalytics: Disabled in development mode');
+    return;
+  }
+
   if (localStorage.getItem('disable-monitoring') !== 'true') {
     console.debug('DEBUG: main.ts: Glitchtip Monitoring: Enabled');
     initSentry({
