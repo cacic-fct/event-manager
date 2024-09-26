@@ -28,6 +28,7 @@ export class TabsPage {
   public regex = new RegExp(/^\/{1}(#{1}.*|#?)$/g);
 
   allowRestrictedArea: WritableSignal<boolean> = signal(false);
+  readonly calendar$: Observable<boolean>;
   readonly manual$: Observable<boolean>;
   readonly events$: Observable<boolean>;
   readonly map$: Observable<boolean>;
@@ -48,6 +49,10 @@ export class TabsPage {
       }
     });
 
+    this.calendar$ = getBooleanChanges(this.remoteConfig, 'calendarTabEnabled').pipe(
+      untilDestroyed(this),
+      trace('remote-config'),
+    );
     this.map$ = getBooleanChanges(this.remoteConfig, 'mapTabEnabled').pipe(
       untilDestroyed(this),
       trace('remote-config'),
