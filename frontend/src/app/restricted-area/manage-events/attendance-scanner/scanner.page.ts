@@ -1,5 +1,5 @@
-import { Component, inject, Input, OnInit, ViewChild } from '@angular/core';
-import { BehaviorSubject, take, map, Observable, shareReplay } from 'rxjs';
+import { Component, inject, Input, OnInit, signal, ViewChild, WritableSignal } from '@angular/core';
+import { take, map, Observable, shareReplay } from 'rxjs';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular/standalone';
@@ -109,8 +109,7 @@ export class ScannerPage implements OnInit {
    */
   private majorEventID?: string;
 
-  _backdropVisibleSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
-  backdropVisible$: Observable<boolean> = this._backdropVisibleSubject.asObservable();
+  backdropVisible: WritableSignal<boolean> = signal(false);
 
   attendanceSessionScans = 0;
 
@@ -537,18 +536,21 @@ export class ScannerPage implements OnInit {
   }
 
   async backdropColor(color: string) {
+    if (!document.querySelector('ion-backdrop')) {
+      return;
+    }
     // Add class to ion-backdrop
-    document.querySelector('ion-backdrop')!.classList.add(color);
+    document.querySelector('ion-backdrop').classList.add(color);
 
     // Change backdrop class to color
-    this._backdropVisibleSubject.next(true);
+    this.backdropVisible.set(true);
 
-    // Wait for 1 second
+    // Wait 1 second
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    this._backdropVisibleSubject.next(false);
+    this.backdropVisible.set(false);
     // Remove backdrop class
-    document.querySelector('ion-backdrop')!.classList.remove(color);
+    document.querySelector('ion-backdrop').classList.remove(color);
   }
 
   onDeviceList(event: MediaDeviceInfo[]) {

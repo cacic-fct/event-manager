@@ -1,10 +1,10 @@
-<ion-backdrop [class.backdropvisible]="backdropVisible$ | async"></ion-backdrop>
+<ion-backdrop [class.backdropvisible]="backdropVisible()"></ion-backdrop>
 
 <ion-header>
   <ion-toolbar>
     <ion-title>Coletar presença</ion-title>
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="area-restrita/coletar-presenca"></ion-back-button>
+      <ion-back-button defaultHref="/area-restrita/gerenciar-eventos"></ion-back-button>
     </ion-buttons>
     <ion-buttons slot="primary">
       <ion-button (click)="changeCamera()">
@@ -43,7 +43,8 @@
         <h3 class="no-margin-bottom">{{ event.name }}</h3>
         <h4 class="no-margin">{{ event.shortDescription }}</h4>
         <h5 class="no-margin-top">
-          {{ dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm" }}
+          <!-- prettier-ignore -->
+          {{ (dateService.getDateFromTimestamp(event.eventStartDate) | date: "dd/MM/y - HH:mm") || 'Data de início do evento desconhecida' }}
         </h5>
         <p>
           <b>Scans desta sessão:</b> {{ attendanceSessionScans | number: '2.0-0' }}
@@ -90,7 +91,8 @@
           </ion-label>
           }
           <h3 class="ion-text-wrap">
-            {{ dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
+            <!-- prettier-ignore -->
+            {{ (dateService.getDateFromTimestamp(attendancePerson.time) | date: "dd/MM/y - HH:mm:ss") || 'Data de coleta desconhecida' }}
           </h3>
         </ion-label>
       </ion-item>
@@ -124,7 +126,8 @@
           <h3 class="ion-text-wrap">E-mail: {{ user.email }}</h3>
           }
           <h3 class="ion-text-wrap">
-            {{ dateService.getDateFromTimestamp(nonPayingAttendancePerson.time) | date: "dd/MM/y - HH:mm:ss" }}
+            <!-- prettier-ignore -->
+            {{ (dateService.getDateFromTimestamp(nonPayingAttendancePerson.time) | date: "dd/MM/y - HH:mm:ss") || 'Data de coleta desconhecida' }}
           </h3>
         </ion-label>
       </ion-item>
