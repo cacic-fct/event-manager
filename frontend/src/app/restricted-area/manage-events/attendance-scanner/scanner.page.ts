@@ -361,34 +361,38 @@ export class ScannerPage implements OnInit {
       return;
     }
     // First, verify if user exists
-    this.userExists$(uid).subscribe((exists) => {
-      if (exists) {
-        // If event is paid, treat for two different collections
-        if (this.eventIsPaid) {
-          // Check if user has paid
-          // Yes -> write on 'attendance'
-          // No -> write on 'non-paying-attendance'
-          this.userPaid$(uid).subscribe((paid) => {
-            if (paid) {
-              this.writeUIDAttendance(uid);
-              // If it was on NP-attendance, remove.
-              this.removeFromNPAttendance(uid);
-            } else {
-              this.writeUIDNPAttendance(uid);
-            }
-          });
+    this.userExists$(uid)
+      .pipe(take(1))
+      .subscribe((exists) => {
+        if (exists) {
+          // If event is paid, treat for two different collections
+          if (this.eventIsPaid) {
+            // Check if user has paid
+            // Yes -> write on 'attendance'
+            // No -> write on 'non-paying-attendance'
+            this.userPaid$(uid)
+              .pipe(take(1))
+              .subscribe((paid) => {
+                if (paid) {
+                  this.writeUIDAttendance(uid);
+                  // If it was on NP-attendance, remove.
+                  this.removeFromNPAttendance(uid);
+                } else {
+                  this.writeUIDNPAttendance(uid);
+                }
+              });
+          }
+          // Else, write on 'attendance'
+          else {
+            this.writeUIDAttendance(uid);
+          }
         }
-        // Else, write on 'attendance'
+        // User does not exists
         else {
-          this.writeUIDAttendance(uid);
+          this.backdropColor('invalid');
+          this.toastInvalid();
         }
-      }
-      // User does not exists
-      else {
-        this.backdropColor('invalid');
-        this.toastInvalid();
-      }
-    });
+      });
   }
 
   /**
