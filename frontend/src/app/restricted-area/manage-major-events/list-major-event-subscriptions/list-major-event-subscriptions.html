@@ -49,23 +49,31 @@
         </h3>
           @if (!event.price.isFree) {
           <h3 class="ion-text-wrap">
-            Status da inscrição: @if (subscriptionItem.payment.status === 0) { Não pago } @if
-            (subscriptionItem.payment.status === 1) {
+            Status da inscrição: @if (subscriptionItem.payment.status === 0) { Não pago }
+            <!-- prettier-ignore -->
+            @if (subscriptionItem.payment.status === 1) {
             <!-- prettier-ignore -->
             Comprovante enviado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }} - Aguardando confirmação
-                    }
-                    @if (subscriptionItem.payment.status === 2) {
+            }
+            @if (subscriptionItem.payment.status === 2) {
             <!-- prettier-ignore -->
-            Pagamento validado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }}
-                    }
-                    @if (subscriptionItem.payment.status === 3) {
-                      Erro no pagamento
-                    }
-                    @if (subscriptionItem.payment.status === 4) {
-                      Erro na inscrição
-                    }
+            Comprovante enviado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.time) | date: 'dd/MM/yyyy' }}
             <br />
-            Autor: {{ subscriptionItem.payment.author === user.uid ? "O próprio" : subscriptionItem.payment.author }}
+            <!-- prettier-ignore -->
+            Pagamento validado em {{ dateService.getDateFromTimestamp(subscriptionItem.payment.validationTime) | date: 'dd/MM/yyyy' }}
+            <br />
+            <!-- prettier-ignore -->
+            Autor da validação: {{ subscriptionItem.payment.validationAuthor === user.uid ? "O próprio" : subscriptionItem.payment.validationAuthor }}
+            }
+            @if (subscriptionItem.payment.status === 3) {
+            Erro no pagamento
+            }
+            @if (subscriptionItem.payment.status === 4) {
+            Erro na inscrição
+            }
+            <br />
+            Autor da última edição: {{ subscriptionItem.payment.author === user.uid ? "O próprio" :
+            subscriptionItem.payment.author }}
           </h3>
           }
           <ion-button [routerLink]="['gerenciar-inscricao', user.uid]"> Editar inscrição </ion-button>
