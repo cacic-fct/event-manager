@@ -43,7 +43,7 @@ import { EmojiService } from 'src/app/shared/services/emoji.service';
 interface Attendance {
   user: Observable<User | undefined>;
   time: Timestamp;
-  source?: 'online' | 'scanner';
+  source?: 'online' | 'scanner' | 'manual';
   id?: string;
 }
 
@@ -247,7 +247,7 @@ export class ScannerPage implements OnInit {
   onCodeResult(resultString: string) {
     if (resultString.startsWith('uid:') && resultString.length === 32) {
       const uid = resultString.substring(4);
-      this.writeUserAttendance(uid);
+      this.writeUserAttendance(uid, 'scanner');
     } else {
       this.backdropColor('invalid');
       this.audioInvalid.play();
@@ -358,7 +358,7 @@ export class ScannerPage implements OnInit {
    * Escreve um determinado UID na coleção correta
    * @param uid User ID, ID do usuário
    */
-  writeUserAttendance(uid: string | null) {
+  writeUserAttendance(uid: string | null, source: 'manual' | 'scanner') {
     if (!uid) {
       return;
     }
@@ -376,17 +376,17 @@ export class ScannerPage implements OnInit {
               .pipe(take(1))
               .subscribe((paid) => {
                 if (paid) {
-                  this.writeUIDAttendance(uid);
+                  this.writeUIDAttendance(uid, source);
                   // If it was on NP-attendance, remove.
                   this.removeFromNPAttendance(uid);
                 } else {
-                  this.writeUIDNPAttendance(uid);
+                  this.writeUIDNPAttendance(uid, source);
                 }
               });
           }
           // Else, write on 'attendance'
           else {
-            this.writeUIDAttendance(uid);
+            this.writeUIDAttendance(uid, source);
           }
         }
         // User does not exists
@@ -401,7 +401,7 @@ export class ScannerPage implements OnInit {
    * Escreve um determinado UID na coleção 'attendance'
    * @param uid User ID, ID do usuário
    */
-  writeUIDAttendance(uid: string) {
+  writeUIDAttendance(uid: string, source: 'manual' | 'scanner') {
     this.afs
       .collection<Attendance>(`events/${this.eventID}/attendance`)
       .doc(uid)
@@ -418,7 +418,7 @@ export class ScannerPage implements OnInit {
         this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
           time: serverTimestamp(),
           author: this.adminID,
-          source: 'scanner',
+          source: source,
         });
         this.audioSuccess.play();
         this.toastSucess();
@@ -432,7 +432,7 @@ export class ScannerPage implements OnInit {
    * Escreve um determinado UID na coleção 'non-paying-attendance'
    * @param uid User ID, ID do usuário
    */
-  writeUIDNPAttendance(uid: string) {
+  writeUIDNPAttendance(uid: string, source: 'manual' | 'scanner') {
     this.afs
       .collection<Attendance>(`events/${this.eventID}/non-paying-attendance`)
       .doc(uid)
@@ -449,7 +449,7 @@ export class ScannerPage implements OnInit {
         this.afs.collection(`events/${this.eventID}/non-paying-attendance`).doc(uid).set({
           time: serverTimestamp(),
           author: this.adminID,
-          source: 'scanner',
+          source: source,
         });
         this.audioNotPaid.play();
         this.toastNotPaid();
@@ -472,7 +472,7 @@ export class ScannerPage implements OnInit {
       return;
     }
 
-    this.writeUserAttendance(response.data);
+    this.writeUserAttendance(response.data, 'manual');
   }
 
   async toastSucess() {

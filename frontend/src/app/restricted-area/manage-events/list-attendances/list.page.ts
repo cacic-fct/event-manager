@@ -34,7 +34,7 @@ import { checkmarkCircleOutline } from 'ionicons/icons';
 interface Attendance {
   user: Observable<User>;
   time: Timestamp;
-  source?: 'online' | 'scanner';
+  source?: 'online' | 'scanner' | 'manual';
   id?: string;
 }
 
