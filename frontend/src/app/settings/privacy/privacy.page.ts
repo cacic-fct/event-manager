@@ -86,7 +86,7 @@ export class PrivacyPage {
     this.auth.authState$.pipe(take(1)).subscribe((user) => {
       if (!this.isAnalyticsEnabled) {
         this.plausible.event('Disable analytics', {
-          props: { method: 'button', page: 'privacy-settings', author: `${user || 'anonymous'}` },
+          props: { method: 'button', page: 'privacy-settings', author: `${user.uid || 'anonymous'}` },
         });
       } else {
         setupAnalytics();
@@ -101,7 +101,7 @@ export class PrivacyPage {
     this.auth.authState$.pipe(take(1)).subscribe((user) => {
       if (!this.isMonitoringEnabled) {
         this.plausible.event('Disable monitoring', {
-          props: { method: 'button', page: 'privacy-settings', author: `${user || 'anonymous'}` },
+          props: { method: 'button', page: 'privacy-settings', author: `${user.uid || 'anonymous'}` },
         });
       } else {
         setupAnalytics();
