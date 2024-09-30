@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { TabsPage } from './tabs.page';
 
 import { canActivate } from '@angular/fire/compat/auth-guard';
-import { caAndGreater, redirectLoggedInToEvents } from '../shared/services/routing/guards.service';
+import { caAndGreater, redirectLoggedInToCalendar } from '../shared/services/routing/guards.service';
 
 export const routes: Routes = [
   {
@@ -12,7 +12,7 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () => import('src/app/landing/landing.page').then((m) => m.LandingPage),
-        ...canActivate(redirectLoggedInToEvents),
+        ...canActivate(redirectLoggedInToCalendar),
       },
 
       {
