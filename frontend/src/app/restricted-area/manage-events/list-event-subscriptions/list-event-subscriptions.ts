@@ -6,7 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { Timestamp } from '@angular/fire/firestore';
-import { first, map, Observable } from 'rxjs';
+import { map, Observable, shareReplay, take } from 'rxjs';
 import { EventItem } from 'src/app/shared/services/event';
 import { User } from 'src/app/shared/services/user';
 import { CoursesService } from 'src/app/shared/services/courses.service';
@@ -87,7 +87,11 @@ export class ListEventSubscriptionsPage {
         }
       });
 
-    this.event$ = this.afs.collection('events').doc<EventItem>(this.eventID).valueChanges();
+    this.event$ = this.afs
+      .collection('events')
+      .doc<EventItem>(this.eventID)
+      .valueChanges()
+      .pipe(take(1), shareReplay(1));
 
     this.subscriptions$ = this.afs
       .collection<Subscription>(`events/${this.eventID}/subscriptions`, (ref) => ref.orderBy('time'))
@@ -102,7 +106,11 @@ export class ListEventSubscriptionsPage {
               .collection<User>('users')
               .doc(item.id)
               .get()
-              .pipe(map((document) => document.data())),
+              .pipe(
+                map((document) => document.data()),
+                take(1),
+                shareReplay(1),
+              ),
           })),
         ),
       );
@@ -112,7 +120,7 @@ export class ListEventSubscriptionsPage {
     this.afs
       .collection<User>('users')
       .valueChanges({ idField: 'id' })
-      .pipe(first(), trace('firestore'))
+      .pipe(take(1), trace('firestore'))
       .subscribe((users) => {
         const csv: (string | undefined)[][] = [];
         const headers = [
@@ -126,7 +134,7 @@ export class ListEventSubscriptionsPage {
           'Data_iso',
         ];
         csv.push(headers);
-        this.subscriptions$.pipe(first()).subscribe((subscriptions) => {
+        this.subscriptions$.pipe(take(1)).subscribe((subscriptions) => {
           subscriptions.forEach((item) => {
             const user = users.find((user) => user.uid === item.id);
             if (!user) {
@@ -159,7 +167,7 @@ export class ListEventSubscriptionsPage {
             csv.push(row);
           });
 
-          this.event$.pipe(first()).subscribe((event) => {
+          this.event$.pipe(take(1)).subscribe((event) => {
             const csvString = csv.map((row) => row.join(',')).join('\n');
             const a = document.createElement('a');
             a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));

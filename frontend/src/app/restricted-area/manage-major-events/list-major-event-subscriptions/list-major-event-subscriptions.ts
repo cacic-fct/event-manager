@@ -6,7 +6,7 @@ import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 import { fromUnixTime } from 'date-fns';
 import { Timestamp } from '@angular/fire/firestore';
-import { map, Observable, take, forkJoin } from 'rxjs';
+import { map, Observable, take, forkJoin, shareReplay } from 'rxjs';
 import { User } from 'src/app/shared/services/user';
 import { CoursesService } from 'src/app/shared/services/courses.service';
 import { MajorEventSubscription, MajorEventItem } from '../../../shared/services/major-event.service';
@@ -105,7 +105,9 @@ export class ListMajorEventSubscriptionsPage {
       map((subscription) =>
         subscription.map((item) => ({
           ...item,
-          user: docData(doc(this.firestore, 'users', item.id)) as Observable<User | undefined>,
+          user: docData(doc(this.firestore, 'users', item.id)).pipe(take(1), shareReplay(1)) as Observable<
+            User | undefined
+          >,
         })),
       ),
     );
@@ -195,16 +197,6 @@ export class ListMajorEventSubscriptionsPage {
                   status = 'Devolvido por choque de horário';
                   break;
               }
-
-              const subscribedToEventsItemArray$: Observable<MajorEventItem | undefined>[] = [];
-
-              // TODO: Optimize this
-              item.subscribedToEvents.forEach((eventID) => {
-                const docRef = doc(this.firestore, 'events', eventID);
-                const documentData = docData(docRef) as Observable<MajorEventItem | undefined>;
-
-                subscribedToEventsItemArray$.push(documentData);
-              });
 
               let subscribedToEventsNames = '';
 
