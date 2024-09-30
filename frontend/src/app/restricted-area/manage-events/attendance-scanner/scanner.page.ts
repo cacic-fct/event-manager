@@ -42,6 +42,7 @@ import { AztecScannerComponent } from '../../../shared/components/aztec-scanner/
 interface Attendance {
   user: Observable<User | undefined>;
   time: Timestamp;
+  source?: 'online' | 'scanner';
   id?: string;
 }
 
@@ -415,6 +416,7 @@ export class ScannerPage implements OnInit {
         this.afs.collection(`events/${this.eventID}/attendance`).doc(uid).set({
           time: serverTimestamp(),
           author: this.adminID,
+          source: 'scanner',
         });
         this.audioSuccess.play();
         this.toastSucess();
@@ -445,6 +447,7 @@ export class ScannerPage implements OnInit {
         this.afs.collection(`events/${this.eventID}/non-paying-attendance`).doc(uid).set({
           time: serverTimestamp(),
           author: this.adminID,
+          source: 'scanner',
         });
         this.audioNotPaid.play();
         this.toastNotPaid();

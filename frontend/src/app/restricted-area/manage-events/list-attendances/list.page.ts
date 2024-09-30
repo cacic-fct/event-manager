@@ -32,6 +32,7 @@ import { filterNullish } from 'src/app/shared/services/rxjs.service';
 interface Attendance {
   user: Observable<User>;
   time: Timestamp;
+  source?: 'online' | 'scanner';
   id?: string;
 }
 

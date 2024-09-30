@@ -13,6 +13,7 @@ Caminhos:
 interface Attendance {
   time: Timestamp;
   author: string; // Usuário que coletou a presença. Pode ser o próprio.
+  source?: 'online' | 'scanner';
   id?: string;
 }
 ```

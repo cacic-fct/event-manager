@@ -263,13 +263,15 @@ export class ConfirmAttendancePage {
                 // Escrevendo na coleção 'attendance'
                 this.eventRef.collection('attendance').doc(userID).set({
                   time: serverTimestamp(),
-                  author: 'online',
+                  author: userID,
+                  source: 'online',
                 });
               } else {
                 // Escrevendo na coleção 'non-paying-attendance'
                 this.eventRef.collection('non-paying-attendance').doc(userID).set({
                   time: serverTimestamp(),
-                  author: 'online',
+                  author: userID,
+                  source: 'online',
                 });
               }
             });
@@ -277,7 +279,8 @@ export class ConfirmAttendancePage {
           // Escrevendo na coleção 'attendance'
           this.eventRef.collection('attendance').doc(userID).set({
             time: serverTimestamp(),
-            author: 'online',
+            author: userID,
+            source: 'online',
           });
         }
 
