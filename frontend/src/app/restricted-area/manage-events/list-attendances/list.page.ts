@@ -28,6 +28,8 @@ import {
 } from '@ionic/angular/standalone';
 import { AsyncPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { filterNullish } from 'src/app/shared/services/rxjs.service';
+import { addIcons } from 'ionicons';
+import { checkmarkCircleOutline } from 'ionicons/icons';
 
 interface Attendance {
   user: Observable<User>;
@@ -113,6 +115,10 @@ export class ListPage {
           });
         }),
       );
+
+    addIcons({
+      checkmarkCircleOutline,
+    });
   }
 
   deleteAttendance(attendanceID: string) {
