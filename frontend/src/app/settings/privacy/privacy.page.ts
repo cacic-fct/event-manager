@@ -89,6 +89,9 @@ export class PrivacyPage {
           props: { method: 'button', page: 'privacy-settings', author: `${user.uid || 'anonymous'}` },
         });
       } else {
+        this.plausible.event('Enable analytics', {
+          props: { method: 'button', page: 'privacy-settings', author: `${user.uid || 'anonymous'}` },
+        });
         setupAnalytics();
       }
     });
@@ -104,6 +107,9 @@ export class PrivacyPage {
           props: { method: 'button', page: 'privacy-settings', author: `${user.uid || 'anonymous'}` },
         });
       } else {
+        this.plausible.event('Enable monitoring', {
+          props: { method: 'button', page: 'privacy-settings', author: `${user.uid || 'anonymous'}` },
+        });
         setupAnalytics();
       }
     });
