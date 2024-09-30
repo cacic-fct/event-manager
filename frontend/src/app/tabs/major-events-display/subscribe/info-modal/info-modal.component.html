@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons slot="start">
       <ion-button fill="clear" (click)="closeModal()">
@@ -8,7 +8,7 @@
     <ion-title>Informações</ion-title>
   </ion-toolbar>
 </ion-header>
-<ion-content>
+<ion-content [fullscreen]="true">
   <div class="margin-horizontal-auto content-max-width ion-padding">
     <app-event-header [eventItem]="event" [displayWeather]="false"></app-event-header>
     <app-event-description [eventItem]="event"></app-event-description>

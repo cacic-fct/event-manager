@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons slot="start">
       <ion-button (click)="closeModal()">Fechar</ion-button>
@@ -7,7 +7,7 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content [fullscreen]="true">
   <ng-template #loadingSpinner>
     <ion-spinner name="dots" class="ion-spinner-default"></ion-spinner>
   </ng-template>

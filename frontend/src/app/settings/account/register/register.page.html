@@ -1,10 +1,10 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-title>Informações pessoais</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content [fullscreen]="true">
   <ion-grid>
     <form [formGroup]="dataForm" (ngSubmit)="onSubmit()">
       @if (isUnesp) {

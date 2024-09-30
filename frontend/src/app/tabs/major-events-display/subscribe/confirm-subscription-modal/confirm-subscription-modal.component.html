@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-title>Confirmar inscrição</ion-title>
     <ion-buttons slot="start">
@@ -7,7 +7,7 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content [fullscreen]="true">
   <div class="event-container">
     @if (majorEvent$ | async; as majorEvent) {
       <app-major-event-info-subscription [majorEvent]="majorEvent"></app-major-event-info-subscription>

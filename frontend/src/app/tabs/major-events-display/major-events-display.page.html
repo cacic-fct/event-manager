@@ -1,10 +1,10 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-title>Eventos</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content [fullscreen]="true">
   @if (majorEvents$ | async; as majorEventsList) { @if (majorEventsList.length === 0) {
   <h1 class="ion-text-center">Nenhum evento disponível</h1>
   } @if (majorEventsList.length > 0) {

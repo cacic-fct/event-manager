@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons class="cancel-button-container" slot="start">
       <ion-button (click)="closeModal()">Cancelar</ion-button>
@@ -9,7 +9,7 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content [fullscreen]="true">
   <div class="container">
     <img src="{{ rawImage }}" alt="Comprovante" class="img" />
   </div>

@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons slot="start">
       <ion-button (click)="dismissModal()">Fechar</ion-button>
@@ -10,7 +10,7 @@
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
-<ion-content>
+<ion-content [fullscreen]="true">
   <ion-list>
     <ion-list-header>Cursos</ion-list-header>
     @for (course of courses | keyvalue: originalOrder; track course) {

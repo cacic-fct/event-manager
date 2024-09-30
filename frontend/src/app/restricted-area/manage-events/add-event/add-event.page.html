@@ -1,4 +1,4 @@
-<ion-header>
+<ion-header [translucent]="true">
   <ion-toolbar>
     <ion-title>Adicionar evento</ion-title>
     <ion-buttons slot="start">
@@ -7,7 +7,7 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content [fullscreen]="true">
   <form [formGroup]="dataForm">
     <ion-card-header>
       <ion-card-title>Informações do evento</ion-card-title>

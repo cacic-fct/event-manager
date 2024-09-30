@@ -38,6 +38,7 @@ import {
 } from '@ionic/angular/standalone';
 
 import { AztecScannerComponent } from '../../../shared/components/aztec-scanner/aztec-scanner.component';
+import { EmojiService } from 'src/app/shared/services/emoji.service';
 
 interface Attendance {
   user: Observable<User | undefined>;
@@ -82,6 +83,7 @@ export class ScannerPage implements OnInit {
   @ViewChild('mySwal') mySwal!: SwalComponent;
   @ViewChild('scannerCanvas') scannerCanvas!: HTMLCanvasElement;
 
+  public emojiService = inject(EmojiService);
   private auth: Auth = inject(Auth);
   user$ = user(this.auth);
 
