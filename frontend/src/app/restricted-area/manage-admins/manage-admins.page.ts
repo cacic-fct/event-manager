@@ -148,7 +148,7 @@ export class ManageAdminsPage {
 
   async removeConfirmationAlert(adminEmail: string) {
     const alert = await this.alertController.create({
-      header: 'Desejar remover este admin?',
+      header: 'Deseja remover este admin?',
       message: adminEmail,
       buttons: [
         {
