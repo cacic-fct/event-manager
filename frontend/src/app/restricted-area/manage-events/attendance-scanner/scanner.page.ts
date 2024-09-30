@@ -447,8 +447,8 @@ export class ScannerPage implements OnInit {
           author: this.adminID,
         });
         this.audioNotPaid.play();
-        this.toastSucess();
-        this.backdropColor('success');
+        this.toastNotPaid();
+        this.backdropColor('not-paid');
         this.attendanceSessionScans++;
         return true;
       });
@@ -476,6 +476,17 @@ export class ScannerPage implements OnInit {
       icon: 'checkmark-circle',
       position: 'top',
       duration: 3000,
+    });
+    toast.present();
+  }
+
+  async toastNotPaid() {
+    const toast = await this.toastController.create({
+      header: 'Escaneado com sucesso',
+      message: 'Usuário não pagante',
+      icon: 'checkmark-circle',
+      position: 'top',
+      duration: 5000,
     });
     toast.present();
   }
