@@ -83,15 +83,17 @@
           <ion-label>
             @if ((attendancePerson.user | async); as user) { @if (user.fullName) {
             <h2 class="ion-text-wrap">{{ user.fullName }}</h2>
-            } @if (!user.fullName) {
+            } @else {
             <h2 class="ion-text-wrap">
               <ion-text color="danger">Nome não cadastrado: {{ user.displayName }}</ion-text>
             </h2>
             } @if (user.academicID) {
             <h3 class="ion-text-wrap">{{ courses.getCourse(user.academicID) }} | {{ user.academicID }}</h3>
-            } @else { @if (user.academicID) {
-            <h3 class="ion-text-wrap">Usuário externo</h3>
-            } }
+            } @else {
+
+            <h3 class="ion-text-wrap">Usuário sem RA cadastrado</h3>
+
+            }
             <h3 class="ion-text-wrap">UID: {{ user.uid }}</h3>
             } @else {
             <ion-label>
