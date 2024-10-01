@@ -32,7 +32,7 @@
       </ion-avatar>
       <ion-card-title>
         <h2 class="margin-horizontal-auto">{{ (userFirestore$ | async)?.fullName || user.displayName }}</h2>
-        <p class="margin-horizontal-auto no-margin-bottom font-20">{{ user.email }}</p>
+        <!-- <p class="margin-horizontal-auto no-margin-bottom font-20">{{ user.email }}</p> -->
         @if (user.email.includes('@unesp.br')) { @if ((userFirestore$ | async)?.academicID; as academicID) { @if
         (academicID) {
         <p class="ion-text-wrap no-margin-bottom">Graduação em {{ courses.getCourse(academicID) }}</p>
