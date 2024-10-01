@@ -28,4 +28,10 @@ export const routes: Routes = [
     title: 'Gerenciar eventos',
     loadChildren: () => import('./manage-events/manage-events.routes').then((m) => m.routes),
   },
+  {
+    path: 'leitor-codigo-barras',
+    title: 'Leitor de código de barras',
+    loadComponent: () =>
+      import('../development-tools/barcode-scanner/barcode-scanner.page').then((m) => m.BarcodeScannerPage),
+  },
 ];
