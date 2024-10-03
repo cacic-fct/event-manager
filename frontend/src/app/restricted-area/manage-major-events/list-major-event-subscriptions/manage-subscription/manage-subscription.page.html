@@ -45,14 +45,15 @@
   </ion-card>
   <ion-card>
     <ion-card-header><ion-card-title>Presenças do usuário</ion-card-title></ion-card-header>
-    @for (attendance of eventsUserAttended; track attendance) {
+    @if (eventsUserAttended$ | async; as eventsUserAttended) { @for (attendance of eventsUserAttended; track attendance)
+    {
     <ion-card-content>
       <ion-text color="success">
         <ion-icon name="checkmark-circle-outline" class="alert-icon" aria-hidden="true"></ion-icon>
         <span class="alert-text"> O usuário compareceu ao evento {{ attendance }}. </span>
       </ion-text>
     </ion-card-content>
-    } @for (attendance of eventsUserAttendedNotPaying; track attendance) {
+    } }@for (attendance of eventsUserAttendedNotPaying$ | async; track attendance) {
     <ion-card-content>
       <ion-text color="danger">
         <ion-icon name="warning-outline" class="alert-icon" aria-hidden="true"></ion-icon>
@@ -76,7 +77,7 @@
         <h2>Para inscrições com comprovante já validado</h2>
         <ion-button color="danger" (click)="forceSubscriptionEdit()">
           <ion-icon name="pencil" slot="start"></ion-icon>
-          <ion-label>Exigir edição dos eventos, mantendo comprovante enviado</ion-label>
+          <ion-label>Exigir edição dos eventos, mantendo comprovante enviado na fila</ion-label>
         </ion-button>
         <p>Deleta todas as inscrições e libera a vaga dos eventos</p>
       </div>
