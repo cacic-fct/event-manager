@@ -199,9 +199,9 @@ export class ManageSubscriptionPage {
           this.afs
             .doc<EventItem>(`events/${event}`)
             .update({
-              // @ts-expect-error - asd
+              // @ts-expect-error - This works
               slotsAvailable: increment(1),
-              // @ts-expect-error - asd
+              // @ts-expect-error -  This works
               numberOfSubscriptions: increment(-1),
             })
             .then(() => this.afs.doc<EventItem>(`events/${event}/subscriptions/${this.subscriptionID}`).delete()),
@@ -243,9 +243,9 @@ export class ManageSubscriptionPage {
                 this.afs
                   .doc<EventItem>(`events/${event}`)
                   .update({
-                    // @ts-expect-error - asd
+                    // @ts-expect-error - This works
                     slotsAvailable: increment(1),
-                    // @ts-expect-error - asd
+                    // @ts-expect-error - This works
                     numberOfSubscriptions: increment(-1),
                   })
                   .then(() => this.afs.doc<EventItem>(`events/${event}/subscriptions/${this.subscriptionID}`).delete()),
