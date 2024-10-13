@@ -1,5 +1,8 @@
 # FCT App
 
+> [!CAUTION]  
+> O FCT App foi descontinuado em 08/10/2024. Leia a discussão [#182](https://github.com/cacic-fct/fct-app/discussions/182#discussioncomment-10927548) para entender as motivações e ponderar sobre a possibilidade de continuar o desenvolvimento do projeto ou de outro similar.
+
 [![Documentation](https://img.shields.io/badge/documentation-blue)](https://docs.fctapp.cacic.dev.br)
 [![Front end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/frontend-ci.yml?branch=main&logo=github&label=front%20end%20build)](https://github.com/cacic-fct/fct-app/actions)
 [![Back end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/backend-ci.yml?branch=main&logo=github&label=back%20end%20build)](https://github.com/cacic-fct/fct-app/actions)
@@ -8,9 +11,6 @@
 [![License](https://img.shields.io/badge/license-AGPL–3.0–only-red)](https://github.com/cacic-fct/fct-app/blob/main/License.txt)
 
 O "FCT App" facilita a vida dos alunos da FCT, com o acesso aos eventos do câmpus. Tem alto potencial de expansão.
-
-> [!WARNING]  
-> Leia as discussões sobre migrar do Firebase para uma hospedagem própria ([#182](https://github.com/cacic-fct/fct-app/discussions/182)) antes de desenvolver um recurso novo.
 
 ## Contribuindo
 
