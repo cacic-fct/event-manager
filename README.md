@@ -1,7 +1,7 @@
 # FCT App
 
 > [!CAUTION]  
-> O FCT App foi descontinuado em 08/10/2024. Leia a discussão [#182](https://github.com/cacic-fct/fct-app/discussions/182#discussioncomment-10927548) para entender as motivações e ponderar sobre a possibilidade de continuar o desenvolvimento do projeto ou de outro similar.
+> O FCT App foi descontinuado em 08/10/2024. Leia a discussão [#182](https://github.com/cacic-fct/fct-app/discussions/182#discussioncomment-10927548) para entender as motivações e para ponderar sobre a possibilidade de continuar o desenvolvimento do projeto ou de outro similar.
 
 [![Documentation](https://img.shields.io/badge/documentation-blue)](https://docs.fctapp.cacic.dev.br)
 [![Front end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/fct-app/frontend-ci.yml?branch=main&logo=github&label=front%20end%20build)](https://github.com/cacic-fct/fct-app/actions)
