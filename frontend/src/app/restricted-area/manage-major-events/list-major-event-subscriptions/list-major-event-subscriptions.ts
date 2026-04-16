@@ -1,16 +1,27 @@
-import { Component, inject, ViewChild } from '@angular/core';
-import { Firestore, collection, collectionData, docData, doc, query, orderBy } from '@angular/fire/firestore';
-import { trace } from '@angular/fire/compat/performance';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
-import { SwalComponent, SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
-import { fromUnixTime } from 'date-fns';
-import { Timestamp } from '@angular/fire/firestore';
-import { map, Observable, take, forkJoin, shareReplay } from 'rxjs';
-import { User } from 'src/app/shared/services/user';
-import { CoursesService } from 'src/app/shared/services/courses.service';
-import { MajorEventSubscription, MajorEventItem } from '../../../shared/services/major-event.service';
-import { DateService } from 'src/app/shared/services/date.service';
+import { Component, inject, ViewChild } from "@angular/core";
+import {
+  Firestore,
+  collection,
+  collectionData,
+  docData,
+  doc,
+  query,
+  orderBy,
+} from "@angular/fire/firestore";
+import { trace } from "@angular/fire/compat/performance";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
+import { UntilDestroy, untilDestroyed } from "@ngneat/until-destroy";
+import { SwalComponent, SweetAlert2Module } from "@sweetalert2/ngx-sweetalert2";
+import { fromUnixTime } from "date-fns";
+import { Timestamp } from "@angular/fire/firestore";
+import { firstValueFrom, map, Observable, take, shareReplay } from "rxjs";
+import { User } from "src/app/shared/services/user";
+import { CoursesService } from "src/app/shared/services/courses.service";
+import {
+  MajorEventSubscription,
+  MajorEventItem,
+} from "../../../shared/services/major-event.service";
+import { DateService } from "src/app/shared/services/date.service";
 
 import {
   IonHeader,
@@ -26,8 +37,8 @@ import {
   IonProgressBar,
   IonSpinner,
   IonRouterLink,
-} from '@ionic/angular/standalone';
-import { AsyncPipe, DatePipe, DecimalPipe } from '@angular/common';
+} from "@ionic/angular/standalone";
+import { AsyncPipe, DatePipe, DecimalPipe } from "@angular/common";
 
 interface Subscription extends MajorEventSubscription {
   id: string;
@@ -36,9 +47,9 @@ interface Subscription extends MajorEventSubscription {
 }
 @UntilDestroy()
 @Component({
-  selector: 'app-list-subscriptions',
-  templateUrl: './list-major-event-subscriptions.html',
-  styleUrls: ['./list-major-event-subscriptions.scss'],
+  selector: "app-list-subscriptions",
+  templateUrl: "./list-major-event-subscriptions.html",
+  styleUrls: ["./list-major-event-subscriptions.scss"],
   standalone: true,
   imports: [
     IonRouterLink,
@@ -62,7 +73,7 @@ interface Subscription extends MajorEventSubscription {
   ],
 })
 export class ListMajorEventSubscriptionsPage {
-  @ViewChild('mySwal')
+  @ViewChild("mySwal")
   private mySwal!: SwalComponent;
 
   private firestore: Firestore = inject(Firestore);
@@ -78,38 +89,46 @@ export class ListMajorEventSubscriptionsPage {
     private router: Router,
     private route: ActivatedRoute,
     public courses: CoursesService,
-    public dateService: DateService,
+    public dateService: DateService
   ) {
-    this.eventID = this.route.snapshot.params['eventID'];
+    this.eventID = this.route.snapshot.params["eventID"];
 
-    const docRef = doc(this.firestore, 'majorEvents', this.eventID);
+    const docRef = doc(this.firestore, "majorEvents", this.eventID);
     this.event$ = docData(docRef) as Observable<MajorEventItem>;
 
-    this.event$.pipe(untilDestroyed(this), trace('firestore')).subscribe((document) => {
-      if (!document) {
-        this.mySwal.fire();
-        setTimeout(() => {
-          this.router.navigate(['area-restrita/gerenciar-grandes-eventos']);
-          this.mySwal.close();
-        }, 1000);
-      }
-    });
+    this.event$
+      .pipe(untilDestroyed(this), trace("firestore"))
+      .subscribe((document) => {
+        if (!document) {
+          this.mySwal.fire();
+          setTimeout(() => {
+            this.router.navigate(["area-restrita/gerenciar-grandes-eventos"]);
+            this.mySwal.close();
+          }, 1000);
+        }
+      });
 
-    const colRef = collection(this.firestore, `majorEvents/${this.eventID}/subscriptions`);
+    const colRef = collection(
+      this.firestore,
+      `majorEvents/${this.eventID}/subscriptions`
+    );
 
-    const colData = collectionData(query(colRef, orderBy('time')), { idField: 'id' }) as Observable<Subscription[]>;
+    const colData = collectionData(query(colRef, orderBy("time")), {
+      idField: "id",
+    }) as Observable<Subscription[]>;
 
     this.subscriptions$ = colData.pipe(
       untilDestroyed(this),
-      trace('firestore'),
+      trace("firestore"),
       map((subscription) =>
         subscription.map((item) => ({
           ...item,
-          user: docData(doc(this.firestore, 'users', item.id)).pipe(take(1), shareReplay(1)) as Observable<
-            User | undefined
-          >,
-        })),
-      ),
+          user: docData(doc(this.firestore, "users", item.id)).pipe(
+            take(1),
+            shareReplay(1)
+          ) as Observable<User | undefined>,
+        }))
+      )
     );
   }
 
@@ -117,192 +136,181 @@ export class ListMajorEventSubscriptionsPage {
     return fromUnixTime(timestamp.seconds);
   }
 
-  generateCSV() {
+  async generateCSV() {
     this.disableCSVDownloadButton = true;
 
     const csv: (string | number | undefined)[][] = [];
     const headers = [
-      'UID',
-      'Nome da conta Google',
-      'Nome completo',
-      'Vínculo com a Unesp',
-      'RA',
-      'Email',
-      'Código do status do pagamento',
-      'Status do pagamento',
-      'Data da última alteração no pagamento locale',
-      'Data da última alteração no pagamento ISO',
-      'Data da inscrição locale',
-      'Data da inscrição ISO',
-      'Inscreveu-se nos eventos com ID',
-      'Inscreveu-se nos eventos com nome',
+      "UID",
+      "Nome da conta Google",
+      "Nome completo",
+      "Vínculo com a Unesp",
+      "CPF",
+      "RA",
+      "Email",
+      "Código do status do pagamento",
+      "Status do pagamento",
+      "Data da última alteração no pagamento locale",
+      "Data da última alteração no pagamento ISO",
+      "Data da inscrição locale",
+      "Data da inscrição ISO",
+      "Inscreveu-se nos eventos com ID",
+      "Inscreveu-se nos eventos com nome",
     ];
     csv.push(headers);
 
-    this.subscriptions$.pipe(take(1)).subscribe((subscriptions) => {
-      const majorEventDoc = doc(this.firestore, 'majorEvents', this.eventID);
-      const majorEventData = docData(majorEventDoc) as Observable<MajorEventItem | undefined>;
+    try {
+      const subscriptions = await firstValueFrom(
+        this.subscriptions$.pipe(take(1))
+      );
+      const majorEventDoc = doc(this.firestore, "majorEvents", this.eventID);
+      const majorEvent = (await firstValueFrom(
+        docData(majorEventDoc).pipe(take(1))
+      )) as MajorEventItem | undefined;
 
-      majorEventData.pipe(take(1)).subscribe((event) => {
-        if (!event) {
-          return;
-        }
+      if (!majorEvent) {
+        return;
+      }
 
-        const events: Observable<MajorEventItem | undefined>[] = [];
+      const eventNames: Record<string, string> = {};
+      await Promise.all(
+        majorEvent.events.map(async (eventID) => {
+          const event = (await firstValueFrom(
+            docData(doc(this.firestore, "events", eventID), {
+              idField: "id",
+            }).pipe(take(1))
+          )) as MajorEventItem | undefined;
 
-        const eventNames: Record<string, string> = {};
+          if (event?.id) {
+            eventNames[event.id] = event.name.replace(/[",;]/g, "");
+          }
+        })
+      );
 
-        event.events.forEach((event) => {
-          events.push(
-            (
-              docData(doc(this.firestore, 'events', event), { idField: 'id' }) as Observable<MajorEventItem | undefined>
-            ).pipe(take(1)),
-          );
-        });
+      await Promise.all(
+        subscriptions.map(async (item) => {
+          const user = (await firstValueFrom(
+            docData(doc(this.firestore, "users", item.id)).pipe(take(1))
+          )) as User | undefined;
 
-        const eventsArray: Observable<(MajorEventItem | undefined)[]> = forkJoin(events);
+          let status = "Status não cadastrado";
 
-        eventsArray.pipe(take(1)).subscribe((events) => {
-          events.forEach((event) => {
-            if (!event || !event.id) {
-              return;
-            }
+          switch (item.payment.status) {
+            case 0:
+              status = "Aguardando envio do comprovante";
+              break;
+            case 1:
+              status = "Comprovante em análise";
+              break;
+            case 2:
+              status = "Pago e validado";
+              break;
+            case 3:
+              status = "Devolvido por erro no comprovante";
+              break;
+            case 4:
+              status = "Devolvido por falta de vagas";
+              break;
+            case 5:
+              status = "Devolvido por choque de horário";
+              break;
+          }
 
-            eventNames[event.id] = event.name.replace(/[",;]/g, '');
+          let subscribedToEventsNames = "";
+
+          item.subscribedToEvents.forEach((eventID) => {
+            subscribedToEventsNames += '""' + eventNames[eventID] + '""; ';
           });
 
-          subscriptions.forEach((item) => {
-            const user = docData(doc(this.firestore, 'users', item.id)) as Observable<User | undefined>;
+          if (!user) {
+            csv.push([
+              item.id,
+              "Usuário não encontrado",
+              "",
+              "",
+              "",
+              "",
+              item.payment.status,
+              status,
+              this.getDateFromTimestamp(item.payment.time)
+                .toLocaleString("pt-BR", {
+                  timeZone: "America/Sao_Paulo",
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })
+                .replace(/[",;]/g, ""),
+              this.getDateFromTimestamp(item.payment.time).toISOString(),
+              this.getDateFromTimestamp(item.time)
+                .toLocaleString("pt-BR", {
+                  timeZone: "America/Sao_Paulo",
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })
+                .replace(/[",;]/g, ""),
+              this.getDateFromTimestamp(item.time).toISOString(),
+              item.subscribedToEvents.join("; "),
+              subscribedToEventsNames,
+            ]);
+            return;
+          }
 
-            user.pipe(take(1)).subscribe((user) => {
-              let status = 'Status não cadastrado';
+          csv.push([
+            user.uid,
+            user.displayName,
+            user.fullName || "",
+            user.associateStatus || "",
+            user.cpf || "",
+            user.academicID || "Sem RA cadastrado",
+            user.email || "",
+            item.payment.status,
+            status,
+            this.getDateFromTimestamp(item.payment.time)
+              .toLocaleString("pt-BR", {
+                timeZone: "America/Sao_Paulo",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })
+              .replace(/[",;]/g, ""),
+            this.getDateFromTimestamp(item.payment.time).toISOString(),
+            this.getDateFromTimestamp(item.time)
+              .toLocaleString("pt-BR", {
+                timeZone: "America/Sao_Paulo",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })
+              .replace(/[",;]/g, ""),
+            this.getDateFromTimestamp(item.time).toISOString(),
+            item.subscribedToEvents.join("; "),
+            subscribedToEventsNames,
+          ]);
+        })
+      );
 
-              switch (item.payment.status) {
-                case 0:
-                  status = 'Aguardando envio do comprovante';
-                  break;
-                case 1:
-                  status = 'Comprovante em análise';
-                  break;
-                case 2:
-                  status = 'Pago e validado';
-                  break;
-                case 3:
-                  status = 'Devolvido por erro no comprovante';
-                  break;
-                case 4:
-                  status = 'Devolvido por falta de vagas';
-                  break;
-                case 5:
-                  status = 'Devolvido por choque de horário';
-                  break;
-              }
-
-              let subscribedToEventsNames = '';
-
-              item.subscribedToEvents.forEach((eventID) => {
-                subscribedToEventsNames += '""' + eventNames[eventID] + '""; ';
-              });
-
-              if (!user) {
-                const row = [
-                  item.id,
-                  'Usuário não encontrado',
-                  '',
-                  '',
-                  '',
-                  '',
-                  item.payment.status,
-                  status,
-                  this.getDateFromTimestamp(item.payment.time)
-                    .toLocaleString('pt-BR', {
-                      timeZone: 'America/Sao_Paulo',
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })
-                    .replace(/[",;]/g, ''),
-
-                  this.getDateFromTimestamp(item.payment.time).toISOString(),
-
-                  this.getDateFromTimestamp(item.time)
-                    .toLocaleString('pt-BR', {
-                      timeZone: 'America/Sao_Paulo',
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })
-                    .replace(/[",;]/g, ''),
-
-                  this.getDateFromTimestamp(item.time).toISOString(),
-
-                  item.subscribedToEvents.join('; '),
-                  subscribedToEventsNames,
-                ];
-                csv.push(row);
-                return;
-              }
-
-              const row = [
-                user.uid,
-                user.displayName,
-                user.fullName || '',
-                user.associateStatus || '',
-                user.academicID || 'Sem RA cadastrado',
-                user.email || '',
-                item.payment.status,
-                status,
-
-                this.getDateFromTimestamp(item.payment.time)
-                  .toLocaleString('pt-BR', {
-                    timeZone: 'America/Sao_Paulo',
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  })
-                  .replace(/[",;]/g, ''),
-
-                this.getDateFromTimestamp(item.payment.time).toISOString(),
-
-                this.getDateFromTimestamp(item.time)
-                  .toLocaleString('pt-BR', {
-                    timeZone: 'America/Sao_Paulo',
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  })
-                  .replace(/[",;]/g, ''),
-
-                this.getDateFromTimestamp(item.time).toISOString(),
-
-                item.subscribedToEvents.join('; '),
-                subscribedToEventsNames,
-              ];
-              csv.push(row);
-            });
-          });
-          this.event$.pipe(take(1)).subscribe((event) => {
-            const csvString = csv.map((row) => row.join(',')).join('\n');
-            const a = document.createElement('a');
-            a.href = window.URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
-            a.download = `${event.name}_${new Date().toISOString()}.csv`;
-            a.click();
-            this.disableCSVDownloadButton = false;
-          });
-        });
-      });
-    });
+      const csvString = csv.map((row) => row.join(",")).join("\n");
+      const a = document.createElement("a");
+      a.href = window.URL.createObjectURL(
+        new Blob([csvString], { type: "text/csv" })
+      );
+      a.download = `${majorEvent.name}_${new Date().toISOString()}.csv`;
+      a.click();
+    } finally {
+      this.disableCSVDownloadButton = false;
+    }
   }
 }
