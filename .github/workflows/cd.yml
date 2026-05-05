@@ -24,7 +24,7 @@ env:
 jobs:
   publish:
     name: Publish app images
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
