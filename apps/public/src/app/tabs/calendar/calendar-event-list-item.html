@@ -1,0 +1,24 @@
+<a
+  mat-list-item
+  [routerLink]="['/event', event().id]"
+  [queryParams]="{ returnUrl: returnUrl() }"
+  [attr.aria-label]="'Abrir evento ' + event().name"
+>
+  <div matListItemIcon class="emoji-frame">
+    <img
+      class="twemoji"
+      [src]="emoji.getTwemojiUrl(event().emoji)"
+      [alt]="event().emoji"
+    />
+  </div>
+  <div matListItemTitle>{{ event().name }}</div>
+  <div matListItemLine>{{ contextLine() }}</div>
+  @if (event().locationDescription) {
+  <div matListItemLine>{{ event().locationDescription }}</div>
+  }
+  <div matListItemMeta class="time-range">
+    <span>{{ event().startDate | date: 'HH:mm' }}</span>
+    <br />
+    <span>{{ event().endDate | date: 'HH:mm' }}</span>
+  </div>
+</a>

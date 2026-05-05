@@ -1,0 +1,133 @@
+:host {
+  display: block;
+}
+
+.bottom-toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  height: auto;
+  overflow: scroll hidden;
+}
+
+.bottom-toolbar .inner {
+  width: 100%;
+  max-width: 980px;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 6px 18px rgba(18, 18, 18, 0.06);
+}
+
+.nav-btn {
+  min-width: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  gap: 0.125rem;
+  text-transform: none;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border-radius: 0.375rem;
+  color: var(--mat-sys-on-surface);
+}
+
+.icon-wrap {
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  border-radius: 1.125rem;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  transition: box-shadow 180ms;
+  margin: 0 auto;
+}
+
+.mat-icon {
+  font-size: 1.4rem;
+
+  color: var(--mat-sys-on-surface, currentColor);
+  z-index: 2;
+  display: block;
+  margin: 0;
+  line-height: 1;
+}
+
+.label {
+  display: block;
+  line-height: 1;
+  text-align: center;
+}
+
+@media (max-width: 380px) {
+  .label {
+    display: none;
+  }
+}
+
+.nav-btn {
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 140ms ease;
+}
+
+.nav-btn.active .icon-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 1.125rem;
+  background: var(--mat-sys-primary);
+  opacity: 0.16;
+  z-index: 1;
+}
+
+.nav-btn.active .mat-icon {
+  color: var(--mat-sys-primary);
+  transform: none;
+}
+
+.nav-btn.active .label {
+  color: var(--mat-sys-on-surface);
+}
+
+.icon-wrap:focus-visible {
+  outline: 2px solid var(--mat-sys-primary, rgba(103, 80, 164, 0.9));
+  outline-offset: 2px;
+  border-radius: 1.125rem;
+  box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.18);
+}
+
+// Material overrides
+.nav-btn.mat-mdc-button {
+  min-width: auto;
+  line-height: normal;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}

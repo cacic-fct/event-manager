@@ -1,0 +1,130 @@
+<section class="section workspace-tab-shell">
+  <header class="tab-header">
+    <div>
+      <h2>Duplicidades de pessoas</h2>
+      <p>Revise possíveis cadastros repetidos antes de unificar pessoas.</p>
+    </div>
+
+    <div class="summary-grid" aria-label="Resumo de duplicidades">
+      <div class="summary-item">
+        <span class="summary-value">
+          {{ workspace.mergeCandidates().length }}
+        </span>
+        <span class="summary-label">pares</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="panel panel-stack">
+    <div class="panel-heading">
+      <div>
+        <h3>Candidatos</h3>
+        <p>Filtre por status e rode uma nova varredura quando necessário.</p>
+      </div>
+
+      <form [formGroup]="workspace.mergeFilterForm" class="compact-form">
+        <mat-form-field>
+          <mat-label>Status</mat-label>
+          <mat-select formControlName="status">
+            <mat-option value="PENDING">Pendente</mat-option>
+            <mat-option value="MERGED">Unificada</mat-option>
+            <mat-option value="REJECTED">Rejeitada</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="workspace.refreshMergeCandidates()"
+        >
+          <mat-icon>refresh</mat-icon>
+          Atualizar
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="!permissions.canEdit('merge-candidate#edit')"
+          (click)="workspace.scanMergeCandidates()"
+        >
+          <mat-icon>find_replace</mat-icon>
+          Verificar
+        </button>
+      </form>
+    </div>
+
+    <mat-list class="detail-list">
+      @for (candidate of workspace.mergeCandidates(); track candidate.id) {
+        <mat-list-item>
+          <span matListItemTitle>
+            {{ candidate.personA?.name }} ↔ {{ candidate.personB?.name }}
+          </span>
+          <span matListItemLine>
+            Método: {{ describeMergeMatchMethod(candidate.matchMethod) }}
+            @if (candidate.matchValue) {
+              · "{{ candidate.matchValue }}"
+            }
+            · Pontuação: {{ candidate.score ?? '-' }} ·
+            {{ describeMergeStatus(candidate.status) }}
+          </span>
+          @if (candidate.status === 'PENDING') {
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="
+                !permissions.canEdit('merge-candidate#edit', 'person#edit')
+              "
+              (click)="workspace.mergeCandidate(candidate)"
+            >
+              <mat-icon>call_merge</mat-icon>
+              Unificar
+            </button>
+            <button
+              mat-button
+              type="button"
+              [disabled]="!permissions.canEdit('merge-candidate#edit')"
+              (click)="workspace.setMergeCandidateStatus(candidate, 'REJECTED')"
+            >
+              <mat-icon>block</mat-icon>
+              Rejeitar
+            </button>
+          } @else if (candidate.status === 'MERGED') {
+            <button
+              mat-button
+              type="button"
+              [disabled]="
+                !permissions.canEdit('merge-candidate#edit', 'person#edit')
+              "
+              (click)="workspace.undoMergeCandidate(candidate)"
+            >
+              <mat-icon>undo</mat-icon>
+              Desfazer
+            </button>
+          } @else {
+            <button
+              mat-button
+              type="button"
+              [disabled]="!permissions.canEdit('merge-candidate#edit')"
+              (click)="workspace.setMergeCandidateStatus(candidate, 'PENDING')"
+            >
+              <mat-icon>replay</mat-icon>
+              Reabrir
+            </button>
+          }
+          <button
+            mat-button
+            type="button"
+            [disabled]="!permissions.canDelete('merge-candidate#delete')"
+            (click)="workspace.deleteMergeCandidate(candidate)"
+          >
+            <mat-icon>delete</mat-icon>
+            Excluir
+          </button>
+        </mat-list-item>
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>Nenhum candidato neste status</span>
+          <span matListItemLine>Atualize ou rode uma nova verificação.</span>
+        </mat-list-item>
+      }
+    </mat-list>
+  </section>
+</section>

@@ -1,0 +1,256 @@
+<section class="section workspace-tab-shell">
+  <header class="tab-header">
+    <div>
+      <h2>Grupos de eventos</h2>
+      <p>Conjuntos de atividades para certificados e regras compartilhadas.</p>
+    </div>
+
+    <div class="summary-grid" aria-label="Resumo de grupos">
+      <div class="summary-item">
+        <span class="summary-value">{{ workspace.eventGroups().length }}</span>
+        <span class="summary-label">grupos</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-value">{{
+          workspace.eventGroupEvents().length
+        }}</span>
+        <span class="summary-label">eventos no grupo</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="tab-grid">
+    <aside class="panel">
+      <div class="panel-heading">
+        <div>
+          <h3>Lista</h3>
+          <p>Selecione um grupo para ajustar composição e emissão.</p>
+        </div>
+
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="workspace.startNewEventGroup()"
+        >
+          <mat-icon>add</mat-icon>
+          Novo
+        </button>
+      </div>
+
+      <mat-list class="result-list">
+        @for (group of workspace.eventGroups(); track group.id) {
+          <mat-list-item
+            (click)="workspace.pickEventGroup(group)"
+            [class.selected-list-item]="
+              workspace.selectedEventGroup()?.id === group.id
+            "
+          >
+            <span matListItemTitle class="list-title">
+              <app-twemoji [emoji]="group.emoji" />
+              <span>{{ group.name }}</span>
+            </span>
+            <span matListItemLine>
+              @if (group.shouldIssueCertificate) {
+                {{
+                  group.shouldIssuePartialCertificate
+                    ? 'Certificado parcial permitido'
+                    : 'Exige todos os eventos'
+                }}
+              } @else {
+                Sem emissão de certificado
+              }
+            </span>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Editar grupo"
+              matTooltip="Editar"
+              (click)="
+                $event.stopPropagation(); workspace.pickEventGroup(group)
+              "
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Excluir grupo"
+              matTooltip="Excluir"
+              [disabled]="!permissions.canDelete('event#delete')"
+              (click)="
+                $event.stopPropagation(); workspace.deleteEventGroup(group.id)
+              "
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            <span matListItemTitle>Nenhum grupo cadastrado</span>
+            <span matListItemLine>Crie um grupo para organizar eventos.</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    </aside>
+
+    <section class="panel panel-stack">
+      <div class="panel-heading">
+        <div>
+          <h3>
+            @if (workspace.selectedEventGroup()) {
+              Editar grupo
+            } @else {
+              Novo grupo
+            }
+          </h3>
+          <p>
+            @if (workspace.selectedEventGroup()) {
+              {{ workspace.selectedEventGroup()?.name }}
+            } @else {
+              Configure o nome e as regras de certificado.
+            }
+          </p>
+        </div>
+
+        <div class="panel-actions">
+          <button
+            mat-button
+            type="button"
+            (click)="workspace.startNewEventGroup()"
+          >
+            <mat-icon>restart_alt</mat-icon>
+            Limpar
+          </button>
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="!permissions.canEdit('event#edit')"
+            (click)="workspace.saveEventGroup()"
+          >
+            <mat-icon>save</mat-icon>
+            Salvar
+          </button>
+        </div>
+      </div>
+
+      <form [formGroup]="workspace.eventGroupForm" class="surface field-group">
+        <h4>Detalhes</h4>
+        <div class="field-grid">
+          <mat-form-field>
+            <mat-label>Nome</mat-label>
+            <input matInput formControlName="name" />
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Emoji</mat-label>
+            <app-twemoji
+              matPrefix
+              [emoji]="workspace.eventGroupForm.controls.emoji.value"
+            />
+            <input matInput formControlName="emoji" maxlength="16" />
+          </mat-form-field>
+        </div>
+        <div class="checkbox-grid">
+          <mat-checkbox formControlName="shouldIssueCertificate">
+            Emitir certificado
+          </mat-checkbox>
+          <mat-checkbox formControlName="shouldIssueCertificateForEachEvent">
+            Um certificado por evento
+          </mat-checkbox>
+          <mat-checkbox formControlName="shouldIssuePartialCertificate">
+            Permitir certificado parcial
+          </mat-checkbox>
+        </div>
+      </form>
+
+      @if (workspace.selectedEventGroup()) {
+        <section class="surface field-group">
+          <div class="surface-heading">
+            <h4>Eventos do grupo</h4>
+            <span>{{ workspace.eventGroupEvents().length }} vinculados</span>
+          </div>
+
+          <mat-list class="detail-list">
+            @for (
+              eventItem of workspace.eventGroupEvents();
+              track eventItem.id
+            ) {
+              <mat-list-item>
+                <span matListItemTitle class="list-title">
+                  <app-twemoji [emoji]="eventItem.emoji" />
+                  <span>{{ eventItem.name }}</span>
+                </span>
+                <span matListItemLine>
+                  {{ eventItem.startDate | date: 'short' }} -
+                  {{ eventItem.endDate | date: 'short' }}
+                </span>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Remover evento do grupo"
+                  matTooltip="Remover"
+                  [disabled]="!permissions.canEdit('event#edit')"
+                  (click)="workspace.removeEventFromSelectedGroup(eventItem)"
+                >
+                  <mat-icon>link_off</mat-icon>
+                </button>
+              </mat-list-item>
+            } @empty {
+              <mat-list-item>
+                <span matListItemTitle>Nenhum evento vinculado</span>
+                <span matListItemLine>Busque abaixo para adicionar.</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        </section>
+
+        <section class="surface field-group">
+          <h4>Adicionar eventos</h4>
+          <form
+            [formGroup]="workspace.eventGroupEventSearchForm"
+            class="compact-form"
+          >
+            <mat-form-field>
+              <mat-label>Buscar eventos por nome</mat-label>
+              <input matInput formControlName="query" />
+            </mat-form-field>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.searchEventsForSelectedGroup()"
+            >
+              <mat-icon>search</mat-icon>
+              Buscar
+            </button>
+          </form>
+
+          <div class="inline-list">
+            @for (
+              eventItem of workspace.eventGroupEventSearchResults();
+              track eventItem.id
+            ) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!permissions.canEdit('event#edit')"
+                (click)="workspace.addEventToSelectedGroup(eventItem)"
+              >
+                <app-twemoji [emoji]="eventItem.emoji" />
+                {{ eventItem.name }}
+                {{ eventItem.startDate | date: 'shortDate' }}
+              </button>
+            } @empty {
+              <span class="empty-note">Nenhum resultado para adicionar.</span>
+            }
+          </div>
+        </section>
+      } @else {
+        <div class="empty-state">
+          <mat-icon>inventory_2</mat-icon>
+          <h3>Salve ou selecione um grupo</h3>
+          <p>Os eventos vinculados aparecem aqui.</p>
+        </div>
+      }
+    </section>
+  </div>
+</section>

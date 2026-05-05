@@ -1,0 +1,61 @@
+<mat-toolbar>
+  <a mat-icon-button routerLink="/menu" aria-label="Voltar para o menu">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+</mat-toolbar>
+
+<div class="global-container">
+  <header class="page-header">
+    <p class="global-eyebrow">Sobre</p>
+    <h1>CACiC Eventos</h1>
+  </header>
+
+  <main>
+    <mat-nav-list>
+      <a mat-list-item href="https://github.com/cacic-fct/cacic-eventos">
+        <mat-icon matListItemIcon>commit</mat-icon>
+        <span matListItemTitle>Repositório</span>
+        <div matListItemMeta>
+          <mat-icon>arrow_outward</mat-icon>
+        </div>
+      </a>
+      <a mat-list-item href="https://docs.fctapp.cacic.dev.br">
+        <mat-icon matListItemIcon>article</mat-icon>
+        <span matListItemTitle>Documentação</span>
+        <div matListItemMeta>
+          <mat-icon>arrow_outward</mat-icon>
+        </div>
+      </a>
+      <a
+        mat-list-item
+        href="https://github.com/cacic-fct/cacic-eventos/contributors"
+      >
+        <mat-icon matListItemIcon>groups</mat-icon>
+        <span matListItemTitle>Contribuidores</span>
+        <div matListItemMeta>
+          <mat-icon>arrow_outward</mat-icon>
+        </div>
+      </a>
+    </mat-nav-list>
+
+    <mat-nav-list>
+      <mat-list-item>
+        <mat-icon matListItemIcon>info</mat-icon>
+        <div matListItemTitle>Versão</div>
+        <div matListItemLine>PLACEHOLDER</div>
+      </mat-list-item>
+      <a mat-list-item>
+        <mat-icon matListItemIcon>handyman</mat-icon>
+        <div matListItemTitle>Service Worker</div>
+        <div matListItemLine>
+          {{ serviceWorkerService.hasServiceWorker() ? 'Disponível' :
+          'Indisponível' }}
+        </div>
+      </a>
+      <a mat-list-item routerLink="./legal">
+        <mat-icon matListItemIcon>gavel</mat-icon>
+        <div matListItemTitle>Legal</div>
+      </a>
+    </mat-nav-list>
+  </main>
+</div>

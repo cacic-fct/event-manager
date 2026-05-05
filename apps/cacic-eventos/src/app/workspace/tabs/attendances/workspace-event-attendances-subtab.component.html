@@ -1,0 +1,190 @@
+<section class="subtab-layout event-attendance-layout">
+  <aside class="panel event-browser">
+    <div class="panel-heading">
+      <div>
+        <h3>Eventos</h3>
+        <p>Filtre por nome, data e vínculo antes de registrar presenças.</p>
+      </div>
+    </div>
+
+    <app-event-filter-panel
+      [form]="workspace.attendanceEventFiltersForm"
+      applyLabel="Buscar"
+      resetLabel="Limpar"
+      (applyFilters)="workspace.searchAttendanceEvents()"
+      (resetFilters)="workspace.resetAttendanceEventFilters()"
+    />
+
+    <mat-list class="event-result-list">
+      @for (
+        eventItem of workspace.attendanceEventResults();
+        track eventItem.id
+      ) {
+        <mat-list-item
+          (click)="workspace.selectAttendanceEvent(eventItem)"
+          [class.selected-list-item]="
+            workspace.selectedAttendanceEvent()?.id === eventItem.id
+          "
+        >
+          <span matListItemTitle class="list-title">
+            <app-twemoji [emoji]="eventItem.emoji" />
+            <span>{{ eventItem.name }}</span>
+          </span>
+          <span matListItemLine>
+            {{ eventItem.startDate | date: 'short' }} ·
+            {{ describeEventType(eventItem.type) }}
+          </span>
+        </mat-list-item>
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>Nenhum evento encontrado</span>
+          <span matListItemLine>Ajuste os filtros e tente novamente.</span>
+        </mat-list-item>
+      }
+    </mat-list>
+  </aside>
+
+  <section class="panel attendance-workbench">
+    <div class="panel-heading">
+      <div>
+        <h3>
+          @if (workspace.selectedAttendanceEvent()) {
+            <app-twemoji [emoji]="workspace.selectedAttendanceEvent()?.emoji" />
+            {{ workspace.selectedAttendanceEvent()?.name }}
+          } @else {
+            Selecione um evento
+          }
+        </h3>
+        <p>
+          @if (workspace.selectedAttendanceEvent()) {
+            {{
+              workspace.selectedAttendanceEvent()?.startDate | date: 'medium'
+            }}
+          } @else {
+            A lista de presença e os registros manuais aparecem aqui.
+          }
+        </p>
+      </div>
+
+      <input
+        #csvInput
+        hidden
+        type="file"
+        accept=".csv,text/csv"
+        (change)="
+          workspace.importAttendancesFromCsv(
+            $any($event.target).files?.[0] ?? null
+          );
+          csvInput.value = ''
+        "
+      />
+      <div class="panel-actions">
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="!workspace.selectedAttendanceEvent()"
+          (click)="
+            workspace.loadAttendances(
+              workspace.attendanceForm.controls['eventId'].value
+            )
+          "
+        >
+          <mat-icon>refresh</mat-icon>
+          Atualizar
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="
+            !workspace.selectedAttendanceEvent() ||
+            workspace.isImportingCsv() ||
+            !permissions.canEdit('event-attendance#edit')
+          "
+          (click)="csvInput.click()"
+        >
+          <mat-icon>upload_file</mat-icon>
+          Importar CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="workbench-grid">
+      <section class="surface">
+        <h4>Registro manual</h4>
+        <form [formGroup]="workspace.attendanceForm" class="manual-form">
+          <mat-form-field>
+            <mat-label>Identificador</mat-label>
+            <mat-select formControlName="identifierType">
+              <mat-option value="userId">ID de usuário</mat-option>
+              <mat-option value="identityDocument">Documento</mat-option>
+              <mat-option value="email">E-mail</mat-option>
+              <mat-option value="phone">Telefone</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Valor</mat-label>
+            <input matInput formControlName="identifier" />
+          </mat-form-field>
+
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!workspace.selectedAttendanceEvent()"
+            (click)="workspace.findAttendancePerson()"
+          >
+            <mat-icon>person_search</mat-icon>
+            Buscar pessoa
+          </button>
+        </form>
+
+        <div class="inline-list">
+          @for (
+            person of workspace.attendancePersonMatches();
+            track person.id
+          ) {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!permissions.canEdit('event-attendance#edit')"
+              (click)="workspace.registerAttendance(person)"
+            >
+              Registrar {{ person.name }}
+            </button>
+          } @empty {
+            <span class="empty-note">Busque uma pessoa para registrar.</span>
+          }
+        </div>
+      </section>
+
+      <section class="surface">
+        <div class="surface-heading">
+          <h4>Presenças do evento</h4>
+          <span>{{ workspace.attendances().length }} registros</span>
+        </div>
+
+        <mat-list class="attendance-list">
+          @for (
+            attendance of workspace.attendances();
+            track attendance.attendedAt + attendance.personName
+          ) {
+            <mat-list-item>
+              <span matListItemTitle class="attendance-item-title">
+                {{ attendance.personName }}
+              </span>
+              <span matListItemLine class="attendance-item-line">
+                {{ attendance.attendedAt | date: 'short' }} · por
+                {{ attendance.createdByMethod }}
+              </span>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhuma presença carregada</span>
+              <span matListItemLine>Selecione um evento para começar.</span>
+            </mat-list-item>
+          }
+        </mat-list>
+      </section>
+    </div>
+  </section>
+</section>

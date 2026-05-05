@@ -1,0 +1,198 @@
+<section class="section workspace-tab-shell">
+  <header class="tab-header">
+    <div>
+      <h2>Pessoas</h2>
+      <p>Cadastro base para inscrições, presenças e certificados.</p>
+    </div>
+
+    <div class="summary-grid" aria-label="Resumo de pessoas">
+      <div class="summary-item">
+        <span class="summary-value">{{ workspace.people().length }}</span>
+        <span class="summary-label">resultados</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="tab-grid">
+    <aside class="panel">
+      <div class="panel-heading">
+        <div>
+          <h3>Busca</h3>
+          <p>Nome, e-mail, telefone ou documento.</p>
+        </div>
+
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="workspace.startNewPerson()"
+        >
+          <mat-icon>person_add</mat-icon>
+          Nova
+        </button>
+      </div>
+
+      <form class="compact-form">
+        <mat-form-field>
+          <mat-label>Buscar pessoa</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput #peopleSearchInput />
+        </mat-form-field>
+        <button
+          mat-flat-button
+          type="button"
+          (click)="workspace.searchPeople(peopleSearchInput.value)"
+        >
+          <mat-icon>search</mat-icon>
+          Buscar
+        </button>
+      </form>
+
+      <mat-list class="result-list">
+        @for (person of workspace.people(); track person.id) {
+          <mat-list-item
+            (click)="workspace.selectPerson(person)"
+            [class.selected-list-item]="
+              workspace.selectedPerson()?.id === person.id
+            "
+          >
+            <span matListItemTitle>{{ person.name }}</span>
+            <span matListItemLine>
+              {{ person.email || person.phone || '-' }} ·
+              {{ person.identityDocument || '-' }}
+            </span>
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            <span matListItemTitle>Nenhuma pessoa encontrada</span>
+            <span matListItemLine>Use a busca para carregar resultados.</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    </aside>
+
+    <section class="panel panel-stack">
+      @if (workspace.selectedPerson() || workspace.isCreatingPerson()) {
+        <div class="panel-heading">
+          <div>
+            <h3>
+              @if (workspace.selectedPerson()) {
+                {{ workspace.selectedPerson()?.name }}
+              } @else {
+                Nova pessoa
+              }
+            </h3>
+            <p>
+              @if (workspace.selectedPerson()) {
+                {{
+                  workspace.selectedPerson()?.email || 'Sem e-mail principal'
+                }}
+              } @else {
+                Preencha os dados cadastrais.
+              }
+            </p>
+          </div>
+
+          <div class="panel-actions">
+            <button
+              mat-button
+              type="button"
+              (click)="workspace.resetPersonForm()"
+            >
+              <mat-icon>close</mat-icon>
+              Fechar
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="!permissions.canEdit('person#edit')"
+              (click)="workspace.savePerson()"
+            >
+              <mat-icon>save</mat-icon>
+              Salvar
+            </button>
+          </div>
+        </div>
+
+        <form [formGroup]="workspace.personForm" class="surface field-group">
+          <h4>Dados cadastrais</h4>
+          <div class="field-grid">
+            <mat-form-field>
+              <mat-label>ID</mat-label>
+              <input matInput formControlName="id" readonly />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Nome</mat-label>
+              <input matInput formControlName="name" />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>E-mail principal</mat-label>
+              <input matInput formControlName="email" />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Telefone</mat-label>
+              <input matInput formControlName="phone" />
+            </mat-form-field>
+            <mat-form-field class="span-2">
+              <mat-label>E-mails secundários (separados por vírgula)</mat-label>
+              <input matInput formControlName="secondaryEmails" />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Documento</mat-label>
+              <input matInput formControlName="identityDocument" />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Matrícula (RA)</mat-label>
+              <input matInput formControlName="academicId" />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Unificada no ID</mat-label>
+              <input matInput formControlName="mergedIntoId" readonly />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Referência externa</mat-label>
+              <input matInput formControlName="externalRef" />
+            </mat-form-field>
+          </div>
+        </form>
+
+        @if (workspace.selectedPerson()) {
+          <section class="surface field-group">
+            <div class="surface-heading">
+              <h4>Usuário vinculado</h4>
+              <span>Somente leitura</span>
+            </div>
+
+            @if (workspace.selectedPerson()?.user) {
+              <div class="field-grid">
+                <p>
+                  <strong>ID:</strong>
+                  {{ workspace.selectedPerson()?.user?.id }}
+                </p>
+                <p>
+                  <strong>Nome:</strong>
+                  {{ workspace.selectedPerson()?.user?.name }}
+                </p>
+                <p>
+                  <strong>E-mail:</strong>
+                  {{ workspace.selectedPerson()?.user?.email }}
+                </p>
+                <p>
+                  <strong>Perfil:</strong>
+                  {{ workspace.selectedPerson()?.user?.role }}
+                </p>
+              </div>
+            } @else {
+              <p class="empty-note">Nenhum usuário vinculado.</p>
+            }
+          </section>
+        }
+      } @else {
+        <div class="empty-state">
+          <mat-icon>person_search</mat-icon>
+          <h3>Selecione uma pessoa</h3>
+          <p>Os detalhes cadastrais aparecem neste painel.</p>
+        </div>
+      }
+    </section>
+  </div>
+</section>

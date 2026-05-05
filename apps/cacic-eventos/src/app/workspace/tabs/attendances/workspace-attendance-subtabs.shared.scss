@@ -1,0 +1,170 @@
+.subtab-layout {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 0 0;
+}
+
+.event-attendance-layout {
+  grid-template-columns: minmax(24rem, 0.95fr) minmax(34rem, 1.55fr);
+}
+
+.major-attendance-layout {
+  grid-template-columns: minmax(24rem, 0.9fr) minmax(32rem, 1.4fr);
+}
+
+.panel,
+.surface {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-surface);
+}
+
+.panel {
+  min-width: 0;
+  padding: 1rem;
+}
+
+.surface {
+  min-width: 0;
+  padding: 0.875rem;
+}
+
+.panel-heading,
+.surface-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.875rem;
+}
+
+.panel-heading h3,
+.surface h4,
+.surface-heading h4 {
+  margin: 0;
+}
+
+.panel-heading p,
+.empty-note,
+.surface-heading span {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.panel-heading p {
+  margin: 0.25rem 0 0;
+}
+
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.event-result-list,
+.subscription-list,
+.attendance-list {
+  max-height: 34rem;
+  overflow: auto;
+}
+
+.event-result-list mat-list-item,
+.subscription-list mat-list-item,
+.attendance-list mat-list-item {
+  --mdc-list-list-item-one-line-container-height: auto;
+  --mdc-list-list-item-two-line-container-height: auto;
+  min-height: 4rem;
+}
+
+.attendance-item-title,
+.attendance-item-line {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-item-line {
+  color: var(--mat-sys-on-surface-variant);
+  margin-top: 0.2rem;
+}
+
+.event-result-list {
+  margin-top: 0.75rem;
+}
+
+.workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.85fr) minmax(22rem, 1.15fr);
+  gap: 1rem;
+}
+
+.manual-form,
+.major-event-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.major-event-form {
+  grid-template-columns: minmax(14rem, 1fr) auto;
+  align-items: start;
+}
+
+.empty-state {
+  display: grid;
+  min-height: 26rem;
+  place-items: center;
+  align-content: center;
+  gap: 0.35rem;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+}
+
+.empty-state mat-icon {
+  width: 3rem;
+  height: 3rem;
+  font-size: 3rem;
+}
+
+.empty-state h3,
+.empty-state p {
+  margin: 0;
+}
+
+.attended mat-icon {
+  color: var(--mat-sys-primary);
+}
+
+.missed mat-icon {
+  color: var(--mat-sys-outline);
+}
+
+@media (max-width: 1180px) {
+  .event-attendance-layout,
+  .major-attendance-layout,
+  .workbench-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-result-list,
+  .subscription-list,
+  .attendance-list {
+    max-height: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .panel-heading,
+  .surface-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .panel-actions,
+  .major-event-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+}

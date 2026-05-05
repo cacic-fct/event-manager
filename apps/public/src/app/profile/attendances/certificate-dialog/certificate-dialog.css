@@ -1,0 +1,23 @@
+.dialog-subtitle {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 12px;
+}
+
+.loading-state,
+.empty-state,
+.error-state {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 96px;
+  text-align: center;
+}
+
+.empty-state {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error-state {
+  color: var(--mat-sys-error);
+  min-height: auto;
+}

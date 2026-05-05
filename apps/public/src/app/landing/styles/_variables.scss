@@ -1,0 +1,46 @@
+// CSS Custom Properties for dark mode compatibility
+:host {
+  --primary-color: #1976d2;
+  --primary-color-dark: #3f51b5;
+  --secondary-color: #f5f5f5;
+  --secondary-color-dark: #1a1a1a;
+  --accent-color: #ff4081;
+  --text-color: #333;
+  --text-color-dark: #e0e0e0;
+  --light-text: #666;
+  --light-text-dark: #b0b0b0;
+  --white: #ffffff;
+  --white-dark: #121212;
+  --card-bg: #ffffff;
+  --card-bg-dark: #1e1e1e;
+  --gradient-start: #667eea;
+  --gradient-end: #764ba2;
+  --gradient-start-dark: #4a5568;
+  --gradient-end-dark: #553c7b;
+  --hero-bg-start: #667eea;
+  --hero-bg-end: #764ba2;
+  --hero-bg-start-dark: #2d3748;
+  --hero-bg-end-dark: #4a5568;
+  --footer-bg: #2c3e50;
+  --footer-bg-dark: #1a202c;
+  --shadow-light: rgba(0, 0, 0, 0.1);
+  --shadow-dark: rgba(0, 0, 0, 0.3);
+}
+
+// Dark mode CSS custom properties
+@media (prefers-color-scheme: dark) {
+  :host {
+    --primary-color: var(--primary-color-dark);
+    --secondary-color: var(--secondary-color-dark);
+    --text-color: var(--text-color-dark);
+    --light-text: var(--light-text-dark);
+    --white: var(--white-dark);
+    --card-bg: var(--card-bg-dark);
+    --gradient-start: var(--gradient-start-dark);
+    --gradient-end: var(--gradient-end-dark);
+    --hero-bg-start: var(--hero-bg-start-dark);
+    --hero-bg-end: var(--hero-bg-end-dark);
+    --footer-bg: var(--footer-bg-dark);
+    --shadow-light: var(--shadow-dark);
+  }
+}

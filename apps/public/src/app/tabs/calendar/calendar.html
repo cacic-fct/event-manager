@@ -1,0 +1,79 @@
+<mat-toolbar class="calendar-toolbar">
+  <span>Calendário</span>
+  <span class="toolbar-spacer"></span>
+  <mat-button-toggle-group
+    [value]="viewMode()"
+    (valueChange)="setViewMode($event)"
+    aria-label="Modo de visualização"
+  >
+    <mat-button-toggle value="list" aria-label="Visualização em lista">
+      <mat-icon>view_list</mat-icon>
+    </mat-button-toggle>
+    <mat-button-toggle value="week" aria-label="Visualização semanal">
+      <mat-icon>calendar_month</mat-icon>
+    </mat-button-toggle>
+  </mat-button-toggle-group>
+</mat-toolbar>
+
+<main class="calendar-page">
+  <form class="filter-form" aria-label="Filtros do calendário">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Buscar eventos</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        type="search"
+        [formControl]="queryControl"
+        autocomplete="off"
+      />
+      @if (queryControl.value) {
+      <button
+        mat-icon-button
+        matSuffix
+        type="button"
+        (click)="queryControl.setValue('')"
+        aria-label="Limpar busca"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="type-field">
+      <mat-label>Tipo</mat-label>
+      <mat-select [formControl]="eventTypeControl">
+        @for (option of eventTypeOptions; track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </form>
+
+  @let state = calendarState(); @if (state.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  } @else if (state.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ state.message }}</p>
+  </section>
+  } @else { @if (viewMode() === 'list') {
+  <app-calendar-list-view
+    [events]="state.events"
+    [canLoadOlder]="canLoadOlder()"
+    [returnUrl]="'/calendar'"
+    (loadOlder)="loadOlderEvents()"
+  />
+  } @else {
+  <app-calendar-week-view
+    [weekDays]="weekDays()"
+    [selectedDate]="selectedDate()"
+    [events]="state.events"
+    [canGoPrevious]="canGoPreviousWeek()"
+    [returnUrl]="'/calendar'"
+    (previousWeek)="previousWeek()"
+    (nextWeek)="nextWeek()"
+    (today)="goToToday()"
+    (selectDate)="selectDate($event)"
+  />
+  } }
+</main>

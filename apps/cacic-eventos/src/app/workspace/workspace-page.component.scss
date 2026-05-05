@@ -1,0 +1,119 @@
+.page {
+  padding: 1rem;
+}
+
+mat-card {
+  min-height: calc(100dvh - 5rem);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.user {
+  opacity: 0.8;
+  margin-right: 1rem;
+  font-size: 1rem;
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 8rem;
+}
+
+.permission-summary {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface);
+}
+
+.permission-summary span {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.permission-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.permission-chip,
+.tab-warning {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.permission-chip {
+  min-height: 1.75rem;
+  padding: 0 0.625rem;
+  border-radius: 999px;
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font-size: 0.8125rem;
+}
+
+.tab-warning {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 0.5rem;
+  border-radius: 999px;
+  background: var(--mat-sys-error);
+  color: var(--mat-sys-on-error);
+  font-size: 0.75rem;
+}
+
+.permission-denied {
+  display: grid;
+  place-items: center;
+  gap: 0.5rem;
+  min-height: 18rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.permission-denied h2,
+.permission-denied p {
+  margin: 0;
+}
+
+.permission-denied p {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.internal-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--mat-sys-error-container, #e3f2fd);
+  color: var(--mat-sys-error, #1976d2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+  border: none;
+  transition: all 0.2s ease;
+  border: none;
+  transition: all 0.2s ease;
+  // cursor: pointer;
+
+  // &:hover {
+  //   transform: translateY(-1px);
+  //   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  // }
+
+  // &:active {
+  //   transform: translateY(0);
+  //   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  // }
+
+  // &:focus-visible {
+  //   outline: 2px solid var(--md-sys-color-primary);
+  //   outline-offset: 2px;
+  // }
+}

@@ -1,0 +1,154 @@
+.validation-page {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 840px;
+  min-height: 100%;
+  padding: 20px 16px 44px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.certificate-name {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}
+
+.eyebrow {
+  font: var(--mat-sys-label-large);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+h1 {
+  font: var(--mat-sys-headline-medium);
+}
+
+h2 {
+  font: var(--mat-sys-headline-small);
+  overflow-wrap: anywhere;
+}
+
+h3 {
+  font: var(--mat-sys-title-medium);
+}
+
+.lookup-form {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.lookup-form button {
+  min-height: 48px;
+}
+
+.id-field {
+  width: 100%;
+}
+
+.certificate-section,
+.events-section {
+  margin-top: 28px;
+}
+
+.certificate-header {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: auto 1fr;
+  margin-bottom: 16px;
+}
+
+.header-copy {
+  min-width: 0;
+}
+
+.emoji-frame,
+.small-emoji-frame {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.emoji-frame {
+  height: 64px;
+  width: 64px;
+}
+
+.small-emoji-frame {
+  height: 40px;
+  width: 40px;
+}
+
+.twemoji {
+  display: block;
+  height: 42px;
+  width: 42px;
+}
+
+.small-twemoji {
+  display: block;
+  height: 26px;
+  width: 26px;
+}
+
+.summary-list,
+mat-list {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.section-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.event-section + .event-section {
+  margin-top: 20px;
+}
+
+.empty-section {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 180px;
+  text-align: center;
+}
+
+.empty-text,
+.error-text {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 12px 0 0;
+}
+
+.error-text {
+  color: var(--mat-sys-error);
+}
+
+@media (min-width: 640px) {
+  .lookup-form {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

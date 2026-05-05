@@ -1,0 +1,373 @@
+<section class="section workspace-tab-shell">
+  <header class="tab-header">
+    <div>
+      <h2>Grandes eventos</h2>
+      <p>Janelas de inscrição, pagamento e agrupamento da programação.</p>
+    </div>
+
+    <div class="summary-grid" aria-label="Resumo de grandes eventos">
+      <div class="summary-item">
+        <span class="summary-value">{{ workspace.majorEvents().length }}</span>
+        <span class="summary-label">eventos</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-value">{{
+          workspace.majorEventEvents().length
+        }}</span>
+        <span class="summary-label">atividades vinculadas</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="tab-grid">
+    <aside class="panel">
+      <div class="panel-heading">
+        <div>
+          <h3>Lista</h3>
+          <p>Eventos agregadores e seus períodos ativos.</p>
+        </div>
+
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="workspace.resetMajorEventForm()"
+        >
+          <mat-icon>add</mat-icon>
+          Novo
+        </button>
+      </div>
+
+      <mat-list class="result-list">
+        @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+          <mat-list-item
+            (click)="workspace.pickMajorEvent(majorEvent)"
+            [class.selected-list-item]="
+              workspace.selectedMajorEvent()?.id === majorEvent.id
+            "
+          >
+            <span matListItemTitle class="list-title">
+              <app-twemoji [emoji]="majorEvent.emoji" />
+              <span>{{ majorEvent.name }}</span>
+            </span>
+            <span matListItemLine>
+              {{ majorEvent.startDate | date: 'shortDate' }} -
+              {{ majorEvent.endDate | date: 'shortDate' }}
+            </span>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Editar grande evento"
+              matTooltip="Editar"
+              (click)="
+                $event.stopPropagation(); workspace.pickMajorEvent(majorEvent)
+              "
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Excluir grande evento"
+              matTooltip="Excluir"
+              [disabled]="!permissions.canDelete('major-event#delete')"
+              (click)="
+                $event.stopPropagation();
+                workspace.deleteMajorEvent(majorEvent.id)
+              "
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            <span matListItemTitle>Nenhum grande evento cadastrado</span>
+            <span matListItemLine>Crie o primeiro no painel ao lado.</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    </aside>
+
+    <section class="panel panel-stack">
+      <div class="panel-heading">
+        <div>
+          <h3>
+            @if (workspace.majorEventForm.controls.id.value) {
+              Editar grande evento
+            } @else {
+              Novo grande evento
+            }
+          </h3>
+          <p>Dados públicos, regras de inscrição e pagamento.</p>
+        </div>
+
+        <div class="panel-actions">
+          <button
+            mat-button
+            type="button"
+            (click)="workspace.resetMajorEventForm()"
+          >
+            <mat-icon>restart_alt</mat-icon>
+            Limpar
+          </button>
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="!permissions.canEdit('major-event#edit')"
+            (click)="workspace.saveMajorEvent()"
+          >
+            <mat-icon>save</mat-icon>
+            Salvar
+          </button>
+        </div>
+      </div>
+
+      <form [formGroup]="workspace.majorEventForm" class="panel-stack">
+        <section class="surface field-group">
+          <h4>Identidade</h4>
+          <div class="field-grid">
+            <mat-form-field>
+              <mat-label>Nome</mat-label>
+              <input matInput formControlName="name" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Emoji</mat-label>
+              <app-twemoji
+                matPrefix
+                [emoji]="workspace.majorEventForm.controls.emoji.value"
+              />
+              <input matInput formControlName="emoji" maxlength="16" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Início</mat-label>
+              <input
+                matInput
+                type="datetime-local"
+                formControlName="startDate"
+              />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Fim</mat-label>
+              <input matInput type="datetime-local" formControlName="endDate" />
+            </mat-form-field>
+
+            <mat-form-field class="span-2">
+              <mat-label>Descrição</mat-label>
+              <textarea
+                matInput
+                rows="3"
+                formControlName="description"
+              ></textarea>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Texto do botão</mat-label>
+              <input matInput formControlName="buttonText" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Link do botão</mat-label>
+              <input matInput formControlName="buttonLink" />
+            </mat-form-field>
+            @if (
+              workspace.majorEventForm.hasError('buttonTextRequiresbuttonLink')
+            ) {
+              <mat-error class="span-2">
+                Texto e link do botão devem ser preenchidos juntos.
+              </mat-error>
+            }
+          </div>
+        </section>
+
+        <section class="surface field-group">
+          <h4>Inscrições</h4>
+          <div class="field-grid">
+            <mat-form-field>
+              <mat-label>Início das inscrições</mat-label>
+              <input
+                matInput
+                type="datetime-local"
+                formControlName="subscriptionStartDate"
+              />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Fim das inscrições</mat-label>
+              <input
+                matInput
+                type="datetime-local"
+                formControlName="subscriptionEndDate"
+              />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Máximo de minicursos por pessoa</mat-label>
+              <input
+                matInput
+                type="number"
+                formControlName="maxCoursesPerAttendee"
+              />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Máximo de palestras por pessoa</mat-label>
+              <input
+                matInput
+                type="number"
+                formControlName="maxLecturesPerAttendee"
+              />
+            </mat-form-field>
+          </div>
+        </section>
+
+        <section class="surface field-group">
+          <h4>Contato e pagamento</h4>
+          <div class="checkbox-grid">
+            <mat-checkbox formControlName="isPaymentRequired">
+              Exigir pagamento
+            </mat-checkbox>
+          </div>
+
+          <div class="field-grid">
+            <mat-form-field>
+              <mat-label>Contato</mat-label>
+              <input matInput formControlName="contactInfo" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Tipo de contato</mat-label>
+              <mat-select formControlName="contactType">
+                <mat-option value="">Nenhum</mat-option>
+                <mat-option value="EMAIL">E-mail</mat-option>
+                <mat-option value="PHONE">Telefone</mat-option>
+                <mat-option value="WHATSAPP">WhatsApp</mat-option>
+                <mat-option value="OTHER">Outro</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field class="span-2">
+              <mat-label>Informações adicionais de pagamento</mat-label>
+              <textarea
+                matInput
+                rows="3"
+                formControlName="additionalPaymentInfo"
+              ></textarea>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Banco</mat-label>
+              <input matInput formControlName="paymentBankName" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Agência</mat-label>
+              <input matInput formControlName="paymentAgency" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Conta</mat-label>
+              <input matInput formControlName="paymentAccount" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Titular</mat-label>
+              <input matInput formControlName="paymentHolder" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Documento</mat-label>
+              <input matInput formControlName="paymentDocument" />
+            </mat-form-field>
+          </div>
+        </section>
+      </form>
+
+      @if (workspace.selectedMajorEvent()) {
+        <section class="surface field-group">
+          <div class="surface-heading">
+            <h4>Atividades do grande evento</h4>
+            <span>{{ workspace.majorEventEvents().length }} vinculadas</span>
+          </div>
+
+          <mat-list class="detail-list">
+            @for (
+              eventItem of workspace.majorEventEvents();
+              track eventItem.id
+            ) {
+              <mat-list-item>
+                <span matListItemTitle class="list-title">
+                  <app-twemoji [emoji]="eventItem.emoji" />
+                  <span>{{ eventItem.name }}</span>
+                </span>
+                <span matListItemLine>
+                  {{ eventItem.startDate | date: 'short' }} -
+                  {{ eventItem.endDate | date: 'short' }}
+                </span>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Remover atividade do grande evento"
+                  matTooltip="Remover"
+                  [disabled]="!permissions.canEdit('event#edit')"
+                  (click)="
+                    workspace.removeEventFromSelectedMajorEvent(eventItem)
+                  "
+                >
+                  <mat-icon>link_off</mat-icon>
+                </button>
+              </mat-list-item>
+            } @empty {
+              <mat-list-item>
+                <span matListItemTitle>Nenhuma atividade vinculada</span>
+                <span matListItemLine>Busque abaixo para adicionar.</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        </section>
+
+        <section class="surface field-group">
+          <h4>Adicionar atividades</h4>
+          <form
+            [formGroup]="workspace.majorEventEventSearchForm"
+            class="compact-form"
+          >
+            <mat-form-field>
+              <mat-label>Buscar atividades por nome</mat-label>
+              <input matInput formControlName="query" />
+            </mat-form-field>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.searchEventsForSelectedMajorEvent()"
+            >
+              <mat-icon>search</mat-icon>
+              Buscar
+            </button>
+          </form>
+
+          <div class="inline-list">
+            @for (
+              eventItem of workspace.majorEventEventSearchResults();
+              track eventItem.id
+            ) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!permissions.canEdit('event#edit')"
+                (click)="workspace.addEventToSelectedMajorEvent(eventItem)"
+              >
+                <app-twemoji [emoji]="eventItem.emoji" />
+                {{ eventItem.name }}
+                {{ eventItem.startDate | date: 'shortDate' }}
+              </button>
+            } @empty {
+              <span class="empty-note">Nenhum resultado para adicionar.</span>
+            }
+          </div>
+        </section>
+      }
+    </section>
+  </div>
+</section>

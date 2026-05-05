@@ -1,0 +1,153 @@
+@page {
+  size: A4 landscape;
+  margin: 0;
+  font-family: Inter, 'Inter Variable';
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: #111;
+  font-family: Inter;
+}
+
+.hero {
+  position: absolute;
+  top: 30%;
+  left: 1.3454cm;
+  padding-right: 1.3454cm;
+}
+
+.certificate-page {
+  position: relative;
+  width: 297mm;
+  min-height: 210mm;
+  padding: 20mm 18mm;
+  font-size: 12pt;
+  line-height: 1.45;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.certificate-page + .certificate-page {
+  page-break-before: always;
+}
+
+.participant-name {
+  margin: 6mm 0 2mm;
+  font-size: 24pt;
+  font-weight: 700;
+  line-height: 1.2;
+  max-width: 825px;
+}
+
+.event-name {
+  margin: 2mm 0 4mm;
+  font-size: 18pt;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.additional-text,
+.participant-name,
+.event-name {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.verification-block {
+  position: absolute;
+  right: 9mm;
+  bottom: 9mm;
+  display: flex;
+  align-items: flex-end;
+  gap: 4mm;
+  width: auto;
+}
+
+.verification-block-2 {
+  position: absolute;
+  right: 9mm;
+  top: 9mm;
+  display: flex;
+  align-items: flex-end;
+  gap: 4mm;
+}
+
+.verification-qr-code {
+  width: 2.5cm;
+  height: 2.5cm;
+  object-fit: contain;
+}
+
+.verification-link {
+  display: inline-block;
+  max-width: 68mm;
+  font-size: 9pt;
+  line-height: 1.3;
+  word-break: break-word;
+  text-decoration: none;
+  color: inherit;
+}
+
+.participant-name-inline {
+  margin-top: 0;
+  font-size: 16pt;
+  font-weight: 700;
+}
+
+.section-title {
+  margin: 5mm 0 2mm;
+  font-weight: 700;
+}
+
+.section-block {
+  margin: 4mm 0;
+  white-space: pre-line;
+}
+
+.section-block:empty {
+  display: none;
+}
+
+.page-1 {
+  background-image: url('./assets/page-1.svg');
+}
+
+.page-2 {
+  background-image: url('./assets/page-2.svg');
+}
+
+.certificate-content {
+  position: absolute;
+  left: 1.3454cm;
+  top: 1.3454cm;
+}
+
+.notes {
+  margin: 0;
+}
+
+.date {
+  font-size: 11pt;
+  margin-bottom: 0;
+}
+
+.top-text {
+  margin-top: 0;
+}
+
+.bottom-text {
+  margin-bottom: 0;
+}
+
+.top-text,
+.bottom-text {
+  font-size: 16pt;
+}

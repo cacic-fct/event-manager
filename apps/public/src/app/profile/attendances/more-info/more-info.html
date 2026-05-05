@@ -1,0 +1,154 @@
+<mat-toolbar>
+  <a
+    mat-icon-button
+    routerLink="/profile/attendances"
+    aria-label="Voltar para inscrições"
+  >
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <span>Detalhes</span>
+</mat-toolbar>
+
+<main class="detail-page">
+  @let currentState = detailState(); @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  } @else if (currentState.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ currentState.message }}</p>
+  </section>
+  } @else { @let detail = currentState.detail;
+
+  <header class="detail-header">
+    <div class="emoji-frame">
+      <img
+        class="twemoji"
+        [src]="emoji.getTwemojiUrl(detail.emoji)"
+        [alt]="detail.emoji"
+      />
+    </div>
+    <div class="header-copy">
+      <p class="eyebrow">{{ detail.typeLabel }}</p>
+      <h1>{{ detail.title }}</h1>
+      <p class="date-line">{{ detail.dateLine }}</p>
+    </div>
+  </header>
+
+  <mat-chip-set aria-label="Resumo da inscrição">
+    @if (detail.statusLabel) {
+    <mat-chip>{{ detail.statusLabel }}</mat-chip>
+    } @if (detail.location) {
+    <mat-chip>{{ detail.location }}</mat-chip>
+    }
+  </mat-chip-set>
+
+  <div class="actions">
+    @if (detail.shouldIssueCertificate) {
+    <button mat-flat-button type="button" (click)="openCertificates(detail)">
+      <mat-icon>workspace_premium</mat-icon>
+      Certificados
+    </button>
+    } @if (detail.events.length === 1 && detail.events[0].canRegisterAttendance)
+    {
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="registerAttendanceLater()"
+    >
+      <mat-icon>how_to_reg</mat-icon>
+      Registrar presença
+    </button>
+    } @if (detail.buttonLink) {
+    <a
+      mat-stroked-button
+      [href]="detail.buttonLink"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <mat-icon>open_in_new</mat-icon>
+      {{ detail.buttonText || 'Abrir link' }}
+    </a>
+    }
+  </div>
+
+  @if (detail.description) {
+  <section class="detail-section">
+    <h2>Sobre</h2>
+    <p class="description">{{ detail.description }}</p>
+  </section>
+  }
+
+  <section class="detail-section">
+    <h2>Informações</h2>
+    <mat-list>
+      @for (row of detail.infoRows; track row.label) {
+      <mat-list-item>
+        <div matListItemTitle>{{ row.label }}</div>
+        <div matListItemLine>{{ row.value }}</div>
+      </mat-list-item>
+      }
+    </mat-list>
+  </section>
+
+  @if (detail.targetType !== 'event') {
+  <section class="detail-section">
+    @switch (detail.targetType) { @case ('major-event') {
+    <h2>Eventos inscritos</h2>
+    } @case ('event-group') {
+    <h2>Eventos do grupo</h2>
+    } } @if (detail.events.length === 0) {
+    <p class="empty-text">Nenhum evento selecionado.</p>
+    } @else {
+    <mat-action-list>
+      @for (item of detail.events; track item.event.id) {
+      <a
+        mat-list-item
+        [routerLink]="eventRoute(item.event.id)"
+        [queryParams]="eventRouteQueryParams()"
+        [attr.aria-label]="'Abrir evento ' + item.event.name"
+      >
+        <div matListItemIcon class="small-emoji-frame">
+          <img
+            class="small-twemoji"
+            [src]="emoji.getTwemojiUrl(item.event.emoji)"
+            [alt]="item.event.emoji"
+          />
+        </div>
+        <div matListItemTitle>{{ item.event.name }}</div>
+        <div matListItemLine>{{ item.dateLine }}</div>
+        <div matListItemLine>{{ item.statusLine }}</div>
+      </a>
+      }
+    </mat-action-list>
+    }
+  </section>
+  @if (detail.targetType === 'major-event') {
+  <section class="detail-section">
+    <h2>Não inscritos</h2>
+    @if (detail.notSubscribedEvents.length === 0) {
+    <p class="empty-text">Nenhum evento não inscrito.</p>
+    } @else {
+    <mat-action-list>
+      @for (item of detail.notSubscribedEvents; track item.event.id) {
+      <a
+        mat-list-item
+        [routerLink]="eventRoute(item.event.id)"
+        [queryParams]="eventRouteQueryParams()"
+        [attr.aria-label]="'Abrir evento ' + item.event.name"
+      >
+        <div matListItemIcon class="small-emoji-frame">
+          <img
+            class="small-twemoji"
+            [src]="emoji.getTwemojiUrl(item.event.emoji)"
+            [alt]="item.event.emoji"
+          />
+        </div>
+        <div matListItemTitle>{{ item.event.name }}</div>
+        <div matListItemLine>{{ item.dateLine }}</div>
+      </a>
+      }
+    </mat-action-list>
+    }
+  </section>
+  } } }
+</main>

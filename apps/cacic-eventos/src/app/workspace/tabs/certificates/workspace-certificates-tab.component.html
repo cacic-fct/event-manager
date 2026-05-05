@@ -1,0 +1,380 @@
+<section class="section workspace-tab-shell">
+  <header class="tab-header">
+    <div>
+      <h2>Certificados</h2>
+      <p>Configuração, emissão manual e certificados já gerados.</p>
+    </div>
+
+    <div class="summary-grid" aria-label="Resumo de certificados">
+      <div class="summary-item">
+        <span class="summary-value">{{
+          workspace.certificateConfigs().length
+        }}</span>
+        <span class="summary-label">configurações</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-value">{{ workspace.certificates().length }}</span>
+        <span class="summary-label">emitidos</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="tab-grid">
+    <aside class="panel panel-stack">
+      <div class="panel-heading">
+        <div>
+          <h3>Alvos</h3>
+          <p>Eventos, grupos e grandes eventos aptos à emissão.</p>
+        </div>
+      </div>
+
+      <form [formGroup]="workspace.targetFiltersForm" class="compact-form">
+        <mat-form-field>
+          <mat-label>Escopo</mat-label>
+          <mat-select
+            formControlName="scope"
+            (selectionChange)="workspace.onScopeChanged($event.value)"
+          >
+            <mat-option value="EVENT">Evento</mat-option>
+            <mat-option value="EVENT_GROUP">Grupo</mat-option>
+            <mat-option value="MAJOR_EVENT">Grande evento</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Buscar</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput formControlName="query" />
+        </mat-form-field>
+
+        <button
+          mat-flat-button
+          type="button"
+          (click)="workspace.searchTargets()"
+        >
+          <mat-icon>search</mat-icon>
+          Buscar
+        </button>
+      </form>
+
+      <mat-list class="result-list">
+        @if (workspace.targetFiltersForm.controls.scope.value === 'EVENT') {
+          @for (eventItem of workspace.issuableEvents(); track eventItem.id) {
+            <mat-list-item
+              (click)="workspace.selectTarget(eventItem)"
+              [class.selected-list-item]="
+                workspace.selectedTarget()?.id === eventItem.id
+              "
+            >
+              <span matListItemTitle class="list-title">
+                <app-twemoji [emoji]="eventItem.emoji" />
+                <span>{{ eventItem.name }}</span>
+              </span>
+              <span matListItemLine>
+                {{ eventItem.startDate | date: 'shortDate' }}
+              </span>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhum evento encontrado</span>
+              <span matListItemLine>Ajuste a busca para continuar.</span>
+            </mat-list-item>
+          }
+        } @else if (
+          workspace.targetFiltersForm.controls.scope.value === 'EVENT_GROUP'
+        ) {
+          @for (group of workspace.issuableEventGroups(); track group.id) {
+            <mat-list-item
+              (click)="workspace.selectTarget(group)"
+              [class.selected-list-item]="
+                workspace.selectedTarget()?.id === group.id
+              "
+            >
+              <span matListItemTitle>{{ group.name }}</span>
+              <span matListItemLine>
+                {{
+                  group.shouldIssuePartialCertificate
+                    ? 'Certificado parcial habilitado'
+                    : 'Exige presença em todos os eventos'
+                }}
+              </span>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhum grupo encontrado</span>
+              <span matListItemLine>Ajuste a busca para continuar.</span>
+            </mat-list-item>
+          }
+        } @else {
+          @for (
+            majorEvent of workspace.issuableMajorEvents();
+            track majorEvent.id
+          ) {
+            <mat-list-item
+              (click)="workspace.selectTarget(majorEvent)"
+              [class.selected-list-item]="
+                workspace.selectedTarget()?.id === majorEvent.id
+              "
+            >
+              <span matListItemTitle class="list-title">
+                <app-twemoji [emoji]="majorEvent.emoji" />
+                <span>{{ majorEvent.name }}</span>
+              </span>
+              <span matListItemLine>
+                {{ majorEvent.startDate | date: 'shortDate' }} -
+                {{ majorEvent.endDate | date: 'shortDate' }}
+              </span>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhum grande evento encontrado</span>
+              <span matListItemLine>Ajuste a busca para continuar.</span>
+            </mat-list-item>
+          }
+        }
+      </mat-list>
+
+      @if (workspace.selectedTarget()) {
+        <section class="surface field-group">
+          <div class="surface-heading">
+            <h4>Configurações</h4>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.startNewCertificateConfig()"
+            >
+              <mat-icon>add</mat-icon>
+              Nova
+            </button>
+          </div>
+
+          <mat-list class="detail-list">
+            @for (config of workspace.certificateConfigs(); track config.id) {
+              <mat-list-item
+                (click)="workspace.selectCertificateConfig(config)"
+                [class.selected-list-item]="
+                  workspace.selectedCertificateConfig()?.id === config.id
+                "
+              >
+                <span matListItemTitle>{{ config.name }}</span>
+                <span matListItemLine>
+                  {{ config.isActive ? 'Ativa' : 'Inativa' }} ·
+                  {{ config.certificateTemplate.name }}
+                </span>
+              </mat-list-item>
+            } @empty {
+              <mat-list-item>
+                <span matListItemTitle>Nenhuma configuração</span>
+                <span matListItemLine>Crie uma configuração para emitir.</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        </section>
+      }
+    </aside>
+
+    <section class="panel panel-stack">
+      @if (workspace.selectedTarget()) {
+        <div class="panel-heading">
+          <div>
+            <h3>{{ workspace.selectedTarget()?.name }}</h3>
+            <p>Edição de certificado e emissão manual.</p>
+          </div>
+
+          <div class="panel-actions">
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.startNewCertificateConfig()"
+            >
+              <mat-icon>restart_alt</mat-icon>
+              Limpar
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!permissions.canEdit('certificate#edit')"
+              (click)="workspace.issueMissedCertificates()"
+            >
+              <mat-icon>auto_awesome</mat-icon>
+              Lançar correções e Emitir pendentes
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="!permissions.canEdit('certificate#edit')"
+              (click)="workspace.saveCertificateConfig()"
+            >
+              <mat-icon>save</mat-icon>
+              Salvar
+            </button>
+          </div>
+        </div>
+
+        <form class="surface field-group">
+          <h4>Configuração</h4>
+          <div class="field-grid">
+            <mat-form-field>
+              <mat-label>Nome público do certificado</mat-label>
+              <input
+                matInput
+                [formField]="workspace.certificateConfigForm.name"
+              />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Template</mat-label>
+              <mat-select
+                [formField]="
+                  workspace.certificateConfigForm.certificateTemplateId
+                "
+                (selectionChange)="
+                  workspace.onCertificateTemplateChanged($event.value)
+                "
+              >
+                @for (
+                  template of workspace.certificateTemplates();
+                  track template.id
+                ) {
+                  <mat-option [value]="template.id">
+                    {{ template.name }} (v{{ template.version }})
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Emitir para</mat-label>
+              <mat-select
+                [formField]="workspace.certificateConfigForm.issuedTo"
+              >
+                <mat-option value="ATTENDEE">Participantes</mat-option>
+                <mat-option value="LECTURER">Palestrantes</mat-option>
+                <mat-option value="OTHER">Manual</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <div class="checkbox-grid">
+            <mat-checkbox
+              [formField]="workspace.certificateConfigForm.isActive"
+            >
+              Ativa
+            </mat-checkbox>
+          </div>
+
+          <div class="field-grid">
+            <mat-form-field class="span-2">
+              <mat-label>Texto do certificado</mat-label>
+              <textarea
+                matInput
+                rows="3"
+                [formField]="workspace.certificateConfigForm.certificateText"
+              ></textarea>
+            </mat-form-field>
+
+            @if (workspace.certificateFieldDefinitions().length > 0) {
+              <div class="span-2 field-grid">
+                @for (
+                  field of workspace.certificateFieldDefinitions();
+                  track field.key
+                ) {
+                  <mat-form-field>
+                    <mat-label>{{ field.label }}</mat-label>
+                    <input
+                      matInput
+                      [type]="field.type === 'string' ? 'text' : field.type"
+                      [formField]="workspace.certificateField(field.key)"
+                    />
+                  </mat-form-field>
+                }
+              </div>
+            }
+          </div>
+        </form>
+
+        <section class="surface field-group">
+          <div class="surface-heading">
+            <h4>Emissão manual</h4>
+            <span>{{ workspace.personSearchResults().length }} resultados</span>
+          </div>
+
+          <form [formGroup]="workspace.personLookupForm" class="compact-form">
+            <mat-form-field>
+              <mat-label>Pessoa (nome, e-mail ou documento)</mat-label>
+              <mat-icon matPrefix>person_search</mat-icon>
+              <input matInput formControlName="query" />
+            </mat-form-field>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.searchPeopleForManualIssue()"
+            >
+              <mat-icon>search</mat-icon>
+              Buscar
+            </button>
+          </form>
+
+          <div class="inline-list">
+            @for (person of workspace.personSearchResults(); track person.id) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!permissions.canEdit('certificate#edit')"
+                (click)="workspace.issueCertificateForPerson(person)"
+              >
+                <mat-icon>workspace_premium</mat-icon>
+                Emitir para {{ person.name }}
+              </button>
+            } @empty {
+              <span class="empty-note">Busque uma pessoa para emitir.</span>
+            }
+          </div>
+        </section>
+
+        <section class="surface field-group">
+          <div class="surface-heading">
+            <h4>Certificados emitidos</h4>
+            <span>{{ workspace.certificates().length }} certificados</span>
+          </div>
+
+          <mat-list class="detail-list">
+            @for (
+              certificate of workspace.certificates();
+              track certificate.id
+            ) {
+              <mat-list-item>
+                <span matListItemTitle>
+                  {{ certificate.person.name }} · {{ certificate.config.name }}
+                </span>
+                <span matListItemLine>
+                  Emitido em {{ certificate.issuedAt | date: 'short' }}
+                </span>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Baixar certificado"
+                  matTooltip="Baixar"
+                  (click)="workspace.downloadCertificate(certificate, $event)"
+                >
+                  <mat-icon>download</mat-icon>
+                </button>
+              </mat-list-item>
+            } @empty {
+              <mat-list-item>
+                <span matListItemTitle>Nenhum certificado emitido</span>
+                <span matListItemLine>As emissões aparecerão aqui.</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        </section>
+      } @else {
+        <div class="empty-state">
+          <mat-icon>workspace_premium</mat-icon>
+          <h3>Selecione um alvo</h3>
+          <p>Escolha um evento, grupo ou grande evento para configurar.</p>
+        </div>
+      }
+    </section>
+  </div>
+</section>

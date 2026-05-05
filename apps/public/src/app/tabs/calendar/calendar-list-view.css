@@ -1,0 +1,44 @@
+.list-shell {
+  margin: 0 auto;
+  max-width: 980px;
+  padding: 16px 0 32px;
+}
+
+.load-older-button {
+  display: flex;
+  margin: 0 auto 16px;
+  width: min(100%, 520px);
+}
+
+mat-list {
+  border-radius: 8px;
+  overflow: visible;
+}
+
+.month-header {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-title-small);
+  padding: 18px 16px 8px;
+}
+
+.date-sticky-bar {
+  background: var(--mat-sys-surface-container-high);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+  padding: 8px 16px;
+  position: sticky;
+  top: var(--calendar-toolbar-height, 64px);
+  z-index: 1;
+}
+
+.empty-section {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 220px;
+  text-align: center;
+}

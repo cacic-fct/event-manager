@@ -1,0 +1,296 @@
+.section {
+  padding: 1rem 0;
+}
+
+.workspace-tab-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tab-header,
+.panel-heading,
+.surface-heading,
+.list-title,
+.item-title,
+.item-actions,
+.summary-grid {
+  display: flex;
+  gap: 1rem;
+}
+
+.tab-header,
+.panel-heading,
+.surface-heading {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.tab-header {
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  padding-bottom: 1rem;
+}
+
+.tab-header h2,
+.panel-heading h3,
+.surface-heading h4,
+.surface h4 {
+  margin: 0;
+}
+
+.tab-header p,
+.panel-heading p,
+.empty-note,
+.muted,
+.meta-text,
+.surface-heading span {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.tab-header p,
+.panel-heading p {
+  margin: 0.25rem 0 0;
+}
+
+.tab-actions,
+.panel-actions,
+.actions,
+.inline-list,
+.compact-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tab-actions,
+.panel-actions {
+  justify-content: flex-end;
+}
+
+.tab-grid {
+  display: grid;
+  grid-template-columns: minmax(23rem, 0.95fr) minmax(34rem, 1.55fr);
+  gap: 1rem;
+}
+
+.tab-grid-wide {
+  grid-template-columns: minmax(28rem, 1fr) minmax(34rem, 1fr);
+}
+
+.panel,
+.surface {
+  min-width: 0;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-surface);
+}
+
+.panel {
+  padding: 1rem;
+}
+
+.surface {
+  padding: 0.875rem;
+}
+
+.surface-stack,
+.panel-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.result-list,
+.detail-list {
+  max-height: 34rem;
+  overflow: auto;
+}
+
+.result-list {
+  margin-top: 0.75rem;
+}
+
+.list-title,
+.item-title {
+  min-width: 0;
+  align-items: center;
+}
+
+.list-title {
+  gap: 0.5rem;
+}
+
+.item-title {
+  gap: 0.375rem;
+}
+
+.list-title span,
+.item-title span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-actions {
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.summary-grid {
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+.summary-item {
+  min-width: 7rem;
+  border-left: 1px solid var(--mat-sys-outline-variant);
+  padding-left: 1rem;
+}
+
+.summary-value,
+.summary-label {
+  display: block;
+}
+
+.summary-value {
+  font: var(--mat-sys-title-large);
+}
+
+.summary-label,
+.meta-text {
+  font: var(--mat-sys-body-small);
+}
+
+.two-columns {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) minmax(22rem, 1fr);
+  gap: 1rem;
+}
+
+.column {
+  min-width: 0;
+}
+
+.compact-form {
+  align-items: center;
+}
+
+.compact-form mat-form-field {
+  flex: 1 1 14rem;
+  min-width: min(100%, 14rem);
+}
+
+.editor-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+.actions {
+  margin-top: 0.75rem;
+}
+
+.inline-list {
+  margin: 0.75rem 0;
+}
+
+.selected-list-item {
+  background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+}
+
+.empty-state {
+  display: grid;
+  min-height: 18rem;
+  place-items: center;
+  align-content: center;
+  gap: 0.35rem;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+}
+
+.empty-state mat-icon {
+  width: 3rem;
+  height: 3rem;
+  font-size: 3rem;
+}
+
+.empty-state h3,
+.empty-state p {
+  margin: 0;
+}
+
+.field-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.field-group h4 {
+  margin: 0.5rem 0 0;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.field-grid p {
+  margin: 0;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: center;
+}
+
+app-twemoji[matprefix],
+app-twemoji[matPrefix] {
+  margin-inline: 0 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .tab-grid,
+  .tab-grid-wide,
+  .two-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .result-list,
+  .detail-list {
+    max-height: none;
+  }
+
+  .span-2 {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .tab-header,
+  .panel-heading,
+  .surface-heading {
+    flex-direction: column;
+  }
+
+  .tab-actions,
+  .panel-actions,
+  .compact-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .summary-grid {
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .summary-item {
+    flex: 1;
+  }
+}

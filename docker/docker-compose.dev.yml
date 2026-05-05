@@ -1,0 +1,21 @@
+services:
+  events-db:
+    image: postgres:18-alpine
+    platform: linux/x86_64
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - /Volumes/Mobile/cacic-events/db:/var/lib/postgresql
+    restart: unless-stopped
+  events-redis:
+    image: redis:8-alpine
+    ports:
+      - '6379:6379'
+    restart: unless-stopped
+    volumes:
+      - /Volumes/Mobile/cacic-events/redis:/data
+    command: redis-server --appendonly yes

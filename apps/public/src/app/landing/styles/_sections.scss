@@ -1,0 +1,115 @@
+// Page sections styles
+
+@use "mixins";
+@use "components";
+
+.value-proposition {
+  @include mixins.section-spacing;
+  background: var(--white);
+  transition: background-color 0.3s ease;
+
+  .container {
+    @include mixins.container;
+  }
+
+  .value-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5rem;
+    align-items: center;
+
+    @media (max-width: 968px) {
+      grid-template-columns: 1fr;
+      gap: 3rem;
+      text-align: center;
+    }
+  }
+
+  .value-text {
+    .section-title {
+      font-size: 3rem;
+      font-weight: 400;
+      line-height: 1.2;
+      color: var(--text-color);
+      margin-bottom: 1.5rem;
+
+      @media (max-width: 768px) {
+        font-size: 2.5rem;
+      }
+    }
+
+    .section-subtitle {
+      font-size: 1.25rem;
+      line-height: 1.6;
+      color: var(--light-text);
+      margin-bottom: 3rem;
+      font-weight: 300;
+    }
+  }
+
+  .benefits-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .benefit-item {
+    @include components.benefit-item;
+  }
+
+  .value-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .feature-showcase {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: relative;
+    width: 280px;
+
+    .showcase-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem 2rem;
+      border-radius: 16px;
+      font-weight: 500;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+
+      mat-icon {
+        font-size: 1.5rem;
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+
+      &.primary {
+        background: var(--primary-color);
+        color: white;
+        transform: translateX(-10px);
+      }
+
+      &.secondary {
+        background: var(--card-bg);
+        color: var(--text-color);
+        border: 1px solid var(--light-text);
+        transform: translateX(10px);
+      }
+
+      &.accent {
+        background: #4caf50;
+        color: white;
+        transform: translateX(-5px);
+      }
+
+      &:hover {
+        transform: translateX(0) scale(1.05);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+      }
+    }
+  }
+}

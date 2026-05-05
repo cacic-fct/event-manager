@@ -1,0 +1,58 @@
+<mat-toolbar>
+  <a mat-icon-button routerLink="/menu" aria-label="Voltar para o menu">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <span>Carteira</span>
+  <span class="global-toolbar-spacer"></span>
+  <button matIconButton aria-label="Imprimir crachá" (click)="print()">
+    <mat-icon>printer</mat-icon>
+  </button>
+  @if (serviceWorkerService.hasServiceWorker()) {
+  <button
+    matIconButton
+    aria-label="Disponível off-line"
+    (click)="availableOffline()"
+  >
+    <mat-icon>cloud_done</mat-icon>
+  </button>
+  } @else {
+  <button
+    matIconButton
+    aria-label="Não está disponível off-line"
+    (click)="availableOffline()"
+  >
+    <mat-icon>cloud_off</mat-icon>
+  </button>
+  }
+</mat-toolbar>
+
+<main class="global-container">
+  <mat-card>
+    <mat-card-header>
+      <div class="example-header-image">
+        <img
+          [src]="
+            authService.user()?.claims?.['picture'] ||
+            'https://placehold.co/40x40'
+          "
+          alt="Avatar"
+          class="avatar"
+          referrerpolicy="no-referrer"
+        />
+      </div>
+      <h1>{{authService.user()?.claims?.name}}</h1>
+      <h2>{{authService.user()?.claims?.['unesp_role']}}</h2>
+    </mat-card-header>
+
+    <!-- eslint-disable-next-line @angular-eslint/template/alt-text -->
+    <object
+      alt="Código de barras"
+      class="aztec-code margin-horizontal-auto"
+      [innerHTML]="profileBarcode() | safe: 'html'"
+    ></object>
+
+    <h3 class="margin-horizontal-auto identity-document">
+      {{formatDocument(authService.user()?.claims?.identity_document || '')}}
+    </h3>
+  </mat-card>
+</main>

@@ -1,0 +1,41 @@
+<h2 mat-dialog-title>Certificados</h2>
+
+<mat-dialog-content>
+  @let currentState = state(); @if (currentState.status === 'loading') {
+  <div class="loading-state">
+    <mat-spinner diameter="32"></mat-spinner>
+  </div>
+  } @else if (currentState.status === 'error') {
+  <p class="empty-state">{{ currentState.message }}</p>
+  } @else if (currentState.certificates.length === 0) {
+  <p class="empty-state">Nenhum certificado emitido</p>
+  } @else {
+  <mat-list>
+    @for (certificate of currentState.certificates; track certificate.id) {
+    <mat-list-item>
+      <button
+        mat-icon-button
+        matListItemIcon
+        type="button"
+        aria-label="Baixar certificado"
+        [disabled]="downloadingCertificateId() === certificate.id"
+        (click)="download(certificate)"
+      >
+        <mat-icon>download</mat-icon>
+      </button>
+      <div matListItemTitle>{{ certificate.config.name }}</div>
+      <div matListItemLine>
+        Emitido em {{ certificate.issuedAt | date: 'dd/MM/yyyy, HH:mm' }}
+      </div>
+    </mat-list-item>
+    }
+  </mat-list>
+  } @if (downloadError(); as error) {
+  <p class="error-state">{{ error }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="mailto()">Informar problema</button>
+  <button mat-button type="button" (click)="close()">Fechar</button>
+</mat-dialog-actions>

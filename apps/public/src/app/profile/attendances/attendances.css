@@ -1,0 +1,83 @@
+.attendances-page {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 840px;
+  min-height: 100%;
+  padding: 20px 16px 40px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-large);
+  margin: 0 0 4px;
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+h1 {
+  font: var(--mat-sys-headline-medium);
+}
+
+h2 {
+  font: var(--mat-sys-title-large);
+}
+
+.feed-section + .feed-section {
+  margin-top: 28px;
+}
+
+.section-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.emoji-frame {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.twemoji {
+  display: block;
+  height: 28px;
+  width: 28px;
+}
+
+.empty-section {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 180px;
+  text-align: center;
+}
+
+.empty-text {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 12px 0 0;
+}
+
+mat-list {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+mat-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}

@@ -1,0 +1,22 @@
+<mat-toolbar
+  class="bottom-toolbar"
+  role="navigation"
+  aria-label="Barra de navegação inferior"
+  #toolbar
+>
+  @for (item of items(); track item.label) {
+    <button
+      mat-button
+      class="nav-btn"
+      [routerLink]="item.route"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      [attr.aria-label]="item.label"
+    >
+      <span class="icon-wrap">
+        <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+      </span>
+      <span class="label">{{ item.shortLabel }}</span>
+    </button>
+  }
+</mat-toolbar>

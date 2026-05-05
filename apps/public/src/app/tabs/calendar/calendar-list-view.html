@@ -1,0 +1,29 @@
+<section class="list-shell">
+  <button
+    mat-stroked-button
+    type="button"
+    class="load-older-button"
+    [disabled]="!canLoadOlder() || isLoadingOlder()"
+    (click)="loadOlder.emit()"
+  >
+    <mat-icon>history</mat-icon>
+    {{ isLoadingOlder() ? 'Carregando...' : 'Mostrar eventos mais antigos' }}
+  </button>
+
+  @if (groupedEvents().length === 0) {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">event_busy</mat-icon>
+    <p>Nenhum evento encontrado.</p>
+  </section>
+  } @else {
+  <mat-list>
+    @for (month of groupedEvents(); track month.key) {
+    <div class="month-header">{{ month.label }}</div>
+    @for (day of month.days; track day.key) {
+    <div class="date-sticky-bar">{{ day.label }}</div>
+    @for (event of day.events; track event.id) {
+    <app-calendar-event-list-item [event]="event" [returnUrl]="returnUrl()" />
+    } } }
+  </mat-list>
+  }
+</section>

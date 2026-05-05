@@ -1,0 +1,54 @@
+.calendar-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.calendar-page {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 1040px;
+  min-height: 100%;
+  padding: 16px 16px calc(var(--app-bottom-toolbar-height, 0px) + 32px);
+}
+
+.filter-form {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+}
+
+.search-field,
+.type-field {
+  width: 100%;
+}
+
+.empty-section {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 220px;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .calendar-page {
+    padding-inline: 12px;
+  }
+
+  .filter-form {
+    grid-template-columns: 1fr;
+  }
+
+  mat-button-toggle-group {
+    transform: scale(0.92);
+    transform-origin: right center;
+  }
+}

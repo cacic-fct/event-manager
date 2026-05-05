@@ -1,0 +1,28 @@
+.attendance-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.attendance-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.attendance-header h2 {
+  margin: 0;
+}
+
+.attendance-header p {
+  margin: 0.25rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+@media (max-width: 760px) {
+  .attendance-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

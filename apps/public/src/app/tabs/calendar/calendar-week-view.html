@@ -1,0 +1,66 @@
+<section class="week-shell">
+  <div class="week-actions" aria-label="Navegação por semana">
+    <button
+      mat-icon-button
+      type="button"
+      [disabled]="!canGoPrevious()"
+      (click)="previousWeek.emit()"
+      aria-label="Semana anterior"
+    >
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      type="button"
+      (click)="today.emit()"
+      aria-label="Ir para hoje"
+    >
+      <mat-icon>today</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      type="button"
+      (click)="nextWeek.emit()"
+      aria-label="Próxima semana"
+    >
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+
+  <div class="hcal">
+    <div class="hcal-header">
+      <div class="hcal-header-days" aria-hidden="true">
+        @for (day of weekDays(); track day.date.toISOString()) {
+        <div class="hcal-header-day">{{ day.label }}</div>
+        }
+      </div>
+      <div class="hcal-header-dates">
+        @for (day of weekDays(); track day.date.toISOString()) {
+        <button
+          type="button"
+          class="hcal-header-date"
+          [class.active]="(day.date | date: 'yyyy-MM-dd') === (selectedDate() | date: 'yyyy-MM-dd')"
+          (click)="selectDate.emit(day.date)"
+          [attr.aria-label]="day.date | date: 'fullDate'"
+        >
+          {{ day.date | date: 'd' }}
+        </button>
+        }
+      </div>
+      <div class="hcal-header-today">{{ selectedDateLabel() }}</div>
+    </div>
+  </div>
+
+  @if (selectedDateEvents().length === 0) {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">event_busy</mat-icon>
+    <p>Nenhum evento nesta data.</p>
+  </section>
+  } @else {
+  <mat-list>
+    @for (event of selectedDateEvents(); track event.id) {
+    <app-calendar-event-list-item [event]="event" [returnUrl]="returnUrl()" />
+    }
+  </mat-list>
+  }
+</section>

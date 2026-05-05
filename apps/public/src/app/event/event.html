@@ -1,0 +1,192 @@
+<mat-toolbar>
+  <button mat-icon-button type="button" (click)="goBack()" aria-label="Voltar">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Evento</span>
+  <span class="toolbar-spacer"></span>
+  <button
+    mat-icon-button
+    type="button"
+    matTooltip="Compartilhar"
+    aria-label="Compartilhar evento"
+    (click)="shareEvent()"
+  >
+    <mat-icon>ios_share</mat-icon>
+  </button>
+</mat-toolbar>
+
+<main class="event-page">
+  @let currentState = eventState(); @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <section class="event-skeleton" aria-hidden="true">
+    <div class="emoji-placeholder"></div>
+    <div class="line title-line"></div>
+    <div class="line"></div>
+    <div class="line short-line"></div>
+  </section>
+  } @else if (currentState.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ currentState.message }}</p>
+  </section>
+  } @else { @let data = currentState.data; @let event = data.event;
+
+  <header class="event-header">
+    <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus, @angular-eslint/template/click-events-have-key-events -->
+    <div class="emoji-frame" (click)="copyId(event.id)">
+      <img
+        class="twemoji"
+        [src]="emoji.getTwemojiUrl(event.emoji)"
+        [alt]="event.emoji"
+      />
+    </div>
+    <div class="header-copy">
+      <p class="eyebrow">{{ eventTypeLabel(event) }}</p>
+      <h1>{{ event.name }}</h1>
+      @if (event.shortDescription) {
+      <p class="subtitle">{{ event.shortDescription }}</p>
+      }
+    </div>
+  </header>
+
+  <mat-chip-set aria-label="Resumo do evento">
+    @if (event.majorEvent) {
+    <mat-chip>{{ event.majorEvent.name }}</mat-chip>
+    } @if (event.eventGroup) {
+    <mat-chip>{{ event.eventGroup.name }}</mat-chip>
+    } @if (data.currentUserSubscription) {
+    <mat-chip>
+      <mat-icon matChipAvatar>check</mat-icon>
+      Inscrito
+    </mat-chip>
+    } @if (data.currentUserAttendance) {
+    <mat-chip>
+      <mat-icon matChipAvatar>how_to_reg</mat-icon>
+      Presença confirmada
+    </mat-chip>
+    }
+  </mat-chip-set>
+
+  <section class="actions" aria-label="Ações do evento">
+    @if (event.buttonLink) {
+    <a
+      mat-stroked-button
+      [href]="event.buttonLink"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <mat-icon>open_in_new</mat-icon>
+      {{ event.buttonText || 'Acompanhar evento' }}
+    </a>
+    } @if (event.allowSubscription) {
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="!canSubscribe(data) || isSubscribing()"
+      (click)="subscribe(data)"
+    >
+      <mat-icon
+        >{{ data.currentUserSubscription ? 'check' : 'event_available'
+        }}</mat-icon
+      >
+      {{ data.currentUserSubscription ? 'Inscrito' : 'Inscrever-se' }}
+    </button>
+    } @if (canConfirmAttendance(event)) {
+    <button
+      mat-stroked-button
+      type="button"
+      [disabled]="!!data.currentUserAttendance || isConfirmingAttendance()"
+      (click)="confirmAttendance(data)"
+    >
+      <mat-icon>how_to_reg</mat-icon>
+      {{ data.currentUserAttendance ? 'Presença confirmada' : 'Confirmar
+      presença' }}
+    </button>
+    }
+  </section>
+
+  @if (event.allowSubscription) {
+  <p class="status-line">
+    {{ subscriptionStatusLine(data) }} @if (slotsLine(data); as slots) {
+    <span>{{ slots }}</span>
+    }
+  </p>
+  }
+
+  <section class="detail-grid">
+    <div class="detail-section">
+      <h2>Informações</h2>
+      <mat-list>
+        <mat-list-item>
+          <mat-icon matListItemIcon>event</mat-icon>
+          <div matListItemTitle>Início</div>
+          <div matListItemLine>{{ event.startDate | date: 'fullDate' }}</div>
+          <div matListItemLine>{{ event.startDate | date: 'HH:mm' }}</div>
+        </mat-list-item>
+        <mat-list-item>
+          <mat-icon matListItemIcon></mat-icon>
+          <div matListItemTitle>Encerramento</div>
+          <div matListItemLine>{{ event.endDate | date: 'fullDate' }}</div>
+          <div matListItemLine>{{ event.endDate | date: 'HH:mm' }}</div>
+        </mat-list-item>
+        @if (event.creditMinutes) {
+        <mat-list-item>
+          <mat-icon matListItemIcon>schedule</mat-icon>
+          <div matListItemTitle>Carga-horária</div>
+          <div matListItemLine>{{ creditLine(event) || 'Não informada' }}</div>
+        </mat-list-item>
+        }
+      </mat-list>
+    </div>
+
+    @if (data.weather; as weather) {
+    <div class="detail-section weather-section">
+      <h2>Clima</h2>
+      <div class="weather-summary">
+        <mat-icon aria-hidden="true">{{ weather.materialIcon }}</mat-icon>
+        <div>
+          <p class="weather-temperature">{{ weather.temperature }} °C</p>
+          <p class="weather-text">{{ weather.summary }}</p>
+        </div>
+      </div>
+      <p class="weather-attribution">{{ weather.attribution }}</p>
+    </div>
+    }
+  </section>
+
+  @if (event.description) {
+  <section class="detail-section">
+    <h2>Sobre</h2>
+    <p class="description">{{ event.description }}</p>
+  </section>
+  } @if (event.youtubeCode) {
+  <section class="detail-section">
+    <h2>Transmissão</h2>
+    <div class="video-frame">
+      <iframe
+        [src]="youtubeEmbedUrl(event.youtubeCode)"
+        title="Transmissão do evento"
+        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </div>
+  </section>
+  } @if (event.locationDescription || (event.latitude !== null &&
+  event.longitude !== null)) {
+  <section class="detail-section">
+    <h2>Localização</h2>
+    @if (event.locationDescription) {
+    <p class="location-line">
+      <mat-icon aria-hidden="true">place</mat-icon>
+      {{ event.locationDescription }}
+    </p>
+    } @if (event.latitude !== null && event.longitude !== null) {
+    <app-event-location-map
+      [latitude]="event.latitude || null"
+      [longitude]="event.longitude || null"
+      [title]="event.name"
+    />
+    }
+  </section>
+  } }
+</main>

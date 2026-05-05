@@ -1,0 +1,129 @@
+<main class="validation-page">
+  <header class="page-header">
+    <h1>Validar certificado</h1>
+  </header>
+
+  <form class="lookup-form" (ngSubmit)="submit()">
+    <mat-form-field class="id-field">
+      <mat-label>ID do certificado</mat-label>
+      <input matInput autocomplete="off" [formControl]="certificateIdControl" />
+      @if (certificateIdControl.hasError('required')) {
+      <mat-error>Informe o ID do certificado.</mat-error>
+      } @if (certificateIdControl.hasError('notFound')) {
+      <mat-error>Certificado não encontrado.</mat-error>
+      }
+    </mat-form-field>
+
+    <button mat-flat-button type="submit">
+      <mat-icon>search</mat-icon>
+      Validar
+    </button>
+  </form>
+
+  @let currentState = state(); @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  } @else if (currentState.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ currentState.message }}</p>
+  </section>
+  } @else if (currentState.status === 'ready') { @let certificate =
+  currentState.certificate;
+
+  <section class="certificate-section">
+    <header class="certificate-header">
+      <div class="emoji-frame">
+        <img
+          class="twemoji"
+          [src]="emoji.getTwemojiUrl(certificate.targetEmoji)"
+          [alt]="certificate.targetEmoji || 'Certificado'"
+        />
+      </div>
+      <div class="header-copy">
+        <p class="eyebrow">Certificado válido</p>
+        <h2>{{ certificate.targetName || certificate.certificateName }}</h2>
+        <p class="certificate-name">{{ certificate.certificateName }}</p>
+      </div>
+    </header>
+
+    <mat-list class="summary-list">
+      <mat-list-item>
+        <mat-icon matListItemIcon>person</mat-icon>
+        <div matListItemTitle>{{ certificate.personName }}</div>
+        <div matListItemLine>Nome</div>
+      </mat-list-item>
+
+      @if (certificate.maskedIdentityDocument) {
+      <mat-list-item>
+        <mat-icon matListItemIcon>badge</mat-icon>
+        <div matListItemTitle>{{ certificate.maskedIdentityDocument }}</div>
+        <div matListItemLine>Documento</div>
+      </mat-list-item>
+      }
+
+      <mat-list-item>
+        <mat-icon matListItemIcon>workspace_premium</mat-icon>
+        <div matListItemTitle>{{ certificate.id }}</div>
+        <div matListItemLine>ID do certificado</div>
+      </mat-list-item>
+    </mat-list>
+
+    <div class="actions">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="downloading()"
+        (click)="download(certificate)"
+      >
+        <mat-icon>download</mat-icon>
+        Baixar certificado
+      </button>
+    </div>
+
+    @if (downloadError()) {
+    <p class="error-text" aria-live="polite">{{ downloadError() }}</p>
+    }
+  </section>
+
+  <section class="events-section">
+    <div class="section-heading">
+      <h2>Atividades</h2>
+      <mat-chip-set aria-label="Carga horária total">
+        <mat-chip
+          >Total {{ formatCredit(certificate.totalCreditMinutes) }}</mat-chip
+        >
+      </mat-chip-set>
+    </div>
+
+    @if (certificate.sections.length === 0) {
+    <p class="empty-text">Nenhuma atividade vinculada ao certificado.</p>
+    } @else { @for (section of certificate.sections; track section.title) {
+    <section class="event-section">
+      <div class="section-heading">
+        <h3>{{ section.title }}</h3>
+        <mat-chip-set [attr.aria-label]="'Carga horária de ' + section.title">
+          <mat-chip>{{ formatCredit(section.creditMinutes) }}</mat-chip>
+        </mat-chip-set>
+      </div>
+
+      <mat-list>
+        @for (event of section.events; track event.name + event.startDate) {
+        <mat-list-item>
+          <div matListItemIcon class="small-emoji-frame">
+            <img
+              class="small-twemoji"
+              [src]="emoji.getTwemojiUrl(event.emoji)"
+              [alt]="event.emoji"
+            />
+          </div>
+          <div matListItemTitle>{{ event.name }}</div>
+          <div matListItemLine>{{ formatEventDate(event) }}</div>
+          <div matListItemLine>{{ formatCredit(event.creditMinutes) }}</div>
+        </mat-list-item>
+        }
+      </mat-list>
+    </section>
+    } }
+  </section>
+  }
+</main>

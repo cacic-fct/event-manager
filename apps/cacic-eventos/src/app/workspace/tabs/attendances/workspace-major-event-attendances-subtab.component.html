@@ -1,0 +1,155 @@
+<section class="subtab-layout major-attendance-layout">
+  <aside class="panel major-selector">
+    <div class="panel-heading">
+      <div>
+        <h3>Grande evento</h3>
+        <p>
+          Carregue inscrições e veja a presença em cada atividade vinculada.
+        </p>
+      </div>
+    </div>
+
+    <form
+      [formGroup]="workspace.majorEventAttendanceForm"
+      class="major-event-form"
+    >
+      <mat-form-field>
+        <mat-label>Grande evento</mat-label>
+        <mat-select formControlName="majorEventId">
+          @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+            <mat-option [value]="majorEvent.id">
+              <span class="item-title">
+                <app-twemoji [emoji]="majorEvent.emoji" />
+                <span>{{ majorEvent.name }}</span>
+              </span>
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <button
+        mat-flat-button
+        type="button"
+        (click)="workspace.loadMajorEventUserAttendances()"
+      >
+        <mat-icon>groups</mat-icon>
+        Carregar inscrições
+      </button>
+
+      @if (permissions.canEdit('event-attendance#edit')) {
+        <input
+          #subscriptionCsvInput
+          type="file"
+          accept=".csv,text/csv"
+          hidden
+          (change)="
+            workspace.importMajorEventSubscriptionsFromCsv(
+              subscriptionCsvInput.files?.[0] ?? null
+            );
+            subscriptionCsvInput.value = ''
+          "
+        />
+        <button
+          mat-button
+          type="button"
+          [disabled]="workspace.isImportingCsv()"
+          (click)="subscriptionCsvInput.click()"
+        >
+          <mat-icon>upload_file</mat-icon>
+          Importar inscrições
+        </button>
+      }
+    </form>
+
+    <mat-list class="subscription-list">
+      @for (
+        subscription of workspace.majorEventUserAttendances();
+        track subscription.subscriptionId
+      ) {
+        <mat-list-item
+          (click)="workspace.selectMajorEventUserAttendance(subscription)"
+          [class.selected-list-item]="
+            workspace.selectedMajorEventUserAttendance()?.subscriptionId ===
+            subscription.subscriptionId
+          "
+        >
+          <span matListItemTitle class="attendance-item-title">
+            {{ subscription.person?.name ?? subscription.personId }}
+          </span>
+          <span matListItemLine class="attendance-item-line">
+            {{ subscription.subscriptionStatus }} ·
+            {{ subscription.amountPaid ?? '-' }} ·
+            {{ subscription.paymentTier ?? '-' }}
+          </span>
+        </mat-list-item>
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>Nenhuma inscrição carregada</span>
+          <span matListItemLine>Escolha um grande evento para consultar.</span>
+        </mat-list-item>
+      }
+    </mat-list>
+  </aside>
+
+  <section class="panel attendance-detail">
+    @if (workspace.selectedMajorEventUserAttendance()) {
+      <div class="panel-heading">
+        <div>
+          <h3>
+            {{
+              workspace.selectedMajorEventUserAttendance()?.person?.name ??
+                'Pessoa'
+            }}
+          </h3>
+          <p>
+            {{
+              workspace.selectedMajorEventUserAttendance()?.subscriptionStatus
+            }}
+            ·
+            {{
+              workspace.selectedMajorEventUserAttendance()?.paymentTier ?? '-'
+            }}
+          </p>
+        </div>
+      </div>
+
+      <mat-list class="attendance-list">
+        @for (
+          attendanceStatus of workspace.selectedMajorEventUserAttendance()
+            ?.attendances ?? [];
+          track attendanceStatus.eventId
+        ) {
+          <mat-list-item
+            [class.attended]="attendanceStatus.attended"
+            [class.missed]="!attendanceStatus.attended"
+          >
+            <span matListItemTitle class="attendance-item-title">
+              {{ attendanceStatus.eventName }}
+            </span>
+            <span matListItemLine class="attendance-item-line">
+              {{ attendanceStatus.attended ? 'Presente' : 'Ausente' }}
+              @if (attendanceStatus.attendedAt) {
+                · {{ attendanceStatus.attendedAt | date: 'short' }}
+              }
+            </span>
+            <div matListItemMeta>
+              <mat-icon>
+                {{
+                  attendanceStatus.attended
+                    ? 'check_circle'
+                    : 'radio_button_unchecked'
+                }}
+              </mat-icon>
+            </div>
+          </mat-list-item>
+        }
+      </mat-list>
+    } @else {
+      <div class="empty-state">
+        <mat-icon>fact_check</mat-icon>
+        <h3>Selecione uma inscrição</h3>
+        <p>O detalhamento de presença por atividade aparece neste painel.</p>
+      </div>
+    }
+  </section>
+</section>

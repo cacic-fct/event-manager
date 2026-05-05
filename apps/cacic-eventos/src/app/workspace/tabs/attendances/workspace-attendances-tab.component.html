@@ -1,0 +1,19 @@
+<section class="section attendance-shell">
+  <header class="attendance-header">
+    <div>
+      <h2>Presenças</h2>
+      <p>
+        Registre entradas, importe listas e acompanhe presenças por inscrição.
+      </p>
+    </div>
+  </header>
+
+  <mat-tab-group animationDuration="160ms" mat-stretch-tabs="false">
+    <mat-tab label="Por evento">
+      <app-workspace-event-attendances-subtab />
+    </mat-tab>
+    <mat-tab label="Por grande evento">
+      <app-workspace-major-event-attendances-subtab />
+    </mat-tab>
+  </mat-tab-group>
+</section>

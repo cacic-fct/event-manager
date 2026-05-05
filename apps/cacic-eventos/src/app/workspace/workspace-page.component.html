@@ -1,0 +1,173 @@
+<mat-toolbar>
+  <span>CACiC Event Manager</span>
+  <span class="internal-badge">interno</span>
+  <span class="spacer"></span>
+  <span class="user">{{ user()?.email }}</span>
+  <button mat-button (click)="logout()">Sair</button>
+</mat-toolbar>
+
+<main class="page">
+  <mat-card>
+    @if (shell.loading()) {
+      <div class="loading">
+        <mat-spinner diameter="30"></mat-spinner>
+      </div>
+    }
+
+    <mat-tab-group
+      [selectedIndex]="activeTabIndex()"
+      (selectedIndexChange)="activeTabIndex.set($event)"
+    >
+      @if (permissions.missingReadForTab(activeTabIndex()).length > 0) {
+        <div class="permission-summary" role="status">
+          <strong>Permissões ausentes nesta aba</strong>
+          <span>
+            Sem permissões de leitura, a página não pode carregar dados com
+            segurança.
+          </span>
+          <div class="permission-list">
+            @for (
+              scope of permissions.missingReadForTab(activeTabIndex());
+              track scope
+            ) {
+              <span class="permission-chip">{{ scope }}</span>
+            }
+          </div>
+        </div>
+      }
+
+      <mat-tab>
+        <ng-template mat-tab-label>
+          Eventos
+          @if (permissions.missingReadForTab(0).length > 0) {
+            <span class="tab-warning">
+              {{ permissions.missingReadForTab(0).length }}
+            </span>
+          }
+        </ng-template>
+        @if (permissions.canReadTab(0)) {
+          <app-workspace-events-tab></app-workspace-events-tab>
+        } @else {
+          <section class="permission-denied">
+            <h2>Aba indisponível</h2>
+            <p>Faltam permissões de leitura para abrir Eventos.</p>
+          </section>
+        }
+      </mat-tab>
+
+      <mat-tab>
+        <ng-template mat-tab-label>
+          Grandes eventos
+          @if (permissions.missingReadForTab(1).length > 0) {
+            <span class="tab-warning">
+              {{ permissions.missingReadForTab(1).length }}
+            </span>
+          }
+        </ng-template>
+        @if (permissions.canReadTab(1)) {
+          <app-workspace-major-events-tab></app-workspace-major-events-tab>
+        } @else {
+          <section class="permission-denied">
+            <h2>Aba indisponível</h2>
+            <p>Faltam permissões de leitura para abrir Grandes eventos.</p>
+          </section>
+        }
+      </mat-tab>
+
+      <mat-tab>
+        <ng-template mat-tab-label>
+          Grupos
+          @if (permissions.missingReadForTab(2).length > 0) {
+            <span class="tab-warning">
+              {{ permissions.missingReadForTab(2).length }}
+            </span>
+          }
+        </ng-template>
+        @if (permissions.canReadTab(2)) {
+          <app-workspace-event-groups-tab></app-workspace-event-groups-tab>
+        } @else {
+          <section class="permission-denied">
+            <h2>Aba indisponível</h2>
+            <p>Faltam permissões de leitura para abrir Grupos.</p>
+          </section>
+        }
+      </mat-tab>
+
+      <mat-tab>
+        <ng-template mat-tab-label>
+          Pessoas
+          @if (permissions.missingReadForTab(3).length > 0) {
+            <span class="tab-warning">
+              {{ permissions.missingReadForTab(3).length }}
+            </span>
+          }
+        </ng-template>
+        @if (permissions.canReadTab(3)) {
+          <app-workspace-people-tab></app-workspace-people-tab>
+        } @else {
+          <section class="permission-denied">
+            <h2>Aba indisponível</h2>
+            <p>Faltam permissões de leitura para abrir Pessoas.</p>
+          </section>
+        }
+      </mat-tab>
+
+      <mat-tab>
+        <ng-template mat-tab-label>
+          Pessoas duplicadas
+          @if (permissions.missingReadForTab(4).length > 0) {
+            <span class="tab-warning">
+              {{ permissions.missingReadForTab(4).length }}
+            </span>
+          }
+        </ng-template>
+        @if (permissions.canReadTab(4)) {
+          <app-workspace-merge-candidates-tab></app-workspace-merge-candidates-tab>
+        } @else {
+          <section class="permission-denied">
+            <h2>Aba indisponível</h2>
+            <p>Faltam permissões de leitura para abrir Pessoas duplicadas.</p>
+          </section>
+        }
+      </mat-tab>
+
+      <mat-tab>
+        <ng-template mat-tab-label>
+          Certificados
+          @if (permissions.missingReadForTab(5).length > 0) {
+            <span class="tab-warning">
+              {{ permissions.missingReadForTab(5).length }}
+            </span>
+          }
+        </ng-template>
+        @if (permissions.canReadTab(5)) {
+          <app-workspace-certificates-tab></app-workspace-certificates-tab>
+        } @else {
+          <section class="permission-denied">
+            <h2>Aba indisponível</h2>
+            <p>Faltam permissões de leitura para abrir Certificados.</p>
+          </section>
+        }
+      </mat-tab>
+
+      <mat-tab>
+        <ng-template mat-tab-label>
+          Presenças
+          @if (permissions.missingReadForTab(6).length > 0) {
+            <span class="tab-warning">
+              {{ permissions.missingReadForTab(6).length }}
+            </span>
+          }
+        </ng-template>
+        @if (permissions.canReadTab(6)) {
+          <app-workspace-attendances-tab></app-workspace-attendances-tab>
+        } @else {
+          <section class="permission-denied">
+            <h2>Aba indisponível</h2>
+            <p>Faltam permissões de leitura para abrir Presenças.</p>
+          </section>
+        }
+      </mat-tab>
+    </mat-tab-group>
+  </mat-card>
+</main>

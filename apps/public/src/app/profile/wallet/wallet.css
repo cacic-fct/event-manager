@@ -1,0 +1,76 @@
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 210mm;
+    height: 297mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+  .aztec-code,
+  .aztec-code * {
+    visibility: visible;
+    width: 4cm !important;
+    height: 4cm !important;
+  }
+
+  .avatar {
+    display: none;
+  }
+
+  mat-toolbar {
+    display: none;
+  }
+
+  mat-card {
+    width: 10cm;
+    height: 13cm;
+    padding: 0;
+  }
+}
+
+.aztec-code {
+  padding: 25px;
+  background-color: #fff;
+  display: block;
+  overflow: hidden;
+  height: 300px;
+  width: 300px;
+}
+
+mat-card {
+  padding: 1rem;
+}
+
+mat-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+mat-card-header h1,
+h2 {
+  margin: 0;
+}
+
+.identity-document {
+  margin-top: 1rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+}

@@ -1,0 +1,633 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// USERS
+
+model User {
+  id               String   @id
+  email            String   @unique
+  name             String
+  identityDocument String?
+  academicId       String?
+  role             UserRole @default(USER)
+
+  people People[]
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([identityDocument])
+  @@index([academicId])
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  EVENT_MANAGER
+  CACIC
+  ADMIN
+}
+
+enum ContactType {
+  EMAIL
+  PHONE
+  WHATSAPP
+  OTHER
+}
+
+// MAJOR EVENTS
+
+model MajorEvent {
+  id        String   @id @default(uuid(7))
+  name      String
+  startDate DateTime
+  endDate   DateTime
+
+  description String?
+  emoji       String  @default("❔")
+
+  events Event[]
+
+  subscriptions         MajorEventSubscription[]
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+
+  maxCoursesPerAttendee  Int?
+  maxLecturesPerAttendee Int?
+
+  buttonText String?
+  buttonLink String?
+
+  contactInfo String?
+  contactType ContactType?
+
+  isPaymentRequired     Boolean      @default(false)
+  paymentInfo           PaymentInfo?
+  additionalPaymentInfo String?
+
+  majorEventPrices MajorEventPrice[]
+
+  certificateConfigs CertificateConfig[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([name, deletedAt])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([deletedAt])
+  @@map("major_events")
+}
+
+model PaymentInfo {
+  id       String @id @default(uuid(7))
+  bankName String
+  agency   String
+  account  String
+  holder   String
+  document String
+
+  majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id])
+  majorEventId String     @unique
+
+  @@map("payment_info")
+}
+
+// EVENT GROUPS
+
+model EventGroup {
+  id   String @id @default(uuid(7))
+  name String
+
+  emoji String @default("❔")
+
+  events        Event[]
+  subscriptions EventGroupSubscription[]
+
+  shouldIssueCertificate             Boolean @default(false)
+  // If true, attendees will receive a single certificate for the whole group instead of one per event. 
+  shouldIssueCertificateForEachEvent Boolean @default(false)
+  // If true, attendees will receive a certificate even if they only attended part of the events in the group. If false, they must attend all events to receive a certificate.
+  shouldIssuePartialCertificate      Boolean @default(false)
+
+  certificateConfigs CertificateConfig[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([name, deletedAt])
+  @@index([deletedAt])
+  @@map("event_groups")
+}
+
+// EVENTS
+
+enum EventType {
+  MINICURSO
+  PALESTRA
+  OTHER
+}
+
+model Event {
+  id            String    @id @default(uuid(7))
+  name          String
+  creditMinutes Int?
+  startDate     DateTime
+  endDate       DateTime
+  type          EventType @default(OTHER)
+  emoji         String    @default("❔")
+
+  description      String?
+  shortDescription String?
+
+  latitude            Float?
+  longitude           Float?
+  locationDescription String?
+
+  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id])
+  majorEventId String?
+
+  eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id])
+  eventGroupId String?
+
+  attendances EventAttendance[]
+  lecturers   EventLecturer[]
+
+  allowSubscription     Boolean             @default(false)
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  subscriptions         EventSubscription[]
+  slots                 Int?
+  // When true and only if event is part of a major event, users will be automatically subscribed to this event when subscribing to the major event
+  autoSubscribe         Boolean             @default(false)
+
+  shouldIssueCertificate Boolean             @default(false)
+  certificateConfigs     CertificateConfig[]
+
+  shouldCollectAttendance   Boolean   @default(false)
+  isOnlineAttendanceAllowed Boolean   @default(false)
+  onlineAttendanceCode      String?
+  onlineAttendanceStartDate DateTime?
+  onlineAttendanceEndDate   DateTime?
+
+  // If event should be visible to users or if it's only for internal (admin) use
+  publiclyVisible Boolean @default(true)
+
+  youtubeCode String?
+  buttonText  String?
+  buttonLink  String?
+
+  deletedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([startDate])
+  @@index([endDate])
+  @@index([majorEventId])
+  @@index([eventGroupId])
+  @@index([deletedAt])
+  @@map("events")
+}
+
+model EventSubscription {
+  id String @id @default(uuid(7))
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  person   People @relation(fields: [personId], references: [id])
+  personId String
+
+  eventGroupSubscriptionId String?
+  eventGroupSubscription   EventGroupSubscription? @relation(fields: [eventGroupSubscriptionId], references: [id])
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  deletedAt DateTime?
+
+  @@unique([eventId, personId, deletedAt])
+  @@index([eventId])
+  @@index([eventGroupSubscriptionId])
+  @@map("event_subscriptions")
+}
+
+model EventGroupSubscription {
+  id String @id @default(uuid(7))
+
+  eventGroupId String
+  eventGroup   EventGroup @relation(fields: [eventGroupId], references: [id])
+
+  person   People @relation(fields: [personId], references: [id])
+  personId String
+
+  eventSubscriptions EventSubscription[]
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  deletedAt DateTime?
+
+  @@unique([eventGroupId, personId, deletedAt])
+  @@index([eventGroupId])
+  @@index([personId])
+  @@map("event_group_subscriptions")
+}
+
+model MajorEventSubscription {
+  id String @id @default(uuid(7))
+
+  majorEventId String
+  majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id])
+
+  person   People @relation(fields: [personId], references: [id])
+  personId String
+
+  amountPaid  Int?
+  paymentDate DateTime?
+  paymentTier String?
+
+  subscriptionStatus SubscriptionStatus @default(WAITING_RECEIPT_UPLOAD)
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  deletedAt DateTime?
+
+  @@unique([majorEventId, personId, deletedAt])
+  @@index([majorEventId])
+  @@map("major_event_subscriptions")
+}
+
+model MajorEventPrice {
+  id           String     @id @default(uuid(7))
+  majorEventId String
+  majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id])
+
+  type PriceType
+
+  tiers PriceTier[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([majorEventId])
+  @@map("major_event_prices")
+}
+
+enum PriceType {
+  SINGLE
+  TIERED
+}
+
+model PriceTier {
+  id      String          @id @default(uuid(7))
+  priceId String
+  price   MajorEventPrice @relation(fields: [priceId], references: [id])
+
+  name  String
+  value Int
+
+  @@index([priceId])
+  @@map("price_tiers")
+}
+
+enum SubscriptionStatus {
+  // Old 0 status
+  WAITING_RECEIPT_UPLOAD
+  // Old 1 status
+  RECEIPT_UNDER_REVIEW
+  // Old 3 status
+  REJECTED_INVALID_RECEIPT
+  // Old 4 status
+  REJECTED_NO_SLOTS
+  // Old 5 status
+  REJECTED_SCHEDULE_CONFLICT
+  REJECTED_GENERIC
+  // Old 2 status
+  CONFIRMED
+  CANCELED
+}
+
+// PEOPLE
+
+model People {
+  id               String   @id @default(uuid(7))
+  name             String
+  email            String?
+  secondaryEmails  String[]
+  phone            String?
+  identityDocument String?
+  isCPF            Boolean? @default(true)
+  academicId       String?
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  attendances             EventAttendance[]
+  lectures                EventLecturer[]
+  eventSubscriptions      EventSubscription[]
+  eventGroupSubscriptions EventGroupSubscription[]
+  majorEventSubscriptions MajorEventSubscription[]
+
+  // Merge tracking
+  mergedIntoId String?
+  mergedInto   People?  @relation("PeopleMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom   People[] @relation("PeopleMerge")
+
+  mergeCandidatesA        MergeCandidate[]       @relation("MergeCandidateA")
+  mergeCandidatesB        MergeCandidate[]       @relation("MergeCandidateB")
+  mergeOperationsAsTarget PeopleMergeOperation[] @relation("MergeTargetOperations")
+  mergeOperationsAsSource PeopleMergeOperation[] @relation("MergeSourceOperations")
+
+  certificates Certificate[]
+
+  externalRef String? @unique // external system reference (optional)
+
+  deletedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@unique([identityDocument, deletedAt])
+  @@index([name])
+  @@index([email])
+  @@index([identityDocument])
+  @@index([academicId])
+  @@index([userId])
+  @@index([mergedIntoId])
+  @@index([deletedAt])
+  @@map("people")
+}
+
+// EVENT ATTENDANCE
+
+model EventAttendance {
+  personId String
+  eventId  String
+
+  person People @relation(fields: [personId], references: [id])
+  event  Event  @relation(fields: [eventId], references: [id])
+
+  attendedAt DateTime @default(now())
+
+  createdAt       DateTime                 @default(now())
+  createdById     String?
+  createdByMethod AttendanceCreationMethod @default(UNKNOWN)
+
+  @@id([personId, eventId])
+  @@index([eventId])
+  @@index([personId])
+  @@map("event_attendances")
+}
+
+enum AttendanceCreationMethod {
+  CSV_IMPORT
+  MANUAL_INPUT
+  SCANNER
+  ONLINE_CODE
+  UNKNOWN
+}
+
+// EVENT LECTURERS
+
+model EventLecturer {
+  eventId  String
+  personId String
+
+  event  Event  @relation(fields: [eventId], references: [id])
+  person People @relation(fields: [personId], references: [id])
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@id([eventId, personId])
+  @@index([personId])
+  @@map("event_lecturers")
+}
+
+// MERGE CANDIDATES
+
+enum MergeCandidateStatus {
+  PENDING
+  MERGED
+  REJECTED
+}
+
+enum MergeMatchMethod {
+  CPF
+  EMAIL
+  NORMALIZED_NAME
+}
+
+enum PeopleMergeOperationStatus {
+  APPLIED
+  ROLLED_BACK
+}
+
+model PeopleMergeOperation {
+  id String @id @default(uuid(7))
+
+  targetPersonId   String
+  sourcePersonId   String
+  mergeCandidateId String?
+
+  targetPerson   People          @relation("MergeTargetOperations", fields: [targetPersonId], references: [id])
+  sourcePerson   People          @relation("MergeSourceOperations", fields: [sourcePersonId], references: [id])
+  mergeCandidate MergeCandidate? @relation(fields: [mergeCandidateId], references: [id])
+
+  status PeopleMergeOperationStatus @default(APPLIED)
+
+  migratedFields Json
+  targetSnapshot Json
+  sourceSnapshot Json
+  movedRelations Json
+
+  rolledBackAt   DateTime?
+  rolledBackById String?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@index([targetPersonId])
+  @@index([sourcePersonId])
+  @@index([mergeCandidateId])
+  @@index([status])
+  @@index([rolledBackById])
+  @@index([createdById])
+  @@map("people_merge_operations")
+}
+
+model MergeCandidate {
+  id String @id @default(uuid(7))
+
+  personAId String
+  personBId String
+
+  personA People @relation("MergeCandidateA", fields: [personAId], references: [id])
+  personB People @relation("MergeCandidateB", fields: [personBId], references: [id])
+
+  pairKey String @unique // "minId:maxId"
+
+  score       Float?
+  matchMethod MergeMatchMethod?
+  matchValue  String?
+
+  status MergeCandidateStatus @default(PENDING)
+
+  resolvedById String?
+
+  mergeOperations PeopleMergeOperation[]
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([personAId])
+  @@index([personBId])
+  @@index([status])
+  @@index([matchMethod])
+  @@index([resolvedById])
+  @@map("merge_candidates")
+}
+
+enum CertificateScope {
+  MAJOR_EVENT
+  EVENT_GROUP
+  EVENT
+  OTHER
+}
+
+model CertificateTemplate {
+  id          String  @id @default(uuid(7))
+  name        String
+  description String?
+
+  // Version the template instead of editing old rows in place
+  version  Int  @default(1)
+  template Json
+
+  isActive Boolean @default(true)
+
+  certificateConfigs CertificateConfig[]
+  certificates       Certificate[]
+
+  /**
+   * Format is:
+   * {
+   * "fieldName1": {
+   * "type": "string", "number" or "date"
+   * "required": true or false
+   * "default"?: "Default Value"
+   * }
+   * },
+   */
+  certificateFields Json?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  deletedAt DateTime?
+
+  @@index([name])
+  @@map("certificate_templates")
+}
+
+enum CertificateIssuedTo {
+  ATTENDEE
+  LECTURER
+  OTHER
+}
+
+model CertificateConfig {
+  id   String @id @default(uuid(7))
+  name String
+
+  scope CertificateScope
+
+  majorEventId String?
+  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id])
+
+  eventGroupId String?
+  eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id])
+
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id])
+
+  certificateTemplateId String
+  certificateTemplate   CertificateTemplate @relation(fields: [certificateTemplateId], references: [id])
+
+  certificateText String?
+  isActive        Boolean @default(true)
+
+  issuedTo CertificateIssuedTo @default(OTHER)
+
+  certificates Certificate[]
+
+  // Additional variable fields, depending on each template's needs
+  certificateFields Json?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  deletedAt DateTime?
+
+  @@unique([eventId, name])
+  @@index([scope])
+  @@index([majorEventId])
+  @@index([eventGroupId])
+  @@index([eventId])
+  @@index([certificateTemplateId])
+  @@map("certificate_configs")
+}
+
+model Certificate {
+  id String @id @default(uuid(7))
+
+  personId String
+  person   People @relation(fields: [personId], references: [id])
+
+  configId String
+  config   CertificateConfig @relation(fields: [configId], references: [id])
+
+  // Snapshot of all variables used to render the PDF
+  renderedData Json
+
+  issuedAt   DateTime @default(now())
+  issuedById String?
+
+  certificateTemplate   CertificateTemplate @relation(fields: [certificateTemplateId], references: [id])
+  certificateTemplateId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+
+  @@unique([personId, configId])
+  @@index([personId])
+  @@index([configId])
+  @@map("certificates")
+}

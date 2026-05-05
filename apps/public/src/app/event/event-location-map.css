@@ -1,0 +1,15 @@
+.map-target {
+  aspect-ratio: 16 / 9;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 8px;
+  min-height: 220px;
+  overflow: hidden;
+  width: 100%;
+}
+
+@media (max-width: 599px) {
+  .map-target {
+    aspect-ratio: 4 / 3;
+    min-height: 240px;
+  }
+}

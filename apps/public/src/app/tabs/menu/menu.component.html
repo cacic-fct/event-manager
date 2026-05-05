@@ -1,0 +1,93 @@
+<div class="global-container">
+  <section>
+    <div>
+      @if (authService.isAuthenticated()) {
+        <mat-list>
+          <mat-list-item>
+            <img
+              [src]="
+                authService.user()?.claims?.['picture'] ||
+                'https://placehold.co/40x40'
+              "
+              matListItemIcon
+              alt="Avatar"
+              width="32"
+              height="32"
+              style="border-radius: 50%"
+              referrerpolicy="no-referrer"
+              class="avatar-placeholder"
+            />
+            <span matListItemTitle>{{
+              authService.user()?.claims?.['name'] || 'Desconhecido'
+            }}</span>
+            <!-- <button
+              matIconButton
+              aria-label="Sair"
+              (click)="authService.logout()"
+              matListItemMeta
+            >
+              <mat-icon>qr_code</mat-icon>
+            </button> -->
+
+            <button
+              matIconButton
+              aria-label="Sair da conta"
+              (click)="authService.logout()"
+              matListItemMeta
+            >
+              <mat-icon>logout</mat-icon>
+            </button>
+          </mat-list-item>
+        </mat-list>
+      } @else {
+        <mat-nav-list>
+          <a
+            mat-list-item
+            (click)="authService.login()"
+            (keypress)="authService.login()"
+            tabindex="0"
+          >
+            <mat-icon matListItemIcon class="avatar-placeholder"
+              >account_circler</mat-icon
+            >
+            <span matListItemTitle>Entrar</span>
+            <button
+              matIconButton
+              aria-label="Entrar"
+              (click)="authService.login()"
+              matListItemMeta
+            >
+              <mat-icon>login</mat-icon>
+            </button>
+          </a>
+        </mat-nav-list>
+      }
+    </div>
+    <mat-divider></mat-divider>
+  </section>
+
+  <section>
+    @if (authService.isAuthenticated()) {
+      <mat-nav-list>
+        <h3 matSubheader>Perfil</h3>
+
+        <a mat-list-item routerLink="/profile/wallet">
+          <mat-icon matListItemIcon>qr_code</mat-icon>
+          <span matListItemTitle>Carteira</span>
+        </a>
+
+        <a mat-list-item routerLink="/profile/attendances">
+          <mat-icon matListItemIcon>list</mat-icon>
+          <span matListItemTitle>Participações</span>
+        </a>
+      </mat-nav-list>
+    }
+
+    <mat-nav-list>
+      <a mat-list-item routerLink="/about" (click)="$event.preventDefault()">
+        <mat-icon matListItemIcon>info</mat-icon>
+        <span matListItemTitle>Sobre</span>
+      </a>
+    </mat-nav-list>
+  </section>
+</div>

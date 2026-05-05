@@ -1,0 +1,85 @@
+.week-shell {
+  margin: 0 auto;
+  max-width: 980px;
+  padding: 8px 0 32px;
+}
+
+.week-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 0 8px;
+}
+
+.hcal {
+  font-size: 1.25rem;
+  max-width: 1600px;
+  position: relative;
+  width: 100%;
+}
+
+.hcal-header {
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  padding-top: 8px;
+  text-align: center;
+}
+
+.hcal-header-days,
+.hcal-header-dates {
+  display: flex;
+}
+
+.hcal-header-days {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+}
+
+.hcal-header-dates {
+  margin-top: 3px;
+}
+
+.hcal-header-day,
+.hcal-header-date {
+  text-align: center;
+  width: 15%;
+}
+
+.hcal-header-date {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--mat-sys-on-surface);
+  cursor: pointer;
+  font: var(--mat-sys-title-medium);
+  height: 38px;
+  margin: 0 auto 5px;
+  width: 38px;
+}
+
+.hcal-header-date.active {
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font-weight: 600;
+}
+
+.hcal-header-today {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+  margin-top: 10px;
+  padding-bottom: 10px;
+}
+
+mat-list {
+  border-radius: 8px;
+  margin-top: 16px;
+  overflow: hidden;
+}
+
+.empty-section {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 180px;
+  text-align: center;
+}

@@ -1,0 +1,21 @@
+.menu-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+}
+
+.menu-header > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.avatar-placeholder {
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 32px !important;
+  border-radius: 50%;
+  /* background-color: #ccc; */
+}

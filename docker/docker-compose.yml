@@ -1,0 +1,82 @@
+name: event-manager
+
+services:
+  events-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+    volumes:
+      - events-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  events-redis:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - events-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  events-backend:
+    image: ghcr.io/cacic-fct/event-manager/events-backend:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@events-db:5432/postgres}
+      REDIS_URL: ${REDIS_URL:-redis://events-redis:6379}
+      KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL:-}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
+      KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI:-}
+      KEYCLOAK_POST_LOGIN_REDIRECT_URI: ${KEYCLOAK_POST_LOGIN_REDIRECT_URI:-}
+      KEYCLOAK_POST_LOGOUT_REDIRECT_URI: ${KEYCLOAK_POST_LOGOUT_REDIRECT_URI:-}
+      TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-false}
+      TYPESENSE_HOST: ${TYPESENSE_HOST:-}
+      TYPESENSE_PORT: ${TYPESENSE_PORT:-}
+      TYPESENSE_PROTOCOL: ${TYPESENSE_PROTOCOL:-}
+      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-}
+    depends_on:
+      events-db:
+        condition: service_healthy
+      events-redis:
+        condition: service_healthy
+    ports:
+      - '${BACKEND_PORT:-3000}:3000'
+    restart: unless-stopped
+
+  cacic-eventos:
+    image: ghcr.io/cacic-fct/event-manager/cacic-eventos:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+    depends_on:
+      - events-backend
+    ports:
+      - '${CACIC_EVENTOS_PORT:-4200}:4000'
+    restart: unless-stopped
+
+  public:
+    image: ghcr.io/cacic-fct/event-manager/public:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+    depends_on:
+      - events-backend
+    ports:
+      - '${PUBLIC_PORT:-4201}:4000'
+    restart: unless-stopped
+
+volumes:
+  events-db-data:
+  events-redis-data:

@@ -1,0 +1,37 @@
+<section class="hero-section">
+  <!-- Individual twinkling stars -->
+  <div class="star-container">
+    <!-- @for (star of stars(); track $index) {
+      <app-star [star]="star" />
+    } -->
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-visual">
+      <lib-cacic-logo class="hero-icon" fillColor="#fff" />
+    </div>
+    <div class="hero-text">
+      <h1 class="hero-title">
+        <span class="brand-highlight">Eventos</span>
+      </h1>
+      <h2 class="hero-subtitle">
+        <b>Faça login com o e-mail institucional</b> se você possui vínculo com
+        a Unesp.
+      </h2>
+
+      <div class="hero-actions">
+        <button
+          mat-raised-button
+          color="primary"
+          class="login-button"
+          (click)="login()"
+        >
+          <mat-icon>login</mat-icon>
+          Entrar com o Google
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<app-value-proposition />

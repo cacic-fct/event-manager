@@ -1,0 +1,92 @@
+{
+  "name": "cacic-eventos",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/cacic-eventos/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/apps/cacic-eventos",
+        "browser": "apps/cacic-eventos/src/main.ts",
+        "tsConfig": "apps/cacic-eventos/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/cacic-eventos/public"
+          }
+        ],
+        "styles": [
+          "apps/cacic-eventos/src/styles.scss"
+        ],
+        "server": "apps/cacic-eventos/src/main.server.ts",
+        "ssr": {
+          "entry": "apps/cacic-eventos/src/server.ts"
+        },
+        "outputMode": "server"
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "options": {
+        "proxyConfig": "apps/cacic-eventos/src/proxy.conf.json"
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "cacic-eventos:build:production"
+        },
+        "development": {
+          "buildTarget": "cacic-eventos:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "test": {
+      "executor": "@angular/build:unit-test",
+      "options": {}
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "cacic-eventos:build",
+        "port": 4200,
+        "staticFilePath": "dist/apps/cacic-eventos/browser",
+        "spa": true
+      }
+    }
+  }
+}

@@ -1,0 +1,86 @@
+<mat-toolbar>
+  <a mat-icon-button routerLink="/menu" aria-label="Voltar para o menu">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+</mat-toolbar>
+
+<main class="attendances-page">
+  <header class="page-header">
+    <p class="eyebrow">Perfil</p>
+    <h1>Minhas participações</h1>
+  </header>
+
+  @let currentState = feedState(); @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  } @else if (currentState.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ currentState.message }}</p>
+  </section>
+  } @else {
+  <section class="feed-section">
+    <div class="section-heading">
+      <h2>Grandes eventos</h2>
+    </div>
+
+    @if (currentState.data.majorEventItems.length === 0) {
+    <p class="empty-text">Nenhuma inscrição em grande evento.</p>
+    } @else {
+    <mat-action-list>
+      @for ( subscription of currentState.data.majorEventItems; track
+      subscription.id ) {
+      <a
+        mat-list-item
+        [routerLink]="majorEventRoute(subscription)"
+        [attr.aria-label]="'Abrir detalhes de ' + subscription.majorEvent.name"
+      >
+        <div matListItemIcon class="emoji-frame">
+          <img
+            class="twemoji"
+            [src]="emoji.getTwemojiUrl(subscription.majorEvent.emoji)"
+            [alt]="subscription.majorEvent.emoji"
+          />
+        </div>
+        <div matListItemTitle>{{ subscription.majorEvent.name }}</div>
+        <div matListItemLine>{{ majorEventDateLine(subscription) }}</div>
+        <div matListItemLine>{{ majorEventStatusLine(subscription) }}</div>
+      </a>
+      }
+    </mat-action-list>
+    }
+  </section>
+
+  <section class="feed-section">
+    <div class="section-heading">
+      <h2>Eventos</h2>
+    </div>
+
+    @if (currentState.data.eventItems.length === 0) {
+    <p class="empty-text">Nenhum evento avulso ou grupo inscrito.</p>
+    } @else {
+    <mat-action-list>
+      @for (item of currentState.data.eventItems; track item.id) {
+      <a
+        mat-list-item
+        [routerLink]="itemRoute(item)"
+        [attr.aria-label]="'Abrir detalhes de ' + itemTitle(item)"
+      >
+        <div matListItemIcon class="emoji-frame">
+          <img
+            class="twemoji"
+            [src]="emoji.getTwemojiUrl(itemEmoji(item))"
+            [alt]="itemEmoji(item)"
+          />
+        </div>
+        <div matListItemTitle>{{ itemTitle(item) }}</div>
+        <div matListItemLine>{{ itemDateLine(item) }}</div>
+        <div matListItemLine>
+          {{ itemStatusLine(item, currentState.data.attendances) }}
+        </div>
+      </a>
+      }
+    </mat-action-list>
+    }
+  </section>
+  }
+</main>

@@ -1,0 +1,45 @@
+<form [formGroup]="form()" class="event-filter-panel">
+  <mat-form-field class="query-field">
+    <mat-label>Busca rápida</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input #queryInput matInput formControlName="query" />
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>De</mat-label>
+    <input matInput type="date" formControlName="startDateFrom" />
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Até</mat-label>
+    <input matInput type="date" formControlName="startDateTo" />
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Em grupo</mat-label>
+    <mat-select formControlName="isInGroup">
+      <mat-option value="ALL">Todos</mat-option>
+      <mat-option value="YES">Sim</mat-option>
+      <mat-option value="NO">Não</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Em grande evento</mat-label>
+    <mat-select formControlName="isInMajorEvent">
+      <mat-option value="ALL">Todos</mat-option>
+      <mat-option value="YES">Sim</mat-option>
+      <mat-option value="NO">Não</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <div class="filter-actions">
+    <button mat-flat-button type="button" (click)="applyFilters.emit()">
+      <mat-icon>tune</mat-icon>
+      {{ applyLabel() }}
+    </button>
+    <button mat-button type="button" (click)="resetFilters.emit()">
+      {{ resetLabel() }}
+    </button>
+  </div>
+</form>

@@ -1,0 +1,34 @@
+:host {
+  display: block;
+}
+
+.emoji-frame {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.twemoji {
+  display: block;
+  height: 32px;
+  width: 32px;
+}
+
+.time-range {
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  font: var(--mat-sys-label-large);
+  justify-items: end;
+  line-height: 1.25;
+  min-width: 48px;
+}
+
+@media (max-width: 599px) {
+  .time-range {
+    font: var(--mat-sys-label-medium);
+    min-width: 40px;
+  }
+}
