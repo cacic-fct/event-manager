@@ -3,19 +3,19 @@ import { RenderMode, ServerRoute } from '@angular/ssr';
 export const serverRoutes: ServerRoute[] = [
   {
     path: 'event/:eventId',
-    renderMode: RenderMode.Server,
+    renderMode: RenderMode.Client,
   },
   {
     path: 'profile/attendances/:eventType/:eventId',
-    renderMode: RenderMode.Server,
+    renderMode: RenderMode.Client,
   },
   {
     path: 'validate/:certificateId',
-    renderMode: RenderMode.Server,
+    renderMode: RenderMode.Client,
   },
   {
     path: 'validar/:certificateId',
-    renderMode: RenderMode.Server,
+    renderMode: RenderMode.Client,
   },
   {
     path: '**',
