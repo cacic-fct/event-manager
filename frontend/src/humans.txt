@@ -1,1 +1,0 @@
-Confira a rota humans.txt em app.routes.ts.

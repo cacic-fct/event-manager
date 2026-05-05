@@ -1,9 +1,0 @@
-@if (licenses | async; as licensesText) {
-  <div>{{ licensesText }}</div>
-} @else {
-  @if (error$ | async) {
-    <ion-text color="danger">Não foi possível obter a lista de licenças</ion-text>
-  } @else {
-    <ion-spinner name="dots"></ion-spinner>
-  }
-}

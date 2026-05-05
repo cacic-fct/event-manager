@@ -1,6 +1,0 @@
-{
-  "name": "fct-app",
-  "integrations": {},
-  "type": "angular",
-  "npmClient": "bun"
-}
