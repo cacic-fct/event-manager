@@ -22,7 +22,7 @@ FROM deps AS builder
 COPY apps/events-backend ./apps/events-backend
 COPY shared-data-types ./shared-data-types
 COPY shared-utils ./shared-utils
-RUN bun x nx run events-backend:prune
+# RUN bun x nx run events-backend:prune
 
 FROM base AS runtime-deps
 ENV NODE_ENV=production
