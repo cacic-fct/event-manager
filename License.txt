@@ -1,6 +1,6 @@
 AGPL-3.0-only
 
- FCT App
+ CACiC Event Manager & FCT App
  Copyright (c) CACIC - Centro Acadêmico de Ciência da Computação "Alan Turing" 
 da Faculdade de Ciências e Tecnologia, Câmpus de Presidente Prudente, 
 Universidade Estadual Paulista "Júlio de Mesquita Filho"
