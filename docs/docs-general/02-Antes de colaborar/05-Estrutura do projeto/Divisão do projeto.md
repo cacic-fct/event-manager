@@ -6,38 +6,26 @@ sidebar:
 
 ## Os repositórios
 
-O FCT App é um projeto único, mas está dividido em 3 repositórios:
+O CACiC Event Manager é um projeto único, mas está dividido em 2 repositórios:
 
-- [FCT App](https://github.com/cacic-fct/fct-app) - Frontend, backend e documentação;
-- [FCT App Assets](https://github.com/cacic-fct/fct-app-assets) - Composição de imagens, sons e outros recursos com armazenamento em arquivos binários.
+- [CACiC Event Manager](https://github.com/cacic-fct/event-manager) - Frontend, backend e documentação;
+- [CACiC Event Manager Assets](https://github.com/cacic-fct/event-manager-assets) - Composição de imagens, sons e outros recursos com armazenamento em arquivos binários.
 
-O FCT App também pode fazer uso de outros projetos ou repositórios da organização do CACiC, mas estes não estarão listados aqui se não forem parte do projeto do FCT App.
+O CACiC Event Manager também pode fazer uso de outros projetos ou repositórios da organização do CACiC, mas estes não estarão listados aqui se não forem parte do projeto do CACiC Event Manager em si.
 
 ## O que não é admitido
 
 ### Divisão desnecessária de projetos
 
-O FCT App é um aplicativo único e deve ser tratado como tal.  
+O CACiC Event Manager é um aplicativo único e deve ser tratado como tal.  
 Não admite-se a modularização das funcionalidades do projeto em repositórios diferentes.
 
-Admite-se a separação de pacotes que possam ser reaproveitados em outros projetos.
-
-#### Exemplo positivo
-
-O pacote [@cacic-fct/starlight-typesense-docsearch](https://github.com/cacic-fct/starlight-typesense-docsearch) tem a funcionalidade genérica de pesquisa, logo, pode ser usado no FCT App Docs e em outros projetos.
-
-#### Exemplo negativo
-
-O painel de administração do FCT App não deve ser separado da parte de usuários do FCT App, exceto em casos de microfrontends.  
-O administrador também é aluno e, consequentemente, usuário do FCT App.
-
-Separar a área de administração por motivos de segurança é uma prática desnecessária.  
-O principal responsável pela segurança é o backend, não o frontend.
+Admite-se a separação de pacotes genéricos que possam ser reaproveitados em outros projetos.
 
 ## Perguntas
 
-### O que não faz parte do projeto do FCT App?
+### O que não faz parte do projeto do CACiC Event Manager?
 
-Projetos que não tenham relação direta com o FCT App não devem ser incluídos no projeto.
+Projetos que não tenham relação direta com o CACiC Event Manager não devem ser incluídos no projeto.
 
-Por exemplo, mesmo que a SECOMPP faça uso do FCT App e de suas APIs, o site da SECOMPP não faz parte do projeto do FCT App.
+Por exemplo, mesmo que a SECOMPP faça uso do CACiC Event Manager e de suas APIs, o site da SECOMPP não faz parte do projeto do CACiC Event Manager.

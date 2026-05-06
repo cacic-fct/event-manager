@@ -3,7 +3,7 @@ import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'FCT App Docs',
+  title: 'Event Manager Docs',
   tagline: 'Documentação de desenvolvimento e gerenciamento',
   favicon: 'icons/favicon.png',
 
@@ -16,7 +16,7 @@ const config: Config = {
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'cacic-fct', // Usually your GitHub org/user name.
-  projectName: 'fct-app', // Usually your repo name.
+  projectName: 'event-manager', // Usually your repo name.
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -54,7 +54,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars/general.ts',
-          editUrl: 'https://github.com/cacic-fct/fct-app/tree/main/docs/docs-general/',
+          editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-general/',
           path: 'docs-general',
           routeBasePath: 'Geral',
           showLastUpdateAuthor: true,
@@ -68,7 +68,7 @@ const config: Config = {
           },
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/cacic-fct/fct-app/tree/main/docs/blog/',
+          editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/blog/',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
@@ -85,9 +85,9 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'FCT App Docs',
+      title: 'Event Manager Docs',
       logo: {
-        alt: 'Logo do FCT App Docs',
+        alt: 'Logo do Event Manager Docs',
         src: 'icons/favicon.png',
       },
       items: [
@@ -125,7 +125,7 @@ const config: Config = {
         },
         { to: '/blog', label: 'Blog', position: 'left' },
         {
-          href: 'https://github.com/cacic-fct/fct-app',
+          href: 'https://github.com/cacic-fct/event-manager',
           label: 'GitHub',
           position: 'right',
         },
@@ -135,15 +135,15 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'FCT App',
+          title: 'Event Manager',
           items: [
             {
               label: 'Aplicativo',
-              href: 'https://fctapp.cacic.dev.br',
+              href: 'https://eventos.cacic.dev.br',
             },
             {
               label: 'Repositório',
-              href: 'https://github.com/cacic-fct/fct-app',
+              href: 'https://github.com/cacic-fct/event-manager',
             },
           ],
         },
@@ -185,7 +185,7 @@ const config: Config = {
         path: 'docs-admin',
         routeBasePath: 'Administração',
         sidebarPath: './sidebars/admin.ts',
-        editUrl: 'https://github.com/cacic-fct/fct-app/tree/main/docs/docs-admin/',
+        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-admin/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,
       },
@@ -197,7 +197,7 @@ const config: Config = {
         path: 'docs-frontend',
         routeBasePath: 'Frontend',
         sidebarPath: './sidebars/frontend.ts',
-        editUrl: 'https://github.com/cacic-fct/fct-app/tree/main/docs/docs-frontend/',
+        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-frontend/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,
       },
@@ -209,7 +209,7 @@ const config: Config = {
         path: 'docs-backend',
         routeBasePath: 'Backend',
         sidebarPath: './sidebars/backend.ts',
-        editUrl: 'https://github.com/cacic-fct/fct-app/tree/main/docs/docs-backend/',
+        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-backend/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,
       },

@@ -4,7 +4,7 @@ title: Mapa
 
 ## Tiles
 
-Usamos o OpenStreetMap, porque ele possui informações detalhadas sobre a FCT-Unesp, as quais não estão no Google Maps.
+Usamos o OpenStreetMap, porque ele possui informações detalhadas sobre a FCT-Unesp que não estão no Google Maps.
 
 Além disso, não há limite de requisições.
 

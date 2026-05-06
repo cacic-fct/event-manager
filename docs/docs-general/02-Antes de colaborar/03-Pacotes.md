@@ -6,7 +6,7 @@ sidebar:
 
 ## Gerenciador de pacotes
 
-O FCT App utiliza o gerenciador de pacotes [bun](https://bun.sh/package-manager).  
+O CACiC Event Manager utiliza o gerenciador de pacotes [bun](https://bun.sh/package-manager).  
 É necessário que você tenha o bun instalado em sua máquina para instalar as dependências do projeto.
 
 Usamos o bun por conta de sua velocidade e simplicidade.

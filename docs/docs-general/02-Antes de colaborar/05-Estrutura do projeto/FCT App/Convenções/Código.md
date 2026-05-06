@@ -4,7 +4,7 @@ title: Código
 
 ## Interface
 
-A interface do FCT App deve se comportar como a de um aplicativo nativo.
+A interface do CACiC Event Manager deve se comportar como a de um aplicativo nativo, não como um site.
 
 A única excessão é a página de _landing_.
 
@@ -12,7 +12,7 @@ A única excessão é a página de _landing_.
 
 > Também conhecida por "gameficação", ludificação ou gamification.
 
-Não é permitido incorporar elementos de gamificação no FCT App.
+Não é permitido incorporar elementos de gamificação no CACiC Event Manager.
 
 Isso inclui qualquer tipo de elemento de "jogo", incluindo:
 

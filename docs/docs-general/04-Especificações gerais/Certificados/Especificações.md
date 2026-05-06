@@ -2,20 +2,16 @@
 title: Especificações
 ---
 
-## Encoding da identificação do certificado
-
-Para reduzir o consumo de espaço no BD, preferiu-se realizar o _encoding_ dos dados em `BASE64` à armazenar _hashes_ ou _uuids_ genéricas.  
-Prefere-se `BASE64` à `BASE32` por conta do tamanho da string. Como há o QR Code para a verificação, não há a preocupação em digitar o código manualmente.
-
 ## QR Code
 
-Não usar Aztec Code, pois esse código precisa ser lido por qualquer leitor fora do FCT App.
+Não usar Aztec Code, pois esse código precisa ser lido por qualquer leitor fora do CACiC Event Manager.
 
 O QR Code deve apontar diretamente para a página de validação do certificado, que deve ser acessível publicamente.
 
 ## Frente
 
-A frente existe apenas para fins estéticos. Todas as informações essenciais estão no verso.
+A frente existe apenas para fins estéticos. Na palavra de um dos professores "os certificados deveriam parecer certificados".  
+Todas as informações essenciais estão no verso.
 
 ## Verso
 

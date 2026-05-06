@@ -4,9 +4,9 @@ sidebar:
   order: 2
 ---
 
-O FCT App e a infraestrutura de hospedagem devem ser auditados periodicamente.
+O CACiC Event Manager e a infraestrutura de hospedagem devem ser auditados periodicamente.
 
-A auditoria do código-fonte do FCT App pode ser feita por qualquer pessoa por meio do repositório público no GitHub.
+A auditoria do código-fonte do CACiC Event Manager pode ser feita por qualquer pessoa por meio do repositório público no GitHub.
 
 A auditoria da infraestrutura de hospedagem pode ser feita apenas por:
 
@@ -18,9 +18,9 @@ A auditoria da infraestrutura de hospedagem pode ser feita apenas por:
 - Alunos desenvolvedores que contribuíram significativamente para o projeto.
   - A interpretação de "contribuição significativa" neste caso específico fica a cargo da diretoria executiva de uma das entidades conforme critérios supracionados nesta lista.
 
-Servidores ou alunos que não se encaixam nos critérios acima só podem realizar a auditoria do que está disponível publicamente no repositório do FCT App.
+Servidores ou alunos que não se encaixam nos critérios acima só podem realizar a auditoria do que está disponível publicamente no repositório do CACiC Event Manager.
 
-Isso se deve ao fato de que a infraestrutura de hospedagem contém informações pessoais dos usuários do FCT App e eventuais vulnerabilidades desconhecidas que podem ser exploradas.
+Isso se deve ao fato de que a infraestrutura de hospedagem contém informações pessoais dos usuários do CACiC Event Manager e eventuais vulnerabilidades desconhecidas que podem ser exploradas.
 
 Caso solicitado, a configuração do servidor deve ser disponibilizada para a auditoria.
 
@@ -56,7 +56,7 @@ Possuirão acesso irrestrito e vitalício de leitura e escrita a todos códigos-
 - [@willshobwish](https://github.com/willshobwish)
 - [@Yudi](https://github.com/Yudi)\*
 
-> \*[Detém a propriedade do FCT App](/Geral/Licenças).
+> \*[Detém a propriedade do CACiC Event Manager](/Geral/Licenças).
 
 Estas pessoas foram escolhidas por serem ex-alunos do curso de Ciência da Computação da FCT e por terem contribuído significativamente para o projeto.
 
@@ -78,19 +78,19 @@ Após exauridas todas as tentativas de contato a um _lead developer_, ele será 
 
 Os _lead developers_ possuem poderes irrestritos. Por exemplo, eles podem:
 
-- Atualizar o código do FCT App e de suas dependências;
+- Atualizar o código do CACiC Event Manager e de suas dependências;
 - Embargar o acesso de qualquer pessoa ao servidor;
 - Remover o aplicativo do ar;
 - Exigir correções de segurança dos encarregados de dados e infraestrutura;
-- Impedir mudanças na licença do código do FCT App;
-- Questionar a substituição do FCT App por outro projeto;
+- Impedir mudanças na licença do código do CACiC Event Manager;
+- Questionar a substituição do CACiC Event Manager por outro projeto;
 - Questionar mudanças da infraestrutura;
 - Notificar o Departamento de Matemática e Computação e a Diretoria Técnica de Informática (DTI) sobre problemas de segurança.
 
 Não compete aos _lead developers_:
 
-- A responsabilidade de manter a infraestrutura de hospedagem do FCT App;
-- A responsabilidade de manter o código do FCT App;
+- A responsabilidade de manter a infraestrutura de hospedagem do CACiC Event Manager;
+- A responsabilidade de manter o código do CACiC Event Manager;
 - A responsabilidade da segurança dos dados;
 - Alterar as características dos _founding lead developers_.
 
@@ -104,16 +104,16 @@ _Lead developers_ só podem embargar ou reverter embargos de _founding lead deve
 
 ### Código
 
-Conforme a [concessão do FCT App](/Geral/Licenças):
+Conforme a [concessão do CACiC Event Manager](/Geral/Licenças):
 
-O FCT App é disponibilizado sob a licença `AGPL-3.0-only` e não pode ser relicenciado.  
-O código do FCT App deve ser mantido em um repositório público no GitHub.
+O CACiC Event Manager é disponibilizado sob a licença `AGPL-3.0-only` e não pode ser relicenciado.  
+O código do CACiC Event Manager deve ser mantido em um repositório público no GitHub.
 
 ### Auditoria automática
 
 #### CodeQL
 
-O código do FCT App é verificado pelo CodeQL a cada _push_ no repositório.  
+O código do CACiC Event Manager é verificado pelo CodeQL a cada _push_ no repositório.  
 O CodeQL é uma ferramenta de análise estática de código que verifica a existência de vulnerabilidades.
 
 #### Dependabot
@@ -123,7 +123,7 @@ O Dependabot verifica se há atualizações de dependências no repositório.
 #### Mozilla Observatory
 
 O [Mozilla Observatory](https://observatory.mozilla.org) é uma ferramenta que verifica a segurança do site e da hospedagem.  
-O FCT App deve manter uma pontuação de segurança A+, exceto quando impossibilitado por limitações técnicas.
+O CACiC Event Manager deve manter uma pontuação de segurança A+, exceto quando impossibilitado por limitações técnicas.
 
 #### CSP Evaluator
 

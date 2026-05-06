@@ -18,7 +18,7 @@ function HomepageHeader() {
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
-          <Link className="button button--secondary button--lg" to="https://github.com/cacic-fct/fct-app">
+          <Link className="button button--secondary button--lg" to="https://github.com/cacic-fct/event-manager">
             Repositório
           </Link>
         </div>
@@ -35,7 +35,7 @@ function HomepageHeader() {
 
 export default function Home(): JSX.Element {
   return (
-    <Layout description="Documentação de desenvolvimento, gerenciamento, uso e manutenção do FCT App, um aplicativo do CACiC para os alunos da FCT-Unesp.">
+    <Layout description="Documentação de desenvolvimento, gerenciamento, uso e manutenção do CACiC Event Manager, um aplicativo do CACiC para os alunos da FCT-Unesp.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

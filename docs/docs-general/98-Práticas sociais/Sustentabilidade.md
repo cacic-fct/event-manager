@@ -11,9 +11,9 @@ As estimativas do impacto climático da indústria web variam entre [2%](https:/
 Em abril de 2024, os sites transferiram uma mediana de `2610.9 KB` de dados para os usuários, de acordo com o [HTTP Archive](https://httparchive.org/reports/state-of-the-web).  
 Quanto mais dados uma página web transfere, mais recursos energéticos são necessários.
 
-### FCT App
+### CACiC Event Manager
 
-Toda vez que alguém acessa o FCT App, cerca de 0,4g de CO2 são emitidos na atmosfera.  
+Toda vez que alguém acessa o CACiC Event Manager, cerca de 0,4g de CO2 são emitidos na atmosfera.  
 Em um ano, um único usuário pode emitir uma quantidade de CO2 equivalente à emitida no aquecimento de 6 xícaras de café!
 
 ## Nossas práticas

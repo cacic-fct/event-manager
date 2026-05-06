@@ -44,7 +44,7 @@ Nem todos os projetos analisados estão listados, pois foram perdidos. :-(
   - Se alguma documentação existe, as instruções são insuficientes;
 - Monorepo:
   - Projetos sem uso permanecem no repositório;
-  - Divisão desnecessária de frontends (sem a aplicação de uma estrutura de microfrontends);
+  - Divisão desnecessária de frontends e sem qualquer tipo de integração entre eles;
 - Commits sem padrão:
   - Commitlint não foi adicionado ou foi desativado posteriormente;
   - Commits com mensagens longas, vagas ou com emojis.

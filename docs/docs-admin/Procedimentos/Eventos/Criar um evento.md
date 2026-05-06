@@ -4,18 +4,11 @@ title: Criar um evento
 
 ## Gerenciar
 
-### Editar evento
-
-Não é possível editar um evento diretamente pelo FCT App.
-
-Acesse o [Console do Firebase](https://console.firebase.google.com/) e edite o evento diretamente no Firestore.
-
-
 ### Grupo de eventos
 
-Se um evento está dividido em várias partes, crie um novo evento para cada uma delas.
+Se um evento está dividido em várias partes (ex: dias diferentes para um mesmo minicurso), crie um grupo de eventos para agrupá-las.
 
-Depois, na página de gerenciar eventos, agrupe-as com a ferramenta de grupos (ícone da pasta).
+Depois, crie cada evento individualmente, indicando o grupo de eventos criado.
 
 ### Evento faz parte de um grande evento
 
@@ -23,10 +16,9 @@ Se o evento faz parte de um grande evento, crie o grande evento _antes_ de criar
 
 Lembre-se de indicar o grande evento na página de criação do evento.
 
-#### Evento é obrigatório 
+#### Evento é obrigatório ou de inscrição automática
 
-A lista de eventos obrigatórios é hardcoded. 
-Inclua os IDs no array `mandatoryEvents` do arquivo [`frontend/src/app/tabs/major-events-display/subscribe/subscribe.page.ts`](https://github.com/cacic-fct/fct-app/blob/main/frontend/src/app/tabs/major-events-display/subscribe/subscribe.page.ts)
+Marque a respectiva caixa na criação do evento.
 
 ## Campos do formulário
 

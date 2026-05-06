@@ -2,7 +2,7 @@
 title: Conjuntos de dados (datasets)
 ---
 
-Entende-se por "conjuntos de dados" os _datasets_ que contém informações agrupadas sobre qualquer tema, incluindo usuários, eventos, etc, que são armazenados nos bancos de dados do projeto do FCT App.
+Entende-se por "conjuntos de dados" os _datasets_ que contém informações agrupadas sobre qualquer tema, incluindo usuários, eventos, etc, que são armazenados nos bancos de dados do projeto do CACiC Event Manager.
 
 Não é considerada um "conjunto de dados" a informação de um único usuário quando ele solicita seus dados.
 

@@ -1,5 +1,5 @@
 ---
-title: FCT App Assets
+title: CACiC Event Manager Assets
 ---
 
 O Git não é uma plataforma de versionamento de arquivos binários, da mesma forma que o Github não é uma plataforma de distribuição para estes arquivos.
