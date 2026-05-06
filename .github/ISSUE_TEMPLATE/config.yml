@@ -4,5 +4,5 @@ contact_links:
     url: https://docs.fctapp.cacic.dev.br
     about: Encontre guias e explicações para perguntas frequentes.
   - name: 💬 Discussões
-    url: https://github.com/cacic-fct/fct-app/discussions/new
+    url: https://github.com/cacic-fct/event-manager/discussions/new
     about: Pergunte e interaja com outros usuários.

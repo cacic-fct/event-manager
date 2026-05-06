@@ -7,9 +7,9 @@ body:
     attributes:
       value: |
         - Evite descrições e títulos vagos como "Algo não está funcionando" ou "Alguns problemas" — seja o mais descritivo possível.
-        - Issues devem conter informações suficientes para serem reproduzíveis. Se você tem dificuldades para reproduzir o problema, inicie uma [discussão](https://github.com/cacic-fct/fct-app/discussions/new).
+        - Issues devem conter informações suficientes para serem reproduzíveis. Se você tem dificuldades para reproduzir o problema, inicie uma [discussão](https://github.com/cacic-fct/event-manager/discussions/new).
         - Mantenha sua issue focada em um único problema. Se você tiver vários relatórios de bugs, crie uma issue separada para cada um deles.
-        - Lembre-se de que o **FCT App** é um projeto de código aberto, que é mantido por voluntários. Se você puder, resolva o problema e envie um pull request.
+        - Lembre-se de que o **CACiC Event Manager** é um projeto de código aberto, que é mantido por voluntários. Se você puder, resolva o problema e envie um pull request.
 
         ___
 
