@@ -30,7 +30,7 @@ COPY --from=builder /workspace/dist/apps/events-backend/package.json ./
 COPY bun.lock ./
 COPY apps/events-backend/prisma ./apps/events-backend/prisma
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-  bun install --frozen-lockfile --production
+  bun install --production
 RUN bun x prisma generate --schema apps/events-backend/prisma/schema.prisma
 
 FROM node:22-alpine AS runtime
