@@ -27,6 +27,10 @@ export type SubscriptionStatus =
   | 'REJECTED_GENERIC'
   | 'CONFIRMED'
   | 'CANCELED';
+export type SubscriptionCreationMethod =
+  | 'ADMIN_DASHBOARD'
+  | 'SELF_SUBSCRIPTION'
+  | 'UNKNOWN';
 export type PersonMergeField =
   | 'NAME'
   | 'EMAIL'
@@ -239,6 +243,43 @@ export interface MajorEventUserAttendance {
   paymentDate?: string | null;
   paymentTier?: string | null;
   attendances: MajorEventEventAttendanceStatus[];
+}
+
+export interface WorkspaceEventSubscription {
+  id: string;
+  eventId: string;
+  event?: Event | null;
+  personId: string;
+  person?: Person | null;
+  eventGroupSubscriptionId?: string | null;
+  createdAt: string;
+  createdById?: string | null;
+  createdByMethod: SubscriptionCreationMethod;
+  isLecturerSubscription: boolean;
+}
+
+export interface WorkspaceMajorEventSubscriptionEvent {
+  eventId: string;
+  eventName: string;
+  eventStartDate?: string | null;
+  subscribed: boolean;
+  isLecturerSubscription: boolean;
+}
+
+export interface WorkspaceMajorEventSubscription {
+  id: string;
+  majorEventId: string;
+  majorEvent?: MajorEvent | null;
+  personId: string;
+  person?: Person | null;
+  subscriptionStatus: SubscriptionStatus;
+  amountPaid?: number | null;
+  paymentDate?: string | null;
+  paymentTier?: string | null;
+  createdAt: string;
+  createdById?: string | null;
+  createdByMethod: SubscriptionCreationMethod;
+  events: WorkspaceMajorEventSubscriptionEvent[];
 }
 
 export interface EventAttendanceCsvImportResult {

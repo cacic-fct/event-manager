@@ -1,5 +1,12 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import {
+  Injectable,
+  PLATFORM_ID,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { AuthService } from '@cacic-eventos/shared-angular';
 import { firstValueFrom } from 'rxjs';
 
@@ -23,7 +30,10 @@ export type WorkspacePermissionScope =
   | 'merge-candidate#delete'
   | 'person#read'
   | 'person#edit'
-  | 'person#delete';
+  | 'person#delete'
+  | 'subscription#read'
+  | 'subscription#edit'
+  | 'subscription#delete';
 
 export type WorkspaceTabPermission = {
   label: string;
@@ -40,7 +50,8 @@ export enum WorkspacePermissionTab {
   MergeCandidates = 4,
   Certificates = 5,
   Attendances = 6,
-  Permissions = 7,
+  Subscriptions = 7,
+  Permissions = 8,
 }
 
 type KeycloakPermissionClaim =
@@ -105,6 +116,17 @@ const TAB_PERMISSIONS = [
     delete: ['event-attendance#delete'],
   },
   {
+    label: 'Inscrições',
+    read: [
+      'subscription#read',
+      'event#read',
+      'major-event#read',
+      'person#read',
+    ],
+    edit: ['subscription#edit'],
+    delete: ['subscription#delete'],
+  },
+  {
     label: 'Permissões',
     read: [],
     edit: [],
@@ -118,9 +140,12 @@ const TAB_PERMISSIONS = [
 export class WorkspacePermissionsService {
   private readonly authService = inject(AuthService);
   private readonly http = inject(HttpClient);
+  private readonly platformId = inject(PLATFORM_ID);
 
   readonly tabs = TAB_PERMISSIONS;
   private readonly evaluatedPermissions = signal<Set<string>>(new Set());
+  private workspacePermissionsEvaluated = false;
+  private evaluationPromise: Promise<void> | null = null;
   readonly granted = computed(() => {
     const permissions = this.extractGrantedPermissions();
     for (const permission of this.evaluatedPermissions()) {
@@ -160,6 +185,28 @@ export class WorkspacePermissionsService {
   }
 
   async evaluateWorkspacePermissions(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    if (this.workspacePermissionsEvaluated) {
+      return;
+    }
+
+    if (this.evaluationPromise) {
+      return this.evaluationPromise;
+    }
+
+    this.evaluationPromise = this.fetchWorkspacePermissions();
+
+    try {
+      await this.evaluationPromise;
+    } finally {
+      this.evaluationPromise = null;
+    }
+  }
+
+  private async fetchWorkspacePermissions(): Promise<void> {
     const permissions = this.tabs.flatMap((tab) => [
       ...tab.read,
       ...tab.edit,
@@ -176,6 +223,7 @@ export class WorkspacePermissionsService {
     );
 
     this.evaluatedPermissions.set(new Set(result.permissions));
+    this.workspacePermissionsEvaluated = true;
   }
 
   private extractGrantedPermissions(): Set<string> {

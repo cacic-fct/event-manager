@@ -607,6 +607,7 @@ export class EventAttendancesResolver {
               personId,
               subscriptionStatus: importStatus,
               createdById,
+              createdByMethod: 'ADMIN_DASHBOARD',
             },
           });
           createdSubscriptionCount += 1;
@@ -658,6 +659,7 @@ export class EventAttendancesResolver {
               eventId,
               personId,
               createdById,
+              createdByMethod: 'ADMIN_DASHBOARD',
             })),
           });
         }

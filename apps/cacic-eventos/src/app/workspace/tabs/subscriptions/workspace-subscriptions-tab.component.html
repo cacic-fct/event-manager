@@ -1,0 +1,13 @@
+<section class="workspace-tab">
+  <mat-tab-group
+    [selectedIndex]="selectedTabIndex()"
+    (selectedIndexChange)="onSelectedTabIndexChange($event)"
+  >
+    <mat-tab label="Eventos">
+      <app-workspace-event-subscriptions-subtab />
+    </mat-tab>
+    <mat-tab label="Grandes eventos">
+      <app-workspace-major-event-subscriptions-subtab />
+    </mat-tab>
+  </mat-tab-group>
+</section>

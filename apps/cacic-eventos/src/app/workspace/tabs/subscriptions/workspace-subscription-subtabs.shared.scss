@@ -1,0 +1,128 @@
+.subtab-layout {
+  display: grid;
+  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+  gap: 1rem;
+  padding-block: 1rem;
+}
+
+.panel,
+.surface {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-surface);
+}
+
+.panel {
+  padding: 1rem;
+  min-width: 0;
+}
+
+.panel-heading,
+.surface-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.panel-heading h3,
+.surface h4,
+.surface-heading h4 {
+  margin: 0;
+}
+
+.panel-heading p {
+  margin: 0.25rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.panel-actions,
+.inline-list,
+.manual-form,
+.major-event-form,
+.detail-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.manual-form mat-form-field,
+.major-event-form mat-form-field,
+.detail-form mat-form-field {
+  min-width: 12rem;
+}
+
+.event-result-list,
+.subscription-list {
+  max-height: 32rem;
+  overflow: auto;
+}
+
+.list-title,
+.item-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selected-list-item {
+  background: var(--mat-sys-secondary-container);
+}
+
+.workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.8fr) minmax(20rem, 1.2fr);
+  gap: 1rem;
+}
+
+.surface {
+  padding: 1rem;
+}
+
+.empty-note,
+.surface-heading span {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.warning-section,
+.warning-item {
+  color: var(--mat-sys-error);
+}
+
+.warning-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.empty-state {
+  min-height: 20rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.empty-state mat-icon {
+  width: 3rem;
+  height: 3rem;
+  font-size: 3rem;
+}
+
+.detail-form {
+  margin-bottom: 1rem;
+}
+
+.event-selection mat-list-item {
+  min-height: 4.5rem;
+}
+
+@media (max-width: 900px) {
+  .subtab-layout,
+  .workbench-grid {
+    grid-template-columns: 1fr;
+  }
+}

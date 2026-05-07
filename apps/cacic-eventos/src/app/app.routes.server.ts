@@ -34,6 +34,14 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'subscriptions/event/:eventId',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'subscriptions/major-event/:majorEventId',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: '**',
     renderMode: RenderMode.Prerender,
   },

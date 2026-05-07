@@ -298,6 +298,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
             personId: person.id,
             amountPaid: normalizedAmountPaid ?? undefined,
             paymentTier: normalizedPaymentTier ?? undefined,
+            createdByMethod: 'SELF_SUBSCRIPTION',
             subscriptionStatus:
               nextStatus ??
               (majorEvent.isPaymentRequired
@@ -351,6 +352,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           data: eventIdsToCreate.map((eventId) => ({
             eventId,
             personId: person.id,
+            createdByMethod: 'SELF_SUBSCRIPTION',
           })),
         });
       }
