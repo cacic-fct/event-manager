@@ -7,8 +7,7 @@
   "targets": {
     "build": {
       "outputs": [
-        "{workspaceRoot}/dist/apps/events-backend/package.json",
-        "{workspaceRoot}/dist/apps/events-backend/bun.lock"
+        "{workspaceRoot}/dist/apps/events-backend"
       ],
       "executor": "nx:run-commands",
       "options": {
