@@ -77,6 +77,7 @@ export class WorkspaceEventsService {
   readonly selectedEvent = signal<Event | null>(null);
   readonly eventLecturers = signal<{ personId: string; name: string }[]>([]);
   readonly selectedEventGroupName = signal('');
+  readonly selectedEventGroupAllowsCertificates = signal(true);
   readonly eventGroupSearchResults = signal<EventGroup[]>([]);
   readonly lecturerSearchResults = signal<Person[]>([]);
 
@@ -192,6 +193,7 @@ export class WorkspaceEventsService {
       query: '',
     });
     this.selectedEventGroupName.set('');
+    this.selectedEventGroupAllowsCertificates.set(true);
     this.eventForm.reset({
       id: '',
       name: '',
@@ -225,6 +227,7 @@ export class WorkspaceEventsService {
       buttonLink: '',
     });
     this.syncOnlineAttendanceControls();
+    this.syncCertificateControl();
   }
 
   randomizeOnlineAttendanceCode(): void {
@@ -292,12 +295,16 @@ export class WorkspaceEventsService {
   assignEventGroupToEvent(group: EventGroup): void {
     this.eventForm.controls.eventGroupId.setValue(group.id);
     this.selectedEventGroupName.set(group.name);
+    this.selectedEventGroupAllowsCertificates.set(group.shouldIssueCertificate);
+    this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
   }
 
   clearEventGroupFromEvent(): void {
     this.eventForm.controls.eventGroupId.setValue('');
     this.selectedEventGroupName.set('');
+    this.selectedEventGroupAllowsCertificates.set(true);
+    this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
   }
 
@@ -503,7 +510,11 @@ export class WorkspaceEventsService {
       eventItem.eventGroup?.name ?? '',
     );
     this.selectedEventGroupName.set(eventItem.eventGroup?.name ?? '');
+    this.selectedEventGroupAllowsCertificates.set(
+      eventItem.eventGroup?.shouldIssueCertificate ?? true,
+    );
     this.eventGroupSearchResults.set([]);
+    this.syncCertificateControl();
   }
 
   private toIsoDateTime(rawValue: string): string {
@@ -569,6 +580,17 @@ export class WorkspaceEventsService {
         control.disable({ emitEvent: false });
       }
     }
+  }
+
+  private syncCertificateControl(): void {
+    const certificateControl = this.eventForm.controls.shouldIssueCertificate;
+    if (!this.selectedEventGroupAllowsCertificates()) {
+      certificateControl.setValue(false, { emitEvent: false });
+      certificateControl.disable({ emitEvent: false });
+      return;
+    }
+
+    certificateControl.enable({ emitEvent: false });
   }
 
   private getRandomIndex(maxExclusive: number): number {

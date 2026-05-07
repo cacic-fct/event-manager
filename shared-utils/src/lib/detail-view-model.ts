@@ -217,6 +217,10 @@ export function getEventGroupCertificateTargets(
 ): CertificateTarget[] {
   const targets: CertificateTarget[] = [];
 
+  if (!group.shouldIssueCertificate) {
+    return targets;
+  }
+
   if (group.shouldIssuePartialCertificate) {
     targets.push({ scope: 'EVENT_GROUP', targetId: group.id });
   }

@@ -216,10 +216,12 @@ export class EventsResolver {
   async createEvent(
     @Args('input', { type: () => EventCreateInput }) input: EventCreateInput,
   ) {
+    const normalizedInput = await this.normalizeEventCertificateInput(input);
     const event = await this.prisma.event.create({
-      data: input,
+      data: normalizedInput,
       select: EVENT_DETAIL_SELECT,
     });
+    await this.disableGroupPerEventModeForMajorEvent(event);
     await this.typesenseSearch.upsertEvent({
       id: event.id,
       name: event.name,
@@ -242,12 +244,16 @@ export class EventsResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => EventUpdateInput }) input: EventUpdateInput,
   ) {
+    const normalizedInput = await this.normalizeEventCertificateInput(
+      input,
+      id,
+    );
     const { count } = await this.prisma.event.updateMany({
       where: {
         id,
         deletedAt: null,
       },
-      data: input,
+      data: normalizedInput,
     });
 
     if (count === 0) {
@@ -261,6 +267,7 @@ export class EventsResolver {
       select: EVENT_DETAIL_SELECT,
     });
     if (event) {
+      await this.disableGroupPerEventModeForMajorEvent(event);
       await this.typesenseSearch.upsertEvent({
         id: event.id,
         name: event.name,
@@ -300,5 +307,69 @@ export class EventsResolver {
       deleted: true,
       id,
     };
+  }
+
+  private async normalizeEventCertificateInput<
+    T extends EventCreateInput | EventUpdateInput,
+  >(input: T, eventId?: string): Promise<T> {
+    const existingEvent =
+      eventId && input.eventGroupId === undefined
+        ? await this.prisma.event.findFirst({
+            where: {
+              id: eventId,
+              deletedAt: null,
+            },
+            select: {
+              eventGroupId: true,
+            },
+          })
+        : null;
+    const eventGroupId =
+      input.eventGroupId === undefined
+        ? existingEvent?.eventGroupId
+        : input.eventGroupId;
+
+    if (!eventGroupId) {
+      return input;
+    }
+
+    const eventGroup = await this.prisma.eventGroup.findFirst({
+      where: {
+        id: eventGroupId,
+        deletedAt: null,
+      },
+      select: {
+        shouldIssueCertificate: true,
+      },
+    });
+
+    if (!eventGroup?.shouldIssueCertificate) {
+      return {
+        ...input,
+        shouldIssueCertificate: false,
+      };
+    }
+
+    return input;
+  }
+
+  private async disableGroupPerEventModeForMajorEvent(event: {
+    eventGroupId?: string | null;
+    majorEventId?: string | null;
+  }): Promise<void> {
+    if (!event.eventGroupId || !event.majorEventId) {
+      return;
+    }
+
+    await this.prisma.eventGroup.updateMany({
+      where: {
+        id: event.eventGroupId,
+        deletedAt: null,
+        shouldIssueCertificateForEachEvent: true,
+      },
+      data: {
+        shouldIssueCertificateForEachEvent: false,
+      },
+    });
   }
 }

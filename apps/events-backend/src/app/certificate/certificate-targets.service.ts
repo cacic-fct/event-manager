@@ -25,6 +25,7 @@ export class CertificateTargetsService {
         {
           eventGroup: {
             deletedAt: null,
+            shouldIssueCertificate: true,
             shouldIssueCertificateForEachEvent: true,
           },
         },
@@ -53,6 +54,7 @@ export class CertificateTargetsService {
     const normalizedQuery = query?.trim();
     const where: Prisma.EventGroupWhereInput = {
       deletedAt: null,
+      shouldIssueCertificate: true,
       shouldIssueCertificateForEachEvent: false,
       events: {
         some: {
@@ -89,6 +91,17 @@ export class CertificateTargetsService {
         some: {
           deletedAt: null,
           shouldIssueCertificate: true,
+          OR: [
+            {
+              eventGroupId: null,
+            },
+            {
+              eventGroup: {
+                deletedAt: null,
+                shouldIssueCertificate: true,
+              },
+            },
+          ],
         },
       },
     };
@@ -126,6 +139,7 @@ export class CertificateTargetsService {
             {
               eventGroup: {
                 deletedAt: null,
+                shouldIssueCertificate: true,
                 shouldIssueCertificateForEachEvent: true,
               },
             },
@@ -147,6 +161,7 @@ export class CertificateTargetsService {
         where: {
           id: targetId,
           deletedAt: null,
+          shouldIssueCertificate: true,
           shouldIssueCertificateForEachEvent: false,
           events: {
             some: {
@@ -176,6 +191,17 @@ export class CertificateTargetsService {
             some: {
               deletedAt: null,
               shouldIssueCertificate: true,
+              OR: [
+                {
+                  eventGroupId: null,
+                },
+                {
+                  eventGroup: {
+                    deletedAt: null,
+                    shouldIssueCertificate: true,
+                  },
+                },
+              ],
             },
           },
         },

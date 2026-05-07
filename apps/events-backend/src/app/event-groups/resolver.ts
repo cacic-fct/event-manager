@@ -91,8 +91,9 @@ export class EventGroupsResolver {
     @Args('input', { type: () => EventGroupCreateInput })
     input: EventGroupCreateInput,
   ) {
+    const normalizedInput = this.normalizeEventGroupCertificateInput(input);
     const eventGroup = await this.prisma.eventGroup.create({
-      data: input,
+      data: normalizedInput,
     });
     await this.typesenseSearch.upsertEventGroup({
       id: eventGroup.id,
@@ -108,16 +109,32 @@ export class EventGroupsResolver {
     @Args('input', { type: () => EventGroupUpdateInput })
     input: EventGroupUpdateInput,
   ) {
+    const normalizedInput = this.normalizeEventGroupCertificateInput(
+      input,
+      await this.hasMajorEventEvents(id),
+    );
     const { count } = await this.prisma.eventGroup.updateMany({
       where: {
         id,
         deletedAt: null,
       },
-      data: input,
+      data: normalizedInput,
     });
 
     if (count === 0) {
       throw new NotFoundException(`Event group ${id} was not found.`);
+    }
+
+    if (normalizedInput.shouldIssueCertificate === false) {
+      await this.prisma.event.updateMany({
+        where: {
+          eventGroupId: id,
+          deletedAt: null,
+        },
+        data: {
+          shouldIssueCertificate: false,
+        },
+      });
     }
 
     const eventGroup = await this.prisma.eventGroup.findUnique({
@@ -156,5 +173,40 @@ export class EventGroupsResolver {
       deleted: true,
       id,
     };
+  }
+
+  private normalizeEventGroupCertificateInput<
+    T extends EventGroupCreateInput | EventGroupUpdateInput,
+  >(input: T, hasMajorEventEvents = false): T {
+    if (input.shouldIssueCertificate === false) {
+      return {
+        ...input,
+        shouldIssueCertificateForEachEvent: false,
+        shouldIssuePartialCertificate: false,
+      };
+    }
+
+    if (hasMajorEventEvents) {
+      return {
+        ...input,
+        shouldIssueCertificateForEachEvent: false,
+      };
+    }
+
+    return input;
+  }
+
+  private async hasMajorEventEvents(eventGroupId: string): Promise<boolean> {
+    const count = await this.prisma.event.count({
+      where: {
+        eventGroupId,
+        majorEventId: {
+          not: null,
+        },
+        deletedAt: null,
+      },
+    });
+
+    return count > 0;
   }
 }

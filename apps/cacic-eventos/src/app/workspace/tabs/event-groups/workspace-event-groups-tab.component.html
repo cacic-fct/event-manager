@@ -32,9 +32,11 @@
             <span matListItemLine>
               @if (group.shouldIssueCertificate) {
                 {{
-                  group.shouldIssuePartialCertificate
-                    ? 'Certificado parcial permitido'
-                    : 'Exige todos os eventos'
+                  group.shouldIssueCertificateForEachEvent
+                    ? 'Um certificado por evento'
+                    : group.shouldIssuePartialCertificate
+                      ? 'Certificado parcial permitido'
+                      : 'Exige todos os eventos'
                 }}
               } @else {
                 Sem emissão de certificado
@@ -134,7 +136,10 @@
           <mat-checkbox formControlName="shouldIssueCertificate">
             Emitir certificado
           </mat-checkbox>
-          <mat-checkbox formControlName="shouldIssueCertificateForEachEvent">
+          <mat-checkbox
+            formControlName="shouldIssueCertificateForEachEvent"
+            [disabled]="workspace.selectedEventGroupHasMajorEventEvents()"
+          >
             Um certificado por evento
           </mat-checkbox>
           <mat-checkbox formControlName="shouldIssuePartialCertificate">

@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -25,6 +25,9 @@ export class WorkspaceEventGroupsService {
   readonly selectedEventGroup = signal<EventGroup | null>(null);
   readonly eventGroupEvents = signal<Event[]>([]);
   readonly eventGroupEventSearchResults = signal<Event[]>([]);
+  readonly selectedEventGroupHasMajorEventEvents = computed(() =>
+    this.eventGroupEvents().some((eventItem) => eventItem.majorEventId),
+  );
 
   readonly eventGroupForm = this.formBuilder.nonNullable.group({
     id: [''],
@@ -38,6 +41,16 @@ export class WorkspaceEventGroupsService {
   readonly eventGroupEventSearchForm = this.formBuilder.nonNullable.group({
     query: ['', [Validators.required]],
   });
+
+  constructor() {
+    this.eventGroupForm.controls.shouldIssueCertificate.valueChanges.subscribe(
+      () => this.syncCertificateRuleControls(),
+    );
+    effect(() => {
+      this.selectedEventGroupHasMajorEventEvents();
+      this.syncCertificateRuleControls();
+    });
+  }
 
   async loadEventGroups(): Promise<void> {
     this.eventGroups.set(
@@ -66,8 +79,11 @@ export class WorkspaceEventGroupsService {
       emoji: raw.emoji.trim() || DEFAULT_EVENT_GROUP_EMOJI,
       shouldIssueCertificate: raw.shouldIssueCertificate,
       shouldIssueCertificateForEachEvent:
+        raw.shouldIssueCertificate &&
+        !this.selectedEventGroupHasMajorEventEvents() &&
         raw.shouldIssueCertificateForEachEvent,
-      shouldIssuePartialCertificate: raw.shouldIssuePartialCertificate,
+      shouldIssuePartialCertificate:
+        raw.shouldIssueCertificate && raw.shouldIssuePartialCertificate,
     };
 
     if (raw.id) {
@@ -86,6 +102,7 @@ export class WorkspaceEventGroupsService {
       shouldIssueCertificateForEachEvent: false,
       shouldIssuePartialCertificate: false,
     });
+    this.syncCertificateRuleControls();
     await this.loadEventGroups();
     const selectedGroup = this.selectedEventGroup();
     if (selectedGroup) {
@@ -106,6 +123,7 @@ export class WorkspaceEventGroupsService {
       shouldIssueCertificateForEachEvent: false,
       shouldIssuePartialCertificate: false,
     });
+    this.syncCertificateRuleControls();
     this.eventGroupEventSearchForm.reset({
       query: '',
     });
@@ -136,6 +154,7 @@ export class WorkspaceEventGroupsService {
         group.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: group.shouldIssuePartialCertificate,
     });
+    this.syncCertificateRuleControls();
     this.eventGroupEventSearchForm.reset({
       query: '',
     });
@@ -184,6 +203,9 @@ export class WorkspaceEventGroupsService {
     await firstValueFrom(
       this.eventsApi.updateEvent(eventItem.id, {
         eventGroupId: selectedGroup.id,
+        shouldIssueCertificate: selectedGroup.shouldIssueCertificate
+          ? eventItem.shouldIssueCertificate
+          : false,
       }),
     );
     await Promise.all([
@@ -218,5 +240,33 @@ export class WorkspaceEventGroupsService {
         }),
       ),
     );
+    this.syncCertificateRuleControls();
+  }
+
+  private syncCertificateRuleControls(): void {
+    const shouldIssueCertificate =
+      this.eventGroupForm.controls.shouldIssueCertificate.value;
+    const forEachControl =
+      this.eventGroupForm.controls.shouldIssueCertificateForEachEvent;
+    const partialControl =
+      this.eventGroupForm.controls.shouldIssuePartialCertificate;
+
+    if (!shouldIssueCertificate) {
+      forEachControl.setValue(false, { emitEvent: false });
+      partialControl.setValue(false, { emitEvent: false });
+      forEachControl.disable({ emitEvent: false });
+      partialControl.disable({ emitEvent: false });
+      return;
+    }
+
+    partialControl.enable({ emitEvent: false });
+
+    if (this.selectedEventGroupHasMajorEventEvents()) {
+      forEachControl.setValue(false, { emitEvent: false });
+      forEachControl.disable({ emitEvent: false });
+      return;
+    }
+
+    forEachControl.enable({ emitEvent: false });
   }
 }
