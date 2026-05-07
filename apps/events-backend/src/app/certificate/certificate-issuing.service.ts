@@ -2,9 +2,14 @@ import {
   Certificate,
   CertificateIssuedTo,
   CertificateScope,
+  DeletionResult,
   EventType,
 } from '@cacic-eventos/shared-data-types';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -135,6 +140,7 @@ export class CertificateIssuingService {
     const existingCertificates = await this.prisma.certificate.findMany({
       where: {
         configId: config.id,
+        deletedAt: null,
       },
       select: {
         personId: true,
@@ -144,12 +150,16 @@ export class CertificateIssuingService {
       .map((certificate) => certificate.personId)
       .filter((personId) => !eligiblePersonIds.has(personId));
     if (invalidPersonIds.length > 0) {
-      await this.prisma.certificate.deleteMany({
+      await this.prisma.certificate.updateMany({
         where: {
           configId: config.id,
+          deletedAt: null,
           personId: {
             in: invalidPersonIds,
           },
+        },
+        data: {
+          deletedAt: new Date(),
         },
       });
     }
@@ -176,6 +186,33 @@ export class CertificateIssuingService {
     }
 
     return certificates.map(mapCertificate);
+  }
+
+  async deleteCertificate(certificateId: string): Promise<DeletionResult> {
+    const normalizedCertificateId = this.validation.normalizeRequiredId(
+      'certificateId',
+      certificateId,
+    );
+    const { count } = await this.prisma.certificate.updateMany({
+      where: {
+        id: normalizedCertificateId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    if (count === 0) {
+      throw new NotFoundException(
+        `Certificate ${normalizedCertificateId} not found.`,
+      );
+    }
+
+    return {
+      deleted: true,
+      id: normalizedCertificateId,
+    };
   }
 
   private async upsertCertificateForRecipient(
@@ -436,7 +473,7 @@ export class CertificateIssuingService {
 
       if (sortedGroupEvents.length === 1 && !group.hasGroup) {
         const event = sortedGroupEvents[0];
-        return `• ${this.formatDate(event.startDate)} - ${event.name} - Carga horária ${totalHours} horas`;
+        return `• ${this.formatDate(event.startDate)} - ${event.name} - Carga horária: ${totalHours} horas`;
       }
 
       const dates = sortedGroupEvents.map((event) =>
@@ -449,7 +486,7 @@ export class CertificateIssuingService {
   private buildSingleEventLines(events: EventRecord[]): string[] {
     return events.map((event) => {
       const hours = this.formatHours(event.creditMinutes ?? 0);
-      return `• ${this.formatDate(event.startDate)} - ${event.name} - Carga horária ${hours} horas`;
+      return `• ${this.formatDate(event.startDate)} - ${event.name} - Carga horária: ${hours} horas`;
     });
   }
 

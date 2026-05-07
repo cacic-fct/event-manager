@@ -6,6 +6,7 @@ import {
   CertificateConfigUpdateInput,
   CertificateScope,
   CertificateTemplate,
+  DeletionResult,
   Event,
   EventGroup,
   MajorEvent,
@@ -190,6 +191,12 @@ export class CertificatesResolver {
     return this.configsService.updateConfig(id, input);
   }
 
+  @Mutation(() => DeletionResult, { name: 'deleteCertificateConfig' })
+  @RequireScopes('certificate#edit')
+  deleteCertificateConfig(@Args('id', { type: () => String }) id: string) {
+    return this.configsService.deleteConfig(id);
+  }
+
   @Mutation(() => Certificate, { name: 'issueCertificateForPerson' })
   @RequireScopes('certificate#edit')
   issueCertificateForPerson(
@@ -214,6 +221,12 @@ export class CertificatesResolver {
       configId,
       this.getIssuedById(context),
     );
+  }
+
+  @Mutation(() => DeletionResult, { name: 'deleteCertificate' })
+  @RequireScopes('certificate#edit')
+  deleteCertificate(@Args('id', { type: () => String }) id: string) {
+    return this.issuingService.deleteCertificate(id);
   }
 
   private getIssuedById(context: GraphqlContext): string | undefined {

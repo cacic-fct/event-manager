@@ -141,6 +141,31 @@
                   {{ config.isActive ? 'Ativa' : 'Inativa' }} ·
                   {{ config.certificateTemplate.name }}
                 </span>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Editar configuração"
+                  matTooltip="Editar"
+                  (click)="
+                    $event.stopPropagation();
+                    workspace.selectCertificateConfig(config)
+                  "
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Excluir configuração"
+                  matTooltip="Excluir"
+                  [disabled]="!permissions.canEdit('certificate#edit')"
+                  (click)="
+                    $event.stopPropagation();
+                    workspace.deleteCertificateConfig(config)
+                  "
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
               </mat-list-item>
             } @empty {
               <mat-list-item>
@@ -338,6 +363,16 @@
                   (click)="workspace.downloadCertificate(certificate, $event)"
                 >
                   <mat-icon>download</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Excluir certificado"
+                  matTooltip="Excluir"
+                  [disabled]="!permissions.canEdit('certificate#edit')"
+                  (click)="workspace.deleteCertificate(certificate, $event)"
+                >
+                  <mat-icon>delete</mat-icon>
                 </button>
               </mat-list-item>
             } @empty {
