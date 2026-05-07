@@ -23,13 +23,15 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
-.suggestion-card {
-  margin-bottom: 20px;
-}
-
 .dashboard-stack {
   display: grid;
   gap: 24px;
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .dashboard-section {
@@ -92,7 +94,8 @@
 @media (max-width: 720px) {
   .dashboard-header,
   .section-title,
-  .attendance-meta {
+  .attendance-meta,
+  .quick-actions {
     flex-direction: column;
     align-items: stretch;
   }

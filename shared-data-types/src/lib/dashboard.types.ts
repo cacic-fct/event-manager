@@ -76,6 +76,8 @@ export interface DashboardCertificatePendingItem {
 
 export interface DashboardInconsistency {
   type: DashboardInconsistencyType;
+  action?: DashboardInsightAction | null;
+  targetId?: string | null;
   severity: DashboardInsightSeverity;
   title: string;
   description: string;

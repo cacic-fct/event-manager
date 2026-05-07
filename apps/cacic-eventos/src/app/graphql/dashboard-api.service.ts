@@ -60,6 +60,8 @@ export class DashboardApiService {
             }
             inconsistencies {
               type
+              action
+              targetId
               severity
               title
               description

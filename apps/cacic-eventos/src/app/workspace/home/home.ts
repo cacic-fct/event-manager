@@ -22,6 +22,7 @@ import type {
   DashboardActionLink,
   DashboardCalendarEvent,
   DashboardCertificatePendingItem,
+  DashboardInconsistency,
   DashboardInsightAction,
   WorkspaceDashboardInsights,
 } from '@cacic-eventos/shared-frontend-types';
@@ -137,6 +138,35 @@ export class Home implements OnInit, OnDestroy {
 
     if (action.action === 'OPEN_CERTIFICATES' && action.targetId) {
       return [path, action.targetId];
+    }
+
+    return [path];
+  }
+
+  hasSuggestion(
+    suggestions: DashboardActionLink[],
+    action: DashboardInsightAction,
+  ): boolean {
+    return suggestions.some((suggestion) => suggestion.action === action);
+  }
+
+  routerLinkForInconsistency(issue: DashboardInconsistency): string[] {
+    const action = issue.action ?? 'OPEN_EVENT';
+    const targetId = issue.targetId ?? issue.eventId;
+    const path = this.pathForAction(action);
+
+    if (action === 'OPEN_ATTENDANCE' && targetId) {
+      return [path, 'event', targetId];
+    }
+
+    if (
+      (action === 'OPEN_EVENT' ||
+        action === 'OPEN_EVENT_GROUP' ||
+        action === 'OPEN_MAJOR_EVENT' ||
+        action === 'OPEN_CERTIFICATES') &&
+      targetId
+    ) {
+      return [path, targetId];
     }
 
     return [path];

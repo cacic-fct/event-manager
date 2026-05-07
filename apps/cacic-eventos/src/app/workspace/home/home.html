@@ -28,26 +28,26 @@
 } @else if (insights(); as dashboard) {
 <section class="dashboard-stack">
   @if (dashboard.suggestions.length > 0) {
-  <mat-card appearance="outlined" class="suggestion-card">
-    <mat-card-header>
-      <mat-icon mat-card-avatar>auto_awesome</mat-icon>
-      <mat-card-title>Comece a organizar a agenda</mat-card-title>
-      <mat-card-subtitle>
-        Ainda não há eventos ou grandes eventos cadastrados.
-      </mat-card-subtitle>
-    </mat-card-header>
-    <mat-card-actions align="end">
-      @for (suggestion of dashboard.suggestions; track suggestion.action) {
-      <a matButton="filled" [routerLink]="routerLinkForAction(suggestion)">
-        <mat-icon>
-          {{ suggestion.action === 'CREATE_MAJOR_EVENT' ? 'festival' :
-          suggestion.action === 'CREATE_EVENT_GROUP' ? 'folder' : 'event' }}
-        </mat-icon>
-        {{ suggestion.label }}
-      </a>
-      }
-    </mat-card-actions>
-  </mat-card>
+  <section class="quick-actions">
+    @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT_GROUP')) {
+    <a matButton="outlined" [routerLink]="navMap()['groups']?.path">
+      <mat-icon>{{ navMap()['groups']?.icon }}</mat-icon>
+      Novo grupo de eventos
+    </a>
+    } @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT')) {
+
+    <a matButton="filled" [routerLink]="navMap()['events']?.path">
+      <mat-icon>{{ navMap()['events']?.icon }}</mat-icon>
+      Novo evento
+    </a>
+    } @if (hasSuggestion(dashboard.suggestions, 'CREATE_MAJOR_EVENT')) {
+
+    <a matButton="outlined" [routerLink]="navMap()['major-events']?.path">
+      <mat-icon>{{ navMap()['major-events']?.icon }}</mat-icon>
+      Novo grande evento
+    </a>
+    }
+  </section>
   } @if (dashboard.calendarEvents.length > 0) {
   <section class="dashboard-section">
     <div class="section-title">
@@ -161,6 +161,15 @@
         </mat-icon>
         <span matListItemTitle>{{ issue.title }}</span>
         <span matListItemLine>{{ issue.description }}</span>
+        <a
+          mat-icon-button
+          matListItemMeta
+          aria-label="Abrir correção"
+          matTooltip="Abrir correção"
+          [routerLink]="routerLinkForInconsistency(issue)"
+        >
+          <mat-icon>arrow_forward</mat-icon>
+        </a>
       </mat-list-item>
       }
     </mat-list>
