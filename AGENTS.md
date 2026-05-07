@@ -85,3 +85,13 @@ Therefore, don't use npm, npx, yarn, or pnpm commands. Use bun and bunx commands
 # Code formatting
 
 We use Prettier for code formatting. Its package is installed in every project.
+
+# Prisma ORM
+
+After editing `schema.prisma` file and before verifying code for errors or building, you must run the following command to generate a new client:
+
+```bash
+bunx prisma generate --schema path/to/schema.prisma
+```
+
+Do not run migrations without user confirmation, as they can cause data loss.
