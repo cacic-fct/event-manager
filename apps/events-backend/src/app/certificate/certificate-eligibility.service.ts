@@ -441,6 +441,10 @@ export class CertificateEligibilityService {
     }
 
     const issuableEventIds = issuableEvents.map((event) => event.id);
+    const issuableEventById = new Map(
+      issuableEvents.map((event) => [event.id, event]),
+    );
+    const groupedIssuableEvents = this.groupMajorEventEvents(issuableEvents);
     const attendancesByPerson = await this.prisma.eventAttendance.findMany({
       where: {
         personId: {
@@ -452,9 +456,7 @@ export class CertificateEligibilityService {
       },
       select: {
         personId: true,
-        event: {
-          select: EVENT_SELECT,
-        },
+        eventId: true,
       },
       orderBy: {
         event: {
@@ -463,16 +465,22 @@ export class CertificateEligibilityService {
       },
     });
 
-    const attendedEventsByPersonId = new Map<string, EventRecord[]>();
+    const attendedEventIdsByPersonId = new Map<string, Set<string>>();
     for (const attendance of attendancesByPerson) {
-      const current = attendedEventsByPersonId.get(attendance.personId) ?? [];
-      current.push(attendance.event);
-      attendedEventsByPersonId.set(attendance.personId, current);
+      const current =
+        attendedEventIdsByPersonId.get(attendance.personId) ?? new Set();
+      current.add(attendance.eventId);
+      attendedEventIdsByPersonId.set(attendance.personId, current);
     }
 
     return subscriptions.flatMap((subscription) => {
-      const attendedEvents =
-        attendedEventsByPersonId.get(subscription.personId) ?? [];
+      const attendedEventIds =
+        attendedEventIdsByPersonId.get(subscription.personId) ?? new Set();
+      const attendedEvents = this.resolveMajorEventCertificateEvents(
+        attendedEventIds,
+        issuableEventById,
+        groupedIssuableEvents,
+      );
 
       if (attendedEvents.length === 0) {
         return [];
@@ -485,5 +493,55 @@ export class CertificateEligibilityService {
         },
       ];
     });
+  }
+
+  private groupMajorEventEvents(
+    events: EventRecord[],
+  ): Map<string, EventRecord[]> {
+    const groupedEvents = new Map<string, EventRecord[]>();
+    for (const event of events) {
+      if (!event.eventGroupId) {
+        continue;
+      }
+
+      const current = groupedEvents.get(event.eventGroupId) ?? [];
+      current.push(event);
+      groupedEvents.set(event.eventGroupId, current);
+    }
+
+    return groupedEvents;
+  }
+
+  private resolveMajorEventCertificateEvents(
+    attendedEventIds: Set<string>,
+    issuableEventById: Map<string, EventRecord>,
+    groupedIssuableEvents: Map<string, EventRecord[]>,
+  ): EventRecord[] {
+    const completedEventGroupIds = new Set(
+      [...groupedIssuableEvents.entries()]
+        .filter(([, events]) =>
+          events.every((event) => attendedEventIds.has(event.id)),
+        )
+        .map(([eventGroupId]) => eventGroupId),
+    );
+
+    return [...attendedEventIds]
+      .map((eventId) => issuableEventById.get(eventId))
+      .filter((event): event is EventRecord => event != null)
+      .filter((event) => {
+        if (!event.eventGroupId) {
+          return true;
+        }
+
+        if (event.eventGroup?.shouldIssueCertificateForEachEvent) {
+          return true;
+        }
+
+        if (event.eventGroup?.shouldIssuePartialCertificate) {
+          return true;
+        }
+
+        return completedEventGroupIds.has(event.eventGroupId);
+      });
   }
 }

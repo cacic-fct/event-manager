@@ -1,3 +1,4 @@
+import { EventType } from '@cacic-eventos/shared-data-types';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
 describe('CertificateIssuingService', () => {
@@ -171,5 +172,47 @@ describe('CertificateIssuingService', () => {
       },
     });
     expect(upsertSpy).not.toHaveBeenCalled();
+  });
+
+  it('prints every date for completed grouped minicourse events', () => {
+    const service = new CertificateIssuingService(
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const eventGroup = {
+      id: 'event-group-1',
+      name: 'Grouped minicourse',
+    };
+    const events = [
+      {
+        id: 'event-1',
+        name: 'Grouped minicourse day 1',
+        creditMinutes: 120,
+        startDate: new Date('2026-01-02T10:00:00.000Z'),
+        type: EventType.MINICURSO,
+        eventGroupId: eventGroup.id,
+        eventGroup,
+      },
+      {
+        id: 'event-2',
+        name: 'Grouped minicourse day 2',
+        creditMinutes: 120,
+        startDate: new Date('2026-01-03T10:00:00.000Z'),
+        type: EventType.MINICURSO,
+        eventGroupId: eventGroup.id,
+        eventGroup,
+      },
+    ];
+
+    expect(
+      (
+        service as unknown as {
+          buildMinicursoLines(events: unknown[]): string[];
+        }
+      ).buildMinicursoLines(events),
+    ).toEqual([
+      '• 02/01/26, 03/01/26 - Grouped minicourse - Carga horária: 4 horas',
+    ]);
   });
 });

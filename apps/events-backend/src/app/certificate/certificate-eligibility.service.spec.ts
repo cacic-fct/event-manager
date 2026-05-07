@@ -119,7 +119,7 @@ describe('CertificateEligibilityService', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             personId: person.id,
-            event,
+            eventId: event.id,
           },
         ]),
       },
@@ -131,6 +131,79 @@ describe('CertificateEligibilityService', () => {
       {
         person,
         events: [event],
+      },
+    ]);
+  });
+
+  it('keeps every completed grouped event on major-event certificates', async () => {
+    const eventGroup = {
+      id: 'event-group-1',
+      name: 'Grouped minicourse',
+      emoji: null,
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForEachEvent: false,
+      shouldIssuePartialCertificate: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdById: null,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedById: null,
+    };
+    const groupedEvents = [
+      {
+        ...event,
+        id: 'event-1',
+        name: 'Grouped minicourse day 1',
+        type: 'MINICURSO',
+        startDate: new Date('2026-01-02T10:00:00.000Z'),
+        endDate: new Date('2026-01-02T12:00:00.000Z'),
+        eventGroupId: eventGroup.id,
+        eventGroup,
+      },
+      {
+        ...event,
+        id: 'event-2',
+        name: 'Grouped minicourse day 2',
+        type: 'MINICURSO',
+        startDate: new Date('2026-01-03T10:00:00.000Z'),
+        endDate: new Date('2026-01-03T12:00:00.000Z'),
+        eventGroupId: eventGroup.id,
+        eventGroup,
+      },
+    ];
+    const service = new CertificateEligibilityService({
+      majorEvent: {
+        findFirst: jest.fn().mockResolvedValue({ id: majorEventId }),
+      },
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            majorEventId,
+            personId: person.id,
+            subscriptionStatus: SubscriptionStatus.CONFIRMED,
+            person,
+          },
+        ]),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue(groupedEvents),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue(
+          groupedEvents.map((groupedEvent) => ({
+            personId: person.id,
+            eventId: groupedEvent.id,
+          })),
+        ),
+      },
+    } as never);
+
+    await expect(
+      service.resolveEligibleRecipients(config as never),
+    ).resolves.toEqual([
+      {
+        person,
+        events: groupedEvents,
       },
     ]);
   });
