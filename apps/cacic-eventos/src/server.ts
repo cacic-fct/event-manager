@@ -41,7 +41,7 @@ app.use(
 /**
  * Handle all other requests by rendering the Angular application.
  */
-app.use('/app/*splat', (req, res, next) => {
+app.use('/{*splat}', (req, res, next) => {
   angularApp
     .handle(req)
     .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))
