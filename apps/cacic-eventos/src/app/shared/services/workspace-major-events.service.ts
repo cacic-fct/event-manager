@@ -31,7 +31,7 @@ export class WorkspaceMajorEventsService {
     {
       id: [''],
       name: ['', [Validators.required]],
-      emoji: ['🎟️', [Validators.required]],
+      emoji: ['', [Validators.required]],
       startDate: ['', [Validators.required]],
       endDate: ['', [Validators.required]],
       description: [''],
@@ -114,7 +114,7 @@ export class WorkspaceMajorEventsService {
     this.majorEventForm.reset({
       id: '',
       name: '',
-      emoji: '🎟️',
+      emoji: '',
       startDate: '',
       endDate: '',
       description: '',
