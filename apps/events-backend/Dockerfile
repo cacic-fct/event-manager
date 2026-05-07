@@ -47,15 +47,11 @@ COPY package.json bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --production
 
+COPY --from=prisma-deps /workspace/node_modules/.prisma ./node_modules/.prisma
+COPY --from=prisma-deps /workspace/node_modules/@prisma ./node_modules/@prisma
+
 COPY apps/events-backend/prisma.config.ts ./apps/events-backend/prisma.config.ts
 COPY apps/events-backend/prisma ./apps/events-backend/prisma
-
-WORKDIR /workspace/apps/events-backend
-
-RUN --mount=type=bind,from=deps,source=/workspace/node_modules,target=/workspace/node_modules,readonly \
-    DATABASE_URL="postgresql://user:password@localhost:5432/db?schema=public" \
-    PATH="/workspace/node_modules/.bin:$PATH" \
-    bun x prisma generate --schema prisma/schema.prisma
 
 FROM base AS runtime
 ENV NODE_ENV=production \
