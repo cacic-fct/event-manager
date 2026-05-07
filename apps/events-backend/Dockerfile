@@ -53,6 +53,11 @@ RUN apt-get update \
   && useradd --system --gid app --home-dir /app app
 
 COPY --from=production-deps --chown=app:app /workspace/node_modules ./node_modules
+
+# Keep Prisma CLI available for the migration container even if prisma is a devDependency.
+COPY --from=deps --chown=app:app /workspace/node_modules/prisma ./node_modules/prisma
+COPY --from=deps --chown=app:app /workspace/node_modules/@prisma ./node_modules/@prisma
+
 COPY --from=builder --chown=app:app /workspace/dist/apps/events-backend ./
 COPY --from=production-deps --chown=app:app /workspace/apps/events-backend/prisma ./apps/events-backend/prisma
 COPY --chown=app:app certificate-templates ./certificate-templates
@@ -62,4 +67,4 @@ USER app
 EXPOSE 3000
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "bun x prisma migrate deploy --schema apps/events-backend/prisma/schema.prisma && node main.js"]
+CMD ["node", "main.js"]
