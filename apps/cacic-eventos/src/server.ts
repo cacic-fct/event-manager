@@ -33,7 +33,7 @@ const angularApp = new AngularNodeAppEngine({
  * Serve static files from /browser
  */
 app.use(
-  '/app',
+  '/admin',
   express.static(browserDistFolder, {
     maxAge: '1y',
     index: false,
