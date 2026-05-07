@@ -12,6 +12,7 @@ import { Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { actionablePendingMergeCandidateWhere } from './merge-candidate-filters';
 import { MergeCandidateOperationsService } from './operations.service';
 
 @Resolver(() => MergeCandidate)
@@ -29,26 +30,10 @@ export class MergeCandidatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    const where: Prisma.MergeCandidateWhereInput = {};
-
-    if (status) {
-      where.status = status;
-    }
-
-    if (status === 'PENDING') {
-      where.personA = {
-        is: {
-          deletedAt: null,
-          mergedIntoId: null,
-        },
-      };
-      where.personB = {
-        is: {
-          deletedAt: null,
-          mergedIntoId: null,
-        },
-      };
-    }
+    const where: Prisma.MergeCandidateWhereInput =
+      status === 'PENDING'
+        ? actionablePendingMergeCandidateWhere
+        : { ...(status ? { status } : {}) };
 
     return this.prisma.mergeCandidate.findMany({
       where,
@@ -111,7 +96,11 @@ export class MergeCandidatesResolver {
     };
     if (input.status === 'PENDING') {
       data.resolvedById = null;
-    } else if (input.status === 'MERGED' || input.status === 'REJECTED') {
+    } else if (
+      input.status === 'MERGED' ||
+      input.status === 'REJECTED' ||
+      input.status === 'STALE'
+    ) {
       data.resolvedById = actorId ?? undefined;
     }
 

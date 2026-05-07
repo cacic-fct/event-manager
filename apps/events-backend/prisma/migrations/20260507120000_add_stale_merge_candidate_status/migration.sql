@@ -1,0 +1,1 @@
+ALTER TYPE "MergeCandidateStatus" ADD VALUE IF NOT EXISTS 'STALE';

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { People, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { stalePendingMergeCandidateWhere } from './merge-candidate-filters';
 
 type CandidateMatch = {
   personAId: string;
@@ -71,6 +72,14 @@ export class MergeCandidateOperationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async scanMergeCandidates(actorId: string | null): Promise<number> {
+    const staleResult = await this.prisma.mergeCandidate.updateMany({
+      where: stalePendingMergeCandidateWhere,
+      data: {
+        status: 'STALE',
+        updatedById: actorId ?? undefined,
+      },
+    });
+
     const people = await this.prisma.people.findMany({
       where: {
         deletedAt: null,
@@ -135,7 +144,10 @@ export class MergeCandidateOperationsService {
         continue;
       }
 
-      if (existingCandidate.status !== 'PENDING') {
+      if (
+        existingCandidate.status !== 'PENDING' &&
+        existingCandidate.status !== 'STALE'
+      ) {
         continue;
       }
 
@@ -149,13 +161,14 @@ export class MergeCandidateOperationsService {
           score: match.score,
           matchMethod: match.method,
           matchValue: match.matchValue,
+          status: 'PENDING',
           updatedById: actorId ?? undefined,
         },
       });
       touchedCandidates += 1;
     }
 
-    return touchedCandidates;
+    return touchedCandidates + staleResult.count;
   }
 
   async mergeCandidatePeople(
