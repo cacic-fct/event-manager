@@ -12,6 +12,7 @@
         "{options.outputPath}"
       ],
       "options": {
+        "baseHref": "/app/",
         "outputPath": "dist/apps/public",
         "browser": "apps/public/src/main.ts",
         "tsConfig": "apps/public/tsconfig.app.json",

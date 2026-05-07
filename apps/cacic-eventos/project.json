@@ -12,6 +12,7 @@
         "{options.outputPath}"
       ],
       "options": {
+        "baseHref": "/admin/",
         "outputPath": "dist/apps/cacic-eventos",
         "browser": "apps/cacic-eventos/src/main.ts",
         "tsConfig": "apps/cacic-eventos/tsconfig.app.json",
