@@ -34,13 +34,15 @@ services:
 
   events-backend-migrate:
     image: ghcr.io/cacic-fct/event-manager/events-backend:${IMAGE_TAG:-latest}
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@events-db:5432/postgres}
     command:
       - sh
       - -c
-      - node node_modules/prisma/build/index.js migrate deploy --schema apps/events-backend/prisma/schema.prisma
+      - cd /app && ./node_modules/.bin/prisma migrate deploy --config prisma.config.ts
     depends_on:
       events-db:
         condition: service_healthy
