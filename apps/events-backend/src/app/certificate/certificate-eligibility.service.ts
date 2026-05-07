@@ -429,6 +429,17 @@ export class CertificateEligibilityService {
         majorEventId: majorEvent.id,
         deletedAt: null,
         shouldIssueCertificate: true,
+        OR: [
+          {
+            eventGroupId: null,
+          },
+          {
+            eventGroup: {
+              deletedAt: null,
+              shouldIssueCertificate: true,
+            },
+          },
+        ],
       },
       select: EVENT_SELECT,
       orderBy: {
@@ -531,6 +542,10 @@ export class CertificateEligibilityService {
       .filter((event) => {
         if (!event.eventGroupId) {
           return true;
+        }
+
+        if (!event.eventGroup?.shouldIssueCertificate) {
+          return false;
         }
 
         if (event.eventGroup?.shouldIssueCertificateForEachEvent) {

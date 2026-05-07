@@ -132,6 +132,7 @@ export const EVENT_GROUP_SELECT = {
   id: true,
   name: true,
   emoji: true,
+  shouldIssueCertificate: true,
   shouldIssueCertificateForEachEvent: true,
   shouldIssuePartialCertificate: true,
   deletedAt: true,

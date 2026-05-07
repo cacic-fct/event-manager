@@ -60,9 +60,7 @@ export class CurrentUserEventMapperService {
       shouldIssueCertificateForEachEvent:
         eventGroup.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: eventGroup.shouldIssuePartialCertificate,
-      shouldIssueCertificate:
-        eventGroup.shouldIssueCertificateForEachEvent ||
-        eventGroup.shouldIssuePartialCertificate,
+      shouldIssueCertificate: eventGroup.shouldIssueCertificate,
     };
   }
 

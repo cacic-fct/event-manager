@@ -35,6 +35,7 @@ export const PUBLIC_EVENT_GROUP_SELECT = {
   id: true,
   name: true,
   emoji: true,
+  shouldIssueCertificate: true,
   shouldIssueCertificateForEachEvent: true,
   shouldIssuePartialCertificate: true,
 } satisfies Prisma.EventGroupSelect;

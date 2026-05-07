@@ -115,7 +115,7 @@ model EventGroup {
   subscriptions EventGroupSubscription[]
 
   shouldIssueCertificate             Boolean @default(false)
-  // If true, attendees will receive a single certificate for the whole group instead of one per event. 
+  // If true, attendees may receive one certificate per eligible event in the group.
   shouldIssueCertificateForEachEvent Boolean @default(false)
   // If true, attendees will receive a certificate even if they only attended part of the events in the group. If false, they must attend all events to receive a certificate.
   shouldIssuePartialCertificate      Boolean @default(false)

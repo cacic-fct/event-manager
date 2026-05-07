@@ -124,6 +124,10 @@ export function getContactLabel(
 }
 
 export function getEventGroupCertificateLabel(group: PublicEventGroup): string {
+  if (!group.shouldIssueCertificate) {
+    return 'Não emite certificados';
+  }
+
   if (group.shouldIssueCertificateForEachEvent) {
     return 'Um certificado por evento';
   }
@@ -132,7 +136,7 @@ export function getEventGroupCertificateLabel(group: PublicEventGroup): string {
     return 'Certificado parcial disponível';
   }
 
-  return 'Não emite certificados';
+  return 'Certificado único do grupo';
 }
 
 export function isOnlineAttendanceRegistrationOpen(
