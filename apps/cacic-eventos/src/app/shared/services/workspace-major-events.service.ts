@@ -6,6 +6,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
@@ -19,6 +20,7 @@ export class WorkspaceMajorEventsService {
   private readonly eventsApi = inject(EventApiService);
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly router = inject(Router);
 
   readonly majorEvents = signal<MajorEvent[]>([]);
   readonly selectedMajorEvent = signal<MajorEvent | null>(null);
@@ -90,7 +92,7 @@ export class WorkspaceMajorEventsService {
         duration: 2500,
       });
       await this.loadMajorEvents();
-      this.pickMajorEvent(updatedMajorEvent);
+      await this.pickMajorEvent(updatedMajorEvent);
     } else {
       await firstValueFrom(this.api.createMajorEvent(payload));
       this.snackbar.open('Grande evento criado.', 'Fechar', {
@@ -102,6 +104,7 @@ export class WorkspaceMajorEventsService {
   }
 
   resetMajorEventForm(): void {
+    void this.router.navigate(['/major-events']);
     this.selectedMajorEvent.set(null);
     this.majorEventEvents.set([]);
     this.majorEventEventSearchResults.set([]);
@@ -133,7 +136,23 @@ export class WorkspaceMajorEventsService {
     });
   }
 
-  pickMajorEvent(majorEvent: MajorEvent): void {
+  async pickMajorEvent(majorEvent: MajorEvent): Promise<void> {
+    void this.router.navigate(['/major-events', majorEvent.id]);
+    this.populateMajorEventSelection(majorEvent);
+  }
+
+  async pickMajorEventById(majorEventId: string): Promise<void> {
+    if (this.selectedMajorEvent()?.id === majorEventId) {
+      return;
+    }
+
+    const majorEvent = await firstValueFrom(
+      this.api.getMajorEvent(majorEventId),
+    );
+    this.populateMajorEventSelection(majorEvent);
+  }
+
+  private populateMajorEventSelection(majorEvent: MajorEvent): void {
     this.selectedMajorEvent.set(majorEvent);
     this.majorEventEventSearchForm.reset({
       query: '',

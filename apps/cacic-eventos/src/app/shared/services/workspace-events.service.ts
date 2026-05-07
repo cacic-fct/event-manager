@@ -7,6 +7,7 @@ import {
 } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
@@ -65,6 +66,7 @@ export class WorkspaceEventsService {
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
   private readonly ui = inject(WorkspaceUiService);
 
@@ -162,17 +164,27 @@ export class WorkspaceEventsService {
   }
 
   async selectEvent(eventItem: Event): Promise<void> {
-    const eventDetails = await firstValueFrom(this.api.getEvent(eventItem.id));
+    void this.router.navigate(['/events', eventItem.id]);
+    await this.selectEventById(eventItem.id);
+  }
+
+  async selectEventById(eventId: string): Promise<void> {
+    if (this.selectedEvent()?.id === eventId) {
+      return;
+    }
+
+    const eventDetails = await firstValueFrom(this.api.getEvent(eventId));
     this.selectedEvent.set(eventDetails);
     this.populateEventForm(eventDetails);
     this.eventGroupLookupForm.controls.query.setValue(
       eventDetails.eventGroup?.name ?? '',
     );
     this.eventGroupSearchResults.set([]);
-    await this.loadEventLecturers(eventItem.id);
+    await this.loadEventLecturers(eventId);
   }
 
   resetEventForm(): void {
+    void this.router.navigate(['/events']);
     this.selectedEvent.set(null);
     this.eventLecturers.set([]);
     this.eventGroupSearchResults.set([]);

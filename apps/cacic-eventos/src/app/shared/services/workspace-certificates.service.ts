@@ -2,8 +2,12 @@ import { Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { form, required, submit, type FieldTree } from '@angular/forms/signals';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { CertificateApiService } from '../../graphql/certificate-api.service';
+import { EventApiService } from '../../graphql/event-api.service';
+import { EventGroupApiService } from '../../graphql/event-group-api.service';
+import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import {
   Certificate,
@@ -19,6 +23,7 @@ import {
 } from '../../graphql/models';
 
 type IssuableScope = Exclude<CertificateScope, 'OTHER'>;
+type CertificateTargetType = 'event' | 'event-group' | 'major-event';
 type IssuableTarget = Event | EventGroup | MajorEvent;
 type CertificateConfigFormModel = {
   id: string;
@@ -42,9 +47,13 @@ type CertificateFieldDefinition = {
 })
 export class WorkspaceCertificatesService {
   private readonly api = inject(CertificateApiService);
+  private readonly eventsApi = inject(EventApiService);
+  private readonly eventGroupsApi = inject(EventGroupApiService);
+  private readonly majorEventsApi = inject(MajorEventApiService);
   private readonly peopleApi = inject(PeopleApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly router = inject(Router);
 
   readonly issuableEvents = signal<Event[]>([]);
   readonly issuableEventGroups = signal<EventGroup[]>([]);
@@ -159,6 +168,7 @@ export class WorkspaceCertificatesService {
   }
 
   async onScopeChanged(scope: IssuableScope): Promise<void> {
+    void this.router.navigate(['/certificates']);
     this.targetFiltersForm.controls.scope.setValue(scope);
     this.selectedTarget.set(null);
     this.selectedCertificateConfig.set(null);
@@ -170,6 +180,51 @@ export class WorkspaceCertificatesService {
   }
 
   async selectTarget(target: IssuableTarget): Promise<void> {
+    void this.router.navigate([
+      '/certificates',
+      this.scopeToTargetType(
+        this.targetFiltersForm.controls.scope.value as IssuableScope,
+      ),
+      target.id,
+    ]);
+    await this.applyTargetSelection(target);
+  }
+
+  async selectTargetByRoute(
+    targetType: string | null,
+    targetId: string | null,
+    configId: string | null,
+  ): Promise<void> {
+    if (!targetType || !targetId) {
+      this.clearSelection();
+      return;
+    }
+
+    const scope = this.targetTypeToScope(targetType);
+    if (!scope) {
+      void this.router.navigate(['/certificates']);
+      return;
+    }
+
+    this.targetFiltersForm.controls.scope.setValue(scope);
+    await this.searchTargets();
+
+    const target = await this.getTargetByRoute(scope, targetId);
+    await this.applyTargetSelection(target);
+
+    if (!configId) {
+      return;
+    }
+
+    const config = this.certificateConfigs().find(
+      (candidate) => candidate.id === configId,
+    );
+    if (config) {
+      this.applyCertificateConfigSelection(config);
+    }
+  }
+
+  private async applyTargetSelection(target: IssuableTarget): Promise<void> {
     this.selectedTarget.set({
       id: target.id,
       name: target.name,
@@ -182,6 +237,21 @@ export class WorkspaceCertificatesService {
   }
 
   selectCertificateConfig(config: CertificateConfig): void {
+    const selectedTarget = this.selectedTarget();
+    if (selectedTarget) {
+      void this.router.navigate([
+        '/certificates',
+        this.scopeToTargetType(
+          this.targetFiltersForm.controls.scope.value as IssuableScope,
+        ),
+        selectedTarget.id,
+        config.id,
+      ]);
+    }
+    this.applyCertificateConfigSelection(config);
+  }
+
+  private applyCertificateConfigSelection(config: CertificateConfig): void {
     this.selectedCertificateConfig.set(config);
     this.certificateFieldValuesJson = config.certificateFieldsJson;
     this.certificateConfigForm().reset({
@@ -202,10 +272,29 @@ export class WorkspaceCertificatesService {
 
   startNewCertificateConfig(): void {
     this.selectedCertificateConfig.set(null);
+    const selectedTarget = this.selectedTarget();
+    if (selectedTarget) {
+      void this.router.navigate([
+        '/certificates',
+        this.scopeToTargetType(
+          this.targetFiltersForm.controls.scope.value as IssuableScope,
+        ),
+        selectedTarget.id,
+      ]);
+    }
     this.personLookupForm.reset({ query: '' });
     this.personSearchResults.set([]);
     this.resetCertificateConfigForm();
     void this.loadCertificates();
+  }
+
+  clearSelection(): void {
+    this.selectedTarget.set(null);
+    this.selectedCertificateConfig.set(null);
+    this.certificateConfigs.set([]);
+    this.certificates.set([]);
+    this.personSearchResults.set([]);
+    this.resetCertificateConfigForm();
   }
 
   onCertificateTemplateChanged(templateId: string): void {
@@ -436,6 +525,49 @@ export class WorkspaceCertificatesService {
         raw.certificateFields,
       ),
     };
+  }
+
+  private async getTargetByRoute(
+    scope: IssuableScope,
+    targetId: string,
+  ): Promise<IssuableTarget> {
+    if (scope === 'EVENT') {
+      return firstValueFrom(this.eventsApi.getEvent(targetId));
+    }
+
+    if (scope === 'EVENT_GROUP') {
+      return firstValueFrom(this.eventGroupsApi.getEventGroup(targetId));
+    }
+
+    return firstValueFrom(this.majorEventsApi.getMajorEvent(targetId));
+  }
+
+  private targetTypeToScope(targetType: string): IssuableScope | null {
+    if (targetType === 'event') {
+      return 'EVENT';
+    }
+
+    if (targetType === 'event-group') {
+      return 'EVENT_GROUP';
+    }
+
+    if (targetType === 'major-event') {
+      return 'MAJOR_EVENT';
+    }
+
+    return null;
+  }
+
+  private scopeToTargetType(scope: IssuableScope): CertificateTargetType {
+    if (scope === 'EVENT') {
+      return 'event';
+    }
+
+    if (scope === 'EVENT_GROUP') {
+      return 'event-group';
+    }
+
+    return 'major-event';
   }
 
   private resetCertificateConfigForm(): void {

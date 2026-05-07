@@ -5,7 +5,10 @@ import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspaceMergeCandidatesService } from './workspace-merge-candidates.service';
 import { WorkspacePeopleService } from './workspace-people.service';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
-import { WorkspacePermissionsService } from './workspace-permissions.service';
+import {
+  WorkspacePermissionTab,
+  WorkspacePermissionsService,
+} from './workspace-permissions.service';
 import { WorkspaceUiService } from './workspace-ui.service';
 
 @Injectable({
@@ -32,27 +35,27 @@ export class WorkspaceShellService {
 
       const loads: Promise<void>[] = [];
 
-      if (this.permissions.canReadTab(0)) {
+      if (this.permissions.canReadTab(WorkspacePermissionTab.Events)) {
         loads.push(this.eventsService.loadEvents());
       }
 
-      if (this.permissions.canReadTab(1)) {
+      if (this.permissions.canReadTab(WorkspacePermissionTab.MajorEvents)) {
         loads.push(this.majorEventsService.loadMajorEvents());
       }
 
-      if (this.permissions.canReadTab(2)) {
+      if (this.permissions.canReadTab(WorkspacePermissionTab.Groups)) {
         loads.push(this.eventGroupsService.loadEventGroups());
       }
 
-      if (this.permissions.canReadTab(3)) {
+      if (this.permissions.canReadTab(WorkspacePermissionTab.People)) {
         loads.push(this.peopleService.searchPeople(''));
       }
 
-      if (this.permissions.canReadTab(5)) {
+      if (this.permissions.canReadTab(WorkspacePermissionTab.Certificates)) {
         loads.push(this.certificatesService.loadInitialData());
       }
 
-      if (this.permissions.canReadTab(4)) {
+      if (this.permissions.canReadTab(WorkspacePermissionTab.MergeCandidates)) {
         loads.push(this.mergeCandidatesService.scanMergeCandidates(false));
       }
 

@@ -1,7 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { CertificateApiService } from '../../graphql/certificate-api.service';
+import { EventApiService } from '../../graphql/event-api.service';
+import { EventGroupApiService } from '../../graphql/event-group-api.service';
+import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import {
   CertificateConfig,
@@ -103,8 +107,12 @@ describe('WorkspaceCertificatesService', () => {
       providers: [
         WorkspaceCertificatesService,
         { provide: CertificateApiService, useValue: api },
+        { provide: EventApiService, useValue: {} },
+        { provide: EventGroupApiService, useValue: {} },
+        { provide: MajorEventApiService, useValue: {} },
         { provide: PeopleApiService, useValue: {} },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
+        { provide: Router, useValue: { navigate: vi.fn() } },
       ],
     }).compileComponents();
 
@@ -125,8 +133,7 @@ describe('WorkspaceCertificatesService', () => {
 
   it('posts edited custom fields as stored overrides', async () => {
     service
-      .certificateField('top-text')
-      ()
+      .certificateField('top-text')()
       .value.set('Certificamos a presença de');
 
     await service.saveCertificateConfig();
