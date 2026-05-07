@@ -1,6 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -34,5 +36,20 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 })
 export class WorkspaceMajorEventsTabComponent {
   readonly workspace = inject(WorkspaceMajorEventsService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly permissions = inject(WorkspacePermissionsService);
+
+  constructor() {
+    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const majorEventId = params.get('majorEventId');
+      if (majorEventId) {
+        void this.workspace.pickMajorEventById(majorEventId);
+        return;
+      }
+
+      if (this.workspace.selectedMajorEvent()) {
+        this.workspace.resetMajorEventForm();
+      }
+    });
+  }
 }

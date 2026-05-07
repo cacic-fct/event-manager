@@ -1,0 +1,121 @@
+<mat-toolbar class="toolbar">
+  @if (isMobile()) {
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Abrir menu"
+      (click)="sidenav.toggle()"
+    >
+      <mat-icon>menu</mat-icon>
+    </button>
+  }
+
+  <lib-cacic-logo routerLink="/"></lib-cacic-logo>
+  <span routerLink="/">Event Manager</span>
+
+  <span class="internal-badge">interno</span>
+
+  <span class="spacer"></span>
+
+  <span class="user">{{ user()?.email }}</span>
+  <button mat-button type="button" (click)="logout()">Sair</button>
+</mat-toolbar>
+
+<mat-sidenav-container class="layout">
+  <mat-sidenav
+    #sidenav
+    class="sidenav"
+    [mode]="isMobile() ? 'over' : 'side'"
+    [opened]="!isMobile()"
+    [fixedInViewport]="isMobile()"
+  >
+    <nav class="nav-list" aria-label="Navegação interna">
+      @for (item of navItems; track item.id) {
+        <a
+          mat-button
+          class="nav-item"
+          [class.active]="activeNavId() === item.id"
+          [attr.aria-label]="item.label"
+          [matTooltip]="item.label"
+          [matTooltipDisabled]="isMobile()"
+          matTooltipPosition="right"
+          [routerLink]="item.path"
+          (click)="closeSidenavIfMobile(sidenav)"
+        >
+          <mat-icon>{{ item.icon }}</mat-icon>
+
+          @if (isMobile()) {
+            <span class="nav-label">{{ item.label }}</span>
+          }
+
+          @if (permissions.missingReadForTab(item.permissionTab).length > 0) {
+            <span class="nav-warning">
+              {{ permissions.missingReadForTab(item.permissionTab).length }}
+            </span>
+          }
+        </a>
+      }
+    </nav>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <main class="page">
+      <mat-card class="content-card">
+        @if (shell.loading()) {
+          <div class="loading">
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          </div>
+        }
+
+        @if (router.url !== '/') {
+          <header class="page-header">
+            <div>
+              <h1>{{ activeNavItem().label }}</h1>
+              <p>{{ activeNavItem().description }}</p>
+            </div>
+
+            <div>
+              <a
+                mat-icon-button
+                type="button"
+                [href]="activeNavItem().helpLink"
+                target="_blank"
+                aria-label="Documentação"
+              >
+                <mat-icon>help</mat-icon>
+              </a>
+            </div>
+          </header>
+        }
+
+        @if (
+          permissions.missingReadForTab(activeNavItem().permissionTab).length >
+          0
+        ) {
+          <div class="permission-summary" role="status">
+            <strong>Permissões ausentes nesta seção</strong>
+            <span>
+              Sem permissões de leitura, a página não pode carregar dados com
+              segurança.
+            </span>
+
+            <div class="permission-list">
+              @for (
+                scope of permissions.missingReadForTab(
+                  activeNavItem().permissionTab
+                );
+                track scope
+              ) {
+                <span class="permission-chip">{{ scope }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        <section class="content">
+          <router-outlet></router-outlet>
+        </section>
+      </mat-card>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

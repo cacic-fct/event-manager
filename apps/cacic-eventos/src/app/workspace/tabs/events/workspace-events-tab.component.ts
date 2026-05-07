@@ -5,7 +5,9 @@ import {
   ViewChild,
   inject,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -44,7 +46,22 @@ export class WorkspaceEventsTabComponent {
   @ViewChild(EventFilterPanelComponent)
   private eventFilterPanel?: EventFilterPanelComponent;
   readonly workspace = inject(WorkspaceEventsService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly permissions = inject(WorkspacePermissionsService);
+
+  constructor() {
+    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const eventId = params.get('eventId');
+      if (eventId) {
+        void this.workspace.selectEventById(eventId);
+        return;
+      }
+
+      if (this.workspace.selectedEvent()) {
+        this.workspace.resetEventForm();
+      }
+    });
+  }
 
   focusQuickSearch(): void {
     this.eventFilterPanel?.focusQuickSearch();

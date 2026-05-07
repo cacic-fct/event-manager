@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -32,5 +34,20 @@ import { DatePipe } from '@angular/common';
 })
 export class WorkspaceEventGroupsTabComponent {
   readonly workspace = inject(WorkspaceEventGroupsService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly permissions = inject(WorkspacePermissionsService);
+
+  constructor() {
+    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const groupId = params.get('groupId');
+      if (groupId) {
+        void this.workspace.pickEventGroupById(groupId);
+        return;
+      }
+
+      if (this.workspace.selectedEventGroup()) {
+        this.workspace.startNewEventGroup();
+      }
+    });
+  }
 }
