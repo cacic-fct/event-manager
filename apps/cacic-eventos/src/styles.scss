@@ -13,8 +13,8 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$rose-palette,
-        tertiary: mat.$red-palette,
+        primary: mat.$violet-palette,
+        tertiary: mat.$rose-palette,
       ),
       typography: 'Inter Variable',
       density: 0,
