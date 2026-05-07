@@ -12,7 +12,7 @@
 
   <main>
     <mat-nav-list>
-      <a mat-list-item href="https://github.com/cacic-fct/cacic-eventos">
+      <a mat-list-item href="https://github.com/cacic-fct/event-manager">
         <mat-icon matListItemIcon>commit</mat-icon>
         <span matListItemTitle>Repositório</span>
         <div matListItemMeta>
@@ -26,10 +26,7 @@
           <mat-icon>arrow_outward</mat-icon>
         </div>
       </a>
-      <a
-        mat-list-item
-        href="https://github.com/cacic-fct/cacic-eventos/contributors"
-      >
+      <a mat-list-item href="https://github.com/cacic-fct/event-manager/contributors">
         <mat-icon matListItemIcon>groups</mat-icon>
         <span matListItemTitle>Contribuidores</span>
         <div matListItemMeta>
@@ -47,10 +44,7 @@
       <a mat-list-item>
         <mat-icon matListItemIcon>handyman</mat-icon>
         <div matListItemTitle>Service Worker</div>
-        <div matListItemLine>
-          {{ serviceWorkerService.hasServiceWorker() ? 'Disponível' :
-          'Indisponível' }}
-        </div>
+        <div matListItemLine>{{ serviceWorkerService.hasServiceWorker() ? 'Disponível' : 'Indisponível' }}</div>
       </a>
       <a mat-list-item routerLink="./legal">
         <mat-icon matListItemIcon>gavel</mat-icon>
