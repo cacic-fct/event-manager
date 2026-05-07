@@ -32,6 +32,22 @@ services:
     networks:
       - default
 
+  events-backend-migrate:
+    image: ghcr.io/cacic-fct/event-manager/events-backend:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@events-db:5432/postgres}
+    command:
+      - sh
+      - -c
+      - node node_modules/prisma/build/index.js migrate deploy --schema apps/events-backend/prisma/schema.prisma
+    depends_on:
+      events-db:
+        condition: service_healthy
+    restart: 'no'
+    networks:
+      - default
+
   events-backend:
     image: ghcr.io/cacic-fct/event-manager/events-backend:${IMAGE_TAG:-latest}
     environment:
@@ -55,6 +71,8 @@ services:
         condition: service_healthy
       events-redis:
         condition: service_healthy
+      events-backend-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
     labels:
       - 'traefik.enable=true'
@@ -77,7 +95,8 @@ services:
       NODE_ENV: production
       PORT: 4000
     depends_on:
-      - events-backend
+      events-backend:
+        condition: service_started
     restart: unless-stopped
     labels:
       - 'traefik.enable=true'
@@ -108,9 +127,9 @@ services:
       NODE_ENV: production
       PORT: 4000
     depends_on:
-      - events-backend
+      events-backend:
+        condition: service_started
     restart: unless-stopped
-
     labels:
       - 'traefik.enable=true'
       - 'traefik.scope=public'
