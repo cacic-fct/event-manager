@@ -18,7 +18,7 @@ FROM deps AS playwright
 RUN bun x playwright install chromium
 
 FROM deps AS prisma-deps
-COPY prisma.config.ts ./
+COPY apps/events-backend/prisma.config.ts ./
 COPY apps/events-backend/prisma ./apps/events-backend/prisma
 
 RUN bun x prisma generate --schema apps/events-backend/prisma/schema.prisma
@@ -42,7 +42,7 @@ COPY package.json bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --production
 
-COPY prisma.config.ts ./
+COPY apps/events-backend/prisma.config.ts ./
 COPY apps/events-backend/prisma ./apps/events-backend/prisma
 
 RUN --mount=type=bind,from=deps,source=/workspace/node_modules,target=/workspace/full-node_modules,readonly \
