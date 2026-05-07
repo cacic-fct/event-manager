@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 FROM oven/bun:1-alpine AS bun
 
 FROM node:22-alpine AS base
@@ -22,15 +20,17 @@ FROM deps AS builder
 COPY apps/events-backend ./apps/events-backend
 COPY shared-data-types ./shared-data-types
 COPY shared-utils ./shared-utils
-RUN bun x nx run events-backend:build
+RUN bun x nx run events-backend:prune
 
 FROM base AS runtime-deps
 ENV NODE_ENV=production
 COPY --from=builder /workspace/dist/apps/events-backend/package.json ./
-COPY bun.lock ./
+COPY --from=builder /workspace/dist/apps/events-backend/bun.lock ./
+COPY --from=builder /workspace/dist/apps/events-backend/workspace_modules ./workspace_modules
 COPY apps/events-backend/prisma ./apps/events-backend/prisma
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-  bun install --production
+  bun install --frozen-lockfile --production
+
 RUN bun x prisma generate --schema apps/events-backend/prisma/schema.prisma
 
 FROM node:22-alpine AS runtime
