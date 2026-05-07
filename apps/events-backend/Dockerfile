@@ -28,7 +28,6 @@ FROM base AS runtime-deps
 ENV NODE_ENV=production
 COPY --from=builder /workspace/dist/apps/events-backend/package.json ./
 COPY bun.lock ./
-COPY --from=builder /workspace/dist/apps/events-backend/workspace_modules ./workspace_modules
 COPY apps/events-backend/prisma ./apps/events-backend/prisma
 RUN --mount=type=cache,target=/root/.bun/install/cache \
   bun install --frozen-lockfile --production
