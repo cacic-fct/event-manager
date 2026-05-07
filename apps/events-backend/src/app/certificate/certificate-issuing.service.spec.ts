@@ -83,7 +83,7 @@ describe('CertificateIssuingService', () => {
     deletedAt: null,
   };
 
-  it('hard-deletes invalid certificates during issueMissedCertificates', async () => {
+  it('soft-deletes invalid certificates during issueMissedCertificates', async () => {
     const prisma = {
       certificate: {
         findMany: jest
@@ -92,7 +92,7 @@ describe('CertificateIssuingService', () => {
             { personId: 'person-valid' },
             { personId: 'person-invalid' },
           ]),
-        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const validation = {
@@ -119,18 +119,22 @@ describe('CertificateIssuingService', () => {
 
     await service.issueMissedCertificates('config-1');
 
-    expect(prisma.certificate.deleteMany).toHaveBeenCalledWith({
+    expect(prisma.certificate.updateMany).toHaveBeenCalledWith({
       where: {
         configId: 'config-1',
+        deletedAt: null,
         personId: {
           in: ['person-invalid'],
         },
+      },
+      data: {
+        deletedAt: expect.any(Date),
       },
     });
     expect(upsertSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('hard-deletes all existing certificates when no recipients are eligible', async () => {
+  it('soft-deletes all existing certificates when no recipients are eligible', async () => {
     const prisma = {
       certificate: {
         findMany: jest
@@ -139,7 +143,7 @@ describe('CertificateIssuingService', () => {
             { personId: 'person-a' },
             { personId: 'person-b' },
           ]),
-        deleteMany: jest.fn().mockResolvedValue({ count: 2 }),
+        updateMany: jest.fn().mockResolvedValue({ count: 2 }),
       },
     };
     const validation = {
@@ -163,12 +167,16 @@ describe('CertificateIssuingService', () => {
     await expect(service.issueMissedCertificates('config-1')).resolves.toEqual(
       [],
     );
-    expect(prisma.certificate.deleteMany).toHaveBeenCalledWith({
+    expect(prisma.certificate.updateMany).toHaveBeenCalledWith({
       where: {
         configId: 'config-1',
+        deletedAt: null,
         personId: {
           in: ['person-a', 'person-b'],
         },
+      },
+      data: {
+        deletedAt: expect.any(Date),
       },
     });
     expect(upsertSpy).not.toHaveBeenCalled();

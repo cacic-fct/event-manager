@@ -8,6 +8,19 @@ export type CertificateScope =
   | 'EVENT'
   | 'OTHER';
 export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
+export type SubscriptionCreationMethod =
+  | 'ADMIN_DASHBOARD'
+  | 'SELF_SUBSCRIPTION'
+  | 'UNKNOWN';
+export type SubscriptionStatus =
+  | 'WAITING_RECEIPT_UPLOAD'
+  | 'RECEIPT_UNDER_REVIEW'
+  | 'REJECTED_INVALID_RECEIPT'
+  | 'REJECTED_NO_SLOTS'
+  | 'REJECTED_SCHEDULE_CONFLICT'
+  | 'REJECTED_GENERIC'
+  | 'CONFIRMED'
+  | 'CANCELED';
 
 export interface PaymentInfo {
   id: string;
@@ -251,6 +264,43 @@ export interface EventAttendance {
   attendedAt: string;
   createdAt: string;
   createdById?: string | null;
+}
+
+export interface WorkspaceEventSubscription {
+  id: string;
+  eventId: string;
+  event?: Event | null;
+  personId: string;
+  person?: Person | null;
+  eventGroupSubscriptionId?: string | null;
+  createdAt: string;
+  createdById?: string | null;
+  createdByMethod: SubscriptionCreationMethod;
+  isLecturerSubscription: boolean;
+}
+
+export interface WorkspaceMajorEventSubscriptionEvent {
+  eventId: string;
+  eventName: string;
+  eventStartDate?: string | null;
+  subscribed: boolean;
+  isLecturerSubscription: boolean;
+}
+
+export interface WorkspaceMajorEventSubscription {
+  id: string;
+  majorEventId: string;
+  majorEvent?: MajorEvent | null;
+  personId: string;
+  person?: Person | null;
+  subscriptionStatus: SubscriptionStatus;
+  amountPaid?: number | null;
+  paymentDate?: string | null;
+  paymentTier?: string | null;
+  createdAt: string;
+  createdById?: string | null;
+  createdByMethod: SubscriptionCreationMethod;
+  events: WorkspaceMajorEventSubscriptionEvent[];
 }
 
 export interface AuthenticatedUser {

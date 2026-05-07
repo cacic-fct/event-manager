@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { form, required, submit, type FieldTree } from '@angular/forms/signals';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -21,6 +22,7 @@ import {
   MajorEvent,
   Person,
 } from '../../graphql/models';
+import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 
 type IssuableScope = Exclude<CertificateScope, 'OTHER'>;
 type CertificateTargetType = 'event' | 'event-group' | 'major-event';
@@ -52,6 +54,7 @@ export class WorkspaceCertificatesService {
   private readonly majorEventsApi = inject(MajorEventApiService);
   private readonly peopleApi = inject(PeopleApiService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   private readonly router = inject(Router);
 
@@ -425,6 +428,47 @@ export class WorkspaceCertificatesService {
     await this.loadCertificates();
   }
 
+  async deleteCertificateConfig(config: CertificateConfig): Promise<void> {
+    const confirmed = await this.confirm({
+      title: 'Excluir configuração',
+      message: `Excluir a configuração "${config.name}"? Os certificados emitidos por ela deixarão de aparecer.`,
+      confirmLabel: 'Excluir',
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    await firstValueFrom(this.api.deleteCertificateConfig(config.id));
+    this.snackbar.open('Configuração de certificado excluída.', 'Fechar', {
+      duration: 2500,
+    });
+
+    if (this.selectedCertificateConfig()?.id === config.id) {
+      this.startNewCertificateConfig();
+    }
+    await Promise.all([this.loadCertificateConfigs(), this.loadCertificates()]);
+  }
+
+  async deleteCertificate(
+    certificate: Certificate,
+    event?: MouseEvent,
+  ): Promise<void> {
+    event?.stopPropagation();
+
+    const confirmed = await this.confirm({
+      title: 'Excluir certificado',
+      message: `Excluir o certificado de ${certificate.person.name}? Ele poderá ser reativado mantendo o mesmo ID se for emitido novamente.`,
+      confirmLabel: 'Excluir',
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    await firstValueFrom(this.api.deleteCertificate(certificate.id));
+    this.snackbar.open('Certificado excluído.', 'Fechar', { duration: 2500 });
+    await this.loadCertificates();
+  }
+
   async downloadCertificate(
     certificate: Certificate,
     event?: MouseEvent,
@@ -482,6 +526,23 @@ export class WorkspaceCertificatesService {
     }
 
     this.selectCertificateConfig(refreshedSelection);
+  }
+
+  private async confirm(data: {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+  }): Promise<boolean> {
+    const result = await firstValueFrom(
+      this.dialog
+        .open(ConfirmationDialogComponent, {
+          data,
+          width: '420px',
+        })
+        .afterClosed(),
+    );
+
+    return result === true;
   }
 
   private async loadCertificates(): Promise<void> {

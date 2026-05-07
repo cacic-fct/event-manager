@@ -8,6 +8,7 @@ import {
   CertificateDownload,
   CertificateScope,
   CertificateTemplate,
+  DeletionResult,
   Event,
   EventGroup,
   MajorEvent,
@@ -224,6 +225,20 @@ export class CertificateApiService {
       .pipe(map((data) => data.updateCertificateConfig));
   }
 
+  deleteCertificateConfig(id: string) {
+    return this.graphqlHttp
+      .request<{ deleteCertificateConfig: DeletionResult }>(
+        `mutation DeleteCertificateConfig($id: String!) {
+          deleteCertificateConfig(id: $id) {
+            deleted
+            id
+          }
+        }`,
+        { id },
+      )
+      .pipe(map((data) => data.deleteCertificateConfig));
+  }
+
   issueCertificateForPerson(configId: string, personId: string) {
     return this.graphqlHttp
       .request<{ issueCertificateForPerson: Certificate }>(
@@ -251,6 +266,20 @@ export class CertificateApiService {
         { configId },
       )
       .pipe(map((data) => data.issueMissedCertificates));
+  }
+
+  deleteCertificate(id: string) {
+    return this.graphqlHttp
+      .request<{ deleteCertificate: DeletionResult }>(
+        `mutation DeleteCertificate($id: String!) {
+          deleteCertificate(id: $id) {
+            deleted
+            id
+          }
+        }`,
+        { id },
+      )
+      .pipe(map((data) => data.deleteCertificate));
   }
 
   downloadCertificate(certificateId: string) {

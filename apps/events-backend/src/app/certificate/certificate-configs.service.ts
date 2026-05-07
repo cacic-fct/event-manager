@@ -5,6 +5,7 @@ import {
   CertificateIssuedTo,
   CertificateScope,
   CertificateTemplate,
+  DeletionResult,
 } from '@cacic-eventos/shared-data-types';
 import {
   BadRequestException,
@@ -299,6 +300,43 @@ export class CertificateConfigsService {
     });
 
     return mapCertificateConfig(updatedConfig);
+  }
+
+  async deleteConfig(configId: string): Promise<DeletionResult> {
+    const normalizedConfigId = this.validation.normalizeRequiredId(
+      'configId',
+      configId,
+    );
+    const { count } = await this.prisma.certificateConfig.updateMany({
+      where: {
+        id: normalizedConfigId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    if (count === 0) {
+      throw new NotFoundException(
+        `Certificate config ${normalizedConfigId} not found.`,
+      );
+    }
+
+    await this.prisma.certificate.updateMany({
+      where: {
+        configId: normalizedConfigId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    return {
+      deleted: true,
+      id: normalizedConfigId,
+    };
   }
 
   private async ensureTemplateExists(templateId: string): Promise<void> {
