@@ -6,6 +6,9 @@
   "tags": [],
   "targets": {
     "build": {
+      "outputs": [
+        "{workspaceRoot}/dist/apps/events-backend"
+      ],
       "executor": "nx:run-commands",
       "options": {
         "command": "webpack-cli build",
