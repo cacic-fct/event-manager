@@ -1,0 +1,36 @@
+.permissions-list {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.permission-action-icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.permission-icon {
+  cursor: default;
+  opacity: 1;
+  transition: opacity 120ms ease;
+}
+
+.permission-icon:hover,
+.permission-icon:focus-visible {
+  opacity: 1;
+  background: transparent !important;
+}
+
+.permission-icon .mat-mdc-button-persistent-ripple {
+  display: none;
+}
+
+.raw-permissions {
+  margin-top: 16px;
+}
+
+.raw-chip-list {
+  display: block;
+  margin-top: 12px;
+}
