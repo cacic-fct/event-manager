@@ -32,6 +32,17 @@ export type WorkspaceTabPermission = {
   delete: readonly WorkspacePermissionScope[];
 };
 
+export enum WorkspacePermissionTab {
+  Events = 0,
+  MajorEvents = 1,
+  Groups = 2,
+  People = 3,
+  MergeCandidates = 4,
+  Certificates = 5,
+  Attendances = 6,
+  Permissions = 7,
+}
+
 type KeycloakPermissionClaim =
   | string
   | {
@@ -92,6 +103,12 @@ const TAB_PERMISSIONS = [
     ],
     edit: ['event-attendance#edit'],
     delete: ['event-attendance#delete'],
+  },
+  {
+    label: 'Permissões',
+    read: [],
+    edit: [],
+    delete: [],
   },
 ] as const satisfies readonly WorkspaceTabPermission[];
 
@@ -239,4 +256,9 @@ export class WorkspacePermissionsService {
     const trimmed = value.trim();
     return trimmed || undefined;
   }
+
+  readonly rawPermissions = computed(() => {
+    const permissions = this.extractGrantedPermissions();
+    return Array.from(permissions);
+  });
 }

@@ -1,0 +1,43 @@
+<section class="permissions-shell">
+  <mat-list class="permissions-list" aria-label="Permissões">
+    @for (permission of formattedPermissions(); track permission.type) {
+      <mat-list-item>
+        <mat-icon matListItemIcon>{{ permission.resourceIcon }}</mat-icon>
+
+        <span matListItemTitle>{{ permission.label }}</span>
+
+        <div matListItemMeta class="permission-action-icons">
+          @for (action of permission.actions; track action.scope) {
+            <button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="permission.label + ': ' + action.label"
+              [matTooltip]="action.label"
+              matTooltipPosition="above"
+              matTooltipShowDelay="250"
+              disableRipple
+              class="permission-icon"
+            >
+              <mat-icon>{{ action.icon }}</mat-icon>
+            </button>
+          }
+        </div>
+      </mat-list-item>
+    } @empty {
+      <mat-list-item>
+        <mat-icon matListItemIcon>shield</mat-icon>
+        <span matListItemTitle>Nenhuma permissão encontrada</span>
+      </mat-list-item>
+    }
+  </mat-list>
+
+  <details class="raw-permissions">
+    <summary>Permissões brutas</summary>
+
+    <mat-chip-set class="raw-chip-list">
+      @for (permission of rawPermissions(); track permission) {
+        <mat-chip>{{ permission }}</mat-chip>
+      }
+    </mat-chip-set>
+  </details>
+</section>
