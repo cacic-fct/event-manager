@@ -10,10 +10,8 @@ export const appRoutes: Route[] = [
   {
     path: '',
     canActivate: [authGuard],
-    loadComponent: () =>
-      import('./workspace/workspace-page.component').then(
-        (c) => c.WorkspacePageComponent,
-      ),
+    loadChildren: () =>
+      import('./workspace/workspace.routes').then((m) => m.workspaceRoutes),
   },
   {
     path: '**',

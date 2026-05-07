@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
@@ -18,6 +19,7 @@ export class WorkspaceEventGroupsService {
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
   private readonly eventsService = inject(WorkspaceEventsService);
+  private readonly router = inject(Router);
 
   readonly eventGroups = signal<EventGroup[]>([]);
   readonly selectedEventGroup = signal<EventGroup | null>(null);
@@ -92,6 +94,7 @@ export class WorkspaceEventGroupsService {
   }
 
   startNewEventGroup(): void {
+    void this.router.navigate(['/groups']);
     this.selectedEventGroup.set(null);
     this.eventGroupEvents.set([]);
     this.eventGroupEventSearchResults.set([]);
@@ -108,7 +111,21 @@ export class WorkspaceEventGroupsService {
     });
   }
 
-  pickEventGroup(group: EventGroup): void {
+  async pickEventGroup(group: EventGroup): Promise<void> {
+    void this.router.navigate(['/groups', group.id]);
+    this.populateEventGroupSelection(group);
+  }
+
+  async pickEventGroupById(groupId: string): Promise<void> {
+    if (this.selectedEventGroup()?.id === groupId) {
+      return;
+    }
+
+    const group = await firstValueFrom(this.api.getEventGroup(groupId));
+    this.populateEventGroupSelection(group);
+  }
+
+  private populateEventGroupSelection(group: EventGroup): void {
     this.selectedEventGroup.set(group);
     this.eventGroupForm.reset({
       id: group.id,
@@ -133,9 +150,7 @@ export class WorkspaceEventGroupsService {
     await firstValueFrom(this.api.deleteEventGroup(id));
     this.snackbar.open('Grupo excluído.', 'Fechar', { duration: 2500 });
     if (this.selectedEventGroup()?.id === id) {
-      this.selectedEventGroup.set(null);
-      this.eventGroupEvents.set([]);
-      this.eventGroupEventSearchResults.set([]);
+      this.startNewEventGroup();
     }
     await this.loadEventGroups();
   }

@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
@@ -40,6 +41,7 @@ export class WorkspaceAttendancesService {
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
+  private readonly router = inject(Router);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
 
@@ -100,10 +102,22 @@ export class WorkspaceAttendancesService {
   }
 
   async selectAttendanceEvent(eventItem: Event): Promise<void> {
+    void this.router.navigate(['/attendances/event', eventItem.id]);
     this.selectedAttendanceEvent.set(eventItem);
     this.attendanceForm.controls.eventId.setValue(eventItem.id);
     this.attendancePersonMatches.set([]);
     await this.loadAttendances(eventItem.id);
+  }
+
+  async selectAttendanceEventById(eventId: string): Promise<void> {
+    if (this.selectedAttendanceEvent()?.id !== eventId) {
+      this.selectedAttendanceEvent.set(
+        await firstValueFrom(this.eventApi.getEvent(eventId)),
+      );
+    }
+    this.attendanceForm.controls.eventId.setValue(eventId);
+    this.attendancePersonMatches.set([]);
+    await this.loadAttendances(eventId);
   }
 
   async findAttendancePerson(): Promise<void> {
@@ -297,6 +311,7 @@ export class WorkspaceAttendancesService {
       this.selectedMajorEventUserAttendance.set(null);
       return;
     }
+    void this.router.navigate(['/attendances/major-event', majorEventId]);
 
     const attendances = await firstValueFrom(
       this.api.listMajorEventUserAttendances(majorEventId, { take: 200 }),
@@ -315,6 +330,12 @@ export class WorkspaceAttendancesService {
     }
 
     this.selectedMajorEventUserAttendance.set(attendances[0] ?? null);
+  }
+
+  async selectMajorEventAttendancesById(majorEventId: string): Promise<void> {
+    this.majorEventAttendanceForm.controls.majorEventId.setValue(majorEventId);
+    void this.router.navigate(['/attendances/major-event', majorEventId]);
+    await this.loadMajorEventUserAttendances();
   }
 
   selectMajorEventUserAttendance(attendance: MajorEventUserAttendance): void {

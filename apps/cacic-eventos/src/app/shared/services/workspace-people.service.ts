@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { Person, PersonInput } from '../../graphql/models';
@@ -12,6 +13,7 @@ export class WorkspacePeopleService {
   private readonly api = inject(PeopleApiService);
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly router = inject(Router);
 
   readonly people = signal<Person[]>([]);
   readonly selectedPerson = signal<Person | null>(null);
@@ -50,14 +52,28 @@ export class WorkspacePeopleService {
       (person) => person.id === selectedPerson.id,
     );
     if (refreshedPerson) {
-      this.selectPerson(refreshedPerson);
+      void this.selectPerson(refreshedPerson);
       return;
     }
 
     this.resetPersonForm();
   }
 
-  selectPerson(person: Person): void {
+  async selectPerson(person: Person): Promise<void> {
+    void this.router.navigate(['/people', person.id]);
+    this.populatePersonSelection(person);
+  }
+
+  async selectPersonById(personId: string): Promise<void> {
+    if (this.selectedPerson()?.id === personId) {
+      return;
+    }
+
+    const person = await firstValueFrom(this.api.getPerson(personId));
+    this.populatePersonSelection(person);
+  }
+
+  private populatePersonSelection(person: Person): void {
     this.isCreatingPerson.set(false);
     this.selectedPerson.set(person);
     this.personForm.reset({
@@ -74,6 +90,7 @@ export class WorkspacePeopleService {
   }
 
   resetPersonForm(): void {
+    void this.router.navigate(['/people']);
     this.isCreatingPerson.set(false);
     this.selectedPerson.set(null);
     this.personForm.reset({
@@ -90,6 +107,7 @@ export class WorkspacePeopleService {
   }
 
   startNewPerson(): void {
+    void this.router.navigate(['/people']);
     this.selectedPerson.set(null);
     this.isCreatingPerson.set(true);
     this.personForm.reset({
@@ -141,7 +159,7 @@ export class WorkspacePeopleService {
       'Fechar',
       { duration: 2500 },
     );
-    this.selectPerson(savedPerson);
+    await this.selectPerson(savedPerson);
     await this.searchPeople(this.peopleSearchQuery());
   }
 }

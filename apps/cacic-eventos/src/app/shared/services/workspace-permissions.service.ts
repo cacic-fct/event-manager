@@ -126,12 +126,12 @@ export class WorkspacePermissionsService {
     return [...new Set(scopes)].filter((scope) => !this.has(scope));
   }
 
-  canReadTab(index: number): boolean {
-    return this.hasAll(this.tabs[index]?.read ?? []);
+  canReadTab(tab: WorkspacePermissionTab): boolean {
+    return this.hasAll(this.tabs[tab]?.read ?? []);
   }
 
-  missingReadForTab(index: number): WorkspacePermissionScope[] {
-    return this.missing(this.tabs[index]?.read ?? []);
+  missingReadForTab(tab: WorkspacePermissionTab): WorkspacePermissionScope[] {
+    return this.missing(this.tabs[tab]?.read ?? []);
   }
 
   canEdit(...scopes: WorkspacePermissionScope[]): boolean {
