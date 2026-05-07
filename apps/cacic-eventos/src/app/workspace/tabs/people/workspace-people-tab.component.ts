@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,5 +26,20 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 })
 export class WorkspacePeopleTabComponent {
   readonly workspace = inject(WorkspacePeopleService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly permissions = inject(WorkspacePermissionsService);
+
+  constructor() {
+    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const personId = params.get('personId');
+      if (personId) {
+        void this.workspace.selectPersonById(personId);
+        return;
+      }
+
+      if (this.workspace.selectedPerson()) {
+        this.workspace.resetPersonForm();
+      }
+    });
+  }
 }

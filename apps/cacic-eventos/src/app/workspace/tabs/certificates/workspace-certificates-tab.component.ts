@@ -1,7 +1,9 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { FormField } from '@angular/forms/signals';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -36,5 +38,16 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 })
 export class WorkspaceCertificatesTabComponent {
   readonly workspace = inject(WorkspaceCertificatesService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly permissions = inject(WorkspacePermissionsService);
+
+  constructor() {
+    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      void this.workspace.selectTargetByRoute(
+        params.get('targetType'),
+        params.get('targetId'),
+        params.get('configId'),
+      );
+    });
+  }
 }

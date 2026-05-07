@@ -1,29 +1,8 @@
 <section class="section workspace-tab-shell">
-  <header class="tab-header">
-    <div>
-      <h2>Eventos</h2>
-      <p>Programação, inscrições, certificados e presença.</p>
-    </div>
-
-    <div class="summary-grid" aria-label="Resumo de eventos">
-      <div class="summary-item">
-        <span class="summary-value">{{ workspace.events().length }}</span>
-        <span class="summary-label">eventos</span>
-      </div>
-      <div class="summary-item">
-        <span class="summary-value">{{ workspace.majorEvents().length }}</span>
-        <span class="summary-label">grandes eventos</span>
-      </div>
-    </div>
-  </header>
-
   <div class="tab-grid">
     <aside class="panel">
       <div class="panel-heading">
-        <div>
-          <h3>Lista</h3>
-          <p>Use os filtros para chegar rápido ao item certo.</p>
-        </div>
+        <div></div>
 
         <button
           mat-stroked-button
@@ -190,6 +169,69 @@
           </div>
         </section>
 
+        <section
+          class="surface field-group"
+          [formGroup]="workspace.eventGroupLookupForm"
+        >
+          <div class="surface-heading">
+            <h4>Grupo do evento</h4>
+            <button
+              mat-button
+              type="button"
+              [disabled]="!permissions.canEdit('event#edit')"
+              (click)="workspace.clearEventGroupFromEvent()"
+            >
+              <mat-icon>link_off</mat-icon>
+              Remover vínculo
+            </button>
+          </div>
+
+          <div class="compact-form">
+            <mat-form-field>
+              <mat-label>Buscar grupo</mat-label>
+              <input matInput formControlName="query" />
+            </mat-form-field>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.searchEventGroupsForEvent()"
+            >
+              <mat-icon>search</mat-icon>
+              Buscar
+            </button>
+          </div>
+
+          <div class="inline-list">
+            @for (
+              eventGroup of workspace.eventGroupSearchResults();
+              track eventGroup.id
+            ) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!permissions.canEdit('event#edit')"
+                (click)="workspace.assignEventGroupToEvent(eventGroup)"
+              >
+                <mat-icon>add_link</mat-icon>
+                Usar {{ eventGroup.name }} {{ eventGroup.createdAt }}
+              </button>
+            } @empty {
+              <span class="empty-note">Nenhum grupo listado.</span>
+            }
+          </div>
+
+          <div class="surface-heading">
+            <h4>Grupo selecionado</h4>
+            <span>
+              {{
+                workspace.eventGroupNameById(
+                  workspace.eventForm.controls.eventGroupId.value
+                )
+              }}
+            </span>
+          </div>
+        </section>
+
         <section class="surface field-group">
           <h4>Datas e créditos</h4>
           <div class="field-grid">
@@ -350,69 +392,6 @@
                 formControlName="onlineAttendanceEndDate"
               />
             </mat-form-field>
-          </div>
-        </section>
-
-        <section
-          class="surface field-group"
-          [formGroup]="workspace.eventGroupLookupForm"
-        >
-          <div class="surface-heading">
-            <h4>Grupo do evento</h4>
-            <button
-              mat-button
-              type="button"
-              [disabled]="!permissions.canEdit('event#edit')"
-              (click)="workspace.clearEventGroupFromEvent()"
-            >
-              <mat-icon>link_off</mat-icon>
-              Remover vínculo
-            </button>
-          </div>
-
-          <div class="compact-form">
-            <mat-form-field>
-              <mat-label>Buscar grupo</mat-label>
-              <input matInput formControlName="query" />
-            </mat-form-field>
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.searchEventGroupsForEvent()"
-            >
-              <mat-icon>search</mat-icon>
-              Buscar
-            </button>
-          </div>
-
-          <div class="inline-list">
-            @for (
-              eventGroup of workspace.eventGroupSearchResults();
-              track eventGroup.id
-            ) {
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="!permissions.canEdit('event#edit')"
-                (click)="workspace.assignEventGroupToEvent(eventGroup)"
-              >
-                <mat-icon>add_link</mat-icon>
-                Usar {{ eventGroup.name }} {{ eventGroup.createdAt }}
-              </button>
-            } @empty {
-              <span class="empty-note">Nenhum grupo listado.</span>
-            }
-          </div>
-
-          <div class="surface-heading">
-            <h4>Grupo selecionado</h4>
-            <span>
-              {{
-                workspace.eventGroupNameById(
-                  workspace.eventForm.controls.eventGroupId.value
-                )
-              }}
-            </span>
           </div>
         </section>
       </form>
