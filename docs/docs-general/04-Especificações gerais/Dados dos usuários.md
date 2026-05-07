@@ -27,7 +27,7 @@ Isso inclui:
 
 ## Coleta e tratamento de dados
 
-Leia a [Política de Privacidade](https://fctapp.cacic.dev.br/privacidade) para mais informações.
+Leia a [Política de Privacidade](https://cacic.dev.br/legal/privacy-policy) para mais informações.
 
 ### Dados sensíveis
 

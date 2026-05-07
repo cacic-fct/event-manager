@@ -24,7 +24,7 @@ function HomepageHeader() {
         </div>
         <br />
         <div className={styles.buttons}>
-          <Link className="button button--secondary button--lg" to="https://fctapp.cacic.dev.br">
+          <Link className="button button--secondary button--lg" to="https://eventos.cacic.dev.br">
             Voltar ao app
           </Link>
         </div>
