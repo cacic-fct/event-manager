@@ -1,0 +1,270 @@
+<section class="subtab-layout major-subscription-layout">
+  <aside class="panel major-selector">
+    <div class="panel-heading">
+      <div>
+        <h3>Grande evento</h3>
+        <p>Carregue inscrições e ajuste as atividades selecionadas.</p>
+      </div>
+    </div>
+
+    <form [formGroup]="workspace.majorEventForm" class="major-event-form">
+      <mat-form-field>
+        <mat-label>Grande evento</mat-label>
+        <mat-select formControlName="majorEventId">
+          @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+            <mat-option [value]="majorEvent.id">
+              <span class="item-title">
+                <app-twemoji [emoji]="majorEvent.emoji" />
+                <span>{{ majorEvent.name }}</span>
+              </span>
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <button
+        mat-flat-button
+        type="button"
+        (click)="workspace.loadMajorEventSubscriptions()"
+      >
+        <mat-icon>groups</mat-icon>
+        Carregar inscrições
+      </button>
+
+      <button
+        mat-button
+        type="button"
+        [disabled]="!permissions.canEdit('subscription#edit')"
+        (click)="workspace.startNewMajorEventSubscription()"
+      >
+        <mat-icon>add</mat-icon>
+        Nova inscrição
+      </button>
+    </form>
+
+    <mat-list class="subscription-list">
+      @for (
+        subscription of workspace.majorEventSubscriptions();
+        track subscription.id
+      ) {
+        <mat-list-item
+          (click)="workspace.selectMajorEventSubscription(subscription)"
+          [class.selected-list-item]="
+            workspace.selectedMajorEventSubscription()?.id === subscription.id
+          "
+        >
+          <span matListItemTitle>{{
+            subscription.person?.name ?? subscription.personId
+          }}</span>
+          <span matListItemLine>
+            {{ subscription.subscriptionStatus }} ·
+            {{ subscription.createdByMethod }}
+          </span>
+          @if (hasSubscribedLecturer(subscription)) {
+            <mat-icon matListItemMeta>warning</mat-icon>
+          }
+        </mat-list-item>
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>Nenhuma inscrição carregada</span>
+          <span matListItemLine>Escolha um grande evento para consultar.</span>
+        </mat-list-item>
+      }
+    </mat-list>
+  </aside>
+
+  <section class="panel subscription-detail">
+    @if (workspace.selectedMajorEventSubscription() || workspace.editMode()) {
+      <div class="panel-heading">
+        <div>
+          <h3>
+            {{
+              workspace.selectedMajorEventSubscription()?.person?.name ??
+                workspace.selectedMajorEventPerson()?.name ??
+                'Nova inscrição'
+            }}
+          </h3>
+          <p>
+            @if (workspace.selectedMajorEventSubscription()) {
+              {{
+                workspace.selectedMajorEventSubscription()?.createdAt
+                  | date: 'short'
+              }}
+              ·
+              {{ workspace.selectedMajorEventSubscription()?.createdByMethod }}
+            } @else {
+              Selecione a pessoa e os eventos para criar a inscrição.
+            }
+          </p>
+        </div>
+
+        <div class="panel-actions">
+          @if (!workspace.editMode()) {
+            <button
+              mat-icon-button
+              type="button"
+              [disabled]="!permissions.canEdit('subscription#edit')"
+              (click)="workspace.enableMajorEventEdit()"
+              aria-label="Editar inscrição"
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+          } @else {
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="!permissions.canEdit('subscription#edit')"
+              (click)="workspace.saveMajorEventSubscription()"
+            >
+              <mat-icon>save</mat-icon>
+              Salvar
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (!workspace.selectedMajorEventSubscription()) {
+        <section class="surface">
+          <h4>Pessoa</h4>
+          <form
+            [formGroup]="workspace.majorEventPersonForm"
+            class="manual-form"
+          >
+            <mat-form-field>
+              <mat-label>Identificador</mat-label>
+              <mat-select formControlName="identifierType">
+                <mat-option value="email">E-mail</mat-option>
+                <mat-option value="identityDocument">Documento</mat-option>
+                <mat-option value="userId">ID de usuário</mat-option>
+                <mat-option value="phone">Telefone</mat-option>
+                <mat-option value="query">Nome</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Valor</mat-label>
+              <input matInput formControlName="identifier" />
+            </mat-form-field>
+
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.findMajorEventPerson()"
+            >
+              <mat-icon>person_search</mat-icon>
+              Buscar pessoa
+            </button>
+          </form>
+
+          <div class="inline-list">
+            @for (
+              person of workspace.majorEventPersonMatches();
+              track person.id
+            ) {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="workspace.selectMajorEventPerson(person)"
+              >
+                Usar {{ person.name }}
+              </button>
+            }
+          </div>
+        </section>
+      }
+
+      <form [formGroup]="workspace.majorEventEditForm" class="detail-form">
+        <mat-form-field>
+          <mat-label>Status</mat-label>
+          <mat-select
+            formControlName="subscriptionStatus"
+            [disabled]="!workspace.editMode()"
+          >
+            @for (status of statuses; track status) {
+              <mat-option [value]="status">{{ status }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Valor pago</mat-label>
+          <input
+            matInput
+            type="number"
+            formControlName="amountPaid"
+            [readonly]="!workspace.editMode()"
+          />
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Data do pagamento</mat-label>
+          <input
+            matInput
+            type="date"
+            formControlName="paymentDate"
+            [readonly]="!workspace.editMode()"
+          />
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Faixa de pagamento</mat-label>
+          <input
+            matInput
+            formControlName="paymentTier"
+            [readonly]="!workspace.editMode()"
+          />
+        </mat-form-field>
+      </form>
+
+      <section class="surface event-selection">
+        <div class="surface-heading">
+          <h4>Eventos inscritos</h4>
+          <span>{{ workspace.selectedEventIds().size }} selecionados</span>
+        </div>
+
+        <mat-list>
+          @for (
+            eventItem of workspace.selectedMajorEventEvents();
+            track eventItem.eventId
+          ) {
+            <mat-list-item
+              [class.warning-item]="
+                eventItem.isLecturerSubscription && eventItem.subscribed
+              "
+            >
+              <mat-checkbox
+                [checked]="workspace.selectedEventIds().has(eventItem.eventId)"
+                [disabled]="!workspace.editMode()"
+                (change)="workspace.toggleSelectedEvent(eventItem.eventId)"
+              />
+              <span matListItemTitle>{{ eventItem.eventName }}</span>
+              <span matListItemLine>
+                {{ eventItem.eventStartDate | date: 'short' }}
+                @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
+                  · palestrante inscrito
+                }
+              </span>
+              @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
+                <mat-icon matListItemMeta>warning</mat-icon>
+              }
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhum evento carregado</span>
+              <span matListItemLine>
+                Carregue uma inscrição existente para ver os eventos do grande
+                evento.
+              </span>
+            </mat-list-item>
+          }
+        </mat-list>
+      </section>
+    } @else {
+      <div class="empty-state">
+        <mat-icon>how_to_reg</mat-icon>
+        <h3>Selecione uma inscrição</h3>
+        <p>Os dados completos e a seleção de eventos aparecem neste painel.</p>
+      </div>
+    }
+  </section>
+</section>

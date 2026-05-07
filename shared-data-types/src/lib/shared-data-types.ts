@@ -52,6 +52,17 @@ registerEnumType(AttendanceCreationMethod, {
   name: 'AttendanceCreationMethod',
 });
 
+export const SubscriptionCreationMethod = {
+  ADMIN_DASHBOARD: 'ADMIN_DASHBOARD',
+  SELF_SUBSCRIPTION: 'SELF_SUBSCRIPTION',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+export type SubscriptionCreationMethod =
+  (typeof SubscriptionCreationMethod)[keyof typeof SubscriptionCreationMethod];
+registerEnumType(SubscriptionCreationMethod, {
+  name: 'SubscriptionCreationMethod',
+});
+
 export const CertificateScope = {
   MAJOR_EVENT: 'MAJOR_EVENT',
   EVENT_GROUP: 'EVENT_GROUP',
@@ -558,6 +569,99 @@ export class MajorEventUserAttendance {
 
   @Field(() => [MajorEventEventAttendanceStatus])
   attendances!: MajorEventEventAttendanceStatus[];
+}
+
+@ObjectType()
+export class WorkspaceEventSubscription {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => Event, { nullable: true })
+  event?: Event;
+
+  @Field(() => String)
+  personId!: string;
+
+  @Field(() => Person, { nullable: true })
+  person?: Person;
+
+  @Field(() => String, { nullable: true })
+  eventGroupSubscriptionId?: string;
+
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  createdById?: string;
+
+  @Field(() => SubscriptionCreationMethod)
+  createdByMethod!: SubscriptionCreationMethod;
+
+  @Field(() => Boolean)
+  isLecturerSubscription!: boolean;
+}
+
+@ObjectType()
+export class WorkspaceMajorEventSubscriptionEvent {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => String)
+  eventName!: string;
+
+  @Field(() => Date, { nullable: true })
+  eventStartDate?: Date;
+
+  @Field(() => Boolean)
+  subscribed!: boolean;
+
+  @Field(() => Boolean)
+  isLecturerSubscription!: boolean;
+}
+
+@ObjectType()
+export class WorkspaceMajorEventSubscription {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  majorEventId!: string;
+
+  @Field(() => MajorEvent, { nullable: true })
+  majorEvent?: MajorEvent;
+
+  @Field(() => String)
+  personId!: string;
+
+  @Field(() => Person, { nullable: true })
+  person?: Person;
+
+  @Field(() => String)
+  subscriptionStatus!: string;
+
+  @Field(() => Int, { nullable: true })
+  amountPaid?: number;
+
+  @Field(() => Date, { nullable: true })
+  paymentDate?: Date;
+
+  @Field(() => String, { nullable: true })
+  paymentTier?: string;
+
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  createdById?: string;
+
+  @Field(() => SubscriptionCreationMethod)
+  createdByMethod!: SubscriptionCreationMethod;
+
+  @Field(() => [WorkspaceMajorEventSubscriptionEvent])
+  events!: WorkspaceMajorEventSubscriptionEvent[];
 }
 
 @ObjectType()
@@ -1509,6 +1613,57 @@ export class EventAttendanceCsvImportInput {
 
   @Field(() => String)
   selectedHeader!: string;
+}
+
+@InputType()
+export class WorkspaceEventSubscriptionCreateInput {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => String)
+  personId!: string;
+}
+
+@InputType()
+export class WorkspaceMajorEventSubscriptionCreateInput {
+  @Field(() => String)
+  majorEventId!: string;
+
+  @Field(() => String)
+  personId!: string;
+
+  @Field(() => String, { nullable: true })
+  subscriptionStatus?: string;
+
+  @Field(() => Int, { nullable: true })
+  amountPaid?: number;
+
+  @Field(() => Date, { nullable: true })
+  paymentDate?: Date;
+
+  @Field(() => String, { nullable: true })
+  paymentTier?: string;
+
+  @Field(() => [String])
+  selectedEventIds!: string[];
+}
+
+@InputType()
+export class WorkspaceMajorEventSubscriptionUpdateInput {
+  @Field(() => String, { nullable: true })
+  subscriptionStatus?: string;
+
+  @Field(() => Int, { nullable: true })
+  amountPaid?: number;
+
+  @Field(() => Date, { nullable: true })
+  paymentDate?: Date;
+
+  @Field(() => String, { nullable: true })
+  paymentTier?: string;
+
+  @Field(() => [String], { nullable: true })
+  selectedEventIds?: string[];
 }
 
 @InputType()

@@ -219,6 +219,7 @@ model EventSubscription {
 
   createdAt   DateTime @default(now())
   createdById String?
+  createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
   deletedAt DateTime?
 
@@ -241,6 +242,7 @@ model EventGroupSubscription {
 
   createdAt   DateTime @default(now())
   createdById String?
+  createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
   deletedAt DateTime?
 
@@ -267,6 +269,7 @@ model MajorEventSubscription {
 
   createdAt   DateTime @default(now())
   createdById String?
+  createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
   deletedAt DateTime?
 
@@ -322,6 +325,12 @@ enum SubscriptionStatus {
   // Old 2 status
   CONFIRMED
   CANCELED
+}
+
+enum SubscriptionCreationMethod {
+  ADMIN_DASHBOARD
+  SELF_SUBSCRIPTION
+  UNKNOWN
 }
 
 // PEOPLE

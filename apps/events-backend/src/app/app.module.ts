@@ -20,6 +20,7 @@ import { CertificatesResolver } from './certificate/certificates.resolver';
 import { PublicCertificateValidationService } from './certificate/public-certificate-validation.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { EventAttendancesResolver } from './events/attendances.resolver';
+import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
 import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
@@ -116,6 +117,7 @@ import { WeatherService } from './weather/weather.service';
     DashboardInsightsSchedulerService,
     DashboardInsightsProcessor,
     EventAttendancesResolver,
+    EventSubscriptionsResolver,
     EventLecturersResolver,
     MergeCandidatesResolver,
     MergeCandidateOperationsService,

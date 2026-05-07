@@ -140,6 +140,7 @@ export class CurrentUserEventSubscriptionService {
             data: {
               eventId: targetEvent.id,
               personId,
+              createdByMethod: 'SELF_SUBSCRIPTION',
             },
           });
         }
@@ -362,6 +363,7 @@ export class CurrentUserEventSubscriptionService {
         data: {
           eventGroupId,
           personId,
+          createdByMethod: 'SELF_SUBSCRIPTION',
         },
         select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
       }));
@@ -411,6 +413,7 @@ export class CurrentUserEventSubscriptionService {
           eventId: event.id,
           personId,
           eventGroupSubscriptionId: subscription.id,
+          createdByMethod: 'SELF_SUBSCRIPTION',
         })),
       });
     }

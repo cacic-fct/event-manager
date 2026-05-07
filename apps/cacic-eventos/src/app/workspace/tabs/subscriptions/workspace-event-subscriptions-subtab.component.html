@@ -1,0 +1,177 @@
+<section class="subtab-layout event-subscription-layout">
+  <aside class="panel event-browser">
+    <div class="panel-heading">
+      <div>
+        <h3>Eventos</h3>
+        <p>Filtre eventos antes de consultar ou criar inscrições.</p>
+      </div>
+    </div>
+
+    <app-event-filter-panel
+      [form]="workspace.eventFiltersForm"
+      applyLabel="Buscar"
+      resetLabel="Limpar"
+      (applyFilters)="workspace.searchEvents()"
+      (resetFilters)="workspace.resetEventFilters()"
+    />
+
+    <mat-list class="event-result-list">
+      @for (eventItem of workspace.eventResults(); track eventItem.id) {
+        <mat-list-item
+          (click)="workspace.selectEvent(eventItem)"
+          [class.selected-list-item]="
+            workspace.selectedEvent()?.id === eventItem.id
+          "
+        >
+          <span matListItemTitle class="list-title">
+            <app-twemoji [emoji]="eventItem.emoji" />
+            <span>{{ eventItem.name }}</span>
+          </span>
+          <span matListItemLine>
+            {{ eventItem.startDate | date: 'short' }} ·
+            {{ describeEventType(eventItem.type) }}
+          </span>
+        </mat-list-item>
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>Nenhum evento encontrado</span>
+          <span matListItemLine>Ajuste os filtros e tente novamente.</span>
+        </mat-list-item>
+      }
+    </mat-list>
+  </aside>
+
+  <section class="panel subscription-workbench">
+    <div class="panel-heading">
+      <div>
+        <h3>
+          @if (workspace.selectedEvent()) {
+            <app-twemoji [emoji]="workspace.selectedEvent()?.emoji" />
+            {{ workspace.selectedEvent()?.name }}
+          } @else {
+            Selecione um evento
+          }
+        </h3>
+        <p>
+          @if (workspace.selectedEvent()) {
+            {{ workspace.selectedEvent()?.startDate | date: 'medium' }}
+          } @else {
+            As inscrições do evento aparecem aqui.
+          }
+        </p>
+      </div>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!workspace.selectedEvent()"
+        (click)="workspace.loadEventSubscriptions()"
+      >
+        <mat-icon>refresh</mat-icon>
+        Atualizar
+      </button>
+    </div>
+
+    <div class="workbench-grid">
+      <section class="surface">
+        <h4>Criação manual</h4>
+        <form [formGroup]="workspace.eventSubscriptionForm" class="manual-form">
+          <mat-form-field>
+            <mat-label>Identificador</mat-label>
+            <mat-select formControlName="identifierType">
+              <mat-option value="email">E-mail</mat-option>
+              <mat-option value="identityDocument">Documento</mat-option>
+              <mat-option value="userId">ID de usuário</mat-option>
+              <mat-option value="phone">Telefone</mat-option>
+              <mat-option value="query">Nome</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Valor</mat-label>
+            <input matInput formControlName="identifier" />
+          </mat-form-field>
+
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!workspace.selectedEvent()"
+            (click)="workspace.findEventPerson()"
+          >
+            <mat-icon>person_search</mat-icon>
+            Buscar pessoa
+          </button>
+        </form>
+
+        <div class="inline-list">
+          @for (person of workspace.eventPersonMatches(); track person.id) {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!permissions.canEdit('subscription#edit')"
+              (click)="workspace.createEventSubscription(person)"
+            >
+              Inscrever {{ person.name }}
+            </button>
+          } @empty {
+            <span class="empty-note">Busque uma pessoa para inscrever.</span>
+          }
+        </div>
+      </section>
+
+      <section class="surface">
+        <div class="surface-heading">
+          <h4>Inscrições</h4>
+          <span
+            >{{ workspace.eventRegularSubscriptions().length }} registros</span
+          >
+        </div>
+
+        <mat-list class="subscription-list">
+          @for (
+            subscription of workspace.eventRegularSubscriptions();
+            track subscription.id
+          ) {
+            <mat-list-item>
+              <span matListItemTitle>{{
+                subscription.person?.name ?? subscription.personId
+              }}</span>
+              <span matListItemLine>
+                {{ subscription.createdAt | date: 'short' }} ·
+                {{ subscription.createdByMethod }}
+              </span>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhuma inscrição carregada</span>
+              <span matListItemLine>Selecione um evento para começar.</span>
+            </mat-list-item>
+          }
+        </mat-list>
+
+        @if (workspace.eventLecturerSubscriptions().length > 0) {
+          <div class="warning-section">
+            <h4>
+              <mat-icon>warning</mat-icon>
+              Palestrantes inscritos
+            </h4>
+            <mat-list>
+              @for (
+                subscription of workspace.eventLecturerSubscriptions();
+                track subscription.id
+              ) {
+                <mat-list-item>
+                  <span matListItemTitle>
+                    {{ subscription.person?.name ?? subscription.personId }}
+                  </span>
+                  <span matListItemLine>
+                    Esta pessoa é palestrante deste evento.
+                  </span>
+                </mat-list-item>
+              }
+            </mat-list>
+          </div>
+        }
+      </section>
+    </div>
+  </section>
+</section>
