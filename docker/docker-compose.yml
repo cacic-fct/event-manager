@@ -42,7 +42,7 @@ services:
     command:
       - sh
       - -c
-      - cd /app && ./node_modules/.bin/prisma migrate deploy --config prisma.config.ts
+      - cd /app/apps/events-backend && ../../node_modules/.bin/prisma migrate deploy --config prisma.config.ts
     depends_on:
       events-db:
         condition: service_healthy
