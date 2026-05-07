@@ -170,6 +170,12 @@ export class DashboardInconsistency {
   @Field(() => DashboardInconsistencyType)
   type!: DashboardInconsistencyType;
 
+  @Field(() => DashboardInsightAction, { nullable: true })
+  action?: DashboardInsightAction | null;
+
+  @Field(() => String, { nullable: true })
+  targetId?: string | null;
+
   @Field(() => DashboardInsightSeverity)
   severity!: DashboardInsightSeverity;
 

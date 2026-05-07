@@ -7,6 +7,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
+import { actionablePendingMergeCandidateWhere } from '../people/merge-candidates/merge-candidate-filters';
 import { PrismaService } from '../prisma/prisma.service';
 import { WeatherService } from '../weather/weather.service';
 import {
@@ -275,12 +276,18 @@ export class DashboardInsightsService {
       majorEventsCount,
       duplicatePeopleCount,
       calendarEvents,
+      upcomingMajorEventsCount,
       consistencyEvents,
+      singleEventGroups,
+      mismatchingCertificateGroupEvents,
+      pastCertificateEventsWithoutAttendance,
     ] = await Promise.all([
       this.prisma.event.count({ where: { deletedAt: null } }),
       this.prisma.eventGroup.count({ where: { deletedAt: null } }),
       this.prisma.majorEvent.count({ where: { deletedAt: null } }),
-      this.prisma.mergeCandidate.count({ where: { status: 'PENDING' } }),
+      this.prisma.mergeCandidate.count({
+        where: actionablePendingMergeCandidateWhere,
+      }),
       this.prisma.event.findMany({
         where: {
           deletedAt: null,
@@ -291,6 +298,15 @@ export class DashboardInsightsService {
         },
         select: EVENT_INSIGHT_SELECT,
         orderBy: { startDate: 'asc' },
+      }),
+      this.prisma.majorEvent.count({
+        where: {
+          deletedAt: null,
+          startDate: {
+            gte: today,
+            lt: sevenDaysFromToday,
+          },
+        },
       }),
       this.prisma.event.findMany({
         where: {
@@ -311,6 +327,97 @@ export class DashboardInsightsService {
         select: EVENT_INSIGHT_SELECT,
         orderBy: { startDate: 'asc' },
       }),
+      this.prisma.eventGroup.findMany({
+        where: {
+          deletedAt: null,
+          events: {
+            some: { deletedAt: null },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          events: {
+            where: { deletedAt: null },
+            select: { id: true },
+            take: 2,
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 30,
+      }),
+      this.prisma.event.findMany({
+        where: {
+          deletedAt: null,
+          eventGroup: {
+            deletedAt: null,
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          shouldIssueCertificate: true,
+          eventGroup: {
+            select: {
+              id: true,
+              name: true,
+              shouldIssueCertificate: true,
+            },
+          },
+        },
+        orderBy: { startDate: 'desc' },
+        take: 30,
+      }),
+      this.prisma.event.findMany({
+        where: {
+          deletedAt: null,
+          endDate: { lt: now },
+          shouldIssueCertificate: true,
+          attendances: { none: {} },
+          OR: [
+            { majorEventId: null },
+            {
+              majorEvent: {
+                deletedAt: null,
+                certificateConfigs: {
+                  some: {
+                    deletedAt: null,
+                    isActive: true,
+                    issuedTo: 'ATTENDEE',
+                  },
+                },
+              },
+            },
+            {
+              eventGroup: {
+                deletedAt: null,
+                certificateConfigs: {
+                  some: {
+                    deletedAt: null,
+                    isActive: true,
+                    issuedTo: 'ATTENDEE',
+                  },
+                },
+              },
+            },
+            {
+              certificateConfigs: {
+                some: {
+                  deletedAt: null,
+                  isActive: true,
+                  issuedTo: 'ATTENDEE',
+                },
+              },
+            },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: { endDate: 'desc' },
+        take: 30,
+      }),
     ]);
 
     const permissionSet = new Set(permissions);
@@ -327,8 +434,8 @@ export class DashboardInsightsService {
         majorEventsCount,
       },
       suggestions: this.buildSuggestions({
-        eventsCount,
-        majorEventsCount,
+        upcomingActivitiesCount:
+          calendarEvents.length + upcomingMajorEventsCount,
         canManageEvents,
         canManageMajorEvents,
       }),
@@ -341,7 +448,12 @@ export class DashboardInsightsService {
         : [],
       inconsistencies:
         canManageEvents || canManageCertificates
-          ? this.buildInconsistencies(consistencyEvents)
+          ? this.buildInconsistencies({
+              events: consistencyEvents,
+              singleEventGroups,
+              mismatchingCertificateGroupEvents,
+              pastCertificateEventsWithoutAttendance,
+            })
           : [],
       duplicatePeopleCount: canManageMergeCandidates ? duplicatePeopleCount : 0,
       permissions: this.formatPermissions(permissions),
@@ -349,12 +461,11 @@ export class DashboardInsightsService {
   }
 
   private buildSuggestions(input: {
-    eventsCount: number;
-    majorEventsCount: number;
+    upcomingActivitiesCount: number;
     canManageEvents: boolean;
     canManageMajorEvents: boolean;
   }): DashboardActionLink[] {
-    if (input.eventsCount > 0 || input.majorEventsCount > 0) {
+    if (input.upcomingActivitiesCount > 0) {
       return [];
     }
 
@@ -448,159 +559,215 @@ export class DashboardInsightsService {
   private async buildPendingCertificates(
     now: Date,
   ): Promise<DashboardCertificatePendingItem[]> {
-    const [events, eventGroups, majorEvents, majorEventsWithLecturers] =
-      await Promise.all([
-        this.prisma.event.findMany({
-          where: {
-            deletedAt: null,
-            endDate: { lt: now },
-            majorEventId: null,
-            OR: [
-              { shouldIssueCertificate: true },
-              {
-                certificateConfigs: {
-                  some: { deletedAt: null, isActive: true },
-                },
-              },
-            ],
-          },
-          select: {
-            id: true,
-            name: true,
-            endDate: true,
-            eventGroup: {
-              select: {
-                shouldIssueCertificate: true,
-                certificateConfigs: {
-                  where: { deletedAt: null, isActive: true },
-                  select: { id: true },
-                },
+    const [
+      events,
+      eventGroups,
+      majorEvents,
+      lecturerCertificateEvents,
+      majorEventsWithLecturers,
+    ] = await Promise.all([
+      this.prisma.event.findMany({
+        where: {
+          deletedAt: null,
+          endDate: { lt: now },
+          majorEventId: null,
+          OR: [
+            { shouldIssueCertificate: true },
+            {
+              certificateConfigs: {
+                some: { deletedAt: null, isActive: true },
               },
             },
-            certificateConfigs: {
-              where: { deletedAt: null, isActive: true },
-              select: {
-                id: true,
-                certificates: {
-                  where: { deletedAt: null },
-                  select: { id: true },
-                  take: 1,
-                },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          endDate: true,
+          eventGroup: {
+            select: {
+              shouldIssueCertificate: true,
+              certificateConfigs: {
+                where: { deletedAt: null, isActive: true },
+                select: { id: true },
               },
             },
           },
-          orderBy: { endDate: 'desc' },
-          take: 20,
-        }),
-        this.prisma.eventGroup.findMany({
-          where: {
-            deletedAt: null,
-            OR: [
-              { shouldIssueCertificate: true },
-              {
-                certificateConfigs: {
-                  some: { deletedAt: null, isActive: true },
-                },
-              },
-            ],
-            events: {
-              some: { deletedAt: null, endDate: { lt: now } },
-              every: {
-                OR: [{ majorEventId: null }, { deletedAt: { not: null } }],
+          certificateConfigs: {
+            where: { deletedAt: null, isActive: true },
+            select: {
+              id: true,
+              certificates: {
+                where: { deletedAt: null },
+                select: { id: true },
+                take: 1,
               },
             },
           },
-          select: {
-            id: true,
-            name: true,
-            shouldIssueCertificate: true,
-            events: {
-              where: { deletedAt: null },
-              select: { endDate: true },
-              orderBy: { endDate: 'desc' },
-              take: 1,
+        },
+        orderBy: { endDate: 'desc' },
+        take: 20,
+      }),
+      this.prisma.eventGroup.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { shouldIssueCertificate: true },
+            {
+              certificateConfigs: {
+                some: { deletedAt: null, isActive: true },
+              },
             },
-            certificateConfigs: {
-              where: { deletedAt: null, isActive: true },
-              select: {
-                id: true,
-                certificates: {
-                  where: { deletedAt: null },
-                  select: { id: true },
-                  take: 1,
-                },
+          ],
+          events: {
+            some: { deletedAt: null, endDate: { lt: now } },
+            every: {
+              OR: [{ majorEventId: null }, { deletedAt: { not: null } }],
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          shouldIssueCertificate: true,
+          events: {
+            where: { deletedAt: null },
+            select: { endDate: true },
+            orderBy: { endDate: 'desc' },
+            take: 1,
+          },
+          certificateConfigs: {
+            where: { deletedAt: null, isActive: true },
+            select: {
+              id: true,
+              certificates: {
+                where: { deletedAt: null },
+                select: { id: true },
+                take: 1,
               },
             },
           },
-          take: 20,
-        }),
-        this.prisma.majorEvent.findMany({
-          where: {
-            deletedAt: null,
-            endDate: { lt: now },
-            certificateConfigs: { some: { deletedAt: null, isActive: true } },
-          },
-          select: {
-            id: true,
-            name: true,
-            endDate: true,
-            certificateConfigs: {
-              where: { deletedAt: null, isActive: true },
-              select: {
-                id: true,
-                certificates: {
-                  where: { deletedAt: null },
-                  select: { id: true },
-                  take: 1,
-                },
+        },
+        take: 20,
+      }),
+      this.prisma.majorEvent.findMany({
+        where: {
+          deletedAt: null,
+          endDate: { lt: now },
+          certificateConfigs: { some: { deletedAt: null, isActive: true } },
+        },
+        select: {
+          id: true,
+          name: true,
+          endDate: true,
+          certificateConfigs: {
+            where: { deletedAt: null, isActive: true },
+            select: {
+              id: true,
+              certificates: {
+                where: { deletedAt: null },
+                select: { id: true },
+                take: 1,
               },
             },
           },
-          orderBy: { endDate: 'desc' },
-          take: 20,
-        }),
-        this.prisma.majorEvent.findMany({
-          where: {
-            deletedAt: null,
-            endDate: { lt: now },
-            events: {
-              some: {
-                deletedAt: null,
-                lecturers: { some: {} },
-              },
+        },
+        orderBy: { endDate: 'desc' },
+        take: 20,
+      }),
+      this.prisma.event.findMany({
+        where: {
+          deletedAt: null,
+          endDate: { lt: now },
+          lecturers: { some: { person: { deletedAt: null } } },
+          certificateConfigs: {
+            some: {
+              deletedAt: null,
+              isActive: true,
+              issuedTo: 'LECTURER',
             },
-            certificateConfigs: {
-              some: {
-                deletedAt: null,
-                isActive: true,
-                issuedTo: 'LECTURER',
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          endDate: true,
+          lecturers: {
+            where: { person: { deletedAt: null } },
+            select: { personId: true },
+          },
+          certificateConfigs: {
+            where: {
+              deletedAt: null,
+              isActive: true,
+              issuedTo: 'LECTURER',
+            },
+            select: {
+              id: true,
+              certificates: {
+                where: { deletedAt: null },
+                select: { personId: true },
               },
             },
           },
-          select: {
-            id: true,
-            name: true,
-            endDate: true,
-            certificateConfigs: {
-              where: {
-                deletedAt: null,
-                isActive: true,
-                issuedTo: 'LECTURER',
-              },
-              select: {
-                id: true,
-                certificates: {
-                  where: { deletedAt: null },
-                  select: { id: true },
-                  take: 1,
-                },
+        },
+        orderBy: { endDate: 'desc' },
+        take: 20,
+      }),
+      this.prisma.majorEvent.findMany({
+        where: {
+          deletedAt: null,
+          endDate: { lt: now },
+          events: {
+            some: {
+              deletedAt: null,
+              lecturers: { some: {} },
+            },
+          },
+          certificateConfigs: {
+            some: {
+              deletedAt: null,
+              isActive: true,
+              issuedTo: 'LECTURER',
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          endDate: true,
+          certificateConfigs: {
+            where: {
+              deletedAt: null,
+              isActive: true,
+              issuedTo: 'LECTURER',
+            },
+            select: {
+              id: true,
+              certificates: {
+                where: { deletedAt: null },
+                select: { personId: true },
               },
             },
           },
-          orderBy: { endDate: 'desc' },
-          take: 20,
-        }),
-      ]);
+          events: {
+            where: {
+              deletedAt: null,
+              shouldIssueCertificate: true,
+              lecturers: { some: { person: { deletedAt: null } } },
+            },
+            select: {
+              lecturers: {
+                where: { person: { deletedAt: null } },
+                select: { personId: true },
+              },
+            },
+          },
+        },
+        orderBy: { endDate: 'desc' },
+        take: 20,
+      }),
+    ]);
 
     const pending: DashboardCertificatePendingItem[] = [];
     for (const event of events) {
@@ -645,8 +812,26 @@ export class DashboardInsightsService {
       }
     }
 
+    for (const event of lecturerCertificateEvents) {
+      if (this.hasMissingLecturerCertificates(event)) {
+        pending.push({
+          targetType: 'EVENT',
+          targetId: event.id,
+          title: event.name,
+          subtitle:
+            'Há palestrantes cadastrados no evento sem certificados emitidos.',
+          finishedAt: event.endDate,
+        });
+      }
+    }
+
     for (const majorEvent of majorEventsWithLecturers) {
-      if (this.hasConfigWithoutCertificate(majorEvent)) {
+      if (
+        this.hasMissingLecturerCertificates({
+          lecturers: majorEvent.events.flatMap((event) => event.lecturers),
+          certificateConfigs: majorEvent.certificateConfigs,
+        })
+      ) {
         pending.push({
           targetType: 'MAJOR_EVENT_LECTURERS',
           targetId: majorEvent.id,
@@ -684,13 +869,100 @@ export class DashboardInsightsService {
     );
   }
 
-  private buildInconsistencies(
-    events: InsightEvent[],
-  ): DashboardInconsistency[] {
+  private hasMissingLecturerCertificates(target: {
+    lecturers: { personId: string }[];
+    certificateConfigs: { certificates: { personId: string }[] }[];
+  }): boolean {
+    const lecturerIds = new Set(
+      target.lecturers.map((lecturer) => lecturer.personId),
+    );
+
+    if (lecturerIds.size === 0) {
+      return false;
+    }
+
+    return target.certificateConfigs.some((config) => {
+      const issuedPersonIds = new Set(
+        config.certificates.map((certificate) => certificate.personId),
+      );
+
+      return [...lecturerIds].some(
+        (lecturerId) => !issuedPersonIds.has(lecturerId),
+      );
+    });
+  }
+
+  private buildInconsistencies(input: {
+    events: InsightEvent[];
+    singleEventGroups: {
+      id: string;
+      name: string;
+      events: { id: string }[];
+    }[];
+    mismatchingCertificateGroupEvents: {
+      id: string;
+      name: string;
+      shouldIssueCertificate: boolean;
+      eventGroup: {
+        id: string;
+        name: string;
+        shouldIssueCertificate: boolean;
+      } | null;
+    }[];
+    pastCertificateEventsWithoutAttendance: {
+      id: string;
+      name: string;
+    }[];
+  }): DashboardInconsistency[] {
     const inconsistencies: DashboardInconsistency[] = [];
     const eventsByLecturer = new Map<string, InsightEvent[]>();
 
-    for (const event of events) {
+    for (const group of input.singleEventGroups) {
+      if (group.events.length === 1) {
+        inconsistencies.push({
+          type: 'EVENT_GROUP_WITH_SINGLE_EVENT',
+          action: 'OPEN_EVENT_GROUP',
+          targetId: group.id,
+          severity: 'INFO',
+          title: 'Grupo com apenas um evento',
+          description: `${group.name} tem só um evento cadastrado.`,
+          eventId: group.events[0].id,
+        });
+      }
+    }
+
+    for (const event of input.mismatchingCertificateGroupEvents) {
+      if (
+        !event.eventGroup ||
+        event.shouldIssueCertificate === event.eventGroup.shouldIssueCertificate
+      ) {
+        continue;
+      }
+
+      inconsistencies.push({
+        type: 'EVENT_GROUP_CERTIFICATE_SETTING_MISMATCH',
+        action: 'OPEN_EVENT',
+        targetId: event.id,
+        severity: 'WARNING',
+        title: 'Evento não segue a emissão de certificados do grupo',
+        description: `${event.name} está com emissão de certificado diferente de ${event.eventGroup.name}.`,
+        eventId: event.id,
+      });
+    }
+
+    for (const event of input.pastCertificateEventsWithoutAttendance) {
+      inconsistencies.push({
+        type: 'PAST_CERTIFICATE_EVENT_WITHOUT_ATTENDANCE',
+        action: 'OPEN_ATTENDANCE',
+        targetId: event.id,
+        severity: 'CRITICAL',
+        title: 'Evento finalizado sem presenças',
+        description: `${event.name} deve emitir certificado, mas não tem presenças registradas.`,
+        eventId: event.id,
+      });
+    }
+
+    for (const event of input.events) {
       if (event.lecturers.length === 0) {
         inconsistencies.push({
           type: 'EVENT_WITHOUT_LECTURER',
