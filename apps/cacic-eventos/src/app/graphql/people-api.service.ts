@@ -45,6 +45,19 @@ export class PeopleApiService {
       .pipe(map((data) => data.people));
   }
 
+  getPerson(id: string) {
+    return this.graphqlHttp
+      .request<{ person: Person }>(
+        `query GetPerson($id: String!) {
+          person(id: $id) {
+            ${PERSON_FIELDS}
+          }
+        }`,
+        { id },
+      )
+      .pipe(map((data) => data.person));
+  }
+
   createPerson(input: PersonInput) {
     return this.graphqlHttp
       .request<{ createPerson: Person }>(

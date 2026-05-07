@@ -1,0 +1,202 @@
+<header class="dashboard-header">
+  <div>
+    <h1>{{ greetings() }}</h1>
+    <p>
+      {{ currentDate() | date: 'fullDate' }} · {{ currentDate() | date:
+      'shortTime' }}
+    </p>
+  </div>
+
+  @if (loading() && insights()) {
+  <mat-spinner diameter="24" />
+  }
+</header>
+
+@if (loading() && !insights()) {
+<section class="loading-state">
+  <mat-spinner diameter="32" />
+  <span>Carregando insights...</span>
+</section>
+} @else if (error()) {
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>error</mat-icon>
+    <mat-card-title>Não foi possível carregar o painel</mat-card-title>
+    <mat-card-subtitle>{{ error() }}</mat-card-subtitle>
+  </mat-card-header>
+</mat-card>
+} @else if (insights(); as dashboard) {
+<section class="dashboard-stack">
+  @if (dashboard.suggestions.length > 0) {
+  <mat-card appearance="outlined" class="suggestion-card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>auto_awesome</mat-icon>
+      <mat-card-title>Comece a organizar a agenda</mat-card-title>
+      <mat-card-subtitle>
+        Ainda não há eventos ou grandes eventos cadastrados.
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-actions align="end">
+      @for (suggestion of dashboard.suggestions; track suggestion.action) {
+      <a matButton="filled" [routerLink]="routerLinkForAction(suggestion)">
+        <mat-icon>
+          {{ suggestion.action === 'CREATE_MAJOR_EVENT' ? 'festival' :
+          suggestion.action === 'CREATE_EVENT_GROUP' ? 'folder' : 'event' }}
+        </mat-icon>
+        {{ suggestion.label }}
+      </a>
+      }
+    </mat-card-actions>
+  </mat-card>
+  } @if (dashboard.calendarEvents.length > 0) {
+  <section class="dashboard-section">
+    <div class="section-title">
+      <div>
+        <h2>{{ calendarHeadline() }}</h2>
+        @if (todayEvents().length > 0) {
+        <p>Hoje acontece</p>
+        }
+      </div>
+    </div>
+
+    @if (todayEvents().length > 0) {
+    <h3>Hoje</h3>
+    <mat-list class="event-list">
+      @for (event of todayEvents(); track event.id) {
+      <ng-container
+        [ngTemplateOutlet]="eventItem"
+        [ngTemplateOutletContext]="{ event: event }"
+      />
+      }
+    </mat-list>
+    } @if (upcomingEvents().length > 0) {
+    <h3>Próximos dias</h3>
+    <mat-list class="event-list">
+      @for (event of upcomingEvents(); track event.id) {
+      <ng-container
+        [ngTemplateOutlet]="eventItem"
+        [ngTemplateOutletContext]="{ event: event }"
+      />
+      }
+    </mat-list>
+    }
+  </section>
+  } @if (dashboard.weatherAlerts.length > 0) {
+  <section class="dashboard-section">
+    <h2>Clima</h2>
+    <mat-list class="compact-list">
+      @for (alert of dashboard.weatherAlerts; track alert.eventId) {
+      <mat-list-item>
+        <mat-icon matListItemIcon>{{ alert.materialIcon }}</mat-icon>
+        <span matListItemTitle>{{ alert.eventName }}</span>
+        <span matListItemLine>
+          {{ alert.summary }} · {{ alert.temperature }}°C · {{
+          alert.forecastTime | date: 'EEE, HH:mm' }}
+        </span>
+      </mat-list-item>
+      }
+    </mat-list>
+  </section>
+  } @if ( dashboard.pendingCertificates.length > 0 ||
+  dashboard.duplicatePeopleCount > 0 ) {
+  <section class="dashboard-grid">
+    @if (dashboard.pendingCertificates.length > 0) {
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>workspace_premium</mat-icon>
+        <mat-card-title>Certificados pendentes</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-list class="compact-list embedded-list">
+          @for (item of dashboard.pendingCertificates; track item.targetType +
+          item.targetId) {
+          <mat-list-item>
+            <span matListItemTitle>{{ item.title }}</span>
+            <span matListItemLine>
+              {{ item.subtitle }} · finalizado em {{ item.finishedAt | date:
+              'short' }}
+            </span>
+            <a
+              mat-icon-button
+              matListItemMeta
+              aria-label="Abrir certificados"
+              matTooltip="Abrir certificados"
+              [routerLink]="certificateLink(item)"
+            >
+              <mat-icon>arrow_forward</mat-icon>
+            </a>
+          </mat-list-item>
+          }
+        </mat-list>
+      </mat-card-content>
+    </mat-card>
+    } @if (dashboard.duplicatePeopleCount > 0) {
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>merge_type</mat-icon>
+        <mat-card-title>Pessoas duplicadas</mat-card-title>
+        <mat-card-subtitle>
+          Há {{ dashboard.duplicatePeopleCount }} pessoas com dados duplicados.
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-actions align="end">
+        <a matButton="filled" [routerLink]="navMap()['merge-candidates']?.path">
+          <mat-icon>merge_type</mat-icon>
+          Ver detalhes
+        </a>
+      </mat-card-actions>
+    </mat-card>
+    }
+  </section>
+  } @if (dashboard.inconsistencies.length > 0) {
+  <section class="dashboard-section">
+    <h2>Inconsistências</h2>
+    <mat-list class="compact-list">
+      @for (issue of dashboard.inconsistencies; track issue.type + issue.eventId
+      + issue.relatedEventId + issue.personId) {
+      <mat-list-item>
+        <mat-icon matListItemIcon>
+          {{ issue.severity === 'CRITICAL' ? 'priority_high' : issue.severity
+          === 'WARNING' ? 'warning' : 'info' }}
+        </mat-icon>
+        <span matListItemTitle>{{ issue.title }}</span>
+        <span matListItemLine>{{ issue.description }}</span>
+      </mat-list-item>
+      }
+    </mat-list>
+  </section>
+  }
+</section>
+}
+
+<ng-template #eventItem let-event="event">
+  <mat-list-item>
+    <span matListItemTitle class="list-title">
+      <app-twemoji [emoji]="event.emoji" />
+      <span>{{ event.name }}</span>
+    </span>
+    <span matListItemLine>
+      {{ event.startDate | date: 'short' }} · {{ describeEventType(event.type)
+      }} @if (event.majorEventName) { · {{ event.majorEventName }} } @if
+      (event.eventGroupName) { · {{ event.eventGroupName }} }
+    </span>
+    @if (event.locationDescription) {
+    <span matListItemLine>{{ event.locationDescription }}</span>
+    } @if (event.canCollectAttendanceNow) {
+    <div matListItemMeta class="attendance-meta">
+      <mat-chip-set aria-label="Presenças e inscrições">
+        <mat-chip>{{ event.attendancesCount }} presenças</mat-chip>
+        <mat-chip>{{ event.subscriptionsCount }} inscrições</mat-chip>
+      </mat-chip-set>
+      <a
+        matButton="filled"
+        [routerLink]="eventAttendanceLink(event)"
+        aria-label="Coletar presença"
+      >
+        <mat-icon>fact_check</mat-icon>
+        Presença
+      </a>
+    </div>
+    }
+  </mat-list-item>
+</ng-template>
