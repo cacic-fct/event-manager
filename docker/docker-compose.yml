@@ -8,25 +8,29 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
     volumes:
-      - events-db-data:/var/lib/postgresql/data
+      - /media/zfs-docker/cacic-eventos/db:/var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - default
 
   events-redis:
     image: redis:8-alpine
     command: redis-server --appendonly yes
     volumes:
-      - events-redis-data:/data
+      - /media/zfs-docker/cacic-eventos/redis:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+  networks:
+    - default
 
   events-backend:
     image: ghcr.io/cacic-fct/event-manager/events-backend:${IMAGE_TAG:-latest}
@@ -51,9 +55,21 @@ services:
         condition: service_healthy
       events-redis:
         condition: service_healthy
-    ports:
-      - '${BACKEND_PORT:-3000}:3000'
     restart: unless-stopped
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.scope=public'
+      - 'traefik.docker.network=traefik'
+      - 'traefik.http.routers.event-manager-api.entrypoints=web,websecure'
+      - 'traefik.http.routers.event-manager-api.rule=Host(`eventos.cacic.dev.br`) && PathPrefix(`/api`)'
+      - 'traefik.http.routers.event-manager-api.tls=true'
+      - 'traefik.http.routers.event-manager-api.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-api.service=event-manager-api-svc'
+      - 'traefik.http.services.event-manager-api-svc.loadbalancer.server.port=3000'
+      - 'diun.enable=true'
+    networks:
+      - default
+      - traefik
 
   cacic-eventos:
     image: ghcr.io/cacic-fct/event-manager/cacic-eventos:${IMAGE_TAG:-latest}
@@ -62,9 +78,29 @@ services:
       PORT: 4000
     depends_on:
       - events-backend
-    ports:
-      - '${CACIC_EVENTOS_PORT:-4200}:4000'
     restart: unless-stopped
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.scope=public'
+      - 'traefik.docker.network=traefik'
+      - 'traefik.http.routers.event-manager-admin.entrypoints=web,websecure'
+      - 'traefik.http.routers.event-manager-admin.rule=Host(`eventos.cacic.dev.br`) && PathPrefix(`/admin/`)'
+      - 'traefik.http.routers.event-manager-admin.tls=true'
+      - 'traefik.http.routers.event-manager-admin.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-admin.service=event-manager-admin-svc'
+      - 'traefik.http.services.event-manager-admin-svc.loadbalancer.server.port=4000'
+
+      - 'traefik.http.routers.event-manager-admin-noslash.entrypoints=web,websecure'
+      - 'traefik.http.routers.event-manager-admin-noslash.rule=Host(`eventos.cacic.dev.br`) && Path(`/admin`)'
+      - 'traefik.http.routers.event-manager-admin-noslash.tls=true'
+      - 'traefik.http.routers.event-manager-admin-noslash.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-admin-noslash.middlewares=event-manager-admin-slash'
+      - 'traefik.http.middlewares.event-manager-admin-slash.redirectregex.regex=^https?://([^/]+)/admin$$'
+      - 'traefik.http.middlewares.event-manager-admin-slash.redirectregex.replacement=https://$${1}/admin/'
+      - 'traefik.http.middlewares.event-manager-admin-slash.redirectregex.permanent=true'
+    networks:
+      - default
+      - traefik
 
   public:
     image: ghcr.io/cacic-fct/event-manager/public:${IMAGE_TAG:-latest}
@@ -73,10 +109,40 @@ services:
       PORT: 4000
     depends_on:
       - events-backend
-    ports:
-      - '${PUBLIC_PORT:-4201}:4000'
     restart: unless-stopped
 
-volumes:
-  events-db-data:
-  events-redis-data:
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.scope=public'
+      - 'traefik.docker.network=traefik'
+      - 'traefik.http.routers.event-manager-public.entrypoints=web,websecure'
+      - 'traefik.http.routers.event-manager-public.rule=Host(`eventos.cacic.dev.br`) && PathPrefix(`/app/`)'
+      - 'traefik.http.routers.event-manager-public.tls=true'
+      - 'traefik.http.routers.event-manager-public.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-public.service=event-manager-public-svc'
+      - 'traefik.http.services.event-manager-public-svc.loadbalancer.server.port=4000'
+
+      - 'traefik.http.routers.event-manager-root.entrypoints=web,websecure'
+      - 'traefik.http.routers.event-manager-root.rule=Host(`eventos.cacic.dev.br`) && Path(`/`)'
+      - 'traefik.http.routers.event-manager-root.tls=true'
+      - 'traefik.http.routers.event-manager-root.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-root.middlewares=event-manager-root-redirect'
+      - 'traefik.http.middlewares.event-manager-root-redirect.redirectregex.regex=^https?://([^/]+)/$$'
+      - 'traefik.http.middlewares.event-manager-root-redirect.redirectregex.replacement=https://$${1}/app/'
+      - 'traefik.http.middlewares.event-manager-root-redirect.redirectregex.permanent=true'
+
+      - 'traefik.http.routers.event-manager-public-noslash.entrypoints=web,websecure'
+      - 'traefik.http.routers.event-manager-public-noslash.rule=Host(`eventos.cacic.dev.br`) && Path(`/app`)'
+      - 'traefik.http.routers.event-manager-public-noslash.tls=true'
+      - 'traefik.http.routers.event-manager-public-noslash.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-public-noslash.middlewares=event-manager-public-slash'
+      - 'traefik.http.middlewares.event-manager-public-slash.redirectregex.regex=^https?://([^/]+)/app$$'
+      - 'traefik.http.middlewares.event-manager-public-slash.redirectregex.replacement=https://$${1}/app/'
+      - 'traefik.http.middlewares.event-manager-public-slash.redirectregex.permanent=true'
+    networks:
+      - default
+      - traefik
+
+networks:
+  traefik:
+    external: true
