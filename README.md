@@ -1,8 +1,8 @@
 # CACiC Event Manager
 
 [![Documentation](https://img.shields.io/badge/documentation-blue)](https://docs.fctapp.cacic.dev.br)
-[![Front end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/event-manager/frontend-ci.yml?branch=main&logo=github&label=front%20end%20build)](https://github.com/cacic-fct/event-manager/actions)
-[![Back end build](https://img.shields.io/github/actions/workflow/status/cacic-fct/event-manager/backend-ci.yml?branch=main&logo=github&label=back%20end%20build)](https://github.com/cacic-fct/event-manager/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/cacic-fct/event-manager/ci.yml?branch=main&logo=github&label=ci)](https://github.com/cacic-fct/event-manager/actions)
+[![CD](https://img.shields.io/github/actions/workflow/status/cacic-fct/event-manager/cd.yml?branch=main&logo=github&label=cd)](https://github.com/cacic-fct/event-manager/actions)
 [![Docs build](https://img.shields.io/github/actions/workflow/status/cacic-fct/event-manager/docs.yml?branch=main&logo=github&label=docs%20build)](https://github.com/cacic-fct/event-manager/actions)
 [![Coverage](https://img.shields.io/codecov/c/github/cacic-fct/event-manager/main?logo=codecov)](https://codecov.io/gh/cacic-fct/event-manager)
 [![License](https://img.shields.io/badge/license-AGPL–3.0–only-red)](https://github.com/cacic-fct/event-manager/blob/main/License.txt)
@@ -37,4 +37,8 @@ Depois, instale as dependências comuns:
 bun install
 ```
 
-Agora, siga as instruções que estão no projeto que você deseja contribuir para.
+Para iniciar o servidor de desenvolvimento, execute:
+
+```bash
+bunx nx serve <nome-do-projeto>
+```
