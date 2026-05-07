@@ -29,8 +29,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-  networks:
-    - default
+    networks:
+      - default
 
   events-backend:
     image: ghcr.io/cacic-fct/event-manager/events-backend:${IMAGE_TAG:-latest}
