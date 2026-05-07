@@ -32,6 +32,13 @@ import { CurrentUserProfileResolver } from './current-user/profile/resolver';
 import { CurrentUserPublicEventService } from './current-user/public-event.service';
 import { CurrentUserSubscriptionFeedService } from './current-user/subscription-feed/service';
 import { CurrentUserSubscriptionFeedResolver } from './current-user/subscription-feed/resolver';
+import { DashboardInsightsProcessor } from './dashboard/insights.processor';
+import { DashboardInsightsResolver } from './dashboard/insights.resolver';
+import { DashboardInsightsSchedulerService } from './dashboard/insights-scheduler.service';
+import {
+  DASHBOARD_INSIGHTS_QUEUE,
+  DashboardInsightsService,
+} from './dashboard/insights.service';
 import { EventGroupsResolver } from './event-groups/resolver';
 import { EventLecturersResolver } from './events/lecturers.resolver';
 import { EventsResolver } from './events/resolver';
@@ -58,6 +65,9 @@ import { WeatherService } from './weather/weather.service';
     }),
     BullModule.registerQueue({
       name: 'weather',
+    }),
+    BullModule.registerQueue({
+      name: DASHBOARD_INSIGHTS_QUEUE,
     }),
     ThrottlerModule.forRoot({
       setHeaders: false,
@@ -101,6 +111,10 @@ import { WeatherService } from './weather/weather.service';
     CurrentUserEventSubscriptionsResolver,
     CurrentUserEventAttendanceResolver,
     CurrentUserSubscriptionFeedResolver,
+    DashboardInsightsResolver,
+    DashboardInsightsService,
+    DashboardInsightsSchedulerService,
+    DashboardInsightsProcessor,
     EventAttendancesResolver,
     EventLecturersResolver,
     MergeCandidatesResolver,

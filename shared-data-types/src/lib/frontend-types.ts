@@ -1,3 +1,5 @@
+export * from './dashboard.types';
+
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 export type CertificateScope =
