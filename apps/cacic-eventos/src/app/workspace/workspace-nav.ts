@@ -75,6 +75,15 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    id: 'subscriptions',
+    path: 'subscriptions',
+    label: 'Inscrições',
+    description: 'Consulte e ajuste inscrições em eventos e grandes eventos.',
+    icon: 'how_to_reg',
+    permissionTab: WorkspacePermissionTab.Subscriptions,
+    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+  },
+  {
     id: 'permissions',
     path: 'permissions',
     label: 'Permissões',

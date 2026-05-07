@@ -10,6 +10,7 @@ const peopleData = getWorkspaceRouteData('people');
 const mergeCandidatesData = getWorkspaceRouteData('merge-candidates');
 const certificatesData = getWorkspaceRouteData('certificates');
 const attendancesData = getWorkspaceRouteData('attendances');
+const subscriptionsData = getWorkspaceRouteData('subscriptions');
 const permissionsData = getWorkspaceRouteData('permissions');
 
 function getWorkspaceRouteData(id: (typeof workspaceNavItems)[number]['id']) {
@@ -159,6 +160,31 @@ export const workspaceRoutes: Route[] = [
           import('./tabs/attendances/workspace-attendances-tab.component').then(
             (m) => m.WorkspaceAttendancesTabComponent,
           ),
+      ),
+
+      ...guardedWorkspaceTabRoute(
+        subscriptionsData.path,
+        subscriptionsData,
+        () =>
+          import(
+            './tabs/subscriptions/workspace-subscriptions-tab.component'
+          ).then((m) => m.WorkspaceSubscriptionsTabComponent),
+      ),
+      ...guardedWorkspaceTabRoute(
+        `${subscriptionsData.path}/event/:eventId`,
+        subscriptionsData,
+        () =>
+          import(
+            './tabs/subscriptions/workspace-subscriptions-tab.component'
+          ).then((m) => m.WorkspaceSubscriptionsTabComponent),
+      ),
+      ...guardedWorkspaceTabRoute(
+        `${subscriptionsData.path}/major-event/:majorEventId`,
+        subscriptionsData,
+        () =>
+          import(
+            './tabs/subscriptions/workspace-subscriptions-tab.component'
+          ).then((m) => m.WorkspaceSubscriptionsTabComponent),
       ),
 
       ...guardedWorkspaceTabRoute(permissionsData.path, permissionsData, () =>
