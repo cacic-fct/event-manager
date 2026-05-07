@@ -63,6 +63,10 @@ export class WorkspaceMergeCandidatesTabComponent {
       return 'Rejeitada';
     }
 
+    if (status === 'STALE') {
+      return 'Obsoleta';
+    }
+
     return 'Não informado';
   }
 }

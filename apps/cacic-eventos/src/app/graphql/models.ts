@@ -12,7 +12,7 @@ export type CertificateScope =
   | 'EVENT'
   | 'OTHER';
 export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
-export type MergeCandidateStatus = 'PENDING' | 'MERGED' | 'REJECTED';
+export type MergeCandidateStatus = 'PENDING' | 'MERGED' | 'REJECTED' | 'STALE';
 export type MergeMatchMethod = 'CPF' | 'EMAIL' | 'NORMALIZED_NAME';
 export type AttendanceImportMatchType =
   | 'IDENTITY_DOCUMENT'

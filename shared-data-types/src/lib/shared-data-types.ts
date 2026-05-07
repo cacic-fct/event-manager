@@ -90,6 +90,7 @@ export const MergeCandidateStatus = {
   PENDING: 'PENDING',
   MERGED: 'MERGED',
   REJECTED: 'REJECTED',
+  STALE: 'STALE',
 } as const;
 export type MergeCandidateStatus =
   (typeof MergeCandidateStatus)[keyof typeof MergeCandidateStatus];
