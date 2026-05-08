@@ -67,6 +67,8 @@ export const MAJOR_EVENT_BASE_SELECT = {
   contactInfo: true,
   contactType: true,
   isPaymentRequired: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
   certificateConfigs: {
     where: {
@@ -133,6 +135,8 @@ export const EVENT_GROUP_SELECT = {
   name: true,
   emoji: true,
   shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldIssueCertificateForEachEvent: true,
   shouldIssuePartialCertificate: true,
   deletedAt: true,
@@ -168,6 +172,8 @@ export const EVENT_SELECT = {
   subscriptionEndDate: true,
   slots: true,
   shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldCollectAttendance: true,
   isOnlineAttendanceAllowed: true,
   onlineAttendanceCode: true,

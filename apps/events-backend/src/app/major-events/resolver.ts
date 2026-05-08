@@ -38,6 +38,8 @@ const MAJOR_EVENT_SELECT = {
   contactInfo: true,
   contactType: true,
   isPaymentRequired: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
   deletedAt: true,
   createdAt: true,
@@ -273,6 +275,15 @@ export class MajorEventsResolver {
     if (input.isPaymentRequired !== undefined) {
       data.isPaymentRequired = input.isPaymentRequired;
     }
+    if (input.shouldIssueCertificateForNonPayingAttendees !== undefined) {
+      data.shouldIssueCertificateForNonPayingAttendees = input.isPaymentRequired
+        ? false
+        : input.shouldIssueCertificateForNonPayingAttendees;
+    }
+    if (input.shouldIssueCertificateForNonSubscribedAttendees !== undefined) {
+      data.shouldIssueCertificateForNonSubscribedAttendees =
+        input.shouldIssueCertificateForNonSubscribedAttendees;
+    }
     if (input.additionalPaymentInfo !== undefined) {
       data.additionalPaymentInfo = input.additionalPaymentInfo;
     }
@@ -331,6 +342,20 @@ export class MajorEventsResolver {
     if (input.contactType !== undefined) data.contactType = input.contactType;
     if (input.isPaymentRequired !== undefined) {
       data.isPaymentRequired = input.isPaymentRequired;
+      if (input.isPaymentRequired) {
+        data.shouldIssueCertificateForNonPayingAttendees = false;
+      }
+    }
+    if (
+      input.shouldIssueCertificateForNonPayingAttendees !== undefined &&
+      !input.isPaymentRequired
+    ) {
+      data.shouldIssueCertificateForNonPayingAttendees =
+        input.shouldIssueCertificateForNonPayingAttendees;
+    }
+    if (input.shouldIssueCertificateForNonSubscribedAttendees !== undefined) {
+      data.shouldIssueCertificateForNonSubscribedAttendees =
+        input.shouldIssueCertificateForNonSubscribedAttendees;
     }
     if (input.additionalPaymentInfo !== undefined) {
       data.additionalPaymentInfo = input.additionalPaymentInfo;

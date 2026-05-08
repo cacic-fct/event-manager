@@ -15,6 +15,7 @@ import {
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { AttendanceCategoryService } from './attendance-category.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -56,6 +57,8 @@ const MAJOR_EVENT_SELECT = {
   contactInfo: true,
   contactType: true,
   isPaymentRequired: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
   deletedAt: true,
   createdAt: true,
@@ -85,6 +88,8 @@ const EVENT_SELECT = {
   slots: true,
   autoSubscribe: true,
   shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldCollectAttendance: true,
   isOnlineAttendanceAllowed: true,
   onlineAttendanceCode: true,
@@ -103,7 +108,10 @@ const EVENT_SELECT = {
 
 @Resolver()
 export class EventSubscriptionsResolver {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly attendanceCategories: AttendanceCategoryService,
+  ) {}
 
   @Query(() => [WorkspaceEventSubscription], {
     name: 'workspaceEventSubscriptions',
@@ -162,28 +170,36 @@ export class EventSubscriptionsResolver {
     await this.ensureEventExists(input.eventId);
     await this.ensurePersonIsNotLecturer(input.personId, [input.eventId]);
 
-    const subscription = await this.prisma.eventSubscription.create({
-      data: {
-        eventId: input.eventId,
-        personId: input.personId,
-        createdById,
-        createdByMethod: 'ADMIN_DASHBOARD',
-      },
-      select: {
-        id: true,
-        eventId: true,
-        event: {
-          select: EVENT_SELECT,
+    const subscription = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.eventSubscription.create({
+        data: {
+          eventId: input.eventId,
+          personId: input.personId,
+          createdById,
+          createdByMethod: 'ADMIN_DASHBOARD',
         },
-        personId: true,
-        person: {
-          select: PERSON_SELECT,
+        select: {
+          id: true,
+          eventId: true,
+          event: {
+            select: EVENT_SELECT,
+          },
+          personId: true,
+          person: {
+            select: PERSON_SELECT,
+          },
+          eventGroupSubscriptionId: true,
+          createdAt: true,
+          createdById: true,
+          createdByMethod: true,
         },
-        eventGroupSubscriptionId: true,
-        createdAt: true,
-        createdById: true,
-        createdByMethod: true,
-      },
+      });
+      await this.attendanceCategories.refreshForAttendance(
+        input.personId,
+        input.eventId,
+        tx,
+      );
+      return created;
     });
 
     return {
@@ -262,6 +278,12 @@ export class EventSubscriptionsResolver {
           })),
         });
       }
+
+      await this.attendanceCategories.refreshForMajorEventPerson(
+        input.majorEventId,
+        input.personId,
+        tx,
+      );
 
       return majorEventSubscription;
     });
@@ -342,6 +364,12 @@ export class EventSubscriptionsResolver {
           selectedEventIds,
         );
       }
+
+      await this.attendanceCategories.refreshForMajorEventPerson(
+        existing.majorEventId,
+        existing.personId,
+        tx,
+      );
 
       return updated;
     });

@@ -18,6 +18,8 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
   isPaymentRequired: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
   certificateConfigs: {
     where: {
@@ -36,6 +38,8 @@ export const PUBLIC_EVENT_GROUP_SELECT = {
   name: true,
   emoji: true,
   shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldIssueCertificateForEachEvent: true,
   shouldIssuePartialCertificate: true,
 } satisfies Prisma.EventGroupSelect;
@@ -66,6 +70,8 @@ export const PUBLIC_EVENT_SELECT = {
   subscriptionEndDate: true,
   slots: true,
   shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldCollectAttendance: true,
   isOnlineAttendanceAllowed: true,
   onlineAttendanceStartDate: true,
@@ -99,6 +105,10 @@ export function mapPublicMajorEvent(
     contactInfo: majorEvent.contactInfo ?? undefined,
     contactType: majorEvent.contactType ?? undefined,
     isPaymentRequired: majorEvent.isPaymentRequired,
+    shouldIssueCertificateForNonPayingAttendees:
+      majorEvent.shouldIssueCertificateForNonPayingAttendees,
+    shouldIssueCertificateForNonSubscribedAttendees:
+      majorEvent.shouldIssueCertificateForNonSubscribedAttendees,
     additionalPaymentInfo: majorEvent.additionalPaymentInfo ?? undefined,
     shouldIssueCertificate: majorEvent.certificateConfigs.length > 0,
   };
@@ -150,6 +160,12 @@ export class PublicMajorEvent {
 
   @Field(() => Boolean, { nullable: true })
   isPaymentRequired?: boolean | null;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
 
   @Field(() => String, { nullable: true })
   additionalPaymentInfo?: string | null;
@@ -243,6 +259,12 @@ export class PublicEvent {
 
   @Field(() => Boolean, { nullable: true })
   shouldIssueCertificate?: boolean | null;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
 
   @Field(() => Boolean, { nullable: true })
   shouldCollectAttendance?: boolean | null;

@@ -44,6 +44,8 @@ export class WorkspaceMajorEventsService {
       contactInfo: [''],
       contactType: [''],
       isPaymentRequired: [false],
+      shouldIssueCertificateForNonPayingAttendees: [false],
+      shouldIssueCertificateForNonSubscribedAttendees: [false],
       additionalPaymentInfo: [''],
       paymentBankName: [''],
       paymentAgency: [''],
@@ -59,6 +61,12 @@ export class WorkspaceMajorEventsService {
   readonly majorEventEventSearchForm = this.formBuilder.nonNullable.group({
     query: ['', [Validators.required]],
   });
+
+  constructor() {
+    this.majorEventForm.controls.isPaymentRequired.valueChanges.subscribe(() =>
+      this.syncCertificateExceptionControls(),
+    );
+  }
 
   async loadMajorEvents(): Promise<void> {
     this.majorEvents.set(
@@ -127,6 +135,8 @@ export class WorkspaceMajorEventsService {
       contactInfo: '',
       contactType: '',
       isPaymentRequired: false,
+      shouldIssueCertificateForNonPayingAttendees: false,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
       additionalPaymentInfo: '',
       paymentBankName: '',
       paymentAgency: '',
@@ -134,6 +144,7 @@ export class WorkspaceMajorEventsService {
       paymentHolder: '',
       paymentDocument: '',
     });
+    this.syncCertificateExceptionControls();
   }
 
   async pickMajorEvent(majorEvent: MajorEvent): Promise<void> {
@@ -181,6 +192,10 @@ export class WorkspaceMajorEventsService {
       contactInfo: majorEvent.contactInfo ?? '',
       contactType: majorEvent.contactType ?? '',
       isPaymentRequired: majorEvent.isPaymentRequired,
+      shouldIssueCertificateForNonPayingAttendees:
+        majorEvent.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees:
+        majorEvent.shouldIssueCertificateForNonSubscribedAttendees,
       additionalPaymentInfo: majorEvent.additionalPaymentInfo ?? '',
       paymentBankName: majorEvent.paymentInfo?.bankName ?? '',
       paymentAgency: majorEvent.paymentInfo?.agency ?? '',
@@ -188,6 +203,7 @@ export class WorkspaceMajorEventsService {
       paymentHolder: majorEvent.paymentInfo?.holder ?? '',
       paymentDocument: majorEvent.paymentInfo?.document ?? '',
     });
+    this.syncCertificateExceptionControls();
     void this.loadEventsForMajorEvent(majorEvent.id);
   }
 
@@ -284,6 +300,11 @@ export class WorkspaceMajorEventsService {
         ? (raw.contactType as MajorEventInput['contactType'])
         : null,
       isPaymentRequired: raw.isPaymentRequired,
+      shouldIssueCertificateForNonPayingAttendees:
+        !raw.isPaymentRequired &&
+        raw.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees:
+        raw.shouldIssueCertificateForNonSubscribedAttendees,
       additionalPaymentInfo: raw.additionalPaymentInfo.trim() || null,
       paymentInfo: hasAnyPaymentInfo ? paymentInfoInput : null,
     };
@@ -328,5 +349,22 @@ export class WorkspaceMajorEventsService {
         ? { [`${firstKey}Requires${secondKey}`]: true }
         : null;
     };
+  }
+
+  private syncCertificateExceptionControls(): void {
+    const nonPayingControl =
+      this.majorEventForm.controls.shouldIssueCertificateForNonPayingAttendees;
+    const nonSubscribedControl =
+      this.majorEventForm.controls
+        .shouldIssueCertificateForNonSubscribedAttendees;
+    if (this.majorEventForm.controls.isPaymentRequired.value) {
+      nonPayingControl.setValue(false, { emitEvent: false });
+      nonPayingControl.disable({ emitEvent: false });
+      nonSubscribedControl.enable({ emitEvent: false });
+      return;
+    }
+
+    nonPayingControl.enable({ emitEvent: false });
+    nonSubscribedControl.enable({ emitEvent: false });
   }
 }

@@ -19,6 +19,8 @@ export const EVENT_FIELDS = `
   slots
   autoSubscribe
   shouldIssueCertificate
+  shouldIssueCertificateForNonPayingAttendees
+  shouldIssueCertificateForNonSubscribedAttendees
   shouldCollectAttendance
   isOnlineAttendanceAllowed
   onlineAttendanceCode
@@ -44,6 +46,8 @@ export const EVENT_FIELDS = `
     name
     emoji
     shouldIssueCertificate
+  shouldIssueCertificateForNonPayingAttendees
+    shouldIssueCertificateForNonSubscribedAttendees
     shouldIssueCertificateForEachEvent
     shouldIssuePartialCertificate
     deletedAt
@@ -70,6 +74,8 @@ export const MAJOR_EVENT_FIELDS = `
   contactInfo
   contactType
   isPaymentRequired
+  shouldIssueCertificateForNonPayingAttendees
+  shouldIssueCertificateForNonSubscribedAttendees
   additionalPaymentInfo
   paymentInfo {
     id
@@ -92,6 +98,8 @@ export const EVENT_GROUP_FIELDS = `
   name
   emoji
   shouldIssueCertificate
+  shouldIssueCertificateForNonPayingAttendees
+  shouldIssueCertificateForNonSubscribedAttendees
   shouldIssueCertificateForEachEvent
   shouldIssuePartialCertificate
   deletedAt

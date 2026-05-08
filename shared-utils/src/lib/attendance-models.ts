@@ -23,6 +23,8 @@ export interface PublicMajorEvent {
   contactInfo?: string | null;
   contactType?: ContactType | null;
   isPaymentRequired?: boolean | null;
+  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
   additionalPaymentInfo?: string | null;
   shouldIssueCertificate?: boolean | null;
 }
@@ -34,6 +36,8 @@ export interface PublicEventGroup {
   shouldIssueCertificateForEachEvent?: boolean | null;
   shouldIssuePartialCertificate?: boolean | null;
   shouldIssueCertificate?: boolean | null;
+  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
 }
 
 export interface PublicEvent {
@@ -58,6 +62,8 @@ export interface PublicEvent {
   subscriptionEndDate?: string | null;
   slots?: number | null;
   shouldIssueCertificate?: boolean | null;
+  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
   shouldCollectAttendance?: boolean | null;
   isOnlineAttendanceAllowed?: boolean | null;
   onlineAttendanceStartDate?: string | null;

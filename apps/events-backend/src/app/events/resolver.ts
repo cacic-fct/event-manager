@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 
 const MAJOR_EVENT_SELECT = {
   id: true,
@@ -27,6 +28,8 @@ const MAJOR_EVENT_SELECT = {
   contactInfo: true,
   contactType: true,
   isPaymentRequired: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
   deletedAt: true,
   createdAt: true,
@@ -40,6 +43,8 @@ const EVENT_GROUP_SELECT = {
   name: true,
   emoji: true,
   shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldIssueCertificateForEachEvent: true,
   shouldIssuePartialCertificate: true,
   deletedAt: true,
@@ -76,6 +81,8 @@ const EVENT_BASE_SELECT = {
   slots: true,
   autoSubscribe: true,
   shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldCollectAttendance: true,
   isOnlineAttendanceAllowed: true,
   onlineAttendanceCode: true,
@@ -103,6 +110,7 @@ export class EventsResolver {
   constructor(
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
+    private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
   ) {}
 
   @Query(() => [Event], { name: 'events' })
@@ -281,6 +289,9 @@ export class EventsResolver {
         startDate: event.startDate,
         endDate: event.endDate,
       });
+      if (this.didChangeOnlineAttendanceWindow(input)) {
+        await this.attendanceRealtime.notifyAllConnectedPeople();
+      }
     }
     return event;
   }
@@ -312,8 +323,17 @@ export class EventsResolver {
   private async normalizeEventCertificateInput<
     T extends EventCreateInput | EventUpdateInput,
   >(input: T, eventId?: string): Promise<T> {
+    let normalizedInput = input;
+    if (input.shouldIssueCertificate === false) {
+      normalizedInput = {
+        ...input,
+        shouldIssueCertificateForNonPayingAttendees: false,
+        shouldIssueCertificateForNonSubscribedAttendees: false,
+      };
+    }
+
     const existingEvent =
-      eventId && input.eventGroupId === undefined
+      eventId && normalizedInput.eventGroupId === undefined
         ? await this.prisma.event.findFirst({
             where: {
               id: eventId,
@@ -325,12 +345,12 @@ export class EventsResolver {
           })
         : null;
     const eventGroupId =
-      input.eventGroupId === undefined
+      normalizedInput.eventGroupId === undefined
         ? existingEvent?.eventGroupId
-        : input.eventGroupId;
+        : normalizedInput.eventGroupId;
 
     if (!eventGroupId) {
-      return input;
+      return normalizedInput;
     }
 
     const eventGroup = await this.prisma.eventGroup.findFirst({
@@ -340,17 +360,38 @@ export class EventsResolver {
       },
       select: {
         shouldIssueCertificate: true,
+        shouldIssueCertificateForNonPayingAttendees: true,
+        shouldIssueCertificateForNonSubscribedAttendees: true,
       },
     });
 
     if (!eventGroup?.shouldIssueCertificate) {
       return {
-        ...input,
+        ...normalizedInput,
         shouldIssueCertificate: false,
+        shouldIssueCertificateForNonPayingAttendees: false,
+        shouldIssueCertificateForNonSubscribedAttendees: false,
       };
     }
 
-    return input;
+    if (
+      !eventGroup.shouldIssueCertificateForNonPayingAttendees ||
+      !eventGroup.shouldIssueCertificateForNonSubscribedAttendees
+    ) {
+      return {
+        ...normalizedInput,
+        shouldIssueCertificateForNonPayingAttendees:
+          eventGroup.shouldIssueCertificateForNonPayingAttendees
+            ? normalizedInput.shouldIssueCertificateForNonPayingAttendees
+            : false,
+        shouldIssueCertificateForNonSubscribedAttendees:
+          eventGroup.shouldIssueCertificateForNonSubscribedAttendees
+            ? normalizedInput.shouldIssueCertificateForNonSubscribedAttendees
+            : false,
+      };
+    }
+
+    return normalizedInput;
   }
 
   private async disableGroupPerEventModeForMajorEvent(event: {
@@ -371,5 +412,15 @@ export class EventsResolver {
         shouldIssueCertificateForEachEvent: false,
       },
     });
+  }
+
+  private didChangeOnlineAttendanceWindow(input: EventUpdateInput): boolean {
+    return (
+      input.shouldCollectAttendance !== undefined ||
+      input.isOnlineAttendanceAllowed !== undefined ||
+      input.onlineAttendanceCode !== undefined ||
+      input.onlineAttendanceStartDate !== undefined ||
+      input.onlineAttendanceEndDate !== undefined
+    );
   }
 }

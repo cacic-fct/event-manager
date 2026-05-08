@@ -18,6 +18,11 @@ export type AttendanceImportMatchType =
   | 'IDENTITY_DOCUMENT'
   | 'EMAIL'
   | 'FULL_NAME';
+export type AttendanceCategory =
+  | 'NON_PAYING'
+  | 'NON_SUBSCRIBED'
+  | 'REGULAR'
+  | 'UNKNOWN';
 export type SubscriptionStatus =
   | 'WAITING_RECEIPT_UPLOAD'
   | 'RECEIPT_UNDER_REVIEW'
@@ -55,6 +60,8 @@ export interface MajorEvent {
   contactInfo?: string | null;
   contactType?: ContactType | null;
   isPaymentRequired: boolean;
+  shouldIssueCertificateForNonPayingAttendees: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees: boolean;
   additionalPaymentInfo?: string | null;
   paymentInfo?: PaymentInfo | null;
   deletedAt?: string | null;
@@ -79,6 +86,8 @@ export interface EventGroup {
   name: string;
   emoji: string;
   shouldIssueCertificate: boolean;
+  shouldIssueCertificateForNonPayingAttendees: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees: boolean;
   shouldIssueCertificateForEachEvent: boolean;
   shouldIssuePartialCertificate: boolean;
   deletedAt?: string | null;
@@ -170,6 +179,8 @@ export interface Event {
   slots?: number | null;
   autoSubscribe: boolean;
   shouldIssueCertificate: boolean;
+  shouldIssueCertificateForNonPayingAttendees: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees: boolean;
   shouldCollectAttendance: boolean;
   isOnlineAttendanceAllowed: boolean;
   onlineAttendanceCode?: string | null;
@@ -219,6 +230,7 @@ export interface EventAttendance {
   eventId: string;
   person?: Person | null;
   event?: Event | null;
+  category: AttendanceCategory;
   attendedAt: string;
   createdAt: string;
   createdById?: string | null;
@@ -231,11 +243,12 @@ export interface MajorEventEventAttendanceStatus {
   eventStartDate?: string | null;
   attended: boolean;
   attendedAt?: string | null;
+  category: AttendanceCategory;
 }
 
 export interface MajorEventUserAttendance {
   majorEventId: string;
-  subscriptionId: string;
+  subscriptionId?: string | null;
   personId: string;
   person?: Person | null;
   subscriptionStatus: string;
@@ -358,6 +371,8 @@ export interface MajorEventInput {
   contactInfo?: string | null;
   contactType?: ContactType | null;
   isPaymentRequired?: boolean;
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
   additionalPaymentInfo?: string | null;
   paymentInfo?: PaymentInfoInput | null;
   deletedAt?: string | null;
@@ -379,6 +394,8 @@ export interface EventGroupInput {
   name?: string;
   emoji?: string;
   shouldIssueCertificate?: boolean;
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
   shouldIssueCertificateForEachEvent?: boolean;
   shouldIssuePartialCertificate?: boolean;
   deletedAt?: string | null;
@@ -421,6 +438,8 @@ export interface EventInput {
   slots?: number | null;
   autoSubscribe?: boolean;
   shouldIssueCertificate?: boolean;
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
   shouldCollectAttendance?: boolean;
   isOnlineAttendanceAllowed?: boolean;
   onlineAttendanceCode?: string | null;
