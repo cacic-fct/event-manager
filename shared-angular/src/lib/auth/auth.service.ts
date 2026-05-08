@@ -19,6 +19,7 @@ import {
   throwError,
 } from 'rxjs';
 import { AuthenticatedUser, AuthRefreshResult } from './auth.types';
+import type { LoginOptions } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -30,10 +31,8 @@ export class AuthService {
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
 
   readonly user = signal<AuthenticatedUser | null>(null);
-  readonly roles = computed(
-    () => this.user()?.roles ?? this.user()?.scopes ?? [],
-  );
-  readonly scopes = computed(() => this.roles());
+  readonly roles = computed(() => this.user()?.roles ?? []);
+  readonly scopes = computed(() => this.user()?.scopes ?? []);
   readonly isAuthenticated = computed(() => Boolean(this.user()));
 
   async initialize(): Promise<void> {
@@ -48,12 +47,12 @@ export class AuthService {
     }
   }
 
-  async login(): Promise<void> {
+  async login(options?: LoginOptions): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
 
-    window.location.assign('/api/auth/login/redirect');
+    window.location.assign(this.buildLoginRedirectUrl(options));
   }
 
   loginWithExistingSsoSession(): void {
@@ -65,7 +64,11 @@ export class AuthService {
     }
 
     window.sessionStorage.setItem(this.silentSsoAttemptStorageKey, 'true');
-    window.location.assign('/api/auth/login/redirect?prompt=none');
+    window.location.assign(
+      this.buildLoginRedirectUrl({
+        prompt: 'none',
+      }),
+    );
   }
 
   async logout(): Promise<void> {
@@ -134,6 +137,14 @@ export class AuthService {
     return this.refreshRequest$;
   }
 
+  evaluatePermissions(permissions: readonly string[]): Observable<string[]> {
+    return this.http
+      .post<{ permissions: string[] }>('/api/auth/permissions/evaluate', {
+        permissions: [...new Set(permissions)],
+      })
+      .pipe(map((result) => result.permissions));
+  }
+
   clearSession(): void {
     this.clearRefreshTimer();
     this.user.set(null);
@@ -199,6 +210,26 @@ export class AuthService {
     } catch {
       return;
     }
+  }
+
+  private buildLoginRedirectUrl(options?: LoginOptions): string {
+    const url = new URL('/api/auth/login/redirect', window.location.origin);
+    const returnTo = options?.returnTo ?? this.getCurrentReturnPath();
+
+    if (returnTo) {
+      url.searchParams.set('returnTo', returnTo);
+    }
+
+    if (options?.prompt) {
+      url.searchParams.set('prompt', options.prompt);
+    }
+
+    return `${url.pathname}${url.search}`;
+  }
+
+  private getCurrentReturnPath(): string {
+    const { pathname, search, hash } = window.location;
+    return `${pathname}${search}${hash}`;
   }
 
   private clearRefreshTimer(): void {
