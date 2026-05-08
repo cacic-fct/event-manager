@@ -1,4 +1,5 @@
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUserContextService } from './context.service';
 import { PersonRecord, UserRecord } from './selects';
@@ -20,6 +21,9 @@ type PrismaMock = {
 
 describe('CurrentUserContextService', () => {
   let prisma: PrismaMock;
+  let certificateIssuingService: {
+    refreshIssuedCertificatesForPerson: jest.Mock;
+  };
   let service: CurrentUserContextService;
 
   beforeEach(() => {
@@ -37,8 +41,14 @@ describe('CurrentUserContextService', () => {
         update: jest.fn(),
       },
     };
+    certificateIssuingService = {
+      refreshIssuedCertificatesForPerson: jest.fn().mockResolvedValue([]),
+    };
 
-    service = new CurrentUserContextService(prisma as unknown as PrismaService);
+    service = new CurrentUserContextService(
+      prisma as unknown as PrismaService,
+      certificateIssuingService as unknown as CertificateIssuingService,
+    );
   });
 
   it('matches an existing person by email before creating a new person', async () => {
@@ -91,6 +101,9 @@ describe('CurrentUserContextService', () => {
         }),
       }),
     );
+    expect(
+      certificateIssuingService.refreshIssuedCertificatesForPerson,
+    ).toHaveBeenCalledWith('person-email', 'keycloak-sub');
     expect(prisma.people.create).not.toHaveBeenCalled();
   });
 
@@ -143,6 +156,88 @@ describe('CurrentUserContextService', () => {
       }),
     );
     expect(prisma.people.create).not.toHaveBeenCalled();
+  });
+
+  it('does not refresh certificates when the matched person already has an identity document', async () => {
+    const authenticatedUser = createAuthenticatedUser();
+    const user = createUserRecord();
+    const person = createPersonRecord({
+      id: 'person-with-document',
+      email: 'student@example.edu',
+      identityDocument: '123.456.789-00',
+      userId: null,
+    });
+    const updatedPerson = createPersonRecord({
+      ...person,
+      phone: '+5511999999999',
+      academicId: '20240001',
+      userId: user.id,
+      externalRef: 'kc:keycloak-sub',
+      user,
+    });
+
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(user);
+    prisma.people.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([person]);
+    prisma.people.findFirst.mockResolvedValue(null);
+    prisma.people.update.mockResolvedValue(updatedPerson);
+
+    const result = await service.resolveCurrentUserContext(
+      authenticatedUser,
+      true,
+    );
+
+    expect(result.person).toEqual(updatedPerson);
+    expect(
+      certificateIssuingService.refreshIssuedCertificatesForPerson,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('refreshes certificates when the matched person name changes', async () => {
+    const authenticatedUser = createAuthenticatedUser({
+      claims: {
+        name: 'Student Name',
+        set_fullname: 'Updated Student Name',
+        phone: '+5511999999999',
+        identityDocument: '123.456.789-00',
+        enrollmentNumber: '20240001',
+      },
+    });
+    const user = createUserRecord();
+    const person = createPersonRecord({
+      id: 'person-name-change',
+      name: 'Old Student Name',
+      email: 'student@example.edu',
+      identityDocument: '123.456.789-00',
+      userId: null,
+    });
+    const updatedPerson = createPersonRecord({
+      ...person,
+      name: 'Updated Student Name',
+      phone: '+5511999999999',
+      academicId: '20240001',
+      userId: user.id,
+      externalRef: 'kc:keycloak-sub',
+      user,
+    });
+
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(user);
+    prisma.people.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([person]);
+    prisma.people.findFirst.mockResolvedValue(null);
+    prisma.people.update.mockResolvedValue(updatedPerson);
+
+    await service.resolveCurrentUserContext(authenticatedUser, true);
+
+    expect(
+      certificateIssuingService.refreshIssuedCertificatesForPerson,
+    ).toHaveBeenCalledWith('person-name-change', 'keycloak-sub');
   });
 
   it('creates a new person with inferred Keycloak profile data when no match exists', async () => {

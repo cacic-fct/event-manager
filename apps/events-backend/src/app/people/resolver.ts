@@ -6,20 +6,25 @@ import {
 } from '@cacic-eventos/shared-data-types';
 import {
   ConflictException,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 
 @Resolver(() => Person)
 export class PeopleResolver {
+  private readonly logger = new Logger(PeopleResolver.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
+    private readonly certificateIssuingService: CertificateIssuingService,
   ) {}
 
   @Query(() => [Person], { name: 'people' })
@@ -157,6 +162,21 @@ export class PeopleResolver {
   ) {
     await this.ensureNoDuplicateIdentity(input, id);
 
+    const existingPerson = await this.prisma.people.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: {
+        name: true,
+        identityDocument: true,
+      },
+    });
+
+    if (!existingPerson) {
+      throw new NotFoundException(`Person ${id} was not found.`);
+    }
+
     const { count } = await this.prisma.people.updateMany({
       where: {
         id,
@@ -188,6 +208,18 @@ export class PeopleResolver {
         academicId: person.academicId,
         userId: person.userId,
       });
+    }
+    if (person && this.shouldRefreshCertificates(existingPerson, person)) {
+      try {
+        await this.certificateIssuingService.refreshIssuedCertificatesForPerson(
+          person.id,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to refresh certificates after admin update for person ${person.id}.`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
     }
     return person;
   }
@@ -272,5 +304,15 @@ export class PeopleResolver {
         `Person ${duplicate.id} already exists with matching identity document, email, or name.`,
       );
     }
+  }
+
+  private shouldRefreshCertificates(
+    before: Pick<Person, 'name' | 'identityDocument'>,
+    after: Pick<Person, 'name' | 'identityDocument'>,
+  ): boolean {
+    return (
+      before.name !== after.name ||
+      before.identityDocument !== after.identityDocument
+    );
   }
 }

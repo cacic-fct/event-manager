@@ -2,8 +2,9 @@ import {
   ApplicationConfig,
   LOCALE_ID,
   inject,
+  isDevMode,
   provideAppInitializer,
-  provideBrowserGlobalErrorListeners, isDevMode,
+  provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
@@ -21,6 +22,7 @@ import {
 import { AuthService, authInterceptor } from '@cacic-eventos/shared-angular';
 import { MatIconRegistry } from '@angular/material/icon';
 import { provideServiceWorker } from '@angular/service-worker';
+import { OnlineAttendanceCoordinatorService } from './attendance/online-attendance-coordinator.service';
 
 registerLocaleData(localePt);
 
@@ -38,9 +40,13 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       const authService = inject(AuthService);
       return authService.initialize();
-    }), provideServiceWorker('ngsw-worker.js', {
-            enabled: !isDevMode(),
-            registrationStrategy: 'registerWhenStable:30000'
-          }),
+    }),
+    provideAppInitializer(() => {
+      inject(OnlineAttendanceCoordinatorService).start();
+    }),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
   ],
 };
