@@ -1,0 +1,75 @@
+<mat-toolbar>
+  <button mat-icon-button type="button" (click)="back()" aria-label="Voltar">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Confirmar presença</span>
+  <span class="toolbar-spacer"></span>
+  <button
+    mat-icon-button
+    type="button"
+    aria-label="Escanear código de presença"
+    [disabled]="state().status !== 'ready' || isSubmitting()"
+    (click)="scanCode()"
+  >
+    <mat-icon>qr_code</mat-icon>
+  </button>
+</mat-toolbar>
+
+<main class="attendance-page">
+  @let currentState = state();
+  @if (currentState.status === 'loading') {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  } @else if (currentState.status === 'error') {
+    <section class="empty-section" aria-live="polite">
+      <mat-icon aria-hidden="true">event_busy</mat-icon>
+      <p>{{ currentState.message }}</p>
+      <button mat-flat-button type="button" (click)="back()">Voltar</button>
+    </section>
+  } @else {
+    @let event = currentState.item.event;
+    <section class="event-summary">
+      <div class="emoji-frame">
+        <img
+          class="twemoji"
+          [src]="emoji.getTwemojiUrl(event.emoji)"
+          [alt]="event.emoji"
+        />
+      </div>
+      <div>
+        <p>{{ event.startDate | date: 'dd/MM HH:mm' }}</p>
+        <h1>{{ event.name }}</h1>
+        @if (event.majorEvent) {
+          <p>{{ event.majorEvent.name }}</p>
+        }
+      </div>
+    </section>
+
+    <form class="code-form" (ngSubmit)="submit()">
+      <span class="code-label">Código de presença</span>
+      <label class="segmented-code" for="attendance-code">
+        @for (slot of [0, 1, 2, 3]; track slot) {
+          <span>{{ slots()[slot] }}</span>
+        }
+        <input
+          id="attendance-code"
+          autocomplete="one-time-code"
+          inputmode="text"
+          maxlength="4"
+          [formControl]="codeControl"
+        />
+      </label>
+      @if (codeControl.touched && codeControl.invalid) {
+        <p class="field-error">Informe os 4 caracteres do código.</p>
+      }
+
+      <button
+        mat-flat-button
+        type="submit"
+        [disabled]="codeControl.invalid || isSubmitting()"
+      >
+        <mat-icon>how_to_reg</mat-icon>
+        Confirmar
+      </button>
+    </form>
+  }
+</main>

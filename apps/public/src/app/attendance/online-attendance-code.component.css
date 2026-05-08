@@ -1,0 +1,116 @@
+.attendance-page {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 680px;
+  min-height: 100%;
+  padding: 24px 16px 40px;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.event-summary {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  margin: 12px 0 28px;
+}
+
+.emoji-frame {
+  align-items: center;
+  background: var(--mat-sys-surface-container-high);
+  border-radius: 8px;
+  display: flex;
+  flex: 0 0 auto;
+  height: 72px;
+  justify-content: center;
+  width: 72px;
+}
+
+.twemoji {
+  height: 44px;
+  width: 44px;
+}
+
+.event-summary h1 {
+  font: var(--mat-sys-headline-small);
+  margin: 2px 0;
+}
+
+.event-summary p {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}
+
+.code-form {
+  display: grid;
+  gap: 16px;
+}
+
+.code-label {
+  font: var(--mat-sys-label-large);
+}
+
+.segmented-code {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(52px, 1fr));
+  max-width: 360px;
+  position: relative;
+}
+
+.segmented-code span {
+  align-items: center;
+  aspect-ratio: 1;
+  background: var(--mat-sys-surface-container);
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 8px;
+  display: flex;
+  font-family: 'Source Code Pro Variable', monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  justify-content: center;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.segmented-code:focus-within span {
+  border-color: var(--mat-sys-primary);
+}
+
+.segmented-code input {
+  border: 0;
+  height: 1px;
+  inset: auto 0 0;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.field-error {
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-small);
+  margin: -8px 0 0;
+}
+
+.code-form button {
+  justify-self: start;
+}
+
+.empty-section {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 64px 16px;
+  text-align: center;
+}
+
+.empty-section mat-icon {
+  font-size: 40px;
+  height: 40px;
+  width: 40px;
+}
