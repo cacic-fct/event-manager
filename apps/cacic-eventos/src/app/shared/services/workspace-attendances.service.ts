@@ -1,13 +1,26 @@
-import { Injectable, inject, signal } from '@angular/core';
+import {
+  computed,
+  effect,
+  EffectRef,
+  Injectable,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { AztecScannerDialogComponent } from '@cacic-eventos/shared-angular';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { Event, MajorEventUserAttendance, Person } from '../../graphql/models';
+import {
+  AttendanceCategory,
+  Event,
+  MajorEventUserAttendance,
+  Person,
+} from '../../graphql/models';
 import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/attendance-csv-column-dialog.component';
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
 import { SubscriptionCsvColumnDialogComponent } from '../../workspace/dialogs/subscription-csv-column-dialog.component';
@@ -28,6 +41,42 @@ type AttendanceListItem = {
   personName: string;
   attendedAt: string;
   createdByMethod: string;
+};
+
+type AttendanceCategoryGroup = {
+  category: AttendanceCategory;
+  label: string;
+  description: string;
+  attendances: MajorEventUserAttendance[];
+};
+
+const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = [
+  'NON_PAYING',
+  'NON_SUBSCRIBED',
+  'REGULAR',
+  'UNKNOWN',
+];
+
+const ATTENDANCE_CATEGORY_LABELS: Record<
+  AttendanceCategory,
+  { label: string; description: string }
+> = {
+  NON_PAYING: {
+    label: 'Sem pagamento',
+    description: 'Presenças em grande evento pago sem pagamento confirmado.',
+  },
+  NON_SUBSCRIBED: {
+    label: 'Sem inscrição na atividade',
+    description: 'Presenças em atividades com inscrição obrigatória.',
+  },
+  REGULAR: {
+    label: 'Regulares',
+    description: 'Presenças esperadas para inscrição e pagamento atuais.',
+  },
+  UNKNOWN: {
+    label: 'Indefinidas',
+    description: 'Registros antigos ou sem dados suficientes para classificar.',
+  },
 };
 
 @Injectable({
@@ -58,6 +107,25 @@ export class WorkspaceAttendancesService {
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
   readonly majorEventUserAttendances = signal<MajorEventUserAttendance[]>([]);
+  readonly majorEventUserAttendanceGroups = computed<AttendanceCategoryGroup[]>(
+    () => {
+      const groups = new Map<AttendanceCategory, MajorEventUserAttendance[]>(
+        ATTENDANCE_CATEGORY_ORDER.map((category) => [category, []]),
+      );
+
+      for (const attendance of this.majorEventUserAttendances()) {
+        groups
+          .get(this.getMajorEventUserAttendanceCategory(attendance))
+          ?.push(attendance);
+      }
+
+      return ATTENDANCE_CATEGORY_ORDER.map((category) => ({
+        category,
+        ...ATTENDANCE_CATEGORY_LABELS[category],
+        attendances: groups.get(category) ?? [],
+      })).filter((group) => group.attendances.length > 0);
+    },
+  );
   readonly selectedMajorEventUserAttendance =
     signal<MajorEventUserAttendance | null>(null);
   readonly isImportingCsv = signal(false);
@@ -156,6 +224,70 @@ export class WorkspaceAttendancesService {
     );
     await this.loadAttendances(eventId);
     this.snackbar.open('Presença registrada.', 'Fechar', { duration: 2500 });
+  }
+
+  async scanAttendance(): Promise<void> {
+    const eventId = this.attendanceForm.controls.eventId.value;
+    if (!eventId) {
+      this.attendanceForm.controls.eventId.markAsTouched();
+      this.snackbar.open('Selecione um evento antes de escanear.', 'Fechar', {
+        duration: 3000,
+      });
+      return;
+    }
+
+    const dialogRef = this.dialog.open(AztecScannerDialogComponent, {
+      width: 'min(560px, 96vw)',
+      maxWidth: '96vw',
+      data: {
+        acceptedPrefixes: ['user:'],
+        title: 'Escanear presença',
+        continuousMode: true,
+      },
+    });
+
+    const component = dialogRef.componentInstance as unknown as {
+      lastScannedCode: { (): string | null };
+    };
+
+    let scanEffect: EffectRef | null = null;
+
+    scanEffect = effect(() => {
+      const code = component.lastScannedCode();
+      if (code) {
+        void this.processScannedCode(eventId, code);
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      scanEffect?.destroy();
+    });
+  }
+
+  private async processScannedCode(
+    eventId: string,
+    code: string,
+  ): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.api.createEventAttendanceFromAztecCode({
+          eventId,
+          code,
+        }),
+      );
+      await this.loadAttendances(eventId);
+      this.snackbar.open('Presença registrada pelo scanner.', 'Fechar', {
+        duration: 2500,
+      });
+    } catch (error: unknown) {
+      this.snackbar.open(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível registrar a presença.',
+        'Fechar',
+        { duration: 5000 },
+      );
+    }
   }
 
   async importAttendancesFromCsv(file: File | null): Promise<void> {
@@ -332,6 +464,18 @@ export class WorkspaceAttendancesService {
     this.selectedMajorEventUserAttendance.set(attendances[0] ?? null);
   }
 
+  async refreshMajorEventUserAttendancesFor(
+    majorEventId: string,
+  ): Promise<void> {
+    if (
+      this.majorEventAttendanceForm.controls.majorEventId.value !== majorEventId
+    ) {
+      return;
+    }
+
+    await this.loadMajorEventUserAttendances();
+  }
+
   async selectMajorEventAttendancesById(majorEventId: string): Promise<void> {
     this.majorEventAttendanceForm.controls.majorEventId.setValue(majorEventId);
     void this.router.navigate(['/attendances/major-event', majorEventId]);
@@ -340,6 +484,28 @@ export class WorkspaceAttendancesService {
 
   selectMajorEventUserAttendance(attendance: MajorEventUserAttendance): void {
     this.selectedMajorEventUserAttendance.set(attendance);
+  }
+
+  getMajorEventUserAttendanceCategory(
+    attendance: MajorEventUserAttendance,
+  ): AttendanceCategory {
+    for (const category of ATTENDANCE_CATEGORY_ORDER) {
+      if (
+        attendance.attendances.some(
+          (status) => status.attended && status.category === category,
+        )
+      ) {
+        return category;
+      }
+    }
+
+    return attendance.attendances.some((status) => status.attended)
+      ? 'UNKNOWN'
+      : 'REGULAR';
+  }
+
+  getAttendanceCategoryLabel(category: AttendanceCategory): string {
+    return ATTENDANCE_CATEGORY_LABELS[category].label;
   }
 
   private parseCsv(csvContent: string): CsvParseResult {

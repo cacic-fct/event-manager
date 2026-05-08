@@ -20,7 +20,6 @@ import {
 } from '@cacic-eventos/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatDialog } from '@angular/material/dialog';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -32,7 +31,6 @@ import {
   Observable,
   catchError,
   combineLatest,
-  filter,
   finalize,
   map,
   of,
@@ -40,10 +38,6 @@ import {
   switchMap,
 } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  AttendanceCodeDialog,
-  AttendanceCodeDialogData,
-} from './attendance-code-dialog';
 import { EventApiService, EventPageData } from './event-api.service';
 import { EventLocationMap } from './event-location-map';
 import { EmojiService } from '../profile/attendances/emoji.service';
@@ -76,7 +70,6 @@ export class Event {
   private readonly api = inject(EventApiService);
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
@@ -109,7 +102,7 @@ export class Event {
     const url =
       typeof window === 'undefined'
         ? this.router.url
-        : `${window.location.origin}${this.router.url}`;
+        : new URL(this.router.url, document.baseURI).toString();
 
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(url);
@@ -151,40 +144,15 @@ export class Event {
       return;
     }
 
-    if (
-      !this.canConfirmAttendance(data.event) ||
-      data.currentUserAttendance ||
-      this.isConfirmingAttendance()
-    ) {
+    if (!this.canConfirmAttendance(data.event) || data.currentUserAttendance) {
       return;
     }
 
-    this.dialog
-      .open<AttendanceCodeDialog, AttendanceCodeDialogData, string>(
-        AttendanceCodeDialog,
-        {
-          data: { eventName: data.event.name },
-          width: 'min(440px, calc(100vw - 32px))',
-        },
-      )
-      .afterClosed()
-      .pipe(
-        filter((code): code is string => typeof code === 'string'),
-        switchMap((code) => {
-          this.isConfirmingAttendance.set(true);
-          return this.api
-            .confirmAttendance(data.event.id, code)
-            .pipe(finalize(() => this.isConfirmingAttendance.set(false)));
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: () => {
-          this.snackBar.open('Presença confirmada.', 'OK', { duration: 3000 });
-          this.reload();
-        },
-        error: (error: unknown) => this.showError(error),
-      });
+    void this.router.navigate(['/attendance/register', data.event.id], {
+      queryParams: {
+        returnUrl: this.router.url,
+      },
+    });
   }
 
   canSubscribe(data: EventPageData): boolean {

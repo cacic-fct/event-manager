@@ -1,9 +1,10 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { SubscriptionStatus } from '@prisma/client';
+import { AttendanceCreationMethod } from '@prisma/client';
 import {
   ConfirmCurrentUserOnlineAttendanceInput,
   CurrentUserEventAttendance,
+  CurrentUserPendingOnlineAttendanceEvent,
 } from '../models';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
@@ -12,6 +13,8 @@ import {
   GraphqlContext,
 } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AttendanceCategoryService } from '../../events/attendance-category.service';
+import { CurrentUserOnlineAttendanceRealtimeService } from './attendance-realtime.service';
 
 @Resolver()
 export class CurrentUserEventAttendanceResolver {
@@ -19,6 +22,8 @@ export class CurrentUserEventAttendanceResolver {
     private readonly prisma: PrismaService,
     private readonly currentUserContext: CurrentUserContextService,
     private readonly mapper: CurrentUserEventMapperService,
+    private readonly attendanceCategories: AttendanceCategoryService,
+    private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
   ) {}
 
   @Query(() => [CurrentUserEventAttendance], {
@@ -165,54 +170,6 @@ export class CurrentUserEventAttendanceResolver {
       );
     }
 
-    if (event.allowSubscription) {
-      const eventSubscription = await this.prisma.eventSubscription.findFirst({
-        where: {
-          eventId: event.id,
-          personId: person.id,
-          deletedAt: null,
-        },
-        select: {
-          eventId: true,
-        },
-      });
-
-      if (!eventSubscription) {
-        throw new BadRequestException(
-          `You must be subscribed to event ${input.eventId} before confirming attendance.`,
-        );
-      }
-    }
-
-    if (event.majorEventId && event.majorEvent?.isPaymentRequired) {
-      const majorEventSubscription =
-        await this.prisma.majorEventSubscription.findFirst({
-          where: {
-            majorEventId: event.majorEventId,
-            personId: person.id,
-            deletedAt: null,
-          },
-          select: {
-            subscriptionStatus: true,
-          },
-        });
-
-      if (!majorEventSubscription) {
-        throw new BadRequestException(
-          `You must subscribe to major event ${event.majorEventId} before confirming attendance.`,
-        );
-      }
-
-      if (
-        majorEventSubscription.subscriptionStatus !==
-        SubscriptionStatus.CONFIRMED
-      ) {
-        throw new BadRequestException(
-          `Major-event subscription for event ${input.eventId} is not confirmed.`,
-        );
-      }
-    }
-
     const existingAttendance = await this.prisma.eventAttendance.findUnique({
       where: {
         personId_eventId: {
@@ -231,14 +188,42 @@ export class CurrentUserEventAttendanceResolver {
       );
     }
 
-    const createdAttendance = await this.prisma.eventAttendance.create({
-      data: {
-        personId: person.id,
-        eventId: event.id,
-      },
-      select: CURRENT_USER_EVENT_ATTENDANCE_SELECT,
+    const createdAttendance = await this.prisma.$transaction(async (tx) => {
+      await tx.eventAttendance.create({
+        data: {
+          personId: person.id,
+          eventId: event.id,
+          createdByMethod: AttendanceCreationMethod.ONLINE_CODE,
+        },
+      });
+      await this.attendanceCategories.refreshForAttendance(
+        person.id,
+        event.id,
+        tx,
+      );
+      return tx.eventAttendance.findUniqueOrThrow({
+        where: {
+          personId_eventId: {
+            personId: person.id,
+            eventId: event.id,
+          },
+        },
+        select: CURRENT_USER_EVENT_ATTENDANCE_SELECT,
+      });
     });
 
+    await this.attendanceRealtime.notifyPerson(person.id);
+
     return this.mapper.mapCurrentUserEventAttendance(createdAttendance);
+  }
+
+  @Query(() => [CurrentUserPendingOnlineAttendanceEvent], {
+    name: 'currentUserPendingOnlineAttendanceEvents',
+  })
+  async currentUserPendingOnlineAttendanceEvents(
+    @Context() context: GraphqlContext,
+  ): Promise<CurrentUserPendingOnlineAttendanceEvent[]> {
+    const person = await this.currentUserContext.requireCurrentPerson(context);
+    return this.attendanceRealtime.listPendingOnlineAttendanceEvents(person.id);
   }
 }
