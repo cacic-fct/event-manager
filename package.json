@@ -24,6 +24,7 @@
     "@bwip-js/browser": "^4.10.1",
     "@bwip-js/node": "^4.10.1",
     "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/source-code-pro": "^5.2.7",
     "@fontsource/material-icons-outlined": "^5.2.6",
     "@nestjs/apollo": "^13.4.0",
     "@nestjs/bullmq": "^11.0.4",
@@ -55,7 +56,8 @@
     "reflect-metadata": "^0.1.14",
     "rxjs": "~7.8.2",
     "typesense": "^3.0.6",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "zxing-wasm": "^3.0.3"
   },
   "devDependencies": {
     "@angular-devkit/core": "~21.2.9",
