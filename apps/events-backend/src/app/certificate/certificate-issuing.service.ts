@@ -530,6 +530,13 @@ export class CertificateIssuingService {
     if (minicursoLines.length > 0) {
       contentLines.push('Minicursos:');
       contentLines.push(...this.applyBulletLineEndings(minicursoLines));
+      const minicursoTotalMinutes = minicursos.reduce(
+        (total, event) => total + (event.creditMinutes ?? 0),
+        0,
+      );
+      contentLines.push(
+        `Carga horária total: ${this.formatCargaHoraria(minicursoTotalMinutes)}.`,
+      );
       contentLines.push('');
     }
 
@@ -537,12 +544,26 @@ export class CertificateIssuingService {
     if (palestraLines.length > 0) {
       contentLines.push('Palestras:');
       contentLines.push(...this.applyBulletLineEndings(palestraLines));
+      const palestraTotalMinutes = palestras.reduce(
+        (total, event) => total + (event.creditMinutes ?? 0),
+        0,
+      );
+      contentLines.push(
+        `Carga horária total: ${this.formatCargaHoraria(palestraTotalMinutes)}.`,
+      );
       contentLines.push('');
     }
 
     const otherEventLines = this.buildSingleEventLines(otherEvents);
     if (otherEventLines.length > 0) {
       contentLines.push(...this.applyBulletLineEndings(otherEventLines));
+      const otherEventsTotalMinutes = otherEvents.reduce(
+        (total, event) => total + (event.creditMinutes ?? 0),
+        0,
+      );
+      contentLines.push(
+        `Carga horária total: ${this.formatCargaHoraria(otherEventsTotalMinutes)}.`,
+      );
       contentLines.push('');
     }
 
@@ -581,15 +602,33 @@ export class CertificateIssuingService {
       content: contentLines.join('\n'),
       minicursosSection:
         minicursoLines.length > 0
-          ? `Minicursos:\n${this.applyBulletLineEndings(minicursoLines).join('\n')}`
+          ? (() => {
+              const minicursoTotalMinutes = minicursos.reduce(
+                (total, event) => total + (event.creditMinutes ?? 0),
+                0,
+              );
+              return `Minicursos:\n${this.applyBulletLineEndings(minicursoLines).join('\n')}\nCarga horária total: ${this.formatCargaHoraria(minicursoTotalMinutes)}.`;
+            })()
           : '',
       palestrasSection:
         palestraLines.length > 0
-          ? `Palestras:\n${this.applyBulletLineEndings(palestraLines).join('\n')}`
+          ? (() => {
+              const palestraTotalMinutes = palestras.reduce(
+                (total, event) => total + (event.creditMinutes ?? 0),
+                0,
+              );
+              return `Palestras:\n${this.applyBulletLineEndings(palestraLines).join('\n')}\nCarga horária total: ${this.formatCargaHoraria(palestraTotalMinutes)}.`;
+            })()
           : '',
       otherEventTypesList:
         otherEventLines.length > 0
-          ? this.applyBulletLineEndings(otherEventLines).join('\n')
+          ? (() => {
+              const otherEventsTotalMinutes = otherEvents.reduce(
+                (total, event) => total + (event.creditMinutes ?? 0),
+                0,
+              );
+              return `${this.applyBulletLineEndings(otherEventLines).join('\n')}\nCarga horária total: ${this.formatCargaHoraria(otherEventsTotalMinutes)}.`;
+            })()
           : '',
     };
   }
@@ -654,24 +693,22 @@ export class CertificateIssuingService {
         (total, event) => total + (event.creditMinutes ?? 0),
         0,
       );
-      const totalHours = this.formatHours(totalMinutes);
 
       if (sortedGroupEvents.length === 1 && !group.hasGroup) {
         const event = sortedGroupEvents[0];
-        return `• ${this.formatDate(event.startDate)} - ${event.name} - Carga horária: ${totalHours} horas`;
+        return `• ${this.formatDate(event.startDate)} - ${event.name} - Carga horária: ${this.formatCargaHoraria(totalMinutes)}`;
       }
 
       const dates = sortedGroupEvents.map((event) =>
         this.formatDate(event.startDate),
       );
-      return `• ${dates.join(', ')} - ${group.label} - Carga horária: ${totalHours} horas`;
+      return `• ${dates.join(', ')} - ${group.label} - Carga horária: ${this.formatCargaHoraria(totalMinutes)}`;
     });
   }
 
   private buildSingleEventLines(events: EventRecord[]): string[] {
     return events.map((event) => {
-      const hours = this.formatHours(event.creditMinutes ?? 0);
-      return `• ${this.formatDate(event.startDate)} - ${event.name} - Carga horária: ${hours} horas`;
+      return `• ${this.formatDate(event.startDate)} - ${event.name} - Carga horária: ${this.formatCargaHoraria(event.creditMinutes ?? 0)}`;
     });
   }
 
@@ -689,12 +726,23 @@ export class CertificateIssuingService {
     }).format(date);
   }
 
-  private formatHours(totalMinutes: number): string {
-    const hours = totalMinutes / 60;
-    return hours
-      .toFixed(2)
-      .replace(/\.00$/, '')
-      .replace(/(\.\d)0$/, '$1');
+  private formatCargaHoraria(totalMinutes: number): string {
+    if (totalMinutes === 0) {
+      return '0 minutos';
+    }
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours === 0) {
+      return `${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+    }
+
+    if (minutes === 0) {
+      return `${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    }
+
+    return `${hours} ${hours === 1 ? 'hora' : 'horas'} e ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
   }
 
   private formatIdentityDocument(identityDocument?: string | null): string {
