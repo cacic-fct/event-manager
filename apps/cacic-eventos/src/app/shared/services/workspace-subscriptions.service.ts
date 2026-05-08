@@ -19,6 +19,7 @@ import {
   resetEventFiltersForm,
 } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
+import { WorkspaceAttendancesService } from './workspace-attendances.service';
 
 const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
 
@@ -31,6 +32,7 @@ export class WorkspaceSubscriptionsService {
   private readonly peopleApi = inject(PeopleApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
+  private readonly attendancesService = inject(WorkspaceAttendancesService);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
 
@@ -154,6 +156,7 @@ export class WorkspaceSubscriptionsService {
       this.api.createEventSubscription({ eventId, personId: person.id }),
     );
     await this.loadEventSubscriptions(eventId);
+    await this.refreshMajorEventAttendancesForEvent(eventId);
     this.eventPersonMatches.set([]);
     this.snackbar.open('Inscrição criada.', 'Fechar', { duration: 2500 });
   }
@@ -285,6 +288,9 @@ export class WorkspaceSubscriptionsService {
 
     this.replaceMajorEventSubscription(saved);
     this.selectMajorEventSubscription(saved);
+    await this.attendancesService.refreshMajorEventUserAttendancesFor(
+      saved.majorEventId,
+    );
     this.snackbar.open('Inscrição salva.', 'Fechar', { duration: 2500 });
   }
 
@@ -347,6 +353,19 @@ export class WorkspaceSubscriptionsService {
         ...(identifierType === 'query' ? { query: identifier } : {}),
         take: 10,
       }),
+    );
+  }
+
+  private async refreshMajorEventAttendancesForEvent(
+    eventId: string,
+  ): Promise<void> {
+    const event = this.selectedEvent();
+    if (event?.id !== eventId || !event.majorEventId) {
+      return;
+    }
+
+    await this.attendancesService.refreshMajorEventUserAttendancesFor(
+      event.majorEventId,
     );
   }
 }

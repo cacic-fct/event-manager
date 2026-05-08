@@ -22,12 +22,30 @@ export class AttendanceApiService {
             eventId
             personId
             attendedAt
+            category
             createdByMethod
           }
         }`,
         { input },
       )
       .pipe(map((data) => data.createEventAttendance));
+  }
+
+  createEventAttendanceFromAztecCode(input: { eventId: string; code: string }) {
+    return this.graphqlHttp
+      .request<{ createEventAttendanceFromAztecCode: EventAttendance }>(
+        `mutation CreateEventAttendanceFromAztecCode($eventId: String!, $code: String!) {
+          createEventAttendanceFromAztecCode(eventId: $eventId, code: $code) {
+            eventId
+            personId
+            attendedAt
+            category
+            createdByMethod
+          }
+        }`,
+        input,
+      )
+      .pipe(map((data) => data.createEventAttendanceFromAztecCode));
   }
 
   importEventAttendancesFromCsv(input: {
@@ -99,6 +117,7 @@ export class AttendanceApiService {
             eventId
             personId
             attendedAt
+            category
             createdByMethod
             person {
               ${PERSON_FIELDS}
@@ -153,6 +172,7 @@ export class AttendanceApiService {
               eventStartDate
               attended
               attendedAt
+              category
             }
           }
         }`,

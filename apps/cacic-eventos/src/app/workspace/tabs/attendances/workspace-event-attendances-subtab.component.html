@@ -105,6 +105,18 @@
           <mat-icon>upload_file</mat-icon>
           Importar CSV
         </button>
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="
+            !workspace.selectedAttendanceEvent() ||
+            !permissions.canEdit('event-attendance#edit')
+          "
+          (click)="workspace.scanAttendance()"
+        >
+          <mat-icon>qr_code_scanner</mat-icon>
+          Escanear presenças
+        </button>
       </div>
     </div>
 

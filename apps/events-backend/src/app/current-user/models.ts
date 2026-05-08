@@ -47,6 +47,15 @@ export class CurrentUserEventAttendance {
 }
 
 @ObjectType()
+export class CurrentUserPendingOnlineAttendanceEvent {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => PublicEvent)
+  event!: PublicEvent;
+}
+
+@ObjectType()
 export class CurrentUserEventSubscription {
   @Field(() => String)
   eventId!: string;

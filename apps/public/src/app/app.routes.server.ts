@@ -14,6 +14,14 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'attendance/register',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'attendance/register/:eventId',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'validate/:certificateId',
     renderMode: RenderMode.Client,
   },
