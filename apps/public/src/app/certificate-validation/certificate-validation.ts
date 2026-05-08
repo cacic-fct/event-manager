@@ -5,7 +5,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -67,6 +67,9 @@ export class CertificateValidation {
   readonly certificateIdControl = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required],
+  });
+  readonly validationForm = new FormGroup({
+    certificateId: this.certificateIdControl,
   });
   readonly state = signal<ValidationState>({ status: 'idle' });
   readonly downloading = signal(false);

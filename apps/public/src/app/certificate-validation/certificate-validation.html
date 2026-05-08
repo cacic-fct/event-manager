@@ -3,7 +3,7 @@
     <h1>Validar certificado</h1>
   </header>
 
-  <form class="lookup-form" (ngSubmit)="submit()">
+  <form class="lookup-form" [formGroup]="validationForm" (ngSubmit)="submit()">
     <mat-form-field class="id-field">
       <mat-label>ID do certificado</mat-label>
       <input matInput autocomplete="off" [formControl]="certificateIdControl" />
