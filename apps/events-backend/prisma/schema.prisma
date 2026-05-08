@@ -28,6 +28,63 @@ model User {
   @@map("users")
 }
 
+enum ExternalAccountMergeStatus {
+  APPLIED
+  FAILED
+  ROLLED_BACK
+}
+
+enum ExternalAccountMergeResult {
+  PEOPLE_MERGED
+  PERSON_REASSIGNED
+  ALREADY_APPLIED
+  NO_LOCAL_PERSON
+}
+
+model AccountUserMerge {
+  oldUserId String @id
+  newUserId String
+
+  createdAt DateTime @default(now())
+
+  @@index([newUserId])
+  @@map("account_user_merges")
+}
+
+model ExternalAccountMergeOperation {
+  id String @id @default(uuid(7))
+
+  eventId    String @unique
+  type       String
+  oldUserId  String
+  newUserId  String
+  occurredAt DateTime
+
+  status ExternalAccountMergeStatus @default(APPLIED)
+  result ExternalAccountMergeResult?
+
+  peopleMergeOperationId String?
+  peopleMergeOperation   PeopleMergeOperation? @relation(fields: [peopleMergeOperationId], references: [id])
+
+  requestPayload Json
+  errorMessage   String?
+  attemptCount   Int     @default(1)
+
+  rolledBackAt   DateTime?
+  rolledBackById String?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([oldUserId])
+  @@index([newUserId])
+  @@index([status])
+  @@index([peopleMergeOperationId])
+  @@map("external_account_merge_operations")
+}
+
 enum UserRole {
   USER
   EVENT_MANAGER
@@ -477,6 +534,7 @@ model PeopleMergeOperation {
   targetPerson   People          @relation("MergeTargetOperations", fields: [targetPersonId], references: [id])
   sourcePerson   People          @relation("MergeSourceOperations", fields: [sourcePersonId], references: [id])
   mergeCandidate MergeCandidate? @relation(fields: [mergeCandidateId], references: [id])
+  externalAccountMergeOperations ExternalAccountMergeOperation[]
 
   status PeopleMergeOperationStatus @default(APPLIED)
 

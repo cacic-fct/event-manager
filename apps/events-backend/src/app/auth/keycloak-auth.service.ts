@@ -397,6 +397,49 @@ export class KeycloakAuthService {
     );
   }
 
+  assertMachineToMachinePrincipal(
+    principal: AuthenticatedUser | undefined,
+    options: { requiredRoles?: string[] } = {},
+  ): AuthenticatedUser {
+    if (!principal) {
+      throw new UnauthorizedException('Missing authenticated M2M principal.');
+    }
+
+    const requireServiceAccount =
+      process.env.KEYCLOAK_M2M_REQUIRE_SERVICE_ACCOUNT !== 'false';
+    if (requireServiceAccount && !this.isServiceAccountPrincipal(principal)) {
+      throw new ForbiddenException('A Keycloak service-account token is required.');
+    }
+
+    const audience = process.env.KEYCLOAK_M2M_AUDIENCE?.trim();
+    if (audience && !this.hasAudience(principal.claims['aud'], audience)) {
+      throw new ForbiddenException(
+        `Token audience must include ${audience}.`,
+      );
+    }
+
+    const allowedClients = this.readAllowedM2mClients();
+    const clientId = this.readClientId(principal);
+    if (
+      allowedClients.size > 0 &&
+      (!clientId || !allowedClients.has(clientId))
+    ) {
+      throw new ForbiddenException('M2M client is not allowed.');
+    }
+
+    const requiredRoles = options.requiredRoles ?? [];
+    const missingRoles = requiredRoles.filter(
+      (role) => !principal.roleSet.has(role),
+    );
+    if (missingRoles.length > 0) {
+      throw new ForbiddenException(
+        `Missing required M2M roles: ${missingRoles.join(', ')}.`,
+      );
+    }
+
+    return principal;
+  }
+
   clearSession(sessionId: string): void {
     this.sessionCache.delete(sessionId);
   }
@@ -501,6 +544,15 @@ export class KeycloakAuthService {
     }
 
     return origins;
+  }
+
+  private readAllowedM2mClients(): Set<string> {
+    return new Set(
+      (process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS ?? '')
+        .split(',')
+        .map((client) => client.trim())
+        .filter((client) => client.length > 0),
+    );
   }
 
   private addUrlOrigin(origins: Set<string>, rawUrl?: string): void {
@@ -985,6 +1037,33 @@ export class KeycloakAuthService {
 
   private isPermissionRequirement(value: string): boolean {
     return value.includes('#');
+  }
+
+  private isServiceAccountPrincipal(principal: AuthenticatedUser): boolean {
+    if (principal.preferredUsername?.startsWith('service-account-')) {
+      return true;
+    }
+
+    return Boolean(this.readStringClaim(principal.claims, 'client_id'));
+  }
+
+  private readClientId(principal: AuthenticatedUser): string | undefined {
+    return (
+      this.readStringClaim(principal.claims, 'azp') ??
+      this.readStringClaim(principal.claims, 'client_id')
+    );
+  }
+
+  private hasAudience(rawAudience: unknown, expectedAudience: string): boolean {
+    if (typeof rawAudience === 'string') {
+      return rawAudience === expectedAudience;
+    }
+
+    if (!Array.isArray(rawAudience)) {
+      return false;
+    }
+
+    return rawAudience.some((audience) => audience === expectedAudience);
   }
 
   private isRecord(value: unknown): value is Record<string, unknown> {

@@ -7,6 +7,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import Redis from 'ioredis';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AccountMergeController } from './account-merge/account-merge.controller';
+import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuthModule } from './auth/auth.module';
 import { KeycloakScopeGuard } from './auth/guards/keycloak-scope.guard';
 import { GqlThrottlerGuard } from './common/gql-throttler.guard';
@@ -92,9 +94,10 @@ import { WeatherService } from './weather/weather.service';
       context: ({ req, res }) => ({ req, res }),
     }),
   ],
-  controllers: [AppController],
+  controllers: [AppController, AccountMergeController],
   providers: [
     AppService,
+    AccountMergeService,
     MajorEventsResolver,
     PublicMajorEventsResolver,
     EventGroupsResolver,
