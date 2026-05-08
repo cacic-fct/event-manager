@@ -34,6 +34,8 @@ export class WorkspaceEventGroupsService {
     name: ['', [Validators.required]],
     emoji: [DEFAULT_EVENT_GROUP_EMOJI],
     shouldIssueCertificate: [false],
+    shouldIssueCertificateForNonPayingAttendees: [false],
+    shouldIssueCertificateForNonSubscribedAttendees: [false],
     shouldIssueCertificateForEachEvent: [false],
     shouldIssuePartialCertificate: [false],
   });
@@ -78,6 +80,12 @@ export class WorkspaceEventGroupsService {
       name: raw.name.trim(),
       emoji: raw.emoji.trim() || DEFAULT_EVENT_GROUP_EMOJI,
       shouldIssueCertificate: raw.shouldIssueCertificate,
+      shouldIssueCertificateForNonPayingAttendees:
+        raw.shouldIssueCertificate &&
+        raw.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees:
+        raw.shouldIssueCertificate &&
+        raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldIssueCertificateForEachEvent:
         raw.shouldIssueCertificate &&
         !this.selectedEventGroupHasMajorEventEvents() &&
@@ -99,6 +107,8 @@ export class WorkspaceEventGroupsService {
       name: '',
       emoji: DEFAULT_EVENT_GROUP_EMOJI,
       shouldIssueCertificate: false,
+      shouldIssueCertificateForNonPayingAttendees: false,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
       shouldIssueCertificateForEachEvent: false,
       shouldIssuePartialCertificate: false,
     });
@@ -120,6 +130,8 @@ export class WorkspaceEventGroupsService {
       name: '',
       emoji: DEFAULT_EVENT_GROUP_EMOJI,
       shouldIssueCertificate: false,
+      shouldIssueCertificateForNonPayingAttendees: false,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
       shouldIssueCertificateForEachEvent: false,
       shouldIssuePartialCertificate: false,
     });
@@ -150,6 +162,10 @@ export class WorkspaceEventGroupsService {
       name: group.name,
       emoji: group.emoji || DEFAULT_EVENT_GROUP_EMOJI,
       shouldIssueCertificate: group.shouldIssueCertificate,
+      shouldIssueCertificateForNonPayingAttendees:
+        group.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees:
+        group.shouldIssueCertificateForNonSubscribedAttendees,
       shouldIssueCertificateForEachEvent:
         group.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: group.shouldIssuePartialCertificate,
@@ -206,6 +222,16 @@ export class WorkspaceEventGroupsService {
         shouldIssueCertificate: selectedGroup.shouldIssueCertificate
           ? eventItem.shouldIssueCertificate
           : false,
+        shouldIssueCertificateForNonPayingAttendees:
+          selectedGroup.shouldIssueCertificate &&
+          selectedGroup.shouldIssueCertificateForNonPayingAttendees
+            ? eventItem.shouldIssueCertificateForNonPayingAttendees
+            : false,
+        shouldIssueCertificateForNonSubscribedAttendees:
+          selectedGroup.shouldIssueCertificate &&
+          selectedGroup.shouldIssueCertificateForNonSubscribedAttendees
+            ? eventItem.shouldIssueCertificateForNonSubscribedAttendees
+            : false,
       }),
     );
     await Promise.all([
@@ -250,15 +276,26 @@ export class WorkspaceEventGroupsService {
       this.eventGroupForm.controls.shouldIssueCertificateForEachEvent;
     const partialControl =
       this.eventGroupForm.controls.shouldIssuePartialCertificate;
+    const nonPayingControl =
+      this.eventGroupForm.controls.shouldIssueCertificateForNonPayingAttendees;
+    const nonSubscribedControl =
+      this.eventGroupForm.controls
+        .shouldIssueCertificateForNonSubscribedAttendees;
 
     if (!shouldIssueCertificate) {
+      nonPayingControl.setValue(false, { emitEvent: false });
+      nonSubscribedControl.setValue(false, { emitEvent: false });
       forEachControl.setValue(false, { emitEvent: false });
       partialControl.setValue(false, { emitEvent: false });
+      nonPayingControl.disable({ emitEvent: false });
+      nonSubscribedControl.disable({ emitEvent: false });
       forEachControl.disable({ emitEvent: false });
       partialControl.disable({ emitEvent: false });
       return;
     }
 
+    nonPayingControl.enable({ emitEvent: false });
+    nonSubscribedControl.enable({ emitEvent: false });
     partialControl.enable({ emitEvent: false });
 
     if (this.selectedEventGroupHasMajorEventEvents()) {

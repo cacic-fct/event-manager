@@ -68,9 +68,11 @@ model MajorEvent {
   contactInfo String?
   contactType ContactType?
 
-  isPaymentRequired     Boolean      @default(false)
-  paymentInfo           PaymentInfo?
-  additionalPaymentInfo String?
+  isPaymentRequired                               Boolean      @default(false)
+  shouldIssueCertificateForNonPayingAttendees     Boolean      @default(false)
+  shouldIssueCertificateForNonSubscribedAttendees Boolean      @default(false)
+  paymentInfo                                     PaymentInfo?
+  additionalPaymentInfo                           String?
 
   majorEventPrices MajorEventPrice[]
 
@@ -114,11 +116,13 @@ model EventGroup {
   events        Event[]
   subscriptions EventGroupSubscription[]
 
-  shouldIssueCertificate             Boolean @default(false)
+  shouldIssueCertificate                          Boolean @default(false)
+  shouldIssueCertificateForNonPayingAttendees     Boolean @default(false)
+  shouldIssueCertificateForNonSubscribedAttendees Boolean @default(false)
   // If true, attendees may receive one certificate per eligible event in the group.
-  shouldIssueCertificateForEachEvent Boolean @default(false)
+  shouldIssueCertificateForEachEvent              Boolean @default(false)
   // If true, attendees will receive a certificate even if they only attended part of the events in the group. If false, they must attend all events to receive a certificate.
-  shouldIssuePartialCertificate      Boolean @default(false)
+  shouldIssuePartialCertificate                   Boolean @default(false)
 
   certificateConfigs CertificateConfig[]
 
@@ -174,8 +178,10 @@ model Event {
   // When true and only if event is part of a major event, users will be automatically subscribed to this event when subscribing to the major event
   autoSubscribe         Boolean             @default(false)
 
-  shouldIssueCertificate Boolean             @default(false)
-  certificateConfigs     CertificateConfig[]
+  shouldIssueCertificate                          Boolean             @default(false)
+  shouldIssueCertificateForNonPayingAttendees     Boolean             @default(false)
+  shouldIssueCertificateForNonSubscribedAttendees Boolean             @default(false)
+  certificateConfigs                              CertificateConfig[]
 
   shouldCollectAttendance   Boolean   @default(false)
   isOnlineAttendanceAllowed Boolean   @default(false)
@@ -217,8 +223,8 @@ model EventSubscription {
   eventGroupSubscriptionId String?
   eventGroupSubscription   EventGroupSubscription? @relation(fields: [eventGroupSubscriptionId], references: [id])
 
-  createdAt   DateTime @default(now())
-  createdById String?
+  createdAt       DateTime                   @default(now())
+  createdById     String?
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
   deletedAt DateTime?
@@ -240,8 +246,8 @@ model EventGroupSubscription {
 
   eventSubscriptions EventSubscription[]
 
-  createdAt   DateTime @default(now())
-  createdById String?
+  createdAt       DateTime                   @default(now())
+  createdById     String?
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
   deletedAt DateTime?
@@ -267,8 +273,8 @@ model MajorEventSubscription {
 
   subscriptionStatus SubscriptionStatus @default(WAITING_RECEIPT_UPLOAD)
 
-  createdAt   DateTime @default(now())
-  createdById String?
+  createdAt       DateTime                   @default(now())
+  createdById     String?
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
   deletedAt DateTime?
@@ -395,6 +401,8 @@ model EventAttendance {
   person People @relation(fields: [personId], references: [id])
   event  Event  @relation(fields: [eventId], references: [id])
 
+  category AttendanceCategory @default(UNKNOWN)
+
   attendedAt DateTime @default(now())
 
   createdAt       DateTime                 @default(now())
@@ -412,6 +420,13 @@ enum AttendanceCreationMethod {
   MANUAL_INPUT
   SCANNER
   ONLINE_CODE
+  UNKNOWN
+}
+
+enum AttendanceCategory {
+  NON_PAYING
+  NON_SUBSCRIBED
+  REGULAR
   UNKNOWN
 }
 

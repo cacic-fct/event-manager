@@ -78,6 +78,8 @@ export class WorkspaceEventsService {
   readonly eventLecturers = signal<{ personId: string; name: string }[]>([]);
   readonly selectedEventGroupName = signal('');
   readonly selectedEventGroupAllowsCertificates = signal(true);
+  readonly selectedEventGroupAllowsNonPayingCertificates = signal(true);
+  readonly selectedEventGroupAllowsNonSubscribedCertificates = signal(true);
   readonly eventGroupSearchResults = signal<EventGroup[]>([]);
   readonly lecturerSearchResults = signal<Person[]>([]);
 
@@ -114,6 +116,8 @@ export class WorkspaceEventsService {
       slots: [''],
       autoSubscribe: [false],
       shouldIssueCertificate: [false],
+      shouldIssueCertificateForNonPayingAttendees: [false],
+      shouldIssueCertificateForNonSubscribedAttendees: [false],
       shouldCollectAttendance: [false],
       isOnlineAttendanceAllowed: [false],
       onlineAttendanceCode: [''],
@@ -144,6 +148,9 @@ export class WorkspaceEventsService {
     this.syncOnlineAttendanceControls();
     this.eventForm.controls.isOnlineAttendanceAllowed.valueChanges.subscribe(
       () => this.syncOnlineAttendanceControls(),
+    );
+    this.eventForm.controls.shouldIssueCertificate.valueChanges.subscribe(() =>
+      this.syncCertificateControl(),
     );
   }
 
@@ -194,6 +201,8 @@ export class WorkspaceEventsService {
     });
     this.selectedEventGroupName.set('');
     this.selectedEventGroupAllowsCertificates.set(true);
+    this.selectedEventGroupAllowsNonPayingCertificates.set(true);
+    this.selectedEventGroupAllowsNonSubscribedCertificates.set(true);
     this.eventForm.reset({
       id: '',
       name: '',
@@ -216,6 +225,8 @@ export class WorkspaceEventsService {
       slots: '',
       autoSubscribe: false,
       shouldIssueCertificate: false,
+      shouldIssueCertificateForNonPayingAttendees: false,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
       shouldCollectAttendance: false,
       isOnlineAttendanceAllowed: false,
       onlineAttendanceCode: '',
@@ -296,6 +307,12 @@ export class WorkspaceEventsService {
     this.eventForm.controls.eventGroupId.setValue(group.id);
     this.selectedEventGroupName.set(group.name);
     this.selectedEventGroupAllowsCertificates.set(group.shouldIssueCertificate);
+    this.selectedEventGroupAllowsNonPayingCertificates.set(
+      group.shouldIssueCertificateForNonPayingAttendees,
+    );
+    this.selectedEventGroupAllowsNonSubscribedCertificates.set(
+      group.shouldIssueCertificateForNonSubscribedAttendees,
+    );
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
   }
@@ -304,6 +321,8 @@ export class WorkspaceEventsService {
     this.eventForm.controls.eventGroupId.setValue('');
     this.selectedEventGroupName.set('');
     this.selectedEventGroupAllowsCertificates.set(true);
+    this.selectedEventGroupAllowsNonPayingCertificates.set(true);
+    this.selectedEventGroupAllowsNonSubscribedCertificates.set(true);
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
   }
@@ -436,6 +455,14 @@ export class WorkspaceEventsService {
       slots: this.toOptionalNumber(raw.slots),
       autoSubscribe: raw.autoSubscribe,
       shouldIssueCertificate: raw.shouldIssueCertificate,
+      shouldIssueCertificateForNonPayingAttendees:
+        raw.shouldIssueCertificate &&
+        this.selectedEventGroupAllowsNonPayingCertificates() &&
+        raw.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees:
+        raw.shouldIssueCertificate &&
+        this.selectedEventGroupAllowsNonSubscribedCertificates() &&
+        raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: raw.shouldCollectAttendance,
       isOnlineAttendanceAllowed,
       onlineAttendanceCode: isOnlineAttendanceAllowed
@@ -489,6 +516,10 @@ export class WorkspaceEventsService {
       slots: eventItem.slots?.toString() ?? '',
       autoSubscribe: eventItem.autoSubscribe,
       shouldIssueCertificate: eventItem.shouldIssueCertificate,
+      shouldIssueCertificateForNonPayingAttendees:
+        eventItem.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees:
+        eventItem.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: eventItem.shouldCollectAttendance,
       isOnlineAttendanceAllowed: eventItem.isOnlineAttendanceAllowed,
       onlineAttendanceCode: eventItem.onlineAttendanceCode ?? '',
@@ -512,6 +543,13 @@ export class WorkspaceEventsService {
     this.selectedEventGroupName.set(eventItem.eventGroup?.name ?? '');
     this.selectedEventGroupAllowsCertificates.set(
       eventItem.eventGroup?.shouldIssueCertificate ?? true,
+    );
+    this.selectedEventGroupAllowsNonPayingCertificates.set(
+      eventItem.eventGroup?.shouldIssueCertificateForNonPayingAttendees ?? true,
+    );
+    this.selectedEventGroupAllowsNonSubscribedCertificates.set(
+      eventItem.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees ??
+        true,
     );
     this.eventGroupSearchResults.set([]);
     this.syncCertificateControl();
@@ -584,13 +622,41 @@ export class WorkspaceEventsService {
 
   private syncCertificateControl(): void {
     const certificateControl = this.eventForm.controls.shouldIssueCertificate;
+    const nonPayingCertificateControl =
+      this.eventForm.controls.shouldIssueCertificateForNonPayingAttendees;
+    const nonSubscribedCertificateControl =
+      this.eventForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
     if (!this.selectedEventGroupAllowsCertificates()) {
       certificateControl.setValue(false, { emitEvent: false });
+      nonPayingCertificateControl.setValue(false, { emitEvent: false });
+      nonSubscribedCertificateControl.setValue(false, { emitEvent: false });
       certificateControl.disable({ emitEvent: false });
+      nonPayingCertificateControl.disable({ emitEvent: false });
+      nonSubscribedCertificateControl.disable({ emitEvent: false });
       return;
     }
 
     certificateControl.enable({ emitEvent: false });
+    if (
+      certificateControl.value &&
+      this.selectedEventGroupAllowsNonPayingCertificates()
+    ) {
+      nonPayingCertificateControl.enable({ emitEvent: false });
+    } else {
+      nonPayingCertificateControl.setValue(false, { emitEvent: false });
+      nonPayingCertificateControl.disable({ emitEvent: false });
+    }
+
+    if (
+      certificateControl.value &&
+      this.selectedEventGroupAllowsNonSubscribedCertificates()
+    ) {
+      nonSubscribedCertificateControl.enable({ emitEvent: false });
+      return;
+    }
+
+    nonSubscribedCertificateControl.setValue(false, { emitEvent: false });
+    nonSubscribedCertificateControl.disable({ emitEvent: false });
   }
 
   private getRandomIndex(maxExclusive: number): number {

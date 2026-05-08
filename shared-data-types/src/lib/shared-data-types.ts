@@ -134,6 +134,18 @@ registerEnumType(AttendanceImportMatchType, {
   name: 'AttendanceImportMatchType',
 });
 
+export const AttendanceCategory = {
+  NON_PAYING: 'NON_PAYING',
+  NON_SUBSCRIBED: 'NON_SUBSCRIBED',
+  REGULAR: 'REGULAR',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+export type AttendanceCategory =
+  (typeof AttendanceCategory)[keyof typeof AttendanceCategory];
+registerEnumType(AttendanceCategory, {
+  name: 'AttendanceCategory',
+});
+
 @ObjectType()
 export class AuthenticatedUser {
   @Field(() => String, { nullable: true })
@@ -265,6 +277,12 @@ export class MajorEvent {
   @Field(() => Boolean)
   isPaymentRequired!: boolean;
 
+  @Field(() => Boolean)
+  shouldIssueCertificateForNonPayingAttendees!: boolean;
+
+  @Field(() => Boolean)
+  shouldIssueCertificateForNonSubscribedAttendees!: boolean;
+
   @Field(() => String, { nullable: true })
   additionalPaymentInfo?: string;
 
@@ -300,6 +318,12 @@ export class EventGroup {
 
   @Field(() => Boolean)
   shouldIssueCertificate!: boolean;
+
+  @Field(() => Boolean)
+  shouldIssueCertificateForNonPayingAttendees!: boolean;
+
+  @Field(() => Boolean)
+  shouldIssueCertificateForNonSubscribedAttendees!: boolean;
 
   @Field(() => Boolean)
   shouldIssueCertificateForEachEvent!: boolean;
@@ -396,6 +420,12 @@ export class Event {
 
   @Field(() => Boolean)
   shouldIssueCertificate!: boolean;
+
+  @Field(() => Boolean)
+  shouldIssueCertificateForNonPayingAttendees!: boolean;
+
+  @Field(() => Boolean)
+  shouldIssueCertificateForNonSubscribedAttendees!: boolean;
 
   @Field(() => Boolean)
   shouldCollectAttendance!: boolean;
@@ -511,6 +541,9 @@ export class EventAttendance {
   @Field(() => Event, { nullable: true })
   event?: Event;
 
+  @Field(() => AttendanceCategory)
+  category!: AttendanceCategory;
+
   @Field(() => Date)
   attendedAt!: Date;
 
@@ -540,6 +573,9 @@ export class MajorEventEventAttendanceStatus {
 
   @Field(() => Date, { nullable: true })
   attendedAt?: Date;
+
+  @Field(() => AttendanceCategory)
+  category!: AttendanceCategory;
 }
 
 @ObjectType()
@@ -547,8 +583,8 @@ export class MajorEventUserAttendance {
   @Field(() => String)
   majorEventId!: string;
 
-  @Field(() => String)
-  subscriptionId!: string;
+  @Field(() => String, { nullable: true })
+  subscriptionId?: string;
 
   @Field(() => String)
   personId!: string;
@@ -1075,6 +1111,12 @@ export class MajorEventCreateInput {
   @Field(() => Boolean, { nullable: true })
   isPaymentRequired?: boolean;
 
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
+
   @Field(() => String, { nullable: true })
   additionalPaymentInfo?: string;
 
@@ -1141,6 +1183,12 @@ export class MajorEventUpdateInput {
   @Field(() => Boolean, { nullable: true })
   isPaymentRequired?: boolean;
 
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
+
   @Field(() => String, { nullable: true })
   additionalPaymentInfo?: string;
 
@@ -1175,6 +1223,12 @@ export class EventGroupCreateInput {
   shouldIssueCertificate?: boolean;
 
   @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
   shouldIssueCertificateForEachEvent?: boolean;
 
   @Field(() => Boolean, { nullable: true })
@@ -1206,6 +1260,12 @@ export class EventGroupUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   shouldIssueCertificate?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
 
   @Field(() => Boolean, { nullable: true })
   shouldIssueCertificateForEachEvent?: boolean;
@@ -1355,6 +1415,12 @@ export class EventCreateInput {
   shouldIssueCertificate?: boolean;
 
   @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
   shouldCollectAttendance?: boolean;
 
   @Field(() => Boolean, { nullable: true })
@@ -1455,6 +1521,12 @@ export class EventUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   shouldIssueCertificate?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonPayingAttendees?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean;
 
   @Field(() => Boolean, { nullable: true })
   shouldCollectAttendance?: boolean;

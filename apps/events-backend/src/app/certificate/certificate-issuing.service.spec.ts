@@ -1,4 +1,4 @@
-import { EventType } from '@cacic-eventos/shared-data-types';
+import { CertificateScope, EventType } from '@cacic-eventos/shared-data-types';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
 describe('CertificateIssuingService', () => {
@@ -6,6 +6,76 @@ describe('CertificateIssuingService', () => {
     id: 'config-1',
     certificateTemplateId: 'template-1',
   };
+
+  it('keeps the original issue date when reissuing an unchanged certificate', async () => {
+    const originalIssuedAt = new Date('2026-01-01T00:00:00.000Z');
+    const recipient = {
+      person: {
+        id: 'person-valid',
+        name: 'Valid Person',
+        email: null,
+        identityDocument: null,
+        academicId: null,
+      },
+      events: [],
+    };
+    const certificateConfig = {
+      ...mappedCertificateRecord.config,
+      id: 'config-1',
+      scope: CertificateScope.MAJOR_EVENT,
+      majorEvent: {
+        id: 'major-event-1',
+        name: 'Major Event',
+      },
+      certificateFields: null,
+    };
+    const buildService = new CertificateIssuingService(
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const renderedData = (
+      buildService as unknown as {
+        buildRenderedData(
+          config: unknown,
+          recipient: unknown,
+          issuedAt: Date,
+        ): unknown;
+      }
+    ).buildRenderedData(certificateConfig, recipient, originalIssuedAt);
+    const existingCertificate = {
+      ...mappedCertificateRecord,
+      issuedAt: originalIssuedAt,
+      renderedData,
+      deletedAt: null,
+    };
+    const prisma = {
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue(existingCertificate),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+    const service = new CertificateIssuingService(
+      prisma as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      (
+        service as unknown as {
+          upsertCertificateForRecipient(
+            config: unknown,
+            recipient: unknown,
+          ): Promise<unknown>;
+        }
+      ).upsertCertificateForRecipient(certificateConfig, recipient),
+    ).resolves.toBe(existingCertificate);
+
+    expect(prisma.certificate.create).not.toHaveBeenCalled();
+    expect(prisma.certificate.update).not.toHaveBeenCalled();
+  });
   const mappedCertificateRecord = {
     id: 'certificate-1',
     personId: 'person-valid',
@@ -180,6 +250,146 @@ describe('CertificateIssuingService', () => {
       },
     });
     expect(upsertSpy).not.toHaveBeenCalled();
+  });
+
+  it('refreshes only existing active certificates for a person without deleting ineligible ones', async () => {
+    const prisma = {
+      certificate: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { configId: 'config-1' },
+            { configId: 'config-2' },
+          ]),
+      },
+    };
+    const validation = {
+      normalizeRequiredId: jest.fn().mockReturnValue('person-valid'),
+    };
+    const eligibilityService = {
+      getConfigById: jest
+        .fn()
+        .mockImplementation((configId: string) =>
+          Promise.resolve({ ...config, id: configId }),
+        ),
+      resolveEligibleRecipients: jest
+        .fn()
+        .mockResolvedValueOnce([
+          {
+            person: { id: 'person-valid' },
+            events: [],
+          },
+        ])
+        .mockResolvedValueOnce([]),
+    };
+
+    const service = new CertificateIssuingService(
+      prisma as never,
+      validation as never,
+      eligibilityService as never,
+    );
+    const upsertSpy = jest
+      .spyOn(service as never, 'upsertCertificateForRecipient')
+      .mockResolvedValue(mappedCertificateRecord as never);
+
+    await expect(
+      service.refreshIssuedCertificatesForPerson('person-valid', 'user-1'),
+    ).resolves.toHaveLength(1);
+
+    expect(prisma.certificate.findMany).toHaveBeenCalledWith({
+      where: {
+        personId: 'person-valid',
+        deletedAt: null,
+        config: {
+          deletedAt: null,
+          isActive: true,
+        },
+        person: {
+          deletedAt: null,
+        },
+      },
+      select: {
+        configId: true,
+      },
+      orderBy: {
+        issuedAt: 'asc',
+      },
+    });
+    expect(upsertSpy).toHaveBeenCalledTimes(1);
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'config-1' }),
+      expect.objectContaining({ person: { id: 'person-valid' } }),
+      'user-1',
+    );
+  });
+
+  it('refreshes target certificates from source and target configs after people merge', async () => {
+    const prisma = {
+      certificate: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { configId: 'config-1' },
+            { configId: 'config-2' },
+            { configId: 'config-1' },
+          ]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const validation = {
+      normalizeRequiredId: jest
+        .fn()
+        .mockImplementation((_field: string, value: string) => value),
+    };
+    const eligibilityService = {
+      getConfigById: jest
+        .fn()
+        .mockImplementation((configId: string) =>
+          Promise.resolve({ ...config, id: configId }),
+        ),
+      resolveEligibleRecipients: jest.fn().mockResolvedValue([
+        {
+          person: { id: 'target-person' },
+          events: [],
+        },
+      ]),
+    };
+
+    const service = new CertificateIssuingService(
+      prisma as never,
+      validation as never,
+      eligibilityService as never,
+    );
+    const upsertSpy = jest
+      .spyOn(service as never, 'upsertCertificateForRecipient')
+      .mockResolvedValue(mappedCertificateRecord as never);
+
+    await service.refreshIssuedCertificatesAfterPeopleMerge(
+      'target-person',
+      'source-person',
+      'admin-user',
+    );
+
+    expect(upsertSpy).toHaveBeenCalledTimes(2);
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'config-1' }),
+      expect.objectContaining({ person: { id: 'target-person' } }),
+      'admin-user',
+    );
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'config-2' }),
+      expect.objectContaining({ person: { id: 'target-person' } }),
+      'admin-user',
+    );
+    expect(prisma.certificate.updateMany).toHaveBeenCalledWith({
+      where: {
+        personId: 'source-person',
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: expect.any(Date),
+      },
+    });
   });
 
   it('prints every date for completed grouped minicourse events', () => {

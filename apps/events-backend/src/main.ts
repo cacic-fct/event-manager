@@ -7,6 +7,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { CurrentUserOnlineAttendanceRealtimeService } from './app/current-user/events/attendance-realtime.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -22,6 +23,9 @@ async function bootstrap() {
   app.setGlobalPrefix(globalPrefix);
   const port = process.env.PORT || 3000;
   await app.listen(port);
+  app
+    .get(CurrentUserOnlineAttendanceRealtimeService)
+    .attach(app.getHttpServer());
   Logger.log(
     `🚀 Application is running on: http://localhost:${port}/${globalPrefix}`,
   );

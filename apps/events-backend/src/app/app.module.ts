@@ -20,12 +20,14 @@ import { CertificatesResolver } from './certificate/certificates.resolver';
 import { PublicCertificateValidationService } from './certificate/public-certificate-validation.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { EventAttendancesResolver } from './events/attendances.resolver';
+import { AttendanceCategoryService } from './events/attendance-category.service';
 import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
 import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
 import { CurrentUserEventSubscriptionService } from './current-user/events/subscription.service';
 import { CurrentUserEventAttendanceResolver } from './current-user/events/attendance.resolver';
+import { CurrentUserOnlineAttendanceRealtimeService } from './current-user/events/attendance-realtime.service';
 import { CurrentUserEventSubscriptionsResolver } from './current-user/events/subscriptions.resolver';
 import { CurrentUserMajorEventSubscriptionService } from './current-user/major-events/subscription.service';
 import { CurrentUserMajorEventSubscriptionsResolver } from './current-user/major-events/subscriptions.resolver';
@@ -111,11 +113,13 @@ import { WeatherService } from './weather/weather.service';
     CurrentUserMajorEventSubscriptionsResolver,
     CurrentUserEventSubscriptionsResolver,
     CurrentUserEventAttendanceResolver,
+    CurrentUserOnlineAttendanceRealtimeService,
     CurrentUserSubscriptionFeedResolver,
     DashboardInsightsResolver,
     DashboardInsightsService,
     DashboardInsightsSchedulerService,
     DashboardInsightsProcessor,
+    AttendanceCategoryService,
     EventAttendancesResolver,
     EventSubscriptionsResolver,
     EventLecturersResolver,

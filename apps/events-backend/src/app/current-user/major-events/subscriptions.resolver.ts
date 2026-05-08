@@ -7,6 +7,7 @@ import { CurrentUserEventMapperService } from '../mapper.service';
 import { EventRecord, EVENT_SELECT, GraphqlContext } from '../selects';
 import { CurrentUserMajorEventSubscriptionService } from './subscription.service';
 import { CurrentUserPublicEventService } from '../public-event.service';
+import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import {
   CurrentUserMajorEventFeedItem,
   CurrentUserMajorEventSubscription,
@@ -21,6 +22,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     private readonly mapper: CurrentUserEventMapperService,
     private readonly publicEvents: CurrentUserPublicEventService,
     private readonly majorEventSubscriptions: CurrentUserMajorEventSubscriptionService,
+    private readonly attendanceCategories: AttendanceCategoryService,
   ) {}
 
   @Query(() => [CurrentUserMajorEventSubscription], {
@@ -357,6 +359,12 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         });
       }
 
+      await this.attendanceCategories.refreshForMajorEventPerson(
+        input.majorEventId,
+        person.id,
+        tx,
+      );
+
       const updatedSubscription = await tx.majorEventSubscription.findFirst({
         where: {
           majorEventId: input.majorEventId,
@@ -446,16 +454,24 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       subscription.subscriptionStatus ===
       SubscriptionStatus.RECEIPT_UNDER_REVIEW
         ? subscription
-        : await this.prisma.majorEventSubscription.update({
-            where: {
-              id: subscription.id,
-            },
-            data: {
-              subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
-            },
-            select: this.publicEvents.getMajorEventSubscriptionSelect(
-              paymentInfoTableExists,
-            ),
+        : await this.prisma.$transaction(async (tx) => {
+            const updated = await tx.majorEventSubscription.update({
+              where: {
+                id: subscription.id,
+              },
+              data: {
+                subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
+              },
+              select: this.publicEvents.getMajorEventSubscriptionSelect(
+                paymentInfoTableExists,
+              ),
+            });
+            await this.attendanceCategories.refreshForMajorEventPerson(
+              majorEventId,
+              person.id,
+              tx,
+            );
+            return updated;
           });
 
     const selectedEvents =

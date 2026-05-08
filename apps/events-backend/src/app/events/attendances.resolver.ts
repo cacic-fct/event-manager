@@ -10,7 +10,11 @@ import {
   MajorEventSubscriptionCsvImportResult,
   MajorEventUserAttendance,
 } from '@cacic-eventos/shared-data-types';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import {
   AttendanceCreationMethod,
@@ -20,6 +24,7 @@ import {
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { AttendanceCategoryService } from './attendance-category.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -62,6 +67,8 @@ const MAJOR_EVENT_SELECT = {
   contactInfo: true,
   contactType: true,
   isPaymentRequired: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
   deletedAt: true,
   createdAt: true,
@@ -75,6 +82,8 @@ const EVENT_GROUP_SELECT = {
   name: true,
   emoji: true,
   shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldIssueCertificateForEachEvent: true,
   shouldIssuePartialCertificate: true,
   deletedAt: true,
@@ -111,6 +120,8 @@ const EVENT_RELATION_SELECT = {
   slots: true,
   autoSubscribe: true,
   shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldCollectAttendance: true,
   isOnlineAttendanceAllowed: true,
   onlineAttendanceCode: true,
@@ -129,7 +140,10 @@ const EVENT_RELATION_SELECT = {
 
 @Resolver(() => EventAttendance)
 export class EventAttendancesResolver {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly attendanceCategories: AttendanceCategoryService,
+  ) {}
 
   @Query(() => [EventAttendance], { name: 'eventAttendances' })
   @RequireScopes('event-attendance#read')
@@ -158,6 +172,7 @@ export class EventAttendancesResolver {
         createdAt: true,
         createdById: true,
         createdByMethod: true,
+        category: true,
         person: true,
         event: {
           select: EVENT_RELATION_SELECT,
@@ -181,6 +196,40 @@ export class EventAttendancesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const majorEvent = await this.prisma.majorEvent.findFirst({
+      where: {
+        id: majorEventId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!majorEvent) {
+      throw new NotFoundException(`Major event ${majorEventId} was not found.`);
+    }
+
+    const events = await this.prisma.event.findMany({
+      where: {
+        majorEventId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+      },
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
+
+    if (events.length === 0) {
+      return [];
+    }
+
+    const eventIds = events.map((event) => event.id);
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,
@@ -201,73 +250,32 @@ export class EventAttendancesResolver {
       take,
     });
 
-    if (subscriptions.length === 0) {
-      return [];
-    }
-
-    const personIds = subscriptions.map(
-      (subscription) => subscription.personId,
-    );
-    const eventSubscriptions = await this.prisma.eventSubscription.findMany({
-      where: {
-        personId: { in: personIds },
-        deletedAt: null,
-        event: {
-          majorEventId,
-          deletedAt: null,
-        },
-      },
-      select: {
-        personId: true,
-        eventId: true,
-        event: {
-          select: {
-            id: true,
-            name: true,
-            startDate: true,
-          },
-        },
-      },
-      orderBy: {
-        event: {
-          startDate: 'asc',
-        },
-      },
-    });
-
-    const subscribedEventIds = Array.from(
-      new Set(eventSubscriptions.map((subscription) => subscription.eventId)),
-    );
-    if (subscribedEventIds.length === 0) {
-      return subscriptions.map((subscription) => ({
-        majorEventId: subscription.majorEventId,
-        subscriptionId: subscription.id,
-        personId: subscription.personId,
-        person: subscription.person,
-        subscriptionStatus: subscription.subscriptionStatus,
-        amountPaid: subscription.amountPaid,
-        paymentDate: subscription.paymentDate,
-        paymentTier: subscription.paymentTier,
-        attendances: [],
-      }));
-    }
-
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
-        personId: {
-          in: personIds,
-        },
         eventId: {
-          in: subscribedEventIds,
+          in: eventIds,
         },
+        ...(personId ? { personId } : {}),
       },
       select: {
         personId: true,
         eventId: true,
         attendedAt: true,
+        category: true,
+        person: {
+          include: {
+            user: true,
+          },
+        },
       },
     });
 
+    const personIds = Array.from(
+      new Set([
+        ...subscriptions.map((subscription) => subscription.personId),
+        ...attendances.map((attendance) => attendance.personId),
+      ]),
+    );
     const attendanceByKey = new Map(
       attendances.map((attendance) => [
         `${attendance.personId}:${attendance.eventId}`,
@@ -275,29 +283,33 @@ export class EventAttendancesResolver {
       ]),
     );
 
-    const subscriptionsByPerson = new Map(
-      personIds.map((id) => [
-        id,
-        eventSubscriptions.filter(
-          (subscription) => subscription.personId === id,
-        ),
+    const majorSubscriptionByPerson = new Map(
+      subscriptions.map((subscription) => [
+        subscription.personId,
+        subscription,
       ]),
     );
 
-    return subscriptions.map((subscription) => ({
-      majorEventId: subscription.majorEventId,
-      subscriptionId: subscription.id,
-      personId: subscription.personId,
-      person: subscription.person,
-      subscriptionStatus: subscription.subscriptionStatus,
-      amountPaid: subscription.amountPaid,
-      paymentDate: subscription.paymentDate,
-      paymentTier: subscription.paymentTier,
-      attendances: (subscriptionsByPerson.get(subscription.personId) ?? []).map(
-        (eventSubscription) => {
-          const event = eventSubscription.event;
+    return personIds.map((resolvedPersonId) => {
+      const subscription = majorSubscriptionByPerson.get(resolvedPersonId);
+      const person =
+        subscription?.person ??
+        attendances.find(
+          (attendance) => attendance.personId === resolvedPersonId,
+        )?.person;
+
+      return {
+        majorEventId,
+        subscriptionId: subscription?.id,
+        personId: resolvedPersonId,
+        person,
+        subscriptionStatus: subscription?.subscriptionStatus ?? 'UNKNOWN',
+        amountPaid: subscription?.amountPaid,
+        paymentDate: subscription?.paymentDate,
+        paymentTier: subscription?.paymentTier,
+        attendances: events.map((event) => {
           const attendance = attendanceByKey.get(
-            `${subscription.personId}:${event.id}`,
+            `${resolvedPersonId}:${event.id}`,
           );
           return {
             eventId: event.id,
@@ -305,10 +317,11 @@ export class EventAttendancesResolver {
             eventStartDate: event.startDate,
             attended: attendance != null,
             attendedAt: attendance?.attendedAt,
+            category: attendance?.category ?? 'UNKNOWN',
           };
-        },
-      ),
-    }));
+        }),
+      };
+    });
   }
 
   @Query(() => EventAttendance, { name: 'eventAttendance' })
@@ -331,6 +344,7 @@ export class EventAttendancesResolver {
         createdAt: true,
         createdById: true,
         createdByMethod: true,
+        category: true,
         person: true,
         event: {
           select: EVENT_RELATION_SELECT,
@@ -349,16 +363,129 @@ export class EventAttendancesResolver {
 
   @Mutation(() => EventAttendance, { name: 'createEventAttendance' })
   @RequireScopes('event-attendance#edit')
-  createEventAttendance(
+  async createEventAttendance(
     @Args('input', { type: () => EventAttendanceCreateInput })
     input: EventAttendanceCreateInput,
   ) {
-    return this.prisma.eventAttendance.create({
-      data: {
-        ...input,
-        createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+    return this.prisma.$transaction(async (tx) => {
+      await tx.eventAttendance.create({
+        data: {
+          ...input,
+          createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+        },
+      });
+      await this.attendanceCategories.refreshForAttendance(
+        input.personId,
+        input.eventId,
+        tx,
+      );
+      return tx.eventAttendance.findUniqueOrThrow({
+        where: {
+          personId_eventId: {
+            personId: input.personId,
+            eventId: input.eventId,
+          },
+        },
+        select: {
+          personId: true,
+          eventId: true,
+          attendedAt: true,
+          createdAt: true,
+          createdById: true,
+          createdByMethod: true,
+          category: true,
+        },
+      });
+    });
+  }
+
+  @Mutation(() => EventAttendance, {
+    name: 'createEventAttendanceFromAztecCode',
+  })
+  @RequireScopes('event-attendance#edit')
+  async createEventAttendanceFromAztecCode(
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Args('code', { type: () => String }) code: string,
+    @Context() context: GraphqlContext,
+  ) {
+    const userId = this.parseUserAztecCode(code);
+    if (!userId) {
+      throw new BadRequestException('Código Aztec incompatível.');
+    }
+
+    const event = await this.prisma.event.findFirst({
+      where: {
+        id: eventId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
       },
     });
+    if (!event) {
+      throw new NotFoundException(`Event ${eventId} was not found.`);
+    }
+
+    const person = await this.prisma.people.findFirst({
+      where: {
+        userId,
+        deletedAt: null,
+        mergedIntoId: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (!person) {
+      throw new NotFoundException(`Person for user ${userId} was not found.`);
+    }
+
+    const createdById =
+      context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.eventAttendance.create({
+          data: {
+            eventId,
+            personId: person.id,
+            createdById,
+            createdByMethod: AttendanceCreationMethod.SCANNER,
+          },
+        });
+        await this.attendanceCategories.refreshForAttendance(
+          person.id,
+          eventId,
+          tx,
+        );
+        return tx.eventAttendance.findUniqueOrThrow({
+          where: {
+            personId_eventId: {
+              personId: person.id,
+              eventId,
+            },
+          },
+          select: {
+            personId: true,
+            eventId: true,
+            attendedAt: true,
+            createdAt: true,
+            createdById: true,
+            createdByMethod: true,
+            category: true,
+          },
+        });
+      });
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Presença já registrada para este evento.');
+      }
+
+      throw error;
+    }
   }
 
   @Mutation(() => EventAttendanceCsvImportResult, {
@@ -443,16 +570,25 @@ export class EventAttendancesResolver {
 
     const createdById =
       context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+    const createdPersonIds = Array.from(personIdsToCreate);
     const createResult =
-      personIdsToCreate.size > 0
-        ? await this.prisma.eventAttendance.createMany({
-            data: Array.from(personIdsToCreate).map((personId) => ({
-              personId,
-              eventId: input.eventId,
-              createdById,
-              createdByMethod: AttendanceCreationMethod.CSV_IMPORT,
-            })),
-            skipDuplicates: true,
+      createdPersonIds.length > 0
+        ? await this.prisma.$transaction(async (tx) => {
+            const result = await tx.eventAttendance.createMany({
+              data: createdPersonIds.map((personId) => ({
+                personId,
+                eventId: input.eventId,
+                createdById,
+                createdByMethod: AttendanceCreationMethod.CSV_IMPORT,
+              })),
+              skipDuplicates: true,
+            });
+            await this.attendanceCategories.refreshForEventPersons(
+              [input.eventId],
+              createdPersonIds,
+              tx,
+            );
+            return result;
           })
         : { count: 0 };
 
@@ -663,6 +799,12 @@ export class EventAttendancesResolver {
             })),
           });
         }
+
+        await this.attendanceCategories.refreshForMajorEventPerson(
+          input.majorEventId,
+          personId,
+          tx,
+        );
       });
     }
 
@@ -685,12 +827,22 @@ export class EventAttendancesResolver {
     @Args('input', { type: () => EventAttendanceUpdateInput })
     input: EventAttendanceUpdateInput,
   ) {
-    const { count } = await this.prisma.eventAttendance.updateMany({
-      where: {
+    const { count } = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.eventAttendance.updateMany({
+        where: {
+          personId,
+          eventId,
+        },
+        data: input,
+      });
+
+      await this.attendanceCategories.refreshForAttendance(
         personId,
         eventId,
-      },
-      data: input,
+        tx,
+      );
+
+      return result;
     });
 
     if (count === 0) {
@@ -712,6 +864,8 @@ export class EventAttendancesResolver {
         attendedAt: true,
         createdAt: true,
         createdById: true,
+        createdByMethod: true,
+        category: true,
         person: true,
         event: {
           select: EVENT_RELATION_SELECT,
@@ -1069,6 +1223,16 @@ export class EventAttendancesResolver {
     }
 
     return AttendanceImportMatchType.FULL_NAME;
+  }
+
+  private parseUserAztecCode(code: string): string | null {
+    const trimmedCode = code.trim();
+    if (!trimmedCode.startsWith('user:')) {
+      return null;
+    }
+
+    const userId = trimmedCode.slice('user:'.length).trim();
+    return userId.length > 0 ? userId : null;
   }
 
   private looksLikeIdentityDocument(value: string): boolean {

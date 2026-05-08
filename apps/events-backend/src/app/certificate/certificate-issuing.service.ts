@@ -188,6 +188,99 @@ export class CertificateIssuingService {
     return certificates.map(mapCertificate);
   }
 
+  async refreshIssuedCertificatesForPerson(
+    personId: string,
+    issuedById?: string,
+  ): Promise<Certificate[]> {
+    const normalizedPersonId = this.validation.normalizeRequiredId(
+      'personId',
+      personId,
+    );
+    const existingCertificates = await this.prisma.certificate.findMany({
+      where: {
+        personId: normalizedPersonId,
+        deletedAt: null,
+        config: {
+          deletedAt: null,
+          isActive: true,
+        },
+        person: {
+          deletedAt: null,
+        },
+      },
+      select: {
+        configId: true,
+      },
+      orderBy: {
+        issuedAt: 'asc',
+      },
+    });
+
+    if (existingCertificates.length === 0) {
+      return [];
+    }
+
+    return this.refreshCertificateConfigsForPerson(
+      normalizedPersonId,
+      existingCertificates.map((certificate) => certificate.configId),
+      issuedById,
+    );
+  }
+
+  async refreshIssuedCertificatesAfterPeopleMerge(
+    targetPersonId: string,
+    sourcePersonId: string,
+    issuedById?: string,
+  ): Promise<Certificate[]> {
+    const normalizedTargetPersonId = this.validation.normalizeRequiredId(
+      'targetPersonId',
+      targetPersonId,
+    );
+    const normalizedSourcePersonId = this.validation.normalizeRequiredId(
+      'sourcePersonId',
+      sourcePersonId,
+    );
+    const mergedCertificates = await this.prisma.certificate.findMany({
+      where: {
+        personId: {
+          in: [normalizedTargetPersonId, normalizedSourcePersonId],
+        },
+        deletedAt: null,
+        config: {
+          deletedAt: null,
+          isActive: true,
+        },
+      },
+      select: {
+        configId: true,
+      },
+      orderBy: {
+        issuedAt: 'asc',
+      },
+    });
+    const configIds = [
+      ...new Set(mergedCertificates.map((certificate) => certificate.configId)),
+    ];
+
+    const refreshedCertificates = await this.refreshCertificateConfigsForPerson(
+      normalizedTargetPersonId,
+      configIds,
+      issuedById,
+    );
+
+    await this.prisma.certificate.updateMany({
+      where: {
+        personId: normalizedSourcePersonId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    return refreshedCertificates;
+  }
+
   async deleteCertificate(certificateId: string): Promise<DeletionResult> {
     const normalizedCertificateId = this.validation.normalizeRequiredId(
       'certificateId',
@@ -215,34 +308,120 @@ export class CertificateIssuingService {
     };
   }
 
+  private async refreshIssuedCertificateForPersonConfig(
+    configId: string,
+    personId: string,
+    issuedById?: string,
+  ): Promise<CertificateRecord | null> {
+    const config = await this.eligibilityService.getConfigById(configId);
+    const recipients = await this.eligibilityService.resolveEligibleRecipients(
+      config,
+      personId,
+    );
+    const recipient = recipients.find((item) => item.person.id === personId);
+    if (!recipient) {
+      return null;
+    }
+
+    return this.upsertCertificateForRecipient(config, recipient, issuedById);
+  }
+
+  private async refreshCertificateConfigsForPerson(
+    personId: string,
+    configIds: string[],
+    issuedById?: string,
+  ): Promise<Certificate[]> {
+    if (configIds.length === 0) {
+      return [];
+    }
+
+    const refreshedCertificates: CertificateRecord[] = [];
+    for (
+      let index = 0;
+      index < configIds.length;
+      index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE
+    ) {
+      const batch = configIds.slice(
+        index,
+        index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE,
+      );
+      const refreshedBatch = await Promise.all(
+        batch.map((configId) =>
+          this.refreshIssuedCertificateForPersonConfig(
+            configId,
+            personId,
+            issuedById,
+          ),
+        ),
+      );
+      refreshedCertificates.push(
+        ...refreshedBatch.filter(
+          (certificate): certificate is CertificateRecord =>
+            certificate !== null,
+        ),
+      );
+    }
+
+    return refreshedCertificates.map(mapCertificate);
+  }
+
   private async upsertCertificateForRecipient(
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
     issuedById?: string,
   ) {
-    const now = new Date();
-    const renderedData = this.buildRenderedData(config, recipient);
-
-    return this.prisma.certificate.upsert({
+    const existingCertificate = await this.prisma.certificate.findUnique({
       where: {
         personId_configId: {
           personId: recipient.person.id,
           configId: config.id,
         },
       },
-      create: {
+      select: CERTIFICATE_SELECT,
+    });
+    const now = new Date();
+    const currentRenderedData = existingCertificate
+      ? this.buildRenderedData(config, recipient, existingCertificate.issuedAt)
+      : null;
+    const hasChanges =
+      !existingCertificate ||
+      existingCertificate.deletedAt !== null ||
+      existingCertificate.certificateTemplateId !==
+        config.certificateTemplateId ||
+      !this.isSameJson(existingCertificate.renderedData, currentRenderedData);
+
+    if (existingCertificate && !hasChanges) {
+      return existingCertificate;
+    }
+
+    const issuedAt = hasChanges ? now : (existingCertificate?.issuedAt ?? now);
+    const renderedData = this.buildRenderedData(config, recipient, issuedAt);
+
+    if (!existingCertificate) {
+      return this.prisma.certificate.create({
+        data: {
+          personId: recipient.person.id,
+          configId: config.id,
+          renderedData,
+          certificateTemplateId: config.certificateTemplateId,
+          issuedById: issuedById ?? null,
+          issuedAt,
+        },
+        select: CERTIFICATE_SELECT,
+      });
+    }
+
+    return this.prisma.certificate.update({
+      where: {
+        id: existingCertificate.id,
+      },
+      data: {
         personId: recipient.person.id,
         configId: config.id,
         renderedData,
         certificateTemplateId: config.certificateTemplateId,
         issuedById: issuedById ?? null,
-        issuedAt: now,
-      },
-      update: {
-        renderedData,
-        certificateTemplateId: config.certificateTemplateId,
-        issuedById: issuedById ?? null,
-        issuedAt: now,
+        issuedAt,
         deletedAt: null,
       },
       select: CERTIFICATE_SELECT,
@@ -252,6 +431,7 @@ export class CertificateIssuingService {
   private buildRenderedData(
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
+    issuedAt: Date,
   ): Prisma.InputJsonObject {
     const totalCreditMinutes = recipient.events.reduce(
       (total, event) => total + (event.creditMinutes ?? 0),
@@ -265,8 +445,6 @@ export class CertificateIssuingService {
           ? config.eventGroup
           : config.majorEvent;
     const targetName = target?.name ?? '';
-    const issuedAt = new Date();
-
     return {
       scope: config.scope,
       issuedTo: config.issuedTo,
@@ -305,6 +483,13 @@ export class CertificateIssuingService {
         issuedAt,
       ),
     };
+  }
+
+  private isSameJson(
+    left: Prisma.JsonValue | Prisma.InputJsonValue,
+    right: Prisma.JsonValue | Prisma.InputJsonValue | null,
+  ): boolean {
+    return JSON.stringify(left) === JSON.stringify(right);
   }
 
   private buildExampleTemplateData(

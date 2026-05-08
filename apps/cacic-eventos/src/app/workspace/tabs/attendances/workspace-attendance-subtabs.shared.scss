@@ -90,6 +90,44 @@
   margin-top: 0.2rem;
 }
 
+.categorized-list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.category-heading {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.category-heading:first-child {
+  border-top: 0;
+  margin-top: 0;
+}
+
+.category-heading h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.category-heading span {
+  color: var(--mat-sys-on-surface-variant);
+  display: block;
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
+}
+
+.category-NON_PAYING mat-icon,
+.category-NON_PAYING h4 {
+  color: var(--mat-sys-error);
+}
+
+.category-NON_SUBSCRIBED h4 {
+  color: var(--mat-sys-tertiary);
+}
+
 .event-result-list {
   margin-top: 0.75rem;
 }

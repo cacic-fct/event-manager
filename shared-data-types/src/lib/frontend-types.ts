@@ -21,6 +21,11 @@ export type SubscriptionStatus =
   | 'REJECTED_GENERIC'
   | 'CONFIRMED'
   | 'CANCELED';
+export type AttendanceCategory =
+  | 'NON_PAYING'
+  | 'NON_SUBSCRIBED'
+  | 'REGULAR'
+  | 'UNKNOWN';
 
 export interface PaymentInfo {
   id: string;
@@ -48,6 +53,8 @@ export interface MajorEvent {
   contactInfo?: string | null;
   contactType?: ContactType | null;
   isPaymentRequired: boolean;
+  shouldIssueCertificateForNonPayingAttendees: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees: boolean;
   additionalPaymentInfo?: string | null;
   paymentInfo?: PaymentInfo | null;
   deletedAt?: string | null;
@@ -62,6 +69,8 @@ export interface EventGroup {
   name: string;
   emoji: string;
   shouldIssueCertificate: boolean;
+  shouldIssueCertificateForNonPayingAttendees: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees: boolean;
   shouldIssueCertificateForEachEvent: boolean;
   shouldIssuePartialCertificate: boolean;
   deletedAt?: string | null;
@@ -153,6 +162,8 @@ export interface Event {
   slots?: number | null;
   autoSubscribe: boolean;
   shouldIssueCertificate: boolean;
+  shouldIssueCertificateForNonPayingAttendees: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees: boolean;
   shouldCollectAttendance: boolean;
   isOnlineAttendanceAllowed: boolean;
   onlineAttendanceCode?: string | null;
@@ -185,6 +196,8 @@ export interface PublicMajorEvent {
   contactInfo?: string | null;
   contactType?: ContactType | null;
   isPaymentRequired?: boolean | null;
+  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
   additionalPaymentInfo?: string | null;
   shouldIssueCertificate?: boolean | null;
 }
@@ -196,6 +209,8 @@ export interface PublicEventGroup {
   shouldIssueCertificateForEachEvent?: boolean | null;
   shouldIssuePartialCertificate?: boolean | null;
   shouldIssueCertificate?: boolean | null;
+  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
 }
 
 export interface PublicEvent {
@@ -218,6 +233,8 @@ export interface PublicEvent {
   allowSubscription?: boolean | null;
   slots?: number | null;
   shouldIssueCertificate?: boolean | null;
+  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
+  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
   shouldCollectAttendance?: boolean | null;
   isOnlineAttendanceAllowed?: boolean | null;
   onlineAttendanceStartDate?: string | null;
@@ -261,6 +278,7 @@ export interface EventAttendance {
   eventId: string;
   person?: Person | null;
   event?: Event | null;
+  category: AttendanceCategory;
   attendedAt: string;
   createdAt: string;
   createdById?: string | null;
@@ -333,6 +351,27 @@ export interface CurrentUserMajorEventSubscription {
   paymentDate?: string | null;
   paymentTier?: string | null;
   selectedEvents: Event[];
+}
+
+export interface MajorEventEventAttendanceStatus {
+  eventId: string;
+  eventName: string;
+  eventStartDate?: string | null;
+  attended: boolean;
+  attendedAt?: string | null;
+  category: AttendanceCategory;
+}
+
+export interface MajorEventUserAttendance {
+  majorEventId: string;
+  subscriptionId?: string | null;
+  personId: string;
+  person?: Person | null;
+  subscriptionStatus: string;
+  amountPaid?: number | null;
+  paymentDate?: string | null;
+  paymentTier?: string | null;
+  attendances: MajorEventEventAttendanceStatus[];
 }
 
 export interface CurrentUserMajorEventSubscriptionRecord {

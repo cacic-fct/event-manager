@@ -137,6 +137,16 @@
             Emitir certificado
           </mat-checkbox>
           <mat-checkbox
+            formControlName="shouldIssueCertificateForNonPayingAttendees"
+          >
+            Emitir certificados para presentes não pagantes?
+          </mat-checkbox>
+          <mat-checkbox
+            formControlName="shouldIssueCertificateForNonSubscribedAttendees"
+          >
+            Emitir certificados para presentes não inscritos?
+          </mat-checkbox>
+          <mat-checkbox
             formControlName="shouldIssueCertificateForEachEvent"
             [disabled]="workspace.selectedEventGroupHasMajorEventEvents()"
           >

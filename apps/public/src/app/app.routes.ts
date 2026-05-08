@@ -41,6 +41,22 @@ export const appRoutes: Route[] = [
     title: 'Evento',
   },
   {
+    path: 'attendance/register',
+    loadComponent: () =>
+      import('./attendance/online-attendance-list.component').then(
+        (m) => m.OnlineAttendanceListComponent,
+      ),
+    title: 'Confirmar presença',
+  },
+  {
+    path: 'attendance/register/:eventId',
+    loadComponent: () =>
+      import('./attendance/online-attendance-code.component').then(
+        (m) => m.OnlineAttendanceCodeComponent,
+      ),
+    title: 'Confirmar presença',
+  },
+  {
     path: 'home',
     loadComponent: () =>
       import('./landing/login-page.component').then(

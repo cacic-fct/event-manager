@@ -133,6 +133,30 @@ export class EventGroupsResolver {
         },
         data: {
           shouldIssueCertificate: false,
+          shouldIssueCertificateForNonPayingAttendees: false,
+          shouldIssueCertificateForNonSubscribedAttendees: false,
+        },
+      });
+    }
+
+    if (
+      normalizedInput.shouldIssueCertificateForNonPayingAttendees === false ||
+      normalizedInput.shouldIssueCertificateForNonSubscribedAttendees === false
+    ) {
+      await this.prisma.event.updateMany({
+        where: {
+          eventGroupId: id,
+          deletedAt: null,
+        },
+        data: {
+          ...(normalizedInput.shouldIssueCertificateForNonPayingAttendees ===
+          false
+            ? { shouldIssueCertificateForNonPayingAttendees: false }
+            : {}),
+          ...(normalizedInput.shouldIssueCertificateForNonSubscribedAttendees ===
+          false
+            ? { shouldIssueCertificateForNonSubscribedAttendees: false }
+            : {}),
         },
       });
     }
@@ -181,6 +205,8 @@ export class EventGroupsResolver {
     if (input.shouldIssueCertificate === false) {
       return {
         ...input,
+        shouldIssueCertificateForNonPayingAttendees: false,
+        shouldIssueCertificateForNonSubscribedAttendees: false,
         shouldIssueCertificateForEachEvent: false,
         shouldIssuePartialCertificate: false,
       };

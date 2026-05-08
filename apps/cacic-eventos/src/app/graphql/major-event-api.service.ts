@@ -135,6 +135,7 @@ export class MajorEventApiService {
               eventStartDate
               attended
               attendedAt
+              category
             }
           }
         }`,

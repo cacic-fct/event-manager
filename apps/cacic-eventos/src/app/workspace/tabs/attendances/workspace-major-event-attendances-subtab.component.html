@@ -61,27 +61,49 @@
       }
     </form>
 
-    <mat-list class="subscription-list">
+    <mat-list class="subscription-list categorized-list">
       @for (
-        subscription of workspace.majorEventUserAttendances();
-        track subscription.subscriptionId
+        group of workspace.majorEventUserAttendanceGroups();
+        track group.category
       ) {
-        <mat-list-item
-          (click)="workspace.selectMajorEventUserAttendance(subscription)"
-          [class.selected-list-item]="
-            workspace.selectedMajorEventUserAttendance()?.subscriptionId ===
-            subscription.subscriptionId
-          "
+        <div
+          class="category-heading"
+          [class.category-NON_PAYING]="group.category === 'NON_PAYING'"
+          [class.category-NON_SUBSCRIBED]="group.category === 'NON_SUBSCRIBED'"
+          [class.category-REGULAR]="group.category === 'REGULAR'"
+          [class.category-UNKNOWN]="group.category === 'UNKNOWN'"
         >
-          <span matListItemTitle class="attendance-item-title">
-            {{ subscription.person?.name ?? subscription.personId }}
-          </span>
-          <span matListItemLine class="attendance-item-line">
-            {{ subscription.subscriptionStatus }} ·
-            {{ subscription.amountPaid ?? '-' }} ·
-            {{ subscription.paymentTier ?? '-' }}
-          </span>
-        </mat-list-item>
+          <h4>{{ group.label }}</h4>
+          <span>{{ group.description }}</span>
+        </div>
+
+        @for (
+          subscription of group.attendances;
+          track subscription.subscriptionId ?? subscription.personId
+        ) {
+          <mat-list-item
+            (click)="workspace.selectMajorEventUserAttendance(subscription)"
+            [class.selected-list-item]="
+              workspace.selectedMajorEventUserAttendance()?.personId ===
+              subscription.personId
+            "
+            [class.category-NON_PAYING]="group.category === 'NON_PAYING'"
+            [class.category-NON_SUBSCRIBED]="
+              group.category === 'NON_SUBSCRIBED'
+            "
+            [class.category-REGULAR]="group.category === 'REGULAR'"
+            [class.category-UNKNOWN]="group.category === 'UNKNOWN'"
+          >
+            <span matListItemTitle class="attendance-item-title">
+              {{ subscription.person?.name ?? subscription.personId }}
+            </span>
+            <span matListItemLine class="attendance-item-line">
+              {{ subscription.subscriptionStatus }} ·
+              {{ subscription.amountPaid ?? '-' }} ·
+              {{ subscription.paymentTier ?? '-' }}
+            </span>
+          </mat-list-item>
+        }
       } @empty {
         <mat-list-item>
           <span matListItemTitle>Nenhuma inscrição carregada</span>
@@ -130,6 +152,14 @@
               {{ attendanceStatus.attended ? 'Presente' : 'Ausente' }}
               @if (attendanceStatus.attendedAt) {
                 · {{ attendanceStatus.attendedAt | date: 'short' }}
+              }
+              @if (attendanceStatus.attended) {
+                ·
+                {{
+                  workspace.getAttendanceCategoryLabel(
+                    attendanceStatus.category
+                  )
+                }}
               }
             </span>
             <div matListItemMeta>

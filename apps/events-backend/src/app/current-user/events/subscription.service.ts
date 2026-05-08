@@ -16,6 +16,7 @@ import {
 } from '../selects';
 import { CurrentUserEventGroupSubscription } from '../models';
 import { PUBLIC_EVENT_SELECT, PublicEvent } from '../../public-events/models';
+import { AttendanceCategoryService } from '../../events/attendance-category.service';
 
 export type CurrentUserSubscribedItem =
   | {
@@ -37,6 +38,7 @@ export class CurrentUserEventSubscriptionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mapper: CurrentUserEventMapperService,
+    private readonly attendanceCategories: AttendanceCategoryService,
   ) {}
 
   getEventSubscriptionError(
@@ -143,6 +145,11 @@ export class CurrentUserEventSubscriptionService {
               createdByMethod: 'SELF_SUBSCRIPTION',
             },
           });
+          await this.attendanceCategories.refreshForAttendance(
+            personId,
+            targetEvent.id,
+            tx,
+          );
         }
 
         return targetEvent;
@@ -416,6 +423,11 @@ export class CurrentUserEventSubscriptionService {
           createdByMethod: 'SELF_SUBSCRIPTION',
         })),
       });
+      await this.attendanceCategories.refreshForEventPersons(
+        eventsToCreate.map((event) => event.id),
+        [personId],
+        tx,
+      );
     }
 
     const events = await tx.eventSubscription.findMany({
