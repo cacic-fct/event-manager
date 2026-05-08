@@ -60,6 +60,8 @@ export class KeycloakAuthService {
     process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI;
   private readonly defaultPostLoginRedirectUri =
     process.env.KEYCLOAK_POST_LOGIN_REDIRECT_URI ?? 'http://localhost:4200';
+  private readonly allowedPostLoginRedirectOrigins =
+    this.readAllowedPostLoginRedirectOrigins();
 
   private readonly cacheTtlMs = this.parseCacheTtlMs(
     process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS,
@@ -117,10 +119,15 @@ export class KeycloakAuthService {
 
   buildAuthorizationUrl(options?: {
     redirectUri?: string;
+    returnTo?: string;
     state?: string;
     scope?: string;
     prompt?: string;
   }): string {
+    const state = this.buildAuthorizationState({
+      returnTo: options?.returnTo,
+      state: options?.state,
+    });
     const params = new URLSearchParams({
       client_id: this.clientId,
       redirect_uri: options?.redirectUri ?? this.defaultRedirectUri,
@@ -129,7 +136,7 @@ export class KeycloakAuthService {
         options?.scope ??
         'openid profile email identity-document academic-profile',
       kc_idp_hint: 'google',
-      ...(options?.state ? { state: options.state } : {}),
+      ...(state ? { state } : {}),
       ...(options?.prompt ? { prompt: options.prompt } : {}),
     });
 
@@ -406,8 +413,108 @@ export class KeycloakAuthService {
     };
   }
 
-  getPostLoginRedirectUri(): string {
-    return this.defaultPostLoginRedirectUri;
+  getPostLoginRedirectUri(state?: string): string {
+    const returnTo = this.readReturnToFromState(state);
+    return returnTo ?? this.defaultPostLoginRedirectUri;
+  }
+
+  private buildAuthorizationState(options?: {
+    returnTo?: string;
+    state?: string;
+  }): string | undefined {
+    const returnTo = this.normalizePostLoginReturnTo(options?.returnTo);
+    if (!returnTo && !options?.state) {
+      return undefined;
+    }
+
+    return Buffer.from(
+      JSON.stringify({
+        ...(returnTo ? { returnTo } : {}),
+        ...(options?.state ? { state: options.state } : {}),
+      }),
+      'utf8',
+    ).toString('base64url');
+  }
+
+  private readReturnToFromState(state?: string): string | undefined {
+    if (!state) {
+      return undefined;
+    }
+
+    try {
+      const decodedState = JSON.parse(
+        Buffer.from(state, 'base64url').toString('utf8'),
+      );
+
+      if (!this.isRecord(decodedState)) {
+        return undefined;
+      }
+
+      const returnTo = this.readStringClaim(decodedState, 'returnTo');
+      return this.normalizePostLoginReturnTo(returnTo);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private normalizePostLoginReturnTo(returnTo?: string): string | undefined {
+    const normalizedReturnTo = returnTo?.trim();
+    if (!normalizedReturnTo) {
+      return undefined;
+    }
+
+    if (normalizedReturnTo.startsWith('//')) {
+      return undefined;
+    }
+
+    if (normalizedReturnTo.startsWith('/')) {
+      return this.isAllowedAppPath(normalizedReturnTo)
+        ? normalizedReturnTo
+        : undefined;
+    }
+
+    try {
+      const returnToUrl = new URL(normalizedReturnTo);
+      return this.allowedPostLoginRedirectOrigins.has(returnToUrl.origin) &&
+        this.isAllowedAppPath(returnToUrl.pathname)
+        ? returnToUrl.toString()
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private isAllowedAppPath(pathname: string): boolean {
+    return pathname === '/app' || pathname === '/admin'
+      ? true
+      : pathname.startsWith('/app/') || pathname.startsWith('/admin/');
+  }
+
+  private readAllowedPostLoginRedirectOrigins(): Set<string> {
+    const origins = new Set<string>();
+    this.addUrlOrigin(origins, this.defaultPostLoginRedirectUri);
+
+    for (const origin of (
+      process.env.KEYCLOAK_ALLOWED_POST_LOGIN_REDIRECT_ORIGINS ?? ''
+    ).split(',')) {
+      this.addUrlOrigin(origins, origin.trim());
+    }
+
+    return origins;
+  }
+
+  private addUrlOrigin(origins: Set<string>, rawUrl?: string): void {
+    if (!rawUrl) {
+      return;
+    }
+
+    try {
+      origins.add(new URL(rawUrl).origin);
+    } catch {
+      this.logger.warn(
+        `Ignoring invalid Keycloak post-login redirect origin: ${rawUrl}`,
+      );
+    }
   }
 
   private async getOrCreatePrincipal(

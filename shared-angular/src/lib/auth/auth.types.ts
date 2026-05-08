@@ -101,3 +101,8 @@ export type AuthRefreshResult = {
    */
   sessionExpiresAt?: number;
 };
+
+export type LoginOptions = {
+  returnTo?: string;
+  prompt?: string;
+};

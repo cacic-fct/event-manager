@@ -32,6 +32,7 @@ export class AuthController {
   @Public()
   getLoginUrl(
     @Query('redirectUri') redirectUri?: string,
+    @Query('returnTo') returnTo?: string,
     @Query('state') state?: string,
     @Query('scope') scope?: string,
     @Query('prompt') prompt?: string,
@@ -39,6 +40,7 @@ export class AuthController {
     return {
       authorizationUrl: this.keycloakAuthService.buildAuthorizationUrl({
         redirectUri,
+        returnTo,
         state,
         scope,
         prompt,
@@ -51,12 +53,14 @@ export class AuthController {
   redirectToLogin(
     @Res() response: Response,
     @Query('redirectUri') redirectUri?: string,
+    @Query('returnTo') returnTo?: string,
     @Query('state') state?: string,
     @Query('scope') scope?: string,
     @Query('prompt') prompt?: string,
   ): void {
     const authorizationUrl = this.keycloakAuthService.buildAuthorizationUrl({
       redirectUri,
+      returnTo,
       state,
       scope,
       prompt,
@@ -73,9 +77,12 @@ export class AuthController {
     @Query('code') code?: string,
     @Query('error') error?: string,
     @Query('redirectUri') redirectUri?: string,
+    @Query('state') state?: string,
   ): Promise<void> {
     if (error) {
-      response.redirect(this.keycloakAuthService.getPostLoginRedirectUri());
+      response.redirect(
+        this.keycloakAuthService.getPostLoginRedirectUri(state),
+      );
       return;
     }
 
@@ -97,7 +104,7 @@ export class AuthController {
       path: '/',
     });
 
-    response.redirect(this.keycloakAuthService.getPostLoginRedirectUri());
+    response.redirect(this.keycloakAuthService.getPostLoginRedirectUri(state));
   }
 
   @Post('logout')
