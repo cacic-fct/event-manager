@@ -1,0 +1,38 @@
+.attendance-list-page {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 720px;
+  min-height: 100%;
+  padding: 16px 8px 40px;
+}
+
+.emoji-frame {
+  align-items: center;
+  background: var(--mat-sys-surface-container-high);
+  border-radius: 8px;
+  display: flex;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.twemoji {
+  height: 28px;
+  width: 28px;
+}
+
+.empty-section {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 64px 16px;
+  text-align: center;
+}
+
+.empty-section mat-icon {
+  font-size: 40px;
+  height: 40px;
+  width: 40px;
+}

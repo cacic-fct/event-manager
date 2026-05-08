@@ -1,0 +1,51 @@
+<mat-toolbar>
+  <button mat-icon-button type="button" (click)="back()" aria-label="Voltar">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Presenças pendentes</span>
+</mat-toolbar>
+
+<main class="attendance-list-page">
+  @let currentState = state();
+  @if (currentState.status === 'loading') {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  } @else if (currentState.status === 'error') {
+    <section class="empty-section" aria-live="polite">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ currentState.message }}</p>
+    </section>
+  } @else if (currentState.items.length === 0) {
+    <section class="empty-section" aria-live="polite">
+      <mat-icon aria-hidden="true">done_all</mat-icon>
+      <p>Nenhuma presença pendente.</p>
+      <button mat-flat-button type="button" (click)="back()">Voltar</button>
+    </section>
+  } @else {
+    <mat-list>
+      @for (item of currentState.items; track item.eventId) {
+        <a
+          mat-list-item
+          [routerLink]="['/attendance/register', item.eventId]"
+          [queryParams]="{ returnUrl: returnUrl() }"
+          [attr.aria-label]="'Confirmar presença em ' + item.event.name"
+        >
+          <div matListItemIcon class="emoji-frame">
+            <img
+              class="twemoji"
+              [src]="emoji.getTwemojiUrl(item.event.emoji)"
+              [alt]="item.event.emoji"
+            />
+          </div>
+          <div matListItemTitle>{{ item.event.name }}</div>
+          <div matListItemLine>
+            {{ item.event.startDate | date: 'dd/MM HH:mm' }}
+          </div>
+          @if (item.event.majorEvent) {
+            <div matListItemLine>{{ item.event.majorEvent.name }}</div>
+          }
+          <mat-icon matListItemMeta>chevron_right</mat-icon>
+        </a>
+      }
+    </mat-list>
+  }
+</main>
