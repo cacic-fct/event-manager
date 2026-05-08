@@ -2,7 +2,7 @@ import { Route } from '@angular/router';
 
 export const appRoutes: Route[] = [
   {
-    path: 'development-tools',
+    path: 'dev-tools',
     loadChildren: () =>
       import('./development-tools/development-tools.routes').then(
         (m) => m.routes,

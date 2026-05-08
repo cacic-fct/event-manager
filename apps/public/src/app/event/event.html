@@ -52,8 +52,6 @@
   <mat-chip-set aria-label="Resumo do evento">
     @if (event.majorEvent) {
     <mat-chip>{{ event.majorEvent.name }}</mat-chip>
-    } @if (event.eventGroup) {
-    <mat-chip>{{ event.eventGroup.name }}</mat-chip>
     } @if (data.currentUserSubscription) {
     <mat-chip>
       <mat-icon matChipAvatar>check</mat-icon>
