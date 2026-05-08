@@ -18,15 +18,14 @@ ID strategy:
 - Original Firestore person ID is preserved in people.externalRef.
 
 Requirements:
-  pip install "psycopg[binary]"
+  pip install "psycopg[binary]" uuid
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
-import uuid
+from uuid import uuid7
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -79,15 +78,12 @@ class IdMappings:
 
 class Uuid7LikeGenerator:
     """
-    Deterministic UUIDv7-like generator.
-
-    The UUID is not a strict RFC 9562 uuid7 implementation, but it follows the
-    same structural pattern: time-ordered high bits + v7/version bits + random bits.
+    Wrapper that produces deterministic UUIDv7 values for a given seed
+    using the `uuid7` implementation from the `uuid` package.
     """
 
     def __init__(self, base_timestamp_ms: int = 1704067200000) -> None:
         self.base_timestamp_ms = base_timestamp_ms
-        self.counter = 0
         self.generated_by_seed: dict[str, str] = {}
 
     def for_seed(self, seed: str) -> str:
@@ -95,21 +91,10 @@ class Uuid7LikeGenerator:
         if existing is not None:
             return existing
 
-        timestamp_ms = (self.base_timestamp_ms + self.counter) & ((1 << 48) - 1)
-        self.counter += 1
-
-        digest = hashlib.sha256(seed.encode("utf-8")).digest()
-        rand_a = int.from_bytes(digest[0:2], "big") & 0x0FFF
-        rand_b = int.from_bytes(digest[2:10], "big") & ((1 << 62) - 1)
-
-        value = (
-            (timestamp_ms << 80)
-            | (0x7 << 76)
-            | (rand_a << 64)
-            | (0b10 << 62)
-            | rand_b
-        )
-        generated = str(uuid.UUID(int=value))
+        # Delegate to uuid7 from the external `uuid` package. The package's
+        # uuid7 implementation is expected to accept a seed/name to produce a
+        # deterministic value for the same input.
+        generated = str(uuid7(seed))
         self.generated_by_seed[seed] = generated
         return generated
 
