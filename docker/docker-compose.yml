@@ -160,6 +160,16 @@ services:
       - 'traefik.http.middlewares.event-manager-public-slash.redirectregex.regex=^https?://([^/]+)/app$$'
       - 'traefik.http.middlewares.event-manager-public-slash.redirectregex.replacement=https://$${1}/app/'
       - 'traefik.http.middlewares.event-manager-public-slash.redirectregex.permanent=true'
+
+      - 'traefik.http.routers.event-manager-validar.entrypoints=web,websecure'
+      - 'traefik.http.routers.event-manager-validar.rule=Host(`eventos.cacic.dev.br`) && PathPrefix(`/validar/`)'
+      - 'traefik.http.routers.event-manager-validar.tls=true'
+      - 'traefik.http.routers.event-manager-validar.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-validar.middlewares=event-manager-validar-redirect'
+      - 'traefik.http.middlewares.event-manager-validar-redirect.redirectregex.regex=^https?://([^/]+)/validar/(.*)$$'
+      - 'traefik.http.middlewares.event-manager-validar-redirect.redirectregex.replacement=https://$${1}/app/validate/$${2}'
+      - 'traefik.http.middlewares.event-manager-validar-redirect.redirectregex.permanent=true'
+      - 'traefik.http.routers.event-manager-validar.service=event-manager-public-svc'
     networks:
       - default
       - traefik
