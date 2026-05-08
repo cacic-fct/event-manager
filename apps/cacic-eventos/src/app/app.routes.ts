@@ -1,5 +1,20 @@
 import { Route } from '@angular/router';
-import { authGuard } from '@cacic-eventos/shared-angular';
+import {
+  authGuard,
+  requiredPermissionsGuard,
+} from '@cacic-eventos/shared-angular';
+
+const workspacePermissions = [
+  'certificate#read',
+  'event#read',
+  'event-attendance#read',
+  'event-lecturer#read',
+  'major-event#read',
+  'merge-candidate#read',
+  'person#read',
+  'subscription#read',
+  'user#read',
+] as const;
 
 export const appRoutes: Route[] = [
   {
@@ -9,7 +24,10 @@ export const appRoutes: Route[] = [
   },
   {
     path: '',
-    canActivate: [authGuard],
+    canActivate: [
+      authGuard,
+      requiredPermissionsGuard(workspacePermissions, '/app/'),
+    ],
     loadChildren: () =>
       import('./workspace/workspace.routes').then((m) => m.workspaceRoutes),
   },
