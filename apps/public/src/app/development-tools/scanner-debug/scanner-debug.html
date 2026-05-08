@@ -1,0 +1,10 @@
+<button (click)="scanCode()">Abrir scanner</button>
+<h1>Resultado:</h1>
+{{ scannedCode() }}
+
+<h1>Tocar sons</h1>
+<button (click)="scannerSoundsService.valid()">Valid</button>
+<button (click)="scannerSoundsService.invalid()">Invalid</button>
+<button (click)="scannerSoundsService.duplicate()">Duplicate</button>
+<button (click)="scannerSoundsService.nonPaying()">Non-paying</button>
+<button (click)="scannerSoundsService.nonSubscribed()">Non-subscribed</button>
