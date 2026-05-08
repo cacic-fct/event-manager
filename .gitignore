@@ -20,7 +20,6 @@ npm-debug.log*
 .versions
 coverage
 dist
-node_modules
 platforms
 plugins
 
@@ -68,3 +67,9 @@ storage.rules
 **/.history
 
 .env
+
+.nx
+.nx/cache
+.nx/workspace-data
+
+node_modules/
