@@ -5,6 +5,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { AccountMergeService } from '../account-merge/account-merge.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,6 +24,7 @@ export class CurrentUserContextService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly certificateIssuingService: CertificateIssuingService,
+    private readonly accountMergeService: AccountMergeService,
   ) {}
 
   getAuthenticatedUser(context: GraphqlContext): AuthenticatedUser {
@@ -38,10 +40,13 @@ export class CurrentUserContextService {
     authenticatedUser: AuthenticatedUser,
     includeUserFallback = false,
   ): Promise<{ user: UserRecord | null; person: PersonRecord | null }> {
-    const user = await this.resolveCurrentUser(authenticatedUser);
+    const effectiveUser = await this.resolveMergedAuthenticatedUser(
+      authenticatedUser,
+    );
+    const user = await this.resolveCurrentUser(effectiveUser);
     const person =
-      (await this.resolveCurrentPerson(authenticatedUser, user)) ??
-      (await this.createCurrentPerson(authenticatedUser));
+      (await this.resolveCurrentPerson(effectiveUser, user)) ??
+      (await this.createCurrentPerson(effectiveUser));
 
     if (!user && includeUserFallback && person?.user) {
       return {
@@ -75,7 +80,10 @@ export class CurrentUserContextService {
   async createCurrentPerson(
     authenticatedUser: AuthenticatedUser,
   ): Promise<PersonRecord> {
-    const profile = this.getInferredProfile(authenticatedUser);
+    const effectiveUser = await this.resolveMergedAuthenticatedUser(
+      authenticatedUser,
+    );
+    const profile = this.getInferredProfile(effectiveUser);
     const name = profile.name;
 
     if (!name) {
@@ -84,7 +92,7 @@ export class CurrentUserContextService {
       );
     }
 
-    const user = await this.resolveCurrentUser(authenticatedUser);
+    const user = await this.resolveCurrentUser(effectiveUser);
     const externalRef = profile.externalRef;
 
     if (externalRef) {
@@ -163,6 +171,23 @@ export class CurrentUserContextService {
       },
       select: USER_SELECT,
     });
+  }
+
+  private async resolveMergedAuthenticatedUser(
+    authenticatedUser: AuthenticatedUser,
+  ): Promise<AuthenticatedUser> {
+    const finalUserId = await this.accountMergeService.resolveFinalUserId(
+      authenticatedUser.sub,
+    );
+
+    if (!finalUserId || finalUserId === authenticatedUser.sub) {
+      return authenticatedUser;
+    }
+
+    return {
+      ...authenticatedUser,
+      sub: finalUserId,
+    };
   }
 
   private async resolveCurrentPerson(
