@@ -10,6 +10,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { People, Prisma } from '@prisma/client';
+import { CertificateIssuingService } from '../../certificate/certificate-issuing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { stalePendingMergeCandidateWhere } from './merge-candidate-filters';
 
@@ -69,7 +70,10 @@ const MATCH_METHOD_PRIORITY: Record<MergeMatchMethod, number> = {
 export class MergeCandidateOperationsService {
   private readonly logger = new Logger(MergeCandidateOperationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly certificateIssuingService: CertificateIssuingService,
+  ) {}
 
   async scanMergeCandidates(actorId: string | null): Promise<number> {
     const staleResult = await this.prisma.mergeCandidate.updateMany({
@@ -177,7 +181,7 @@ export class MergeCandidateOperationsService {
   ) {
     const migrateFields = this.normalizeMigrateFields(input.migrateFields);
 
-    return this.prisma.$transaction(async (tx) => {
+    const mergeResult = await this.prisma.$transaction(async (tx) => {
       const candidate = await tx.mergeCandidate.findUnique({
         where: {
           id: input.candidateId,
@@ -318,6 +322,16 @@ export class MergeCandidateOperationsService {
 
       return updatedCandidate;
     });
+
+    await this.refreshCertificatesAfterMerge(
+      input.targetPersonId,
+      mergeResult.personAId === input.targetPersonId
+        ? mergeResult.personBId
+        : mergeResult.personAId,
+      actorId,
+    );
+
+    return mergeResult;
   }
 
   async undoMergeCandidatePeople(candidateId: string, actorId: string | null) {
@@ -518,6 +532,25 @@ export class MergeCandidateOperationsService {
 
       return updatedCandidate;
     });
+  }
+
+  private async refreshCertificatesAfterMerge(
+    targetPersonId: string,
+    sourcePersonId: string,
+    actorId: string | null,
+  ): Promise<void> {
+    try {
+      await this.certificateIssuingService.refreshIssuedCertificatesAfterPeopleMerge(
+        targetPersonId,
+        sourcePersonId,
+        actorId ?? undefined,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to refresh certificates after people merge target=${targetPersonId}, source=${sourcePersonId}.`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private normalizeMigrateFields(

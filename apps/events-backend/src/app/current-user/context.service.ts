@@ -2,9 +2,11 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   GraphqlContext,
@@ -16,7 +18,12 @@ import {
 
 @Injectable()
 export class CurrentUserContextService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(CurrentUserContextService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly certificateIssuingService: CertificateIssuingService,
+  ) {}
 
   getAuthenticatedUser(context: GraphqlContext): AuthenticatedUser {
     const user = context.req?.user ?? context.request?.user;
@@ -334,6 +341,8 @@ export class CurrentUserContextService {
     } = {};
 
     // Treat name from Keycloak as source of truth - always update if available
+    const willUpdateName =
+      Boolean(profile.fullname) && profile.fullname !== person.name;
     if (profile.fullname) {
       data.name = profile.fullname;
     }
@@ -357,7 +366,10 @@ export class CurrentUserContextService {
     if (!person.phone && profile.phone) {
       data.phone = profile.phone;
     }
-    if (!person.identityDocument && profile.identityDocument) {
+    const shouldRefreshCertificates =
+      willUpdateName ||
+      (!person.identityDocument && Boolean(profile.identityDocument));
+    if (shouldRefreshCertificates) {
       data.identityDocument = profile.identityDocument;
     }
     if (!person.academicId && profile.academicId) {
@@ -374,13 +386,29 @@ export class CurrentUserContextService {
       return person;
     }
 
-    return this.prisma.people.update({
+    const updatedPerson = await this.prisma.people.update({
       where: {
         id: person.id,
       },
       data,
       select: PERSON_SELECT,
     });
+
+    if (shouldRefreshCertificates) {
+      try {
+        await this.certificateIssuingService.refreshIssuedCertificatesForPerson(
+          person.id,
+          user?.id ?? undefined,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to refresh certificates after identity document backfill for person ${person.id}.`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
+
+    return updatedPerson;
   }
 
   private getInferredProfile(
