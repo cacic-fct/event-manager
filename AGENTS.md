@@ -84,7 +84,9 @@ Therefore, don't use npm, npx, yarn, or pnpm commands. Use bun and bunx commands
 
 # Code formatting
 
-We use Prettier for code formatting. Its package is installed in every project.
+Do not use Prettier or any other code formatter, user should run these manually.
+
+Do run linting.
 
 # Prisma ORM
 
