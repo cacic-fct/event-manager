@@ -11,6 +11,12 @@ export const routes: Route[] = [
     path: 'user',
     loadComponent: () =>
       import('./user-debug/user-debug').then((m) => m.UserDebug),
-    title: 'Desenvolvimento de Usuário',
+    title: 'Dados do usuário logado',
+  },
+  {
+    path: 'scanner',
+    loadComponent: () =>
+      import('./scanner-debug/scanner-debug').then((m) => m.ScannerDebug),
+    title: 'Debug de Scanner',
   },
 ];

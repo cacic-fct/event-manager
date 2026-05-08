@@ -20,15 +20,6 @@
             <span matListItemTitle>{{
               authService.user()?.claims?.['name'] || 'Desconhecido'
             }}</span>
-            <!-- <button
-              matIconButton
-              aria-label="Sair"
-              (click)="authService.logout()"
-              matListItemMeta
-            >
-              <mat-icon>qr_code</mat-icon>
-            </button> -->
-
             <button
               matIconButton
               aria-label="Sair da conta"
@@ -89,5 +80,17 @@
         <span matListItemTitle>Sobre</span>
       </a>
     </mat-nav-list>
+
+    @if (isDevMode) {
+      <mat-divider></mat-divider>
+      <mat-nav-list>
+        <h3 matSubheader>Desenvolvimento</h3>
+
+        <a mat-list-item routerLink="/dev-tools">
+          <mat-icon matListItemIcon>build</mat-icon>
+          <span matListItemTitle>Ferramentas de Desenvolvimento</span>
+        </a>
+      </mat-nav-list>
+    }
   </section>
 </div>
