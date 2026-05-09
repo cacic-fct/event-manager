@@ -1,7 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService, CacicLogoComponent } from '@cacic-eventos/shared-angular';
 import { ValuePropositionComponent } from './components/value-proposition.component';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,11 +14,12 @@ import { MatIconModule } from '@angular/material/icon';
     ValuePropositionComponent,
     CacicLogoComponent,
     MatIconModule,
+    RouterLink,
   ],
-  templateUrl: './login-page.component.html',
-  styleUrls: ['./login-page.component.scss'],
+  templateUrl: './landing.component.html',
+  styleUrls: ['./landing.component.scss'],
 })
-export class LoginPageComponent implements OnInit {
+export class LandingComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
