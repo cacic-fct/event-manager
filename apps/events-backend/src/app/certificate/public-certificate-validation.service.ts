@@ -12,6 +12,7 @@ import { CertificateValidationService } from './certificate-validation.service';
 
 const CERTIFICATE_VALIDATION_EVENT_SELECT = {
   name: true,
+  id: true,
   emoji: true,
   startDate: true,
   endDate: true,
@@ -332,6 +333,7 @@ export class PublicCertificateValidationService {
   ): PublicCertificateValidationEvent {
     return {
       name: event.name,
+      id: event.id,
       emoji: event.emoji,
       startDate: event.startDate,
       endDate: event.endDate,

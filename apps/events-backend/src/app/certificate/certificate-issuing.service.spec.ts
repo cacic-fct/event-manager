@@ -430,7 +430,7 @@ describe('CertificateIssuingService', () => {
         }
       ).buildMinicursoLines(events),
     ).toEqual([
-      '• 02/01/26, 03/01/26 - Grouped minicourse - Carga horária: 4 horas',
+      '• 02/01/2026, 03/01/2026 - Grouped minicourse - Carga horária: 4 horas',
     ]);
   });
 

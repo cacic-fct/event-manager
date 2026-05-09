@@ -108,7 +108,7 @@
 
       <mat-list>
         @for (event of section.events; track event.name + event.startDate) {
-        <mat-list-item>
+        <mat-list-item [routerLink]="'/event/' + event.id">
           <div matListItemIcon class="small-emoji-frame">
             <img
               class="small-twemoji"

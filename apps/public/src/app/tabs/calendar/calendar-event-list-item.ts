@@ -20,7 +20,6 @@ import { EmojiService } from '../../profile/attendances/emoji.service';
 })
 export class CalendarEventListItem {
   readonly event = input.required<PublicEvent>();
-  readonly returnUrl = input('/calendar');
   readonly emoji = inject(EmojiService);
 
   readonly eventTypeLabel = computed(() =>

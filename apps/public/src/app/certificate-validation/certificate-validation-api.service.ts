@@ -30,6 +30,7 @@ const CERTIFICATE_VALIDATION_FIELDS = `
     creditMinutes
     events {
       name
+      id
       emoji
       startDate
       endDate
