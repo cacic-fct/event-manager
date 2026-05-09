@@ -2,12 +2,10 @@ import { Route } from '@angular/router';
 
 export const appRoutes: Route[] = [
   {
-    path: 'dev-tools',
-    loadChildren: () =>
-      import('./development-tools/development-tools.routes').then(
-        (m) => m.routes,
-      ),
-    title: 'Ferramentas de Desenvolvimento',
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./landing/home.component').then((m) => m.HomeComponent),
   },
   {
     path: '',
@@ -16,11 +14,6 @@ export const appRoutes: Route[] = [
         (m) => m.ToolbarLayoutComponent,
       ),
     children: [
-      {
-        path: '',
-        pathMatch: 'full',
-        redirectTo: 'menu',
-      },
       {
         path: 'menu',
         loadComponent: () =>
@@ -34,6 +27,15 @@ export const appRoutes: Route[] = [
         title: 'Calendário',
       },
     ],
+  },
+  // TODO: Add guard to this
+  {
+    path: 'dev-tools',
+    loadChildren: () =>
+      import('./development-tools/development-tools.routes').then(
+        (m) => m.routes,
+      ),
+    title: 'Ferramentas de Desenvolvimento',
   },
   {
     path: 'event/:eventId',
@@ -55,13 +57,6 @@ export const appRoutes: Route[] = [
         (m) => m.OnlineAttendanceCodeComponent,
       ),
     title: 'Confirmar presença',
-  },
-  {
-    path: 'home',
-    loadComponent: () =>
-      import('./landing/login-page.component').then(
-        (m) => m.LoginPageComponent,
-      ),
   },
   {
     path: 'profile',
@@ -88,10 +83,10 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'validar',
-    redirectTo: 'validate',
+    redirectTo: '/validate',
   },
   {
     path: 'validar/:certificateId',
-    redirectTo: 'validate/:certificateId',
+    redirectTo: '/validate/:certificateId',
   },
 ];
