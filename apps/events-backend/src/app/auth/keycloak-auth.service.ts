@@ -188,9 +188,7 @@ export class KeycloakAuthService {
 
       return data;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        this.logger.error(error.response?.data);
-      }
+      this.logger.error(error);
 
       throw new UnauthorizedException(
         'Could not exchange authorization code for tokens.',
