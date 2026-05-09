@@ -63,8 +63,6 @@ const PUBLIC_MAJOR_EVENT_FIELDS = `
   contactInfo
   contactType
   isPaymentRequired
-  shouldIssueCertificateForNonPayingAttendees
-  shouldIssueCertificateForNonSubscribedAttendees
   additionalPaymentInfo
   shouldIssueCertificate
 `;
@@ -75,8 +73,6 @@ const PUBLIC_EVENT_GROUP_FIELDS = `
   shouldIssueCertificateForEachEvent
   shouldIssuePartialCertificate
   shouldIssueCertificate
-  shouldIssueCertificateForNonPayingAttendees
-  shouldIssueCertificateForNonSubscribedAttendees
 `;
 
 const PUBLIC_EVENT_FIELDS = `
@@ -99,8 +95,6 @@ const PUBLIC_EVENT_FIELDS = `
   subscriptionEndDate
   slots
   shouldIssueCertificate
-  shouldIssueCertificateForNonPayingAttendees
-  shouldIssueCertificateForNonSubscribedAttendees
   shouldCollectAttendance
   isOnlineAttendanceAllowed
   onlineAttendanceStartDate
