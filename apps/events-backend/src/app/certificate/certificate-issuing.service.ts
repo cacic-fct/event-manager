@@ -577,11 +577,13 @@ export class CertificateIssuingService {
       'top-text': this.getCertificateFieldValue(
         config.certificateFields,
         'top-text',
+        config.certificateTemplate?.certificateFields ?? null,
         'Certificamos a participação de',
       ),
       'bottom-text': this.getCertificateFieldValue(
         config.certificateFields,
         'bottom-text',
+        config.certificateTemplate?.certificateFields ?? null,
         'no evento',
       ),
       date: `${issueDay} de ${issueMonth} de ${issueYear}`,
@@ -634,16 +636,37 @@ export class CertificateIssuingService {
   }
 
   private getCertificateFieldValue(
-    fields: Prisma.JsonValue | null,
+    customFields: Prisma.JsonValue | null,
     key: string,
+    templateFields: Prisma.JsonValue | null,
     fallback: string,
   ): string {
-    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
-      return fallback;
+    // Check custom config fields first
+    if (
+      customFields &&
+      typeof customFields === 'object' &&
+      !Array.isArray(customFields)
+    ) {
+      const value = customFields[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value;
+      }
     }
 
-    const value = fields[key];
-    return typeof value === 'string' && value.trim() ? value : fallback;
+    // Fall back to template fields
+    if (
+      templateFields &&
+      typeof templateFields === 'object' &&
+      !Array.isArray(templateFields)
+    ) {
+      const value = templateFields[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value;
+      }
+    }
+
+    // Fall back to hardcoded default
+    return fallback;
   }
 
   private buildParticipationType(issuedTo: CertificateIssuedTo): string {
