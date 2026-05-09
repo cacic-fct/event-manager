@@ -31,6 +31,7 @@ export class AuthController {
   @Get('login')
   @Public()
   getLoginUrl(
+    @Req() request: Request,
     @Query('redirectUri') redirectUri?: string,
     @Query('returnTo') returnTo?: string,
     @Query('state') state?: string,
@@ -39,7 +40,7 @@ export class AuthController {
   ) {
     return {
       authorizationUrl: this.keycloakAuthService.buildAuthorizationUrl({
-        redirectUri,
+        redirectUri: redirectUri ?? this.getCallbackRedirectUri(request),
         returnTo,
         state,
         scope,
@@ -51,6 +52,7 @@ export class AuthController {
   @Get('login/redirect')
   @Public()
   redirectToLogin(
+    @Req() request: Request,
     @Res() response: Response,
     @Query('redirectUri') redirectUri?: string,
     @Query('returnTo') returnTo?: string,
@@ -59,7 +61,7 @@ export class AuthController {
     @Query('prompt') prompt?: string,
   ): void {
     const authorizationUrl = this.keycloakAuthService.buildAuthorizationUrl({
-      redirectUri,
+      redirectUri: redirectUri ?? this.getCallbackRedirectUri(request),
       returnTo,
       state,
       scope,
@@ -92,7 +94,8 @@ export class AuthController {
 
     const tokenResponse = await this.keycloakAuthService.exchangeCodeForTokens(
       code,
-      redirectUri,
+      state,
+      redirectUri ?? this.getCallbackRedirectUri(request),
     );
     const session = this.keycloakAuthService.createSession(tokenResponse);
 
@@ -217,6 +220,26 @@ export class AuthController {
     }
 
     return null;
+  }
+
+  private getCallbackRedirectUri(request: Request): string {
+    const protocol = this.readForwardedHeader(request, 'x-forwarded-proto')
+      ?.split(',')[0]
+      ?.trim();
+    const host = this.readForwardedHeader(request, 'x-forwarded-host')
+      ?.split(',')[0]
+      ?.trim();
+
+    const origin = `${protocol || request.protocol}://${host || request.get('host')}`;
+    return new URL('/api/auth/callback', origin).toString();
+  }
+
+  private readForwardedHeader(
+    request: Request,
+    headerName: string,
+  ): string | undefined {
+    const value = request.headers[headerName];
+    return Array.isArray(value) ? value[0] : value;
   }
 
   private readPermissionList(rawPermissions: unknown): string[] {
