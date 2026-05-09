@@ -234,7 +234,7 @@ export class AuthService {
     }
 
     const claimValue = user.claims?.['is_onboarded'];
-    return claimValue !== false && claimValue !== 'false';
+    return claimValue === true || claimValue === 'true';
   }
 
   private scheduleRefresh(expiresAt: number): void {
