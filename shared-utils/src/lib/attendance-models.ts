@@ -207,6 +207,7 @@ export interface CertificateDownload {
 
 export interface PublicCertificateValidationEvent {
   name: string;
+  id: string;
   emoji: string;
   startDate: string;
   endDate: string;
