@@ -23,6 +23,12 @@ import type { LoginOptions } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly accountLoginUrl =
+    'https://account.cacic.dev.br/api/auth/login';
+  private readonly onboardingReturnStorageKey =
+    'cacic-eventos:onboarding-return-url';
+  private readonly onboardingRefreshAttemptStorageKey =
+    'cacic-eventos:onboarding-refresh-attempted';
   private readonly silentSsoAttemptStorageKey =
     'cacic-eventos:silent-sso-attempted';
   private readonly http = inject(HttpClient);
@@ -93,11 +99,13 @@ export class AuthService {
 
   async refreshMe(): Promise<void> {
     if (await this.loadCurrentUser()) {
+      await this.redirectToOnboardingIfNeeded();
       return;
     }
 
     try {
       await firstValueFrom(this.refreshTokenSilently());
+      await this.redirectToOnboardingIfNeeded();
     } catch (error) {
       if (this.isAuthenticationError(error)) {
         this.clearSession();
@@ -170,6 +178,65 @@ export class AuthService {
     }
   }
 
+  private async redirectToOnboardingIfNeeded(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const user = this.user();
+    if (!user || this.isUserOnboarded(user)) {
+      window.sessionStorage.removeItem(this.onboardingReturnStorageKey);
+      window.sessionStorage.removeItem(this.onboardingRefreshAttemptStorageKey);
+      return;
+    }
+
+    const currentUrl = this.getCurrentAbsoluteUrl();
+    const pendingReturnUrl = window.sessionStorage.getItem(
+      this.onboardingReturnStorageKey,
+    );
+    const refreshAttempted = window.sessionStorage.getItem(
+      this.onboardingRefreshAttemptStorageKey,
+    );
+
+    if (pendingReturnUrl === currentUrl && !refreshAttempted) {
+      window.sessionStorage.setItem(
+        this.onboardingRefreshAttemptStorageKey,
+        'true',
+      );
+
+      try {
+        await firstValueFrom(this.refreshTokenSilently());
+      } catch (error) {
+        if (this.isAuthenticationError(error)) {
+          this.clearSession();
+          return;
+        }
+
+        throw error;
+      }
+
+      if (this.isUserOnboarded(this.user())) {
+        window.sessionStorage.removeItem(this.onboardingReturnStorageKey);
+        window.sessionStorage.removeItem(
+          this.onboardingRefreshAttemptStorageKey,
+        );
+        return;
+      }
+    }
+
+    window.sessionStorage.setItem(this.onboardingReturnStorageKey, currentUrl);
+    window.location.assign(this.buildAccountOnboardingRedirectUrl(currentUrl));
+  }
+
+  private isUserOnboarded(user: AuthenticatedUser | null): boolean {
+    if (!user) {
+      return true;
+    }
+
+    const claimValue = user.claims?.['is_onboarded'];
+    return claimValue !== false && claimValue !== 'false';
+  }
+
   private scheduleRefresh(expiresAt: number): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
@@ -230,6 +297,17 @@ export class AuthService {
   private getCurrentReturnPath(): string {
     const { pathname, search, hash } = window.location;
     return `${pathname}${search}${hash}`;
+  }
+
+  private getCurrentAbsoluteUrl(): string {
+    const { href } = window.location;
+    return href;
+  }
+
+  private buildAccountOnboardingRedirectUrl(returnTo: string): string {
+    const url = new URL(this.accountLoginUrl);
+    url.searchParams.set('ru', returnTo);
+    return url.toString();
   }
 
   private clearRefreshTimer(): void {
