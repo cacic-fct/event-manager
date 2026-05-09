@@ -80,6 +80,7 @@ export type AuthenticatedUser = {
     token_type?: string;
     active?: boolean;
     identity_document?: string;
+    is_onboarded?: boolean | string;
     is_foreign?: boolean;
     unesp_role?: string[];
     enrollment_number?: string;
