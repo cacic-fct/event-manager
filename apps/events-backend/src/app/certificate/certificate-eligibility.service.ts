@@ -268,11 +268,7 @@ export class CertificateEligibilityService {
 
     return attendances
       .filter((attendance) =>
-        this.canIssueForAttendanceCategory(
-          attendance.category,
-          event.shouldIssueCertificateForNonPayingAttendees,
-          event.shouldIssueCertificateForNonSubscribedAttendees,
-        ),
+        this.canIssueForEventAttendance(attendance.category, event),
       )
       .map((attendance) => ({
         person: attendance.person,
@@ -626,15 +622,7 @@ export class CertificateEligibilityService {
     category: AttendanceCategory,
     event: EventRecord,
   ): boolean {
-    return this.canIssueForAttendanceCategory(
-      category,
-      event.shouldIssueCertificateForNonPayingAttendees &&
-        Boolean(event.eventGroup?.shouldIssueCertificateForNonPayingAttendees),
-      event.shouldIssueCertificateForNonSubscribedAttendees &&
-        Boolean(
-          event.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees,
-        ),
-    );
+    return this.canIssueForEventAttendance(category, event);
   }
 
   private canIssueForMajorEventAttendance(
@@ -648,20 +636,41 @@ export class CertificateEligibilityService {
     return this.canIssueForAttendanceCategory(
       category,
       majorEvent.shouldIssueCertificateForNonPayingAttendees &&
-        event.shouldIssueCertificateForNonPayingAttendees &&
-        (event.eventGroupId
-          ? Boolean(
-              event.eventGroup?.shouldIssueCertificateForNonPayingAttendees,
-            )
-          : true),
+        this.canIssueForNonPayingEventAttendance(event),
       majorEvent.shouldIssueCertificateForNonSubscribedAttendees &&
-        event.shouldIssueCertificateForNonSubscribedAttendees &&
-        (event.eventGroupId
-          ? Boolean(
-              event.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees,
-            )
-          : true),
+        this.canIssueForNonSubscribedEventAttendance(event),
     );
+  }
+
+  private canIssueForEventAttendance(
+    category: AttendanceCategory,
+    event: EventRecord,
+  ): boolean {
+    return this.canIssueForAttendanceCategory(
+      category,
+      this.canIssueForNonPayingEventAttendance(event),
+      this.canIssueForNonSubscribedEventAttendance(event),
+    );
+  }
+
+  private canIssueForNonPayingEventAttendance(event: EventRecord): boolean {
+    if (event.eventGroupId) {
+      return Boolean(
+        event.eventGroup?.shouldIssueCertificateForNonPayingAttendees,
+      );
+    }
+
+    return event.shouldIssueCertificateForNonPayingAttendees;
+  }
+
+  private canIssueForNonSubscribedEventAttendance(event: EventRecord): boolean {
+    if (event.eventGroupId) {
+      return Boolean(
+        event.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees,
+      );
+    }
+
+    return event.shouldIssueCertificateForNonSubscribedAttendees;
   }
 
   private canIssueForAttendanceCategory(

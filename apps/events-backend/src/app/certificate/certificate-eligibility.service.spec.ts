@@ -2,7 +2,7 @@ import {
   CertificateIssuedTo,
   CertificateScope,
 } from '@cacic-eventos/shared-data-types';
-import { SubscriptionStatus } from '@prisma/client';
+import { AttendanceCategory, SubscriptionStatus } from '@prisma/client';
 import { CertificateEligibilityService } from './certificate-eligibility.service';
 
 describe('CertificateEligibilityService', () => {
@@ -47,6 +47,8 @@ describe('CertificateEligibilityService', () => {
     slots: null,
     autoSubscribe: false,
     shouldIssueCertificate: true,
+    shouldIssueCertificateForNonPayingAttendees: false,
+    shouldIssueCertificateForNonSubscribedAttendees: false,
     shouldCollectAttendance: true,
     isOnlineAttendanceAllowed: false,
     onlineAttendanceCode: null,
@@ -120,6 +122,8 @@ describe('CertificateEligibilityService', () => {
           {
             personId: person.id,
             eventId: event.id,
+            category: AttendanceCategory.REGULAR,
+            person,
           },
         ]),
       },
@@ -193,6 +197,8 @@ describe('CertificateEligibilityService', () => {
           groupedEvents.map((groupedEvent) => ({
             personId: person.id,
             eventId: groupedEvent.id,
+            category: AttendanceCategory.REGULAR,
+            person,
           })),
         ),
       },
@@ -204,6 +210,133 @@ describe('CertificateEligibilityService', () => {
       {
         person,
         events: groupedEvents,
+      },
+    ]);
+  });
+
+  it('uses event-group non-subscriber policy for grouped certificates', async () => {
+    const eventGroup = {
+      id: 'event-group-1',
+      name: 'Grouped minicourse',
+      emoji: null,
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: false,
+      shouldIssueCertificateForNonSubscribedAttendees: true,
+      shouldIssueCertificateForEachEvent: false,
+      shouldIssuePartialCertificate: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdById: null,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedById: null,
+    };
+    const groupedEvents = [
+      {
+        ...event,
+        id: 'event-1',
+        name: 'Grouped minicourse day 1',
+        type: 'MINICURSO',
+        startDate: new Date('2026-01-02T10:00:00.000Z'),
+        endDate: new Date('2026-01-02T12:00:00.000Z'),
+        eventGroupId: eventGroup.id,
+        eventGroup,
+        shouldIssueCertificateForNonSubscribedAttendees: false,
+      },
+      {
+        ...event,
+        id: 'event-2',
+        name: 'Grouped minicourse day 2',
+        type: 'MINICURSO',
+        startDate: new Date('2026-01-03T10:00:00.000Z'),
+        endDate: new Date('2026-01-03T12:00:00.000Z'),
+        eventGroupId: eventGroup.id,
+        eventGroup,
+        shouldIssueCertificateForNonSubscribedAttendees: false,
+      },
+    ];
+    const service = new CertificateEligibilityService({
+      eventGroup: {
+        findFirst: jest.fn().mockResolvedValue(eventGroup),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue(groupedEvents),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue(
+          groupedEvents.map((groupedEvent) => ({
+            personId: person.id,
+            eventId: groupedEvent.id,
+            category: AttendanceCategory.NON_SUBSCRIBED,
+            person,
+          })),
+        ),
+      },
+    } as never);
+
+    await expect(
+      service.resolveEligibleRecipients({
+        id: 'config-1',
+        scope: CertificateScope.EVENT_GROUP,
+        issuedTo: CertificateIssuedTo.ATTENDEE,
+        eventGroupId: eventGroup.id,
+      } as never),
+    ).resolves.toEqual([
+      {
+        person,
+        events: groupedEvents,
+      },
+    ]);
+  });
+
+  it('uses event-group non-subscriber policy for per-event certificates in a group', async () => {
+    const eventGroup = {
+      id: 'event-group-1',
+      name: 'Grouped talks',
+      emoji: null,
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: false,
+      shouldIssueCertificateForNonSubscribedAttendees: true,
+      shouldIssueCertificateForEachEvent: true,
+      shouldIssuePartialCertificate: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdById: null,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedById: null,
+    };
+    const groupedEvent = {
+      ...event,
+      eventGroupId: eventGroup.id,
+      eventGroup,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
+    };
+    const service = new CertificateEligibilityService({
+      event: {
+        findFirst: jest.fn().mockResolvedValue(groupedEvent),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            personId: person.id,
+            eventId: groupedEvent.id,
+            category: AttendanceCategory.NON_SUBSCRIBED,
+            person,
+          },
+        ]),
+      },
+    } as never);
+
+    await expect(
+      service.resolveEligibleRecipients({
+        id: 'config-1',
+        scope: CertificateScope.EVENT,
+        issuedTo: CertificateIssuedTo.ATTENDEE,
+        eventId: groupedEvent.id,
+      } as never),
+    ).resolves.toEqual([
+      {
+        person,
+        events: [groupedEvent],
       },
     ]);
   });
