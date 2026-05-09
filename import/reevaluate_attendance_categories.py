@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import unicodedata
 from collections.abc import Iterable
 from collections import Counter
 from dataclasses import dataclass
@@ -135,11 +136,12 @@ def main() -> None:
             print(f"Existing database attendance rows: {len(existing)}")
             print(f"Rows needing category update: {len(updates)}")
             print(f"Missing database attendance rows: {len(missing_attendances)}")
-            print(f"Unmatched Firestore people: {len(unmatched_people)}")
+            print(f"Unmatched Firestore people: {unmatched_people}")
             print(f"Unmatched Firestore events: {len(unmatched_events)}")
             print("Update category intent -> " + format_counter(Counter(row.category for row in updates)))
 
             print_unmatched_events(unmatched_events)
+
 
             if not args.apply:
                 print("Dry run only. Re-run with --apply to update categories.")
@@ -241,34 +243,44 @@ def match_attendances(
     unmatched_events: list[UnmatchedEvent] = []
 
     with db.cursor() as cursor:
+        # Fetch all events once for efficient matching
+        cursor.execute(
+            """
+            SELECT id, name, "startDate"
+            FROM events
+            WHERE "deletedAt" IS NULL
+            """,
+        )
+        all_db_events = cursor.fetchall()
+        
         for legacy_event_id, event_name, event_start_date in sorted(event_keys):
-            cursor.execute(
-                """
-                SELECT id, "startDate"
-                FROM events
-                WHERE name = %s
-                  AND "deletedAt" IS NULL
-                """,
-                (event_name,),
-            )
-            candidates = cursor.fetchall()
+            normalized_firestore_name = normalize_name(event_name)
+            
+            # Find matches by comparing normalized names and dates
             matches = [
                 row[0]
-                for row in candidates
-                if normalize_datetime(row[1]) == event_start_date
+                for row in all_db_events
+                if normalize_name(row[1]) == normalized_firestore_name
+                and normalize_datetime(row[2]) == event_start_date
             ]
 
             if len(matches) == 1:
                 event_id_by_legacy_id[legacy_event_id] = matches[0]
                 continue
 
+            # Count candidates with matching normalized name
+            candidate_count = len([
+                row for row in all_db_events
+                if normalize_name(row[1]) == normalized_firestore_name
+            ])
+            
             unmatched_events.append(
                 UnmatchedEvent(
                     legacy_event_id=legacy_event_id,
                     name=event_name,
                     start_date=event_start_date,
                     reason="no date match" if not matches else "ambiguous date match",
-                    candidate_count=len(candidates),
+                    candidate_count=candidate_count,
                 )
             )
 
@@ -403,6 +415,18 @@ def normalize_datetime(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def normalize_name(name: str) -> str:
+    # Decompose accented characters into base + combining marks
+    nfd_form = unicodedata.normalize('NFD', name)
+    # Filter out combining marks (accents)
+    without_accents = ''.join(
+        char for char in nfd_form 
+        if unicodedata.category(char) != 'Mn'
+    )
+    # Convert to lowercase
+    return without_accents.lower()
 
 
 def chunks(items: list[T], size: int) -> Iterable[list[T]]:
