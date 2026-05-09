@@ -923,6 +923,9 @@ export class PublicCertificateValidationEvent {
   name!: string;
 
   @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
   emoji!: string;
 
   @Field(() => Date)
