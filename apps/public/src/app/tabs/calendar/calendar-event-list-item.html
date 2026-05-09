@@ -1,7 +1,7 @@
 <a
   mat-list-item
   [routerLink]="['/event', event().id]"
-  [queryParams]="{ returnUrl: '/calendar' }"
+  [queryParams]="{ returnUrl: returnUrl() }"
   [attr.aria-label]="'Abrir evento ' + event().name"
 >
   <div matListItemIcon class="emoji-frame">
