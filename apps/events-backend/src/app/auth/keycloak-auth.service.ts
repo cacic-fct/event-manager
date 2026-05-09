@@ -173,7 +173,11 @@ export class KeycloakAuthService {
       );
 
       return data;
-    } catch {
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        this.logger.error(error.response?.data);
+      }
+
       throw new UnauthorizedException(
         'Could not exchange authorization code for tokens.',
       );
@@ -408,14 +412,14 @@ export class KeycloakAuthService {
     const requireServiceAccount =
       process.env.KEYCLOAK_M2M_REQUIRE_SERVICE_ACCOUNT !== 'false';
     if (requireServiceAccount && !this.isServiceAccountPrincipal(principal)) {
-      throw new ForbiddenException('A Keycloak service-account token is required.');
+      throw new ForbiddenException(
+        'A Keycloak service-account token is required.',
+      );
     }
 
     const audience = process.env.KEYCLOAK_M2M_AUDIENCE?.trim();
     if (audience && !this.hasAudience(principal.claims['aud'], audience)) {
-      throw new ForbiddenException(
-        `Token audience must include ${audience}.`,
-      );
+      throw new ForbiddenException(`Token audience must include ${audience}.`);
     }
 
     const allowedClients = this.readAllowedM2mClients();
