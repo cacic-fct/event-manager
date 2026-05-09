@@ -17,6 +17,12 @@ type TokenClaims = Record<string, unknown> & {
   active?: boolean;
 };
 
+type AuthorizationState = {
+  redirectUri?: string;
+  returnTo?: string;
+  state?: string;
+};
+
 interface CachedUser {
   user: AuthenticatedUser;
   expiresAt: number;
@@ -124,13 +130,15 @@ export class KeycloakAuthService {
     scope?: string;
     prompt?: string;
   }): string {
+    const redirectUri = options?.redirectUri ?? this.defaultRedirectUri;
     const state = this.buildAuthorizationState({
+      redirectUri,
       returnTo: options?.returnTo,
       state: options?.state,
     });
     const params = new URLSearchParams({
       client_id: this.clientId,
-      redirect_uri: options?.redirectUri ?? this.defaultRedirectUri,
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope:
         options?.scope ??
@@ -149,13 +157,19 @@ export class KeycloakAuthService {
 
   async exchangeCodeForTokens(
     code: string,
+    state?: string,
     redirectUri?: string,
   ): Promise<Record<string, unknown>> {
     const payload = new URLSearchParams();
     payload.set('grant_type', 'authorization_code');
     payload.set('client_id', this.clientId);
     payload.set('code', code);
-    payload.set('redirect_uri', redirectUri ?? this.defaultRedirectUri);
+    payload.set(
+      'redirect_uri',
+      this.getAuthorizationRedirectUri(state) ??
+        redirectUri ??
+        this.defaultRedirectUri,
+    );
 
     if (this.clientSecret) {
       payload.set('client_secret', this.clientSecret);
@@ -466,16 +480,18 @@ export class KeycloakAuthService {
   }
 
   private buildAuthorizationState(options?: {
+    redirectUri?: string;
     returnTo?: string;
     state?: string;
   }): string | undefined {
     const returnTo = this.normalizePostLoginReturnTo(options?.returnTo);
-    if (!returnTo && !options?.state) {
+    if (!options?.redirectUri && !returnTo && !options?.state) {
       return undefined;
     }
 
     return Buffer.from(
       JSON.stringify({
+        ...(options?.redirectUri ? { redirectUri: options.redirectUri } : {}),
         ...(returnTo ? { returnTo } : {}),
         ...(options?.state ? { state: options.state } : {}),
       }),
@@ -484,6 +500,27 @@ export class KeycloakAuthService {
   }
 
   private readReturnToFromState(state?: string): string | undefined {
+    const decodedState = this.readAuthorizationState(state);
+    if (!decodedState) {
+      return undefined;
+    }
+
+    const returnTo = this.readStringClaim(decodedState, 'returnTo');
+    return this.normalizePostLoginReturnTo(returnTo);
+  }
+
+  private getAuthorizationRedirectUri(state?: string): string | undefined {
+    const decodedState = this.readAuthorizationState(state);
+    if (!decodedState) {
+      return undefined;
+    }
+
+    return this.readStringClaim(decodedState, 'redirectUri');
+  }
+
+  private readAuthorizationState(
+    state?: string,
+  ): AuthorizationState | undefined {
     if (!state) {
       return undefined;
     }
@@ -497,8 +534,7 @@ export class KeycloakAuthService {
         return undefined;
       }
 
-      const returnTo = this.readStringClaim(decodedState, 'returnTo');
-      return this.normalizePostLoginReturnTo(returnTo);
+      return decodedState as AuthorizationState;
     } catch {
       return undefined;
     }
