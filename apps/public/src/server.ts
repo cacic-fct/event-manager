@@ -14,7 +14,14 @@ const browserDistFolder = resolve(serverDistFolder, '../browser');
 const app = express();
 const angularApp = new AngularNodeAppEngine({
   allowedHosts: ['eventos.cacic.dev.br'],
-  trustProxyHeaders: ['x-forwarded-host', 'x-forwarded-proto', 'cf-connecting-ip'],
+  trustProxyHeaders: [
+    'x-forwarded-host',
+    'x-forwarded-proto',
+    'cf-connecting-ip',
+    'x-forwarded-server',
+    'x-forwarded-for',
+    'x-forwarded-port',
+  ],
 });
 
 /**
@@ -47,7 +54,9 @@ app.use(
 app.use('/{*splat}', (req, res, next) => {
   angularApp
     .handle(req)
-    .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))
+    .then((response) =>
+      response ? writeResponseToNodeResponse(response, res) : next(),
+    )
     .catch(next);
 });
 
