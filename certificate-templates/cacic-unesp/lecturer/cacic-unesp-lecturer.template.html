@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Certificate Template - CACiC Unesp</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <section class="certificate-page page-1">
+      <div class="hero">
+        <p class="date">{{issue_day}} de {{issue_month}} de {{issue_year}}</p>
+        <p class="top-text">{{top-text}}</p>
+        <p class="participant-name">{{name}}</p>
+        <p class="bottom-text">{{bottom-text}}</p>
+        <p class="event-name">{{major_event_or_event_name}}</p>
+        <p class="additional-text">{{additional_text}}</p>
+      </div>
+
+      <div class="verification-block">
+        <a class="verification-link" href="{{verificationUrl}}"
+          >{{verificationUrl}}</a
+        >
+        <img
+          src="{{verificationQrCodeDataUrl}}"
+          alt="QR Code de verificação"
+          class="verification-qr-code"
+        />
+      </div>
+    </section>
+
+    <section class="certificate-page page-2">
+      <div class="verification-block-2">
+        <img
+          src="{{verificationQrCodeDataUrl}}"
+          alt="QR Code de verificação"
+          class="verification-qr-code"
+        />
+      </div>
+      <div class="certificate-content">
+        <p class="participant-name-inline">{{name}}</p>
+        <p>Documento: {{identityDocument}}</p>
+        <p><b>{{majorEvent or event name}}</b></p>
+        <p class="section-block">{{minicursosSection}}</p>
+        <p class="section-block">{{palestrasSection}}</p>
+        <p class="section-block">{{otherEventTypesList}}</p>
+
+        <p class="section-title">Observações:</p>
+        <p class="notes">Datas em formato "dia/mês/ano".</p>
+      </div>
+    </section>
+  </body>
+</html>
