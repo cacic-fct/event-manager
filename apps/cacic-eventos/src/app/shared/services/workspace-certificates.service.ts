@@ -657,10 +657,14 @@ export class WorkspaceCertificatesService {
         existingFields[definition.key] ?? definition.defaultValue;
     }
 
-    this.certificateConfigForm.certificateFields().reset(certificateFields);
+    // Update the model directly to sync the nested fields
+    this.certificateConfigModel.update((model) => ({
+      ...model,
+      certificateFields,
+    }));
   }
 
-  certificateField(key: string): FieldTree<string> {
+  certificateField(key: string) {
     return this.certificateConfigForm.certificateFields[key];
   }
 
