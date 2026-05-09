@@ -5,7 +5,12 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,7 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   PublicCertificateValidation,
   PublicCertificateValidationEvent,
@@ -55,11 +60,12 @@ type ValidationState =
     MatListModule,
     MatProgressBarModule,
     ReactiveFormsModule,
+    RouterLink,
   ],
 })
 export class CertificateValidation {
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  public readonly route = inject(ActivatedRoute);
+  public readonly router = inject(Router);
   private readonly api = inject(CertificateValidationApiService);
   private readonly fileDownload = inject(CertificateFileDownloadService);
   readonly emoji = inject(EmojiService);
