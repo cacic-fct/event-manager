@@ -4,7 +4,6 @@
       <div class="panel-heading">
         <div>
           <h3>Lista</h3>
-          <p>Selecione um grupo para ajustar composição e emissão.</p>
         </div>
 
         <button
@@ -29,6 +28,7 @@
               <app-twemoji [emoji]="group.emoji" />
               <span>{{ group.name }}</span>
             </span>
+            <span matListItemLine> Data || major event </span>
             <span matListItemLine>
               @if (group.shouldIssueCertificate) {
                 {{
