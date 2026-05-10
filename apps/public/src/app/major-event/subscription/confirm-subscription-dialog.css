@@ -1,0 +1,50 @@
+.dialog-header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dialog-header p,
+.dialog-header h3 {
+  margin: 0;
+}
+
+.dialog-header p {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.dialog-header h3 {
+  font: var(--mat-sys-title-medium);
+}
+
+.emoji-frame {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.twemoji {
+  display: block;
+  height: 32px;
+  width: 32px;
+}
+
+.month-header {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-title-small);
+  padding: 18px 16px 8px;
+}
+
+.date-sticky-bar {
+  background: var(--mat-sys-surface-container-high);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+  padding: 8px 16px;
+}

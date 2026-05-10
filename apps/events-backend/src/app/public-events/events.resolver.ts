@@ -7,9 +7,12 @@ import { Public } from '../auth/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
+  PUBLIC_MAJOR_EVENT_SELECT,
   PUBLIC_EVENT_SELECT,
   PublicEvent,
+  PublicMajorEventSubscriptionPage,
   PublicEventSubscriptionSummary,
+  mapPublicMajorEvent,
 } from './models';
 
 @Public()
@@ -216,6 +219,8 @@ export class PublicEventsResolver {
       select: {
         id: true,
         slots: true,
+        slotsAvailable: true,
+        queueCount: true,
       },
     });
 
@@ -229,22 +234,81 @@ export class PublicEventsResolver {
         slots: null,
         availableSlots: null,
         hasAvailableSlots: true,
+        queueCount: event.queueCount,
       };
     }
 
-    const subscriptions = await this.prisma.eventSubscription.count({
-      where: {
-        eventId,
-        deletedAt: null,
-      },
-    });
-    const availableSlots = Math.max(event.slots - subscriptions, 0);
+    const availableSlots = event.slotsAvailable ?? event.slots;
 
     return {
       eventId,
       slots: event.slots,
       availableSlots,
       hasAvailableSlots: availableSlots > 0,
+      queueCount: event.queueCount,
+    };
+  }
+
+  @Query(() => PublicMajorEventSubscriptionPage, {
+    name: 'publicMajorEventSubscriptionPage',
+  })
+  async publicMajorEventSubscriptionPage(
+    @Args('majorEventId', { type: () => String }) majorEventId: string,
+  ): Promise<PublicMajorEventSubscriptionPage> {
+    const [majorEvent, events] = await Promise.all([
+      this.prisma.majorEvent.findFirst({
+        where: {
+          id: majorEventId,
+          deletedAt: null,
+        },
+        select: PUBLIC_MAJOR_EVENT_SELECT,
+      }),
+      this.prisma.event.findMany({
+        where: {
+          majorEventId,
+          deletedAt: null,
+          publiclyVisible: true,
+          allowSubscription: true,
+        },
+        select: PUBLIC_EVENT_SELECT,
+        orderBy: {
+          startDate: 'asc',
+        },
+      }),
+    ]);
+
+    if (!majorEvent) {
+      throw new NotFoundException(`Major event ${majorEventId} was not found.`);
+    }
+
+    return {
+      majorEvent: mapPublicMajorEvent(majorEvent),
+      events,
+      subscriptionSummaries: events.map((event) =>
+        this.mapPublicEventSubscriptionSummary(event),
+      ),
+    };
+  }
+
+  async getPublicEventSubscriptionPagePayload(
+    majorEventId: string,
+  ): Promise<PublicMajorEventSubscriptionPage> {
+    return this.publicMajorEventSubscriptionPage(majorEventId);
+  }
+
+  private mapPublicEventSubscriptionSummary(event: {
+    id: string;
+    slots: number | null;
+    slotsAvailable: number | null;
+    queueCount: number;
+  }): PublicEventSubscriptionSummary {
+    const availableSlots = event.slots == null ? null : event.slotsAvailable;
+    return {
+      eventId: event.id,
+      slots: event.slots,
+      availableSlots,
+      hasAvailableSlots: availableSlots == null || availableSlots > 0,
+      queueCount: event.queueCount,
     };
   }
 }

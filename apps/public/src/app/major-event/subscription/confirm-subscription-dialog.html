@@ -1,0 +1,45 @@
+<h2 mat-dialog-title>Confirmar inscrição</h2>
+
+<mat-dialog-content>
+  <header class="dialog-header">
+    <div class="emoji-frame">
+      <img
+        class="twemoji"
+        [src]="emoji.getTwemojiUrl(data.majorEvent.emoji)"
+        [alt]="data.majorEvent.emoji"
+      />
+    </div>
+    <div>
+      <p>Você está se inscrevendo em</p>
+      <h3>{{ data.majorEvent.name }}</h3>
+    </div>
+  </header>
+
+  <mat-list>
+    @for (month of groupedEvents(); track month.key) {
+    <div class="month-header">{{ month.label }}</div>
+    @for (day of month.days; track day.key) {
+    <div class="date-sticky-bar">{{ day.label }}</div>
+    @for (event of day.events; track event.id) {
+    <mat-list-item>
+      <div matListItemIcon class="emoji-frame">
+        <img
+          class="twemoji"
+          [src]="emoji.getTwemojiUrl(event.emoji)"
+          [alt]="event.emoji"
+        />
+      </div>
+      <div matListItemTitle>{{ event.name }}</div>
+      <div matListItemLine>
+        {{ event.startDate | date: 'HH:mm' }} às
+        {{ event.endDate | date: 'HH:mm' }}
+      </div>
+    </mat-list-item>
+    } } }
+  </mat-list>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">Cancelar</button>
+  <button mat-flat-button type="button" (click)="confirm()">Inscrever-se</button>
+</mat-dialog-actions>

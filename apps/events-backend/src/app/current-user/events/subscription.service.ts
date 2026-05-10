@@ -150,6 +150,7 @@ export class CurrentUserEventSubscriptionService {
             targetEvent.id,
             tx,
           );
+          await this.refreshEventSubscriptionCounters(tx, [targetEvent.id]);
         }
 
         return targetEvent;
@@ -375,10 +376,10 @@ export class CurrentUserEventSubscriptionService {
         select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
       }));
 
-    if (activeChildSubscriptions.length > 0) {
-      const childEventIds = activeChildSubscriptions.map(
-        (childSubscription) => childSubscription.eventId,
-      );
+    const childEventIds = activeChildSubscriptions.map(
+      (childSubscription) => childSubscription.eventId,
+    );
+    if (childEventIds.length > 0) {
       await tx.eventSubscription.updateMany({
         where: {
           personId,
@@ -429,6 +430,10 @@ export class CurrentUserEventSubscriptionService {
         tx,
       );
     }
+    await this.refreshEventSubscriptionCounters(tx, [
+      ...childEventIds,
+      ...eventsToCreate.map((event) => event.id),
+    ]);
 
     const events = await tx.eventSubscription.findMany({
       where: {
@@ -477,6 +482,45 @@ export class CurrentUserEventSubscriptionService {
         `Event ${event.id} has no available slots for subscription.`,
       );
     }
+  }
+
+  private async refreshEventSubscriptionCounters(
+    tx: TransactionClient,
+    eventIds: string[],
+  ): Promise<void> {
+    const uniqueEventIds = [...new Set(eventIds)];
+    if (uniqueEventIds.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      uniqueEventIds.map((eventId) =>
+        tx.$executeRaw`
+          UPDATE "events" event
+          SET
+            "queueCount" = (
+              SELECT COUNT(*)::INTEGER
+              FROM "major_event_subscription_event_selections" selection
+              JOIN "major_event_subscriptions" subscription
+                ON subscription."id" = selection."subscriptionId"
+              WHERE selection."eventId" = ${eventId}
+                AND selection."deletedAt" IS NULL
+                AND subscription."deletedAt" IS NULL
+                AND subscription."subscriptionStatus" NOT IN ('CONFIRMED', 'CANCELED')
+            ),
+            "slotsAvailable" = CASE
+              WHEN event."slots" IS NULL THEN NULL
+              ELSE event."slots" - (
+                SELECT COUNT(*)::INTEGER
+                FROM "event_subscriptions" event_subscription
+                WHERE event_subscription."eventId" = ${eventId}
+                  AND event_subscription."deletedAt" IS NULL
+              )
+            END
+          WHERE event."id" = ${eventId}
+        `,
+      ),
+    );
   }
 
   private groupEventsBySubscriptionId(

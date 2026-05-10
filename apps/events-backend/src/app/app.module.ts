@@ -29,7 +29,10 @@ import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
 import { CurrentUserEventSubscriptionService } from './current-user/events/subscription.service';
 import { CurrentUserEventAttendanceResolver } from './current-user/events/attendance.resolver';
-import { CurrentUserOnlineAttendanceRealtimeService } from './current-user/events/attendance-realtime.service';
+import {
+  CurrentUserOnlineAttendanceRealtimeService,
+  PublicRealtimeEventsController,
+} from './current-user/events/attendance-realtime.service';
 import { CurrentUserEventSubscriptionsResolver } from './current-user/events/subscriptions.resolver';
 import { CurrentUserMajorEventSubscriptionService } from './current-user/major-events/subscription.service';
 import { CurrentUserMajorEventSubscriptionsResolver } from './current-user/major-events/subscriptions.resolver';
@@ -94,7 +97,11 @@ import { WeatherService } from './weather/weather.service';
       context: ({ req, res }) => ({ req, res }),
     }),
   ],
-  controllers: [AppController, AccountMergeController],
+  controllers: [
+    AppController,
+    AccountMergeController,
+    PublicRealtimeEventsController,
+  ],
   providers: [
     AppService,
     AccountMergeService,

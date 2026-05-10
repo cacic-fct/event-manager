@@ -232,18 +232,60 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         `Some selected events are invalid for major event ${input.majorEventId}: ${missingSelectedEventIds.join(', ')}.`,
       );
     }
+    const selectedEventIdSet = new Set(selectedEventIds);
 
     this.majorEventSubscriptions.ensureMajorEventEventLimits(
       majorEvent,
       selectedEvents,
     );
+    this.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts(
+      selectedEvents,
+    );
+
+    const allGroupedEvents = await this.prisma.event.findMany({
+      where: {
+        majorEventId: input.majorEventId,
+        deletedAt: null,
+        allowSubscription: true,
+        eventGroupId: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+        eventGroupId: true,
+      },
+    });
+    this.majorEventSubscriptions.ensureEventGroupsAreFullySelected(
+      selectedEventIdSet,
+      allGroupedEvents,
+    );
+
+    const requiredAutoSubscribeEvents = await this.prisma.event.findMany({
+      where: {
+        majorEventId: input.majorEventId,
+        deletedAt: null,
+        allowSubscription: true,
+        autoSubscribe: true,
+      },
+      select: {
+        id: true,
+      },
+    });
+    const missingAutoSubscribeEventIds = requiredAutoSubscribeEvents
+      .map((event) => event.id)
+      .filter((eventId) => !selectedEventIdSet.has(eventId));
+    if (missingAutoSubscribeEventIds.length > 0) {
+      throw new BadRequestException(
+        `Auto-subscribe events must be selected: ${missingAutoSubscribeEventIds.join(', ')}.`,
+      );
+    }
 
     const normalizedAmountPaid =
       this.majorEventSubscriptions.normalizeAmountPaid(input.amountPaid);
     const normalizedPaymentTier =
       this.majorEventSubscriptions.normalizePaymentTier(input.paymentTier);
 
-    const selectedEventIdSet = new Set(selectedEventIds);
     const now = new Date();
     const subscription = await this.prisma.$transaction(async (tx) => {
       const existingSubscription = await tx.majorEventSubscription.findFirst({
@@ -310,6 +352,68 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         });
       }
 
+      const activeMajorEventSubscription =
+        await tx.majorEventSubscription.findFirst({
+          where: {
+            majorEventId: input.majorEventId,
+            personId: person.id,
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            subscriptionStatus: true,
+          },
+        });
+
+      if (!activeMajorEventSubscription) {
+        throw new NotFoundException(
+          `Subscription for major event ${input.majorEventId} was not found after upsert.`,
+        );
+      }
+
+      const activeSelections =
+        await tx.majorEventSubscriptionEventSelection.findMany({
+          where: {
+            subscriptionId: activeMajorEventSubscription.id,
+            deletedAt: null,
+          },
+          select: {
+            eventId: true,
+          },
+        });
+      const activeSelectionIdSet = new Set(
+        activeSelections.map((selection) => selection.eventId),
+      );
+      const selectionEventIdsToArchive = [...activeSelectionIdSet].filter(
+        (eventId) => !selectedEventIdSet.has(eventId),
+      );
+      if (selectionEventIdsToArchive.length > 0) {
+        await tx.majorEventSubscriptionEventSelection.updateMany({
+          where: {
+            subscriptionId: activeMajorEventSubscription.id,
+            eventId: {
+              in: selectionEventIdsToArchive,
+            },
+            deletedAt: null,
+          },
+          data: {
+            deletedAt: now,
+          },
+        });
+      }
+
+      const selectionEventIdsToCreate = selectedEventIds.filter(
+        (eventId) => !activeSelectionIdSet.has(eventId),
+      );
+      if (selectionEventIdsToCreate.length > 0) {
+        await tx.majorEventSubscriptionEventSelection.createMany({
+          data: selectionEventIdsToCreate.map((eventId) => ({
+            subscriptionId: activeMajorEventSubscription.id,
+            eventId,
+          })),
+        });
+      }
+
       const activeEventSubscriptions = await tx.eventSubscription.findMany({
         where: {
           personId: person.id,
@@ -328,7 +432,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         activeEventSubscriptions.map((subscription) => subscription.eventId),
       );
       const eventIdsToArchive = [...activeEventIdSet].filter(
-        (eventId) => !selectedEventIdSet.has(eventId),
+        (eventId) =>
+          activeMajorEventSubscription.subscriptionStatus !==
+            SubscriptionStatus.CONFIRMED || !selectedEventIdSet.has(eventId),
       );
 
       if (eventIdsToArchive.length > 0) {
@@ -346,9 +452,30 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         });
       }
 
-      const eventIdsToCreate = selectedEventIds.filter(
-        (eventId) => !activeEventIdSet.has(eventId),
-      );
+      const eventIdsToCreate =
+        activeMajorEventSubscription.subscriptionStatus ===
+        SubscriptionStatus.CONFIRMED
+          ? selectedEventIds.filter((eventId) => !activeEventIdSet.has(eventId))
+          : [];
+      for (const eventId of eventIdsToCreate) {
+        const event = selectedEventsById.get(eventId);
+        if (event?.slots == null) {
+          continue;
+        }
+
+        const activeSubscriptionsCount = await tx.eventSubscription.count({
+          where: {
+            eventId,
+            deletedAt: null,
+          },
+        });
+        if (activeSubscriptionsCount >= event.slots) {
+          throw new BadRequestException(
+            `Event ${eventId} has no available slots for subscription.`,
+          );
+        }
+      }
+
       if (eventIdsToCreate.length > 0) {
         await tx.eventSubscription.createMany({
           data: eventIdsToCreate.map((eventId) => ({
@@ -364,6 +491,10 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         person.id,
         tx,
       );
+      await this.majorEventSubscriptions.refreshEventSubscriptionCounters(tx, [
+        ...activeEventIdSet,
+        ...selectedEventIds,
+      ]);
 
       const updatedSubscription = await tx.majorEventSubscription.findFirst({
         where: {

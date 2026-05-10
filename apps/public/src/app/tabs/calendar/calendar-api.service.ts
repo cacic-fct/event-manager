@@ -68,6 +68,9 @@ const PUBLIC_EVENT_FIELDS = `
   subscriptionStartDate
   subscriptionEndDate
   slots
+  slotsAvailable
+  queueCount
+  autoSubscribe
   shouldIssueCertificate
   shouldCollectAttendance
   isOnlineAttendanceAllowed

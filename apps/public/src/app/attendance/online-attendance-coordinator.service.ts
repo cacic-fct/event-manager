@@ -2,17 +2,9 @@ import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-eventos/shared-angular';
-import { catchError, of, take } from 'rxjs';
+import { Subscription, catchError, of, take } from 'rxjs';
+import { RealtimeEventsService } from '../shared/realtime-events.service';
 import { OnlineAttendanceApiService } from './online-attendance-api.service';
-
-interface AttendanceSocketMessage {
-  type?: string;
-  channel?: string;
-  event?: string;
-  payload?: {
-    eventIds?: string[];
-  };
-}
 
 const ONLINE_ATTENDANCE_CHANNEL = 'current-user.online-attendance';
 
@@ -21,11 +13,12 @@ export class OnlineAttendanceCoordinatorService {
   private readonly api = inject(OnlineAttendanceApiService);
   private readonly auth = inject(AuthService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly realtime = inject(RealtimeEventsService);
   private readonly router = inject(Router);
   private readonly interruptedStorageKey =
     'cacic-eventos:online-attendance-interrupted';
 
-  private socket: WebSocket | null = null;
+  private realtimeSubscription: Subscription | null = null;
 
   constructor() {
     effect(() => {
@@ -92,56 +85,29 @@ export class OnlineAttendanceCoordinatorService {
   }
 
   private connect(): void {
-    if (!isPlatformBrowser(this.platformId) || this.socket) {
+    if (!isPlatformBrowser(this.platformId) || this.realtimeSubscription) {
       return;
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.socket = new WebSocket(
-      `${protocol}//${window.location.host}/api/public/ws`,
-    );
-    this.socket.addEventListener('open', () => {
-      this.socket?.send(
-        JSON.stringify({
-          type: 'subscribe',
-          channel: ONLINE_ATTENDANCE_CHANNEL,
-        }),
-      );
-    });
-    this.socket.addEventListener('message', (event) => {
-      const message = this.parseMessage(event.data);
+    this.realtimeSubscription = this.realtime.watch().subscribe((message) => {
+      const payload = message.payload as { eventIds?: string[] } | undefined;
       if (
-        message?.type === 'event' &&
+        message.type === 'event' &&
         message.channel === ONLINE_ATTENDANCE_CHANNEL &&
         message.event === 'pendingOnlineAttendancesChanged' &&
-        message.payload?.eventIds?.length
+        payload?.eventIds?.length
       ) {
         this.maybeInterrupt();
       }
     });
-    this.socket.addEventListener('close', () => {
-      this.socket = null;
-    });
   }
 
   private disconnect(): void {
-    this.socket?.close();
-    this.socket = null;
+    this.realtimeSubscription?.unsubscribe();
+    this.realtimeSubscription = null;
   }
 
   private currentUrl(): string {
     return this.router.url || '/menu';
-  }
-
-  private parseMessage(data: unknown): AttendanceSocketMessage | null {
-    if (typeof data !== 'string') {
-      return null;
-    }
-
-    try {
-      return JSON.parse(data) as AttendanceSocketMessage;
-    } catch {
-      return null;
-    }
   }
 }

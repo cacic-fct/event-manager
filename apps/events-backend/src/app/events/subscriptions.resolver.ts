@@ -86,6 +86,8 @@ const EVENT_SELECT = {
   subscriptionStartDate: true,
   subscriptionEndDate: true,
   slots: true,
+  slotsAvailable: true,
+  queueCount: true,
   autoSubscribe: true,
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
@@ -199,6 +201,7 @@ export class EventSubscriptionsResolver {
         input.eventId,
         tx,
       );
+      await this.refreshEventSubscriptionCounters(tx, [input.eventId]);
       return created;
     });
 
@@ -269,6 +272,16 @@ export class EventSubscriptionsResolver {
       });
 
       if (selectedEventIds.length > 0) {
+        await tx.majorEventSubscriptionEventSelection.createMany({
+          data: selectedEventIds.map((eventId) => ({
+            subscriptionId: majorEventSubscription.id,
+            eventId,
+            createdById,
+          })),
+        });
+      }
+
+      if (status === SubscriptionStatus.CONFIRMED && selectedEventIds.length > 0) {
         await tx.eventSubscription.createMany({
           data: selectedEventIds.map((eventId) => ({
             eventId,
@@ -284,6 +297,7 @@ export class EventSubscriptionsResolver {
         input.personId,
         tx,
       );
+      await this.refreshEventSubscriptionCounters(tx, selectedEventIds);
 
       return majorEventSubscription;
     });
@@ -310,8 +324,10 @@ export class EventSubscriptionsResolver {
         deletedAt: null,
       },
       select: {
+        id: true,
         majorEventId: true,
         personId: true,
+        subscriptionStatus: true,
       },
     });
     if (!existing) {
@@ -356,19 +372,37 @@ export class EventSubscriptionsResolver {
         select: this.majorEventSubscriptionSelect(),
       });
 
-      if (selectedEventIds) {
-        await this.syncMajorEventEventSubscriptions(
-          tx,
-          existing.majorEventId,
-          existing.personId,
-          selectedEventIds,
-        );
-      }
+      const effectiveSelectedEventIds =
+        selectedEventIds ??
+        (
+          await tx.majorEventSubscriptionEventSelection.findMany({
+            where: {
+              subscriptionId: id,
+              deletedAt: null,
+            },
+            select: {
+              eventId: true,
+            },
+          })
+        ).map((selection) => selection.eventId);
+
+      await this.syncMajorEventEventSubscriptions(
+        tx,
+        id,
+        existing.majorEventId,
+        existing.personId,
+        effectiveSelectedEventIds,
+        updated.subscriptionStatus,
+      );
 
       await this.attendanceCategories.refreshForMajorEventPerson(
         existing.majorEventId,
         existing.personId,
         tx,
+      );
+      await this.refreshEventSubscriptionCounters(
+        tx,
+        effectiveSelectedEventIds,
       );
 
       return updated;
@@ -439,24 +473,33 @@ export class EventSubscriptionsResolver {
     const personIds = subscriptions.map(
       (subscription) => subscription.personId,
     );
-    const eventSubscriptions = await this.prisma.eventSubscription.findMany({
+    const eventSelections =
+      await this.prisma.majorEventSubscriptionEventSelection.findMany({
       where: {
-        personId: {
-          in: personIds,
+        deletedAt: null,
+        subscription: {
+          personId: {
+            in: personIds,
+          },
+          majorEventId,
+          deletedAt: null,
         },
         eventId: {
           in: eventIds,
         },
-        deletedAt: null,
       },
       select: {
-        personId: true,
         eventId: true,
+        subscription: {
+          select: {
+            personId: true,
+          },
+        },
       },
     });
     const subscribedKeys = new Set(
-      eventSubscriptions.map(
-        (subscription) => `${subscription.personId}:${subscription.eventId}`,
+      eventSelections.map(
+        (selection) => `${selection.subscription.personId}:${selection.eventId}`,
       ),
     );
 
@@ -476,11 +519,57 @@ export class EventSubscriptionsResolver {
 
   private async syncMajorEventEventSubscriptions(
     tx: Prisma.TransactionClient,
+    subscriptionId: string,
     majorEventId: string,
     personId: string,
     selectedEventIds: string[],
+    status: SubscriptionStatus,
   ): Promise<void> {
     const selectedEventIdSet = new Set(selectedEventIds);
+    const activeSelections =
+      await tx.majorEventSubscriptionEventSelection.findMany({
+        where: {
+          subscriptionId,
+          deletedAt: null,
+        },
+        select: {
+          eventId: true,
+        },
+      });
+    const activeSelectionIdSet = new Set(
+      activeSelections.map((selection) => selection.eventId),
+    );
+    const now = new Date();
+    const selectionEventIdsToArchive = [...activeSelectionIdSet].filter(
+      (eventId) => !selectedEventIdSet.has(eventId),
+    );
+    if (selectionEventIdsToArchive.length > 0) {
+      await tx.majorEventSubscriptionEventSelection.updateMany({
+        where: {
+          subscriptionId,
+          eventId: {
+            in: selectionEventIdsToArchive,
+          },
+          deletedAt: null,
+        },
+        data: {
+          deletedAt: now,
+        },
+      });
+    }
+
+    const selectionEventIdsToCreate = selectedEventIds.filter(
+      (eventId) => !activeSelectionIdSet.has(eventId),
+    );
+    if (selectionEventIdsToCreate.length > 0) {
+      await tx.majorEventSubscriptionEventSelection.createMany({
+        data: selectionEventIdsToCreate.map((eventId) => ({
+          subscriptionId,
+          eventId,
+        })),
+      });
+    }
+
     const activeSubscriptions = await tx.eventSubscription.findMany({
       where: {
         personId,
@@ -497,9 +586,10 @@ export class EventSubscriptionsResolver {
     const activeEventIdSet = new Set(
       activeSubscriptions.map((subscription) => subscription.eventId),
     );
-    const now = new Date();
     const eventIdsToArchive = [...activeEventIdSet].filter(
-      (eventId) => !selectedEventIdSet.has(eventId),
+      (eventId) =>
+        status !== SubscriptionStatus.CONFIRMED ||
+        !selectedEventIdSet.has(eventId),
     );
     if (eventIdsToArchive.length > 0) {
       await tx.eventSubscription.updateMany({
@@ -516,9 +606,10 @@ export class EventSubscriptionsResolver {
       });
     }
 
-    const eventIdsToCreate = selectedEventIds.filter(
-      (eventId) => !activeEventIdSet.has(eventId),
-    );
+    const eventIdsToCreate =
+      status === SubscriptionStatus.CONFIRMED
+        ? selectedEventIds.filter((eventId) => !activeEventIdSet.has(eventId))
+        : [];
     if (eventIdsToCreate.length > 0) {
       await tx.eventSubscription.createMany({
         data: eventIdsToCreate.map((eventId) => ({
@@ -528,6 +619,51 @@ export class EventSubscriptionsResolver {
         })),
       });
     }
+
+    await this.refreshEventSubscriptionCounters(tx, [
+      ...activeEventIdSet,
+      ...activeSelectionIdSet,
+      ...selectedEventIds,
+    ]);
+  }
+
+  private async refreshEventSubscriptionCounters(
+    tx: Prisma.TransactionClient,
+    eventIds: string[],
+  ): Promise<void> {
+    const uniqueEventIds = [...new Set(eventIds)];
+    if (uniqueEventIds.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      uniqueEventIds.map((eventId) =>
+        tx.$executeRaw`
+          UPDATE "events" event
+          SET
+            "queueCount" = (
+              SELECT COUNT(*)::INTEGER
+              FROM "major_event_subscription_event_selections" selection
+              JOIN "major_event_subscriptions" subscription
+                ON subscription."id" = selection."subscriptionId"
+              WHERE selection."eventId" = ${eventId}
+                AND selection."deletedAt" IS NULL
+                AND subscription."deletedAt" IS NULL
+                AND subscription."subscriptionStatus" NOT IN ('CONFIRMED', 'CANCELED')
+            ),
+            "slotsAvailable" = CASE
+              WHEN event."slots" IS NULL THEN NULL
+              ELSE event."slots" - (
+                SELECT COUNT(*)::INTEGER
+                FROM "event_subscriptions" event_subscription
+                WHERE event_subscription."eventId" = ${eventId}
+                  AND event_subscription."deletedAt" IS NULL
+              )
+            END
+          WHERE event."id" = ${eventId}
+        `,
+      ),
+    );
   }
 
   private async ensurePersonExists(personId: string): Promise<void> {

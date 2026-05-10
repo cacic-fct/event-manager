@@ -23,6 +23,7 @@ export interface PublicEventSubscriptionSummary {
   slots?: number | null;
   availableSlots?: number | null;
   hasAvailableSlots: boolean;
+  queueCount: number;
 }
 
 export interface EventPageData {
@@ -94,6 +95,9 @@ const PUBLIC_EVENT_FIELDS = `
   subscriptionStartDate
   subscriptionEndDate
   slots
+  slotsAvailable
+  queueCount
+  autoSubscribe
   shouldIssueCertificate
   shouldCollectAttendance
   isOnlineAttendanceAllowed
@@ -136,6 +140,7 @@ export class EventApiService {
             slots
             availableSlots
             hasAvailableSlots
+            queueCount
           }
           publicEventWeather(eventId: $eventId) {
             eventId

@@ -106,6 +106,98 @@ export class CurrentUserMajorEventSubscriptionService {
     }
   }
 
+  ensureMajorEventScheduleHasNoConflicts(selectedEvents: EventRecord[]): void {
+    for (let leftIndex = 0; leftIndex < selectedEvents.length; leftIndex += 1) {
+      const leftEvent = selectedEvents[leftIndex];
+      for (
+        let rightIndex = leftIndex + 1;
+        rightIndex < selectedEvents.length;
+        rightIndex += 1
+      ) {
+        const rightEvent = selectedEvents[rightIndex];
+        if (
+          (!leftEvent.eventGroupId ||
+            leftEvent.eventGroupId !== rightEvent.eventGroupId) &&
+          leftEvent.startDate < rightEvent.endDate &&
+          leftEvent.endDate > rightEvent.startDate
+        ) {
+          throw new BadRequestException(
+            `Events ${leftEvent.id} and ${rightEvent.id} have conflicting schedules.`,
+          );
+        }
+      }
+    }
+  }
+
+  ensureEventGroupsAreFullySelected(
+    selectedEventIds: Set<string>,
+    groupedEvents: Array<{
+      eventGroupId: string | null;
+      id: string;
+    }>,
+  ): void {
+    const eventIdsByGroupId = new Map<string, string[]>();
+    for (const event of groupedEvents) {
+      if (!event.eventGroupId) {
+        continue;
+      }
+
+      const eventIds = eventIdsByGroupId.get(event.eventGroupId) ?? [];
+      eventIds.push(event.id);
+      eventIdsByGroupId.set(event.eventGroupId, eventIds);
+    }
+
+    for (const [eventGroupId, eventIds] of eventIdsByGroupId) {
+      if (
+        eventIds.some((eventId) => selectedEventIds.has(eventId)) &&
+        eventIds.some((eventId) => !selectedEventIds.has(eventId))
+      ) {
+        throw new BadRequestException(
+          `All events from group ${eventGroupId} must be selected together.`,
+        );
+      }
+    }
+  }
+
+  async refreshEventSubscriptionCounters(
+    tx: Prisma.TransactionClient,
+    eventIds: string[],
+  ): Promise<void> {
+    const uniqueEventIds = [...new Set(eventIds)];
+    if (uniqueEventIds.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      uniqueEventIds.map((eventId) =>
+        tx.$executeRaw`
+          UPDATE "events" event
+          SET
+            "queueCount" = (
+              SELECT COUNT(*)::INTEGER
+              FROM "major_event_subscription_event_selections" selection
+              JOIN "major_event_subscriptions" subscription
+                ON subscription."id" = selection."subscriptionId"
+              WHERE selection."eventId" = ${eventId}
+                AND selection."deletedAt" IS NULL
+                AND subscription."deletedAt" IS NULL
+                AND subscription."subscriptionStatus" NOT IN ('CONFIRMED', 'CANCELED')
+            ),
+            "slotsAvailable" = CASE
+              WHEN event."slots" IS NULL THEN NULL
+              ELSE event."slots" - (
+                SELECT COUNT(*)::INTEGER
+                FROM "event_subscriptions" event_subscription
+                WHERE event_subscription."eventId" = ${eventId}
+                  AND event_subscription."deletedAt" IS NULL
+              )
+            END
+          WHERE event."id" = ${eventId}
+        `,
+      ),
+    );
+  }
+
   resolveNextSubscriptionStatus(
     isPaymentRequired: boolean,
     currentStatus?: SubscriptionStatus,
@@ -136,6 +228,57 @@ export class CurrentUserMajorEventSubscriptionService {
       return new Map();
     }
 
+    const eventSelections =
+      await this.prisma.majorEventSubscriptionEventSelection.findMany({
+      where: {
+        deletedAt: null,
+        subscription: {
+          personId,
+          deletedAt: null,
+          majorEventId: {
+            in: majorEventIds,
+          },
+        },
+        event: {
+          deletedAt: null,
+        },
+      },
+      select: {
+        subscription: {
+          select: {
+            majorEventId: true,
+          },
+        },
+        event: {
+          select: PUBLIC_EVENT_SELECT,
+        },
+      },
+      orderBy: {
+        event: {
+          startDate: 'asc',
+        },
+      },
+    });
+
+    const selectedEventsByMajorEventId = new Map<string, PublicEvent[]>();
+    for (const selection of eventSelections) {
+      const majorEventId = selection.subscription.majorEventId;
+      const events = selectedEventsByMajorEventId.get(majorEventId) ?? [];
+      events.push(selection.event);
+      selectedEventsByMajorEventId.set(majorEventId, events);
+    }
+
+    return selectedEventsByMajorEventId;
+  }
+
+  async getConfirmedEventsByMajorEvent(
+    personId: string,
+    majorEventIds: string[],
+  ): Promise<Map<string, PublicEvent[]>> {
+    if (majorEventIds.length === 0) {
+      return new Map();
+    }
+
     const eventSubscriptions = await this.prisma.eventSubscription.findMany({
       where: {
         personId,
@@ -159,32 +302,36 @@ export class CurrentUserMajorEventSubscriptionService {
       },
     });
 
-    const selectedEventsByMajorEventId = new Map<string, PublicEvent[]>();
+    const confirmedEventsByMajorEventId = new Map<string, PublicEvent[]>();
     for (const subscription of eventSubscriptions) {
       const majorEventId = subscription.event.majorEventId;
       if (!majorEventId) {
         continue;
       }
 
-      const events = selectedEventsByMajorEventId.get(majorEventId) ?? [];
+      const events = confirmedEventsByMajorEventId.get(majorEventId) ?? [];
       events.push(subscription.event);
-      selectedEventsByMajorEventId.set(majorEventId, events);
+      confirmedEventsByMajorEventId.set(majorEventId, events);
     }
 
-    return selectedEventsByMajorEventId;
+    return confirmedEventsByMajorEventId;
   }
 
   async getSelectedEventsForMajorEventSubscription(
     personId: string,
     majorEventId: string,
   ): Promise<PublicEvent[]> {
-    const eventSubscriptions = await this.prisma.eventSubscription.findMany({
+    const eventSelections =
+      await this.prisma.majorEventSubscriptionEventSelection.findMany({
       where: {
-        personId,
         deletedAt: null,
+        subscription: {
+          personId,
+          majorEventId,
+          deletedAt: null,
+        },
         event: {
           deletedAt: null,
-          majorEventId,
         },
       },
       select: {
@@ -199,7 +346,7 @@ export class CurrentUserMajorEventSubscriptionService {
       },
     });
 
-    return eventSubscriptions.map((subscription) => subscription.event);
+    return eventSelections.map((selection) => selection.event);
   }
 
   async getMajorEventSubscriptionEvents(
@@ -218,10 +365,14 @@ export class CurrentUserMajorEventSubscriptionService {
       },
       select: {
         ...PUBLIC_EVENT_SELECT,
-        subscriptions: {
+        majorEventSelections: {
           where: {
-            personId,
             deletedAt: null,
+            subscription: {
+              personId,
+              deletedAt: null,
+              majorEventId,
+            },
           },
           select: {
             eventId: true,
@@ -238,8 +389,8 @@ export class CurrentUserMajorEventSubscriptionService {
     const notSubscribedEvents: PublicEvent[] = [];
 
     for (const event of events) {
-      const { subscriptions, ...publicEvent } = event;
-      if (subscriptions.length > 0) {
+      const { majorEventSelections, ...publicEvent } = event;
+      if (majorEventSelections.length > 0) {
         selectedEvents.push(publicEvent);
       } else {
         notSubscribedEvents.push(publicEvent);

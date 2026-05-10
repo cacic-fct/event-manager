@@ -61,6 +61,9 @@ export interface PublicEvent {
   subscriptionStartDate?: string | null;
   subscriptionEndDate?: string | null;
   slots?: number | null;
+  slotsAvailable?: number | null;
+  queueCount: number;
+  autoSubscribe?: boolean | null;
   shouldIssueCertificate?: boolean | null;
   shouldIssueCertificateForNonPayingAttendees?: boolean | null;
   shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
