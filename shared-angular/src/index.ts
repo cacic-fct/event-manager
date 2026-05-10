@@ -10,3 +10,4 @@ export * from './lib/cacic-logo/cacic-miniature.component';
 export * from './lib/mailto/mailto.service';
 export * from './lib/pipes/safe.pipe';
 export * from './lib/service-worker/service-worker.service';
+export * from './lib/sitemap/sitemap.utils';

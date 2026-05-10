@@ -7,6 +7,11 @@ import {
 import express from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { appRoutes } from './app/app.routes';
+
+// Sitemap
+import { collectPaths } from '@cacic-eventos/shared-angular';
+import xmlbuilder from 'xmlbuilder';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -58,6 +63,25 @@ app.use('/{*splat}', (req, res, next) => {
       response ? writeResponseToNodeResponse(response, res) : next(),
     )
     .catch(next);
+});
+
+app.get('/app/sitemap.xml', (req, res) => {
+  const routes = Array.from(new Set(collectPaths(appRoutes)));
+
+  const root = xmlbuilder.create('urlset', {
+    version: '1.0',
+    encoding: 'UTF-8',
+  });
+  root.att('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9');
+
+  routes.forEach((route) => {
+    const path = route.startsWith('/') ? route : `/${route}`;
+    const url = root.ele('url');
+    url.ele('loc', `https://metro.yudi.com.br/app${path}`);
+  });
+
+  res.type('application/xml; charset=utf-8');
+  res.send(root.end({ pretty: true }));
 });
 
 /**
