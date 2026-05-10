@@ -1,0 +1,35 @@
+:host {
+  display: block;
+}
+
+.payment-page {
+  margin: 0 auto;
+  max-width: 760px;
+  padding: 32px 16px;
+}
+
+.placeholder {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 320px;
+  text-align: center;
+}
+
+.placeholder mat-icon {
+  font-size: 48px;
+  height: 48px;
+  width: 48px;
+}
+
+h1 {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-headline-small);
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}

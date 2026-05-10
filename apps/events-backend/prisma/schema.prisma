@@ -232,8 +232,11 @@ model Event {
   subscriptionEndDate   DateTime?
   subscriptions         EventSubscription[]
   slots                 Int?
+  slotsAvailable        Int?
+  queueCount            Int                 @default(0)
   // When true and only if event is part of a major event, users will be automatically subscribed to this event when subscribing to the major event
   autoSubscribe         Boolean             @default(false)
+  majorEventSelections  MajorEventSubscriptionEventSelection[]
 
   shouldIssueCertificate                          Boolean             @default(false)
   shouldIssueCertificateForNonPayingAttendees     Boolean             @default(false)
@@ -329,6 +332,7 @@ model MajorEventSubscription {
   paymentTier String?
 
   subscriptionStatus SubscriptionStatus @default(WAITING_RECEIPT_UPLOAD)
+  selectedEvents     MajorEventSubscriptionEventSelection[]
 
   createdAt       DateTime                   @default(now())
   createdById     String?
@@ -339,6 +343,25 @@ model MajorEventSubscription {
   @@unique([majorEventId, personId, deletedAt])
   @@index([majorEventId])
   @@map("major_event_subscriptions")
+}
+
+model MajorEventSubscriptionEventSelection {
+  id String @id @default(uuid(7))
+
+  subscriptionId String
+  subscription   MajorEventSubscription @relation(fields: [subscriptionId], references: [id])
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  deletedAt   DateTime?
+
+  @@unique([subscriptionId, eventId, deletedAt])
+  @@index([eventId])
+  @@index([subscriptionId])
+  @@map("major_event_subscription_event_selections")
 }
 
 model MajorEventPrice {

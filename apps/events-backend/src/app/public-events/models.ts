@@ -65,6 +65,9 @@ export const PUBLIC_EVENT_SELECT = {
   subscriptionStartDate: true,
   subscriptionEndDate: true,
   slots: true,
+  slotsAvailable: true,
+  queueCount: true,
+  autoSubscribe: true,
   shouldIssueCertificate: true,
   shouldCollectAttendance: true,
   isOnlineAttendanceAllowed: true,
@@ -241,6 +244,15 @@ export class PublicEvent {
   @Field(() => Int, { nullable: true })
   slots?: number | null;
 
+  @Field(() => Int, { nullable: true })
+  slotsAvailable?: number | null;
+
+  @Field(() => Int)
+  queueCount!: number;
+
+  @Field(() => Boolean, { nullable: true })
+  autoSubscribe?: boolean | null;
+
   @Field(() => Boolean, { nullable: true })
   shouldIssueCertificate?: boolean | null;
 
@@ -282,4 +294,19 @@ export class PublicEventSubscriptionSummary {
 
   @Field(() => Boolean)
   hasAvailableSlots!: boolean;
+
+  @Field(() => Int)
+  queueCount!: number;
+}
+
+@ObjectType()
+export class PublicMajorEventSubscriptionPage {
+  @Field(() => PublicMajorEvent)
+  majorEvent!: PublicMajorEvent;
+
+  @Field(() => [PublicEvent])
+  events!: PublicEvent[];
+
+  @Field(() => [PublicEventSubscriptionSummary])
+  subscriptionSummaries!: PublicEventSubscriptionSummary[];
 }

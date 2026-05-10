@@ -43,6 +43,27 @@ export const appRoutes: Route[] = [
     title: 'Evento',
   },
   {
+    path: 'major-event/:majorEventId/subscription',
+    loadComponent: () =>
+      import('./major-event/subscription/subscription').then(
+        (m) => m.MajorEventSubscription,
+      ),
+    title: 'Inscrição',
+    children: [
+      {
+        path: 'event/:eventId',
+        loadComponent: () => import('./event/event').then((m) => m.Event),
+        title: 'Evento',
+      },
+    ],
+  },
+  {
+    path: 'major-event/:majorEventId/payment',
+    loadComponent: () =>
+      import('./major-event/payment/payment-info').then((m) => m.PaymentInfo),
+    title: 'Pagamento',
+  },
+  {
     path: 'attendance/register',
     loadComponent: () =>
       import('./attendance/online-attendance-list.component').then(
