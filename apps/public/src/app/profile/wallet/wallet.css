@@ -37,6 +37,13 @@
   }
 }
 
+@media screen and (max-width: 400px) {
+  .aztec-code {
+    width: 260px;
+    height: 260px;
+  }
+}
+
 .aztec-code {
   padding: 25px;
   background-color: #fff;

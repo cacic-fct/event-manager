@@ -60,7 +60,7 @@ export class Wallet {
         includetext: false,
         textxalign: 'center',
         // @ts-expect-error - eclevel actually exists
-        eclevel: '30', // Error correction level
+        eclevel: '35', // Error correction level
       });
 
       return svg;
