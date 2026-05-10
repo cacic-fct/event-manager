@@ -26,6 +26,11 @@ import { ConfirmationDialogComponent } from '../components/confirmation-dialog.c
 
 type IssuableScope = Exclude<CertificateScope, 'OTHER'>;
 type CertificateTargetType = 'event' | 'event-group' | 'major-event';
+type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
+type CertificateIssuedToOption =
+  | CertificateIssuedTo
+  | 'LECTURER_PALESTRA'
+  | 'LECTURER_MINICURSO';
 type IssuableTarget = Event | EventGroup | MajorEvent;
 type CertificateConfigFormModel = {
   id: string;
@@ -33,7 +38,7 @@ type CertificateConfigFormModel = {
   certificateTemplateId: string;
   certificateText: string;
   isActive: boolean;
-  issuedTo: CertificateIssuedTo;
+  issuedTo: CertificateIssuedToOption;
   certificateFields: Record<string, string>;
 };
 type CertificateFieldDefinition = {
@@ -43,6 +48,8 @@ type CertificateFieldDefinition = {
   required: boolean;
   defaultValue: string;
 };
+
+const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 
 @Injectable({
   providedIn: 'root',
@@ -263,7 +270,10 @@ export class WorkspaceCertificatesService {
       certificateTemplateId: config.certificateTemplateId,
       certificateText: config.certificateText ?? '',
       isActive: config.isActive,
-      issuedTo: config.issuedTo,
+      issuedTo: this.buildIssuedToOption(
+        config.issuedTo,
+        this.parseLecturerEventCategory(config.certificateFieldsJson),
+      ),
       certificateFields: {},
     });
     this.syncCertificateFieldsForm(
@@ -581,9 +591,10 @@ export class WorkspaceCertificatesService {
       certificateTemplateId: raw.certificateTemplateId.trim(),
       certificateText: raw.certificateText.trim() || null,
       isActive: raw.isActive,
-      issuedTo: raw.issuedTo,
+      issuedTo: this.normalizeIssuedTo(raw.issuedTo),
       certificateFieldsJson: this.buildCertificateFieldsJson(
         raw.certificateFields,
+        this.parseIssuedToLecturerEventCategory(raw.issuedTo),
       ),
     };
   }
@@ -670,6 +681,7 @@ export class WorkspaceCertificatesService {
 
   private buildCertificateFieldsJson(
     values = this.certificateConfigModel().certificateFields,
+    lecturerEventCategory?: LecturerEventCategory,
   ): string | null {
     const certificateFields: Record<string, string> = {};
 
@@ -680,6 +692,10 @@ export class WorkspaceCertificatesService {
       if (value) {
         certificateFields[definition.key] = value;
       }
+    }
+
+    if (lecturerEventCategory) {
+      certificateFields[LECTURER_EVENT_CATEGORY_FIELD] = lecturerEventCategory;
     }
 
     return Object.keys(certificateFields).length > 0
@@ -731,7 +747,11 @@ export class WorkspaceCertificatesService {
       return Object.fromEntries(
         Object.entries(parsed)
           .filter((entry): entry is [string, string] => {
-            const [, value] = entry;
+            const [key, value] = entry;
+            if (key === LECTURER_EVENT_CATEGORY_FIELD) {
+              return false;
+            }
+
             return (
               typeof value === 'string' ||
               typeof value === 'number' ||
@@ -799,6 +819,74 @@ export class WorkspaceCertificatesService {
       required: definition['required'] === true,
       defaultValue: this.normalizeCertificateFieldValue(definition['default']),
     };
+  }
+
+  private buildIssuedToOption(
+    issuedTo: CertificateIssuedTo,
+    lecturerEventCategory: LecturerEventCategory | null,
+  ): CertificateIssuedToOption {
+    if (issuedTo !== 'LECTURER') {
+      return issuedTo;
+    }
+
+    if (lecturerEventCategory === 'PALESTRA') {
+      return 'LECTURER_PALESTRA';
+    }
+
+    if (lecturerEventCategory === 'MINICURSO') {
+      return 'LECTURER_MINICURSO';
+    }
+
+    return 'LECTURER';
+  }
+
+  private normalizeIssuedTo(
+    issuedTo: CertificateIssuedToOption,
+  ): CertificateIssuedTo {
+    return issuedTo === 'LECTURER_PALESTRA' || issuedTo === 'LECTURER_MINICURSO'
+      ? 'LECTURER'
+      : issuedTo;
+  }
+
+  private parseIssuedToLecturerEventCategory(
+    issuedTo: CertificateIssuedToOption,
+  ): LecturerEventCategory | undefined {
+    if (issuedTo === 'LECTURER_PALESTRA') {
+      return 'PALESTRA';
+    }
+
+    if (issuedTo === 'LECTURER_MINICURSO') {
+      return 'MINICURSO';
+    }
+
+    if (issuedTo === 'LECTURER') {
+      return 'OTHER';
+    }
+
+    return undefined;
+  }
+
+  private parseLecturerEventCategory(
+    rawValue?: string | null,
+  ): LecturerEventCategory | null {
+    if (!rawValue) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(rawValue) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return null;
+      }
+
+      const fields = parsed as Record<string, unknown>;
+      const value = fields[LECTURER_EVENT_CATEGORY_FIELD];
+      return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER'
+        ? value
+        : null;
+    } catch {
+      return null;
+    }
   }
 
   private normalizeCertificateFieldValue(rawValue: unknown): string {

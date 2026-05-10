@@ -26,6 +26,9 @@ import {
 } from './certificate-eligibility.service';
 import { CertificateValidationService } from './certificate-validation.service';
 
+const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
+type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
+
 @Injectable()
 export class CertificateIssuingService {
   private static readonly CERTIFICATE_ISSUING_BATCH_SIZE = 10;
@@ -587,7 +590,7 @@ export class CertificateIssuingService {
         'no evento',
       ),
       date: `${issueDay} de ${issueMonth} de ${issueYear}`,
-      participation_type: this.buildParticipationType(config.issuedTo),
+      participation_type: this.buildParticipationType(config),
       name: recipient.person.name,
       event_type: 'no evento',
       major_event_or_event_name: targetName,
@@ -669,12 +672,44 @@ export class CertificateIssuingService {
     return fallback;
   }
 
-  private buildParticipationType(issuedTo: CertificateIssuedTo): string {
-    if (issuedTo === CertificateIssuedTo.LECTURER) {
+  private buildParticipationType(config: CertificateConfigRecord): string {
+    if (config.issuedTo !== CertificateIssuedTo.LECTURER) {
+      return 'Certificamos a participação de:';
+    }
+
+    const lecturerEventCategory = this.parseLecturerEventCategory(
+      config.certificateFields,
+    );
+    if (lecturerEventCategory === 'PALESTRA') {
       return 'Certificamos a participação como palestrante de:';
     }
 
-    return 'Certificamos a participação de:';
+    if (lecturerEventCategory === 'MINICURSO') {
+      return 'Certificamos a participação como ministrante de:';
+    }
+
+    if (lecturerEventCategory === 'OTHER') {
+      return 'Certificamos a participação como palestrante/ministrante de:';
+    }
+
+    return 'Certificamos a participação como palestrante de:';
+  }
+
+  private parseLecturerEventCategory(
+    certificateFields: Prisma.JsonValue | null,
+  ): LecturerEventCategory | null {
+    if (
+      !certificateFields ||
+      typeof certificateFields !== 'object' ||
+      Array.isArray(certificateFields)
+    ) {
+      return null;
+    }
+
+    const value = certificateFields[LECTURER_EVENT_CATEGORY_FIELD];
+    return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER'
+      ? value
+      : null;
   }
 
   private buildMinicursoLines(events: EventRecord[]): string[] {

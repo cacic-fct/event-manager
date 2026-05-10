@@ -1,6 +1,7 @@
 import {
   CertificateIssuedTo,
   CertificateScope,
+  EventType,
 } from '@cacic-eventos/shared-data-types';
 import {
   BadRequestException,
@@ -28,6 +29,9 @@ const MAJOR_EVENT_SUBSCRIPTION_SELECT = {
     select: PERSON_SELECT,
   },
 } satisfies Prisma.MajorEventSubscriptionSelect;
+
+const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
+type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
 
 export type EligibleCertificateRecipient = {
   person: PersonRecord;
@@ -140,9 +144,12 @@ export class CertificateEligibilityService {
       string,
       { person: PersonRecord; events: EventRecord[] }
     >();
+    const lecturerEventCategory = this.parseLecturerEventCategory(
+      config.certificateFields,
+    );
     for (const lecturer of lecturers) {
       const event = eventById.get(lecturer.eventId);
-      if (!event) {
+      if (!event || !this.matchesLecturerCategory(lecturerEventCategory, event)) {
         continue;
       }
 
@@ -159,6 +166,44 @@ export class CertificateEligibilityService {
     }
 
     return [...recipientsByPerson.values()];
+  }
+
+  private matchesLecturerCategory(
+    category: LecturerEventCategory | null,
+    event: EventRecord,
+  ): boolean {
+    if (!category) {
+      return true;
+    }
+
+    if (category === 'PALESTRA') {
+      return event.type === EventType.PALESTRA;
+    }
+
+    if (category === 'MINICURSO') {
+      return event.type === EventType.MINICURSO;
+    }
+
+    return (
+      event.type !== EventType.PALESTRA && event.type !== EventType.MINICURSO
+    );
+  }
+
+  private parseLecturerEventCategory(
+    certificateFields: Prisma.JsonValue | null,
+  ): LecturerEventCategory | null {
+    if (
+      !certificateFields ||
+      typeof certificateFields !== 'object' ||
+      Array.isArray(certificateFields)
+    ) {
+      return null;
+    }
+
+    const value = certificateFields[LECTURER_EVENT_CATEGORY_FIELD];
+    return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER'
+      ? value
+      : null;
   }
 
   private async resolveTargetEvents(
