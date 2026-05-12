@@ -1,17 +1,6 @@
 import { DatePipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
-import {
-  takeUntilDestroyed,
-  toObservable,
-  toSignal,
-} from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -23,10 +12,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { AztecScannerDialogComponent } from '@cacic-fct/shared-angular';
 import { catchError, combineLatest, finalize, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../profile/attendances/emoji.service';
-import {
-  OnlineAttendanceApiService,
-  PendingOnlineAttendanceEvent,
-} from './online-attendance-api.service';
+import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
 
 type AttendanceCodeState =
   | { status: 'loading' }
@@ -65,15 +51,12 @@ export class OnlineAttendanceCodeComponent {
   });
 
   private readonly returnUrl = toSignal(
-    this.route.queryParamMap.pipe(
-      map((params) => params.get('returnUrl') || '/menu'),
-    ),
+    this.route.queryParamMap.pipe(map((params) => params.get('returnUrl') || '/menu')),
     { initialValue: '/menu' },
   );
-  private readonly eventId = toSignal(
-    this.route.paramMap.pipe(map((params) => params.get('eventId') || '')),
-    { initialValue: '' },
-  );
+  private readonly eventId = toSignal(this.route.paramMap.pipe(map((params) => params.get('eventId') || '')), {
+    initialValue: '',
+  });
   private readonly reloadCounter = signal(0);
 
   readonly slots = computed(() => this.codeValue().padEnd(4, ' '));
@@ -82,18 +65,16 @@ export class OnlineAttendanceCodeComponent {
   });
 
   constructor() {
-    this.codeControl.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((value) => {
-        const normalized = value
-          .toUpperCase()
-          .replace(/[^A-Z0-9]/g, '')
-          .slice(0, 4);
-        if (value !== normalized) {
-          this.codeControl.setValue(normalized, { emitEvent: false });
-        }
-        this.codeValue.set(normalized);
-      });
+    this.codeControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
+      const normalized = value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 4);
+      if (value !== normalized) {
+        this.codeControl.setValue(normalized, { emitEvent: false });
+      }
+      this.codeValue.set(normalized);
+    });
   }
 
   back(): void {
@@ -133,13 +114,9 @@ export class OnlineAttendanceCodeComponent {
           this.afterRegistration();
         },
         error: (error: unknown) => {
-          this.snackBar.open(
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível confirmar presença.',
-            'OK',
-            { duration: 5000 },
-          );
+          this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível confirmar presença.', 'OK', {
+            duration: 5000,
+          });
         },
       });
   }
@@ -169,13 +146,9 @@ export class OnlineAttendanceCodeComponent {
 
         const parsed = this.parseOnlineAttendanceCode(code);
         if (!parsed || parsed.eventId !== state.item.eventId) {
-          this.snackBar.open(
-            'Código Aztec incompatível com este evento.',
-            'OK',
-            {
-              duration: 5000,
-            },
-          );
+          this.snackBar.open('Código Aztec incompatível com este evento.', 'OK', {
+            duration: 5000,
+          });
           return;
         }
 
@@ -185,16 +158,11 @@ export class OnlineAttendanceCodeComponent {
   }
 
   private createState() {
-    return combineLatest([
-      this.route.paramMap,
-      toObservable(this.reloadCounter),
-    ]).pipe(
+    return combineLatest([this.route.paramMap, toObservable(this.reloadCounter)]).pipe(
       switchMap(() =>
         this.api.listPendingEvents().pipe(
           map((items): AttendanceCodeState => {
-            const item = items.find(
-              ({ eventId }) => eventId === this.eventId(),
-            );
+            const item = items.find(({ eventId }) => eventId === this.eventId());
             if (!item) {
               return {
                 status: 'error',
@@ -207,10 +175,7 @@ export class OnlineAttendanceCodeComponent {
           catchError((error: unknown) =>
             of({
               status: 'error',
-              message:
-                error instanceof Error
-                  ? error.message
-                  : 'Não foi possível carregar a presença.',
+              message: error instanceof Error ? error.message : 'Não foi possível carregar a presença.',
             } satisfies AttendanceCodeState),
           ),
         ),
@@ -231,12 +196,9 @@ export class OnlineAttendanceCodeComponent {
         }
 
         if (items.length === 1) {
-          void this.router.navigate(
-            ['/attendance/register', items[0].eventId],
-            {
-              queryParams: { returnUrl: this.returnUrl() },
-            },
-          );
+          void this.router.navigate(['/attendance/register', items[0].eventId], {
+            queryParams: { returnUrl: this.returnUrl() },
+          });
           return;
         }
 
@@ -244,16 +206,9 @@ export class OnlineAttendanceCodeComponent {
       });
   }
 
-  private parseOnlineAttendanceCode(
-    rawCode: string,
-  ): { eventId: string; code: string } | null {
+  private parseOnlineAttendanceCode(rawCode: string): { eventId: string; code: string } | null {
     const [kind, eventId, code, ...extraParts] = rawCode.trim().split(':');
-    if (
-      kind !== 'online-attendance' ||
-      !eventId ||
-      !code ||
-      extraParts.length > 0
-    ) {
+    if (kind !== 'online-attendance' || !eventId || !code || extraParts.length > 0) {
       return null;
     }
 

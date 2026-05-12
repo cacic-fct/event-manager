@@ -27,19 +27,16 @@
     <p class="empty-text">Nenhuma inscrição em grande evento.</p>
     } @else {
     <mat-action-list>
-      @for ( subscription of currentState.data.majorEventItems; track
-      subscription.id ) {
+      @for ( subscription of currentState.data.majorEventItems; track subscription.id ) {
       <a
         mat-list-item
         [routerLink]="majorEventRoute(subscription)"
-        [attr.aria-label]="'Abrir detalhes de ' + subscription.majorEvent.name"
-      >
+        [attr.aria-label]="'Abrir detalhes de ' + subscription.majorEvent.name">
         <div matListItemIcon class="emoji-frame">
           <img
             class="twemoji"
             [src]="emoji.getTwemojiUrl(subscription.majorEvent.emoji)"
-            [alt]="subscription.majorEvent.emoji"
-          />
+            [alt]="subscription.majorEvent.emoji" />
         </div>
         <div matListItemTitle>{{ subscription.majorEvent.name }}</div>
         <div matListItemLine>{{ majorEventDateLine(subscription) }}</div>
@@ -60,23 +57,13 @@
     } @else {
     <mat-action-list>
       @for (item of currentState.data.eventItems; track item.id) {
-      <a
-        mat-list-item
-        [routerLink]="itemRoute(item)"
-        [attr.aria-label]="'Abrir detalhes de ' + itemTitle(item)"
-      >
+      <a mat-list-item [routerLink]="itemRoute(item)" [attr.aria-label]="'Abrir detalhes de ' + itemTitle(item)">
         <div matListItemIcon class="emoji-frame">
-          <img
-            class="twemoji"
-            [src]="emoji.getTwemojiUrl(itemEmoji(item))"
-            [alt]="itemEmoji(item)"
-          />
+          <img class="twemoji" [src]="emoji.getTwemojiUrl(itemEmoji(item))" [alt]="itemEmoji(item)" />
         </div>
         <div matListItemTitle>{{ itemTitle(item) }}</div>
         <div matListItemLine>{{ itemDateLine(item) }}</div>
-        <div matListItemLine>
-          {{ itemStatusLine(item, currentState.data.attendances) }}
-        </div>
+        <div matListItemLine>{{ itemStatusLine(item, currentState.data.attendances) }}</div>
       </a>
       }
     </mat-action-list>

@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Injectable,
-  Logger,
-  MessageEvent,
-  Query,
-  Req,
-  Sse,
-} from '@nestjs/common';
+import { Controller, Injectable, Logger, MessageEvent, Query, Req, Sse } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import type { Request } from 'express';
 import { Observable, Subject, interval, map, merge } from 'rxjs';
@@ -16,10 +8,7 @@ import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { CurrentUserPendingOnlineAttendanceEvent } from '../models';
-import {
-  PUBLIC_EVENT_SELECT,
-  PublicEventSubscriptionSummary,
-} from '../../public-events/models';
+import { PUBLIC_EVENT_SELECT, PublicEventSubscriptionSummary } from '../../public-events/models';
 import { CurrentUserContextService } from '../context.service';
 import { PublicEventsResolver } from '../../public-events/events.resolver';
 
@@ -51,22 +40,17 @@ interface MajorEventSubscriptionChangedMessage {
   };
 }
 
-type RealtimeServerMessage =
-  | PendingOnlineAttendanceMessage
-  | MajorEventSubscriptionChangedMessage;
+type RealtimeServerMessage = PendingOnlineAttendanceMessage | MajorEventSubscriptionChangedMessage;
 
 @Injectable()
 export class CurrentUserOnlineAttendanceRealtimeService {
-  private readonly logger = new Logger(
-    CurrentUserOnlineAttendanceRealtimeService.name,
-  );
+  private readonly logger = new Logger(CurrentUserOnlineAttendanceRealtimeService.name);
   private readonly clients = new Set<RealtimeClient>();
   private readonly majorEventSubscriptionSnapshots = new Map<string, string>();
   private readonly heartbeat$ = interval(25_000).pipe(
     map(() => ({ data: { type: 'heartbeat', timestamp: Date.now() } })),
   );
-  private majorEventSubscriptionInterval: ReturnType<typeof setInterval> | null =
-    null;
+  private majorEventSubscriptionInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly auth: KeycloakAuthService,
@@ -76,10 +60,7 @@ export class CurrentUserOnlineAttendanceRealtimeService {
     private readonly publicEvents: PublicEventsResolver,
   ) {}
 
-  stream(
-    request: Request,
-    majorEventSubscriptionIds: string[],
-  ): Observable<MessageEvent> {
+  stream(request: Request, majorEventSubscriptionIds: string[]): Observable<MessageEvent> {
     this.ensureMajorEventSubscriptionPolling();
 
     const events = new Subject<RealtimeServerMessage>();
@@ -124,25 +105,17 @@ export class CurrentUserOnlineAttendanceRealtimeService {
     }, 3_000);
   }
 
-  async listPendingOnlineAttendanceEvents(
-    personId: string,
-  ): Promise<CurrentUserPendingOnlineAttendanceEvent[]> {
+  async listPendingOnlineAttendanceEvents(personId: string): Promise<CurrentUserPendingOnlineAttendanceEvent[]> {
     const now = new Date();
     const events = await this.prisma.event.findMany({
       where: {
         deletedAt: null,
         shouldCollectAttendance: true,
         isOnlineAttendanceAllowed: true,
-        OR: [
-          { onlineAttendanceStartDate: null },
-          { onlineAttendanceStartDate: { lte: now } },
-        ],
+        OR: [{ onlineAttendanceStartDate: null }, { onlineAttendanceStartDate: { lte: now } }],
         AND: [
           {
-            OR: [
-              { onlineAttendanceEndDate: null },
-              { onlineAttendanceEndDate: { gte: now } },
-            ],
+            OR: [{ onlineAttendanceEndDate: null }, { onlineAttendanceEndDate: { gte: now } }],
           },
           {
             attendances: {
@@ -207,19 +180,13 @@ export class CurrentUserOnlineAttendanceRealtimeService {
 
   async notifyAllConnectedPeople(): Promise<void> {
     const personIds = new Set(
-      [...this.clients]
-        .map((client) => client.personId)
-        .filter((personId): personId is string => Boolean(personId)),
+      [...this.clients].map((client) => client.personId).filter((personId): personId is string => Boolean(personId)),
     );
-    await Promise.all(
-      [...personIds].map((personId) => this.notifyPerson(personId)),
-    );
+    await Promise.all([...personIds].map((personId) => this.notifyPerson(personId)));
   }
 
   async notifyPerson(personId: string): Promise<void> {
-    const eventIds = (
-      await this.listPendingOnlineAttendanceEvents(personId)
-    ).map((item) => item.eventId);
+    const eventIds = (await this.listPendingOnlineAttendanceEvents(personId)).map((item) => item.eventId);
     const message: PendingOnlineAttendanceMessage = {
       type: 'event',
       channel: ONLINE_ATTENDANCE_CHANNEL,
@@ -237,31 +204,17 @@ export class CurrentUserOnlineAttendanceRealtimeService {
   }
 
   private async notifySubscribedMajorEvents(): Promise<void> {
-    const majorEventIds = new Set(
-      [...this.clients].flatMap((client) => [
-        ...client.majorEventSubscriptionIds,
-      ]),
-    );
+    const majorEventIds = new Set([...this.clients].flatMap((client) => [...client.majorEventSubscriptionIds]));
 
-    await Promise.all(
-      [...majorEventIds].map((majorEventId) =>
-        this.notifyMajorEventSubscribers(majorEventId),
-      ),
-    );
+    await Promise.all([...majorEventIds].map((majorEventId) => this.notifyMajorEventSubscribers(majorEventId)));
   }
 
   private async notifyMajorEventSubscribers(majorEventId: string) {
     let payload: MajorEventSubscriptionChangedMessage['payload'];
     try {
-      payload = await this.getMajorEventSubscriptionDeltaPayload(
-        majorEventId,
-      );
+      payload = await this.getMajorEventSubscriptionDeltaPayload(majorEventId);
     } catch (error) {
-      this.logger.warn(
-        error instanceof Error
-          ? error.message
-          : 'Could not publish major-event subscription update.',
-      );
+      this.logger.warn(error instanceof Error ? error.message : 'Could not publish major-event subscription update.');
       return;
     }
     const message: MajorEventSubscriptionChangedMessage = {
@@ -272,8 +225,7 @@ export class CurrentUserOnlineAttendanceRealtimeService {
       payload,
     };
     const serializedMessage = JSON.stringify(message);
-    const previousSnapshot =
-      this.majorEventSubscriptionSnapshots.get(majorEventId);
+    const previousSnapshot = this.majorEventSubscriptionSnapshots.get(majorEventId);
     if (previousSnapshot === serializedMessage) {
       return;
     }
@@ -287,13 +239,9 @@ export class CurrentUserOnlineAttendanceRealtimeService {
     }
   }
 
-  private async notifyMajorEvent(
-    client: RealtimeClient,
-    majorEventId: string,
-  ): Promise<void> {
+  private async notifyMajorEvent(client: RealtimeClient, majorEventId: string): Promise<void> {
     try {
-      const payload =
-        await this.getMajorEventSubscriptionDeltaPayload(majorEventId);
+      const payload = await this.getMajorEventSubscriptionDeltaPayload(majorEventId);
       const message = {
         type: 'event',
         channel: MAJOR_EVENT_SUBSCRIPTION_CHANNEL,
@@ -302,17 +250,10 @@ export class CurrentUserOnlineAttendanceRealtimeService {
         payload,
       } satisfies MajorEventSubscriptionChangedMessage;
       const serializedMessage = JSON.stringify(message);
-      this.majorEventSubscriptionSnapshots.set(
-        majorEventId,
-        serializedMessage,
-      );
+      this.majorEventSubscriptionSnapshots.set(majorEventId, serializedMessage);
       client.events.next(message);
     } catch (error) {
-      this.logger.warn(
-        error instanceof Error
-          ? error.message
-          : 'Could not publish major-event subscription update.',
-      );
+      this.logger.warn(error instanceof Error ? error.message : 'Could not publish major-event subscription update.');
     }
   }
 
@@ -325,27 +266,21 @@ export class CurrentUserOnlineAttendanceRealtimeService {
   private async getMajorEventSubscriptionDeltaPayload(
     majorEventId: string,
   ): Promise<MajorEventSubscriptionChangedMessage['payload']> {
-    const page =
-      await this.publicEvents.getPublicEventSubscriptionPagePayload(
-        majorEventId,
-      );
+    const page = await this.publicEvents.getPublicEventSubscriptionPagePayload(majorEventId);
 
     return {
       subscriptionSummaries: page.subscriptionSummaries,
     };
   }
 
-  private async resolvePersonId(
-    request: Request,
-  ): Promise<string | null> {
+  private async resolvePersonId(request: Request): Promise<string | null> {
     const sessionId = this.readCookie(request, AUTH_SESSION_COOKIE_NAME);
     if (!sessionId) {
       return null;
     }
 
     const user = await this.auth.authenticateSession(sessionId);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(user);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(user);
 
     return person?.id ?? null;
   }
@@ -370,15 +305,10 @@ export class CurrentUserOnlineAttendanceRealtimeService {
 @Controller('public/events')
 @Public()
 export class PublicRealtimeEventsController {
-  constructor(
-    private readonly realtime: CurrentUserOnlineAttendanceRealtimeService,
-  ) {}
+  constructor(private readonly realtime: CurrentUserOnlineAttendanceRealtimeService) {}
 
   @Sse()
-  stream(
-    @Req() request: Request,
-    @Query('majorEventIds') majorEventIds?: string | string[],
-  ): Observable<MessageEvent> {
+  stream(@Req() request: Request, @Query('majorEventIds') majorEventIds?: string | string[]): Observable<MessageEvent> {
     return this.realtime.stream(request, this.parseMajorEventIds(majorEventIds));
   }
 

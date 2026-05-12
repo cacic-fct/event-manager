@@ -15,7 +15,5 @@ export class PaymentInfo {
   private readonly route = inject(ActivatedRoute);
 
   readonly majorEventId =
-    this.route.snapshot.paramMap.get('majorEventId') ??
-    this.route.snapshot.paramMap.get('eventID') ??
-    '';
+    this.route.snapshot.paramMap.get('majorEventId') ?? this.route.snapshot.paramMap.get('eventID') ?? '';
 }

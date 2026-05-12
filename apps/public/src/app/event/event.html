@@ -9,8 +9,7 @@
     type="button"
     matTooltip="Compartilhar"
     aria-label="Compartilhar evento"
-    (click)="shareEvent()"
-  >
+    (click)="shareEvent()">
     <mat-icon>ios_share</mat-icon>
   </button>
 </mat-toolbar>
@@ -34,11 +33,7 @@
   <header class="event-header">
     <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus, @angular-eslint/template/click-events-have-key-events -->
     <div class="emoji-frame" (click)="copyId(event.id)">
-      <img
-        class="twemoji"
-        [src]="emoji.getTwemojiUrl(event.emoji)"
-        [alt]="event.emoji"
-      />
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
     </div>
     <div class="header-copy">
       <p class="eyebrow">{{ eventTypeLabel(event) }}</p>
@@ -67,26 +62,13 @@
 
   <section class="actions" aria-label="Ações do evento">
     @if (event.buttonLink) {
-    <a
-      mat-stroked-button
-      [href]="event.buttonLink"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <a mat-stroked-button [href]="event.buttonLink" target="_blank" rel="noopener noreferrer">
       <mat-icon>open_in_new</mat-icon>
       {{ event.buttonText || 'Acompanhar evento' }}
     </a>
     } @if (event.allowSubscription) {
-    <button
-      mat-flat-button
-      type="button"
-      [disabled]="!canSubscribe(data) || isSubscribing()"
-      (click)="subscribe(data)"
-    >
-      <mat-icon
-        >{{ data.currentUserSubscription ? 'check' : 'event_available'
-        }}</mat-icon
-      >
+    <button mat-flat-button type="button" [disabled]="!canSubscribe(data) || isSubscribing()" (click)="subscribe(data)">
+      <mat-icon>{{ data.currentUserSubscription ? 'check' : 'event_available' }}</mat-icon>
       {{ data.currentUserSubscription ? 'Inscrito' : 'Inscrever-se' }}
     </button>
     } @if (canConfirmAttendance(event)) {
@@ -94,11 +76,9 @@
       mat-stroked-button
       type="button"
       [disabled]="!!data.currentUserAttendance || isConfirmingAttendance()"
-      (click)="confirmAttendance(data)"
-    >
+      (click)="confirmAttendance(data)">
       <mat-icon>how_to_reg</mat-icon>
-      {{ data.currentUserAttendance ? 'Presença confirmada' : 'Confirmar
-      presença' }}
+      {{ data.currentUserAttendance ? 'Presença confirmada' : 'Confirmar presença' }}
     </button>
     }
   </section>
@@ -165,12 +145,10 @@
         [src]="youtubeEmbedUrl(event.youtubeCode)"
         title="Transmissão do evento"
         allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
-        allowfullscreen
-      ></iframe>
+        allowfullscreen></iframe>
     </div>
   </section>
-  } @if (event.locationDescription || (event.latitude !== null &&
-  event.longitude !== null)) {
+  } @if (event.locationDescription || (event.latitude !== null && event.longitude !== null)) {
   <section class="detail-section">
     <h2>Localização</h2>
     @if (event.locationDescription) {
@@ -178,13 +156,17 @@
       <mat-icon aria-hidden="true">place</mat-icon>
       {{ event.locationDescription }}
     </p>
-    } @if (event.latitude !== null && event.longitude !== null) {
+    } @if (event.latitude !== null && event.longitude !== null) { @defer (on viewport) {
     <app-event-location-map
       [latitude]="event.latitude || null"
       [longitude]="event.longitude || null"
-      [title]="event.name"
-    />
-    }
+      [title]="event.name" />
+    } @placeholder {
+    <div>
+      <mat-icon aria-hidden="true">place</mat-icon>
+      Carregando mapa...
+    </div>
+    } }
   </section>
   } }
 </main>

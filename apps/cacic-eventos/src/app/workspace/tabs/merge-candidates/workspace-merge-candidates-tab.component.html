@@ -16,11 +16,7 @@
             <mat-option value="STALE">Obsoleta</mat-option>
           </mat-select>
         </mat-form-field>
-        <button
-          mat-stroked-button
-          type="button"
-          (click)="workspace.refreshMergeCandidates()"
-        >
+        <button mat-stroked-button type="button" (click)="workspace.refreshMergeCandidates()">
           <mat-icon>refresh</mat-icon>
           Atualizar
         </button>
@@ -28,8 +24,7 @@
           mat-flat-button
           type="button"
           [disabled]="!permissions.canEdit('merge-candidate#edit')"
-          (click)="workspace.scanMergeCandidates()"
-        >
+          (click)="workspace.scanMergeCandidates()">
           <mat-icon>find_replace</mat-icon>
           Verificar
         </button>
@@ -39,9 +34,7 @@
     <mat-list class="detail-list">
       @for (candidate of workspace.mergeCandidates(); track candidate.id) {
         <mat-list-item>
-          <span matListItemTitle>
-            {{ candidate.personA?.name }} ↔ {{ candidate.personB?.name }}
-          </span>
+          <span matListItemTitle> {{ candidate.personA?.name }} ↔ {{ candidate.personB?.name }} </span>
           <span matListItemLine>
             Método: {{ describeMergeMatchMethod(candidate.matchMethod) }}
             @if (candidate.matchValue) {
@@ -54,11 +47,8 @@
             <button
               mat-flat-button
               type="button"
-              [disabled]="
-                !permissions.canEdit('merge-candidate#edit', 'person#edit')
-              "
-              (click)="workspace.mergeCandidate(candidate)"
-            >
+              [disabled]="!permissions.canEdit('merge-candidate#edit', 'person#edit')"
+              (click)="workspace.mergeCandidate(candidate)">
               <mat-icon>call_merge</mat-icon>
               Unificar
             </button>
@@ -66,8 +56,7 @@
               mat-button
               type="button"
               [disabled]="!permissions.canEdit('merge-candidate#edit')"
-              (click)="workspace.setMergeCandidateStatus(candidate, 'REJECTED')"
-            >
+              (click)="workspace.setMergeCandidateStatus(candidate, 'REJECTED')">
               <mat-icon>block</mat-icon>
               Rejeitar
             </button>
@@ -75,11 +64,8 @@
             <button
               mat-button
               type="button"
-              [disabled]="
-                !permissions.canEdit('merge-candidate#edit', 'person#edit')
-              "
-              (click)="workspace.undoMergeCandidate(candidate)"
-            >
+              [disabled]="!permissions.canEdit('merge-candidate#edit', 'person#edit')"
+              (click)="workspace.undoMergeCandidate(candidate)">
               <mat-icon>undo</mat-icon>
               Desfazer
             </button>
@@ -88,8 +74,7 @@
               mat-button
               type="button"
               [disabled]="!permissions.canEdit('merge-candidate#edit')"
-              (click)="workspace.setMergeCandidateStatus(candidate, 'PENDING')"
-            >
+              (click)="workspace.setMergeCandidateStatus(candidate, 'PENDING')">
               <mat-icon>replay</mat-icon>
               Reabrir
             </button>
@@ -98,8 +83,7 @@
             mat-button
             type="button"
             [disabled]="!permissions.canDelete('merge-candidate#delete')"
-            (click)="workspace.deleteMergeCandidate(candidate)"
-          >
+            (click)="workspace.deleteMergeCandidate(candidate)">
             <mat-icon>delete</mat-icon>
             Excluir
           </button>

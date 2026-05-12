@@ -13,15 +13,7 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="close(true)">Imprimir</button>
-      <button
-        mat-flat-button
-        color="primary"
-        mat-button
-        type="button"
-        (click)="close(false)"
-      >
-        Não
-      </button>
+      <button mat-flat-button color="primary" mat-button type="button" (click)="close(false)">Não</button>
     </mat-dialog-actions>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

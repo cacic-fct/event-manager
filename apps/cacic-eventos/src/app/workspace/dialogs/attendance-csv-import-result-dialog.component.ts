@@ -30,8 +30,7 @@ const MATCH_TYPE_LABELS: Record<string, string> = {
       }
 
       <p>
-        {{ data.createdCount }} novas presenças,
-        {{ data.duplicateCount }} duplicadas, {{ data.failedCount }} falhas.
+        {{ data.createdCount }} novas presenças, {{ data.duplicateCount }} duplicadas, {{ data.failedCount }} falhas.
       </p>
       <p>Tipo inferido: {{ matchTypeLabel }}.</p>
     </div>
@@ -44,9 +43,6 @@ export class AttendanceCsvImportResultDialogComponent {
   readonly data = inject<EventAttendanceCsvImportResult>(MAT_DIALOG_DATA);
 
   get matchTypeLabel(): string {
-    return (
-      MATCH_TYPE_LABELS[this.data.inferredMatchType] ??
-      this.data.inferredMatchType
-    );
+    return MATCH_TYPE_LABELS[this.data.inferredMatchType] ?? this.data.inferredMatchType;
   }
 }

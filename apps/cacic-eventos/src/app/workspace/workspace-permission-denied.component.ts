@@ -1,16 +1,8 @@
-import {
-  Component,
-  ChangeDetectionStrategy,
-  computed,
-  inject,
-} from '@angular/core';
+import { Component, ChangeDetectionStrategy, computed, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 
-import {
-  WorkspacePermissionTab,
-  WorkspacePermissionsService,
-} from '../shared/services/workspace-permissions.service';
+import { WorkspacePermissionTab, WorkspacePermissionsService } from '../shared/services/workspace-permissions.service';
 import { WorkspaceNavItem } from './workspace-nav';
 
 @Component({

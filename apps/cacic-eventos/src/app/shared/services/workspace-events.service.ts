@@ -1,10 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -14,15 +9,11 @@ import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { Event, EventGroup, EventInput, Person } from '../../graphql/models';
 import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-create-dialog.component';
-import {
-  buildEventListFilters,
-  resetEventFiltersForm,
-} from '../event-list-filters';
+import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspaceUiService } from './workspace-ui.service';
 
-const NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS =
-  '2345689ABCDEFGHKMNPQRSTWXYZ';
+const NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS = '2345689ABCDEFGHKMNPQRSTWXYZ';
 const BANNED_ATTENDANCE_CODES = new Set([
   '2222',
   '3333',
@@ -96,9 +87,7 @@ export class WorkspaceEventsService {
       id: [''],
       name: ['', [Validators.required]],
       creditDisplayMode: ['hours'],
-      creditValue: this.formBuilder.control<number | string | null>(null, [
-        Validators.min(0),
-      ]),
+      creditValue: this.formBuilder.control<number | string | null>(null, [Validators.min(0)]),
       startDate: ['', [Validators.required]],
       endDate: ['', [Validators.required]],
       emoji: ['', [Validators.required]],
@@ -146,20 +135,12 @@ export class WorkspaceEventsService {
 
   constructor() {
     this.syncOnlineAttendanceControls();
-    this.eventForm.controls.isOnlineAttendanceAllowed.valueChanges.subscribe(
-      () => this.syncOnlineAttendanceControls(),
-    );
-    this.eventForm.controls.shouldIssueCertificate.valueChanges.subscribe(() =>
-      this.syncCertificateControl(),
-    );
+    this.eventForm.controls.isOnlineAttendanceAllowed.valueChanges.subscribe(() => this.syncOnlineAttendanceControls());
+    this.eventForm.controls.shouldIssueCertificate.valueChanges.subscribe(() => this.syncCertificateControl());
   }
 
   async loadEvents(): Promise<void> {
-    this.events.set(
-      await firstValueFrom(
-        this.api.listEvents(buildEventListFilters(this.eventFiltersForm.value)),
-      ),
-    );
+    this.events.set(await firstValueFrom(this.api.listEvents(buildEventListFilters(this.eventFiltersForm.value))));
   }
 
   async applyEventFilters(): Promise<void> {
@@ -184,9 +165,7 @@ export class WorkspaceEventsService {
     const eventDetails = await firstValueFrom(this.api.getEvent(eventId));
     this.selectedEvent.set(eventDetails);
     this.populateEventForm(eventDetails);
-    this.eventGroupLookupForm.controls.query.setValue(
-      eventDetails.eventGroup?.name ?? '',
-    );
+    this.eventGroupLookupForm.controls.query.setValue(eventDetails.eventGroup?.name ?? '');
     this.eventGroupSearchResults.set([]);
     await this.loadEventLecturers(eventId);
   }
@@ -248,9 +227,7 @@ export class WorkspaceEventsService {
         { length: 4 },
         () =>
           NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS[
-            this.getRandomIndex(
-              NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS.length,
-            )
+            this.getRandomIndex(NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS.length)
           ],
       ).join('');
     } while (BANNED_ATTENDANCE_CODES.has(code));
@@ -296,23 +273,15 @@ export class WorkspaceEventsService {
       return;
     }
 
-    this.eventGroupSearchResults.set(
-      await firstValueFrom(
-        this.eventGroupsApi.listEventGroups({ query, take: 20 }),
-      ),
-    );
+    this.eventGroupSearchResults.set(await firstValueFrom(this.eventGroupsApi.listEventGroups({ query, take: 20 })));
   }
 
   assignEventGroupToEvent(group: EventGroup): void {
     this.eventForm.controls.eventGroupId.setValue(group.id);
     this.selectedEventGroupName.set(group.name);
     this.selectedEventGroupAllowsCertificates.set(group.shouldIssueCertificate);
-    this.selectedEventGroupAllowsNonPayingCertificates.set(
-      group.shouldIssueCertificateForNonPayingAttendees,
-    );
-    this.selectedEventGroupAllowsNonSubscribedCertificates.set(
-      group.shouldIssueCertificateForNonSubscribedAttendees,
-    );
+    this.selectedEventGroupAllowsNonPayingCertificates.set(group.shouldIssueCertificateForNonPayingAttendees);
+    this.selectedEventGroupAllowsNonSubscribedCertificates.set(group.shouldIssueCertificateForNonSubscribedAttendees);
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
   }
@@ -333,9 +302,7 @@ export class WorkspaceEventsService {
     }
 
     return (
-      (this.selectedEventGroupName() ||
-        this.eventGroupSearchResults().find((group) => group.id === groupId)
-          ?.name) ??
+      (this.selectedEventGroupName() || this.eventGroupSearchResults().find((group) => group.id === groupId)?.name) ??
       this.selectedEvent()?.eventGroup?.name ??
       groupId
     );
@@ -347,9 +314,7 @@ export class WorkspaceEventsService {
       this.lecturerSearchResults.set([]);
       return;
     }
-    this.lecturerSearchResults.set(
-      await firstValueFrom(this.peopleApi.listPeople({ query, take: 10 })),
-    );
+    this.lecturerSearchResults.set(await firstValueFrom(this.peopleApi.listPeople({ query, take: 10 })));
   }
 
   async createAndAddLecturer(): Promise<void> {
@@ -395,16 +360,12 @@ export class WorkspaceEventsService {
     if (!selectedEvent) {
       return;
     }
-    await firstValueFrom(
-      this.api.deleteEventLecturer(selectedEvent.id, personId),
-    );
+    await firstValueFrom(this.api.deleteEventLecturer(selectedEvent.id, personId));
     await this.loadEventLecturers(selectedEvent.id);
   }
 
   private async loadEventLecturers(eventId: string): Promise<void> {
-    const lecturers = await firstValueFrom(
-      this.api.listEventLecturers(eventId),
-    );
+    const lecturers = await firstValueFrom(this.api.listEventLecturers(eventId));
     this.eventLecturers.set(
       lecturers.map((lecturer) => ({
         personId: lecturer.personId,
@@ -448,9 +409,7 @@ export class WorkspaceEventsService {
       majorEventId: raw.majorEventId || null,
       eventGroupId: raw.eventGroupId || null,
       allowSubscription: raw.allowSubscription,
-      subscriptionStartDate: this.toOptionalIsoDateTime(
-        raw.subscriptionStartDate,
-      ),
+      subscriptionStartDate: this.toOptionalIsoDateTime(raw.subscriptionStartDate),
       subscriptionEndDate: this.toOptionalIsoDateTime(raw.subscriptionEndDate),
       slots: this.toOptionalNumber(raw.slots),
       autoSubscribe: raw.autoSubscribe,
@@ -465,9 +424,7 @@ export class WorkspaceEventsService {
         raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: raw.shouldCollectAttendance,
       isOnlineAttendanceAllowed,
-      onlineAttendanceCode: isOnlineAttendanceAllowed
-        ? raw.onlineAttendanceCode.trim() || null
-        : null,
+      onlineAttendanceCode: isOnlineAttendanceAllowed ? raw.onlineAttendanceCode.trim() || null : null,
       onlineAttendanceStartDate: isOnlineAttendanceAllowed
         ? this.toOptionalIsoDateTime(raw.onlineAttendanceStartDate)
         : null,
@@ -487,12 +444,7 @@ export class WorkspaceEventsService {
       id: eventItem.id,
       name: eventItem.name,
       creditDisplayMode: 'hours',
-      creditValue:
-        eventItem.creditMinutes == null
-          ? null
-          : Number.isFinite(asHours)
-            ? asHours
-            : null,
+      creditValue: eventItem.creditMinutes == null ? null : Number.isFinite(asHours) ? asHours : null,
       startDate: this.fromIsoToLocalInput(eventItem.startDate),
       endDate: this.fromIsoToLocalInput(eventItem.endDate),
       emoji: eventItem.emoji,
@@ -506,20 +458,14 @@ export class WorkspaceEventsService {
       eventGroupId: eventItem.eventGroupId ?? '',
       allowSubscription: eventItem.allowSubscription,
       subscriptionStartDate:
-        eventItem.subscriptionStartDate != null
-          ? this.fromIsoToLocalInput(eventItem.subscriptionStartDate)
-          : '',
+        eventItem.subscriptionStartDate != null ? this.fromIsoToLocalInput(eventItem.subscriptionStartDate) : '',
       subscriptionEndDate:
-        eventItem.subscriptionEndDate != null
-          ? this.fromIsoToLocalInput(eventItem.subscriptionEndDate)
-          : '',
+        eventItem.subscriptionEndDate != null ? this.fromIsoToLocalInput(eventItem.subscriptionEndDate) : '',
       slots: eventItem.slots?.toString() ?? '',
       autoSubscribe: eventItem.autoSubscribe,
       shouldIssueCertificate: eventItem.shouldIssueCertificate,
-      shouldIssueCertificateForNonPayingAttendees:
-        eventItem.shouldIssueCertificateForNonPayingAttendees,
-      shouldIssueCertificateForNonSubscribedAttendees:
-        eventItem.shouldIssueCertificateForNonSubscribedAttendees,
+      shouldIssueCertificateForNonPayingAttendees: eventItem.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees: eventItem.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: eventItem.shouldCollectAttendance,
       isOnlineAttendanceAllowed: eventItem.isOnlineAttendanceAllowed,
       onlineAttendanceCode: eventItem.onlineAttendanceCode ?? '',
@@ -528,28 +474,21 @@ export class WorkspaceEventsService {
           ? this.fromIsoToLocalInput(eventItem.onlineAttendanceStartDate)
           : '',
       onlineAttendanceEndDate:
-        eventItem.onlineAttendanceEndDate != null
-          ? this.fromIsoToLocalInput(eventItem.onlineAttendanceEndDate)
-          : '',
+        eventItem.onlineAttendanceEndDate != null ? this.fromIsoToLocalInput(eventItem.onlineAttendanceEndDate) : '',
       publiclyVisible: eventItem.publiclyVisible,
       youtubeCode: eventItem.youtubeCode ?? '',
       buttonText: eventItem.buttonText ?? '',
       buttonLink: eventItem.buttonLink ?? '',
     });
     this.syncOnlineAttendanceControls();
-    this.eventGroupLookupForm.controls.query.setValue(
-      eventItem.eventGroup?.name ?? '',
-    );
+    this.eventGroupLookupForm.controls.query.setValue(eventItem.eventGroup?.name ?? '');
     this.selectedEventGroupName.set(eventItem.eventGroup?.name ?? '');
-    this.selectedEventGroupAllowsCertificates.set(
-      eventItem.eventGroup?.shouldIssueCertificate ?? true,
-    );
+    this.selectedEventGroupAllowsCertificates.set(eventItem.eventGroup?.shouldIssueCertificate ?? true);
     this.selectedEventGroupAllowsNonPayingCertificates.set(
       eventItem.eventGroup?.shouldIssueCertificateForNonPayingAttendees ?? true,
     );
     this.selectedEventGroupAllowsNonSubscribedCertificates.set(
-      eventItem.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees ??
-        true,
+      eventItem.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees ?? true,
     );
     this.eventGroupSearchResults.set([]);
     this.syncCertificateControl();
@@ -574,15 +513,10 @@ export class WorkspaceEventsService {
   private fromIsoToLocalInput(rawValue: string): string {
     const date = new Date(rawValue);
     const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
-    return new Date(date.getTime() - timezoneOffsetMs)
-      .toISOString()
-      .slice(0, 16);
+    return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
   }
 
-  private calculateDurationMinutes(
-    startDate: string,
-    endDate: string,
-  ): number | null {
+  private calculateDurationMinutes(startDate: string, endDate: string): number | null {
     const start = new Date(startDate).getTime();
     const end = new Date(endDate).getTime();
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
@@ -608,8 +542,7 @@ export class WorkspaceEventsService {
       this.eventForm.controls.onlineAttendanceStartDate,
       this.eventForm.controls.onlineAttendanceEndDate,
     ];
-    const shouldEnable =
-      this.eventForm.controls.isOnlineAttendanceAllowed.value;
+    const shouldEnable = this.eventForm.controls.isOnlineAttendanceAllowed.value;
 
     for (const control of onlineControls) {
       if (shouldEnable) {
@@ -622,10 +555,8 @@ export class WorkspaceEventsService {
 
   private syncCertificateControl(): void {
     const certificateControl = this.eventForm.controls.shouldIssueCertificate;
-    const nonPayingCertificateControl =
-      this.eventForm.controls.shouldIssueCertificateForNonPayingAttendees;
-    const nonSubscribedCertificateControl =
-      this.eventForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
+    const nonPayingCertificateControl = this.eventForm.controls.shouldIssueCertificateForNonPayingAttendees;
+    const nonSubscribedCertificateControl = this.eventForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
     if (!this.selectedEventGroupAllowsCertificates()) {
       certificateControl.setValue(false, { emitEvent: false });
       nonPayingCertificateControl.setValue(false, { emitEvent: false });
@@ -637,20 +568,14 @@ export class WorkspaceEventsService {
     }
 
     certificateControl.enable({ emitEvent: false });
-    if (
-      certificateControl.value &&
-      this.selectedEventGroupAllowsNonPayingCertificates()
-    ) {
+    if (certificateControl.value && this.selectedEventGroupAllowsNonPayingCertificates()) {
       nonPayingCertificateControl.enable({ emitEvent: false });
     } else {
       nonPayingCertificateControl.setValue(false, { emitEvent: false });
       nonPayingCertificateControl.disable({ emitEvent: false });
     }
 
-    if (
-      certificateControl.value &&
-      this.selectedEventGroupAllowsNonSubscribedCertificates()
-    ) {
+    if (certificateControl.value && this.selectedEventGroupAllowsNonSubscribedCertificates()) {
       nonSubscribedCertificateControl.enable({ emitEvent: false });
       return;
     }

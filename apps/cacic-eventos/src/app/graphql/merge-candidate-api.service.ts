@@ -1,23 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import {
-  DeletionResult,
-  MergeCandidate,
-  MergeCandidateStatus,
-  PersonMergeField,
-} from './models';
+import { DeletionResult, MergeCandidate, MergeCandidateStatus, PersonMergeField } from './models';
 import { PERSON_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
 export class MergeCandidateApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 
-  listMergeCandidates(filters?: {
-    status?: MergeCandidateStatus;
-    skip?: number;
-    take?: number;
-  }) {
+  listMergeCandidates(filters?: { status?: MergeCandidateStatus; skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ mergeCandidates: MergeCandidate[] }>(
         `query ListMergeCandidates(
@@ -92,11 +83,7 @@ export class MergeCandidateApiService {
       .pipe(map((data) => data.scanMergeCandidates));
   }
 
-  mergeCandidatePeople(input: {
-    candidateId: string;
-    targetPersonId: string;
-    migrateFields?: PersonMergeField[];
-  }) {
+  mergeCandidatePeople(input: { candidateId: string; targetPersonId: string; migrateFields?: PersonMergeField[] }) {
     return this.graphqlHttp
       .request<{ mergeCandidatePeople: MergeCandidate }>(
         `mutation MergeCandidatePeople($input: MergeCandidateMergeInput!) {

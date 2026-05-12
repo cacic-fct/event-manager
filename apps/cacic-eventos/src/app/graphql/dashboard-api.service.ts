@@ -3,10 +3,7 @@ import type { WorkspaceDashboardInsights } from '@cacic-fct/shared-frontend-type
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 
-type WorkspaceDashboardHomeInsights = Omit<
-  WorkspaceDashboardInsights,
-  'permissions'
->;
+type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
 @Injectable({ providedIn: 'root' })
 export class DashboardApiService {

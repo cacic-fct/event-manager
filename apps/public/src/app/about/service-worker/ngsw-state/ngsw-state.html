@@ -1,0 +1,9 @@
+<h2 mat-dialog-title>Estado do Service Worker</h2>
+<mat-dialog-content>
+  <!-- prettier-ignore -->
+  <pre>{{ ngswState() }}</pre>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button matButton (click)="refresh()">Recarregar</button>
+  <button matButton (click)="close()" cdkFocusInitial>Fechar</button>
+</mat-dialog-actions>

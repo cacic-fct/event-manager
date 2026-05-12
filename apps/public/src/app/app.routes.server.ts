@@ -3,7 +3,7 @@ import { RenderMode, ServerRoute } from '@angular/ssr';
 export const serverRoutes: ServerRoute[] = [
   {
     path: 'event/:eventId',
-    renderMode: RenderMode.Client,
+    renderMode: RenderMode.Server,
   },
   {
     path: 'profile/attendances',

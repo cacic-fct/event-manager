@@ -8,15 +8,6 @@ import {
   input,
   viewChild,
 } from '@angular/core';
-import Feature from 'ol/Feature';
-import Map from 'ol/Map';
-import View from 'ol/View';
-import Point from 'ol/geom/Point';
-import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
-import { fromLonLat } from 'ol/proj';
-import OSM from 'ol/source/OSM';
-import VectorSource from 'ol/source/Vector';
-import { Circle, Fill, Stroke, Style } from 'ol/style';
 
 @Component({
   selector: 'app-event-location-map',
@@ -29,16 +20,17 @@ export class EventLocationMap implements OnDestroy {
   readonly longitude = input.required<number | null>();
   readonly title = input.required<string>();
 
-  private readonly mapTarget =
-    viewChild<ElementRef<HTMLDivElement>>('mapTarget');
-  private map: Map | null = null;
+  private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
+
+  private map: { setTarget(target: HTMLElement | undefined): void } | null = null;
+
+  private hasRendered = false;
   private renderVersion = 0;
 
   constructor() {
     afterNextRender(() => {
-      if (this.latitude() !== null || this.longitude() !== null) {
-        this.renderMap();
-      }
+      this.hasRendered = true;
+      void this.renderMap();
     });
 
     effect(() => {
@@ -46,8 +38,8 @@ export class EventLocationMap implements OnDestroy {
       this.longitude();
       this.title();
 
-      if (this.map) {
-        this.renderMap();
+      if (this.hasRendered) {
+        void this.renderMap();
       }
     });
   }
@@ -58,23 +50,51 @@ export class EventLocationMap implements OnDestroy {
 
   private async renderMap(): Promise<void> {
     const target = this.mapTarget()?.nativeElement;
-    if (!target || !this.longitude() || !this.latitude()) {
+    const latitude = this.latitude();
+    const longitude = this.longitude();
+
+    if (!target || latitude == null || longitude == null) {
+      this.destroyMap();
       return;
     }
 
-    const version = (this.renderVersion += 1);
-    this.destroyMap();
+    const version = ++this.renderVersion;
+
+    const [
+      { default: Feature },
+      { default: Map },
+      { default: View },
+      { default: Point },
+      { Tile: TileLayer, Vector: VectorLayer },
+      { fromLonLat },
+      { default: OSM },
+      { default: VectorSource },
+      { Circle, Fill, Stroke, Style },
+    ] = await Promise.all([
+      import('ol/Feature'),
+      import('ol/Map'),
+      import('ol/View'),
+      import('ol/geom/Point'),
+      import('ol/layer'),
+      import('ol/proj'),
+      import('ol/source/OSM'),
+      import('ol/source/Vector'),
+      import('ol/style'),
+    ]);
 
     if (version !== this.renderVersion) {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const center = fromLonLat([this.longitude()!, this.latitude()!]);
+    this.destroyMap();
+
+    const center = fromLonLat([longitude, latitude]);
+
     const marker = new Feature({
       geometry: new Point(center),
       name: this.title(),
     });
+
     marker.setStyle(
       new Style({
         image: new Circle({

@@ -11,3 +11,4 @@ export * from './lib/mailto/mailto.service';
 export * from './lib/pipes/safe.pipe';
 export * from './lib/service-worker/service-worker.service';
 export * from './lib/sitemap/sitemap.utils';
+export * from './lib/guards/guards';

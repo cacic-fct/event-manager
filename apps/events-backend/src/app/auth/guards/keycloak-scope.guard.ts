@@ -1,17 +1,8 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { Request } from 'express';
-import {
-  AUTH_SESSION_COOKIE_NAME,
-  IS_PUBLIC_KEY,
-  REQUIRED_ROLES_KEY,
-} from '../auth.constants';
+import { AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY, REQUIRED_ROLES_KEY } from '../auth.constants';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../keycloak-auth.service';
 
@@ -37,33 +28,24 @@ export class KeycloakScopeGuard implements CanActivate {
     }
 
     const request = this.getRequest(context);
-    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
-      REQUIRED_ROLES_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(REQUIRED_ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
     const roles = requiredRoles ?? [];
 
     const accessToken = this.extractBearerToken(request.headers.authorization);
     if (accessToken) {
-      request.user = await this.keycloakAuthService.authenticateAccessToken(
-        accessToken,
-        roles,
-      );
+      request.user = await this.keycloakAuthService.authenticateAccessToken(accessToken, roles);
       return true;
     }
 
-    const sessionId = this.extractCookieValue(
-      request.headers.cookie,
-      AUTH_SESSION_COOKIE_NAME,
-    );
+    const sessionId = this.extractCookieValue(request.headers.cookie, AUTH_SESSION_COOKIE_NAME);
     if (!sessionId) {
       throw new UnauthorizedException('Missing authentication credentials.');
     }
 
-    request.user = await this.keycloakAuthService.authenticateSession(
-      sessionId,
-      roles,
-    );
+    request.user = await this.keycloakAuthService.authenticateSession(sessionId, roles);
 
     return true;
   }
@@ -91,12 +73,8 @@ export class KeycloakScopeGuard implements CanActivate {
     throw new UnauthorizedException('Unsupported execution context.');
   }
 
-  private extractBearerToken(
-    authorizationHeader?: string | string[],
-  ): string | null {
-    const header = Array.isArray(authorizationHeader)
-      ? authorizationHeader[0]
-      : authorizationHeader;
+  private extractBearerToken(authorizationHeader?: string | string[]): string | null {
+    const header = Array.isArray(authorizationHeader) ? authorizationHeader[0] : authorizationHeader;
 
     if (!header) {
       return null;
@@ -110,10 +88,7 @@ export class KeycloakScopeGuard implements CanActivate {
     return token;
   }
 
-  private extractCookieValue(
-    cookieHeader: string | string[] | undefined,
-    key: string,
-  ): string | null {
+  private extractCookieValue(cookieHeader: string | string[] | undefined, key: string): string | null {
     const header = Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader;
     if (!header) {
       return null;

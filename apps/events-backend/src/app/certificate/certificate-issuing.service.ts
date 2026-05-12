@@ -4,12 +4,8 @@ import {
   CertificateScope,
   DeletionResult,
   EventType,
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
 } from '@cacic-fct/shared-data-types';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -20,10 +16,7 @@ import {
   buildConfigTargetWhere,
   mapCertificate,
 } from './certificate.constants';
-import {
-  CertificateEligibilityService,
-  EligibleCertificateRecipient,
-} from './certificate-eligibility.service';
+import { CertificateEligibilityService, EligibleCertificateRecipient } from './certificate-eligibility.service';
 import { CertificateValidationService } from './certificate-validation.service';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
@@ -47,10 +40,7 @@ export class CertificateIssuingService {
     take?: number,
   ): Promise<Certificate[]> {
     this.validation.assertSupportedScope(scope);
-    const normalizedTargetId = this.validation.normalizeRequiredId(
-      'targetId',
-      targetId,
-    );
+    const normalizedTargetId = this.validation.normalizeRequiredId('targetId', targetId);
     const normalizedConfigId = configId?.trim() ? configId.trim() : undefined;
 
     const certificates = await this.prisma.certificate.findMany({
@@ -73,19 +63,9 @@ export class CertificateIssuingService {
     return certificates.map(mapCertificate);
   }
 
-  async issueForPerson(
-    configId: string,
-    personId: string,
-    issuedById?: string,
-  ): Promise<Certificate> {
-    const normalizedConfigId = this.validation.normalizeRequiredId(
-      'configId',
-      configId,
-    );
-    const normalizedPersonId = this.validation.normalizeRequiredId(
-      'personId',
-      personId,
-    );
+  async issueForPerson(configId: string, personId: string, issuedById?: string): Promise<Certificate> {
+    const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
+    const normalizedPersonId = this.validation.normalizeRequiredId('personId', personId);
 
     const person = await this.prisma.people.findFirst({
       where: {
@@ -97,49 +77,25 @@ export class CertificateIssuingService {
       },
     });
     if (!person) {
-      throw new BadRequestException(
-        `Person ${normalizedPersonId} was not found.`,
-      );
+      throw new BadRequestException(`Person ${normalizedPersonId} was not found.`);
     }
 
-    const config =
-      await this.eligibilityService.getConfigById(normalizedConfigId);
-    const recipients = await this.eligibilityService.resolveEligibleRecipients(
-      config,
-      normalizedPersonId,
-    );
-    const recipient = recipients.find(
-      (item) => item.person.id === normalizedPersonId,
-    );
+    const config = await this.eligibilityService.getConfigById(normalizedConfigId);
+    const recipients = await this.eligibilityService.resolveEligibleRecipients(config, normalizedPersonId);
+    const recipient = recipients.find((item) => item.person.id === normalizedPersonId);
     if (!recipient) {
-      throw new BadRequestException(
-        `Person ${normalizedPersonId} is not eligible for config ${normalizedConfigId}.`,
-      );
+      throw new BadRequestException(`Person ${normalizedPersonId} is not eligible for config ${normalizedConfigId}.`);
     }
 
-    const certificate = await this.upsertCertificateForRecipient(
-      config,
-      recipient,
-      issuedById,
-    );
+    const certificate = await this.upsertCertificateForRecipient(config, recipient, issuedById);
     return mapCertificate(certificate);
   }
 
-  async issueMissedCertificates(
-    configId: string,
-    issuedById?: string,
-  ): Promise<Certificate[]> {
-    const normalizedConfigId = this.validation.normalizeRequiredId(
-      'configId',
-      configId,
-    );
-    const config =
-      await this.eligibilityService.getConfigById(normalizedConfigId);
-    const recipients =
-      await this.eligibilityService.resolveEligibleRecipients(config);
-    const eligiblePersonIds = new Set(
-      recipients.map((recipient) => recipient.person.id),
-    );
+  async issueMissedCertificates(configId: string, issuedById?: string): Promise<Certificate[]> {
+    const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
+    const config = await this.eligibilityService.getConfigById(normalizedConfigId);
+    const recipients = await this.eligibilityService.resolveEligibleRecipients(config);
+    const eligiblePersonIds = new Set(recipients.map((recipient) => recipient.person.id));
     const existingCertificates = await this.prisma.certificate.findMany({
       where: {
         configId: config.id,
@@ -171,19 +127,10 @@ export class CertificateIssuingService {
     }
 
     const certificates: CertificateRecord[] = [];
-    for (
-      let index = 0;
-      index < recipients.length;
-      index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE
-    ) {
-      const batch = recipients.slice(
-        index,
-        index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE,
-      );
+    for (let index = 0; index < recipients.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+      const batch = recipients.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
       const issuedBatch = await Promise.all(
-        batch.map((recipient) =>
-          this.upsertCertificateForRecipient(config, recipient, issuedById),
-        ),
+        batch.map((recipient) => this.upsertCertificateForRecipient(config, recipient, issuedById)),
       );
       certificates.push(...issuedBatch);
     }
@@ -191,14 +138,8 @@ export class CertificateIssuingService {
     return certificates.map(mapCertificate);
   }
 
-  async refreshIssuedCertificatesForPerson(
-    personId: string,
-    issuedById?: string,
-  ): Promise<Certificate[]> {
-    const normalizedPersonId = this.validation.normalizeRequiredId(
-      'personId',
-      personId,
-    );
+  async refreshIssuedCertificatesForPerson(personId: string, issuedById?: string): Promise<Certificate[]> {
+    const normalizedPersonId = this.validation.normalizeRequiredId('personId', personId);
     const existingCertificates = await this.prisma.certificate.findMany({
       where: {
         personId: normalizedPersonId,
@@ -235,14 +176,8 @@ export class CertificateIssuingService {
     sourcePersonId: string,
     issuedById?: string,
   ): Promise<Certificate[]> {
-    const normalizedTargetPersonId = this.validation.normalizeRequiredId(
-      'targetPersonId',
-      targetPersonId,
-    );
-    const normalizedSourcePersonId = this.validation.normalizeRequiredId(
-      'sourcePersonId',
-      sourcePersonId,
-    );
+    const normalizedTargetPersonId = this.validation.normalizeRequiredId('targetPersonId', targetPersonId);
+    const normalizedSourcePersonId = this.validation.normalizeRequiredId('sourcePersonId', sourcePersonId);
     const mergedCertificates = await this.prisma.certificate.findMany({
       where: {
         personId: {
@@ -261,9 +196,7 @@ export class CertificateIssuingService {
         issuedAt: 'asc',
       },
     });
-    const configIds = [
-      ...new Set(mergedCertificates.map((certificate) => certificate.configId)),
-    ];
+    const configIds = [...new Set(mergedCertificates.map((certificate) => certificate.configId))];
 
     const refreshedCertificates = await this.refreshCertificateConfigsForPerson(
       normalizedTargetPersonId,
@@ -285,10 +218,7 @@ export class CertificateIssuingService {
   }
 
   async deleteCertificate(certificateId: string): Promise<DeletionResult> {
-    const normalizedCertificateId = this.validation.normalizeRequiredId(
-      'certificateId',
-      certificateId,
-    );
+    const normalizedCertificateId = this.validation.normalizeRequiredId('certificateId', certificateId);
     const { count } = await this.prisma.certificate.updateMany({
       where: {
         id: normalizedCertificateId,
@@ -300,9 +230,7 @@ export class CertificateIssuingService {
     });
 
     if (count === 0) {
-      throw new NotFoundException(
-        `Certificate ${normalizedCertificateId} not found.`,
-      );
+      throw new NotFoundException(`Certificate ${normalizedCertificateId} not found.`);
     }
 
     return {
@@ -317,10 +245,7 @@ export class CertificateIssuingService {
     issuedById?: string,
   ): Promise<CertificateRecord | null> {
     const config = await this.eligibilityService.getConfigById(configId);
-    const recipients = await this.eligibilityService.resolveEligibleRecipients(
-      config,
-      personId,
-    );
+    const recipients = await this.eligibilityService.resolveEligibleRecipients(config, personId);
     const recipient = recipients.find((item) => item.person.id === personId);
     if (!recipient) {
       return null;
@@ -339,29 +264,13 @@ export class CertificateIssuingService {
     }
 
     const refreshedCertificates: CertificateRecord[] = [];
-    for (
-      let index = 0;
-      index < configIds.length;
-      index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE
-    ) {
-      const batch = configIds.slice(
-        index,
-        index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE,
-      );
+    for (let index = 0; index < configIds.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+      const batch = configIds.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
       const refreshedBatch = await Promise.all(
-        batch.map((configId) =>
-          this.refreshIssuedCertificateForPersonConfig(
-            configId,
-            personId,
-            issuedById,
-          ),
-        ),
+        batch.map((configId) => this.refreshIssuedCertificateForPersonConfig(configId, personId, issuedById)),
       );
       refreshedCertificates.push(
-        ...refreshedBatch.filter(
-          (certificate): certificate is CertificateRecord =>
-            certificate !== null,
-        ),
+        ...refreshedBatch.filter((certificate): certificate is CertificateRecord => certificate !== null),
       );
     }
 
@@ -389,8 +298,7 @@ export class CertificateIssuingService {
     const hasChanges =
       !existingCertificate ||
       existingCertificate.deletedAt !== null ||
-      existingCertificate.certificateTemplateId !==
-        config.certificateTemplateId ||
+      existingCertificate.certificateTemplateId !== config.certificateTemplateId ||
       !this.isSameJson(existingCertificate.renderedData, currentRenderedData);
 
     if (existingCertificate && !hasChanges) {
@@ -436,10 +344,7 @@ export class CertificateIssuingService {
     recipient: EligibleCertificateRecipient,
     issuedAt: Date,
   ): Prisma.InputJsonObject {
-    const totalCreditMinutes = recipient.events.reduce(
-      (total, event) => total + (event.creditMinutes ?? 0),
-      0,
-    );
+    const totalCreditMinutes = recipient.events.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
 
     const target =
       config.scope === CertificateScope.EVENT
@@ -479,12 +384,7 @@ export class CertificateIssuingService {
       })),
       totalCreditMinutes,
       totalCreditHours: totalCreditMinutes / 60,
-      templateData: this.buildExampleTemplateData(
-        config,
-        recipient,
-        targetName,
-        issuedAt,
-      ),
+      templateData: this.buildExampleTemplateData(config, recipient, targetName, issuedAt),
     };
   }
 
@@ -511,21 +411,14 @@ export class CertificateIssuingService {
       year: 'numeric',
     }).format(issuedAt);
     const verificationUrl = 'eventos.cacic.dev.br/app/validate/{certificateID}';
-    const formattedDocument = this.formatIdentityDocument(
-      recipient.person.identityDocument,
-    );
+    const formattedDocument = this.formatIdentityDocument(recipient.person.identityDocument);
     const sortedEvents = [...recipient.events].sort(
       (left, right) => left.startDate.getTime() - right.startDate.getTime(),
     );
-    const minicursos = sortedEvents.filter(
-      (event) => event.type === EventType.MINICURSO,
-    );
-    const palestras = sortedEvents.filter(
-      (event) => event.type === EventType.PALESTRA,
-    );
+    const minicursos = sortedEvents.filter((event) => event.type === EventType.MINICURSO);
+    const palestras = sortedEvents.filter((event) => event.type === EventType.PALESTRA);
     const otherEvents = sortedEvents.filter(
-      (event) =>
-        event.type !== EventType.MINICURSO && event.type !== EventType.PALESTRA,
+      (event) => event.type !== EventType.MINICURSO && event.type !== EventType.PALESTRA,
     );
 
     const contentLines: string[] = [];
@@ -533,13 +426,8 @@ export class CertificateIssuingService {
     if (minicursoLines.length > 0) {
       contentLines.push('Minicursos:');
       contentLines.push(...this.applyBulletLineEndings(minicursoLines));
-      const minicursoTotalMinutes = minicursos.reduce(
-        (total, event) => total + (event.creditMinutes ?? 0),
-        0,
-      );
-      contentLines.push(
-        `Carga horária total: ${this.formatCargaHoraria(minicursoTotalMinutes)}.`,
-      );
+      const minicursoTotalMinutes = minicursos.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
+      contentLines.push(`Carga horária total: ${this.formatCargaHoraria(minicursoTotalMinutes)}.`);
       contentLines.push('');
     }
 
@@ -547,26 +435,16 @@ export class CertificateIssuingService {
     if (palestraLines.length > 0) {
       contentLines.push('Palestras:');
       contentLines.push(...this.applyBulletLineEndings(palestraLines));
-      const palestraTotalMinutes = palestras.reduce(
-        (total, event) => total + (event.creditMinutes ?? 0),
-        0,
-      );
-      contentLines.push(
-        `Carga horária total: ${this.formatCargaHoraria(palestraTotalMinutes)}.`,
-      );
+      const palestraTotalMinutes = palestras.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
+      contentLines.push(`Carga horária total: ${this.formatCargaHoraria(palestraTotalMinutes)}.`);
       contentLines.push('');
     }
 
     const otherEventLines = this.buildSingleEventLines(otherEvents);
     if (otherEventLines.length > 0) {
       contentLines.push(...this.applyBulletLineEndings(otherEventLines));
-      const otherEventsTotalMinutes = otherEvents.reduce(
-        (total, event) => total + (event.creditMinutes ?? 0),
-        0,
-      );
-      contentLines.push(
-        `Carga horária total: ${this.formatCargaHoraria(otherEventsTotalMinutes)}.`,
-      );
+      const otherEventsTotalMinutes = otherEvents.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
+      contentLines.push(`Carga horária total: ${this.formatCargaHoraria(otherEventsTotalMinutes)}.`);
       contentLines.push('');
     }
 
@@ -608,20 +486,14 @@ export class CertificateIssuingService {
       minicursosSection:
         minicursoLines.length > 0
           ? (() => {
-              const minicursoTotalMinutes = minicursos.reduce(
-                (total, event) => total + (event.creditMinutes ?? 0),
-                0,
-              );
+              const minicursoTotalMinutes = minicursos.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
               return `Minicursos:\n${this.applyBulletLineEndings(minicursoLines).join('\n')}\nCarga horária total: ${this.formatCargaHoraria(minicursoTotalMinutes)}.`;
             })()
           : '',
       palestrasSection:
         palestraLines.length > 0
           ? (() => {
-              const palestraTotalMinutes = palestras.reduce(
-                (total, event) => total + (event.creditMinutes ?? 0),
-                0,
-              );
+              const palestraTotalMinutes = palestras.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
               return `Palestras:\n${this.applyBulletLineEndings(palestraLines).join('\n')}\nCarga horária total: ${this.formatCargaHoraria(palestraTotalMinutes)}.`;
             })()
           : '',
@@ -645,11 +517,7 @@ export class CertificateIssuingService {
     fallback: string,
   ): string {
     // Check custom config fields first
-    if (
-      customFields &&
-      typeof customFields === 'object' &&
-      !Array.isArray(customFields)
-    ) {
+    if (customFields && typeof customFields === 'object' && !Array.isArray(customFields)) {
       const value = customFields[key];
       if (typeof value === 'string' && value.trim()) {
         return value;
@@ -657,11 +525,7 @@ export class CertificateIssuingService {
     }
 
     // Fall back to template fields
-    if (
-      templateFields &&
-      typeof templateFields === 'object' &&
-      !Array.isArray(templateFields)
-    ) {
+    if (templateFields && typeof templateFields === 'object' && !Array.isArray(templateFields)) {
       const value = templateFields[key];
       if (typeof value === 'string' && value.trim()) {
         return value;
@@ -677,9 +541,7 @@ export class CertificateIssuingService {
       return 'Certificamos a participação de:';
     }
 
-    const lecturerEventCategory = this.parseLecturerEventCategory(
-      config.certificateFields,
-    );
+    const lecturerEventCategory = this.parseLecturerEventCategory(config.certificateFields);
     if (lecturerEventCategory === 'PALESTRA') {
       return 'Certificamos a participação como palestrante de:';
     }
@@ -695,21 +557,13 @@ export class CertificateIssuingService {
     return 'Certificamos a participação como palestrante de:';
   }
 
-  private parseLecturerEventCategory(
-    certificateFields: Prisma.JsonValue | null,
-  ): LecturerEventCategory | null {
-    if (
-      !certificateFields ||
-      typeof certificateFields !== 'object' ||
-      Array.isArray(certificateFields)
-    ) {
+  private parseLecturerEventCategory(certificateFields: Prisma.JsonValue | null): LecturerEventCategory | null {
+    if (!certificateFields || typeof certificateFields !== 'object' || Array.isArray(certificateFields)) {
       return null;
     }
 
     const value = certificateFields[LECTURER_EVENT_CATEGORY_FIELD];
-    return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER'
-      ? value
-      : null;
+    return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER' ? value : null;
   }
 
   private buildMinicursoLines(events: EventRecord[]): string[] {
@@ -717,10 +571,7 @@ export class CertificateIssuingService {
       return [];
     }
 
-    const groupedEvents = new Map<
-      string,
-      { label: string; events: EventRecord[]; hasGroup: boolean }
-    >();
+    const groupedEvents = new Map<string, { label: string; events: EventRecord[]; hasGroup: boolean }>();
     for (const event of events) {
       const key = event.eventGroupId ?? event.id;
       const label = event.eventGroup?.name ?? event.name;
@@ -747,19 +598,14 @@ export class CertificateIssuingService {
       const sortedGroupEvents = [...group.events].sort(
         (left, right) => left.startDate.getTime() - right.startDate.getTime(),
       );
-      const totalMinutes = sortedGroupEvents.reduce(
-        (total, event) => total + (event.creditMinutes ?? 0),
-        0,
-      );
+      const totalMinutes = sortedGroupEvents.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
 
       if (sortedGroupEvents.length === 1 && !group.hasGroup) {
         const event = sortedGroupEvents[0];
         return `• ${this.formatDate(event.startDate)} - ${event.name} - Carga horária: ${this.formatCargaHoraria(totalMinutes)}`;
       }
 
-      const dates = sortedGroupEvents.map((event) =>
-        this.formatDate(event.startDate),
-      );
+      const dates = sortedGroupEvents.map((event) => this.formatDate(event.startDate));
       return `• ${dates.join(', ')} - ${group.label} - Carga horária: ${this.formatCargaHoraria(totalMinutes)}`;
     });
   }
@@ -771,9 +617,7 @@ export class CertificateIssuingService {
   }
 
   private applyBulletLineEndings(lines: string[]): string[] {
-    return lines.map(
-      (line, index) => `${line}${index === lines.length - 1 ? '.' : ';'}`,
-    );
+    return lines.map((line, index) => `${line}${index === lines.length - 1 ? '.' : ';'}`);
   }
 
   private formatDate(date: Date): string {

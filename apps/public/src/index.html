@@ -8,39 +8,32 @@
 
     <title>CACiC Eventos</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/x-icon" href="icons/favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="icons/favicon.png" />
+    <!-- 
+      User avatar is not fetched early, therefore no preconnect is needed 
+      But we can prefetch the domain to speed up the connection a bit
+    -->
     <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
 
     <!-- Disable zoom -->
     <meta
       name="viewport"
-      content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
+      content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
     <!-- Don't highlight phone numbers automatically -->
     <meta name="format-detection" content="telephone=no" />
 
     <!-- SEO -->
-    <meta
-      name="description"
-      content="Calendário de eventos dos alunos da FCT-Unesp"
-    />
+    <meta name="description" content="Calendário de eventos dos alunos da FCT-Unesp" />
     <meta
       name="keywords"
-      content="Calendário de eventos, FCT-Unesp, Unesp Presidente Prudente, Faculdade de Ciência e Tecnologia, Universidade Estadual Paulista Júlio de Mesquita Filho, CACiC, Centro Acadêmico de Ciência da Computação"
-    />
+      content="Calendário de eventos, FCT-Unesp, Unesp Presidente Prudente, Faculdade de Ciência e Tecnologia, Universidade Estadual Paulista Júlio de Mesquita Filho, CACiC, Centro Acadêmico de Ciência da Computação" />
 
     <!-- OGP -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="CACiC Eventos" />
-    <meta
-      property="og:description"
-      content="Calendário de eventos dos estudantes da FCT-Unesp."
-    />
-    <meta
-      property="og:image"
-      content="https://eventos.cacic.dev.br/icon/favicon.png"
-    />
+    <meta property="og:description" content="Calendário de eventos dos estudantes da FCT-Unesp." />
+    <meta property="og:image" content="https://eventos.cacic.dev.br/icon/favicon.png" />
 
     <!-- PWA  -->
     <link rel="manifest" href="manifest.webmanifest" />
@@ -52,7 +45,9 @@
   <body>
     <app-root></app-root>
     <noscript>
-      Please enable JavaScript to continue using this application.
+      Enable JavaScript to use this application.
+      <br />
+      Habilite o JavaScript para usar esta aplicação.
     </noscript>
   </body>
 </html>

@@ -24,34 +24,22 @@ export class WorkspaceMergeCandidatesService {
   });
 
   async refreshMergeCandidates(): Promise<void> {
-    const status = this.mergeFilterForm.controls.status
-      .value as MergeCandidateStatus;
-    this.mergeCandidates.set(
-      await firstValueFrom(this.api.listMergeCandidates({ status, take: 100 })),
-    );
+    const status = this.mergeFilterForm.controls.status.value as MergeCandidateStatus;
+    this.mergeCandidates.set(await firstValueFrom(this.api.listMergeCandidates({ status, take: 100 })));
   }
 
   async scanMergeCandidates(showNotification = true): Promise<void> {
-    const touchedCandidates = await firstValueFrom(
-      this.api.scanMergeCandidates(),
-    );
+    const touchedCandidates = await firstValueFrom(this.api.scanMergeCandidates());
     await this.refreshMergeCandidates();
     if (showNotification) {
-      this.snackbar.open(
-        `${touchedCandidates} par(es) de possíveis duplicidades verificados.`,
-        'Fechar',
-        { duration: 2500 },
-      );
+      this.snackbar.open(`${touchedCandidates} par(es) de possíveis duplicidades verificados.`, 'Fechar', {
+        duration: 2500,
+      });
     }
   }
 
-  async setMergeCandidateStatus(
-    candidate: MergeCandidate,
-    status: MergeCandidateStatus,
-  ): Promise<void> {
-    await firstValueFrom(
-      this.api.updateMergeCandidate(candidate.id, { status }),
-    );
+  async setMergeCandidateStatus(candidate: MergeCandidate, status: MergeCandidateStatus): Promise<void> {
+    await firstValueFrom(this.api.updateMergeCandidate(candidate.id, { status }));
     await this.refreshMergeCandidates();
   }
 

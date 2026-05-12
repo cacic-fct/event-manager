@@ -46,21 +46,15 @@ export class AccountMergeController {
     @Req() request: RequestWithUser,
     @Body() body: AccountMergeNotificationDto,
   ): Promise<AccountMergeAcknowledgementDto> {
-    const user = this.keycloakAuthService.assertMachineToMachinePrincipal(
-      request.user,
-      { requiredRoles: ['account-merge:write'] },
-    );
+    const user = this.keycloakAuthService.assertMachineToMachinePrincipal(request.user, {
+      requiredRoles: ['account-merge:write'],
+    });
 
-    return this.accountMergeService.acknowledgeAccountMerge(
-      body,
-      this.readClientId(user),
-    );
+    return this.accountMergeService.acknowledgeAccountMerge(body, this.readClientId(user));
   }
 
   private readClientId(user: AuthenticatedUser): string | null {
     const clientId = user.claims['azp'] ?? user.claims['client_id'];
-    return typeof clientId === 'string' && clientId.trim()
-      ? clientId.trim()
-      : (user.sub ?? null);
+    return typeof clientId === 'string' && clientId.trim() ? clientId.trim() : (user.sub ?? null);
   }
 }

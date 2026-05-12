@@ -32,12 +32,9 @@ export class OnlineAttendanceListComponent {
   private readonly router = inject(Router);
 
   readonly emoji = inject(EmojiService);
-  readonly returnUrl = toSignal(
-    this.route.queryParamMap.pipe(
-      map((params) => params.get('returnUrl') || '/menu'),
-    ),
-    { initialValue: '/menu' },
-  );
+  readonly returnUrl = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('returnUrl') || '/menu')), {
+    initialValue: '/menu',
+  });
   readonly state = toSignal(
     this.api.listPendingEvents().pipe(
       map((items) => ({ status: 'ready', items }) as const),
@@ -45,10 +42,7 @@ export class OnlineAttendanceListComponent {
       catchError((error: unknown) =>
         of({
           status: 'error',
-          message:
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível carregar presenças pendentes.',
+          message: error instanceof Error ? error.message : 'Não foi possível carregar presenças pendentes.',
         } as const),
       ),
     ),

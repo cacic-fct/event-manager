@@ -43,10 +43,7 @@ import { CurrentUserSubscriptionFeedResolver } from './current-user/subscription
 import { DashboardInsightsProcessor } from './dashboard/insights.processor';
 import { DashboardInsightsResolver } from './dashboard/insights.resolver';
 import { DashboardInsightsSchedulerService } from './dashboard/insights-scheduler.service';
-import {
-  DASHBOARD_INSIGHTS_QUEUE,
-  DashboardInsightsService,
-} from './dashboard/insights.service';
+import { DASHBOARD_INSIGHTS_QUEUE, DashboardInsightsService } from './dashboard/insights.service';
 import { EventGroupsResolver } from './event-groups/resolver';
 import { EventLecturersResolver } from './events/lecturers.resolver';
 import { EventsResolver } from './events/resolver';
@@ -97,11 +94,7 @@ import { WeatherService } from './weather/weather.service';
       context: ({ req, res }) => ({ req, res }),
     }),
   ],
-  controllers: [
-    AppController,
-    AccountMergeController,
-    PublicRealtimeEventsController,
-  ],
+  controllers: [AppController, AccountMergeController, PublicRealtimeEventsController],
   providers: [
     AppService,
     AccountMergeService,

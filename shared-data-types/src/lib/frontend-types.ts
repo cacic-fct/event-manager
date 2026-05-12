@@ -2,16 +2,9 @@ export * from './dashboard.types';
 
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
-export type CertificateScope =
-  | 'MAJOR_EVENT'
-  | 'EVENT_GROUP'
-  | 'EVENT'
-  | 'OTHER';
+export type CertificateScope = 'MAJOR_EVENT' | 'EVENT_GROUP' | 'EVENT' | 'OTHER';
 export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
-export type SubscriptionCreationMethod =
-  | 'ADMIN_DASHBOARD'
-  | 'SELF_SUBSCRIPTION'
-  | 'UNKNOWN';
+export type SubscriptionCreationMethod = 'ADMIN_DASHBOARD' | 'SELF_SUBSCRIPTION' | 'UNKNOWN';
 export type SubscriptionStatus =
   | 'WAITING_RECEIPT_UPLOAD'
   | 'RECEIPT_UNDER_REVIEW'
@@ -21,11 +14,7 @@ export type SubscriptionStatus =
   | 'REJECTED_GENERIC'
   | 'CONFIRMED'
   | 'CANCELED';
-export type AttendanceCategory =
-  | 'NON_PAYING'
-  | 'NON_SUBSCRIBED'
-  | 'REGULAR'
-  | 'UNKNOWN';
+export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
 
 export interface PaymentInfo {
   id: string;

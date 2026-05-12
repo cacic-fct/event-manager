@@ -17,10 +17,7 @@ export const authGuard: CanActivateFn = (_route, state) => {
 };
 
 export const requiredPermissionsGuard =
-  (
-    permissions: readonly string[],
-    fallbackUrl: string | UrlTree,
-  ): CanActivateFn =>
+  (permissions: readonly string[], fallbackUrl: string | UrlTree): CanActivateFn =>
   async () => {
     const authService = inject(AuthService);
     const router = inject(Router);
@@ -30,9 +27,7 @@ export const requiredPermissionsGuard =
       return router.parseUrl('/login');
     }
 
-    const grantedPermissions = await firstValueFrom(
-      authService.evaluatePermissions(permissions),
-    );
+    const grantedPermissions = await firstValueFrom(authService.evaluatePermissions(permissions));
 
     if (grantedPermissions.length > 0) {
       return true;
@@ -47,7 +42,5 @@ export const requiredPermissionsGuard =
       return false;
     }
 
-    return typeof fallbackUrl === 'string'
-      ? router.parseUrl(fallbackUrl)
-      : fallbackUrl;
+    return typeof fallbackUrl === 'string' ? router.parseUrl(fallbackUrl) : fallbackUrl;
   };

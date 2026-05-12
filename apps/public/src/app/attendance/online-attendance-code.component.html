@@ -9,8 +9,7 @@
     type="button"
     aria-label="Escanear código de presença"
     [disabled]="state().status !== 'ready' || isSubmitting()"
-    (click)="scanCode()"
-  >
+    (click)="scanCode()">
     <mat-icon>qr_code</mat-icon>
   </button>
 </mat-toolbar>
@@ -29,11 +28,7 @@
     @let event = currentState.item.event;
     <section class="event-summary">
       <div class="emoji-frame">
-        <img
-          class="twemoji"
-          [src]="emoji.getTwemojiUrl(event.emoji)"
-          [alt]="event.emoji"
-        />
+        <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
       </div>
       <div>
         <p>{{ event.startDate | date: 'dd/MM HH:mm' }}</p>
@@ -55,18 +50,13 @@
           autocomplete="one-time-code"
           inputmode="text"
           maxlength="4"
-          [formControl]="codeControl"
-        />
+          [formControl]="codeControl" />
       </label>
       @if (codeControl.touched && codeControl.invalid) {
         <p class="field-error">Informe os 4 caracteres do código.</p>
       }
 
-      <button
-        mat-flat-button
-        type="submit"
-        [disabled]="codeControl.invalid || isSubmitting()"
-      >
+      <button mat-flat-button type="submit" [disabled]="codeControl.invalid || isSubmitting()">
         <mat-icon>how_to_reg</mat-icon>
         Confirmar
       </button>

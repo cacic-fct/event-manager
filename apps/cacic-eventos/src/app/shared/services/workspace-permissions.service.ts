@@ -1,12 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
-import {
-  Injectable,
-  PLATFORM_ID,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { firstValueFrom } from 'rxjs';
 
@@ -65,12 +59,7 @@ type KeycloakPermissionClaim =
 const TAB_PERMISSIONS = [
   {
     label: 'Eventos',
-    read: [
-      'event#read',
-      'major-event#read',
-      'event-lecturer#read',
-      'person#read',
-    ],
+    read: ['event#read', 'major-event#read', 'event-lecturer#read', 'person#read'],
     edit: ['event#edit', 'event-lecturer#edit', 'person#edit'],
     delete: ['event#delete', 'event-lecturer#delete'],
   },
@@ -106,23 +95,13 @@ const TAB_PERMISSIONS = [
   },
   {
     label: 'Presenças',
-    read: [
-      'event-attendance#read',
-      'event#read',
-      'major-event#read',
-      'person#read',
-    ],
+    read: ['event-attendance#read', 'event#read', 'major-event#read', 'person#read'],
     edit: ['event-attendance#edit'],
     delete: ['event-attendance#delete'],
   },
   {
     label: 'Inscrições',
-    read: [
-      'subscription#read',
-      'event#read',
-      'major-event#read',
-      'person#read',
-    ],
+    read: ['subscription#read', 'event#read', 'major-event#read', 'person#read'],
     edit: ['subscription#edit'],
     delete: ['subscription#delete'],
   },
@@ -162,9 +141,7 @@ export class WorkspacePermissionsService {
     return scopes.every((scope) => this.has(scope));
   }
 
-  missing(
-    scopes: readonly WorkspacePermissionScope[],
-  ): WorkspacePermissionScope[] {
+  missing(scopes: readonly WorkspacePermissionScope[]): WorkspacePermissionScope[] {
     return [...new Set(scopes)].filter((scope) => !this.has(scope));
   }
 
@@ -207,19 +184,12 @@ export class WorkspacePermissionsService {
   }
 
   private async fetchWorkspacePermissions(): Promise<void> {
-    const permissions = this.tabs.flatMap((tab) => [
-      ...tab.read,
-      ...tab.edit,
-      ...tab.delete,
-    ]);
+    const permissions = this.tabs.flatMap((tab) => [...tab.read, ...tab.edit, ...tab.delete]);
     const uniquePermissions = [...new Set(permissions)];
     const result = await firstValueFrom(
-      this.http.post<{ permissions: string[] }>(
-        '/api/auth/permissions/evaluate',
-        {
-          permissions: uniquePermissions,
-        },
-      ),
+      this.http.post<{ permissions: string[] }>('/api/auth/permissions/evaluate', {
+        permissions: uniquePermissions,
+      }),
     );
 
     this.evaluatedPermissions.set(new Set(result.permissions));
@@ -242,10 +212,7 @@ export class WorkspacePermissionsService {
     return permissions;
   }
 
-  private addPermissionClaims(
-    rawPermissions: unknown,
-    permissions: Set<string>,
-  ): void {
+  private addPermissionClaims(rawPermissions: unknown, permissions: Set<string>): void {
     if (!Array.isArray(rawPermissions)) {
       return;
     }
@@ -260,9 +227,7 @@ export class WorkspacePermissionsService {
         continue;
       }
 
-      const resourceName =
-        this.readString(permission['rsname']) ??
-        this.readString(permission['resource_name']);
+      const resourceName = this.readString(permission['rsname']) ?? this.readString(permission['resource_name']);
 
       const rawScopes = permission['scopes'];
       if (!Array.isArray(rawScopes)) {
@@ -274,18 +239,12 @@ export class WorkspacePermissionsService {
           continue;
         }
 
-        this.addNormalizedPermission(
-          resourceName ? `${resourceName}#${scope}` : scope,
-          permissions,
-        );
+        this.addNormalizedPermission(resourceName ? `${resourceName}#${scope}` : scope, permissions);
       }
     }
   }
 
-  private addNormalizedPermission(
-    permission: string,
-    permissions: Set<string>,
-  ): void {
+  private addNormalizedPermission(permission: string, permissions: Set<string>): void {
     const normalizedPermission = permission.trim();
     if (normalizedPermission) {
       permissions.add(normalizedPermission);

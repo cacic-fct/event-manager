@@ -1,9 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -31,9 +26,7 @@ type PermissionGroup = {
 export class WorkspacePermissionsTabComponent {
   private readonly workspacePermissions = inject(WorkspacePermissionsService);
 
-  readonly formattedPermissions = computed(() =>
-    this.formatPermissions(this.workspacePermissions.rawPermissions()),
-  );
+  readonly formattedPermissions = computed(() => this.formatPermissions(this.workspacePermissions.rawPermissions()));
 
   readonly rawPermissions = this.workspacePermissions.rawPermissions;
 
@@ -61,9 +54,7 @@ export class WorkspacePermissionsTabComponent {
       }
     }
 
-    return [...groupedPermissions.values()].sort((left, right) =>
-      left.label.localeCompare(right.label),
-    );
+    return [...groupedPermissions.values()].sort((left, right) => left.label.localeCompare(right.label));
   }
 
   private getFormattedAction(action: string): string {

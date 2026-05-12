@@ -1,0 +1,42 @@
+<mat-toolbar>
+  <a mat-icon-button routerLink="/about" aria-label="Voltar para o menu"><mat-icon>arrow_back</mat-icon> </a>
+</mat-toolbar>
+
+<div class="global-container">
+  <app-explanation-card title="Service Worker" icon="handyman">
+    O Service Worker habilita recursos como navegação off-line e notificações push.
+    <br />
+    Somente use essas opções quando solicitado por nossa equipe, pois elas podem consumir muitos dados.
+  </app-explanation-card>
+
+  <main>
+    <mat-action-list>
+      <button
+        mat-list-item
+        (click)="openNgswDialog()"
+        [disabled]="!isBrowser || !serviceWorkerService.hasServiceWorker()">
+        <mat-icon matListItemIcon>info</mat-icon>
+        <div matListItemTitle>Estado</div>
+        <div matListItemLine>{{ serviceWorkerStatus() }}</div>
+      </button>
+      <button
+        mat-list-item
+        (click)="serviceWorkerService.updateServiceWorker()"
+        (keypress)="serviceWorkerService.updateServiceWorker()"
+        tabindex="0"
+        [disabled]="!isBrowser || !serviceWorkerService.hasServiceWorker()">
+        <mat-icon matListItemIcon>update</mat-icon>
+        <div matListItemTitle>Atualizar</div>
+      </button>
+      <button
+        mat-list-item
+        (click)="serviceWorkerService.unregisterServiceWorker()"
+        (keypress)="serviceWorkerService.unregisterServiceWorker()"
+        tabindex="0"
+        [disabled]="!isBrowser || !serviceWorkerService.hasServiceWorker()">
+        <mat-icon matListItemIcon>delete</mat-icon>
+        <div matListItemTitle>Cancelar registro</div>
+      </button>
+    </mat-action-list>
+  </main>
+</div>

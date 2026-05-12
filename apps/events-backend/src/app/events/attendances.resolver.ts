@@ -9,18 +9,10 @@ import {
   MajorEventSubscriptionCsvImportInput,
   MajorEventSubscriptionCsvImportResult,
   MajorEventUserAttendance,
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
 } from '@cacic-fct/shared-data-types';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import {
-  AttendanceCreationMethod,
-  Prisma,
-  SubscriptionStatus,
-} from '@prisma/client';
+import { AttendanceCreationMethod, Prisma, SubscriptionStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { PrismaService } from '../prisma/prisma.service';
@@ -277,26 +269,17 @@ export class EventAttendancesResolver {
       ]),
     );
     const attendanceByKey = new Map(
-      attendances.map((attendance) => [
-        `${attendance.personId}:${attendance.eventId}`,
-        attendance,
-      ]),
+      attendances.map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
     );
 
     const majorSubscriptionByPerson = new Map(
-      subscriptions.map((subscription) => [
-        subscription.personId,
-        subscription,
-      ]),
+      subscriptions.map((subscription) => [subscription.personId, subscription]),
     );
 
     return personIds.map((resolvedPersonId) => {
       const subscription = majorSubscriptionByPerson.get(resolvedPersonId);
       const person =
-        subscription?.person ??
-        attendances.find(
-          (attendance) => attendance.personId === resolvedPersonId,
-        )?.person;
+        subscription?.person ?? attendances.find((attendance) => attendance.personId === resolvedPersonId)?.person;
 
       return {
         majorEventId,
@@ -308,9 +291,7 @@ export class EventAttendancesResolver {
         paymentDate: subscription?.paymentDate,
         paymentTier: subscription?.paymentTier,
         attendances: events.map((event) => {
-          const attendance = attendanceByKey.get(
-            `${resolvedPersonId}:${event.id}`,
-          );
+          const attendance = attendanceByKey.get(`${resolvedPersonId}:${event.id}`);
           return {
             eventId: event.id,
             eventName: event.name,
@@ -353,9 +334,7 @@ export class EventAttendancesResolver {
     });
 
     if (!attendance) {
-      throw new NotFoundException(
-        `Attendance ${personId}/${eventId} was not found.`,
-      );
+      throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
     }
 
     return attendance;
@@ -374,11 +353,7 @@ export class EventAttendancesResolver {
           createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
         },
       });
-      await this.attendanceCategories.refreshForAttendance(
-        input.personId,
-        input.eventId,
-        tx,
-      );
+      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
       return tx.eventAttendance.findUniqueOrThrow({
         where: {
           personId_eventId: {
@@ -440,8 +415,7 @@ export class EventAttendancesResolver {
       throw new NotFoundException(`Person for user ${userId} was not found.`);
     }
 
-    const createdById =
-      context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+    const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -453,11 +427,7 @@ export class EventAttendancesResolver {
             createdByMethod: AttendanceCreationMethod.SCANNER,
           },
         });
-        await this.attendanceCategories.refreshForAttendance(
-          person.id,
-          eventId,
-          tx,
-        );
+        await this.attendanceCategories.refreshForAttendance(person.id, eventId, tx);
         return tx.eventAttendance.findUniqueOrThrow({
           where: {
             personId_eventId: {
@@ -477,10 +447,7 @@ export class EventAttendancesResolver {
         });
       });
     } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException('Presença já registrada para este evento.');
       }
 
@@ -513,20 +480,13 @@ export class EventAttendancesResolver {
 
     const { headers, rows } = this.parseCsv(input.csvContent);
     if (!headers.includes(input.selectedHeader)) {
-      throw new BadRequestException(
-        `CSV header "${input.selectedHeader}" was not found.`,
-      );
+      throw new BadRequestException(`CSV header "${input.selectedHeader}" was not found.`);
     }
 
-    const rawValues = rows
-      .map((row) => row[input.selectedHeader]?.trim() ?? '')
-      .filter((value) => value.length > 0);
+    const rawValues = rows.map((row) => row[input.selectedHeader]?.trim() ?? '').filter((value) => value.length > 0);
     const uniqueRawValues = Array.from(new Set(rawValues));
     const inferredMatchType = this.inferMatchType(uniqueRawValues);
-    const personByValue = await this.findPeopleByImportValues(
-      uniqueRawValues,
-      inferredMatchType,
-    );
+    const personByValue = await this.findPeopleByImportValues(uniqueRawValues, inferredMatchType);
 
     const existingAttendances = await this.prisma.eventAttendance.findMany({
       where: {
@@ -536,19 +496,14 @@ export class EventAttendancesResolver {
         personId: true,
       },
     });
-    const existingPersonIds = new Set(
-      existingAttendances.map((attendance) => attendance.personId),
-    );
+    const existingPersonIds = new Set(existingAttendances.map((attendance) => attendance.personId));
 
     const failedValues: string[] = [];
     let duplicateCount = 0;
     const personIdsToCreate = new Set<string>();
 
     for (const rawValue of rawValues) {
-      const normalizedValue = this.normalizeImportValue(
-        rawValue,
-        inferredMatchType,
-      );
+      const normalizedValue = this.normalizeImportValue(rawValue, inferredMatchType);
       const person = personByValue.get(normalizedValue);
       if (!person) {
         if (!failedValues.includes(rawValue)) {
@@ -557,10 +512,7 @@ export class EventAttendancesResolver {
         continue;
       }
 
-      if (
-        existingPersonIds.has(person.id) ||
-        personIdsToCreate.has(person.id)
-      ) {
+      if (existingPersonIds.has(person.id) || personIdsToCreate.has(person.id)) {
         duplicateCount += 1;
         continue;
       }
@@ -568,8 +520,7 @@ export class EventAttendancesResolver {
       personIdsToCreate.add(person.id);
     }
 
-    const createdById =
-      context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+    const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
     const createdPersonIds = Array.from(personIdsToCreate);
     const createResult =
       createdPersonIds.length > 0
@@ -583,11 +534,7 @@ export class EventAttendancesResolver {
               })),
               skipDuplicates: true,
             });
-            await this.attendanceCategories.refreshForEventPersons(
-              [input.eventId],
-              createdPersonIds,
-              tx,
-            );
+            await this.attendanceCategories.refreshForEventPersons([input.eventId], createdPersonIds, tx);
             return result;
           })
         : { count: 0 };
@@ -622,9 +569,7 @@ export class EventAttendancesResolver {
     });
 
     if (!majorEvent) {
-      throw new NotFoundException(
-        `Major event ${input.majorEventId} was not found.`,
-      );
+      throw new NotFoundException(`Major event ${input.majorEventId} was not found.`);
     }
 
     const { headers, rows } = this.parseCsv(input.csvContent);
@@ -634,14 +579,10 @@ export class EventAttendancesResolver {
       row,
       rowNumber: index + 2,
       personData: this.readSubscriptionImportPersonData(row, input),
-      eventIds: this.readSubscribedEventIds(
-        row[input.columnMapping.subscribedEventIdsHeader] ?? '',
-      ),
+      eventIds: this.readSubscribedEventIds(row[input.columnMapping.subscribedEventIdsHeader] ?? ''),
     }));
 
-    const allEventIds = Array.from(
-      new Set(parsedRows.flatMap((row) => row.eventIds)),
-    );
+    const allEventIds = Array.from(new Set(parsedRows.flatMap((row) => row.eventIds)));
     const validEvents = await this.prisma.event.findMany({
       where: {
         id: {
@@ -659,27 +600,20 @@ export class EventAttendancesResolver {
     const failedRows: string[] = [];
     const createdPeople: PersonMatch[] = [];
     const personEventIds = new Map<string, Set<string>>();
-    const createdById =
-      context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+    const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
 
     for (const parsedRow of parsedRows) {
       if (!this.hasAnySubscriptionImportPersonData(parsedRow.personData)) {
-        failedRows.push(
-          `Linha ${parsedRow.rowNumber}: informe ao menos um dado da pessoa.`,
-        );
+        failedRows.push(`Linha ${parsedRow.rowNumber}: informe ao menos um dado da pessoa.`);
         continue;
       }
 
       if (parsedRow.eventIds.length === 0) {
-        failedRows.push(
-          `Linha ${parsedRow.rowNumber}: informe ao menos um ID de evento.`,
-        );
+        failedRows.push(`Linha ${parsedRow.rowNumber}: informe ao menos um ID de evento.`);
         continue;
       }
 
-      const invalidEventIds = parsedRow.eventIds.filter(
-        (eventId) => !validEventIds.has(eventId),
-      );
+      const invalidEventIds = parsedRow.eventIds.filter((eventId) => !validEventIds.has(eventId));
       if (invalidEventIds.length > 0) {
         failedRows.push(
           `Linha ${parsedRow.rowNumber}: eventos inválidos para este grande evento: ${invalidEventIds.join(', ')}.`,
@@ -687,14 +621,9 @@ export class EventAttendancesResolver {
         continue;
       }
 
-      let person = await this.findPersonForSubscriptionImport(
-        parsedRow.personData,
-      );
+      let person = await this.findPersonForSubscriptionImport(parsedRow.personData);
       if (!person) {
-        person = await this.createPersonForSubscriptionImport(
-          parsedRow.personData,
-          createdById,
-        );
+        person = await this.createPersonForSubscriptionImport(parsedRow.personData, createdById);
         createdPeople.push(person);
       }
 
@@ -762,15 +691,9 @@ export class EventAttendancesResolver {
             eventId: true,
           },
         });
-        const activeEventIdSet = new Set(
-          activeEventSubscriptions.map((subscription) => subscription.eventId),
-        );
-        const eventIdsToArchive = [...activeEventIdSet].filter(
-          (eventId) => !selectedEventIdSet.has(eventId),
-        );
-        const eventIdsToCreate = selectedEventIds.filter(
-          (eventId) => !activeEventIdSet.has(eventId),
-        );
+        const activeEventIdSet = new Set(activeEventSubscriptions.map((subscription) => subscription.eventId));
+        const eventIdsToArchive = [...activeEventIdSet].filter((eventId) => !selectedEventIdSet.has(eventId));
+        const eventIdsToCreate = selectedEventIds.filter((eventId) => !activeEventIdSet.has(eventId));
 
         duplicateCount += selectedEventIds.length - eventIdsToCreate.length;
 
@@ -800,11 +723,7 @@ export class EventAttendancesResolver {
           });
         }
 
-        await this.attendanceCategories.refreshForMajorEventPerson(
-          input.majorEventId,
-          personId,
-          tx,
-        );
+        await this.attendanceCategories.refreshForMajorEventPerson(input.majorEventId, personId, tx);
       });
     }
 
@@ -836,19 +755,13 @@ export class EventAttendancesResolver {
         data: input,
       });
 
-      await this.attendanceCategories.refreshForAttendance(
-        personId,
-        eventId,
-        tx,
-      );
+      await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
 
       return result;
     });
 
     if (count === 0) {
-      throw new NotFoundException(
-        `Attendance ${personId}/${eventId} was not found.`,
-      );
+      throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
     }
 
     return this.prisma.eventAttendance.findUnique({
@@ -888,9 +801,7 @@ export class EventAttendancesResolver {
     });
 
     if (count === 0) {
-      throw new NotFoundException(
-        `Attendance ${personId}/${eventId} was not found.`,
-      );
+      throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
     }
 
     return {
@@ -949,9 +860,7 @@ export class EventAttendancesResolver {
     }
 
     const [headerRecord, ...dataRecords] = records;
-    const headers = (headerRecord ?? []).map((header) =>
-      header.replace(/^\uFEFF/, '').trim(),
-    );
+    const headers = (headerRecord ?? []).map((header) => header.replace(/^\uFEFF/, '').trim());
     if (headers.length === 0) {
       throw new BadRequestException('CSV file must include a header row.');
     }
@@ -978,19 +887,14 @@ export class EventAttendancesResolver {
   }
 
   private parseSubscriptionStatus(status: string): SubscriptionStatus {
-    if (
-      Object.values(SubscriptionStatus).includes(status as SubscriptionStatus)
-    ) {
+    if (Object.values(SubscriptionStatus).includes(status as SubscriptionStatus)) {
       return status as SubscriptionStatus;
     }
 
     throw new BadRequestException(`Invalid subscription status "${status}".`);
   }
 
-  private ensureSubscriptionImportHeaders(
-    headers: string[],
-    input: MajorEventSubscriptionCsvImportInput,
-  ): void {
+  private ensureSubscriptionImportHeaders(headers: string[], input: MajorEventSubscriptionCsvImportInput): void {
     const mapping = input.columnMapping;
     const selectedHeaders = [
       mapping.emailHeader,
@@ -1007,9 +911,7 @@ export class EventAttendancesResolver {
     }
 
     if (!mapping.subscribedEventIdsHeader) {
-      throw new BadRequestException(
-        'A subscribed events column must be selected.',
-      );
+      throw new BadRequestException('A subscribed events column must be selected.');
     }
 
     if (
@@ -1020,9 +922,7 @@ export class EventAttendancesResolver {
         mapping.identityDocumentHeader,
       ].some((header) => Boolean(header))
     ) {
-      throw new BadRequestException(
-        'At least one person information column must be selected.',
-      );
+      throw new BadRequestException('At least one person information column must be selected.');
     }
   }
 
@@ -1033,18 +933,9 @@ export class EventAttendancesResolver {
     const mapping = input.columnMapping;
     return {
       email: this.readMappedCell(row, mapping.emailHeader).toLowerCase(),
-      fullName: this.readMappedCell(row, mapping.fullNameHeader).replace(
-        /\s+/g,
-        ' ',
-      ),
-      enrollmentNumber: this.readMappedCell(
-        row,
-        mapping.enrollmentNumberHeader,
-      ),
-      identityDocument: this.readMappedCell(
-        row,
-        mapping.identityDocumentHeader,
-      ),
+      fullName: this.readMappedCell(row, mapping.fullNameHeader).replace(/\s+/g, ' '),
+      enrollmentNumber: this.readMappedCell(row, mapping.enrollmentNumberHeader),
+      identityDocument: this.readMappedCell(row, mapping.identityDocumentHeader),
     };
   }
 
@@ -1052,15 +943,10 @@ export class EventAttendancesResolver {
     return header ? (row[header]?.trim() ?? '') : '';
   }
 
-  private hasAnySubscriptionImportPersonData(
-    personData: SubscriptionImportPersonData,
-  ): boolean {
-    return [
-      personData.email,
-      personData.fullName,
-      personData.enrollmentNumber,
-      personData.identityDocument,
-    ].some((value) => Boolean(value));
+  private hasAnySubscriptionImportPersonData(personData: SubscriptionImportPersonData): boolean {
+    return [personData.email, personData.fullName, personData.enrollmentNumber, personData.identityDocument].some(
+      (value) => Boolean(value),
+    );
   }
 
   private readSubscribedEventIds(value: string): string[] {
@@ -1069,11 +955,7 @@ export class EventAttendancesResolver {
       try {
         const parsedValue: unknown = JSON.parse(trimmedValue);
         if (Array.isArray(parsedValue)) {
-          return this.uniqueEventIds(
-            parsedValue.filter(
-              (eventId): eventId is string => typeof eventId === 'string',
-            ),
-          );
+          return this.uniqueEventIds(parsedValue.filter((eventId): eventId is string => typeof eventId === 'string'));
         }
       } catch {
         return [];
@@ -1084,18 +966,11 @@ export class EventAttendancesResolver {
   }
 
   private uniqueEventIds(eventIds: string[]): string[] {
-    return Array.from(
-      new Set(
-        eventIds.map((eventId) => eventId.trim()).filter((eventId) => eventId),
-      ),
-    );
+    return Array.from(new Set(eventIds.map((eventId) => eventId.trim()).filter((eventId) => eventId)));
   }
 
-  private async findPersonForSubscriptionImport(
-    personData: SubscriptionImportPersonData,
-  ): Promise<PersonMatch | null> {
-    const matchFilters =
-      this.buildSubscriptionImportPersonMatchFilters(personData);
+  private async findPersonForSubscriptionImport(personData: SubscriptionImportPersonData): Promise<PersonMatch | null> {
+    const matchFilters = this.buildSubscriptionImportPersonMatchFilters(personData);
 
     for (const where of matchFilters) {
       const person = await this.prisma.people.findFirst({
@@ -1134,9 +1009,9 @@ export class EventAttendancesResolver {
 
     if (personData.identityDocument) {
       filters.push({
-        OR: this.identityDocumentLookupValues(personData.identityDocument).map(
-          (identityDocument) => ({ identityDocument }),
-        ),
+        OR: this.identityDocumentLookupValues(personData.identityDocument).map((identityDocument) => ({
+          identityDocument,
+        })),
       });
     }
 
@@ -1208,16 +1083,12 @@ export class EventAttendancesResolver {
       return AttendanceImportMatchType.FULL_NAME;
     }
 
-    const emailCount = nonEmptyValues.filter((value) =>
-      value.includes('@'),
-    ).length;
+    const emailCount = nonEmptyValues.filter((value) => value.includes('@')).length;
     if (emailCount > 0) {
       return AttendanceImportMatchType.EMAIL;
     }
 
-    const identityDocumentCount = nonEmptyValues.filter((value) =>
-      this.looksLikeIdentityDocument(value),
-    ).length;
+    const identityDocumentCount = nonEmptyValues.filter((value) => this.looksLikeIdentityDocument(value)).length;
     if (identityDocumentCount / nonEmptyValues.length >= 0.5) {
       return AttendanceImportMatchType.IDENTITY_DOCUMENT;
     }
@@ -1250,11 +1121,7 @@ export class EventAttendancesResolver {
   ): Promise<Map<string, PersonMatch>> {
     const result = new Map<string, PersonMatch>();
     const normalizedValues = Array.from(
-      new Set(
-        values
-          .map((value) => this.normalizeImportValue(value, matchType))
-          .filter((value) => value.length > 0),
-      ),
+      new Set(values.map((value) => this.normalizeImportValue(value, matchType)).filter((value) => value.length > 0)),
     );
 
     for (const chunk of this.chunk(normalizedValues, 500)) {
@@ -1288,17 +1155,11 @@ export class EventAttendancesResolver {
     return result;
   }
 
-  private buildPeopleMatchFilters(
-    values: string[],
-    matchType: AttendanceImportMatchType,
-  ): Prisma.PeopleWhereInput[] {
+  private buildPeopleMatchFilters(values: string[], matchType: AttendanceImportMatchType): Prisma.PeopleWhereInput[] {
     switch (matchType) {
       case AttendanceImportMatchType.EMAIL:
         return values.map((value) => ({
-          OR: [
-            { email: { equals: value, mode: 'insensitive' } },
-            { secondaryEmails: { has: value } },
-          ],
+          OR: [{ email: { equals: value, mode: 'insensitive' } }, { secondaryEmails: { has: value } }],
         }));
       case AttendanceImportMatchType.IDENTITY_DOCUMENT:
         return values.flatMap((value) =>
@@ -1313,28 +1174,20 @@ export class EventAttendancesResolver {
     }
   }
 
-  private getPersonMatchKeys(
-    person: PersonMatch,
-    matchType: AttendanceImportMatchType,
-  ): string[] {
+  private getPersonMatchKeys(person: PersonMatch, matchType: AttendanceImportMatchType): string[] {
     switch (matchType) {
       case AttendanceImportMatchType.EMAIL:
         return [person.email, ...person.secondaryEmails]
           .filter((value): value is string => Boolean(value))
           .map((value) => this.normalizeImportValue(value, matchType));
       case AttendanceImportMatchType.IDENTITY_DOCUMENT:
-        return person.identityDocument
-          ? [this.normalizeImportValue(person.identityDocument, matchType)]
-          : [];
+        return person.identityDocument ? [this.normalizeImportValue(person.identityDocument, matchType)] : [];
       case AttendanceImportMatchType.FULL_NAME:
         return [this.normalizeImportValue(person.name, matchType)];
     }
   }
 
-  private normalizeImportValue(
-    value: string,
-    matchType: AttendanceImportMatchType,
-  ): string {
+  private normalizeImportValue(value: string, matchType: AttendanceImportMatchType): string {
     const trimmedValue = value.trim();
     switch (matchType) {
       case AttendanceImportMatchType.EMAIL:
@@ -1347,10 +1200,7 @@ export class EventAttendancesResolver {
   }
 
   private identityDocumentLookupValues(value: string): string[] {
-    const normalizedValue = this.normalizeImportValue(
-      value,
-      AttendanceImportMatchType.IDENTITY_DOCUMENT,
-    );
+    const normalizedValue = this.normalizeImportValue(value, AttendanceImportMatchType.IDENTITY_DOCUMENT);
     const lookupValues = new Set([value.trim(), normalizedValue]);
 
     if (/^\d{11}$/.test(normalizedValue)) {
@@ -1372,18 +1222,13 @@ export class EventAttendancesResolver {
     }
 
     const firstDigit = this.calculateCpfDigit(cpf.slice(0, 9), 10);
-    const secondDigit = this.calculateCpfDigit(
-      `${cpf.slice(0, 9)}${firstDigit}`,
-      11,
-    );
+    const secondDigit = this.calculateCpfDigit(`${cpf.slice(0, 9)}${firstDigit}`, 11);
 
     return cpf === `${cpf.slice(0, 9)}${firstDigit}${secondDigit}`;
   }
 
   private calculateCpfDigit(base: string, factor: number): number {
-    const total = base
-      .split('')
-      .reduce((sum, digit, index) => sum + Number(digit) * (factor - index), 0);
+    const total = base.split('').reduce((sum, digit, index) => sum + Number(digit) * (factor - index), 0);
     const remainder = (total * 10) % 11;
     return remainder === 10 ? 0 : remainder;
   }

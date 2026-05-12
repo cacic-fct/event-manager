@@ -195,10 +195,7 @@ export type CertificateRecord = Prisma.CertificateGetPayload<{
   select: typeof CERTIFICATE_SELECT;
 }>;
 
-export function buildConfigTargetWhere(
-  scope: CertificateScope,
-  targetId: string,
-): Prisma.CertificateConfigWhereInput {
+export function buildConfigTargetWhere(scope: CertificateScope, targetId: string): Prisma.CertificateConfigWhereInput {
   if (scope === CertificateScope.EVENT) {
     return {
       scope,
@@ -233,9 +230,7 @@ const serializeJson = (value: Prisma.JsonValue | null): string | undefined => {
   return JSON.stringify(value);
 };
 
-export function mapCertificateTemplate(
-  template: CertificateTemplateRecord,
-): CertificateTemplate {
+export function mapCertificateTemplate(template: CertificateTemplateRecord): CertificateTemplate {
   return {
     ...template,
     description: template.description ?? undefined,
@@ -246,9 +241,7 @@ export function mapCertificateTemplate(
   };
 }
 
-export function mapCertificateConfig(
-  config: CertificateConfigRecord,
-): CertificateConfig {
+export function mapCertificateConfig(config: CertificateConfigRecord): CertificateConfig {
   return {
     ...config,
     majorEventId: config.majorEventId ?? undefined,
@@ -273,9 +266,7 @@ export function mapCertificate(certificate: CertificateRecord): Certificate {
     config: mapCertificateConfig(certificate.config),
     renderedDataJson: JSON.stringify(certificate.renderedData),
     issuedById: certificate.issuedById ?? undefined,
-    certificateTemplate: mapCertificateTemplate(
-      certificate.certificateTemplate,
-    ),
+    certificateTemplate: mapCertificateTemplate(certificate.certificateTemplate),
     deletedAt: certificate.deletedAt ?? undefined,
   };
 }

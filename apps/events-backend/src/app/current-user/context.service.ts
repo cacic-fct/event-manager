@@ -1,21 +1,9 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { AccountMergeService } from '../account-merge/account-merge.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  GraphqlContext,
-  PERSON_SELECT,
-  PersonRecord,
-  USER_SELECT,
-  UserRecord,
-} from './selects';
+import { GraphqlContext, PERSON_SELECT, PersonRecord, USER_SELECT, UserRecord } from './selects';
 
 @Injectable()
 export class CurrentUserContextService {
@@ -40,13 +28,10 @@ export class CurrentUserContextService {
     authenticatedUser: AuthenticatedUser,
     includeUserFallback = false,
   ): Promise<{ user: UserRecord | null; person: PersonRecord | null }> {
-    const effectiveUser = await this.resolveMergedAuthenticatedUser(
-      authenticatedUser,
-    );
+    const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
     const user = await this.resolveCurrentUser(effectiveUser);
     const person =
-      (await this.resolveCurrentPerson(effectiveUser, user)) ??
-      (await this.createCurrentPerson(effectiveUser));
+      (await this.resolveCurrentPerson(effectiveUser, user)) ?? (await this.createCurrentPerson(effectiveUser));
 
     if (!user && includeUserFallback && person?.user) {
       return {
@@ -77,12 +62,8 @@ export class CurrentUserContextService {
     return normalizedEmail;
   }
 
-  async createCurrentPerson(
-    authenticatedUser: AuthenticatedUser,
-  ): Promise<PersonRecord> {
-    const effectiveUser = await this.resolveMergedAuthenticatedUser(
-      authenticatedUser,
-    );
+  async createCurrentPerson(authenticatedUser: AuthenticatedUser): Promise<PersonRecord> {
+    const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
     const profile = this.getInferredProfile(effectiveUser);
     const name = profile.name;
 
@@ -122,9 +103,7 @@ export class CurrentUserContextService {
     });
   }
 
-  private async resolveCurrentUser(
-    authenticatedUser: AuthenticatedUser,
-  ): Promise<UserRecord | null> {
+  private async resolveCurrentUser(authenticatedUser: AuthenticatedUser): Promise<UserRecord | null> {
     if (authenticatedUser.sub) {
       const userById = await this.prisma.user.findUnique({
         where: {
@@ -173,12 +152,8 @@ export class CurrentUserContextService {
     });
   }
 
-  private async resolveMergedAuthenticatedUser(
-    authenticatedUser: AuthenticatedUser,
-  ): Promise<AuthenticatedUser> {
-    const finalUserId = await this.accountMergeService.resolveFinalUserId(
-      authenticatedUser.sub,
-    );
+  private async resolveMergedAuthenticatedUser(authenticatedUser: AuthenticatedUser): Promise<AuthenticatedUser> {
+    const finalUserId = await this.accountMergeService.resolveFinalUserId(authenticatedUser.sub);
 
     if (!finalUserId || finalUserId === authenticatedUser.sub) {
       return authenticatedUser;
@@ -206,9 +181,7 @@ export class CurrentUserContextService {
       });
 
       if (linkedPeople.length > 1) {
-        throw new ConflictException(
-          `Multiple people records are linked to user ${resolvedUserId}.`,
-        );
+        throw new ConflictException(`Multiple people records are linked to user ${resolvedUserId}.`);
       }
 
       if (linkedPeople.length === 1) {
@@ -227,11 +200,7 @@ export class CurrentUserContextService {
       });
 
       if (personByExternalRef) {
-        return this.backfillMatchedPerson(
-          personByExternalRef,
-          linkedUser ?? null,
-          profile,
-        );
+        return this.backfillMatchedPerson(personByExternalRef, linkedUser ?? null, profile);
       }
     }
 
@@ -259,23 +228,15 @@ export class CurrentUserContextService {
       });
 
       if (peopleByEmail.length > 1) {
-        throw new ConflictException(
-          `Multiple people records match email ${normalizedEmail}.`,
-        );
+        throw new ConflictException(`Multiple people records match email ${normalizedEmail}.`);
       }
 
       if (peopleByEmail[0]) {
-        return this.backfillMatchedPerson(
-          peopleByEmail[0],
-          linkedUser ?? null,
-          profile,
-        );
+        return this.backfillMatchedPerson(peopleByEmail[0], linkedUser ?? null, profile);
       }
     }
 
-    const identityDocumentMatches = this.getIdentityDocumentMatches(
-      profile.identityDocument,
-    );
+    const identityDocumentMatches = this.getIdentityDocumentMatches(profile.identityDocument);
     if (identityDocumentMatches.length === 0) {
       return null;
     }
@@ -292,26 +253,17 @@ export class CurrentUserContextService {
     });
 
     if (peopleByIdentityDocument.length > 1) {
-      throw new ConflictException(
-        `Multiple people records match identity document ${profile.identityDocument}.`,
-      );
+      throw new ConflictException(`Multiple people records match identity document ${profile.identityDocument}.`);
     }
 
     if (peopleByIdentityDocument[0]) {
-      return this.backfillMatchedPerson(
-        peopleByIdentityDocument[0],
-        linkedUser ?? null,
-        profile,
-      );
+      return this.backfillMatchedPerson(peopleByIdentityDocument[0], linkedUser ?? null, profile);
     }
 
     return null;
   }
 
-  private async backfillMatchedUser(
-    user: UserRecord,
-    authenticatedUser: AuthenticatedUser,
-  ): Promise<UserRecord> {
+  private async backfillMatchedUser(user: UserRecord, authenticatedUser: AuthenticatedUser): Promise<UserRecord> {
     const profile = this.getInferredProfile(authenticatedUser);
     const data: {
       name?: string;
@@ -349,9 +301,7 @@ export class CurrentUserContextService {
     profile: InferredAuthenticatedProfile,
   ): Promise<PersonRecord> {
     if (person.userId && user?.id && person.userId !== user.id) {
-      throw new ConflictException(
-        `Person ${person.id} is already linked to another user.`,
-      );
+      throw new ConflictException(`Person ${person.id} is already linked to another user.`);
     }
 
     const data: {
@@ -366,8 +316,7 @@ export class CurrentUserContextService {
     } = {};
 
     // Treat name from Keycloak as source of truth - always update if available
-    const willUpdateName =
-      Boolean(profile.fullname) && profile.fullname !== person.name;
+    const willUpdateName = Boolean(profile.fullname) && profile.fullname !== person.name;
     if (profile.fullname) {
       data.name = profile.fullname;
     }
@@ -377,10 +326,7 @@ export class CurrentUserContextService {
     if (profile.email && profile.email !== person.email) {
       // Move old email to secondary emails if it exists
       if (person.email) {
-        data.secondaryEmails = this.addToSecondaryEmails(
-          person.secondaryEmails,
-          person.email,
-        );
+        data.secondaryEmails = this.addToSecondaryEmails(person.secondaryEmails, person.email);
       }
       data.email = profile.email;
     } else if (profile.email && !person.email) {
@@ -391,9 +337,7 @@ export class CurrentUserContextService {
     if (!person.phone && profile.phone) {
       data.phone = profile.phone;
     }
-    const shouldRefreshCertificates =
-      willUpdateName ||
-      (!person.identityDocument && Boolean(profile.identityDocument));
+    const shouldRefreshCertificates = willUpdateName || (!person.identityDocument && Boolean(profile.identityDocument));
     if (shouldRefreshCertificates) {
       data.identityDocument = profile.identityDocument;
     }
@@ -421,10 +365,7 @@ export class CurrentUserContextService {
 
     if (shouldRefreshCertificates) {
       try {
-        await this.certificateIssuingService.refreshIssuedCertificatesForPerson(
-          person.id,
-          user?.id ?? undefined,
-        );
+        await this.certificateIssuingService.refreshIssuedCertificatesForPerson(person.id, user?.id ?? undefined);
       } catch (error) {
         this.logger.error(
           `Failed to refresh certificates after identity document backfill for person ${person.id}.`,
@@ -436,9 +377,7 @@ export class CurrentUserContextService {
     return updatedPerson;
   }
 
-  private getInferredProfile(
-    authenticatedUser: AuthenticatedUser,
-  ): InferredAuthenticatedProfile {
+  private getInferredProfile(authenticatedUser: AuthenticatedUser): InferredAuthenticatedProfile {
     const email = this.normalizeEmail(authenticatedUser.email);
     const name =
       this.readStringClaim(authenticatedUser.claims, 'name') ??
@@ -451,24 +390,13 @@ export class CurrentUserContextService {
       fullname: this.readStringClaim(authenticatedUser.claims, 'set_fullname'),
       email,
       phone: this.readStringClaim(authenticatedUser.claims, 'phone'),
-      identityDocument: this.readStringClaim(
-        authenticatedUser.claims,
-        'identityDocument',
-      ),
-      academicId: this.readStringClaim(
-        authenticatedUser.claims,
-        'enrollmentNumber',
-      ),
-      externalRef: authenticatedUser.sub?.trim()
-        ? `kc:${authenticatedUser.sub.trim()}`
-        : null,
+      identityDocument: this.readStringClaim(authenticatedUser.claims, 'identityDocument'),
+      academicId: this.readStringClaim(authenticatedUser.claims, 'enrollmentNumber'),
+      externalRef: authenticatedUser.sub?.trim() ? `kc:${authenticatedUser.sub.trim()}` : null,
     };
   }
 
-  private readStringClaim(
-    claims: Record<string, unknown>,
-    claimName: string,
-  ): string | undefined {
+  private readStringClaim(claims: Record<string, unknown>, claimName: string): string | undefined {
     const value = claims[claimName];
     if (typeof value === 'string') {
       return this.trimToUndefined(value);
@@ -476,9 +404,7 @@ export class CurrentUserContextService {
 
     if (Array.isArray(value)) {
       const firstString = value.find((item) => typeof item === 'string');
-      return typeof firstString === 'string'
-        ? this.trimToUndefined(firstString)
-        : undefined;
+      return typeof firstString === 'string' ? this.trimToUndefined(firstString) : undefined;
     }
 
     return undefined;
@@ -510,10 +436,7 @@ export class CurrentUserContextService {
    * @param emailToAdd Email to add
    * @returns Updated secondary emails array
    */
-  private addToSecondaryEmails(
-    secondaryEmails: string[],
-    emailToAdd?: string,
-  ): string[] {
+  private addToSecondaryEmails(secondaryEmails: string[], emailToAdd?: string): string[] {
     if (!emailToAdd) {
       return secondaryEmails;
     }
@@ -524,9 +447,7 @@ export class CurrentUserContextService {
     }
 
     // Check if email already exists (case-insensitive)
-    const emailExists = secondaryEmails.some(
-      (email) => this.normalizeEmail(email) === normalizedNewEmail,
-    );
+    const emailExists = secondaryEmails.some((email) => this.normalizeEmail(email) === normalizedNewEmail);
 
     if (emailExists) {
       return secondaryEmails;

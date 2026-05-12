@@ -66,10 +66,7 @@ export class PublicEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEvents(
-          normalizedQuery,
-          take ?? 200,
-        );
+        prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, take ?? 200);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -95,9 +92,7 @@ export class PublicEventsResolver {
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
     return [...events].sort(
-      (left, right) =>
-        (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-        (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
     );
   }
 
@@ -115,15 +110,9 @@ export class PublicEventsResolver {
     @Args('startDateTo', { type: () => Date, nullable: true })
     startDateTo?: Date,
   ) {
-    const minimumStartDate = subMonths(
-      new Date(),
-      PublicEventsResolver.calendarPastLimitMonths,
-    );
+    const minimumStartDate = subMonths(new Date(), PublicEventsResolver.calendarPastLimitMonths);
     const normalizedQuery = query?.trim();
-    const effectiveStartDate =
-      startDateFrom && startDateFrom > minimumStartDate
-        ? startDateFrom
-        : minimumStartDate;
+    const effectiveStartDate = startDateFrom && startDateFrom > minimumStartDate ? startDateFrom : minimumStartDate;
 
     const startDateFilter: Prisma.DateTimeFilter = {
       gte: effectiveStartDate,
@@ -145,10 +134,7 @@ export class PublicEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEvents(
-          normalizedQuery,
-          500,
-        );
+        prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, 500);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -179,10 +165,7 @@ export class PublicEventsResolver {
         return leftDate - rightDate;
       }
 
-      return (
-        (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-        (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER)
-      );
+      return (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER);
     });
   }
 
@@ -284,15 +267,11 @@ export class PublicEventsResolver {
     return {
       majorEvent: mapPublicMajorEvent(majorEvent),
       events,
-      subscriptionSummaries: events.map((event) =>
-        this.mapPublicEventSubscriptionSummary(event),
-      ),
+      subscriptionSummaries: events.map((event) => this.mapPublicEventSubscriptionSummary(event)),
     };
   }
 
-  async getPublicEventSubscriptionPagePayload(
-    majorEventId: string,
-  ): Promise<PublicMajorEventSubscriptionPage> {
+  async getPublicEventSubscriptionPagePayload(majorEventId: string): Promise<PublicMajorEventSubscriptionPage> {
     return this.publicMajorEventSubscriptionPage(majorEventId);
   }
 

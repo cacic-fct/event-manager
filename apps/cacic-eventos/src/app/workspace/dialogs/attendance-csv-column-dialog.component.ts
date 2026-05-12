@@ -1,16 +1,7 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
@@ -26,14 +17,7 @@ export interface AttendanceCsvColumnDialogData {
 @Component({
   selector: 'app-attendance-csv-column-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatListModule,
-    MatSelectModule,
-  ],
+  imports: [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatListModule, MatSelectModule],
   template: `
     <h2 mat-dialog-title>Importar presenças</h2>
     <div mat-dialog-content>
@@ -61,21 +45,12 @@ export interface AttendanceCsvColumnDialogData {
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="form.invalid"
-        (click)="confirm()"
-      >
-        Importar
-      </button>
+      <button mat-flat-button type="button" [disabled]="form.invalid" (click)="confirm()">Importar</button>
     </div>
   `,
 })
 export class AttendanceCsvColumnDialogComponent {
-  private readonly dialogRef = inject(
-    MatDialogRef<AttendanceCsvColumnDialogComponent, string | null>,
-  );
+  private readonly dialogRef = inject(MatDialogRef<AttendanceCsvColumnDialogComponent, string | null>);
   private readonly formBuilder = inject(FormBuilder);
   readonly data = inject<AttendanceCsvColumnDialogData>(MAT_DIALOG_DATA);
 
@@ -84,9 +59,7 @@ export class AttendanceCsvColumnDialogComponent {
   });
 
   private readonly selectedHeader = toSignal(
-    this.form.controls.selectedHeader.valueChanges.pipe(
-      startWith(this.form.controls.selectedHeader.value),
-    ),
+    this.form.controls.selectedHeader.valueChanges.pipe(startWith(this.form.controls.selectedHeader.value)),
     { initialValue: this.form.controls.selectedHeader.value },
   );
 

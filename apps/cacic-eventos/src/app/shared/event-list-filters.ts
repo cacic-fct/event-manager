@@ -19,18 +19,11 @@ export interface EventListApiFilters {
   take?: number;
 }
 
-export function buildEventListFilters(
-  raw: EventFiltersForm['value'],
-  take = 200,
-): EventListApiFilters {
+export function buildEventListFilters(raw: EventFiltersForm['value'], take = 200): EventListApiFilters {
   return {
     query: raw.query?.trim() || undefined,
-    startDateFrom: raw.startDateFrom
-      ? new Date(`${raw.startDateFrom}T00:00:00.000Z`).toISOString()
-      : undefined,
-    startDateTo: raw.startDateTo
-      ? new Date(`${raw.startDateTo}T23:59:59.999Z`).toISOString()
-      : undefined,
+    startDateFrom: raw.startDateFrom ? new Date(`${raw.startDateFrom}T00:00:00.000Z`).toISOString() : undefined,
+    startDateTo: raw.startDateTo ? new Date(`${raw.startDateTo}T23:59:59.999Z`).toISOString() : undefined,
     isInGroup: toOptionalBoolean(raw.isInGroup),
     isInMajorEvent: toOptionalBoolean(raw.isInMajorEvent),
     take,
@@ -47,9 +40,7 @@ export function resetEventFiltersForm(form: EventFiltersForm): void {
   });
 }
 
-function toOptionalBoolean(
-  value: string | null | undefined,
-): boolean | undefined {
+function toOptionalBoolean(value: string | null | undefined): boolean | undefined {
   if (value === 'YES') {
     return true;
   }

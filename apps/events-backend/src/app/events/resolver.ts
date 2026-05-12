@@ -161,10 +161,7 @@ export class EventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEvents(
-          normalizedQuery,
-          take ?? 200,
-        );
+        prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, take ?? 200);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -190,9 +187,7 @@ export class EventsResolver {
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
     return [...events].sort(
-      (left, right) =>
-        (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-        (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
     );
   }
 
@@ -216,9 +211,7 @@ export class EventsResolver {
 
   @Mutation(() => Event, { name: 'createEvent' })
   @RequireScopes('event#edit')
-  async createEvent(
-    @Args('input', { type: () => EventCreateInput }) input: EventCreateInput,
-  ) {
+  async createEvent(@Args('input', { type: () => EventCreateInput }) input: EventCreateInput) {
     const normalizedInput = await this.normalizeEventCertificateInput(input);
     const event = await this.prisma.event.create({
       data: normalizedInput,
@@ -247,10 +240,7 @@ export class EventsResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => EventUpdateInput }) input: EventUpdateInput,
   ) {
-    const normalizedInput = await this.normalizeEventCertificateInput(
-      input,
-      id,
-    );
+    const normalizedInput = await this.normalizeEventCertificateInput(input, id);
     const { count } = await this.prisma.event.updateMany({
       where: {
         id,
@@ -315,9 +305,10 @@ export class EventsResolver {
     };
   }
 
-  private async normalizeEventCertificateInput<
-    T extends EventCreateInput | EventUpdateInput,
-  >(input: T, eventId?: string): Promise<T> {
+  private async normalizeEventCertificateInput<T extends EventCreateInput | EventUpdateInput>(
+    input: T,
+    eventId?: string,
+  ): Promise<T> {
     let normalizedInput = input;
     if (input.shouldIssueCertificate === false) {
       normalizedInput = {
@@ -340,9 +331,7 @@ export class EventsResolver {
           })
         : null;
     const eventGroupId =
-      normalizedInput.eventGroupId === undefined
-        ? existingEvent?.eventGroupId
-        : normalizedInput.eventGroupId;
+      normalizedInput.eventGroupId === undefined ? existingEvent?.eventGroupId : normalizedInput.eventGroupId;
 
     if (!eventGroupId) {
       return normalizedInput;
@@ -375,14 +364,12 @@ export class EventsResolver {
     ) {
       return {
         ...normalizedInput,
-        shouldIssueCertificateForNonPayingAttendees:
-          eventGroup.shouldIssueCertificateForNonPayingAttendees
-            ? normalizedInput.shouldIssueCertificateForNonPayingAttendees
-            : false,
-        shouldIssueCertificateForNonSubscribedAttendees:
-          eventGroup.shouldIssueCertificateForNonSubscribedAttendees
-            ? normalizedInput.shouldIssueCertificateForNonSubscribedAttendees
-            : false,
+        shouldIssueCertificateForNonPayingAttendees: eventGroup.shouldIssueCertificateForNonPayingAttendees
+          ? normalizedInput.shouldIssueCertificateForNonPayingAttendees
+          : false,
+        shouldIssueCertificateForNonSubscribedAttendees: eventGroup.shouldIssueCertificateForNonSubscribedAttendees
+          ? normalizedInput.shouldIssueCertificateForNonSubscribedAttendees
+          : false,
       };
     }
 

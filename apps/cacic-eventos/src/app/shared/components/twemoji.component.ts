@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  input,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { EmojiService } from '../services/emoji.service';
 
 @Component({
@@ -19,8 +13,7 @@ import { EmojiService } from '../services/emoji.service';
         width="24"
         height="24"
         loading="lazy"
-        decoding="async"
-      />
+        decoding="async" />
     }
   `,
   styles: [
@@ -48,9 +41,7 @@ export class TwemojiComponent {
 
   private readonly emojiService = inject(EmojiService);
 
-  protected readonly emojiUrl = computed(() =>
-    this.emojiService.getTwemojiUrl(this.emoji()),
-  );
+  protected readonly emojiUrl = computed(() => this.emojiService.getTwemojiUrl(this.emoji()));
 
   protected readonly emojiAlt = computed(() => this.emoji()?.trim() || 'emoji');
 }

@@ -17,8 +17,9 @@
   --ifm-color-primary-lighter: #007ee7;
   --ifm-color-primary-lightest: #068eff;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
-  --ifm-font-family-base: 'Inter Variable', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Helvetica Neue',
-    'Helvetica', 'Segoe UI', 'Roboto', 'Arial', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --ifm-font-family-base:
+    'Inter Variable', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Helvetica Neue', 'Helvetica', 'Segoe UI',
+    'Roboto', 'Arial', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
   --ifm-font-family-monospace: 'Source Code Pro Variable', 'Source Code Pro';
 }
 

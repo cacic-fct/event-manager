@@ -48,9 +48,7 @@ export class WorkspacePeopleService {
       return;
     }
 
-    const refreshedPerson = people.find(
-      (person) => person.id === selectedPerson.id,
-    );
+    const refreshedPerson = people.find((person) => person.id === selectedPerson.id);
     if (refreshedPerson) {
       void this.selectPerson(refreshedPerson);
       return;
@@ -150,15 +148,9 @@ export class WorkspacePeopleService {
     };
 
     const savedPerson = await firstValueFrom(
-      selectedPerson
-        ? this.api.updatePerson(selectedPerson.id, payload)
-        : this.api.createPerson(payload),
+      selectedPerson ? this.api.updatePerson(selectedPerson.id, payload) : this.api.createPerson(payload),
     );
-    this.snackbar.open(
-      selectedPerson ? 'Pessoa atualizada.' : 'Pessoa criada.',
-      'Fechar',
-      { duration: 2500 },
-    );
+    this.snackbar.open(selectedPerson ? 'Pessoa atualizada.' : 'Pessoa criada.', 'Fechar', { duration: 2500 });
     await this.selectPerson(savedPerson);
     await this.searchPeople(this.peopleSearchQuery());
   }

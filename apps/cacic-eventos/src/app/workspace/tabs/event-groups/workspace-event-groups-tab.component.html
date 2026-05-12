@@ -6,11 +6,7 @@
           <h3>Lista</h3>
         </div>
 
-        <button
-          mat-stroked-button
-          type="button"
-          (click)="workspace.startNewEventGroup()"
-        >
+        <button mat-stroked-button type="button" (click)="workspace.startNewEventGroup()">
           <mat-icon>add</mat-icon>
           Novo
         </button>
@@ -20,10 +16,7 @@
         @for (group of workspace.eventGroups(); track group.id) {
           <mat-list-item
             (click)="workspace.pickEventGroup(group)"
-            [class.selected-list-item]="
-              workspace.selectedEventGroup()?.id === group.id
-            "
-          >
+            [class.selected-list-item]="workspace.selectedEventGroup()?.id === group.id">
             <span matListItemTitle class="list-title">
               <app-twemoji [emoji]="group.emoji" />
               <span>{{ group.name }}</span>
@@ -47,10 +40,7 @@
               type="button"
               aria-label="Editar grupo"
               matTooltip="Editar"
-              (click)="
-                $event.stopPropagation(); workspace.pickEventGroup(group)
-              "
-            >
+              (click)="$event.stopPropagation(); workspace.pickEventGroup(group)">
               <mat-icon>edit</mat-icon>
             </button>
             <button
@@ -59,10 +49,7 @@
               aria-label="Excluir grupo"
               matTooltip="Excluir"
               [disabled]="!permissions.canDelete('event#delete')"
-              (click)="
-                $event.stopPropagation(); workspace.deleteEventGroup(group.id)
-              "
-            >
+              (click)="$event.stopPropagation(); workspace.deleteEventGroup(group.id)">
               <mat-icon>delete</mat-icon>
             </button>
           </mat-list-item>
@@ -95,11 +82,7 @@
         </div>
 
         <div class="panel-actions">
-          <button
-            mat-button
-            type="button"
-            (click)="workspace.startNewEventGroup()"
-          >
+          <button mat-button type="button" (click)="workspace.startNewEventGroup()">
             <mat-icon>restart_alt</mat-icon>
             Limpar
           </button>
@@ -107,8 +90,7 @@
             mat-flat-button
             type="button"
             [disabled]="!permissions.canEdit('event#edit')"
-            (click)="workspace.saveEventGroup()"
-          >
+            (click)="workspace.saveEventGroup()">
             <mat-icon>save</mat-icon>
             Salvar
           </button>
@@ -125,36 +107,24 @@
 
           <mat-form-field>
             <mat-label>Emoji</mat-label>
-            <app-twemoji
-              matPrefix
-              [emoji]="workspace.eventGroupForm.controls.emoji.value"
-            />
+            <app-twemoji matPrefix [emoji]="workspace.eventGroupForm.controls.emoji.value" />
             <input matInput formControlName="emoji" maxlength="16" />
           </mat-form-field>
         </div>
         <div class="checkbox-grid">
-          <mat-checkbox formControlName="shouldIssueCertificate">
-            Emitir certificado
-          </mat-checkbox>
-          <mat-checkbox
-            formControlName="shouldIssueCertificateForNonPayingAttendees"
-          >
+          <mat-checkbox formControlName="shouldIssueCertificate"> Emitir certificado </mat-checkbox>
+          <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
             Emitir certificados para presentes não pagantes?
           </mat-checkbox>
-          <mat-checkbox
-            formControlName="shouldIssueCertificateForNonSubscribedAttendees"
-          >
+          <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
             Emitir certificados para presentes não inscritos?
           </mat-checkbox>
           <mat-checkbox
             formControlName="shouldIssueCertificateForEachEvent"
-            [disabled]="workspace.selectedEventGroupHasMajorEventEvents()"
-          >
+            [disabled]="workspace.selectedEventGroupHasMajorEventEvents()">
             Um certificado por evento
           </mat-checkbox>
-          <mat-checkbox formControlName="shouldIssuePartialCertificate">
-            Permitir certificado parcial
-          </mat-checkbox>
+          <mat-checkbox formControlName="shouldIssuePartialCertificate"> Permitir certificado parcial </mat-checkbox>
         </div>
       </form>
 
@@ -166,10 +136,7 @@
           </div>
 
           <mat-list class="detail-list">
-            @for (
-              eventItem of workspace.eventGroupEvents();
-              track eventItem.id
-            ) {
+            @for (eventItem of workspace.eventGroupEvents(); track eventItem.id) {
               <mat-list-item>
                 <span matListItemTitle class="list-title">
                   <app-twemoji [emoji]="eventItem.emoji" />
@@ -185,8 +152,7 @@
                   aria-label="Remover evento do grupo"
                   matTooltip="Remover"
                   [disabled]="!permissions.canEdit('event#edit')"
-                  (click)="workspace.removeEventFromSelectedGroup(eventItem)"
-                >
+                  (click)="workspace.removeEventFromSelectedGroup(eventItem)">
                   <mat-icon>link_off</mat-icon>
                 </button>
               </mat-list-item>
@@ -201,35 +167,24 @@
 
         <section class="surface field-group">
           <h4>Adicionar eventos</h4>
-          <form
-            [formGroup]="workspace.eventGroupEventSearchForm"
-            class="compact-form"
-          >
+          <form [formGroup]="workspace.eventGroupEventSearchForm" class="compact-form">
             <mat-form-field>
               <mat-label>Buscar eventos por nome</mat-label>
               <input matInput formControlName="query" />
             </mat-form-field>
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.searchEventsForSelectedGroup()"
-            >
+            <button mat-stroked-button type="button" (click)="workspace.searchEventsForSelectedGroup()">
               <mat-icon>search</mat-icon>
               Buscar
             </button>
           </form>
 
           <div class="inline-list">
-            @for (
-              eventItem of workspace.eventGroupEventSearchResults();
-              track eventItem.id
-            ) {
+            @for (eventItem of workspace.eventGroupEventSearchResults(); track eventItem.id) {
               <button
                 mat-stroked-button
                 type="button"
                 [disabled]="!permissions.canEdit('event#edit')"
-                (click)="workspace.addEventToSelectedGroup(eventItem)"
-              >
+                (click)="workspace.addEventToSelectedGroup(eventItem)">
                 <app-twemoji [emoji]="eventItem.emoji" />
                 {{ eventItem.name }}
                 {{ eventItem.startDate | date: 'shortDate' }}

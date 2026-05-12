@@ -8,11 +8,7 @@ type PrismaExecutor = Prisma.TransactionClient | PrismaClient | PrismaService;
 export class AttendanceCategoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async refreshForAttendance(
-    personId: string,
-    eventId: string,
-    tx: PrismaExecutor = this.prisma,
-  ): Promise<void> {
+  async refreshForAttendance(personId: string, eventId: string, tx: PrismaExecutor = this.prisma): Promise<void> {
     const attendance = await tx.eventAttendance.findUnique({
       where: {
         personId_eventId: {
@@ -41,11 +37,7 @@ export class AttendanceCategoryService {
       return;
     }
 
-    const category = await this.resolveCategory(
-      tx,
-      attendance.personId,
-      attendance.event,
-    );
+    const category = await this.resolveCategory(tx, attendance.personId, attendance.event);
 
     await tx.eventAttendance.update({
       where: {
@@ -108,11 +100,7 @@ export class AttendanceCategoryService {
     });
 
     for (const attendance of attendances) {
-      await this.refreshForAttendance(
-        attendance.personId,
-        attendance.eventId,
-        tx,
-      );
+      await this.refreshForAttendance(attendance.personId, attendance.eventId, tx);
     }
   }
 

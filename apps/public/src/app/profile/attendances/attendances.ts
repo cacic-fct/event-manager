@@ -32,14 +32,7 @@ type FeedState =
   templateUrl: './attendances.html',
   styleUrl: './attendances.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    MatIconModule,
-    MatListModule,
-    MatProgressBarModule,
-    RouterLink,
-    MatToolbarModule,
-    MatButtonModule,
-  ],
+  imports: [MatIconModule, MatListModule, MatProgressBarModule, RouterLink, MatToolbarModule, MatButtonModule],
 })
 export class Attendances {
   private readonly api = inject(AttendancesApiService);
@@ -57,10 +50,7 @@ export class Attendances {
       catchError((error: unknown) =>
         of({
           status: 'error',
-          message:
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível carregar suas inscrições.',
+          message: error instanceof Error ? error.message : 'Não foi possível carregar suas inscrições.',
         } satisfies FeedState),
       ),
     ),
@@ -91,10 +81,7 @@ export class Attendances {
     return getSubscribedItemDateLine(item);
   }
 
-  itemStatusLine(
-    item: SubscribedItem,
-    attendances: SubscriptionsFeed['attendances'],
-  ): string {
+  itemStatusLine(item: SubscribedItem, attendances: SubscriptionsFeed['attendances']): string {
     return getSubscribedItemStatusLine(item, attendances);
   }
 

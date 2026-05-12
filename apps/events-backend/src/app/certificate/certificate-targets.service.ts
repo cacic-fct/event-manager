@@ -1,11 +1,7 @@
 import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import {
-  EVENT_GROUP_SELECT,
-  EVENT_SELECT,
-  MAJOR_EVENT_SELECT,
-} from './certificate.constants';
+import { EVENT_GROUP_SELECT, EVENT_SELECT, MAJOR_EVENT_SELECT } from './certificate.constants';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -149,9 +145,7 @@ export class CertificateTargetsService {
       });
 
       if (!event) {
-        throw new NotFoundException(
-          `Event ${targetId} cannot issue individual certificates.`,
-        );
+        throw new NotFoundException(`Event ${targetId} cannot issue individual certificates.`);
       }
       return;
     }
@@ -175,9 +169,7 @@ export class CertificateTargetsService {
       });
 
       if (!eventGroup) {
-        throw new NotFoundException(
-          `Event group ${targetId} cannot issue merged certificates.`,
-        );
+        throw new NotFoundException(`Event group ${targetId} cannot issue merged certificates.`);
       }
       return;
     }
@@ -209,9 +201,7 @@ export class CertificateTargetsService {
       });
 
       if (!majorEvent) {
-        throw new NotFoundException(
-          `Major event ${targetId} cannot issue certificates.`,
-        );
+        throw new NotFoundException(`Major event ${targetId} cannot issue certificates.`);
       }
     }
   }

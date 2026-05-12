@@ -27,8 +27,7 @@
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ currentState.message }}</p>
   </section>
-  } @else if (currentState.status === 'ready') { @let certificate =
-  currentState.certificate;
+  } @else if (currentState.status === 'ready') { @let certificate = currentState.certificate;
 
   <section class="certificate-section">
     <header class="certificate-header">
@@ -36,8 +35,7 @@
         <img
           class="twemoji"
           [src]="emoji.getTwemojiUrl(certificate.targetEmoji)"
-          [alt]="certificate.targetEmoji || 'Certificado'"
-        />
+          [alt]="certificate.targetEmoji || 'Certificado'" />
       </div>
       <div class="header-copy">
         <p class="eyebrow">Certificado válido</p>
@@ -69,12 +67,7 @@
     </mat-list>
 
     <div class="actions">
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="downloading()"
-        (click)="download(certificate)"
-      >
+      <button mat-flat-button type="button" [disabled]="downloading()" (click)="download(certificate)">
         <mat-icon>download</mat-icon>
         Baixar certificado
       </button>
@@ -89,9 +82,7 @@
     <div class="section-heading">
       <h2>Atividades</h2>
       <mat-chip-set aria-label="Carga horária total">
-        <mat-chip
-          >Total {{ formatCredit(certificate.totalCreditMinutes) }}</mat-chip
-        >
+        <mat-chip>Total {{ formatCredit(certificate.totalCreditMinutes) }}</mat-chip>
       </mat-chip-set>
     </div>
 
@@ -110,11 +101,7 @@
         @for (event of section.events; track event.name + event.startDate) {
         <mat-list-item [routerLink]="'/event/' + event.id">
           <div matListItemIcon class="small-emoji-frame">
-            <img
-              class="small-twemoji"
-              [src]="emoji.getTwemojiUrl(event.emoji)"
-              [alt]="event.emoji"
-            />
+            <img class="small-twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
           </div>
           <div matListItemTitle>{{ event.name }}</div>
           <div matListItemLine>{{ formatEventDate(event) }}</div>

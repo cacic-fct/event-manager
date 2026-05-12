@@ -1,8 +1,5 @@
 <section class="workspace-tab">
-  <mat-tab-group
-    [selectedIndex]="selectedTabIndex()"
-    (selectedIndexChange)="onSelectedTabIndexChange($event)"
-  >
+  <mat-tab-group [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="onSelectedTabIndexChange($event)">
     <mat-tab label="Eventos">
       <app-workspace-event-subscriptions-subtab />
     </mat-tab>

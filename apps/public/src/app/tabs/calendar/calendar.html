@@ -1,11 +1,7 @@
 <mat-toolbar class="calendar-toolbar">
   <span>Calendário</span>
   <span class="toolbar-spacer"></span>
-  <mat-button-toggle-group
-    [value]="viewMode()"
-    (valueChange)="setViewMode($event)"
-    aria-label="Modo de visualização"
-  >
+  <mat-button-toggle-group [value]="viewMode()" (valueChange)="setViewMode($event)" aria-label="Modo de visualização">
     <mat-button-toggle value="list" aria-label="Visualização em lista">
       <mat-icon>view_list</mat-icon>
     </mat-button-toggle>
@@ -20,20 +16,9 @@
     <mat-form-field appearance="outline" class="search-field">
       <mat-label>Buscar eventos</mat-label>
       <mat-icon matPrefix>search</mat-icon>
-      <input
-        matInput
-        type="search"
-        [formControl]="queryControl"
-        autocomplete="off"
-      />
+      <input matInput type="search" [formControl]="queryControl" autocomplete="off" />
       @if (queryControl.value) {
-      <button
-        mat-icon-button
-        matSuffix
-        type="button"
-        (click)="queryControl.setValue('')"
-        aria-label="Limpar busca"
-      >
+      <button mat-icon-button matSuffix type="button" (click)="queryControl.setValue('')" aria-label="Limpar busca">
         <mat-icon>close</mat-icon>
       </button>
       }
@@ -61,8 +46,7 @@
     [events]="state.events"
     [canLoadOlder]="canLoadOlder()"
     [returnUrl]="'/calendar'"
-    (loadOlder)="loadOlderEvents()"
-  />
+    (loadOlder)="loadOlderEvents()" />
   } @else {
   <app-calendar-week-view
     [weekDays]="weekDays()"
@@ -73,7 +57,6 @@
     (previousWeek)="previousWeek()"
     (nextWeek)="nextWeek()"
     (today)="goToToday()"
-    (selectDate)="selectDate($event)"
-  />
+    (selectDate)="selectDate($event)" />
   } }
 </main>

@@ -1,15 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import {
-  ActivatedRoute,
-  convertToParamMap,
-  provideRouter,
-} from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { MoreInfo } from './more-info';
 
@@ -28,9 +21,7 @@ describe('MoreInfo', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(
-              convertToParamMap({ eventType: 'event', eventId: 'event-1' }),
-            ),
+            paramMap: of(convertToParamMap({ eventType: 'event', eventId: 'event-1' })),
             snapshot: {
               paramMap: convertToParamMap({
                 eventType: 'event',

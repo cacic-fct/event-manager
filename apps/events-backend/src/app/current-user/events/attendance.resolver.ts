@@ -8,10 +8,7 @@ import {
 } from '../models';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
-import {
-  CURRENT_USER_EVENT_ATTENDANCE_SELECT,
-  GraphqlContext,
-} from '../selects';
+import { CURRENT_USER_EVENT_ATTENDANCE_SELECT, GraphqlContext } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from './attendance-realtime.service';
@@ -29,15 +26,9 @@ export class CurrentUserEventAttendanceResolver {
   @Query(() => [CurrentUserEventAttendance], {
     name: 'currentUserEventAttendances',
   })
-  async currentUserEventAttendances(
-    @Context() context: GraphqlContext,
-  ): Promise<CurrentUserEventAttendance[]> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+  async currentUserEventAttendances(@Context() context: GraphqlContext): Promise<CurrentUserEventAttendance[]> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return [];
     }
@@ -55,9 +46,7 @@ export class CurrentUserEventAttendanceResolver {
       },
     });
 
-    return attendances.map((attendance) =>
-      this.mapper.mapCurrentUserEventAttendance(attendance),
-    );
+    return attendances.map((attendance) => this.mapper.mapCurrentUserEventAttendance(attendance));
   }
 
   @Query(() => CurrentUserEventAttendance, {
@@ -68,12 +57,8 @@ export class CurrentUserEventAttendanceResolver {
     @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventAttendance | null> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return null;
     }
@@ -139,15 +124,11 @@ export class CurrentUserEventAttendanceResolver {
     }
 
     if (!event.shouldCollectAttendance || !event.isOnlineAttendanceAllowed) {
-      throw new BadRequestException(
-        `Event ${input.eventId} does not allow online attendance confirmation.`,
-      );
+      throw new BadRequestException(`Event ${input.eventId} does not allow online attendance confirmation.`);
     }
 
     if (!event.onlineAttendanceCode) {
-      throw new BadRequestException(
-        `Event ${input.eventId} does not have an online attendance code configured.`,
-      );
+      throw new BadRequestException(`Event ${input.eventId} does not have an online attendance code configured.`);
     }
 
     if (event.onlineAttendanceCode.trim() !== normalizedCode) {
@@ -155,19 +136,12 @@ export class CurrentUserEventAttendanceResolver {
     }
 
     const now = new Date();
-    if (
-      event.onlineAttendanceStartDate &&
-      now < event.onlineAttendanceStartDate
-    ) {
-      throw new BadRequestException(
-        `Online attendance for event ${input.eventId} is not open yet.`,
-      );
+    if (event.onlineAttendanceStartDate && now < event.onlineAttendanceStartDate) {
+      throw new BadRequestException(`Online attendance for event ${input.eventId} is not open yet.`);
     }
 
     if (event.onlineAttendanceEndDate && now > event.onlineAttendanceEndDate) {
-      throw new BadRequestException(
-        `Online attendance for event ${input.eventId} is already closed.`,
-      );
+      throw new BadRequestException(`Online attendance for event ${input.eventId} is already closed.`);
     }
 
     const existingAttendance = await this.prisma.eventAttendance.findUnique({
@@ -183,9 +157,7 @@ export class CurrentUserEventAttendanceResolver {
     });
 
     if (existingAttendance) {
-      throw new ConflictException(
-        `Attendance is already confirmed for event ${input.eventId}.`,
-      );
+      throw new ConflictException(`Attendance is already confirmed for event ${input.eventId}.`);
     }
 
     const createdAttendance = await this.prisma.$transaction(async (tx) => {
@@ -196,11 +168,7 @@ export class CurrentUserEventAttendanceResolver {
           createdByMethod: AttendanceCreationMethod.ONLINE_CODE,
         },
       });
-      await this.attendanceCategories.refreshForAttendance(
-        person.id,
-        event.id,
-        tx,
-      );
+      await this.attendanceCategories.refreshForAttendance(person.id, event.id, tx);
       return tx.eventAttendance.findUniqueOrThrow({
         where: {
           personId_eventId: {

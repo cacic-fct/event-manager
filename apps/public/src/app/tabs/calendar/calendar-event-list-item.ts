@@ -1,11 +1,5 @@
 import { DatePipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  input,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
 import { RouterLink } from '@angular/router';
 import { PublicEvent, getEventTypeLabel } from '@cacic-fct/shared-utils';
@@ -23,18 +17,11 @@ export class CalendarEventListItem {
   readonly returnUrl = input('/calendar');
   readonly emoji = inject(EmojiService);
 
-  readonly eventTypeLabel = computed(() =>
-    getEventTypeLabel(this.event().type),
-  );
+  readonly eventTypeLabel = computed(() => getEventTypeLabel(this.event().type));
 
   readonly contextLine = computed(() => {
     const event = this.event();
 
-    return (
-      event.majorEvent?.name ??
-      event.eventGroup?.name ??
-      event.shortDescription ??
-      this.eventTypeLabel()
-    );
+    return event.majorEvent?.name ?? event.eventGroup?.name ?? event.shortDescription ?? this.eventTypeLabel();
   });
 }

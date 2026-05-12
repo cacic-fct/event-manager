@@ -6,13 +6,8 @@ import {
   CertificateScope,
   CertificateTemplate,
   DeletionResult,
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
 } from '@cacic-fct/shared-data-types';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -72,10 +67,7 @@ export class CertificateConfigsService {
     take?: number,
   ): Promise<CertificateConfig[]> {
     this.validation.assertSupportedScope(scope);
-    const normalizedTargetId = this.validation.normalizeRequiredId(
-      'targetId',
-      targetId,
-    );
+    const normalizedTargetId = this.validation.normalizeRequiredId('targetId', targetId);
 
     const configs = await this.prisma.certificateConfig.findMany({
       where: {
@@ -95,10 +87,7 @@ export class CertificateConfigsService {
   }
 
   async getConfigById(configId: string): Promise<CertificateConfig> {
-    const normalizedConfigId = this.validation.normalizeRequiredId(
-      'configId',
-      configId,
-    );
+    const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     const config = await this.prisma.certificateConfig.findFirst({
       where: {
         id: normalizedConfigId,
@@ -108,36 +97,21 @@ export class CertificateConfigsService {
     });
 
     if (!config) {
-      throw new NotFoundException(
-        `Certificate config ${normalizedConfigId} not found.`,
-      );
+      throw new NotFoundException(`Certificate config ${normalizedConfigId} not found.`);
     }
 
     return mapCertificateConfig(config);
   }
 
-  async createConfig(
-    input: CertificateConfigCreateInput,
-  ): Promise<CertificateConfig> {
+  async createConfig(input: CertificateConfigCreateInput): Promise<CertificateConfig> {
     const scope = input.scope;
-    const majorEventId = this.validation.normalizeOptionalId(
-      input.majorEventId,
-    );
-    const eventGroupId = this.validation.normalizeOptionalId(
-      input.eventGroupId,
-    );
+    const majorEventId = this.validation.normalizeOptionalId(input.majorEventId);
+    const eventGroupId = this.validation.normalizeOptionalId(input.eventGroupId);
     const eventId = this.validation.normalizeOptionalId(input.eventId);
     const name = this.validation.normalizeRequiredName(input.name);
-    const templateId = this.validation.normalizeRequiredId(
-      'certificateTemplateId',
-      input.certificateTemplateId,
-    );
-    const certificateText = this.validation.normalizeOptionalText(
-      input.certificateText,
-    );
-    const certificateFields = this.validation.normalizeCertificateFieldsJson(
-      input.certificateFieldsJson,
-    );
+    const templateId = this.validation.normalizeRequiredId('certificateTemplateId', input.certificateTemplateId);
+    const certificateText = this.validation.normalizeOptionalText(input.certificateText);
+    const certificateFields = this.validation.normalizeCertificateFieldsJson(input.certificateFieldsJson);
     const issuedTo = input.issuedTo ?? CertificateIssuedTo.ATTENDEE;
 
     this.validation.assertScopeTargetConsistency(scope, {
@@ -163,8 +137,7 @@ export class CertificateConfigsService {
         eventGroupId: eventGroupId ?? null,
         eventId: eventId ?? null,
         certificateTemplateId: templateId,
-        certificateText:
-          certificateText === undefined ? undefined : certificateText,
+        certificateText: certificateText === undefined ? undefined : certificateText,
         isActive: input.isActive ?? true,
         issuedTo,
         ...(certificateFields === undefined
@@ -179,14 +152,8 @@ export class CertificateConfigsService {
     return mapCertificateConfig(createdConfig);
   }
 
-  async updateConfig(
-    configId: string,
-    input: CertificateConfigUpdateInput,
-  ): Promise<CertificateConfig> {
-    const normalizedConfigId = this.validation.normalizeRequiredId(
-      'configId',
-      configId,
-    );
+  async updateConfig(configId: string, input: CertificateConfigUpdateInput): Promise<CertificateConfig> {
+    const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     const existingConfig = await this.prisma.certificateConfig.findFirst({
       where: {
         id: normalizedConfigId,
@@ -196,9 +163,7 @@ export class CertificateConfigsService {
     });
 
     if (!existingConfig) {
-      throw new NotFoundException(
-        `Certificate config ${normalizedConfigId} not found.`,
-      );
+      throw new NotFoundException(`Certificate config ${normalizedConfigId} not found.`);
     }
 
     const mergedScope = input.scope ?? existingConfig.scope;
@@ -215,16 +180,11 @@ export class CertificateConfigsService {
         ? existingConfig.eventId
         : (this.validation.normalizeOptionalId(input.eventId) ?? null);
     const mergedName =
-      input.name === undefined
-        ? existingConfig.name
-        : this.validation.normalizeRequiredName(input.name);
+      input.name === undefined ? existingConfig.name : this.validation.normalizeRequiredName(input.name);
     const mergedTemplateId =
       input.certificateTemplateId === undefined
         ? existingConfig.certificateTemplateId
-        : this.validation.normalizeRequiredId(
-            'certificateTemplateId',
-            input.certificateTemplateId,
-          );
+        : this.validation.normalizeRequiredId('certificateTemplateId', input.certificateTemplateId);
 
     this.validation.assertScopeTargetConsistency(mergedScope, {
       majorEventId: mergedMajorEventId,
@@ -239,23 +199,14 @@ export class CertificateConfigsService {
 
     await this.ensureTemplateExists(mergedTemplateId);
     await this.targetsService.assertIssuableTarget(mergedScope, mergedTargetId);
-    await this.ensureNoDuplicateName(
-      mergedScope,
-      mergedTargetId,
-      mergedName,
-      normalizedConfigId,
-    );
+    await this.ensureNoDuplicateName(mergedScope, mergedTargetId, mergedName, normalizedConfigId);
 
     const nextText =
-      input.certificateText === undefined
-        ? undefined
-        : this.validation.normalizeOptionalText(input.certificateText);
+      input.certificateText === undefined ? undefined : this.validation.normalizeOptionalText(input.certificateText);
     const nextCertificateFields =
       input.certificateFieldsJson === undefined
         ? undefined
-        : this.validation.normalizeCertificateFieldsJson(
-            input.certificateFieldsJson,
-          );
+        : this.validation.normalizeCertificateFieldsJson(input.certificateFieldsJson);
     const nextIssuedTo = input.issuedTo;
 
     const shouldUpdateScopeOrTargets =
@@ -274,9 +225,7 @@ export class CertificateConfigsService {
             eventId: mergedEventId,
           }
         : {}),
-      ...(input.certificateTemplateId === undefined
-        ? {}
-        : { certificateTemplateId: mergedTemplateId }),
+      ...(input.certificateTemplateId === undefined ? {} : { certificateTemplateId: mergedTemplateId }),
       ...(nextText === undefined ? {} : { certificateText: nextText }),
       ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
       ...(nextIssuedTo === undefined ? {} : { issuedTo: nextIssuedTo }),
@@ -303,10 +252,7 @@ export class CertificateConfigsService {
   }
 
   async deleteConfig(configId: string): Promise<DeletionResult> {
-    const normalizedConfigId = this.validation.normalizeRequiredId(
-      'configId',
-      configId,
-    );
+    const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     const { count } = await this.prisma.certificateConfig.updateMany({
       where: {
         id: normalizedConfigId,
@@ -318,9 +264,7 @@ export class CertificateConfigsService {
     });
 
     if (count === 0) {
-      throw new NotFoundException(
-        `Certificate config ${normalizedConfigId} not found.`,
-      );
+      throw new NotFoundException(`Certificate config ${normalizedConfigId} not found.`);
     }
 
     await this.prisma.certificate.updateMany({
@@ -351,9 +295,7 @@ export class CertificateConfigsService {
     });
 
     if (!template) {
-      throw new NotFoundException(
-        `Certificate template ${templateId} not found.`,
-      );
+      throw new NotFoundException(`Certificate template ${templateId} not found.`);
     }
   }
 
@@ -402,9 +344,7 @@ export class CertificateConfigsService {
     });
 
     if (duplicate) {
-      throw new ConflictException(
-        `A certificate config named "${name}" already exists for this target.`,
-      );
+      throw new ConflictException(`A certificate config named "${name}" already exists for this target.`);
     }
   }
 }

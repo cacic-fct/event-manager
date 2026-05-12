@@ -12,17 +12,13 @@
       applyLabel="Buscar"
       resetLabel="Limpar"
       (applyFilters)="workspace.searchEvents()"
-      (resetFilters)="workspace.resetEventFilters()"
-    />
+      (resetFilters)="workspace.resetEventFilters()" />
 
     <mat-list class="event-result-list">
       @for (eventItem of workspace.eventResults(); track eventItem.id) {
         <mat-list-item
           (click)="workspace.selectEvent(eventItem)"
-          [class.selected-list-item]="
-            workspace.selectedEvent()?.id === eventItem.id
-          "
-        >
+          [class.selected-list-item]="workspace.selectedEvent()?.id === eventItem.id">
           <span matListItemTitle class="list-title">
             <app-twemoji [emoji]="eventItem.emoji" />
             <span>{{ eventItem.name }}</span>
@@ -64,8 +60,7 @@
         mat-stroked-button
         type="button"
         [disabled]="!workspace.selectedEvent()"
-        (click)="workspace.loadEventSubscriptions()"
-      >
+        (click)="workspace.loadEventSubscriptions()">
         <mat-icon>refresh</mat-icon>
         Atualizar
       </button>
@@ -95,8 +90,7 @@
             mat-stroked-button
             type="button"
             [disabled]="!workspace.selectedEvent()"
-            (click)="workspace.findEventPerson()"
-          >
+            (click)="workspace.findEventPerson()">
             <mat-icon>person_search</mat-icon>
             Buscar pessoa
           </button>
@@ -108,8 +102,7 @@
               mat-stroked-button
               type="button"
               [disabled]="!permissions.canEdit('subscription#edit')"
-              (click)="workspace.createEventSubscription(person)"
-            >
+              (click)="workspace.createEventSubscription(person)">
               Inscrever {{ person.name }}
             </button>
           } @empty {
@@ -121,20 +114,13 @@
       <section class="surface">
         <div class="surface-heading">
           <h4>Inscrições</h4>
-          <span
-            >{{ workspace.eventRegularSubscriptions().length }} registros</span
-          >
+          <span>{{ workspace.eventRegularSubscriptions().length }} registros</span>
         </div>
 
         <mat-list class="subscription-list">
-          @for (
-            subscription of workspace.eventRegularSubscriptions();
-            track subscription.id
-          ) {
+          @for (subscription of workspace.eventRegularSubscriptions(); track subscription.id) {
             <mat-list-item>
-              <span matListItemTitle>{{
-                subscription.person?.name ?? subscription.personId
-              }}</span>
+              <span matListItemTitle>{{ subscription.person?.name ?? subscription.personId }}</span>
               <span matListItemLine>
                 {{ subscription.createdAt | date: 'short' }} ·
                 {{ subscription.createdByMethod }}
@@ -155,17 +141,12 @@
               Palestrantes inscritos
             </h4>
             <mat-list>
-              @for (
-                subscription of workspace.eventLecturerSubscriptions();
-                track subscription.id
-              ) {
+              @for (subscription of workspace.eventLecturerSubscriptions(); track subscription.id) {
                 <mat-list-item>
                   <span matListItemTitle>
                     {{ subscription.person?.name ?? subscription.personId }}
                   </span>
-                  <span matListItemLine>
-                    Esta pessoa é palestrante deste evento.
-                  </span>
+                  <span matListItemLine> Esta pessoa é palestrante deste evento. </span>
                 </mat-list-item>
               }
             </mat-list>

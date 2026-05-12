@@ -27,10 +27,7 @@ import { ConfirmationDialogComponent } from '../components/confirmation-dialog.c
 type IssuableScope = Exclude<CertificateScope, 'OTHER'>;
 type CertificateTargetType = 'event' | 'event-group' | 'major-event';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
-type CertificateIssuedToOption =
-  | CertificateIssuedTo
-  | 'LECTURER_PALESTRA'
-  | 'LECTURER_MINICURSO';
+type CertificateIssuedToOption = CertificateIssuedTo | 'LECTURER_PALESTRA' | 'LECTURER_MINICURSO';
 type IssuableTarget = Event | EventGroup | MajorEvent;
 type CertificateConfigFormModel = {
   id: string;
@@ -74,19 +71,13 @@ export class WorkspaceCertificatesService {
   readonly selectedCertificateConfig = signal<CertificateConfig | null>(null);
   readonly certificates = signal<Certificate[]>([]);
   readonly personSearchResults = signal<Person[]>([]);
-  readonly certificateFieldDefinitions = signal<CertificateFieldDefinition[]>(
-    [],
-  );
+  readonly certificateFieldDefinitions = signal<CertificateFieldDefinition[]>([]);
   private certificateFieldValuesJson: string | null | undefined;
 
   private selectedCertificateTemplate(
     templateId = this.certificateConfigModel().certificateTemplateId,
   ): CertificateTemplate | null {
-    return (
-      this.certificateTemplates().find(
-        (template) => template.id === templateId,
-      ) ?? null
-    );
+    return this.certificateTemplates().find((template) => template.id === templateId) ?? null;
   }
 
   readonly targetFiltersForm = this.formBuilder.nonNullable.group({
@@ -121,37 +112,25 @@ export class WorkspaceCertificatesService {
         }),
       ),
     );
-    const selectedTemplateId =
-      this.certificateConfigModel().certificateTemplateId;
+    const selectedTemplateId = this.certificateConfigModel().certificateTemplateId;
     if (!selectedTemplateId && this.certificateTemplates().length > 0) {
       this.certificateConfigForm().reset({
         ...this.certificateConfigModel(),
         certificateTemplateId: this.certificateTemplates()[0].id,
       });
-      this.syncCertificateFieldsForm(
-        this.certificateFieldValuesJson,
-        this.certificateTemplates()[0].id,
-      );
+      this.syncCertificateFieldsForm(this.certificateFieldValuesJson, this.certificateTemplates()[0].id);
       return;
     }
 
-    this.syncCertificateFieldsForm(
-      this.certificateFieldValuesJson,
-      selectedTemplateId,
-    );
+    this.syncCertificateFieldsForm(this.certificateFieldValuesJson, selectedTemplateId);
   }
 
   async searchTargets(): Promise<void> {
     const scope = this.targetFiltersForm.controls.scope.value as IssuableScope;
-    const query =
-      this.targetFiltersForm.controls.query.value.trim() || undefined;
+    const query = this.targetFiltersForm.controls.query.value.trim() || undefined;
 
     if (scope === 'EVENT') {
-      this.issuableEvents.set(
-        await firstValueFrom(
-          this.api.listCertificateIssuableEvents({ query, take: 200 }),
-        ),
-      );
+      this.issuableEvents.set(await firstValueFrom(this.api.listCertificateIssuableEvents({ query, take: 200 })));
       this.issuableEventGroups.set([]);
       this.issuableMajorEvents.set([]);
       return;
@@ -159,9 +138,7 @@ export class WorkspaceCertificatesService {
 
     if (scope === 'EVENT_GROUP') {
       this.issuableEventGroups.set(
-        await firstValueFrom(
-          this.api.listCertificateIssuableEventGroups({ query, take: 200 }),
-        ),
+        await firstValueFrom(this.api.listCertificateIssuableEventGroups({ query, take: 200 })),
       );
       this.issuableEvents.set([]);
       this.issuableMajorEvents.set([]);
@@ -169,9 +146,7 @@ export class WorkspaceCertificatesService {
     }
 
     this.issuableMajorEvents.set(
-      await firstValueFrom(
-        this.api.listCertificateIssuableMajorEvents({ query, take: 200 }),
-      ),
+      await firstValueFrom(this.api.listCertificateIssuableMajorEvents({ query, take: 200 })),
     );
     this.issuableEvents.set([]);
     this.issuableEventGroups.set([]);
@@ -192,9 +167,7 @@ export class WorkspaceCertificatesService {
   async selectTarget(target: IssuableTarget): Promise<void> {
     void this.router.navigate([
       '/certificates',
-      this.scopeToTargetType(
-        this.targetFiltersForm.controls.scope.value as IssuableScope,
-      ),
+      this.scopeToTargetType(this.targetFiltersForm.controls.scope.value as IssuableScope),
       target.id,
     ]);
     await this.applyTargetSelection(target);
@@ -226,9 +199,7 @@ export class WorkspaceCertificatesService {
       return;
     }
 
-    const config = this.certificateConfigs().find(
-      (candidate) => candidate.id === configId,
-    );
+    const config = this.certificateConfigs().find((candidate) => candidate.id === configId);
     if (config) {
       this.applyCertificateConfigSelection(config);
     }
@@ -251,9 +222,7 @@ export class WorkspaceCertificatesService {
     if (selectedTarget) {
       void this.router.navigate([
         '/certificates',
-        this.scopeToTargetType(
-          this.targetFiltersForm.controls.scope.value as IssuableScope,
-        ),
+        this.scopeToTargetType(this.targetFiltersForm.controls.scope.value as IssuableScope),
         selectedTarget.id,
         config.id,
       ]);
@@ -276,10 +245,7 @@ export class WorkspaceCertificatesService {
       ),
       certificateFields: {},
     });
-    this.syncCertificateFieldsForm(
-      config.certificateFieldsJson,
-      config.certificateTemplateId,
-    );
+    this.syncCertificateFieldsForm(config.certificateFieldsJson, config.certificateTemplateId);
     void this.loadCertificates();
   }
 
@@ -289,9 +255,7 @@ export class WorkspaceCertificatesService {
     if (selectedTarget) {
       void this.router.navigate([
         '/certificates',
-        this.scopeToTargetType(
-          this.targetFiltersForm.controls.scope.value as IssuableScope,
-        ),
+        this.scopeToTargetType(this.targetFiltersForm.controls.scope.value as IssuableScope),
         selectedTarget.id,
       ]);
     }
@@ -320,9 +284,7 @@ export class WorkspaceCertificatesService {
     await this.persistCertificateConfig({ showSnackbar: true });
   }
 
-  private async persistCertificateConfig(options?: {
-    showSnackbar?: boolean;
-  }): Promise<CertificateConfig | null> {
+  private async persistCertificateConfig(options?: { showSnackbar?: boolean }): Promise<CertificateConfig | null> {
     let savedConfig: CertificateConfig | null = null;
 
     const success = await submit(this.certificateConfigForm, async (field) => {
@@ -334,37 +296,26 @@ export class WorkspaceCertificatesService {
 
       const selectedTarget = this.selectedTarget();
       if (!selectedTarget) {
-        this.snackbar.open(
-          'Selecione um evento, grupo ou grande evento primeiro.',
-          'Fechar',
-          {
-            duration: 2500,
-          },
-        );
+        this.snackbar.open('Selecione um evento, grupo ou grande evento primeiro.', 'Fechar', {
+          duration: 2500,
+        });
         return {
           kind: 'targetRequired',
           message: 'Selecione um evento, grupo ou grande evento primeiro.',
         };
       }
 
-      const payload = this.buildCertificateConfigPayload(
-        selectedTarget.id,
-        raw,
-      );
+      const payload = this.buildCertificateConfigPayload(selectedTarget.id, raw);
       const configId = raw.id;
       this.certificateFieldValuesJson = payload.certificateFieldsJson;
 
       savedConfig = configId
-        ? await firstValueFrom(
-            this.api.updateCertificateConfig(configId, payload),
-          )
+        ? await firstValueFrom(this.api.updateCertificateConfig(configId, payload))
         : await firstValueFrom(this.api.createCertificateConfig(payload));
 
       if (options?.showSnackbar ?? true) {
         this.snackbar.open(
-          configId
-            ? 'Configuração de certificado atualizada.'
-            : 'Configuração de certificado criada.',
+          configId ? 'Configuração de certificado atualizada.' : 'Configuração de certificado criada.',
           'Fechar',
           { duration: 2500 },
         );
@@ -408,9 +359,7 @@ export class WorkspaceCertificatesService {
       return;
     }
 
-    await firstValueFrom(
-      this.api.issueCertificateForPerson(selectedConfig.id, person.id),
-    );
+    await firstValueFrom(this.api.issueCertificateForPerson(selectedConfig.id, person.id));
     this.snackbar.open(`Certificado emitido para ${person.name}.`, 'Fechar', {
       duration: 2500,
     });
@@ -425,16 +374,10 @@ export class WorkspaceCertificatesService {
       return;
     }
 
-    const issued = await firstValueFrom(
-      this.api.issueMissedCertificates(selectedConfig.id),
-    );
-    this.snackbar.open(
-      `${issued.length} certificado(s) processado(s).`,
-      'Fechar',
-      {
-        duration: 2500,
-      },
-    );
+    const issued = await firstValueFrom(this.api.issueMissedCertificates(selectedConfig.id));
+    this.snackbar.open(`${issued.length} certificado(s) processado(s).`, 'Fechar', {
+      duration: 2500,
+    });
     await this.loadCertificates();
   }
 
@@ -459,10 +402,7 @@ export class WorkspaceCertificatesService {
     await Promise.all([this.loadCertificateConfigs(), this.loadCertificates()]);
   }
 
-  async deleteCertificate(
-    certificate: Certificate,
-    event?: MouseEvent,
-  ): Promise<void> {
+  async deleteCertificate(certificate: Certificate, event?: MouseEvent): Promise<void> {
     event?.stopPropagation();
 
     const confirmed = await this.confirm({
@@ -479,15 +419,10 @@ export class WorkspaceCertificatesService {
     await this.loadCertificates();
   }
 
-  async downloadCertificate(
-    certificate: Certificate,
-    event?: MouseEvent,
-  ): Promise<void> {
+  async downloadCertificate(certificate: Certificate, event?: MouseEvent): Promise<void> {
     event?.stopPropagation();
 
-    const payload = await firstValueFrom(
-      this.api.downloadCertificate(certificate.id),
-    );
+    const payload = await firstValueFrom(this.api.downloadCertificate(certificate.id));
     const blob = this.base64ToBlob(payload.contentBase64, payload.mimeType);
     const objectUrl = URL.createObjectURL(blob);
     try {
@@ -510,14 +445,10 @@ export class WorkspaceCertificatesService {
     }
 
     const configs = await firstValueFrom(
-      this.api.listCertificateConfigs(
-        this.targetFiltersForm.controls.scope.value as IssuableScope,
-        selectedTarget.id,
-        {
-          includeInactive: true,
-          take: 200,
-        },
-      ),
+      this.api.listCertificateConfigs(this.targetFiltersForm.controls.scope.value as IssuableScope, selectedTarget.id, {
+        includeInactive: true,
+        take: 200,
+      }),
     );
     this.certificateConfigs.set(configs);
 
@@ -526,9 +457,7 @@ export class WorkspaceCertificatesService {
       return;
     }
 
-    const refreshedSelection = configs.find(
-      (config) => config.id === selectedConfig.id,
-    );
+    const refreshedSelection = configs.find((config) => config.id === selectedConfig.id);
     if (!refreshedSelection) {
       this.selectedCertificateConfig.set(null);
       this.resetCertificateConfigForm();
@@ -538,11 +467,7 @@ export class WorkspaceCertificatesService {
     this.selectCertificateConfig(refreshedSelection);
   }
 
-  private async confirm(data: {
-    title: string;
-    message: string;
-    confirmLabel?: string;
-  }): Promise<boolean> {
+  private async confirm(data: { title: string; message: string; confirmLabel?: string }): Promise<boolean> {
     const result = await firstValueFrom(
       this.dialog
         .open(ConfirmationDialogComponent, {
@@ -564,22 +489,15 @@ export class WorkspaceCertificatesService {
 
     this.certificates.set(
       await firstValueFrom(
-        this.api.listCertificates(
-          this.targetFiltersForm.controls.scope.value as IssuableScope,
-          selectedTarget.id,
-          {
-            configId: this.selectedCertificateConfig()?.id,
-            take: 200,
-          },
-        ),
+        this.api.listCertificates(this.targetFiltersForm.controls.scope.value as IssuableScope, selectedTarget.id, {
+          configId: this.selectedCertificateConfig()?.id,
+          take: 200,
+        }),
       ),
     );
   }
 
-  private buildCertificateConfigPayload(
-    targetId: string,
-    raw = this.certificateConfigModel(),
-  ): CertificateConfigInput {
+  private buildCertificateConfigPayload(targetId: string, raw = this.certificateConfigModel()): CertificateConfigInput {
     const scope = this.targetFiltersForm.controls.scope.value as IssuableScope;
 
     return {
@@ -599,10 +517,7 @@ export class WorkspaceCertificatesService {
     };
   }
 
-  private async getTargetByRoute(
-    scope: IssuableScope,
-    targetId: string,
-  ): Promise<IssuableTarget> {
+  private async getTargetByRoute(scope: IssuableScope, targetId: string): Promise<IssuableTarget> {
     if (scope === 'EVENT') {
       return firstValueFrom(this.eventsApi.getEvent(targetId));
     }
@@ -656,16 +571,13 @@ export class WorkspaceCertificatesService {
     existingFieldsJson?: string | null,
     templateId = this.certificateConfigModel().certificateTemplateId,
   ): void {
-    const definitions = this.parseCertificateFieldDefinitions(
-      this.selectedCertificateTemplate(templateId),
-    );
+    const definitions = this.parseCertificateFieldDefinitions(this.selectedCertificateTemplate(templateId));
     const existingFields = this.parseCertificateFields(existingFieldsJson);
     const certificateFields: Record<string, string> = {};
     this.certificateFieldDefinitions.set(definitions);
 
     for (const definition of definitions) {
-      certificateFields[definition.key] =
-        existingFields[definition.key] ?? definition.defaultValue;
+      certificateFields[definition.key] = existingFields[definition.key] ?? definition.defaultValue;
     }
 
     // Update the model directly to sync the nested fields
@@ -698,20 +610,14 @@ export class WorkspaceCertificatesService {
       certificateFields[LECTURER_EVENT_CATEGORY_FIELD] = lecturerEventCategory;
     }
 
-    return Object.keys(certificateFields).length > 0
-      ? JSON.stringify(certificateFields)
-      : null;
+    return Object.keys(certificateFields).length > 0 ? JSON.stringify(certificateFields) : null;
   }
 
   private validateCertificateFields(
     values: Record<string, string>,
   ): Array<{ kind: string; message: string; fieldTree: FieldTree<unknown> }> {
     return this.certificateFieldDefinitions()
-      .filter(
-        (definition) =>
-          definition.required &&
-          !this.normalizeCertificateFieldValue(values[definition.key]),
-      )
+      .filter((definition) => definition.required && !this.normalizeCertificateFieldValue(values[definition.key]))
       .map((definition) => ({
         kind: 'required',
         message: 'Campo obrigatório.',
@@ -731,9 +637,7 @@ export class WorkspaceCertificatesService {
     };
   }
 
-  private parseCertificateFields(
-    rawValue?: string | null,
-  ): Record<string, string> {
+  private parseCertificateFields(rawValue?: string | null): Record<string, string> {
     if (!rawValue) {
       return {};
     }
@@ -752,25 +656,16 @@ export class WorkspaceCertificatesService {
               return false;
             }
 
-            return (
-              typeof value === 'string' ||
-              typeof value === 'number' ||
-              typeof value === 'boolean'
-            );
+            return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
           })
-          .map(([key, value]) => [
-            key,
-            this.normalizeCertificateFieldValue(value),
-          ]),
+          .map(([key, value]) => [key, this.normalizeCertificateFieldValue(value)]),
       );
     } catch {
       return {};
     }
   }
 
-  private parseCertificateFieldDefinitions(
-    template: CertificateTemplate | null,
-  ): CertificateFieldDefinition[] {
+  private parseCertificateFieldDefinitions(template: CertificateTemplate | null): CertificateFieldDefinition[] {
     if (!template?.certificateFieldsJson) {
       return [];
     }
@@ -782,26 +677,15 @@ export class WorkspaceCertificatesService {
       }
 
       return Object.entries(parsed)
-        .map(([key, rawDefinition]) =>
-          this.parseCertificateFieldDefinition(key, rawDefinition),
-        )
-        .filter((definition): definition is CertificateFieldDefinition =>
-          Boolean(definition),
-        );
+        .map(([key, rawDefinition]) => this.parseCertificateFieldDefinition(key, rawDefinition))
+        .filter((definition): definition is CertificateFieldDefinition => Boolean(definition));
     } catch {
       return [];
     }
   }
 
-  private parseCertificateFieldDefinition(
-    key: string,
-    rawDefinition: unknown,
-  ): CertificateFieldDefinition | null {
-    if (
-      !rawDefinition ||
-      typeof rawDefinition !== 'object' ||
-      Array.isArray(rawDefinition)
-    ) {
+  private parseCertificateFieldDefinition(key: string, rawDefinition: unknown): CertificateFieldDefinition | null {
+    if (!rawDefinition || typeof rawDefinition !== 'object' || Array.isArray(rawDefinition)) {
       return null;
     }
 
@@ -813,8 +697,7 @@ export class WorkspaceCertificatesService {
 
     return {
       key,
-      label:
-        typeof definition['label'] === 'string' ? definition['label'] : key,
+      label: typeof definition['label'] === 'string' ? definition['label'] : key,
       type,
       required: definition['required'] === true,
       defaultValue: this.normalizeCertificateFieldValue(definition['default']),
@@ -840,17 +723,11 @@ export class WorkspaceCertificatesService {
     return 'LECTURER';
   }
 
-  private normalizeIssuedTo(
-    issuedTo: CertificateIssuedToOption,
-  ): CertificateIssuedTo {
-    return issuedTo === 'LECTURER_PALESTRA' || issuedTo === 'LECTURER_MINICURSO'
-      ? 'LECTURER'
-      : issuedTo;
+  private normalizeIssuedTo(issuedTo: CertificateIssuedToOption): CertificateIssuedTo {
+    return issuedTo === 'LECTURER_PALESTRA' || issuedTo === 'LECTURER_MINICURSO' ? 'LECTURER' : issuedTo;
   }
 
-  private parseIssuedToLecturerEventCategory(
-    issuedTo: CertificateIssuedToOption,
-  ): LecturerEventCategory | undefined {
+  private parseIssuedToLecturerEventCategory(issuedTo: CertificateIssuedToOption): LecturerEventCategory | undefined {
     if (issuedTo === 'LECTURER_PALESTRA') {
       return 'PALESTRA';
     }
@@ -866,9 +743,7 @@ export class WorkspaceCertificatesService {
     return undefined;
   }
 
-  private parseLecturerEventCategory(
-    rawValue?: string | null,
-  ): LecturerEventCategory | null {
+  private parseLecturerEventCategory(rawValue?: string | null): LecturerEventCategory | null {
     if (!rawValue) {
       return null;
     }
@@ -881,20 +756,14 @@ export class WorkspaceCertificatesService {
 
       const fields = parsed as Record<string, unknown>;
       const value = fields[LECTURER_EVENT_CATEGORY_FIELD];
-      return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER'
-        ? value
-        : null;
+      return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER' ? value : null;
     } catch {
       return null;
     }
   }
 
   private normalizeCertificateFieldValue(rawValue: unknown): string {
-    if (
-      typeof rawValue === 'string' ||
-      typeof rawValue === 'number' ||
-      typeof rawValue === 'boolean'
-    ) {
+    if (typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean') {
       return String(rawValue).trim();
     }
 

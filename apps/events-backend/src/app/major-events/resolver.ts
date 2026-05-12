@@ -93,10 +93,7 @@ export class MajorEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchMajorEvents(
-          normalizedQuery,
-          take ?? 200,
-        );
+        prioritizedIds = await this.typesenseSearch.searchMajorEvents(normalizedQuery, take ?? 200);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -123,9 +120,7 @@ export class MajorEventsResolver {
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
     return [...majorEvents].sort(
-      (left, right) =>
-        (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-        (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
     );
   }
 
@@ -192,15 +187,9 @@ export class MajorEventsResolver {
     }
 
     const hasExistingPaymentInfo =
-      paymentInfoTableExists &&
-      'paymentInfo' in majorEvent &&
-      majorEvent.paymentInfo != null;
+      paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
 
-    const data = this.buildMajorEventUpdateData(
-      input,
-      hasExistingPaymentInfo,
-      paymentInfoTableExists,
-    );
+    const data = this.buildMajorEventUpdateData(input, hasExistingPaymentInfo, paymentInfoTableExists);
 
     const updatedMajorEvent = await this.prisma.majorEvent.update({
       where: {
@@ -281,8 +270,7 @@ export class MajorEventsResolver {
         : input.shouldIssueCertificateForNonPayingAttendees;
     }
     if (input.shouldIssueCertificateForNonSubscribedAttendees !== undefined) {
-      data.shouldIssueCertificateForNonSubscribedAttendees =
-        input.shouldIssueCertificateForNonSubscribedAttendees;
+      data.shouldIssueCertificateForNonSubscribedAttendees = input.shouldIssueCertificateForNonSubscribedAttendees;
     }
     if (input.additionalPaymentInfo !== undefined) {
       data.additionalPaymentInfo = input.additionalPaymentInfo;
@@ -302,9 +290,7 @@ export class MajorEventsResolver {
     } else {
       const paymentInfo = this.buildPaymentInfoPayload(input.paymentInfo);
       if (paymentInfo) {
-        throw new BadRequestException(
-          'Payment info is unavailable because payment_info table is missing.',
-        );
+        throw new BadRequestException('Payment info is unavailable because payment_info table is missing.');
       }
     }
 
@@ -346,16 +332,11 @@ export class MajorEventsResolver {
         data.shouldIssueCertificateForNonPayingAttendees = false;
       }
     }
-    if (
-      input.shouldIssueCertificateForNonPayingAttendees !== undefined &&
-      !input.isPaymentRequired
-    ) {
-      data.shouldIssueCertificateForNonPayingAttendees =
-        input.shouldIssueCertificateForNonPayingAttendees;
+    if (input.shouldIssueCertificateForNonPayingAttendees !== undefined && !input.isPaymentRequired) {
+      data.shouldIssueCertificateForNonPayingAttendees = input.shouldIssueCertificateForNonPayingAttendees;
     }
     if (input.shouldIssueCertificateForNonSubscribedAttendees !== undefined) {
-      data.shouldIssueCertificateForNonSubscribedAttendees =
-        input.shouldIssueCertificateForNonSubscribedAttendees;
+      data.shouldIssueCertificateForNonSubscribedAttendees = input.shouldIssueCertificateForNonSubscribedAttendees;
     }
     if (input.additionalPaymentInfo !== undefined) {
       data.additionalPaymentInfo = input.additionalPaymentInfo;
@@ -388,9 +369,7 @@ export class MajorEventsResolver {
     } else if (input.paymentInfo !== undefined) {
       const paymentInfo = this.buildPaymentInfoPayload(input.paymentInfo);
       if (paymentInfo) {
-        throw new BadRequestException(
-          'Payment info is unavailable because payment_info table is missing.',
-        );
+        throw new BadRequestException('Payment info is unavailable because payment_info table is missing.');
       }
       if (input.paymentInfo === null && hasExistingPaymentInfo) {
         data.paymentInfo = { delete: true };
@@ -410,9 +389,7 @@ export class MajorEventsResolver {
 
   private async hasPaymentInfoTable(): Promise<boolean> {
     if (!this.paymentInfoTableExistsPromise) {
-      this.paymentInfoTableExistsPromise = this.prisma.$queryRaw<
-        Array<{ exists: boolean }>
-      >`
+      this.paymentInfoTableExistsPromise = this.prisma.$queryRaw<Array<{ exists: boolean }>>`
           SELECT EXISTS (
             SELECT 1
             FROM information_schema.tables
@@ -448,9 +425,7 @@ export class MajorEventsResolver {
 
     const hasAllValues = values.every((value) => value.length > 0);
     if (!hasAllValues) {
-      throw new BadRequestException(
-        'Payment info requires bankName, agency, account, holder, and document.',
-      );
+      throw new BadRequestException('Payment info requires bankName, agency, account, holder, and document.');
     }
 
     return normalized;

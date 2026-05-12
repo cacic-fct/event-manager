@@ -57,11 +57,7 @@ export class MailtoService {
     return Array.isArray(value) ? value.join(',') : value;
   }
 
-  private appendList(
-    params: URLSearchParams,
-    key: 'cc' | 'bcc',
-    value?: string | string[],
-  ): void {
+  private appendList(params: URLSearchParams, key: 'cc' | 'bcc', value?: string | string[]): void {
     if (!value) {
       return;
     }

@@ -11,10 +11,7 @@ interface GraphqlResponse<TData> {
 export class GraphqlHttpService {
   private readonly http = inject(HttpClient);
 
-  request<TData>(
-    query: string,
-    variables?: Record<string, unknown>,
-  ) {
+  request<TData>(query: string, variables?: Record<string, unknown>) {
     return this.http
       .post<GraphqlResponse<TData>>('/api/graphql', {
         query,
@@ -42,10 +39,7 @@ export class GraphqlHttpService {
       return Object.fromEntries(
         Object.entries(value)
           .filter(([, entryValue]) => entryValue !== undefined)
-          .map(([key, entryValue]) => [
-            key,
-            this.removeUndefinedValues(entryValue),
-          ]),
+          .map(([key, entryValue]) => [key, this.removeUndefinedValues(entryValue)]),
       );
     }
 

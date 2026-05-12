@@ -50,9 +50,7 @@ export class CertificateValidationService {
     return value.length > 0 ? value : null;
   }
 
-  normalizeCertificateFieldsJson(
-    rawValue?: string | null,
-  ): Prisma.InputJsonValue | null | undefined {
+  normalizeCertificateFieldsJson(rawValue?: string | null): Prisma.InputJsonValue | null | undefined {
     if (rawValue === undefined) {
       return undefined;
     }
@@ -69,24 +67,17 @@ export class CertificateValidationService {
     try {
       return JSON.parse(normalized) as Prisma.InputJsonValue;
     } catch {
-      throw new BadRequestException(
-        'certificateFieldsJson must be valid JSON.',
-      );
+      throw new BadRequestException('certificateFieldsJson must be valid JSON.');
     }
   }
 
   assertSupportedScope(scope: CertificateScope): void {
     if (scope === CertificateScope.OTHER) {
-      throw new BadRequestException(
-        'Certificate scope OTHER is not supported for issuing operations.',
-      );
+      throw new BadRequestException('Certificate scope OTHER is not supported for issuing operations.');
     }
   }
 
-  assertScopeTargetConsistency(
-    scope: CertificateScope,
-    targets: ScopeTargets,
-  ): void {
+  assertScopeTargetConsistency(scope: CertificateScope, targets: ScopeTargets): void {
     this.assertSupportedScope(scope);
     const hasMajorEventId = Boolean(targets.majorEventId);
     const hasEventGroupId = Boolean(targets.eventGroupId);
@@ -94,27 +85,21 @@ export class CertificateValidationService {
 
     if (scope === CertificateScope.MAJOR_EVENT) {
       if (!hasMajorEventId || hasEventGroupId || hasEventId) {
-        throw new BadRequestException(
-          'MAJOR_EVENT scope requires majorEventId and forbids eventGroupId/eventId.',
-        );
+        throw new BadRequestException('MAJOR_EVENT scope requires majorEventId and forbids eventGroupId/eventId.');
       }
       return;
     }
 
     if (scope === CertificateScope.EVENT_GROUP) {
       if (!hasEventGroupId || hasMajorEventId || hasEventId) {
-        throw new BadRequestException(
-          'EVENT_GROUP scope requires eventGroupId and forbids majorEventId/eventId.',
-        );
+        throw new BadRequestException('EVENT_GROUP scope requires eventGroupId and forbids majorEventId/eventId.');
       }
       return;
     }
 
     if (scope === CertificateScope.EVENT) {
       if (!hasEventId || hasMajorEventId || hasEventGroupId) {
-        throw new BadRequestException(
-          'EVENT scope requires eventId and forbids majorEventId/eventGroupId.',
-        );
+        throw new BadRequestException('EVENT scope requires eventId and forbids majorEventId/eventGroupId.');
       }
     }
   }

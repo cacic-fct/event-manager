@@ -50,9 +50,7 @@ export class S3Service {
       forcePathStyle: true, // Required for SeaweedFS S3 API
     });
 
-    this.logger.log(
-      `S3Service initialized with endpoint: ${endpoint}, bucket: ${bucketName}`,
-    );
+    this.logger.log(`S3Service initialized with endpoint: ${endpoint}, bucket: ${bucketName}`);
   }
 
   /**
@@ -94,9 +92,7 @@ export class S3Service {
       };
     } catch (error: unknown) {
       this.logger.error(`Failed to upload file ${key}:`, error);
-      throw new Error(
-        `Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -129,9 +125,7 @@ export class S3Service {
       };
     } catch (error: unknown) {
       this.logger.error(`Failed to download file ${key}:`, error);
-      throw new Error(
-        `Failed to download file: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      throw new Error(`Failed to download file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -150,9 +144,7 @@ export class S3Service {
       this.logger.log(`File deleted successfully: ${key}`);
     } catch (error: unknown) {
       this.logger.error(`Failed to delete file ${key}:`, error);
-      throw new Error(
-        `Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      throw new Error(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -171,10 +163,7 @@ export class S3Service {
     } catch (error: unknown) {
       // Check if this is an S3 NotFound error
       const isNotFound =
-        (error &&
-          typeof error === 'object' &&
-          'name' in error &&
-          error.name === 'NotFound') ||
+        (error && typeof error === 'object' && 'name' in error && error.name === 'NotFound') ||
         (error &&
           typeof error === 'object' &&
           '$metadata' in error &&
@@ -215,9 +204,7 @@ export class S3Service {
       };
     } catch (error: unknown) {
       this.logger.error(`Failed to get metadata for file ${key}:`, error);
-      throw new Error(
-        `Failed to get file metadata: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      throw new Error(`Failed to get file metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -246,9 +233,7 @@ export class S3Service {
       }));
     } catch (error: unknown) {
       this.logger.error(`Failed to list files with prefix ${prefix}:`, error);
-      throw new Error(
-        `Failed to list files: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      throw new Error(`Failed to list files: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

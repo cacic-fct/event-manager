@@ -4,11 +4,7 @@ import { Prisma } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
-import {
-  PUBLIC_MAJOR_EVENT_SELECT,
-  PublicMajorEvent,
-  mapPublicMajorEvent,
-} from './models';
+import { PUBLIC_MAJOR_EVENT_SELECT, PublicMajorEvent, mapPublicMajorEvent } from './models';
 
 @Public()
 @Resolver(() => PublicMajorEvent)
@@ -46,10 +42,7 @@ export class PublicMajorEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchMajorEvents(
-          normalizedQuery,
-          take ?? 200,
-        );
+        prioritizedIds = await this.typesenseSearch.searchMajorEvents(normalizedQuery, take ?? 200);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -77,9 +70,7 @@ export class PublicMajorEventsResolver {
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
     return mappedMajorEvents.sort(
-      (left, right) =>
-        (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-        (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
     );
   }
 

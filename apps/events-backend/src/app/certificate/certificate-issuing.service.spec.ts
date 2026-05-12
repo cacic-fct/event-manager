@@ -29,18 +29,10 @@ describe('CertificateIssuingService', () => {
       },
       certificateFields: null,
     };
-    const buildService = new CertificateIssuingService(
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const buildService = new CertificateIssuingService({} as never, {} as never, {} as never);
     const renderedData = (
       buildService as unknown as {
-        buildRenderedData(
-          config: unknown,
-          recipient: unknown,
-          issuedAt: Date,
-        ): unknown;
+        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): unknown;
       }
     ).buildRenderedData(certificateConfig, recipient, originalIssuedAt);
     const existingCertificate = {
@@ -56,19 +48,12 @@ describe('CertificateIssuingService', () => {
         update: jest.fn(),
       },
     };
-    const service = new CertificateIssuingService(
-      prisma as never,
-      {} as never,
-      {} as never,
-    );
+    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never);
 
     await expect(
       (
         service as unknown as {
-          upsertCertificateForRecipient(
-            config: unknown,
-            recipient: unknown,
-          ): Promise<unknown>;
+          upsertCertificateForRecipient(config: unknown, recipient: unknown): Promise<unknown>;
         }
       ).upsertCertificateForRecipient(certificateConfig, recipient),
     ).resolves.toBe(existingCertificate);
@@ -156,12 +141,7 @@ describe('CertificateIssuingService', () => {
   it('soft-deletes invalid certificates during issueMissedCertificates', async () => {
     const prisma = {
       certificate: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([
-            { personId: 'person-valid' },
-            { personId: 'person-invalid' },
-          ]),
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-valid' }, { personId: 'person-invalid' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
@@ -178,11 +158,7 @@ describe('CertificateIssuingService', () => {
       ]),
     };
 
-    const service = new CertificateIssuingService(
-      prisma as never,
-      validation as never,
-      eligibilityService as never,
-    );
+    const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
       .spyOn(service as never, 'upsertCertificateForRecipient')
       .mockResolvedValue(mappedCertificateRecord as never);
@@ -207,12 +183,7 @@ describe('CertificateIssuingService', () => {
   it('soft-deletes all existing certificates when no recipients are eligible', async () => {
     const prisma = {
       certificate: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([
-            { personId: 'person-a' },
-            { personId: 'person-b' },
-          ]),
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-a' }, { personId: 'person-b' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 2 }),
       },
     };
@@ -224,19 +195,10 @@ describe('CertificateIssuingService', () => {
       resolveEligibleRecipients: jest.fn().mockResolvedValue([]),
     };
 
-    const service = new CertificateIssuingService(
-      prisma as never,
-      validation as never,
-      eligibilityService as never,
-    );
-    const upsertSpy = jest.spyOn(
-      service as never,
-      'upsertCertificateForRecipient',
-    );
+    const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
+    const upsertSpy = jest.spyOn(service as never, 'upsertCertificateForRecipient');
 
-    await expect(service.issueMissedCertificates('config-1')).resolves.toEqual(
-      [],
-    );
+    await expect(service.issueMissedCertificates('config-1')).resolves.toEqual([]);
     expect(prisma.certificate.updateMany).toHaveBeenCalledWith({
       where: {
         configId: 'config-1',
@@ -255,23 +217,14 @@ describe('CertificateIssuingService', () => {
   it('refreshes only existing active certificates for a person without deleting ineligible ones', async () => {
     const prisma = {
       certificate: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([
-            { configId: 'config-1' },
-            { configId: 'config-2' },
-          ]),
+        findMany: jest.fn().mockResolvedValue([{ configId: 'config-1' }, { configId: 'config-2' }]),
       },
     };
     const validation = {
       normalizeRequiredId: jest.fn().mockReturnValue('person-valid'),
     };
     const eligibilityService = {
-      getConfigById: jest
-        .fn()
-        .mockImplementation((configId: string) =>
-          Promise.resolve({ ...config, id: configId }),
-        ),
+      getConfigById: jest.fn().mockImplementation((configId: string) => Promise.resolve({ ...config, id: configId })),
       resolveEligibleRecipients: jest
         .fn()
         .mockResolvedValueOnce([
@@ -283,18 +236,12 @@ describe('CertificateIssuingService', () => {
         .mockResolvedValueOnce([]),
     };
 
-    const service = new CertificateIssuingService(
-      prisma as never,
-      validation as never,
-      eligibilityService as never,
-    );
+    const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
       .spyOn(service as never, 'upsertCertificateForRecipient')
       .mockResolvedValue(mappedCertificateRecord as never);
 
-    await expect(
-      service.refreshIssuedCertificatesForPerson('person-valid', 'user-1'),
-    ).resolves.toHaveLength(1);
+    await expect(service.refreshIssuedCertificatesForPerson('person-valid', 'user-1')).resolves.toHaveLength(1);
 
     expect(prisma.certificate.findMany).toHaveBeenCalledWith({
       where: {
@@ -328,25 +275,15 @@ describe('CertificateIssuingService', () => {
       certificate: {
         findMany: jest
           .fn()
-          .mockResolvedValue([
-            { configId: 'config-1' },
-            { configId: 'config-2' },
-            { configId: 'config-1' },
-          ]),
+          .mockResolvedValue([{ configId: 'config-1' }, { configId: 'config-2' }, { configId: 'config-1' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const validation = {
-      normalizeRequiredId: jest
-        .fn()
-        .mockImplementation((_field: string, value: string) => value),
+      normalizeRequiredId: jest.fn().mockImplementation((_field: string, value: string) => value),
     };
     const eligibilityService = {
-      getConfigById: jest
-        .fn()
-        .mockImplementation((configId: string) =>
-          Promise.resolve({ ...config, id: configId }),
-        ),
+      getConfigById: jest.fn().mockImplementation((configId: string) => Promise.resolve({ ...config, id: configId })),
       resolveEligibleRecipients: jest.fn().mockResolvedValue([
         {
           person: { id: 'target-person' },
@@ -355,20 +292,12 @@ describe('CertificateIssuingService', () => {
       ]),
     };
 
-    const service = new CertificateIssuingService(
-      prisma as never,
-      validation as never,
-      eligibilityService as never,
-    );
+    const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
       .spyOn(service as never, 'upsertCertificateForRecipient')
       .mockResolvedValue(mappedCertificateRecord as never);
 
-    await service.refreshIssuedCertificatesAfterPeopleMerge(
-      'target-person',
-      'source-person',
-      'admin-user',
-    );
+    await service.refreshIssuedCertificatesAfterPeopleMerge('target-person', 'source-person', 'admin-user');
 
     expect(upsertSpy).toHaveBeenCalledTimes(2);
     expect(upsertSpy).toHaveBeenCalledWith(
@@ -393,11 +322,7 @@ describe('CertificateIssuingService', () => {
   });
 
   it('prints every date for completed grouped minicourse events', () => {
-    const service = new CertificateIssuingService(
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = new CertificateIssuingService({} as never, {} as never, {} as never);
     const eventGroup = {
       id: 'event-group-1',
       name: 'Grouped minicourse',
@@ -429,20 +354,14 @@ describe('CertificateIssuingService', () => {
           buildMinicursoLines(events: unknown[]): string[];
         }
       ).buildMinicursoLines(events),
-    ).toEqual([
-      '• 02/01/2026, 03/01/2026 - Grouped minicourse - Carga horária: 4 horas',
-    ]);
+    ).toEqual(['• 02/01/2026, 03/01/2026 - Grouped minicourse - Carga horária: 4 horas']);
   });
 
   describe('formatCargaHoraria', () => {
     let service: CertificateIssuingService;
 
     beforeEach(() => {
-      service = new CertificateIssuingService(
-        {} as never,
-        {} as never,
-        {} as never,
-      );
+      service = new CertificateIssuingService({} as never, {} as never, {} as never);
     });
 
     it('formats zero minutes as "0 minutos"', () => {

@@ -1,11 +1,5 @@
 import { formatDate } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  input,
-  output,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -27,12 +21,7 @@ interface CalendarListDay {
 
 @Component({
   selector: 'app-calendar-list-view',
-  imports: [
-    CalendarEventListItem,
-    MatButtonModule,
-    MatIconModule,
-    MatListModule,
-  ],
+  imports: [CalendarEventListItem, MatButtonModule, MatIconModule, MatListModule],
   templateUrl: './calendar-list-view.html',
   styleUrl: './calendar-list-view.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,14 +33,10 @@ export class CalendarListView {
   readonly returnUrl = input('/calendar');
   readonly loadOlder = output<void>();
 
-  readonly groupedEvents = computed(() =>
-    this.groupByMonthAndDay(this.events()),
-  );
+  readonly groupedEvents = computed(() => this.groupByMonthAndDay(this.events()));
 
   private groupByMonthAndDay(events: PublicEvent[]): CalendarListMonth[] {
-    const sortedEvents = [...events].sort(
-      (left, right) => Date.parse(left.startDate) - Date.parse(right.startDate),
-    );
+    const sortedEvents = [...events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
     const months: CalendarListMonth[] = [];
 
     for (const event of sortedEvents) {

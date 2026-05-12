@@ -6,6 +6,7 @@
 
   html,
   body {
+    /* A4 size */
     width: 210mm;
     height: 297mm;
     margin: 0;
@@ -13,17 +14,33 @@
   }
 
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
-  .aztec-code,
-  .aztec-code * {
-    visibility: visible;
-    width: 4cm !important;
-    height: 4cm !important;
+
+  h1 {
+    font-size: 16pt !important;
+    margin-bottom: 0 !important;
+  }
+
+  h2 {
+    font-size: 12pt !important;
+    margin-top: 0 !important;
+  }
+
+  .identity-document {
+    margin-top: 0.5rem !important;
+    font-size: 12pt !important;
+    margin-bottom: 0;
   }
 
   .avatar {
-    display: none;
+    display: block;
+  }
+
+  mat-card-header {
+    padding-top: 0 !important;
+    margin-bottom: 0.5rem !important;
+    gap: 0.5rem !important;
   }
 
   mat-toolbar {
@@ -31,9 +48,31 @@
   }
 
   mat-card {
-    width: 10cm;
-    height: 13cm;
+    /* Same size as a credit card. Don't change this */
+    width: 5.4cm;
+    height: 8.6cm;
     padding: 0;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: 2px solid #dfdfdf !important;
+  }
+
+  .barcode-screen,
+  .barcode-screen * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .barcode-print {
+    display: block !important;
+    visibility: visible !important;
+    width: 3.5cm !important;
+    height: 3.5cm !important;
+    padding: 0 !important;
+  }
+
+  .barcode-print * {
+    visibility: visible !important;
   }
 }
 
@@ -51,6 +90,10 @@
   overflow: hidden;
   height: 300px;
   width: 300px;
+}
+
+.barcode-print {
+  display: none;
 }
 
 mat-card {

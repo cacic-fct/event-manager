@@ -11,10 +11,7 @@
       <form [formGroup]="workspace.targetFiltersForm" class="compact-form">
         <mat-form-field>
           <mat-label>Escopo</mat-label>
-          <mat-select
-            formControlName="scope"
-            (selectionChange)="workspace.onScopeChanged($event.value)"
-          >
+          <mat-select formControlName="scope" (selectionChange)="workspace.onScopeChanged($event.value)">
             <mat-option value="EVENT">Evento</mat-option>
             <mat-option value="EVENT_GROUP">Grupo</mat-option>
             <mat-option value="MAJOR_EVENT">Grande evento</mat-option>
@@ -27,11 +24,7 @@
           <input matInput formControlName="query" />
         </mat-form-field>
 
-        <button
-          mat-flat-button
-          type="button"
-          (click)="workspace.searchTargets()"
-        >
+        <button mat-flat-button type="button" (click)="workspace.searchTargets()">
           <mat-icon>search</mat-icon>
           Buscar
         </button>
@@ -42,10 +35,7 @@
           @for (eventItem of workspace.issuableEvents(); track eventItem.id) {
             <mat-list-item
               (click)="workspace.selectTarget(eventItem)"
-              [class.selected-list-item]="
-                workspace.selectedTarget()?.id === eventItem.id
-              "
-            >
+              [class.selected-list-item]="workspace.selectedTarget()?.id === eventItem.id">
               <span matListItemTitle class="list-title">
                 <app-twemoji [emoji]="eventItem.emoji" />
                 <span>{{ eventItem.name }}</span>
@@ -60,16 +50,11 @@
               <span matListItemLine>Ajuste a busca para continuar.</span>
             </mat-list-item>
           }
-        } @else if (
-          workspace.targetFiltersForm.controls.scope.value === 'EVENT_GROUP'
-        ) {
+        } @else if (workspace.targetFiltersForm.controls.scope.value === 'EVENT_GROUP') {
           @for (group of workspace.issuableEventGroups(); track group.id) {
             <mat-list-item
               (click)="workspace.selectTarget(group)"
-              [class.selected-list-item]="
-                workspace.selectedTarget()?.id === group.id
-              "
-            >
+              [class.selected-list-item]="workspace.selectedTarget()?.id === group.id">
               <span matListItemTitle>{{ group.name }}</span>
               <span matListItemLine>
                 {{
@@ -86,16 +71,10 @@
             </mat-list-item>
           }
         } @else {
-          @for (
-            majorEvent of workspace.issuableMajorEvents();
-            track majorEvent.id
-          ) {
+          @for (majorEvent of workspace.issuableMajorEvents(); track majorEvent.id) {
             <mat-list-item
               (click)="workspace.selectTarget(majorEvent)"
-              [class.selected-list-item]="
-                workspace.selectedTarget()?.id === majorEvent.id
-              "
-            >
+              [class.selected-list-item]="workspace.selectedTarget()?.id === majorEvent.id">
               <span matListItemTitle class="list-title">
                 <app-twemoji [emoji]="majorEvent.emoji" />
                 <span>{{ majorEvent.name }}</span>
@@ -118,11 +97,7 @@
         <section class="surface field-group">
           <div class="surface-heading">
             <h4>Configurações</h4>
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.startNewCertificateConfig()"
-            >
+            <button mat-stroked-button type="button" (click)="workspace.startNewCertificateConfig()">
               <mat-icon>add</mat-icon>
               Nova
             </button>
@@ -132,10 +107,7 @@
             @for (config of workspace.certificateConfigs(); track config.id) {
               <mat-list-item
                 (click)="workspace.selectCertificateConfig(config)"
-                [class.selected-list-item]="
-                  workspace.selectedCertificateConfig()?.id === config.id
-                "
-              >
+                [class.selected-list-item]="workspace.selectedCertificateConfig()?.id === config.id">
                 <span matListItemTitle>{{ config.name }}</span>
                 <span matListItemLine>
                   {{ config.isActive ? 'Ativa' : 'Inativa' }} ·
@@ -146,11 +118,7 @@
                   type="button"
                   aria-label="Editar configuração"
                   matTooltip="Editar"
-                  (click)="
-                    $event.stopPropagation();
-                    workspace.selectCertificateConfig(config)
-                  "
-                >
+                  (click)="$event.stopPropagation(); workspace.selectCertificateConfig(config)">
                   <mat-icon>edit</mat-icon>
                 </button>
                 <button
@@ -159,11 +127,7 @@
                   aria-label="Excluir configuração"
                   matTooltip="Excluir"
                   [disabled]="!permissions.canEdit('certificate#edit')"
-                  (click)="
-                    $event.stopPropagation();
-                    workspace.deleteCertificateConfig(config)
-                  "
-                >
+                  (click)="$event.stopPropagation(); workspace.deleteCertificateConfig(config)">
                   <mat-icon>delete</mat-icon>
                 </button>
               </mat-list-item>
@@ -187,11 +151,7 @@
           </div>
 
           <div class="panel-actions">
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.startNewCertificateConfig()"
-            >
+            <button mat-stroked-button type="button" (click)="workspace.startNewCertificateConfig()">
               <mat-icon>restart_alt</mat-icon>
               Limpar
             </button>
@@ -199,8 +159,7 @@
               mat-stroked-button
               type="button"
               [disabled]="!permissions.canEdit('certificate#edit')"
-              (click)="workspace.issueMissedCertificates()"
-            >
+              (click)="workspace.issueMissedCertificates()">
               <mat-icon>auto_awesome</mat-icon>
               Lançar correções e Emitir pendentes
             </button>
@@ -208,8 +167,7 @@
               mat-flat-button
               type="button"
               [disabled]="!permissions.canEdit('certificate#edit')"
-              (click)="workspace.saveCertificateConfig()"
-            >
+              (click)="workspace.saveCertificateConfig()">
               <mat-icon>save</mat-icon>
               Salvar
             </button>
@@ -221,80 +179,51 @@
           <div class="field-grid">
             <mat-form-field>
               <mat-label>Nome público do certificado</mat-label>
-              <input
-                matInput
-                [formField]="workspace.certificateConfigForm.name"
-              />
+              <input matInput [formField]="workspace.certificateConfigForm.name" />
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Template</mat-label>
               <mat-select
-                [formField]="
-                  workspace.certificateConfigForm.certificateTemplateId
-                "
-                (selectionChange)="
-                  workspace.onCertificateTemplateChanged($event.value)
-                "
-              >
-                @for (
-                  template of workspace.certificateTemplates();
-                  track template.id
-                ) {
-                  <mat-option [value]="template.id">
-                    {{ template.name }} (v{{ template.version }})
-                  </mat-option>
+                [formField]="workspace.certificateConfigForm.certificateTemplateId"
+                (selectionChange)="workspace.onCertificateTemplateChanged($event.value)">
+                @for (template of workspace.certificateTemplates(); track template.id) {
+                  <mat-option [value]="template.id"> {{ template.name }} (v{{ template.version }}) </mat-option>
                 }
               </mat-select>
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Emitir para</mat-label>
-              <mat-select
-                [formField]="workspace.certificateConfigForm.issuedTo"
-              >
+              <mat-select [formField]="workspace.certificateConfigForm.issuedTo">
                 <mat-option value="ATTENDEE">Participantes</mat-option>
                 <mat-option value="LECTURER_PALESTRA">Palestrantes</mat-option>
                 <mat-option value="LECTURER_MINICURSO">Ministrantes</mat-option>
-                <mat-option value="LECTURER">
-                  Outro palestrante/ministrante
-                </mat-option>
+                <mat-option value="LECTURER"> Outro palestrante/ministrante </mat-option>
                 <mat-option value="OTHER">Manual</mat-option>
               </mat-select>
             </mat-form-field>
           </div>
 
           <div class="checkbox-grid">
-            <mat-checkbox
-              [formField]="workspace.certificateConfigForm.isActive"
-            >
-              Ativa
-            </mat-checkbox>
+            <mat-checkbox [formField]="workspace.certificateConfigForm.isActive"> Ativa </mat-checkbox>
           </div>
 
           <div class="field-grid">
             <mat-form-field class="span-2">
               <mat-label>Texto do certificado</mat-label>
-              <textarea
-                matInput
-                rows="3"
-                [formField]="workspace.certificateConfigForm.certificateText"
-              ></textarea>
+              <textarea matInput rows="3" [formField]="workspace.certificateConfigForm.certificateText"></textarea>
             </mat-form-field>
 
             @if (workspace.certificateFieldDefinitions().length > 0) {
               <div class="span-2 field-grid">
-                @for (
-                  field of workspace.certificateFieldDefinitions();
-                  track field.key
-                ) {
+                @for (field of workspace.certificateFieldDefinitions(); track field.key) {
                   <mat-form-field>
                     <mat-label>{{ field.label }}</mat-label>
                     <input
                       matInput
                       [type]="field.type === 'string' ? 'text' : field.type"
-                      [formField]="workspace.certificateField(field.key)"
-                    />
+                      [formField]="workspace.certificateField(field.key)" />
                   </mat-form-field>
                 }
               </div>
@@ -314,11 +243,7 @@
               <mat-icon matPrefix>person_search</mat-icon>
               <input matInput formControlName="query" />
             </mat-form-field>
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.searchPeopleForManualIssue()"
-            >
+            <button mat-stroked-button type="button" (click)="workspace.searchPeopleForManualIssue()">
               <mat-icon>search</mat-icon>
               Buscar
             </button>
@@ -330,8 +255,7 @@
                 mat-stroked-button
                 type="button"
                 [disabled]="!permissions.canEdit('certificate#edit')"
-                (click)="workspace.issueCertificateForPerson(person)"
-              >
+                (click)="workspace.issueCertificateForPerson(person)">
                 <mat-icon>workspace_premium</mat-icon>
                 Emitir para {{ person.name }}
               </button>
@@ -348,24 +272,16 @@
           </div>
 
           <mat-list class="detail-list">
-            @for (
-              certificate of workspace.certificates();
-              track certificate.id
-            ) {
+            @for (certificate of workspace.certificates(); track certificate.id) {
               <mat-list-item>
-                <span matListItemTitle>
-                  {{ certificate.person.name }} · {{ certificate.config.name }}
-                </span>
-                <span matListItemLine>
-                  Emitido em {{ certificate.issuedAt | date: 'short' }}
-                </span>
+                <span matListItemTitle> {{ certificate.person.name }} · {{ certificate.config.name }} </span>
+                <span matListItemLine> Emitido em {{ certificate.issuedAt | date: 'short' }} </span>
                 <button
                   mat-icon-button
                   type="button"
                   aria-label="Baixar certificado"
                   matTooltip="Baixar"
-                  (click)="workspace.downloadCertificate(certificate, $event)"
-                >
+                  (click)="workspace.downloadCertificate(certificate, $event)">
                   <mat-icon>download</mat-icon>
                 </button>
                 <button
@@ -374,8 +290,7 @@
                   aria-label="Excluir certificado"
                   matTooltip="Excluir"
                   [disabled]="!permissions.canEdit('certificate#edit')"
-                  (click)="workspace.deleteCertificate(certificate, $event)"
-                >
+                  (click)="workspace.deleteCertificate(certificate, $event)">
                   <mat-icon>delete</mat-icon>
                 </button>
               </mat-list-item>

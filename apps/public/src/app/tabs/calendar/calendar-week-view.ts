@@ -1,11 +1,5 @@
 import { DatePipe, formatDate } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  input,
-  output,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -20,13 +14,7 @@ export interface CalendarWeekDay {
 
 @Component({
   selector: 'app-calendar-week-view',
-  imports: [
-    CalendarEventListItem,
-    DatePipe,
-    MatButtonModule,
-    MatIconModule,
-    MatListModule,
-  ],
+  imports: [CalendarEventListItem, DatePipe, MatButtonModule, MatIconModule, MatListModule],
   templateUrl: './calendar-week-view.html',
   styleUrl: './calendar-week-view.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,18 +31,12 @@ export class CalendarWeekView {
   readonly selectDate = output<Date>();
 
   readonly selectedDateLabel = computed(() => {
-    const formatted = formatDate(
-      this.selectedDate(),
-      "EEEE, dd 'de' MMMM 'de' yyyy",
-      'pt-BR',
-    );
+    const formatted = formatDate(this.selectedDate(), "EEEE, dd 'de' MMMM 'de' yyyy", 'pt-BR');
 
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   });
 
   readonly selectedDateEvents = computed(() =>
-    this.events().filter((event) =>
-      isSameDay(new Date(event.startDate), this.selectedDate()),
-    ),
+    this.events().filter((event) => isSameDay(new Date(event.startDate), this.selectedDate())),
   );
 }

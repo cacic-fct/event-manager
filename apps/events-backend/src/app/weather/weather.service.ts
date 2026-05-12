@@ -31,9 +31,7 @@ export class WeatherService {
     @InjectQueue(WEATHER_QUEUE) private readonly weatherQueue: Queue,
   ) {}
 
-  async getPublicEventWeather(
-    eventId: string,
-  ): Promise<PublicEventWeather | null> {
+  async getPublicEventWeather(eventId: string): Promise<PublicEventWeather | null> {
     const cached = await this.getCachedWeather(eventId);
     if (cached) {
       return cached;
@@ -48,9 +46,7 @@ export class WeatherService {
     return this.refreshEventWeather(event);
   }
 
-  async refreshEventWeatherById(
-    eventId: string,
-  ): Promise<PublicEventWeather | null> {
+  async refreshEventWeatherById(eventId: string): Promise<PublicEventWeather | null> {
     const event = await this.getWeatherEvent(eventId);
     if (!event) {
       return null;
@@ -81,9 +77,7 @@ export class WeatherService {
       },
     });
 
-    await Promise.all(
-      events.map((event) => this.scheduleRefreshForEvent(event)),
-    );
+    await Promise.all(events.map((event) => this.scheduleRefreshForEvent(event)));
   }
 
   async scheduleUpcomingEventRefreshScan(): Promise<void> {
@@ -159,9 +153,7 @@ export class WeatherService {
     });
   }
 
-  private async refreshEventWeather(
-    event: WeatherEvent,
-  ): Promise<PublicEventWeather | null> {
+  private async refreshEventWeather(event: WeatherEvent): Promise<PublicEventWeather | null> {
     if (!this.canFetchWeather(event)) {
       return null;
     }
@@ -172,19 +164,12 @@ export class WeatherService {
     }
 
     const forecast = await this.fetchOpenMeteoForecast(event);
-    await this.redis.set(
-      this.getCacheKey(event.id),
-      JSON.stringify(forecast),
-      'EX',
-      this.getCacheTtlSeconds(category),
-    );
+    await this.redis.set(this.getCacheKey(event.id), JSON.stringify(forecast), 'EX', this.getCacheTtlSeconds(category));
 
     return forecast;
   }
 
-  private async getCachedWeather(
-    eventId: string,
-  ): Promise<PublicEventWeather | null> {
+  private async getCachedWeather(eventId: string): Promise<PublicEventWeather | null> {
     const cached = await this.redis.get(this.getCacheKey(eventId));
     if (!cached) {
       return null;
@@ -198,9 +183,7 @@ export class WeatherService {
     };
   }
 
-  private async fetchOpenMeteoForecast(
-    event: WeatherEvent,
-  ): Promise<PublicEventWeather> {
+  private async fetchOpenMeteoForecast(event: WeatherEvent): Promise<PublicEventWeather> {
     const eventDate = this.formatZonedDate(event.startDate);
     const url = new URL('https://api.open-meteo.com/v1/forecast');
     url.searchParams.set('latitude', String(event.latitude));
@@ -221,9 +204,7 @@ export class WeatherService {
     const weatherCode = data.hourly?.weather_code?.[index];
 
     if (temperature == null || weatherCode == null) {
-      throw new Error(
-        `Open-Meteo did not return weather for event ${event.id}.`,
-      );
+      throw new Error(`Open-Meteo did not return weather for event ${event.id}.`);
     }
 
     return {
@@ -238,9 +219,7 @@ export class WeatherService {
   }
 
   private findForecastIndex(data: OpenMeteoResponse, eventDate: Date): number {
-    const targetTime = `${this.formatZonedDate(eventDate)}T${this.formatZonedHour(
-      eventDate,
-    )}:00`;
+    const targetTime = `${this.formatZonedDate(eventDate)}T${this.formatZonedHour(eventDate)}:00`;
     const index = data.hourly?.time?.findIndex((time) => time === targetTime);
     if (index == null || index < 0) {
       return Number(this.formatZonedHour(eventDate));
@@ -250,16 +229,10 @@ export class WeatherService {
   }
 
   private canFetchWeather(event: WeatherEvent): boolean {
-    return (
-      event.latitude != null &&
-      event.longitude != null &&
-      event.startDate.getTime() > Date.now()
-    );
+    return event.latitude != null && event.longitude != null && event.startDate.getTime() > Date.now();
   }
 
-  private getEventWeatherCategory(
-    eventDate: Date,
-  ): 'today' | 'tomorrow' | 'upcoming' | null {
+  private getEventWeatherCategory(eventDate: Date): 'today' | 'tomorrow' | 'upcoming' | null {
     const days = this.daysBetweenZonedDates(new Date(), eventDate);
     if (days < 0 || days > 14) {
       return null;
@@ -276,9 +249,7 @@ export class WeatherService {
     return 'upcoming';
   }
 
-  private getRepeatPattern(
-    category: 'today' | 'tomorrow' | 'upcoming',
-  ): string {
+  private getRepeatPattern(category: 'today' | 'tomorrow' | 'upcoming'): string {
     switch (category) {
       case 'today':
         return '0 */2 * * *';
@@ -289,9 +260,7 @@ export class WeatherService {
     }
   }
 
-  private getCacheTtlSeconds(
-    category: 'today' | 'tomorrow' | 'upcoming',
-  ): number {
+  private getCacheTtlSeconds(category: 'today' | 'tomorrow' | 'upcoming'): number {
     switch (category) {
       case 'today':
         return 60 * 60 * 2;
@@ -302,15 +271,9 @@ export class WeatherService {
     }
   }
 
-  private describeWeather(
-    weatherCode: number,
-    eventDate: Date,
-  ): Pick<PublicEventWeather, 'summary' | 'materialIcon'> {
+  private describeWeather(weatherCode: number, eventDate: Date): Pick<PublicEventWeather, 'summary' | 'materialIcon'> {
     const night = Number(this.formatZonedHour(eventDate)) >= 18;
-    const descriptions: Record<
-      number,
-      Pick<PublicEventWeather, 'summary' | 'materialIcon'>
-    > = {
+    const descriptions: Record<number, Pick<PublicEventWeather, 'summary' | 'materialIcon'>> = {
       0: {
         summary: 'Céu limpo',
         materialIcon: night ? 'nights_stay' : 'wb_sunny',
@@ -354,9 +317,7 @@ export class WeatherService {
   private daysBetweenZonedDates(left: Date, right: Date): number {
     const leftNoon = new Date(`${this.formatZonedDate(left)}T12:00:00Z`);
     const rightNoon = new Date(`${this.formatZonedDate(right)}T12:00:00Z`);
-    return Math.round(
-      (rightNoon.getTime() - leftNoon.getTime()) / (24 * 60 * 60 * 1000),
-    );
+    return Math.round((rightNoon.getTime() - leftNoon.getTime()) / (24 * 60 * 60 * 1000));
   }
 
   private formatZonedDate(date: Date): string {

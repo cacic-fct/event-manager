@@ -77,21 +77,11 @@ export class TypesenseSearchService implements OnModuleInit {
   }
 
   async searchMajorEvents(query: string, take = 50): Promise<string[]> {
-    return this.searchDocumentIds<MajorEventSearchDocument>(
-      'major_events',
-      query,
-      'name,description',
-      take,
-    );
+    return this.searchDocumentIds<MajorEventSearchDocument>('major_events', query, 'name,description', take);
   }
 
   async searchEventGroups(query: string, take = 50): Promise<string[]> {
-    return this.searchDocumentIds<EventGroupSearchDocument>(
-      'event_groups',
-      query,
-      'name',
-      take,
-    );
+    return this.searchDocumentIds<EventGroupSearchDocument>('event_groups', query, 'name', take);
   }
 
   async searchPeople(query: string, take = 50): Promise<string[]> {
@@ -203,17 +193,13 @@ export class TypesenseSearchService implements OnModuleInit {
     const portRaw = process.env.TYPESENSE_PORT;
 
     if (!host || !protocol || !apiKey || !portRaw) {
-      this.logger.warn(
-        'Typesense is enabled but configuration is incomplete. Disabling search indexing.',
-      );
+      this.logger.warn('Typesense is enabled but configuration is incomplete. Disabling search indexing.');
       return null;
     }
 
     const port = Number(portRaw);
     if (!Number.isFinite(port)) {
-      this.logger.warn(
-        'Typesense port is invalid. Disabling search indexing.',
-      );
+      this.logger.warn('Typesense port is invalid. Disabling search indexing.');
       return null;
     }
 
@@ -275,10 +261,7 @@ export class TypesenseSearchService implements OnModuleInit {
     }
   }
 
-  private createCollectionSchema(
-    name: string,
-    fields: CollectionFieldSchema[],
-  ): CollectionCreateSchema {
+  private createCollectionSchema(name: string, fields: CollectionFieldSchema[]): CollectionCreateSchema {
     return {
       name,
       fields,
@@ -398,47 +381,30 @@ export class TypesenseSearchService implements OnModuleInit {
     }
 
     try {
-      const collection = this.client.collections<T & Record<string, unknown>>(
-        collectionName,
-      );
+      const collection = this.client.collections<T & Record<string, unknown>>(collectionName);
       await collection.documents().delete({ truncate: true });
       if (documents.length === 0) {
         return;
       }
       await collection.documents().import(documents, { action: 'upsert' });
     } catch (error) {
-      this.logger.error(
-        `Failed to replace Typesense documents for ${collectionName}.`,
-        error,
-      );
+      this.logger.error(`Failed to replace Typesense documents for ${collectionName}.`, error);
     }
   }
 
-  private async upsertDocument<T extends { id: string }>(
-    collectionName: string,
-    document: T,
-  ): Promise<void> {
+  private async upsertDocument<T extends { id: string }>(collectionName: string, document: T): Promise<void> {
     if (!this.client) {
       return;
     }
 
     try {
-      await this.client
-        .collections<T & Record<string, unknown>>(collectionName)
-        .documents()
-        .upsert(document);
+      await this.client.collections<T & Record<string, unknown>>(collectionName).documents().upsert(document);
     } catch (error) {
-      this.logger.error(
-        `Failed to upsert Typesense document ${document.id} in ${collectionName}.`,
-        error,
-      );
+      this.logger.error(`Failed to upsert Typesense document ${document.id} in ${collectionName}.`, error);
     }
   }
 
-  private async deleteDocument(
-    collectionName: string,
-    id: string,
-  ): Promise<void> {
+  private async deleteDocument(collectionName: string, id: string): Promise<void> {
     if (!this.client) {
       return;
     }
@@ -446,10 +412,7 @@ export class TypesenseSearchService implements OnModuleInit {
     try {
       await this.client.collections(collectionName).documents(id).delete();
     } catch (error) {
-      this.logger.error(
-        `Failed to delete Typesense document ${id} from ${collectionName}.`,
-        error,
-      );
+      this.logger.error(`Failed to delete Typesense document ${id} from ${collectionName}.`, error);
     }
   }
 
@@ -465,24 +428,15 @@ export class TypesenseSearchService implements OnModuleInit {
     }
 
     try {
-      const result = await this.client
-        .collections<T & Record<string, unknown>>(collectionName)
-        .documents()
-        .search({
-          q: normalizedQuery,
-          query_by: queryBy,
-          per_page: take,
-        });
+      const result = await this.client.collections<T & Record<string, unknown>>(collectionName).documents().search({
+        q: normalizedQuery,
+        query_by: queryBy,
+        per_page: take,
+      });
 
-      return (
-        result.hits?.map((hit) => hit.document.id).filter((id) => Boolean(id)) ??
-        []
-      );
+      return result.hits?.map((hit) => hit.document.id).filter((id) => Boolean(id)) ?? [];
     } catch (error) {
-      this.logger.error(
-        `Typesense search failed for collection ${collectionName}.`,
-        error,
-      );
+      this.logger.error(`Typesense search failed for collection ${collectionName}.`, error);
       return [];
     }
   }

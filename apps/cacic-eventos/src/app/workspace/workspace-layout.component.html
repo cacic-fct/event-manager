@@ -1,11 +1,6 @@
 <mat-toolbar class="toolbar">
   @if (isMobile()) {
-    <button
-      mat-icon-button
-      type="button"
-      aria-label="Abrir menu"
-      (click)="sidenav.toggle()"
-    >
+    <button mat-icon-button type="button" aria-label="Abrir menu" (click)="sidenav.toggle()">
       <mat-icon>menu</mat-icon>
     </button>
   }
@@ -27,8 +22,7 @@
     class="sidenav"
     [mode]="isMobile() ? 'over' : 'side'"
     [opened]="!isMobile()"
-    [fixedInViewport]="isMobile()"
-  >
+    [fixedInViewport]="isMobile()">
     <nav class="nav-list" aria-label="Navegação interna">
       @for (item of navItems; track item.id) {
         <a
@@ -40,8 +34,7 @@
           [matTooltipDisabled]="isMobile()"
           matTooltipPosition="right"
           [routerLink]="item.path"
-          (click)="closeSidenavIfMobile(sidenav)"
-        >
+          (click)="closeSidenavIfMobile(sidenav)">
           <mat-icon>{{ item.icon }}</mat-icon>
 
           @if (isMobile()) {
@@ -80,32 +73,20 @@
                 type="button"
                 [href]="activeNavItem().helpLink"
                 target="_blank"
-                aria-label="Documentação"
-              >
+                aria-label="Documentação">
                 <mat-icon>help</mat-icon>
               </a>
             </div>
           </header>
         }
 
-        @if (
-          permissions.missingReadForTab(activeNavItem().permissionTab).length >
-          0
-        ) {
+        @if (permissions.missingReadForTab(activeNavItem().permissionTab).length > 0) {
           <div class="permission-summary" role="status">
             <strong>Permissões ausentes nesta seção</strong>
-            <span>
-              Sem permissões de leitura, a página não pode carregar dados com
-              segurança.
-            </span>
+            <span> Sem permissões de leitura, a página não pode carregar dados com segurança. </span>
 
             <div class="permission-list">
-              @for (
-                scope of permissions.missingReadForTab(
-                  activeNavItem().permissionTab
-                );
-                track scope
-              ) {
+              @for (scope of permissions.missingReadForTab(activeNavItem().permissionTab); track scope) {
                 <span class="permission-chip">{{ scope }}</span>
               }
             </div>

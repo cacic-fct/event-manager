@@ -1,26 +1,14 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { SUBSCRIPTION_STATUS_VALUES, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { startWith } from 'rxjs';
-import {
-  MajorEventSubscriptionCsvColumnMapping,
-  SubscriptionStatus,
-} from '../../graphql/models';
+import { MajorEventSubscriptionCsvColumnMapping, SubscriptionStatus } from '../../graphql/models';
 
 export interface SubscriptionCsvColumnDialogData {
   fileName: string;
@@ -53,14 +41,7 @@ const COLUMN_ROLE_OPTIONS: Array<{ value: ColumnRole; label: string }> = [
 @Component({
   selector: 'app-subscription-csv-column-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatListModule,
-    MatSelectModule,
-  ],
+  imports: [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatListModule, MatSelectModule],
   template: `
     <h2 mat-dialog-title>Importar inscrições</h2>
     <div mat-dialog-content>
@@ -82,10 +63,7 @@ const COLUMN_ROLE_OPTIONS: Array<{ value: ColumnRole; label: string }> = [
             <mat-label>{{ header }}</mat-label>
             <mat-select [formControlName]="header">
               @for (option of columnRoleOptions; track option.value) {
-                <mat-option
-                  [value]="option.value"
-                  [disabled]="isRoleUnavailable(option.value, header)"
-                >
+                <mat-option [value]="option.value" [disabled]="isRoleUnavailable(option.value, header)">
                   {{ option.label }}
                 </mat-option>
               }
@@ -106,24 +84,14 @@ const COLUMN_ROLE_OPTIONS: Array<{ value: ColumnRole; label: string }> = [
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="!canConfirm()"
-        (click)="confirm()"
-      >
-        Importar
-      </button>
+      <button mat-flat-button type="button" [disabled]="!canConfirm()" (click)="confirm()">Importar</button>
     </div>
   `,
   styleUrl: './subscription-csv-column-dialog.component.scss',
 })
 export class SubscriptionCsvColumnDialogComponent {
   private readonly dialogRef = inject(
-    MatDialogRef<
-      SubscriptionCsvColumnDialogComponent,
-      SubscriptionCsvColumnDialogResult | null
-    >,
+    MatDialogRef<SubscriptionCsvColumnDialogComponent, SubscriptionCsvColumnDialogResult | null>,
   );
   private readonly formBuilder = inject(FormBuilder);
   readonly data = inject<SubscriptionCsvColumnDialogData>(MAT_DIALOG_DATA);
@@ -132,23 +100,16 @@ export class SubscriptionCsvColumnDialogComponent {
   readonly subscriptionStatuses = SUBSCRIPTION_STATUS_VALUES;
 
   readonly form = this.formBuilder.nonNullable.group({
-    subscriptionStatus: [
-      'CONFIRMED' as SubscriptionStatus,
-      Validators.required,
-    ],
-    ...this.data.headers.reduce<Record<string, [ColumnRole]>>(
-      (controls, header) => {
-        controls[header] = [''];
-        return controls;
-      },
-      {},
-    ),
+    subscriptionStatus: ['CONFIRMED' as SubscriptionStatus, Validators.required],
+    ...this.data.headers.reduce<Record<string, [ColumnRole]>>((controls, header) => {
+      controls[header] = [''];
+      return controls;
+    }, {}),
   });
 
-  private readonly formValue = toSignal(
-    this.form.valueChanges.pipe(startWith(this.form.getRawValue())),
-    { initialValue: this.form.getRawValue() },
-  );
+  private readonly formValue = toSignal(this.form.valueChanges.pipe(startWith(this.form.getRawValue())), {
+    initialValue: this.form.getRawValue(),
+  });
 
   readonly previewValues = computed(() => {
     const mapping = this.buildColumnMapping();
@@ -190,9 +151,7 @@ export class SubscriptionCsvColumnDialogComponent {
     }
 
     const value = this.currentFormValue();
-    return this.data.headers.some(
-      (header) => header !== currentHeader && value[header] === role,
-    );
+    return this.data.headers.some((header) => header !== currentHeader && value[header] === role);
   }
 
   confirm(): void {
@@ -209,15 +168,16 @@ export class SubscriptionCsvColumnDialogComponent {
 
   private buildColumnMapping(): MajorEventSubscriptionCsvColumnMapping {
     const value = this.currentFormValue();
-    const mapping = this.data.headers.reduce<
-      Partial<MajorEventSubscriptionCsvColumnMapping>
-    >((columnMapping, header) => {
-      const role = value[header] as ColumnRole;
-      if (role) {
-        columnMapping[role] = header;
-      }
-      return columnMapping;
-    }, {});
+    const mapping = this.data.headers.reduce<Partial<MajorEventSubscriptionCsvColumnMapping>>(
+      (columnMapping, header) => {
+        const role = value[header] as ColumnRole;
+        if (role) {
+          columnMapping[role] = header;
+        }
+        return columnMapping;
+      },
+      {},
+    );
 
     return {
       emailHeader: mapping.emailHeader ?? null,
@@ -228,13 +188,7 @@ export class SubscriptionCsvColumnDialogComponent {
     };
   }
 
-  private currentFormValue(): Record<
-    string,
-    ColumnRole | SubscriptionStatus | undefined
-  > {
-    return this.formValue() as Record<
-      string,
-      ColumnRole | SubscriptionStatus | undefined
-    >;
+  private currentFormValue(): Record<string, ColumnRole | SubscriptionStatus | undefined> {
+    return this.formValue() as Record<string, ColumnRole | SubscriptionStatus | undefined>;
   }
 }

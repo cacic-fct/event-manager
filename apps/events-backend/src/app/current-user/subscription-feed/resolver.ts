@@ -16,15 +16,9 @@ export class CurrentUserSubscriptionFeedResolver {
     description:
       'Get the current user subscription feed grouped by single events and event groups, excluding major-event content.',
   })
-  async currentUserSubscriptionFeed(
-    @Context() context: GraphqlContext,
-  ): Promise<CurrentUserSubscriptionFeed> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+  async currentUserSubscriptionFeed(@Context() context: GraphqlContext): Promise<CurrentUserSubscriptionFeed> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return {
         items: [],

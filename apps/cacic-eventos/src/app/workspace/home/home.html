@@ -1,10 +1,7 @@
 <header class="dashboard-header">
   <div>
     <h1>{{ greetings() }}</h1>
-    <p>
-      {{ currentDate() | date: 'fullDate' }} · {{ currentDate() | date:
-      'shortTime' }}
-    </p>
+    <p>{{ currentDate() | date: 'fullDate' }} · {{ currentDate() | date: 'shortTime' }}</p>
   </div>
 
   @if (loading() && insights()) {
@@ -63,20 +60,14 @@
     <h3>Hoje</h3>
     <mat-list class="event-list">
       @for (event of todayEvents(); track event.id) {
-      <ng-container
-        [ngTemplateOutlet]="eventItem"
-        [ngTemplateOutletContext]="{ event: event }"
-      />
+      <ng-container [ngTemplateOutlet]="eventItem" [ngTemplateOutletContext]="{ event: event }" />
       }
     </mat-list>
     } @if (upcomingEvents().length > 0) {
     <h3>Próximos dias</h3>
     <mat-list class="event-list">
       @for (event of upcomingEvents(); track event.id) {
-      <ng-container
-        [ngTemplateOutlet]="eventItem"
-        [ngTemplateOutletContext]="{ event: event }"
-      />
+      <ng-container [ngTemplateOutlet]="eventItem" [ngTemplateOutletContext]="{ event: event }" />
       }
     </mat-list>
     }
@@ -90,15 +81,13 @@
         <mat-icon matListItemIcon>{{ alert.materialIcon }}</mat-icon>
         <span matListItemTitle>{{ alert.eventName }}</span>
         <span matListItemLine>
-          {{ alert.summary }} · {{ alert.temperature }}°C · {{
-          alert.forecastTime | date: 'EEE, HH:mm' }}
+          {{ alert.summary }} · {{ alert.temperature }}°C · {{ alert.forecastTime | date: 'EEE, HH:mm' }}
         </span>
       </mat-list-item>
       }
     </mat-list>
   </section>
-  } @if ( dashboard.pendingCertificates.length > 0 ||
-  dashboard.duplicatePeopleCount > 0 ) {
+  } @if ( dashboard.pendingCertificates.length > 0 || dashboard.duplicatePeopleCount > 0 ) {
   <section class="dashboard-grid">
     @if (dashboard.pendingCertificates.length > 0) {
     <mat-card appearance="outlined">
@@ -108,21 +97,16 @@
       </mat-card-header>
       <mat-card-content>
         <mat-list class="compact-list embedded-list">
-          @for (item of dashboard.pendingCertificates; track item.targetType +
-          item.targetId) {
+          @for (item of dashboard.pendingCertificates; track item.targetType + item.targetId) {
           <mat-list-item>
             <span matListItemTitle>{{ item.title }}</span>
-            <span matListItemLine>
-              {{ item.subtitle }} · finalizado em {{ item.finishedAt | date:
-              'short' }}
-            </span>
+            <span matListItemLine> {{ item.subtitle }} · finalizado em {{ item.finishedAt | date: 'short' }} </span>
             <a
               mat-icon-button
               matListItemMeta
               aria-label="Abrir certificados"
               matTooltip="Abrir certificados"
-              [routerLink]="certificateLink(item)"
-            >
+              [routerLink]="certificateLink(item)">
               <mat-icon>arrow_forward</mat-icon>
             </a>
           </mat-list-item>
@@ -135,9 +119,7 @@
       <mat-card-header>
         <mat-icon mat-card-avatar>merge_type</mat-icon>
         <mat-card-title>Pessoas duplicadas</mat-card-title>
-        <mat-card-subtitle>
-          Há {{ dashboard.duplicatePeopleCount }} pessoas com dados duplicados.
-        </mat-card-subtitle>
+        <mat-card-subtitle> Há {{ dashboard.duplicatePeopleCount }} pessoas com dados duplicados. </mat-card-subtitle>
       </mat-card-header>
       <mat-card-actions align="end">
         <a matButton="filled" [routerLink]="navMap()['merge-candidates']?.path">
@@ -152,12 +134,11 @@
   <section class="dashboard-section">
     <h2>Inconsistências</h2>
     <mat-list class="compact-list">
-      @for (issue of dashboard.inconsistencies; track issue.type + issue.eventId
-      + issue.relatedEventId + issue.personId) {
+      @for (issue of dashboard.inconsistencies; track issue.type + issue.eventId + issue.relatedEventId +
+      issue.personId) {
       <mat-list-item>
         <mat-icon matListItemIcon>
-          {{ issue.severity === 'CRITICAL' ? 'priority_high' : issue.severity
-          === 'WARNING' ? 'warning' : 'info' }}
+          {{ issue.severity === 'CRITICAL' ? 'priority_high' : issue.severity === 'WARNING' ? 'warning' : 'info' }}
         </mat-icon>
         <span matListItemTitle>{{ issue.title }}</span>
         <span matListItemLine>{{ issue.description }}</span>
@@ -166,8 +147,7 @@
           matListItemMeta
           aria-label="Abrir correção"
           matTooltip="Abrir correção"
-          [routerLink]="routerLinkForInconsistency(issue)"
-        >
+          [routerLink]="routerLinkForInconsistency(issue)">
           <mat-icon>arrow_forward</mat-icon>
         </a>
       </mat-list-item>
@@ -185,9 +165,8 @@
       <span>{{ event.name }}</span>
     </span>
     <span matListItemLine>
-      {{ event.startDate | date: 'short' }} · {{ describeEventType(event.type)
-      }} @if (event.majorEventName) { · {{ event.majorEventName }} } @if
-      (event.eventGroupName) { · {{ event.eventGroupName }} }
+      {{ event.startDate | date: 'short' }} · {{ describeEventType(event.type) }} @if (event.majorEventName) { · {{
+      event.majorEventName }} } @if (event.eventGroupName) { · {{ event.eventGroupName }} }
     </span>
     @if (event.locationDescription) {
     <span matListItemLine>{{ event.locationDescription }}</span>
@@ -197,11 +176,7 @@
         <mat-chip>{{ event.attendancesCount }} presenças</mat-chip>
         <mat-chip>{{ event.subscriptionsCount }} inscrições</mat-chip>
       </mat-chip-set>
-      <a
-        matButton="filled"
-        [routerLink]="eventAttendanceLink(event)"
-        aria-label="Coletar presença"
-      >
+      <a matButton="filled" [routerLink]="eventAttendanceLink(event)" aria-label="Coletar presença">
         <mat-icon>fact_check</mat-icon>
         Presença
       </a>

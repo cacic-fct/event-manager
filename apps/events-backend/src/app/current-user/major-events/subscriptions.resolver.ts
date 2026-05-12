@@ -31,18 +31,13 @@ export class CurrentUserMajorEventSubscriptionsResolver {
   async currentUserMajorEventSubscriptions(
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserMajorEventSubscription[]> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return [];
     }
 
-    const paymentInfoTableExists =
-      await this.publicEvents.hasPaymentInfoTable();
+    const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         personId: person.id,
@@ -51,9 +46,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           deletedAt: null,
         },
       },
-      select: this.publicEvents.getMajorEventSubscriptionSelect(
-        paymentInfoTableExists,
-      ),
+      select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
       orderBy: {
         createdAt: 'desc',
       },
@@ -63,14 +56,11 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       return [];
     }
 
-    const majorEventIds = subscriptions.map(
-      (subscription) => subscription.majorEventId,
+    const majorEventIds = subscriptions.map((subscription) => subscription.majorEventId);
+    const selectedEventsByMajorEventId = await this.majorEventSubscriptions.getSelectedEventsByMajorEvent(
+      person.id,
+      majorEventIds,
     );
-    const selectedEventsByMajorEventId =
-      await this.majorEventSubscriptions.getSelectedEventsByMajorEvent(
-        person.id,
-        majorEventIds,
-      );
 
     return subscriptions.map((subscription) => ({
       id: subscription.id,
@@ -80,8 +70,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       amountPaid: subscription.amountPaid ?? undefined,
       paymentDate: subscription.paymentDate ?? undefined,
       paymentTier: subscription.paymentTier ?? undefined,
-      selectedEvents:
-        selectedEventsByMajorEventId.get(subscription.majorEventId) ?? [],
+      selectedEvents: selectedEventsByMajorEventId.get(subscription.majorEventId) ?? [],
       notSubscribedEvents: [],
     }));
   }
@@ -91,26 +80,16 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     description:
       'Get current-user major events where the person is subscribed, a lecturer, or has an issued major-event certificate.',
   })
-  async currentUserMajorEventFeed(
-    @Context() context: GraphqlContext,
-  ): Promise<CurrentUserMajorEventFeedItem[]> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+  async currentUserMajorEventFeed(@Context() context: GraphqlContext): Promise<CurrentUserMajorEventFeedItem[]> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return [];
     }
 
-    const paymentInfoTableExists =
-      await this.publicEvents.hasPaymentInfoTable();
+    const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
 
-    return this.majorEventSubscriptions.getCurrentUserMajorEventFeedItems(
-      person.id,
-      paymentInfoTableExists,
-    );
+    return this.majorEventSubscriptions.getCurrentUserMajorEventFeedItems(person.id, paymentInfoTableExists);
   }
 
   @Query(() => CurrentUserMajorEventSubscription, {
@@ -121,41 +100,32 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     @Args('majorEventId', { type: () => String }) majorEventId: string,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserMajorEventSubscription | null> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return null;
     }
 
-    const majorEvent =
-      await this.publicEvents.requirePublicMajorEvent(majorEventId);
+    const majorEvent = await this.publicEvents.requirePublicMajorEvent(majorEventId);
 
-    const paymentInfoTableExists =
-      await this.publicEvents.hasPaymentInfoTable();
+    const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
     const subscription = await this.prisma.majorEventSubscription.findFirst({
       where: {
         majorEventId,
         personId: person.id,
         deletedAt: null,
       },
-      select: this.publicEvents.getMajorEventSubscriptionSelect(
-        paymentInfoTableExists,
-      ),
+      select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
     });
 
     if (!subscription) {
       return null;
     }
 
-    const { selectedEvents, notSubscribedEvents } =
-      await this.majorEventSubscriptions.getMajorEventSubscriptionEvents(
-        person.id,
-        majorEventId,
-      );
+    const { selectedEvents, notSubscribedEvents } = await this.majorEventSubscriptions.getMajorEventSubscriptionEvents(
+      person.id,
+      majorEventId,
+    );
 
     return {
       id: subscription.id,
@@ -179,18 +149,12 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserMajorEventSubscription> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    const selectedEventIds =
-      this.majorEventSubscriptions.normalizeSelectedEventIds(
-        input.selectedEventIds,
-      );
+    const selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(input.selectedEventIds);
     if (selectedEventIds.length === 0) {
-      throw new BadRequestException(
-        'At least one event must be selected for the major-event subscription.',
-      );
+      throw new BadRequestException('At least one event must be selected for the major-event subscription.');
     }
 
-    const paymentInfoTableExists =
-      await this.publicEvents.hasPaymentInfoTable();
+    const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
         id: input.majorEventId,
@@ -200,14 +164,10 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     });
 
     if (!majorEvent) {
-      throw new NotFoundException(
-        `Major event ${input.majorEventId} was not found.`,
-      );
+      throw new NotFoundException(`Major event ${input.majorEventId} was not found.`);
     }
 
-    this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(
-      majorEvent,
-    );
+    this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(majorEvent);
 
     const selectedEvents = await this.prisma.event.findMany({
       where: {
@@ -221,12 +181,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       select: EVENT_SELECT,
     });
 
-    const selectedEventsById = new Map(
-      selectedEvents.map((event) => [event.id, event]),
-    );
-    const missingSelectedEventIds = selectedEventIds.filter(
-      (eventId) => !selectedEventsById.has(eventId),
-    );
+    const selectedEventsById = new Map(selectedEvents.map((event) => [event.id, event]));
+    const missingSelectedEventIds = selectedEventIds.filter((eventId) => !selectedEventsById.has(eventId));
     if (missingSelectedEventIds.length > 0) {
       throw new BadRequestException(
         `Some selected events are invalid for major event ${input.majorEventId}: ${missingSelectedEventIds.join(', ')}.`,
@@ -234,13 +190,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     }
     const selectedEventIdSet = new Set(selectedEventIds);
 
-    this.majorEventSubscriptions.ensureMajorEventEventLimits(
-      majorEvent,
-      selectedEvents,
-    );
-    this.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts(
-      selectedEvents,
-    );
+    this.majorEventSubscriptions.ensureMajorEventEventLimits(majorEvent, selectedEvents);
+    this.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts(selectedEvents);
 
     const allGroupedEvents = await this.prisma.event.findMany({
       where: {
@@ -256,10 +207,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         eventGroupId: true,
       },
     });
-    this.majorEventSubscriptions.ensureEventGroupsAreFullySelected(
-      selectedEventIdSet,
-      allGroupedEvents,
-    );
+    this.majorEventSubscriptions.ensureEventGroupsAreFullySelected(selectedEventIdSet, allGroupedEvents);
 
     const requiredAutoSubscribeEvents = await this.prisma.event.findMany({
       where: {
@@ -281,10 +229,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       );
     }
 
-    const normalizedAmountPaid =
-      this.majorEventSubscriptions.normalizeAmountPaid(input.amountPaid);
-    const normalizedPaymentTier =
-      this.majorEventSubscriptions.normalizePaymentTier(input.paymentTier);
+    const normalizedAmountPaid = this.majorEventSubscriptions.normalizeAmountPaid(input.amountPaid);
+    const normalizedPaymentTier = this.majorEventSubscriptions.normalizePaymentTier(input.paymentTier);
 
     const now = new Date();
     const subscription = await this.prisma.$transaction(async (tx) => {
@@ -300,20 +246,16 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         },
       });
 
-      if (
-        existingSubscription?.subscriptionStatus ===
-        SubscriptionStatus.CONFIRMED
-      ) {
+      if (existingSubscription?.subscriptionStatus === SubscriptionStatus.CONFIRMED) {
         throw new BadRequestException(
           `Subscription for major event ${input.majorEventId} is already confirmed and cannot be changed.`,
         );
       }
 
-      const nextStatus =
-        this.majorEventSubscriptions.resolveNextSubscriptionStatus(
-          majorEvent.isPaymentRequired,
-          existingSubscription?.subscriptionStatus,
-        );
+      const nextStatus = this.majorEventSubscriptions.resolveNextSubscriptionStatus(
+        majorEvent.isPaymentRequired,
+        existingSubscription?.subscriptionStatus,
+      );
 
       if (existingSubscription) {
         const updateData: Prisma.MajorEventSubscriptionUpdateInput = {};
@@ -345,45 +287,37 @@ export class CurrentUserMajorEventSubscriptionsResolver {
             createdByMethod: 'SELF_SUBSCRIPTION',
             subscriptionStatus:
               nextStatus ??
-              (majorEvent.isPaymentRequired
-                ? SubscriptionStatus.WAITING_RECEIPT_UPLOAD
-                : SubscriptionStatus.CONFIRMED),
+              (majorEvent.isPaymentRequired ? SubscriptionStatus.WAITING_RECEIPT_UPLOAD : SubscriptionStatus.CONFIRMED),
           },
         });
       }
 
-      const activeMajorEventSubscription =
-        await tx.majorEventSubscription.findFirst({
-          where: {
-            majorEventId: input.majorEventId,
-            personId: person.id,
-            deletedAt: null,
-          },
-          select: {
-            id: true,
-            subscriptionStatus: true,
-          },
-        });
+      const activeMajorEventSubscription = await tx.majorEventSubscription.findFirst({
+        where: {
+          majorEventId: input.majorEventId,
+          personId: person.id,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          subscriptionStatus: true,
+        },
+      });
 
       if (!activeMajorEventSubscription) {
-        throw new NotFoundException(
-          `Subscription for major event ${input.majorEventId} was not found after upsert.`,
-        );
+        throw new NotFoundException(`Subscription for major event ${input.majorEventId} was not found after upsert.`);
       }
 
-      const activeSelections =
-        await tx.majorEventSubscriptionEventSelection.findMany({
-          where: {
-            subscriptionId: activeMajorEventSubscription.id,
-            deletedAt: null,
-          },
-          select: {
-            eventId: true,
-          },
-        });
-      const activeSelectionIdSet = new Set(
-        activeSelections.map((selection) => selection.eventId),
-      );
+      const activeSelections = await tx.majorEventSubscriptionEventSelection.findMany({
+        where: {
+          subscriptionId: activeMajorEventSubscription.id,
+          deletedAt: null,
+        },
+        select: {
+          eventId: true,
+        },
+      });
+      const activeSelectionIdSet = new Set(activeSelections.map((selection) => selection.eventId));
       const selectionEventIdsToArchive = [...activeSelectionIdSet].filter(
         (eventId) => !selectedEventIdSet.has(eventId),
       );
@@ -402,9 +336,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         });
       }
 
-      const selectionEventIdsToCreate = selectedEventIds.filter(
-        (eventId) => !activeSelectionIdSet.has(eventId),
-      );
+      const selectionEventIdsToCreate = selectedEventIds.filter((eventId) => !activeSelectionIdSet.has(eventId));
       if (selectionEventIdsToCreate.length > 0) {
         await tx.majorEventSubscriptionEventSelection.createMany({
           data: selectionEventIdsToCreate.map((eventId) => ({
@@ -428,13 +360,11 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         },
       });
 
-      const activeEventIdSet = new Set(
-        activeEventSubscriptions.map((subscription) => subscription.eventId),
-      );
+      const activeEventIdSet = new Set(activeEventSubscriptions.map((subscription) => subscription.eventId));
       const eventIdsToArchive = [...activeEventIdSet].filter(
         (eventId) =>
-          activeMajorEventSubscription.subscriptionStatus !==
-            SubscriptionStatus.CONFIRMED || !selectedEventIdSet.has(eventId),
+          activeMajorEventSubscription.subscriptionStatus !== SubscriptionStatus.CONFIRMED ||
+          !selectedEventIdSet.has(eventId),
       );
 
       if (eventIdsToArchive.length > 0) {
@@ -453,8 +383,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       }
 
       const eventIdsToCreate =
-        activeMajorEventSubscription.subscriptionStatus ===
-        SubscriptionStatus.CONFIRMED
+        activeMajorEventSubscription.subscriptionStatus === SubscriptionStatus.CONFIRMED
           ? selectedEventIds.filter((eventId) => !activeEventIdSet.has(eventId))
           : [];
       for (const eventId of eventIdsToCreate) {
@@ -470,9 +399,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           },
         });
         if (activeSubscriptionsCount >= event.slots) {
-          throw new BadRequestException(
-            `Event ${eventId} has no available slots for subscription.`,
-          );
+          throw new BadRequestException(`Event ${eventId} has no available slots for subscription.`);
         }
       }
 
@@ -486,11 +413,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         });
       }
 
-      await this.attendanceCategories.refreshForMajorEventPerson(
-        input.majorEventId,
-        person.id,
-        tx,
-      );
+      await this.attendanceCategories.refreshForMajorEventPerson(input.majorEventId, person.id, tx);
       await this.majorEventSubscriptions.refreshEventSubscriptionCounters(tx, [
         ...activeEventIdSet,
         ...selectedEventIds,
@@ -502,24 +425,18 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           personId: person.id,
           deletedAt: null,
         },
-        select: this.publicEvents.getMajorEventSubscriptionSelect(
-          paymentInfoTableExists,
-        ),
+        select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
       });
 
       if (!updatedSubscription) {
-        throw new NotFoundException(
-          `Subscription for major event ${input.majorEventId} was not found after upsert.`,
-        );
+        throw new NotFoundException(`Subscription for major event ${input.majorEventId} was not found after upsert.`);
       }
 
       return updatedSubscription;
     });
 
     const orderedEvents = selectedEventIds.map((eventId) =>
-      this.mapper.mapPublicEvent(
-        selectedEventsById.get(eventId) as EventRecord,
-      ),
+      this.mapper.mapPublicEvent(selectedEventsById.get(eventId) as EventRecord),
     );
 
     return {
@@ -543,8 +460,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserMajorEventSubscription> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    const paymentInfoTableExists =
-      await this.publicEvents.hasPaymentInfoTable();
+    const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
 
     const subscription = await this.prisma.majorEventSubscription.findFirst({
       where: {
@@ -552,27 +468,19 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         personId: person.id,
         deletedAt: null,
       },
-      select: this.publicEvents.getMajorEventSubscriptionSelect(
-        paymentInfoTableExists,
-      ),
+      select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
     });
 
     if (!subscription) {
-      throw new NotFoundException(
-        `Subscription for major event ${majorEventId} was not found.`,
-      );
+      throw new NotFoundException(`Subscription for major event ${majorEventId} was not found.`);
     }
 
     if (!subscription.majorEvent.isPaymentRequired) {
-      throw new BadRequestException(
-        `Major event ${majorEventId} does not require payment receipt upload.`,
-      );
+      throw new BadRequestException(`Major event ${majorEventId} does not require payment receipt upload.`);
     }
 
     if (subscription.subscriptionStatus === SubscriptionStatus.CONFIRMED) {
-      throw new BadRequestException(
-        `Subscription for major event ${majorEventId} is already confirmed.`,
-      );
+      throw new BadRequestException(`Subscription for major event ${majorEventId} is already confirmed.`);
     }
 
     if (subscription.subscriptionStatus === SubscriptionStatus.CANCELED) {
@@ -582,8 +490,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     }
 
     const updatedSubscription =
-      subscription.subscriptionStatus ===
-      SubscriptionStatus.RECEIPT_UNDER_REVIEW
+      subscription.subscriptionStatus === SubscriptionStatus.RECEIPT_UNDER_REVIEW
         ? subscription
         : await this.prisma.$transaction(async (tx) => {
             const updated = await tx.majorEventSubscription.update({
@@ -593,30 +500,21 @@ export class CurrentUserMajorEventSubscriptionsResolver {
               data: {
                 subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
               },
-              select: this.publicEvents.getMajorEventSubscriptionSelect(
-                paymentInfoTableExists,
-              ),
+              select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
             });
-            await this.attendanceCategories.refreshForMajorEventPerson(
-              majorEventId,
-              person.id,
-              tx,
-            );
+            await this.attendanceCategories.refreshForMajorEventPerson(majorEventId, person.id, tx);
             return updated;
           });
 
-    const selectedEvents =
-      await this.majorEventSubscriptions.getSelectedEventsForMajorEventSubscription(
-        person.id,
-        majorEventId,
-      );
+    const selectedEvents = await this.majorEventSubscriptions.getSelectedEventsForMajorEventSubscription(
+      person.id,
+      majorEventId,
+    );
 
     return {
       id: updatedSubscription.id,
       majorEventId: updatedSubscription.majorEventId,
-      majorEvent: this.mapper.mapPublicMajorEvent(
-        updatedSubscription.majorEvent,
-      ),
+      majorEvent: this.mapper.mapPublicMajorEvent(updatedSubscription.majorEvent),
       subscriptionStatus: updatedSubscription.subscriptionStatus,
       amountPaid: updatedSubscription.amountPaid ?? undefined,
       paymentDate: updatedSubscription.paymentDate ?? undefined,

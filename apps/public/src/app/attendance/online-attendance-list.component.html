@@ -27,14 +27,9 @@
           mat-list-item
           [routerLink]="['/attendance/register', item.eventId]"
           [queryParams]="{ returnUrl: returnUrl() }"
-          [attr.aria-label]="'Confirmar presença em ' + item.event.name"
-        >
+          [attr.aria-label]="'Confirmar presença em ' + item.event.name">
           <div matListItemIcon class="emoji-frame">
-            <img
-              class="twemoji"
-              [src]="emoji.getTwemojiUrl(item.event.emoji)"
-              [alt]="item.event.emoji"
-            />
+            <img class="twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" [alt]="item.event.emoji" />
           </div>
           <div matListItemTitle>{{ item.event.name }}</div>
           <div matListItemLine>

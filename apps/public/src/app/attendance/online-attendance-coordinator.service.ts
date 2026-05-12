@@ -15,8 +15,7 @@ export class OnlineAttendanceCoordinatorService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly realtime = inject(RealtimeEventsService);
   private readonly router = inject(Router);
-  private readonly interruptedStorageKey =
-    'cacic-eventos:online-attendance-interrupted';
+  private readonly interruptedStorageKey = 'cacic-eventos:online-attendance-interrupted';
 
   private realtimeSubscription: Subscription | null = null;
 
@@ -55,10 +54,7 @@ export class OnlineAttendanceCoordinatorService {
           window.sessionStorage.setItem(this.interruptedStorageKey, 'true');
         }
 
-        const target =
-          items.length === 1
-            ? ['/attendance/register', items[0].eventId]
-            : ['/attendance/register'];
+        const target = items.length === 1 ? ['/attendance/register', items[0].eventId] : ['/attendance/register'];
 
         void this.router.navigate(target, {
           queryParams: {

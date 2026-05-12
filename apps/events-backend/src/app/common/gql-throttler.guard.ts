@@ -15,8 +15,7 @@ export class GqlThrottlerGuard extends ThrottlerGuard {
     req: Record<string, unknown>;
     res: Record<string, unknown>;
   } {
-    const gqlContext =
-      GqlExecutionContext.create(context).getContext<GraphqlContext>();
+    const gqlContext = GqlExecutionContext.create(context).getContext<GraphqlContext>();
 
     return {
       req: gqlContext.req ?? gqlContext.request ?? {},

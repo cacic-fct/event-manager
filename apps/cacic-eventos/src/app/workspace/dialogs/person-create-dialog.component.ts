@@ -1,9 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -82,9 +77,7 @@ import { Person } from '../../graphql/models';
   ],
 })
 export class PersonCreateDialogComponent {
-  private readonly dialogRef = inject(
-    MatDialogRef<PersonCreateDialogComponent, Person | null>,
-  );
+  private readonly dialogRef = inject(MatDialogRef<PersonCreateDialogComponent, Person | null>);
   private readonly formBuilder = inject(FormBuilder);
   private readonly api = inject(PeopleApiService);
 
@@ -123,17 +116,11 @@ export class PersonCreateDialogComponent {
       const normalizedIdentityDocument = rawValue.identityDocument.trim();
 
       const duplicate = duplicateCandidates.find((candidate) => {
-        if (
-          normalizedIdentityDocument &&
-          candidate.identityDocument === normalizedIdentityDocument
-        ) {
+        if (normalizedIdentityDocument && candidate.identityDocument === normalizedIdentityDocument) {
           return true;
         }
 
-        if (
-          normalizedEmail &&
-          candidate.email?.trim().toLowerCase() === normalizedEmail
-        ) {
+        if (normalizedEmail && candidate.email?.trim().toLowerCase() === normalizedEmail) {
           return true;
         }
 
@@ -141,9 +128,7 @@ export class PersonCreateDialogComponent {
       });
 
       if (duplicate) {
-        this.errorMessage.set(
-          `Já existe uma pessoa (${duplicate.name}, id: ${duplicate.id}).`,
-        );
+        this.errorMessage.set(`Já existe uma pessoa (${duplicate.name}, id: ${duplicate.id}).`);
         return;
       }
 
@@ -158,11 +143,7 @@ export class PersonCreateDialogComponent {
 
       this.dialogRef.close(createdPerson);
     } catch (error) {
-      this.errorMessage.set(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível criar a pessoa.',
-      );
+      this.errorMessage.set(error instanceof Error ? error.message : 'Não foi possível criar a pessoa.');
     } finally {
       this.isSaving.set(false);
     }

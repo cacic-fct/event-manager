@@ -1,10 +1,5 @@
 import { DatePipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  OnInit,
-  inject,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -34,10 +29,7 @@ import { EventFilterPanelComponent } from '../shared/event-filter-panel.componen
     EventFilterPanelComponent,
   ],
   templateUrl: './workspace-event-subscriptions-subtab.component.html',
-  styleUrls: [
-    '../workspace-tab.shared.scss',
-    './workspace-subscription-subtabs.shared.scss',
-  ],
+  styleUrls: ['../workspace-tab.shared.scss', './workspace-subscription-subtabs.shared.scss'],
 })
 export class WorkspaceEventSubscriptionsSubtabComponent implements OnInit {
   readonly workspace = inject(WorkspaceSubscriptionsService);

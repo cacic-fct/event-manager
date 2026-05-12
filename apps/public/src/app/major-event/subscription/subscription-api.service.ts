@@ -17,13 +17,7 @@ export interface PublicMajorEventSubscriptionPage {
   subscriptionSummaries: PublicEventSubscriptionSummary[];
 }
 
-type GraphqlVariable =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | readonly string[];
+type GraphqlVariable = string | number | boolean | null | undefined | readonly string[];
 type GraphqlVariables = Record<string, GraphqlVariable>;
 
 interface GraphqlResponse<TData> {
@@ -111,9 +105,7 @@ const SUBSCRIPTION_SUMMARY_FIELDS = `
 export class MajorEventSubscriptionApiService {
   private readonly http = inject(HttpClient);
 
-  getSubscriptionPage(
-    majorEventId: string,
-  ): Observable<PublicMajorEventSubscriptionPage> {
+  getSubscriptionPage(majorEventId: string): Observable<PublicMajorEventSubscriptionPage> {
     return this.query<{
       publicMajorEventSubscriptionPage: PublicMajorEventSubscriptionPage;
     }>(
@@ -136,9 +128,7 @@ export class MajorEventSubscriptionApiService {
     ).pipe(map((data) => data.publicMajorEventSubscriptionPage));
   }
 
-  getCurrentUserSubscription(
-    majorEventId: string,
-  ): Observable<CurrentUserMajorEventSubscription | null> {
+  getCurrentUserSubscription(majorEventId: string): Observable<CurrentUserMajorEventSubscription | null> {
     return this.query<{
       currentUserMajorEventSubscription: CurrentUserMajorEventSubscription | null;
     }>(
@@ -167,10 +157,7 @@ export class MajorEventSubscriptionApiService {
     ).pipe(map((data) => data.currentUserMajorEventSubscription));
   }
 
-  upsertSubscription(
-    majorEventId: string,
-    selectedEventIds: string[],
-  ): Observable<CurrentUserMajorEventSubscription> {
+  upsertSubscription(majorEventId: string, selectedEventIds: string[]): Observable<CurrentUserMajorEventSubscription> {
     return this.query<{
       upsertCurrentUserMajorEventSubscription: CurrentUserMajorEventSubscription;
     }>(
@@ -204,26 +191,19 @@ export class MajorEventSubscriptionApiService {
     ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
   }
 
-  private query<TData>(
-    query: string,
-    variables?: GraphqlVariables,
-  ): Observable<TData> {
-    return this.http
-      .post<GraphqlResponse<TData>>('/api/graphql', { query, variables })
-      .pipe(
-        map((response) => {
-          if (response.errors?.length) {
-            throw new Error(
-              response.errors.map((error) => error.message).join('\n'),
-            );
-          }
+  private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {
+    return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
+      map((response) => {
+        if (response.errors?.length) {
+          throw new Error(response.errors.map((error) => error.message).join('\n'));
+        }
 
-          if (!response.data) {
-            throw new Error('Resposta GraphQL sem dados.');
-          }
+        if (!response.data) {
+          throw new Error('Resposta GraphQL sem dados.');
+        }
 
-          return response.data;
-        }),
-      );
+        return response.data;
+      }),
+    );
   }
 }

@@ -33,9 +33,7 @@ function guardedWorkspaceTabRoute(
       path,
       data,
       loadComponent: () =>
-        import('./workspace-permission-denied.component').then(
-          (m) => m.WorkspacePermissionDeniedComponent,
-        ),
+        import('./workspace-permission-denied.component').then((m) => m.WorkspacePermissionDeniedComponent),
     },
   ];
 }
@@ -43,10 +41,7 @@ function guardedWorkspaceTabRoute(
 export const workspaceRoutes: Route[] = [
   {
     path: '',
-    loadComponent: () =>
-      import('./workspace-layout.component').then(
-        (m) => m.WorkspaceLayoutComponent,
-      ),
+    loadComponent: () => import('./workspace-layout.component').then((m) => m.WorkspaceLayoutComponent),
     children: [
       {
         path: '',
@@ -54,17 +49,10 @@ export const workspaceRoutes: Route[] = [
       },
 
       ...guardedWorkspaceTabRoute(eventsData.path, eventsData, () =>
-        import('./tabs/events/workspace-events-tab.component').then(
-          (m) => m.WorkspaceEventsTabComponent,
-        ),
+        import('./tabs/events/workspace-events-tab.component').then((m) => m.WorkspaceEventsTabComponent),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${eventsData.path}/:eventId`,
-        eventsData,
-        () =>
-          import('./tabs/events/workspace-events-tab.component').then(
-            (m) => m.WorkspaceEventsTabComponent,
-          ),
+      ...guardedWorkspaceTabRoute(`${eventsData.path}/:eventId`, eventsData, () =>
+        import('./tabs/events/workspace-events-tab.component').then((m) => m.WorkspaceEventsTabComponent),
       ),
 
       ...guardedWorkspaceTabRoute(groupsData.path, groupsData, () =>
@@ -72,13 +60,10 @@ export const workspaceRoutes: Route[] = [
           (m) => m.WorkspaceEventGroupsTabComponent,
         ),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${groupsData.path}/:groupId`,
-        groupsData,
-        () =>
-          import(
-            './tabs/event-groups/workspace-event-groups-tab.component'
-          ).then((m) => m.WorkspaceEventGroupsTabComponent),
+      ...guardedWorkspaceTabRoute(`${groupsData.path}/:groupId`, groupsData, () =>
+        import('./tabs/event-groups/workspace-event-groups-tab.component').then(
+          (m) => m.WorkspaceEventGroupsTabComponent,
+        ),
       ),
 
       ...guardedWorkspaceTabRoute(majorEventsData.path, majorEventsData, () =>
@@ -86,36 +71,23 @@ export const workspaceRoutes: Route[] = [
           (m) => m.WorkspaceMajorEventsTabComponent,
         ),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${majorEventsData.path}/:majorEventId`,
-        majorEventsData,
-        () =>
-          import(
-            './tabs/major-events/workspace-major-events-tab.component'
-          ).then((m) => m.WorkspaceMajorEventsTabComponent),
+      ...guardedWorkspaceTabRoute(`${majorEventsData.path}/:majorEventId`, majorEventsData, () =>
+        import('./tabs/major-events/workspace-major-events-tab.component').then(
+          (m) => m.WorkspaceMajorEventsTabComponent,
+        ),
       ),
 
       ...guardedWorkspaceTabRoute(peopleData.path, peopleData, () =>
-        import('./tabs/people/workspace-people-tab.component').then(
-          (m) => m.WorkspacePeopleTabComponent,
-        ),
+        import('./tabs/people/workspace-people-tab.component').then((m) => m.WorkspacePeopleTabComponent),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${peopleData.path}/:personId`,
-        peopleData,
-        () =>
-          import('./tabs/people/workspace-people-tab.component').then(
-            (m) => m.WorkspacePeopleTabComponent,
-          ),
+      ...guardedWorkspaceTabRoute(`${peopleData.path}/:personId`, peopleData, () =>
+        import('./tabs/people/workspace-people-tab.component').then((m) => m.WorkspacePeopleTabComponent),
       ),
 
-      ...guardedWorkspaceTabRoute(
-        mergeCandidatesData.path,
-        mergeCandidatesData,
-        () =>
-          import(
-            './tabs/merge-candidates/workspace-merge-candidates-tab.component'
-          ).then((m) => m.WorkspaceMergeCandidatesTabComponent),
+      ...guardedWorkspaceTabRoute(mergeCandidatesData.path, mergeCandidatesData, () =>
+        import('./tabs/merge-candidates/workspace-merge-candidates-tab.component').then(
+          (m) => m.WorkspaceMergeCandidatesTabComponent,
+        ),
       ),
 
       ...guardedWorkspaceTabRoute(certificatesData.path, certificatesData, () =>
@@ -123,21 +95,15 @@ export const workspaceRoutes: Route[] = [
           (m) => m.WorkspaceCertificatesTabComponent,
         ),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${certificatesData.path}/:targetType/:targetId`,
-        certificatesData,
-        () =>
-          import(
-            './tabs/certificates/workspace-certificates-tab.component'
-          ).then((m) => m.WorkspaceCertificatesTabComponent),
+      ...guardedWorkspaceTabRoute(`${certificatesData.path}/:targetType/:targetId`, certificatesData, () =>
+        import('./tabs/certificates/workspace-certificates-tab.component').then(
+          (m) => m.WorkspaceCertificatesTabComponent,
+        ),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${certificatesData.path}/:targetType/:targetId/:configId`,
-        certificatesData,
-        () =>
-          import(
-            './tabs/certificates/workspace-certificates-tab.component'
-          ).then((m) => m.WorkspaceCertificatesTabComponent),
+      ...guardedWorkspaceTabRoute(`${certificatesData.path}/:targetType/:targetId/:configId`, certificatesData, () =>
+        import('./tabs/certificates/workspace-certificates-tab.component').then(
+          (m) => m.WorkspaceCertificatesTabComponent,
+        ),
       ),
 
       ...guardedWorkspaceTabRoute(attendancesData.path, attendancesData, () =>
@@ -145,46 +111,31 @@ export const workspaceRoutes: Route[] = [
           (m) => m.WorkspaceAttendancesTabComponent,
         ),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${attendancesData.path}/event/:eventId`,
-        attendancesData,
-        () =>
-          import('./tabs/attendances/workspace-attendances-tab.component').then(
-            (m) => m.WorkspaceAttendancesTabComponent,
-          ),
+      ...guardedWorkspaceTabRoute(`${attendancesData.path}/event/:eventId`, attendancesData, () =>
+        import('./tabs/attendances/workspace-attendances-tab.component').then(
+          (m) => m.WorkspaceAttendancesTabComponent,
+        ),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${attendancesData.path}/major-event/:majorEventId`,
-        attendancesData,
-        () =>
-          import('./tabs/attendances/workspace-attendances-tab.component').then(
-            (m) => m.WorkspaceAttendancesTabComponent,
-          ),
+      ...guardedWorkspaceTabRoute(`${attendancesData.path}/major-event/:majorEventId`, attendancesData, () =>
+        import('./tabs/attendances/workspace-attendances-tab.component').then(
+          (m) => m.WorkspaceAttendancesTabComponent,
+        ),
       ),
 
-      ...guardedWorkspaceTabRoute(
-        subscriptionsData.path,
-        subscriptionsData,
-        () =>
-          import(
-            './tabs/subscriptions/workspace-subscriptions-tab.component'
-          ).then((m) => m.WorkspaceSubscriptionsTabComponent),
+      ...guardedWorkspaceTabRoute(subscriptionsData.path, subscriptionsData, () =>
+        import('./tabs/subscriptions/workspace-subscriptions-tab.component').then(
+          (m) => m.WorkspaceSubscriptionsTabComponent,
+        ),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${subscriptionsData.path}/event/:eventId`,
-        subscriptionsData,
-        () =>
-          import(
-            './tabs/subscriptions/workspace-subscriptions-tab.component'
-          ).then((m) => m.WorkspaceSubscriptionsTabComponent),
+      ...guardedWorkspaceTabRoute(`${subscriptionsData.path}/event/:eventId`, subscriptionsData, () =>
+        import('./tabs/subscriptions/workspace-subscriptions-tab.component').then(
+          (m) => m.WorkspaceSubscriptionsTabComponent,
+        ),
       ),
-      ...guardedWorkspaceTabRoute(
-        `${subscriptionsData.path}/major-event/:majorEventId`,
-        subscriptionsData,
-        () =>
-          import(
-            './tabs/subscriptions/workspace-subscriptions-tab.component'
-          ).then((m) => m.WorkspaceSubscriptionsTabComponent),
+      ...guardedWorkspaceTabRoute(`${subscriptionsData.path}/major-event/:majorEventId`, subscriptionsData, () =>
+        import('./tabs/subscriptions/workspace-subscriptions-tab.component').then(
+          (m) => m.WorkspaceSubscriptionsTabComponent,
+        ),
       ),
 
       ...guardedWorkspaceTabRoute(permissionsData.path, permissionsData, () =>

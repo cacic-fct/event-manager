@@ -1,14 +1,4 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  ForbiddenException,
-  Get,
-  Post,
-  Query,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Post, Query, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from './auth.constants';
 import { Public } from './decorators/public.decorator';
@@ -82,9 +72,7 @@ export class AuthController {
     @Query('state') state?: string,
   ): Promise<void> {
     if (error) {
-      response.redirect(
-        this.keycloakAuthService.getPostLoginRedirectUri(state),
-      );
+      response.redirect(this.keycloakAuthService.getPostLoginRedirectUri(state));
       return;
     }
 
@@ -112,15 +100,9 @@ export class AuthController {
 
   @Post('logout')
   @Public()
-  async logout(
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-    @Body() body?: LogoutDto,
-  ) {
+  async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response, @Body() body?: LogoutDto) {
     const sessionId = this.readCookie(request, AUTH_SESSION_COOKIE_NAME);
-    const sessionLogoutInput = sessionId
-      ? this.keycloakAuthService.getSessionLogoutInput(sessionId)
-      : null;
+    const sessionLogoutInput = sessionId ? this.keycloakAuthService.getSessionLogoutInput(sessionId) : null;
 
     if (sessionId) {
       this.keycloakAuthService.clearSession(sessionId);
@@ -142,26 +124,19 @@ export class AuthController {
 
   @Post('refresh')
   @Public()
-  async refresh(
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const sessionId = this.readCookie(request, AUTH_SESSION_COOKIE_NAME);
     if (!sessionId) {
       throw new ForbiddenException('Missing session.');
     }
 
-    const sessionLogoutInput =
-      this.keycloakAuthService.getSessionLogoutInput(sessionId);
+    const sessionLogoutInput = this.keycloakAuthService.getSessionLogoutInput(sessionId);
     if (!sessionLogoutInput?.refreshToken) {
       throw new ForbiddenException('Missing refresh token in session.');
     }
 
-    const tokenResponse = await this.keycloakAuthService.refreshAccessToken(
-      sessionLogoutInput.refreshToken,
-    );
-    const { expiresAt, sessionExpiresAt } =
-      this.keycloakAuthService.updateSession(sessionId, tokenResponse);
+    const tokenResponse = await this.keycloakAuthService.refreshAccessToken(sessionLogoutInput.refreshToken);
+    const { expiresAt, sessionExpiresAt } = this.keycloakAuthService.updateSession(sessionId, tokenResponse);
 
     response.cookie(AUTH_SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
@@ -184,21 +159,14 @@ export class AuthController {
   }
 
   @Post('permissions/evaluate')
-  async evaluatePermissions(
-    @Req() request: RequestWithUser,
-    @Body() body: PermissionEvaluationBody,
-  ) {
+  async evaluatePermissions(@Req() request: RequestWithUser, @Body() body: PermissionEvaluationBody) {
     if (!request.user) {
       throw new ForbiddenException('User is not authenticated.');
     }
 
     const permissions = this.readPermissionList(body?.permissions);
     const accessToken = request.user.token;
-    const grantedPermissions =
-      await this.keycloakAuthService.evaluateAccessTokenPermissions(
-        accessToken,
-        permissions,
-      );
+    const grantedPermissions = await this.keycloakAuthService.evaluateAccessTokenPermissions(accessToken, permissions);
 
     return { permissions: grantedPermissions };
   }
@@ -223,21 +191,14 @@ export class AuthController {
   }
 
   private getCallbackRedirectUri(request: Request): string {
-    const protocol = this.readForwardedHeader(request, 'x-forwarded-proto')
-      ?.split(',')[0]
-      ?.trim();
-    const host = this.readForwardedHeader(request, 'x-forwarded-host')
-      ?.split(',')[0]
-      ?.trim();
+    const protocol = this.readForwardedHeader(request, 'x-forwarded-proto')?.split(',')[0]?.trim();
+    const host = this.readForwardedHeader(request, 'x-forwarded-host')?.split(',')[0]?.trim();
 
     const origin = `${protocol || request.protocol}://${host || request.get('host')}`;
     return new URL('/api/auth/callback', origin).toString();
   }
 
-  private readForwardedHeader(
-    request: Request,
-    headerName: string,
-  ): string | undefined {
+  private readForwardedHeader(request: Request, headerName: string): string | undefined {
     const value = request.headers[headerName];
     return Array.isArray(value) ? value[0] : value;
   }

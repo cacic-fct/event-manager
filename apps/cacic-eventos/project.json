@@ -8,9 +8,7 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "baseHref": "/admin/",
         "outputPath": "dist/apps/cacic-eventos",
@@ -23,9 +21,7 @@
             "input": "apps/cacic-eventos/public"
           }
         ],
-        "styles": [
-          "apps/cacic-eventos/src/styles.scss"
-        ],
+        "styles": ["apps/cacic-eventos/src/styles.scss"],
         "server": "apps/cacic-eventos/src/main.server.ts",
         "ssr": {
           "entry": "apps/cacic-eventos/src/server.ts"

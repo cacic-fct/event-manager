@@ -5,8 +5,7 @@ export const DashboardInsightSeverity = {
   WARNING: 'WARNING',
   CRITICAL: 'CRITICAL',
 } as const;
-export type DashboardInsightSeverity =
-  (typeof DashboardInsightSeverity)[keyof typeof DashboardInsightSeverity];
+export type DashboardInsightSeverity = (typeof DashboardInsightSeverity)[keyof typeof DashboardInsightSeverity];
 registerEnumType(DashboardInsightSeverity, {
   name: 'DashboardInsightSeverity',
 });
@@ -22,8 +21,7 @@ export const DashboardInsightAction = {
   OPEN_CERTIFICATES: 'OPEN_CERTIFICATES',
   OPEN_MERGE_CANDIDATES: 'OPEN_MERGE_CANDIDATES',
 } as const;
-export type DashboardInsightAction =
-  (typeof DashboardInsightAction)[keyof typeof DashboardInsightAction];
+export type DashboardInsightAction = (typeof DashboardInsightAction)[keyof typeof DashboardInsightAction];
 registerEnumType(DashboardInsightAction, {
   name: 'DashboardInsightAction',
 });
@@ -42,10 +40,8 @@ registerEnumType(DashboardCertificateTargetType, {
 
 export const DashboardInconsistencyType = {
   EVENT_GROUP_WITH_SINGLE_EVENT: 'EVENT_GROUP_WITH_SINGLE_EVENT',
-  EVENT_GROUP_CERTIFICATE_SETTING_MISMATCH:
-    'EVENT_GROUP_CERTIFICATE_SETTING_MISMATCH',
-  PAST_CERTIFICATE_EVENT_WITHOUT_ATTENDANCE:
-    'PAST_CERTIFICATE_EVENT_WITHOUT_ATTENDANCE',
+  EVENT_GROUP_CERTIFICATE_SETTING_MISMATCH: 'EVENT_GROUP_CERTIFICATE_SETTING_MISMATCH',
+  PAST_CERTIFICATE_EVENT_WITHOUT_ATTENDANCE: 'PAST_CERTIFICATE_EVENT_WITHOUT_ATTENDANCE',
   EVENT_WITHOUT_LECTURER: 'EVENT_WITHOUT_LECTURER',
   LECTURER_DOUBLE_BOOKED: 'LECTURER_DOUBLE_BOOKED',
   LECTURER_SELF_SUBSCRIBED: 'LECTURER_SELF_SUBSCRIBED',
@@ -54,8 +50,7 @@ export const DashboardInconsistencyType = {
   SUSPICIOUS_DATE: 'SUSPICIOUS_DATE',
   PLACEHOLDER_EMOJI: 'PLACEHOLDER_EMOJI',
 } as const;
-export type DashboardInconsistencyType =
-  (typeof DashboardInconsistencyType)[keyof typeof DashboardInconsistencyType];
+export type DashboardInconsistencyType = (typeof DashboardInconsistencyType)[keyof typeof DashboardInconsistencyType];
 registerEnumType(DashboardInconsistencyType, {
   name: 'DashboardInconsistencyType',
 });

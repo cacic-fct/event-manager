@@ -7,11 +7,7 @@
           <p>Eventos agregadores e seus períodos ativos.</p>
         </div>
 
-        <button
-          mat-stroked-button
-          type="button"
-          (click)="workspace.resetMajorEventForm()"
-        >
+        <button mat-stroked-button type="button" (click)="workspace.resetMajorEventForm()">
           <mat-icon>add</mat-icon>
           Novo
         </button>
@@ -21,10 +17,7 @@
         @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
           <mat-list-item
             (click)="workspace.pickMajorEvent(majorEvent)"
-            [class.selected-list-item]="
-              workspace.selectedMajorEvent()?.id === majorEvent.id
-            "
-          >
+            [class.selected-list-item]="workspace.selectedMajorEvent()?.id === majorEvent.id">
             <span matListItemTitle class="list-title">
               <app-twemoji [emoji]="majorEvent.emoji" />
               <span>{{ majorEvent.name }}</span>
@@ -38,10 +31,7 @@
               type="button"
               aria-label="Editar grande evento"
               matTooltip="Editar"
-              (click)="
-                $event.stopPropagation(); workspace.pickMajorEvent(majorEvent)
-              "
-            >
+              (click)="$event.stopPropagation(); workspace.pickMajorEvent(majorEvent)">
               <mat-icon>edit</mat-icon>
             </button>
             <button
@@ -50,11 +40,7 @@
               aria-label="Excluir grande evento"
               matTooltip="Excluir"
               [disabled]="!permissions.canDelete('major-event#delete')"
-              (click)="
-                $event.stopPropagation();
-                workspace.deleteMajorEvent(majorEvent.id)
-              "
-            >
+              (click)="$event.stopPropagation(); workspace.deleteMajorEvent(majorEvent.id)">
               <mat-icon>delete</mat-icon>
             </button>
           </mat-list-item>
@@ -81,11 +67,7 @@
         </div>
 
         <div class="panel-actions">
-          <button
-            mat-button
-            type="button"
-            (click)="workspace.resetMajorEventForm()"
-          >
+          <button mat-button type="button" (click)="workspace.resetMajorEventForm()">
             <mat-icon>restart_alt</mat-icon>
             Limpar
           </button>
@@ -93,8 +75,7 @@
             mat-flat-button
             type="button"
             [disabled]="!permissions.canEdit('major-event#edit')"
-            (click)="workspace.saveMajorEvent()"
-          >
+            (click)="workspace.saveMajorEvent()">
             <mat-icon>save</mat-icon>
             Salvar
           </button>
@@ -112,20 +93,13 @@
 
             <mat-form-field>
               <mat-label>Emoji</mat-label>
-              <app-twemoji
-                matPrefix
-                [emoji]="workspace.majorEventForm.controls.emoji.value"
-              />
+              <app-twemoji matPrefix [emoji]="workspace.majorEventForm.controls.emoji.value" />
               <input matInput formControlName="emoji" maxlength="16" />
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Início</mat-label>
-              <input
-                matInput
-                type="datetime-local"
-                formControlName="startDate"
-              />
+              <input matInput type="datetime-local" formControlName="startDate" />
             </mat-form-field>
 
             <mat-form-field>
@@ -135,11 +109,7 @@
 
             <mat-form-field class="span-2">
               <mat-label>Descrição</mat-label>
-              <textarea
-                matInput
-                rows="3"
-                formControlName="description"
-              ></textarea>
+              <textarea matInput rows="3" formControlName="description"></textarea>
             </mat-form-field>
 
             <mat-form-field>
@@ -151,12 +121,8 @@
               <mat-label>Link do botão</mat-label>
               <input matInput formControlName="buttonLink" />
             </mat-form-field>
-            @if (
-              workspace.majorEventForm.hasError('buttonTextRequiresbuttonLink')
-            ) {
-              <mat-error class="span-2">
-                Texto e link do botão devem ser preenchidos juntos.
-              </mat-error>
+            @if (workspace.majorEventForm.hasError('buttonTextRequiresbuttonLink')) {
+              <mat-error class="span-2"> Texto e link do botão devem ser preenchidos juntos. </mat-error>
             }
           </div>
         </section>
@@ -166,38 +132,22 @@
           <div class="field-grid">
             <mat-form-field>
               <mat-label>Início das inscrições</mat-label>
-              <input
-                matInput
-                type="datetime-local"
-                formControlName="subscriptionStartDate"
-              />
+              <input matInput type="datetime-local" formControlName="subscriptionStartDate" />
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Fim das inscrições</mat-label>
-              <input
-                matInput
-                type="datetime-local"
-                formControlName="subscriptionEndDate"
-              />
+              <input matInput type="datetime-local" formControlName="subscriptionEndDate" />
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Máximo de minicursos por pessoa</mat-label>
-              <input
-                matInput
-                type="number"
-                formControlName="maxCoursesPerAttendee"
-              />
+              <input matInput type="number" formControlName="maxCoursesPerAttendee" />
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Máximo de palestras por pessoa</mat-label>
-              <input
-                matInput
-                type="number"
-                formControlName="maxLecturesPerAttendee"
-              />
+              <input matInput type="number" formControlName="maxLecturesPerAttendee" />
             </mat-form-field>
           </div>
         </section>
@@ -205,17 +155,11 @@
         <section class="surface field-group">
           <h4>Contato e pagamento</h4>
           <div class="checkbox-grid">
-            <mat-checkbox formControlName="isPaymentRequired">
-              Exigir pagamento
-            </mat-checkbox>
-            <mat-checkbox
-              formControlName="shouldIssueCertificateForNonPayingAttendees"
-            >
+            <mat-checkbox formControlName="isPaymentRequired"> Exigir pagamento </mat-checkbox>
+            <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
               Emitir certificados para presentes não pagantes?
             </mat-checkbox>
-            <mat-checkbox
-              formControlName="shouldIssueCertificateForNonSubscribedAttendees"
-            >
+            <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
               Emitir certificados para presentes não inscritos?
             </mat-checkbox>
           </div>
@@ -239,11 +183,7 @@
 
             <mat-form-field class="span-2">
               <mat-label>Informações adicionais de pagamento</mat-label>
-              <textarea
-                matInput
-                rows="3"
-                formControlName="additionalPaymentInfo"
-              ></textarea>
+              <textarea matInput rows="3" formControlName="additionalPaymentInfo"></textarea>
             </mat-form-field>
 
             <mat-form-field>
@@ -282,10 +222,7 @@
           </div>
 
           <mat-list class="detail-list">
-            @for (
-              eventItem of workspace.majorEventEvents();
-              track eventItem.id
-            ) {
+            @for (eventItem of workspace.majorEventEvents(); track eventItem.id) {
               <mat-list-item>
                 <span matListItemTitle class="list-title">
                   <app-twemoji [emoji]="eventItem.emoji" />
@@ -301,10 +238,7 @@
                   aria-label="Remover atividade do grande evento"
                   matTooltip="Remover"
                   [disabled]="!permissions.canEdit('event#edit')"
-                  (click)="
-                    workspace.removeEventFromSelectedMajorEvent(eventItem)
-                  "
-                >
+                  (click)="workspace.removeEventFromSelectedMajorEvent(eventItem)">
                   <mat-icon>link_off</mat-icon>
                 </button>
               </mat-list-item>
@@ -319,35 +253,24 @@
 
         <section class="surface field-group">
           <h4>Adicionar atividades</h4>
-          <form
-            [formGroup]="workspace.majorEventEventSearchForm"
-            class="compact-form"
-          >
+          <form [formGroup]="workspace.majorEventEventSearchForm" class="compact-form">
             <mat-form-field>
               <mat-label>Buscar atividades por nome</mat-label>
               <input matInput formControlName="query" />
             </mat-form-field>
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.searchEventsForSelectedMajorEvent()"
-            >
+            <button mat-stroked-button type="button" (click)="workspace.searchEventsForSelectedMajorEvent()">
               <mat-icon>search</mat-icon>
               Buscar
             </button>
           </form>
 
           <div class="inline-list">
-            @for (
-              eventItem of workspace.majorEventEventSearchResults();
-              track eventItem.id
-            ) {
+            @for (eventItem of workspace.majorEventEventSearchResults(); track eventItem.id) {
               <button
                 mat-stroked-button
                 type="button"
                 [disabled]="!permissions.canEdit('event#edit')"
-                (click)="workspace.addEventToSelectedMajorEvent(eventItem)"
-              >
+                (click)="workspace.addEventToSelectedMajorEvent(eventItem)">
                 <app-twemoji [emoji]="eventItem.emoji" />
                 {{ eventItem.name }}
                 {{ eventItem.startDate | date: 'shortDate' }}
