@@ -10,5 +10,35 @@
     <h1>Legal</h1>
   </header>
 
-  <main></main>
+  <main>
+    <h2>CACiC Event Manager</h2>
+
+    <h3>Política de privacidade</h3>
+
+    <p>
+      Este projeto segue a
+      <a href="https://cacic.dev.br/legal/privacy-policy">política de privacidade do CACiC</a>.
+    </p>
+
+    <h3>Licenças</h3>
+    <p>
+      Copyright (c) CACiC - Centro Acadêmico de Ciência da Computação "Alan Turing" da Faculdade de Ciências e
+      Tecnologia, Câmpus de Presidente Prudente, Universidade Estadual Paulista "Júlio de Mesquita Filho"
+    </p>
+    <p>
+      All files and programs on the project's repository are licensed under the GNU Affero General Public License
+      version 3 (AGPL-3.0-only).
+    </p>
+
+    <app-agpl></app-agpl>
+
+    <p>The following software may be included in this product:</p>
+    <p>hcal - by valnub - https://github.com/valnub/hcal - MIT</p>
+
+    @defer (on viewport) {
+    <app-display-licenses></app-display-licenses>
+    } @placeholder {
+    <p>Carregando licenças...</p>
+    }
+  </main>
 </div>

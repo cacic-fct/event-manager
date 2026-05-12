@@ -1,28 +1,12 @@
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
-export type AttendanceCreationMethod =
-  | 'CSV_IMPORT'
-  | 'MANUAL_INPUT'
-  | 'SCANNER'
-  | 'ONLINE_CODE'
-  | 'UNKNOWN';
-export type CertificateScope =
-  | 'MAJOR_EVENT'
-  | 'EVENT_GROUP'
-  | 'EVENT'
-  | 'OTHER';
+export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
+export type CertificateScope = 'MAJOR_EVENT' | 'EVENT_GROUP' | 'EVENT' | 'OTHER';
 export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
 export type MergeCandidateStatus = 'PENDING' | 'MERGED' | 'REJECTED' | 'STALE';
 export type MergeMatchMethod = 'CPF' | 'EMAIL' | 'NORMALIZED_NAME';
-export type AttendanceImportMatchType =
-  | 'IDENTITY_DOCUMENT'
-  | 'EMAIL'
-  | 'FULL_NAME';
-export type AttendanceCategory =
-  | 'NON_PAYING'
-  | 'NON_SUBSCRIBED'
-  | 'REGULAR'
-  | 'UNKNOWN';
+export type AttendanceImportMatchType = 'IDENTITY_DOCUMENT' | 'EMAIL' | 'FULL_NAME';
+export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
 export type SubscriptionStatus =
   | 'WAITING_RECEIPT_UPLOAD'
   | 'RECEIPT_UNDER_REVIEW'
@@ -32,17 +16,8 @@ export type SubscriptionStatus =
   | 'REJECTED_GENERIC'
   | 'CONFIRMED'
   | 'CANCELED';
-export type SubscriptionCreationMethod =
-  | 'ADMIN_DASHBOARD'
-  | 'SELF_SUBSCRIPTION'
-  | 'UNKNOWN';
-export type PersonMergeField =
-  | 'NAME'
-  | 'EMAIL'
-  | 'IDENTITY_DOCUMENT'
-  | 'ACADEMIC_ID'
-  | 'USER_ID'
-  | 'EXTERNAL_REF';
+export type SubscriptionCreationMethod = 'ADMIN_DASHBOARD' | 'SELF_SUBSCRIPTION' | 'UNKNOWN';
+export type PersonMergeField = 'NAME' | 'EMAIL' | 'IDENTITY_DOCUMENT' | 'ACADEMIC_ID' | 'USER_ID' | 'EXTERNAL_REF';
 
 export interface MajorEvent {
   id: string;

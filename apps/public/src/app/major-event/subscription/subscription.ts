@@ -1,13 +1,4 @@
-import { DatePipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  computed,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -16,27 +7,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import {
-  ActivatedRoute,
-  NavigationEnd,
-  Router,
-  RouterLink,
-  RouterOutlet,
-} from '@angular/router';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription, PublicEvent } from '@cacic-fct/shared-utils';
 import { formatDateRange } from '@cacic-fct/shared-utils';
 import { filter, finalize, map } from 'rxjs';
 import { EmojiService } from '../../profile/attendances/emoji.service';
-import {
-  ConfirmSubscriptionDialog,
-  type ConfirmSubscriptionDialogData,
-} from './confirm-subscription-dialog';
-import {
-  MajorEventSubscriptionApiService,
-  type PublicMajorEventSubscriptionPage,
-} from './subscription-api.service';
+import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
+import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from './subscription-api.service';
 import { SubscriptionEventList } from './subscription-event-list';
 import {
   MajorEventSubscriptionRealtimeDelta,
@@ -51,7 +29,6 @@ type SubscriptionPageState =
 @Component({
   selector: 'app-subscription',
   imports: [
-    DatePipe,
     MatButtonModule,
     MatChipsModule,
     MatDialogModule,
@@ -81,13 +58,11 @@ export class MajorEventSubscription {
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly isSubmitting = signal(false);
   readonly pageState = signal<SubscriptionPageState>({ status: 'loading' });
-  readonly currentUserSubscription =
-    signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
+  readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
   readonly selectedEventIds = signal<Set<string>>(new Set());
 
   private readonly initializedMajorEventId = signal<string | null>(null);
-  private readonly pendingRealtimeDelta =
-    signal<MajorEventSubscriptionRealtimeDelta | null>(null);
+  private readonly pendingRealtimeDelta = signal<MajorEventSubscriptionRealtimeDelta | null>(null);
   private readonly navigationTick = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -97,9 +72,7 @@ export class MajorEventSubscription {
   );
 
   readonly majorEventId = toSignal(
-    this.route.paramMap.pipe(
-      map((params) => params.get('majorEventId') ?? params.get('eventID') ?? ''),
-    ),
+    this.route.paramMap.pipe(map((params) => params.get('majorEventId') ?? params.get('eventID') ?? '')),
     { initialValue: this.route.snapshot.paramMap.get('majorEventId') ?? '' },
   );
 
@@ -123,19 +96,11 @@ export class MajorEventSubscription {
       return [];
     }
 
-    return [...data.events].sort(
-      (left, right) => Date.parse(left.startDate) - Date.parse(right.startDate),
-    );
+    return [...data.events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
   });
 
   readonly summariesByEventId = computed(
-    () =>
-      new Map(
-        this.data()?.subscriptionSummaries.map((summary) => [
-          summary.eventId,
-          summary,
-        ]) ?? [],
-      ),
+    () => new Map(this.data()?.subscriptionSummaries.map((summary) => [summary.eventId, summary]) ?? []),
   );
 
   readonly eventIdsByGroupKey = computed(() => {
@@ -149,9 +114,7 @@ export class MajorEventSubscription {
     return eventsByGroupKey;
   });
 
-  readonly eventsById = computed(
-    () => new Map(this.sortedEvents().map((event) => [event.id, event])),
-  );
+  readonly eventsById = computed(() => new Map(this.sortedEvents().map((event) => [event.id, event])));
 
   readonly autoSelectedEventIds = computed(
     () =>
@@ -166,13 +129,9 @@ export class MajorEventSubscription {
     this.sortedEvents().filter((event) => this.selectedEventIds().has(event.id)),
   );
 
-  readonly courseCount = computed(
-    () => this.selectedEvents().filter((event) => event.type === 'MINICURSO').length,
-  );
+  readonly courseCount = computed(() => this.selectedEvents().filter((event) => event.type === 'MINICURSO').length);
 
-  readonly lectureCount = computed(
-    () => this.selectedEvents().filter((event) => event.type === 'PALESTRA').length,
-  );
+  readonly lectureCount = computed(() => this.selectedEvents().filter((event) => event.type === 'PALESTRA').length);
 
   readonly disabledReasons = computed(() => this.computeDisabledReasons());
 
@@ -205,19 +164,13 @@ export class MajorEventSubscription {
 
             this.pageState.set({
               status: 'ready',
-              data: this.mergeRealtimeDelta(
-                data,
-                this.pendingRealtimeDelta(),
-              ),
+              data: this.mergeRealtimeDelta(data, this.pendingRealtimeDelta()),
             });
           },
           error: (error: unknown) =>
             this.pageState.set({
               status: 'error',
-              message:
-                error instanceof Error
-                  ? error.message
-                  : 'Não foi possível carregar a inscrição.',
+              message: error instanceof Error ? error.message : 'Não foi possível carregar a inscrição.',
             }),
         });
 
@@ -231,11 +184,7 @@ export class MajorEventSubscription {
             }
           },
           error: () => {
-            this.snackBar.open(
-              'Atualizações ao vivo indisponíveis no momento.',
-              'OK',
-              { duration: 4000 },
-            );
+            this.snackBar.open('Atualizações ao vivo indisponíveis no momento.', 'OK', { duration: 4000 });
           },
         });
 
@@ -274,11 +223,7 @@ export class MajorEventSubscription {
 
       const validEventIds = new Set(data.events.map((event) => event.id));
       const requiredEventIds = this.autoSelectedEventIds();
-      const nextSelected = new Set(
-        [...this.selectedEventIds()].filter((eventId) =>
-          validEventIds.has(eventId),
-        ),
-      );
+      const nextSelected = new Set([...this.selectedEventIds()].filter((eventId) => validEventIds.has(eventId)));
       for (const eventId of requiredEventIds) {
         nextSelected.add(eventId);
       }
@@ -301,9 +246,7 @@ export class MajorEventSubscription {
 
   dateLine(): string {
     const majorEvent = this.data()?.majorEvent;
-    return majorEvent
-      ? formatDateRange(majorEvent.startDate, majorEvent.endDate)
-      : '';
+    return majorEvent ? formatDateRange(majorEvent.startDate, majorEvent.endDate) : '';
   }
 
   toggleEvent(event: PublicEvent): void {
@@ -313,9 +256,7 @@ export class MajorEventSubscription {
 
     const groupEventIds = this.getGroupEventIds(event);
     const selectedEventIds = new Set(this.selectedEventIds());
-    const shouldUnselect = groupEventIds.every((eventId) =>
-      selectedEventIds.has(eventId),
-    );
+    const shouldUnselect = groupEventIds.every((eventId) => selectedEventIds.has(eventId));
 
     for (const eventId of groupEventIds) {
       if (this.autoSelectedEventIds().has(eventId)) {
@@ -353,17 +294,16 @@ export class MajorEventSubscription {
       return;
     }
 
-    const dialogRef = this.dialog.open<
+    const dialogRef = this.dialog.open<ConfirmSubscriptionDialog, ConfirmSubscriptionDialogData, boolean>(
       ConfirmSubscriptionDialog,
-      ConfirmSubscriptionDialogData,
-      boolean
-    >(ConfirmSubscriptionDialog, {
-      data: {
-        majorEvent: data.majorEvent,
-        events: this.selectedEvents(),
+      {
+        data: {
+          majorEvent: data.majorEvent,
+          events: this.selectedEvents(),
+        },
+        width: 'min(720px, 96vw)',
       },
-      width: 'min(720px, 96vw)',
-    });
+    );
 
     dialogRef
       .afterClosed()
@@ -391,21 +331,13 @@ export class MajorEventSubscription {
           this.currentUserSubscription.set(subscription);
           this.snackBar.open('Inscrição realizada.', 'OK', { duration: 3000 });
           if (data.majorEvent.isPaymentRequired) {
-            void this.router.navigate([
-              '/major-event',
-              data.majorEvent.id,
-              'payment',
-            ]);
+            void this.router.navigate(['/major-event', data.majorEvent.id, 'payment']);
           }
         },
         error: (error: unknown) => {
-          this.snackBar.open(
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível concluir a inscrição.',
-            'OK',
-            { duration: 5000 },
-          );
+          this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível concluir a inscrição.', 'OK', {
+            duration: 5000,
+          });
         },
       });
   }
@@ -459,15 +391,9 @@ export class MajorEventSubscription {
 
     const groupEvents = this.getGroupEvents(event);
     const selectedEventIds = this.selectedEventIds();
-    const newEvents = groupEvents.filter(
-      (groupEvent) => !selectedEventIds.has(groupEvent.id),
-    );
-    const newCourses = newEvents.filter(
-      (groupEvent) => groupEvent.type === 'MINICURSO',
-    ).length;
-    const newLectures = newEvents.filter(
-      (groupEvent) => groupEvent.type === 'PALESTRA',
-    ).length;
+    const newEvents = groupEvents.filter((groupEvent) => !selectedEventIds.has(groupEvent.id));
+    const newCourses = newEvents.filter((groupEvent) => groupEvent.type === 'MINICURSO').length;
+    const newLectures = newEvents.filter((groupEvent) => groupEvent.type === 'PALESTRA').length;
 
     if (
       majorEvent.maxCoursesPerAttendee != null &&
@@ -489,14 +415,10 @@ export class MajorEventSubscription {
   private groupConflictsWithSelection(event: PublicEvent): boolean {
     const groupEvents = this.getGroupEvents(event);
     const groupEventIds = new Set(groupEvents.map((groupEvent) => groupEvent.id));
-    const selectedEvents = this.selectedEvents().filter(
-      (selectedEvent) => !groupEventIds.has(selectedEvent.id),
-    );
+    const selectedEvents = this.selectedEvents().filter((selectedEvent) => !groupEventIds.has(selectedEvent.id));
 
     return groupEvents.some((groupEvent) =>
-      selectedEvents.some((selectedEvent) =>
-        this.eventsConflict(groupEvent, selectedEvent),
-      ),
+      selectedEvents.some((selectedEvent) => this.eventsConflict(groupEvent, selectedEvent)),
     );
   }
 
@@ -536,10 +458,7 @@ export class MajorEventSubscription {
 
   private applyRealtimeDelta(delta: MajorEventSubscriptionRealtimeDelta): void {
     const currentState = this.pageState();
-    if (
-      currentState.status !== 'ready' ||
-      !this.isSubscriptionPageData(currentState.data)
-    ) {
+    if (currentState.status !== 'ready' || !this.isSubscriptionPageData(currentState.data)) {
       this.pendingRealtimeDelta.set(delta);
       return;
     }
@@ -559,12 +478,7 @@ export class MajorEventSubscription {
       return data;
     }
 
-    const summariesByEventId = new Map(
-      data.subscriptionSummaries.map((summary) => [
-        summary.eventId,
-        summary,
-      ]),
-    );
+    const summariesByEventId = new Map(data.subscriptionSummaries.map((summary) => [summary.eventId, summary]));
 
     for (const summary of delta.subscriptionSummaries) {
       summariesByEventId.set(summary.eventId, summary);
@@ -576,9 +490,7 @@ export class MajorEventSubscription {
     };
   }
 
-  private isSubscriptionPageData(
-    data: unknown,
-  ): data is PublicMajorEventSubscriptionPage {
+  private isSubscriptionPageData(data: unknown): data is PublicMajorEventSubscriptionPage {
     return (
       typeof data === 'object' &&
       data !== null &&
@@ -590,9 +502,7 @@ export class MajorEventSubscription {
     );
   }
 
-  private isRealtimeDelta(
-    data: unknown,
-  ): data is MajorEventSubscriptionRealtimeDelta {
+  private isRealtimeDelta(data: unknown): data is MajorEventSubscriptionRealtimeDelta {
     return (
       typeof data === 'object' &&
       data !== null &&

@@ -1,13 +1,6 @@
-import { DatePipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
@@ -27,17 +20,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  Observable,
-  catchError,
-  combineLatest,
-  finalize,
-  map,
-  of,
-  startWith,
-  switchMap,
-} from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable, catchError, combineLatest, finalize, map, of, startWith, switchMap } from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
 import { EventLocationMap } from './event-location-map';
 import { EmojiService } from '../profile/attendances/emoji.service';
@@ -74,6 +57,9 @@ export class Event {
   private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly platformId = inject(PLATFORM_ID);
+
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.authService.isAuthenticated;
@@ -81,10 +67,9 @@ export class Event {
   readonly isConfirmingAttendance = signal(false);
 
   private readonly reloadCounter = signal(0);
+
   private readonly returnUrl = toSignal(
-    this.route.queryParamMap.pipe(
-      map((params) => params.get('returnUrl') || '/menu'),
-    ),
+    this.route.queryParamMap.pipe(map((params) => params.get('returnUrl') || '/menu')),
     { initialValue: '/menu' },
   );
 
@@ -99,20 +84,24 @@ export class Event {
   }
 
   async shareEvent(): Promise<void> {
-    const url =
-      typeof window === 'undefined'
-        ? this.router.url
-        : new URL(this.router.url, document.baseURI).toString();
-
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
-      this.snackBar.open('Link copiado para a área de transferência.', 'OK', {
-        duration: 3000,
-      });
+    if (!this.isBrowser || !navigator.clipboard) {
+      return;
     }
+
+    const url = new URL(this.router.url, document.baseURI).toString();
+
+    await navigator.clipboard.writeText(url);
+
+    this.snackBar.open('Link copiado para a área de transferência.', 'OK', {
+      duration: 3000,
+    });
   }
 
   subscribe(data: EventPageData): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
     if (!this.isAuthenticated()) {
       void this.authService.login();
       return;
@@ -123,6 +112,7 @@ export class Event {
     }
 
     this.isSubscribing.set(true);
+
     this.api
       .subscribeToEvent(data.event.id)
       .pipe(
@@ -139,6 +129,10 @@ export class Event {
   }
 
   confirmAttendance(data: EventPageData): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
     if (!this.isAuthenticated()) {
       void this.authService.login();
       return;
@@ -155,13 +149,21 @@ export class Event {
     });
   }
 
+  copyId(id: string): void {
+    if (!this.isBrowser || !navigator.clipboard) {
+      return;
+    }
+
+    void navigator.clipboard.writeText(id);
+
+    this.snackBar.open('ID do evento copiado para a área de transferência.', 'OK', { duration: 3000 });
+  }
+
   canSubscribe(data: EventPageData): boolean {
     const now = Date.now();
     const event = data.event;
-    const subscriptionStart =
-      event.subscriptionStartDate ?? event.majorEvent?.subscriptionStartDate;
-    const subscriptionEnd =
-      event.subscriptionEndDate ?? event.majorEvent?.subscriptionEndDate;
+    const subscriptionStart = event.subscriptionStartDate ?? event.majorEvent?.subscriptionStartDate;
+    const subscriptionEnd = event.subscriptionEndDate ?? event.majorEvent?.subscriptionEndDate;
 
     return (
       Boolean(event.allowSubscription) &&
@@ -186,9 +188,7 @@ export class Event {
   }
 
   creditLine(event: PublicEvent): string | null {
-    return event.creditMinutes
-      ? formatCreditMinutes(event.creditMinutes)
-      : null;
+    return event.creditMinutes ? formatCreditMinutes(event.creditMinutes) : null;
   }
 
   subscriptionStatusLine(data: EventPageData): string {
@@ -209,6 +209,7 @@ export class Event {
 
   slotsLine(data: EventPageData): string | null {
     const availableSlots = data.subscriptionSummary.availableSlots;
+
     if (availableSlots == null) {
       return null;
     }
@@ -226,9 +227,7 @@ export class Event {
 
   private createEventState(): Observable<EventPageState> {
     return combineLatest([
-      this.route.paramMap.pipe(
-        map((params) => params.get('eventId') ?? params.get('eventID') ?? ''),
-      ),
+      this.route.paramMap.pipe(map((params) => params.get('eventId') ?? params.get('eventID') ?? '')),
       toObservable(this.isAuthenticated),
       toObservable(this.reloadCounter),
     ]).pipe(
@@ -251,10 +250,7 @@ export class Event {
           catchError((error: unknown) =>
             of({
               status: 'error',
-              message:
-                error instanceof Error
-                  ? error.message
-                  : 'Não foi possível carregar o evento.',
+              message: error instanceof Error ? error.message : 'Não foi possível carregar o evento.',
             } satisfies EventPageState),
           ),
         );
@@ -267,23 +263,6 @@ export class Event {
   }
 
   private showError(error: unknown): void {
-    this.snackBar.open(
-      error instanceof Error ? error.message : 'Não foi possível concluir.',
-      'OK',
-      { duration: 5000 },
-    );
-  }
-
-  public copyId(id: string): void {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(id);
-      this.snackBar.open(
-        'ID do evento copiado para a área de transferência.',
-        'OK',
-        {
-          duration: 3000,
-        },
-      );
-    }
+    this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível concluir.', 'OK', { duration: 5000 });
   }
 }

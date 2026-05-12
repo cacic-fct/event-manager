@@ -1,25 +1,12 @@
 import { DatePipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import type {
-  Certificate,
-  CertificateTarget,
-} from '@cacic-eventos/shared-utils';
+import type { Certificate, CertificateTarget } from '@cacic-fct/shared-utils';
 import { catchError, finalize, map, of, startWith } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { AttendancesApiService } from '../attendances-api.service';
@@ -40,14 +27,7 @@ type CertificateDialogState =
   templateUrl: './certificate-dialog.html',
   styleUrl: './certificate-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    DatePipe,
-    MatButtonModule,
-    MatDialogModule,
-    MatIconModule,
-    MatListModule,
-    MatProgressSpinnerModule,
-  ],
+  imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule, MatListModule, MatProgressSpinnerModule],
 })
 export class CertificateDialog {
   private readonly api = inject(AttendancesApiService);
@@ -73,10 +53,7 @@ export class CertificateDialog {
       catchError((error: unknown) =>
         of({
           status: 'error',
-          message:
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível carregar os certificados.',
+          message: error instanceof Error ? error.message : 'Não foi possível carregar os certificados.',
         } satisfies CertificateDialogState),
       ),
     ),
@@ -99,11 +76,7 @@ export class CertificateDialog {
           this.fileDownload.save(download);
         },
         error: (error: unknown) => {
-          this.downloadError.set(
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível baixar o certificado.',
-          );
+          this.downloadError.set(error instanceof Error ? error.message : 'Não foi possível baixar o certificado.');
         },
       });
   }
@@ -111,15 +84,9 @@ export class CertificateDialog {
   mailto(): void {
     const currentState = this.state();
     const certificateIds =
-      currentState.status === 'ready'
-        ? currentState.certificates.map((certificate) => certificate.id)
-        : [];
-    const targetIds = this.data.targets.map(
-      (target) => `${target.scope}:${target.targetId}`,
-    );
-    const httpError =
-      this.downloadError() ??
-      (currentState.status === 'error' ? currentState.message : null);
+      currentState.status === 'ready' ? currentState.certificates.map((certificate) => certificate.id) : [];
+    const targetIds = this.data.targets.map((target) => `${target.scope}:${target.targetId}`);
+    const httpError = this.downloadError() ?? (currentState.status === 'error' ? currentState.message : null);
 
     this.mailtoService.open({
       to: 'fct-app@googlegroups.com',

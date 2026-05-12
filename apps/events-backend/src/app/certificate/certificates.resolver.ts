@@ -84,12 +84,7 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.configsService.listTemplates(
-      query,
-      includeInactive,
-      skip,
-      take,
-    );
+    return this.configsService.listTemplates(query, includeInactive, skip, take);
   }
 
   @Query(() => [CertificateConfig], { name: 'certificateConfigs' })
@@ -102,13 +97,7 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.configsService.listConfigsByTarget(
-      scope,
-      targetId,
-      includeInactive ?? true,
-      skip,
-      take,
-    );
+    return this.configsService.listConfigsByTarget(scope, targetId, includeInactive ?? true, skip, take);
   }
 
   @Query(() => [Certificate], { name: 'certificates' })
@@ -120,20 +109,12 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.issuingService.listCertificatesByTarget(
-      scope,
-      targetId,
-      configId,
-      skip,
-      take,
-    );
+    return this.issuingService.listCertificatesByTarget(scope, targetId, configId, skip, take);
   }
 
   @Query(() => CertificateDownload, { name: 'downloadCertificate' })
   @RequireScopes('certificate#read')
-  downloadCertificate(
-    @Args('certificateId', { type: () => String }) certificateId: string,
-  ) {
+  downloadCertificate(@Args('certificateId', { type: () => String }) certificateId: string) {
     return this.downloadService.downloadCertificate(certificateId);
   }
 
@@ -150,9 +131,7 @@ export class CertificatesResolver {
     name: 'publicCertificateValidation',
     nullable: true,
   })
-  publicCertificateValidation(
-    @Args('certificateId', { type: () => String }) certificateId: string,
-  ) {
+  publicCertificateValidation(@Args('certificateId', { type: () => String }) certificateId: string) {
     return this.publicValidationService.validateCertificate(certificateId);
   }
 
@@ -166,9 +145,7 @@ export class CertificatesResolver {
     },
   })
   @Query(() => CertificateDownload, { name: 'downloadPublicCertificate' })
-  downloadPublicCertificate(
-    @Args('certificateId', { type: () => String }) certificateId: string,
-  ) {
+  downloadPublicCertificate(@Args('certificateId', { type: () => String }) certificateId: string) {
     return this.downloadService.downloadCertificate(certificateId);
   }
 
@@ -204,11 +181,7 @@ export class CertificatesResolver {
     @Args('personId', { type: () => String }) personId: string,
     @Context() context: GraphqlContext,
   ) {
-    return this.issuingService.issueForPerson(
-      configId,
-      personId,
-      this.getIssuedById(context),
-    );
+    return this.issuingService.issueForPerson(configId, personId, this.getIssuedById(context));
   }
 
   @Mutation(() => [Certificate], { name: 'issueMissedCertificates' })
@@ -217,10 +190,7 @@ export class CertificatesResolver {
     @Args('configId', { type: () => String }) configId: string,
     @Context() context: GraphqlContext,
   ) {
-    return this.issuingService.issueMissedCertificates(
-      configId,
-      this.getIssuedById(context),
-    );
+    return this.issuingService.issueMissedCertificates(configId, this.getIssuedById(context));
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteCertificate' })

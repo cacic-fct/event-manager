@@ -56,10 +56,7 @@ export class RealtimeEventsService {
   }
 
   private addMajorEvent(majorEventId: string): void {
-    this.watchedMajorEventIds.set(
-      majorEventId,
-      (this.watchedMajorEventIds.get(majorEventId) ?? 0) + 1,
-    );
+    this.watchedMajorEventIds.set(majorEventId, (this.watchedMajorEventIds.get(majorEventId) ?? 0) + 1);
     this.reconnect();
   }
 

@@ -8,14 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-login-page',
-  imports: [
-    MatButtonModule,
-    MatCardModule,
-    ValuePropositionComponent,
-    CacicLogoComponent,
-    MatIconModule,
-    RouterLink,
-  ],
+  imports: [MatButtonModule, MatCardModule, ValuePropositionComponent, CacicLogoComponent, MatIconModule, RouterLink],
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.scss'],
 })

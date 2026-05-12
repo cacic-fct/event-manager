@@ -19,14 +19,11 @@
         type="button"
         aria-label="Baixar certificado"
         [disabled]="downloadingCertificateId() === certificate.id"
-        (click)="download(certificate)"
-      >
+        (click)="download(certificate)">
         <mat-icon>download</mat-icon>
       </button>
       <div matListItemTitle>{{ certificate.config.name }}</div>
-      <div matListItemLine>
-        Emitido em {{ certificate.issuedAt | date: 'dd/MM/yyyy, HH:mm' }}
-      </div>
+      <div matListItemLine>Emitido em {{ certificate.issuedAt | date: 'dd/MM/yyyy, HH:mm' }}</div>
     </mat-list-item>
     }
   </mat-list>

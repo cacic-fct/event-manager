@@ -1,9 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type {
-  CurrentUserEventAttendance,
-  PublicEvent,
-} from '@cacic-eventos/shared-utils';
+import type { CurrentUserEventAttendance, PublicEvent } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
 
 interface GraphqlResponse<TData> {
@@ -107,10 +104,7 @@ export class OnlineAttendanceApiService {
     ).pipe(map((data) => data.currentUserPendingOnlineAttendanceEvents));
   }
 
-  confirmAttendance(
-    eventId: string,
-    code: string,
-  ): Observable<CurrentUserEventAttendance> {
+  confirmAttendance(eventId: string, code: string): Observable<CurrentUserEventAttendance> {
     return this.query<{
       confirmCurrentUserOnlineAttendance: CurrentUserEventAttendance;
     }>(
@@ -127,27 +121,20 @@ export class OnlineAttendanceApiService {
     ).pipe(map((data) => data.confirmCurrentUserOnlineAttendance));
   }
 
-  private query<TData>(
-    query: string,
-    variables?: Record<string, string>,
-  ): Observable<TData> {
-    return this.http
-      .post<GraphqlResponse<TData>>('/api/graphql', { query, variables })
-      .pipe(
-        map((response) => {
-          if (response.errors?.length) {
-            throw new Error(
-              response.errors.map((error) => error.message).join('\n'),
-            );
-          }
+  private query<TData>(query: string, variables?: Record<string, string>): Observable<TData> {
+    return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
+      map((response) => {
+        if (response.errors?.length) {
+          throw new Error(response.errors.map((error) => error.message).join('\n'));
+        }
 
-          if (!response.data) {
-            throw new Error('Resposta GraphQL sem dados.');
-          }
+        if (!response.data) {
+          throw new Error('Resposta GraphQL sem dados.');
+        }
 
-          return response.data;
-        }),
-      );
+        return response.data;
+      }),
+    );
   }
 }
 

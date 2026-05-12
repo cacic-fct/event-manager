@@ -1,9 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -14,16 +9,9 @@ import { WorkspaceMajorEventSubscriptionsSubtabComponent } from './workspace-maj
 @Component({
   selector: 'app-workspace-subscriptions-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    MatTabsModule,
-    WorkspaceEventSubscriptionsSubtabComponent,
-    WorkspaceMajorEventSubscriptionsSubtabComponent,
-  ],
+  imports: [MatTabsModule, WorkspaceEventSubscriptionsSubtabComponent, WorkspaceMajorEventSubscriptionsSubtabComponent],
   templateUrl: './workspace-subscriptions-tab.component.html',
-  styleUrls: [
-    '../workspace-tab.shared.scss',
-    './workspace-subscription-subtabs.shared.scss',
-  ],
+  styleUrls: ['../workspace-tab.shared.scss', './workspace-subscription-subtabs.shared.scss'],
 })
 export class WorkspaceSubscriptionsTabComponent {
   private readonly route = inject(ActivatedRoute);
@@ -60,12 +48,7 @@ export class WorkspaceSubscriptionsTabComponent {
       return;
     }
 
-    const majorEventId =
-      this.workspace.majorEventForm.controls.majorEventId.value;
-    void this.router.navigate(
-      majorEventId
-        ? ['/subscriptions/major-event', majorEventId]
-        : ['/subscriptions'],
-    );
+    const majorEventId = this.workspace.majorEventForm.controls.majorEventId.value;
+    void this.router.navigate(majorEventId ? ['/subscriptions/major-event', majorEventId] : ['/subscriptions']);
   }
 }

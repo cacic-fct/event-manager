@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,17 +9,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import {
-  addDays,
-  isAfter,
-  isBefore,
-  startOfDay,
-  startOfWeek,
-  subDays,
-  subMonths,
-} from 'date-fns';
 import type { PublicEvent } from '@cacic-fct/shared-utils';
 import { getEventTypeLabel } from '@cacic-fct/shared-utils';
+import { addDays, isAfter, isBefore, startOfDay, startOfWeek, subDays, subMonths } from 'date-fns';
 import {
   Observable,
   catchError,
@@ -37,10 +23,7 @@ import {
   startWith,
   switchMap,
 } from 'rxjs';
-import {
-  CalendarApiService,
-  CalendarEventTypeFilter,
-} from './calendar-api.service';
+import { CalendarApiService, CalendarEventTypeFilter } from './calendar-api.service';
 import { CalendarListView } from './calendar-list-view';
 import { CalendarWeekDay, CalendarWeekView } from './calendar-week-view';
 
@@ -87,9 +70,7 @@ export class Calendar {
 
   readonly viewMode = signal<CalendarViewMode>('list');
   readonly listStartDate = signal(this.todayDate);
-  readonly weekBaseDate = signal(
-    startOfWeek(this.todayDate, { weekStartsOn: 0 }),
-  );
+  readonly weekBaseDate = signal(startOfWeek(this.todayDate, { weekStartsOn: 0 }));
   readonly selectedDate = signal(this.todayDate);
 
   readonly eventTypeOptions: Array<{
@@ -112,15 +93,10 @@ export class Calendar {
     }));
   });
 
-  readonly canLoadOlder = computed(() =>
-    isAfter(this.listStartDate(), this.minimumDate),
-  );
+  readonly canLoadOlder = computed(() => isAfter(this.listStartDate(), this.minimumDate));
 
   readonly canGoPreviousWeek = computed(() =>
-    isAfter(
-      this.weekBaseDate(),
-      startOfWeek(this.minimumDate, { weekStartsOn: 0 }),
-    ),
+    isAfter(this.weekBaseDate(), startOfWeek(this.minimumDate, { weekStartsOn: 0 })),
   );
 
   readonly calendarState = toSignal(this.createCalendarState(), {
@@ -139,9 +115,7 @@ export class Calendar {
     }
 
     const nextDate = subDays(this.listStartDate(), 7);
-    this.listStartDate.set(
-      isBefore(nextDate, this.minimumDate) ? this.minimumDate : nextDate,
-    );
+    this.listStartDate.set(isBefore(nextDate, this.minimumDate) ? this.minimumDate : nextDate);
   }
 
   previousWeek(): void {
@@ -172,10 +146,7 @@ export class Calendar {
   }
 
   private createCalendarState(): Observable<CalendarState> {
-    return combineLatest([
-      this.filterChanges(),
-      toObservable(this.listStartDate),
-    ]).pipe(
+    return combineLatest([this.filterChanges(), toObservable(this.listStartDate)]).pipe(
       switchMap(([filters, startDate]) =>
         this.api
           .getCalendarEvents({
@@ -195,10 +166,7 @@ export class Calendar {
             catchError((error: unknown) =>
               of({
                 status: 'error',
-                message:
-                  error instanceof Error
-                    ? error.message
-                    : 'Não foi possível carregar o calendário.',
+                message: error instanceof Error ? error.message : 'Não foi possível carregar o calendário.',
               } satisfies CalendarState),
             ),
           ),
@@ -209,24 +177,17 @@ export class Calendar {
   private filterChanges(): Observable<CalendarFilterValue> {
     return combineLatest([
       this.queryControl.valueChanges.pipe(startWith(this.queryControl.value)),
-      this.eventTypeControl.valueChanges.pipe(
-        startWith(this.eventTypeControl.value),
-      ),
+      this.eventTypeControl.valueChanges.pipe(startWith(this.eventTypeControl.value)),
     ]).pipe(
       debounceTime(250),
       map(([query, eventType]) => ({ query, eventType })),
-      distinctUntilChanged(
-        (left, right) =>
-          left.query === right.query && left.eventType === right.eventType,
-      ),
+      distinctUntilChanged((left, right) => left.query === right.query && left.eventType === right.eventType),
     );
   }
 
   private ensureListIncludes(date: Date): void {
     if (isBefore(date, this.listStartDate())) {
-      this.listStartDate.set(
-        isBefore(date, this.minimumDate) ? this.minimumDate : startOfDay(date),
-      );
+      this.listStartDate.set(isBefore(date, this.minimumDate) ? this.minimumDate : startOfDay(date));
     }
   }
 }

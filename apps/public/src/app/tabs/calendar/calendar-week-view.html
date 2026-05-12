@@ -5,24 +5,13 @@
       type="button"
       [disabled]="!canGoPrevious()"
       (click)="previousWeek.emit()"
-      aria-label="Semana anterior"
-    >
+      aria-label="Semana anterior">
       <mat-icon>chevron_left</mat-icon>
     </button>
-    <button
-      mat-icon-button
-      type="button"
-      (click)="today.emit()"
-      aria-label="Ir para hoje"
-    >
+    <button mat-icon-button type="button" (click)="today.emit()" aria-label="Ir para hoje">
       <mat-icon>today</mat-icon>
     </button>
-    <button
-      mat-icon-button
-      type="button"
-      (click)="nextWeek.emit()"
-      aria-label="Próxima semana"
-    >
+    <button mat-icon-button type="button" (click)="nextWeek.emit()" aria-label="Próxima semana">
       <mat-icon>chevron_right</mat-icon>
     </button>
   </div>
@@ -41,8 +30,7 @@
           class="hcal-header-date"
           [class.active]="(day.date | date: 'yyyy-MM-dd') === (selectedDate() | date: 'yyyy-MM-dd')"
           (click)="selectDate.emit(day.date)"
-          [attr.aria-label]="day.date | date: 'fullDate'"
-        >
+          [attr.aria-label]="day.date | date: 'fullDate'">
           {{ day.date | date: 'd' }}
         </button>
         }

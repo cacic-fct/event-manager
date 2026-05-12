@@ -1,9 +1,5 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AttendanceCategory, Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -78,9 +74,7 @@ export class CertificateEligibilityService {
       return this.resolveMajorEventRecipients(config.majorEventId, personId);
     }
 
-    throw new BadRequestException(
-      `Unsupported certificate scope ${config.scope}.`,
-    );
+    throw new BadRequestException(`Unsupported certificate scope ${config.scope}.`);
   }
 
   private async resolveManualRecipient(
@@ -136,13 +130,8 @@ export class CertificateEligibilityService {
       },
     });
 
-    const recipientsByPerson = new Map<
-      string,
-      { person: PersonRecord; events: EventRecord[] }
-    >();
-    const lecturerEventCategory = this.parseLecturerEventCategory(
-      config.certificateFields,
-    );
+    const recipientsByPerson = new Map<string, { person: PersonRecord; events: EventRecord[] }>();
+    const lecturerEventCategory = this.parseLecturerEventCategory(config.certificateFields);
     for (const lecturer of lecturers) {
       const event = eventById.get(lecturer.eventId);
       if (!event || !this.matchesLecturerCategory(lecturerEventCategory, event)) {
@@ -164,10 +153,7 @@ export class CertificateEligibilityService {
     return [...recipientsByPerson.values()];
   }
 
-  private matchesLecturerCategory(
-    category: LecturerEventCategory | null,
-    event: EventRecord,
-  ): boolean {
+  private matchesLecturerCategory(category: LecturerEventCategory | null, event: EventRecord): boolean {
     if (!category) {
       return true;
     }
@@ -180,40 +166,26 @@ export class CertificateEligibilityService {
       return event.type === EventType.MINICURSO;
     }
 
-    return (
-      event.type !== EventType.PALESTRA && event.type !== EventType.MINICURSO
-    );
+    return event.type !== EventType.PALESTRA && event.type !== EventType.MINICURSO;
   }
 
-  private parseLecturerEventCategory(
-    certificateFields: Prisma.JsonValue | null,
-  ): LecturerEventCategory | null {
-    if (
-      !certificateFields ||
-      typeof certificateFields !== 'object' ||
-      Array.isArray(certificateFields)
-    ) {
+  private parseLecturerEventCategory(certificateFields: Prisma.JsonValue | null): LecturerEventCategory | null {
+    if (!certificateFields || typeof certificateFields !== 'object' || Array.isArray(certificateFields)) {
       return null;
     }
 
     const value = certificateFields[LECTURER_EVENT_CATEGORY_FIELD];
-    return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER'
-      ? value
-      : null;
+    return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER' ? value : null;
   }
 
-  private async resolveTargetEvents(
-    config: CertificateConfigRecord,
-  ): Promise<EventRecord[]> {
+  private async resolveTargetEvents(config: CertificateConfigRecord): Promise<EventRecord[]> {
     if (config.scope === CertificateScope.EVENT) {
       return config.event ? [config.event] : [];
     }
 
     if (config.scope === CertificateScope.EVENT_GROUP) {
       if (!config.eventGroupId) {
-        throw new BadRequestException(
-          'Event-group config must define eventGroupId.',
-        );
+        throw new BadRequestException('Event-group config must define eventGroupId.');
       }
 
       return this.prisma.event.findMany({
@@ -232,9 +204,7 @@ export class CertificateEligibilityService {
 
     if (config.scope === CertificateScope.MAJOR_EVENT) {
       if (!config.majorEventId) {
-        throw new BadRequestException(
-          'Major-event config must define majorEventId.',
-        );
+        throw new BadRequestException('Major-event config must define majorEventId.');
       }
 
       return this.prisma.event.findMany({
@@ -250,9 +220,7 @@ export class CertificateEligibilityService {
       });
     }
 
-    throw new BadRequestException(
-      `Unsupported certificate scope ${config.scope}.`,
-    );
+    throw new BadRequestException(`Unsupported certificate scope ${config.scope}.`);
   }
 
   private async resolveEventRecipients(
@@ -285,9 +253,7 @@ export class CertificateEligibilityService {
     });
 
     if (!event) {
-      throw new BadRequestException(
-        `Event ${eventId} is not eligible for individual certificates.`,
-      );
+      throw new BadRequestException(`Event ${eventId} is not eligible for individual certificates.`);
     }
 
     const attendances = await this.prisma.eventAttendance.findMany({
@@ -308,9 +274,7 @@ export class CertificateEligibilityService {
     });
 
     return attendances
-      .filter((attendance) =>
-        this.canIssueForEventAttendance(attendance.category, event),
-      )
+      .filter((attendance) => this.canIssueForEventAttendance(attendance.category, event))
       .map((attendance) => ({
         person: attendance.person,
         events: [event],
@@ -322,9 +286,7 @@ export class CertificateEligibilityService {
     personId?: string,
   ): Promise<EligibleCertificateRecipient[]> {
     if (!eventGroupId) {
-      throw new BadRequestException(
-        'Event-group config must define eventGroupId.',
-      );
+      throw new BadRequestException('Event-group config must define eventGroupId.');
     }
 
     const eventGroup = await this.prisma.eventGroup.findFirst({
@@ -386,16 +348,10 @@ export class CertificateEligibilityService {
       },
     });
 
-    const attendanceByPerson = new Map<
-      string,
-      { person: PersonRecord; eventIds: Set<string> }
-    >();
+    const attendanceByPerson = new Map<string, { person: PersonRecord; eventIds: Set<string> }>();
     for (const attendance of attendances) {
       const event = eventById.get(attendance.eventId);
-      if (
-        !event ||
-        !this.canIssueForGroupedEventAttendance(attendance.category, event)
-      ) {
+      if (!event || !this.canIssueForGroupedEventAttendance(attendance.category, event)) {
         continue;
       }
 
@@ -413,10 +369,7 @@ export class CertificateEligibilityService {
 
     const recipients: EligibleCertificateRecipient[] = [];
     for (const { person, eventIds } of attendanceByPerson.values()) {
-      if (
-        !eventGroup.shouldIssuePartialCertificate &&
-        eventIds.size < groupEventCount
-      ) {
+      if (!eventGroup.shouldIssuePartialCertificate && eventIds.size < groupEventCount) {
         continue;
       }
 
@@ -445,9 +398,7 @@ export class CertificateEligibilityService {
     personId?: string,
   ): Promise<EligibleCertificateRecipient[]> {
     if (!majorEventId) {
-      throw new BadRequestException(
-        'Major-event config must define majorEventId.',
-      );
+      throw new BadRequestException('Major-event config must define majorEventId.');
     }
 
     const majorEvent = await this.prisma.majorEvent.findFirst({
@@ -465,8 +416,7 @@ export class CertificateEligibilityService {
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId: majorEvent.id,
-        ...(majorEvent.isPaymentRequired ||
-        !majorEvent.shouldIssueCertificateForNonPayingAttendees
+        ...(majorEvent.isPaymentRequired || !majorEvent.shouldIssueCertificateForNonPayingAttendees
           ? { subscriptionStatus: SubscriptionStatus.CONFIRMED }
           : {}),
         deletedAt: null,
@@ -479,13 +429,9 @@ export class CertificateEligibilityService {
     });
 
     const includeAttendanceWithoutMajorEventSubscription =
-      !majorEvent.isPaymentRequired &&
-      majorEvent.shouldIssueCertificateForNonPayingAttendees;
+      !majorEvent.isPaymentRequired && majorEvent.shouldIssueCertificateForNonPayingAttendees;
 
-    if (
-      subscriptions.length === 0 &&
-      !includeAttendanceWithoutMajorEventSubscription
-    ) {
+    if (subscriptions.length === 0 && !includeAttendanceWithoutMajorEventSubscription) {
       return [];
     }
 
@@ -517,9 +463,7 @@ export class CertificateEligibilityService {
     }
 
     const issuableEventIds = issuableEvents.map((event) => event.id);
-    const issuableEventById = new Map(
-      issuableEvents.map((event) => [event.id, event]),
-    );
+    const issuableEventById = new Map(issuableEvents.map((event) => [event.id, event]));
     const groupedIssuableEvents = this.groupMajorEventEvents(issuableEvents);
     const attendancesByPerson = await this.prisma.eventAttendance.findMany({
       where: {
@@ -554,29 +498,16 @@ export class CertificateEligibilityService {
       },
     });
 
-    const peopleByPersonId = new Map(
-      subscriptions.map((subscription) => [
-        subscription.personId,
-        subscription.person,
-      ]),
-    );
+    const peopleByPersonId = new Map(subscriptions.map((subscription) => [subscription.personId, subscription.person]));
     const attendedEventIdsByPersonId = new Map<string, Set<string>>();
     for (const attendance of attendancesByPerson) {
       const event = issuableEventById.get(attendance.eventId);
-      if (
-        !event ||
-        !this.canIssueForMajorEventAttendance(
-          attendance.category,
-          event,
-          majorEvent,
-        )
-      ) {
+      if (!event || !this.canIssueForMajorEventAttendance(attendance.category, event, majorEvent)) {
         continue;
       }
 
       peopleByPersonId.set(attendance.personId, attendance.person);
-      const current =
-        attendedEventIdsByPersonId.get(attendance.personId) ?? new Set();
+      const current = attendedEventIdsByPersonId.get(attendance.personId) ?? new Set();
       current.add(attendance.eventId);
       attendedEventIdsByPersonId.set(attendance.personId, current);
     }
@@ -605,9 +536,7 @@ export class CertificateEligibilityService {
     });
   }
 
-  private groupMajorEventEvents(
-    events: EventRecord[],
-  ): Map<string, EventRecord[]> {
+  private groupMajorEventEvents(events: EventRecord[]): Map<string, EventRecord[]> {
     const groupedEvents = new Map<string, EventRecord[]>();
     for (const event of events) {
       if (!event.eventGroupId) {
@@ -629,9 +558,7 @@ export class CertificateEligibilityService {
   ): EventRecord[] {
     const completedEventGroupIds = new Set(
       [...groupedIssuableEvents.entries()]
-        .filter(([, events]) =>
-          events.every((event) => attendedEventIds.has(event.id)),
-        )
+        .filter(([, events]) => events.every((event) => attendedEventIds.has(event.id)))
         .map(([eventGroupId]) => eventGroupId),
     );
 
@@ -659,10 +586,7 @@ export class CertificateEligibilityService {
       });
   }
 
-  private canIssueForGroupedEventAttendance(
-    category: AttendanceCategory,
-    event: EventRecord,
-  ): boolean {
+  private canIssueForGroupedEventAttendance(category: AttendanceCategory, event: EventRecord): boolean {
     return this.canIssueForEventAttendance(category, event);
   }
 
@@ -676,17 +600,12 @@ export class CertificateEligibilityService {
   ): boolean {
     return this.canIssueForAttendanceCategory(
       category,
-      majorEvent.shouldIssueCertificateForNonPayingAttendees &&
-        this.canIssueForNonPayingEventAttendance(event),
-      majorEvent.shouldIssueCertificateForNonSubscribedAttendees &&
-        this.canIssueForNonSubscribedEventAttendance(event),
+      majorEvent.shouldIssueCertificateForNonPayingAttendees && this.canIssueForNonPayingEventAttendance(event),
+      majorEvent.shouldIssueCertificateForNonSubscribedAttendees && this.canIssueForNonSubscribedEventAttendance(event),
     );
   }
 
-  private canIssueForEventAttendance(
-    category: AttendanceCategory,
-    event: EventRecord,
-  ): boolean {
+  private canIssueForEventAttendance(category: AttendanceCategory, event: EventRecord): boolean {
     return this.canIssueForAttendanceCategory(
       category,
       this.canIssueForNonPayingEventAttendance(event),
@@ -696,9 +615,7 @@ export class CertificateEligibilityService {
 
   private canIssueForNonPayingEventAttendance(event: EventRecord): boolean {
     if (event.eventGroupId) {
-      return Boolean(
-        event.eventGroup?.shouldIssueCertificateForNonPayingAttendees,
-      );
+      return Boolean(event.eventGroup?.shouldIssueCertificateForNonPayingAttendees);
     }
 
     return event.shouldIssueCertificateForNonPayingAttendees;
@@ -706,9 +623,7 @@ export class CertificateEligibilityService {
 
   private canIssueForNonSubscribedEventAttendance(event: EventRecord): boolean {
     if (event.eventGroupId) {
-      return Boolean(
-        event.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees,
-      );
+      return Boolean(event.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees);
     }
 
     return event.shouldIssueCertificateForNonSubscribedAttendees;
@@ -719,10 +634,7 @@ export class CertificateEligibilityService {
     allowNonPaying: boolean,
     allowNonSubscribed: boolean,
   ): boolean {
-    if (
-      category === AttendanceCategory.REGULAR ||
-      category === AttendanceCategory.UNKNOWN
-    ) {
+    if (category === AttendanceCategory.REGULAR || category === AttendanceCategory.UNKNOWN) {
       return true;
     }
 

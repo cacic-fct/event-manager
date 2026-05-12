@@ -13,14 +13,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 @Component({
   selector: 'app-workspace-people-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    MatListModule,
-  ],
+  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatListModule],
   templateUrl: './workspace-people-tab.component.html',
   styleUrl: '../workspace-tab.shared.scss',
 })

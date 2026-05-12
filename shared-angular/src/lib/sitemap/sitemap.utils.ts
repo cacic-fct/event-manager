@@ -8,13 +8,7 @@ export function collectPaths(routes: readonly RoutePathTreeNode[]): string[] {
 
   for (const route of routes) {
     if (route.path !== undefined && route.path !== '**') {
-      paths.push(
-        route.path === ''
-          ? '/'
-          : route.path.startsWith('/')
-            ? route.path
-            : `/${route.path}`,
-      );
+      paths.push(route.path === '' ? '/' : route.path.startsWith('/') ? route.path : `/${route.path}`);
     }
 
     if (Array.isArray(route.children)) {

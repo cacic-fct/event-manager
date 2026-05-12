@@ -1,18 +1,8 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { AsyncPipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import {
-  NavigationEnd,
-  Router,
-  RouterLink,
-  RouterOutlet,
-} from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -60,9 +50,7 @@ export class WorkspaceLayoutComponent {
   protected readonly navItems = workspaceNavItems;
 
   protected readonly isMobile = toSignal(
-    this.breakpointObserver
-      .observe('(max-width: 768px)')
-      .pipe(map((result) => result.matches)),
+    this.breakpointObserver.observe('(max-width: 768px)').pipe(map((result) => result.matches)),
     { initialValue: false },
   );
 
@@ -78,10 +66,7 @@ export class WorkspaceLayoutComponent {
   protected readonly activeNavItem = computed(() => {
     const url = this.currentUrl().split('?')[0].split('#')[0];
 
-    return (
-      this.navItems.find((item) => url.includes(`/${item.path}`)) ??
-      this.navItems[0]
-    );
+    return this.navItems.find((item) => url.includes(`/${item.path}`)) ?? this.navItems[0];
   });
 
   constructor() {

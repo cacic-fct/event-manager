@@ -1,11 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import {
-  PUBLIC_EVENT_GROUP_SELECT,
-  PUBLIC_EVENT_SELECT,
-  PUBLIC_MAJOR_EVENT_SELECT,
-} from '../public-events/models';
+import { PUBLIC_EVENT_GROUP_SELECT, PUBLIC_EVENT_SELECT, PUBLIC_MAJOR_EVENT_SELECT } from '../public-events/models';
 
 export const USER_SELECT = {
   id: true,
@@ -209,14 +205,12 @@ export type PublicEventGroupRecord = Prisma.EventGroupGetPayload<{
 export type PublicMajorEventRecord = Prisma.MajorEventGetPayload<{
   select: typeof PUBLIC_MAJOR_EVENT_SELECT;
 }>;
-export type EventGroupSubscriptionRecord =
-  Prisma.EventGroupSubscriptionGetPayload<{
-    select: typeof CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT;
-  }>;
-export type SubscriptionFeedSingleEventRecord =
-  Prisma.EventSubscriptionGetPayload<{
-    select: typeof CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT;
-  }>;
+export type EventGroupSubscriptionRecord = Prisma.EventGroupSubscriptionGetPayload<{
+  select: typeof CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT;
+}>;
+export type SubscriptionFeedSingleEventRecord = Prisma.EventSubscriptionGetPayload<{
+  select: typeof CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT;
+}>;
 
 export type TransactionClient = Prisma.TransactionClient;
 

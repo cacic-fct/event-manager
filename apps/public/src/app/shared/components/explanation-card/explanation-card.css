@@ -1,0 +1,34 @@
+.explanation-card {
+  padding: 1rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.explanation-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+}
+
+.explanation-icon {
+  width: 48px;
+  height: 48px;
+  font-size: 48px;
+  margin-bottom: 0.5rem;
+}
+
+.explanation-title {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+mat-card-content {
+  padding-top: 0;
+}
+
+p {
+  margin-top: 0;
+}

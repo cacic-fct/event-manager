@@ -31,9 +31,7 @@ export class MergeCandidatesResolver {
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
     const where: Prisma.MergeCandidateWhereInput =
-      status === 'PENDING'
-        ? actionablePendingMergeCandidateWhere
-        : { ...(status ? { status } : {}) };
+      status === 'PENDING' ? actionablePendingMergeCandidateWhere : { ...(status ? { status } : {}) };
 
     return this.prisma.mergeCandidate.findMany({
       where,
@@ -96,11 +94,7 @@ export class MergeCandidatesResolver {
     };
     if (input.status === 'PENDING') {
       data.resolvedById = null;
-    } else if (
-      input.status === 'MERGED' ||
-      input.status === 'REJECTED' ||
-      input.status === 'STALE'
-    ) {
+    } else if (input.status === 'MERGED' || input.status === 'REJECTED' || input.status === 'STALE') {
       data.resolvedById = actorId ?? undefined;
     }
 
@@ -128,9 +122,7 @@ export class MergeCandidatesResolver {
 
   @Mutation(() => Int, { name: 'scanMergeCandidates' })
   @RequireScopes('merge-candidate#edit')
-  scanMergeCandidates(
-    @Context() context: { req?: { user?: AuthenticatedUser } },
-  ) {
+  scanMergeCandidates(@Context() context: { req?: { user?: AuthenticatedUser } }) {
     return this.mergeOperations.scanMergeCandidates(this.getActorId(context));
   }
 
@@ -141,10 +133,7 @@ export class MergeCandidatesResolver {
     input: MergeCandidateMergeInput,
     @Context() context: { req?: { user?: AuthenticatedUser } },
   ) {
-    return this.mergeOperations.mergeCandidatePeople(
-      input,
-      this.getActorId(context),
-    );
+    return this.mergeOperations.mergeCandidatePeople(input, this.getActorId(context));
   }
 
   @Mutation(() => MergeCandidate, { name: 'undoMergeCandidatePeople' })
@@ -153,10 +142,7 @@ export class MergeCandidatesResolver {
     @Args('candidateId', { type: () => String }) candidateId: string,
     @Context() context: { req?: { user?: AuthenticatedUser } },
   ) {
-    return this.mergeOperations.undoMergeCandidatePeople(
-      candidateId,
-      this.getActorId(context),
-    );
+    return this.mergeOperations.undoMergeCandidatePeople(candidateId, this.getActorId(context));
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteMergeCandidate' })
@@ -178,9 +164,7 @@ export class MergeCandidatesResolver {
     };
   }
 
-  private getActorId(context: {
-    req?: { user?: AuthenticatedUser };
-  }): string | null {
+  private getActorId(context: { req?: { user?: AuthenticatedUser } }): string | null {
     const user = context.req?.user;
     return user?.sub ?? user?.email ?? user?.preferredUsername ?? null;
   }

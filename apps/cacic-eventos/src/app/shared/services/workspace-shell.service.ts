@@ -5,10 +5,7 @@ import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspaceMergeCandidatesService } from './workspace-merge-candidates.service';
 import { WorkspacePeopleService } from './workspace-people.service';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
-import {
-  WorkspacePermissionTab,
-  WorkspacePermissionsService,
-} from './workspace-permissions.service';
+import { WorkspacePermissionTab, WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspaceUiService } from './workspace-ui.service';
 
 @Injectable({
@@ -22,9 +19,7 @@ export class WorkspaceShellService {
   private readonly peopleService = inject(WorkspacePeopleService);
   private readonly certificatesService = inject(WorkspaceCertificatesService);
   private readonly permissions = inject(WorkspacePermissionsService);
-  private readonly mergeCandidatesService = inject(
-    WorkspaceMergeCandidatesService,
-  );
+  private readonly mergeCandidatesService = inject(WorkspaceMergeCandidatesService);
 
   readonly loading = this.ui.loading;
 

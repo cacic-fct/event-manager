@@ -1,10 +1,21 @@
-<button (click)="scanCode()">Abrir scanner</button>
+<mat-toolbar>
+  <a mat-icon-button routerLink="/dev-tools" aria-label="Voltar para o menu">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <span>Dev tools</span>
+</mat-toolbar>
+
+<button mat-button (click)="scanCode()">
+  <mat-icon>qr_code_scanner</mat-icon>
+  Abrir scanner
+</button>
 <h1>Resultado:</h1>
 {{ scannedCode() }}
 
+<hr />
 <h1>Tocar sons</h1>
-<button (click)="scannerSoundsService.valid()">Valid</button>
-<button (click)="scannerSoundsService.invalid()">Invalid</button>
-<button (click)="scannerSoundsService.duplicate()">Duplicate</button>
-<button (click)="scannerSoundsService.nonPaying()">Non-paying</button>
-<button (click)="scannerSoundsService.nonSubscribed()">Non-subscribed</button>
+<button mat-button (click)="scannerSoundsService.valid()">Valid</button>
+<button mat-button (click)="scannerSoundsService.invalid()">Invalid</button>
+<button mat-button (click)="scannerSoundsService.duplicate()">Duplicate</button>
+<button mat-button (click)="scannerSoundsService.nonPaying()">Non-paying</button>
+<button mat-button (click)="scannerSoundsService.nonSubscribed()">Non-subscribed</button>

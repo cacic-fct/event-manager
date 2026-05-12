@@ -6,15 +6,8 @@ import {
   CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
   CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT,
 } from '../selects';
-import {
-  CurrentUserEventParticipation,
-  CurrentUserSubscriptionFeed,
-  CurrentUserSubscriptionFeedItem,
-} from '../models';
-import {
-  PUBLIC_EVENT_GROUP_SELECT,
-  PublicEvent,
-} from '../../public-events/models';
+import { CurrentUserEventParticipation, CurrentUserSubscriptionFeed, CurrentUserSubscriptionFeedItem } from '../models';
+import { PUBLIC_EVENT_GROUP_SELECT, PublicEvent } from '../../public-events/models';
 
 @Injectable()
 export class CurrentUserSubscriptionFeedService {
@@ -23,9 +16,7 @@ export class CurrentUserSubscriptionFeedService {
     private readonly mapper: CurrentUserEventMapperService,
   ) {}
 
-  async getCurrentUserSubscriptionFeed(
-    personId: string,
-  ): Promise<CurrentUserSubscriptionFeed> {
+  async getCurrentUserSubscriptionFeed(personId: string): Promise<CurrentUserSubscriptionFeed> {
     const [
       singleEventSubscriptions,
       eventGroupSubscriptions,
@@ -95,8 +86,7 @@ export class CurrentUserSubscriptionFeedService {
         },
         select: {
           event: {
-            select:
-              CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT.event.select,
+            select: CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT.event.select,
           },
         },
         orderBy: {
@@ -122,9 +112,7 @@ export class CurrentUserSubscriptionFeedService {
           config: {
             select: {
               event: {
-                select:
-                  CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT.event
-                    .select,
+                select: CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT.event.select,
               },
             },
           },
@@ -184,12 +172,8 @@ export class CurrentUserSubscriptionFeedService {
       }),
     ]);
 
-    const subscribedEventIds = new Set(
-      singleEventSubscriptions.map((subscription) => subscription.eventId),
-    );
-    const lecturerEventIds = new Set(
-      lecturerEvents.map(({ event }) => event.id),
-    );
+    const subscribedEventIds = new Set(singleEventSubscriptions.map((subscription) => subscription.eventId));
+    const lecturerEventIds = new Set(lecturerEvents.map(({ event }) => event.id));
     const certificateEventsById = new Map<string, PublicEvent>();
     for (const certificate of certificateEvents) {
       const event = certificate.config.event;
@@ -204,23 +188,21 @@ export class CurrentUserSubscriptionFeedService {
         .filter((eventGroupId): eventGroupId is string => !!eventGroupId),
     );
 
-    const eventGroupDatesBySubscriptionId =
-      await this.getNonMajorEventGroupFeedDatesBySubscription(
-        personId,
-        eventGroupSubscriptions.map((subscription) => subscription.id),
-      );
+    const eventGroupDatesBySubscriptionId = await this.getNonMajorEventGroupFeedDatesBySubscription(
+      personId,
+      eventGroupSubscriptions.map((subscription) => subscription.id),
+    );
 
-    const items: CurrentUserSubscriptionFeedItem[] =
-      singleEventSubscriptions.map((subscription) =>
-        this.mapper.mapCurrentUserSubscriptionFeedSingleEventItem(
-          subscription,
-          this.buildParticipation(subscription.eventId, {
-            subscribedEventIds,
-            lecturerEventIds,
-            certificateEventIds,
-          }),
-        ),
-      );
+    const items: CurrentUserSubscriptionFeedItem[] = singleEventSubscriptions.map((subscription) =>
+      this.mapper.mapCurrentUserSubscriptionFeedSingleEventItem(
+        subscription,
+        this.buildParticipation(subscription.eventId, {
+          subscribedEventIds,
+          lecturerEventIds,
+          certificateEventIds,
+        }),
+      ),
+    );
 
     const eventsById = new Map<string, PublicEvent>();
     for (const { event } of lecturerEvents) {
@@ -254,28 +236,16 @@ export class CurrentUserSubscriptionFeedService {
       }
 
       items.push(
-        this.mapper.mapCurrentUserSubscriptionFeedEventGroupItem(
-          subscription,
-          date,
-          {
-            ...this.mapper.getSubscribedParticipation(),
-            hasIssuedCertificate: certificateEventGroupIds.has(
-              subscription.eventGroupId,
-            ),
-          },
-        ),
+        this.mapper.mapCurrentUserSubscriptionFeedEventGroupItem(subscription, date, {
+          ...this.mapper.getSubscribedParticipation(),
+          hasIssuedCertificate: certificateEventGroupIds.has(subscription.eventGroupId),
+        }),
       );
     }
 
-    const subscribedEventGroupIds = new Set(
-      eventGroupSubscriptions.map((subscription) => subscription.eventGroupId),
-    );
+    const subscribedEventGroupIds = new Set(eventGroupSubscriptions.map((subscription) => subscription.eventGroupId));
     for (const { config } of certificateEventGroups) {
-      if (
-        !config.eventGroupId ||
-        !config.eventGroup ||
-        subscribedEventGroupIds.has(config.eventGroupId)
-      ) {
+      if (!config.eventGroupId || !config.eventGroup || subscribedEventGroupIds.has(config.eventGroupId)) {
         continue;
       }
 
@@ -299,12 +269,7 @@ export class CurrentUserSubscriptionFeedService {
     }
 
     items.sort((first, second) =>
-      this.mapper.compareFeedDatesDescending(
-        first.date,
-        first.createdAt,
-        second.date,
-        second.createdAt,
-      ),
+      this.mapper.compareFeedDatesDescending(first.date, first.createdAt, second.date, second.createdAt),
     );
 
     return {
@@ -368,14 +333,9 @@ export class CurrentUserSubscriptionFeedService {
         continue;
       }
 
-      const currentDate = datesBySubscriptionId.get(
-        subscription.eventGroupSubscriptionId,
-      );
+      const currentDate = datesBySubscriptionId.get(subscription.eventGroupSubscriptionId);
       if (!currentDate || subscription.event.startDate < currentDate) {
-        datesBySubscriptionId.set(
-          subscription.eventGroupSubscriptionId,
-          subscription.event.startDate,
-        );
+        datesBySubscriptionId.set(subscription.eventGroupSubscriptionId, subscription.event.startDate);
       }
     }
 

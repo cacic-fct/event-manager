@@ -1,11 +1,6 @@
 import { compareAsc, format, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
-import {
-  CurrentUserEventAttendance,
-  PublicEvent,
-  PublicEventGroup,
-  PublicMajorEvent,
-} from './attendance-models';
+import { CurrentUserEventAttendance, PublicEvent, PublicEventGroup, PublicMajorEvent } from './attendance-models';
 
 export function compareIsoDateAsc(leftDate: string, rightDate: string): number {
   return compareAsc(parseISO(leftDate), parseISO(rightDate));
@@ -16,9 +11,7 @@ export function formatDateRange(startDate: string, endDate: string): string {
   const end = parseISO(endDate);
 
   if (isSameDay(start, end)) {
-    return `${formatDay(startDate)}, ${formatTime(startDate)}-${formatTime(
-      endDate,
-    )}`;
+    return `${formatDay(startDate)}, ${formatTime(startDate)}-${formatTime(endDate)}`;
   }
 
   return `${formatDateTime(startDate)} - ${formatDateTime(endDate)}`;
@@ -108,9 +101,7 @@ export const SUBSCRIPTION_STATUS_VALUES = [
   'CANCELED',
 ] as const;
 
-export function getContactLabel(
-  contactType: PublicMajorEvent['contactType'],
-): string {
+export function getContactLabel(contactType: PublicMajorEvent['contactType']): string {
   switch (contactType) {
     case 'EMAIL':
       return 'E-mail';
@@ -139,20 +130,14 @@ export function getEventGroupCertificateLabel(group: PublicEventGroup): string {
   return 'Certificado único do grupo';
 }
 
-export function isOnlineAttendanceRegistrationOpen(
-  event: PublicEvent,
-  now = new Date(),
-): boolean {
+export function isOnlineAttendanceRegistrationOpen(event: PublicEvent, now = new Date()): boolean {
   if (!event.shouldCollectAttendance || !event.isOnlineAttendanceAllowed) {
     return false;
   }
 
   const startsInTime =
-    !event.onlineAttendanceStartDate ||
-    compareAsc(now, parseISO(event.onlineAttendanceStartDate)) >= 0;
-  const endsInTime =
-    !event.onlineAttendanceEndDate ||
-    compareAsc(now, parseISO(event.onlineAttendanceEndDate)) <= 0;
+    !event.onlineAttendanceStartDate || compareAsc(now, parseISO(event.onlineAttendanceStartDate)) >= 0;
+  const endsInTime = !event.onlineAttendanceEndDate || compareAsc(now, parseISO(event.onlineAttendanceEndDate)) <= 0;
 
   return startsInTime && endsInTime;
 }
@@ -160,15 +145,11 @@ export function isOnlineAttendanceRegistrationOpen(
 export function getAttendanceByEventId(
   attendances: CurrentUserEventAttendance[],
 ): Map<string, CurrentUserEventAttendance> {
-  return new Map(
-    attendances.map((attendance) => [attendance.eventId, attendance]),
-  );
+  return new Map(attendances.map((attendance) => [attendance.eventId, attendance]));
 }
 
 export function joinUnique(values: string[]): string | undefined {
-  const uniqueValues = [...new Set(values.map((value) => value.trim()))].filter(
-    (value) => value.length > 0,
-  );
+  const uniqueValues = [...new Set(values.map((value) => value.trim()))].filter((value) => value.length > 0);
 
   return uniqueValues.length > 0 ? uniqueValues.join('\n') : undefined;
 }

@@ -1,11 +1,4 @@
-import {
-  computed,
-  effect,
-  EffectRef,
-  Injectable,
-  inject,
-  signal,
-} from '@angular/core';
+import { computed, effect, EffectRef, Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -15,20 +8,12 @@ import { firstValueFrom } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import {
-  AttendanceCategory,
-  Event,
-  MajorEventUserAttendance,
-  Person,
-} from '../../graphql/models';
+import { AttendanceCategory, Event, MajorEventUserAttendance, Person } from '../../graphql/models';
 import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/attendance-csv-column-dialog.component';
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
 import { SubscriptionCsvColumnDialogComponent } from '../../workspace/dialogs/subscription-csv-column-dialog.component';
 import { SubscriptionCsvImportResultDialogComponent } from '../../workspace/dialogs/subscription-csv-import-result-dialog.component';
-import {
-  buildEventListFilters,
-  resetEventFiltersForm,
-} from '../event-list-filters';
+import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 
 type CsvParseResult = {
@@ -50,17 +35,9 @@ type AttendanceCategoryGroup = {
   attendances: MajorEventUserAttendance[];
 };
 
-const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = [
-  'NON_PAYING',
-  'NON_SUBSCRIBED',
-  'REGULAR',
-  'UNKNOWN',
-];
+const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['NON_PAYING', 'NON_SUBSCRIBED', 'REGULAR', 'UNKNOWN'];
 
-const ATTENDANCE_CATEGORY_LABELS: Record<
-  AttendanceCategory,
-  { label: string; description: string }
-> = {
+const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; description: string }> = {
   NON_PAYING: {
     label: 'Sem pagamento',
     description: 'Presenças em grande evento pago sem pagamento confirmado.',
@@ -107,27 +84,22 @@ export class WorkspaceAttendancesService {
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
   readonly majorEventUserAttendances = signal<MajorEventUserAttendance[]>([]);
-  readonly majorEventUserAttendanceGroups = computed<AttendanceCategoryGroup[]>(
-    () => {
-      const groups = new Map<AttendanceCategory, MajorEventUserAttendance[]>(
-        ATTENDANCE_CATEGORY_ORDER.map((category) => [category, []]),
-      );
+  readonly majorEventUserAttendanceGroups = computed<AttendanceCategoryGroup[]>(() => {
+    const groups = new Map<AttendanceCategory, MajorEventUserAttendance[]>(
+      ATTENDANCE_CATEGORY_ORDER.map((category) => [category, []]),
+    );
 
-      for (const attendance of this.majorEventUserAttendances()) {
-        groups
-          .get(this.getMajorEventUserAttendanceCategory(attendance))
-          ?.push(attendance);
-      }
+    for (const attendance of this.majorEventUserAttendances()) {
+      groups.get(this.getMajorEventUserAttendanceCategory(attendance))?.push(attendance);
+    }
 
-      return ATTENDANCE_CATEGORY_ORDER.map((category) => ({
-        category,
-        ...ATTENDANCE_CATEGORY_LABELS[category],
-        attendances: groups.get(category) ?? [],
-      })).filter((group) => group.attendances.length > 0);
-    },
-  );
-  readonly selectedMajorEventUserAttendance =
-    signal<MajorEventUserAttendance | null>(null);
+    return ATTENDANCE_CATEGORY_ORDER.map((category) => ({
+      category,
+      ...ATTENDANCE_CATEGORY_LABELS[category],
+      attendances: groups.get(category) ?? [],
+    })).filter((group) => group.attendances.length > 0);
+  });
+  readonly selectedMajorEventUserAttendance = signal<MajorEventUserAttendance | null>(null);
   readonly isImportingCsv = signal(false);
 
   readonly attendanceForm = this.formBuilder.nonNullable.group({
@@ -142,16 +114,12 @@ export class WorkspaceAttendancesService {
 
   async searchAttendanceEvents(): Promise<void> {
     const events = await firstValueFrom(
-      this.eventApi.listEvents(
-        buildEventListFilters(this.attendanceEventFiltersForm.value, 80),
-      ),
+      this.eventApi.listEvents(buildEventListFilters(this.attendanceEventFiltersForm.value, 80)),
     );
     this.attendanceEventResults.set(events);
 
     const selectedEventId = this.attendanceForm.controls.eventId.value;
-    const refreshedSelection = events.find(
-      (eventItem) => eventItem.id === selectedEventId,
-    );
+    const refreshedSelection = events.find((eventItem) => eventItem.id === selectedEventId);
 
     if (refreshedSelection) {
       this.selectedAttendanceEvent.set(refreshedSelection);
@@ -179,9 +147,7 @@ export class WorkspaceAttendancesService {
 
   async selectAttendanceEventById(eventId: string): Promise<void> {
     if (this.selectedAttendanceEvent()?.id !== eventId) {
-      this.selectedAttendanceEvent.set(
-        await firstValueFrom(this.eventApi.getEvent(eventId)),
-      );
+      this.selectedAttendanceEvent.set(await firstValueFrom(this.eventApi.getEvent(eventId)));
     }
     this.attendanceForm.controls.eventId.setValue(eventId);
     this.attendancePersonMatches.set([]);
@@ -200,9 +166,7 @@ export class WorkspaceAttendancesService {
     const people = await firstValueFrom(
       this.peopleApi.listPeople({
         ...(identifierType === 'userId' ? { userId: identifier } : {}),
-        ...(identifierType === 'identityDocument'
-          ? { identityDocument: identifier }
-          : {}),
+        ...(identifierType === 'identityDocument' ? { identityDocument: identifier } : {}),
         ...(identifierType === 'email' ? { email: identifier } : {}),
         ...(identifierType === 'phone' ? { phone: identifier } : {}),
         take: 10,
@@ -264,10 +228,7 @@ export class WorkspaceAttendancesService {
     });
   }
 
-  private async processScannedCode(
-    eventId: string,
-    code: string,
-  ): Promise<void> {
+  private async processScannedCode(eventId: string, code: string): Promise<void> {
     try {
       await firstValueFrom(
         this.api.createEventAttendanceFromAztecCode({
@@ -280,13 +241,9 @@ export class WorkspaceAttendancesService {
         duration: 2500,
       });
     } catch (error: unknown) {
-      this.snackbar.open(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível registrar a presença.',
-        'Fechar',
-        { duration: 5000 },
-      );
+      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível registrar a presença.', 'Fechar', {
+        duration: 5000,
+      });
     }
   }
 
@@ -308,20 +265,15 @@ export class WorkspaceAttendancesService {
     try {
       const csvContent = await file.text();
       const parsedCsv = this.parseCsv(csvContent);
-      const columnDialogRef = this.dialog.open(
-        AttendanceCsvColumnDialogComponent,
-        {
-          width: '32rem',
-          data: {
-            fileName: file.name,
-            headers: parsedCsv.headers,
-            previewRows: parsedCsv.rows.slice(0, 12),
-          },
+      const columnDialogRef = this.dialog.open(AttendanceCsvColumnDialogComponent, {
+        width: '32rem',
+        data: {
+          fileName: file.name,
+          headers: parsedCsv.headers,
+          previewRows: parsedCsv.rows.slice(0, 12),
         },
-      );
-      const selectedHeader = await firstValueFrom(
-        columnDialogRef.afterClosed(),
-      );
+      });
+      const selectedHeader = await firstValueFrom(columnDialogRef.afterClosed());
       if (!selectedHeader) {
         return;
       }
@@ -341,13 +293,9 @@ export class WorkspaceAttendancesService {
         data: result,
       });
     } catch (error) {
-      this.snackbar.open(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível importar o CSV.',
-        'Fechar',
-        { duration: 5000 },
-      );
+      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível importar o CSV.', 'Fechar', {
+        duration: 5000,
+      });
     } finally {
       this.isImportingCsv.set(false);
     }
@@ -358,15 +306,10 @@ export class WorkspaceAttendancesService {
       return;
     }
 
-    const majorEventId =
-      this.majorEventAttendanceForm.controls.majorEventId.value;
+    const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
     if (!majorEventId) {
       this.majorEventAttendanceForm.controls.majorEventId.markAsTouched();
-      this.snackbar.open(
-        'Selecione um grande evento antes de importar.',
-        'Fechar',
-        { duration: 3000 },
-      );
+      this.snackbar.open('Selecione um grande evento antes de importar.', 'Fechar', { duration: 3000 });
       return;
     }
 
@@ -374,18 +317,15 @@ export class WorkspaceAttendancesService {
     try {
       const csvContent = await file.text();
       const parsedCsv = this.parseCsv(csvContent);
-      const columnDialogRef = this.dialog.open(
-        SubscriptionCsvColumnDialogComponent,
-        {
-          width: '40rem',
-          maxHeight: '80vh',
-          data: {
-            fileName: file.name,
-            headers: parsedCsv.headers,
-            previewRows: parsedCsv.rows.slice(0, 12),
-          },
+      const columnDialogRef = this.dialog.open(SubscriptionCsvColumnDialogComponent, {
+        width: '40rem',
+        maxHeight: '80vh',
+        data: {
+          fileName: file.name,
+          headers: parsedCsv.headers,
+          previewRows: parsedCsv.rows.slice(0, 12),
         },
-      );
+      });
       const importConfig = await firstValueFrom(columnDialogRef.afterClosed());
       if (!importConfig) {
         return;
@@ -407,13 +347,9 @@ export class WorkspaceAttendancesService {
         data: result,
       });
     } catch (error) {
-      this.snackbar.open(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível importar o CSV.',
-        'Fechar',
-        { duration: 5000 },
-      );
+      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível importar o CSV.', 'Fechar', {
+        duration: 5000,
+      });
     } finally {
       this.isImportingCsv.set(false);
     }
@@ -436,8 +372,7 @@ export class WorkspaceAttendancesService {
   }
 
   async loadMajorEventUserAttendances(): Promise<void> {
-    const majorEventId =
-      this.majorEventAttendanceForm.controls.majorEventId.value;
+    const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
     if (!majorEventId) {
       this.majorEventUserAttendances.set([]);
       this.selectedMajorEventUserAttendance.set(null);
@@ -445,9 +380,7 @@ export class WorkspaceAttendancesService {
     }
     void this.router.navigate(['/attendances/major-event', majorEventId]);
 
-    const attendances = await firstValueFrom(
-      this.api.listMajorEventUserAttendances(majorEventId, { take: 200 }),
-    );
+    const attendances = await firstValueFrom(this.api.listMajorEventUserAttendances(majorEventId, { take: 200 }));
     this.majorEventUserAttendances.set(attendances);
 
     const selected = this.selectedMajorEventUserAttendance();
@@ -464,12 +397,8 @@ export class WorkspaceAttendancesService {
     this.selectedMajorEventUserAttendance.set(attendances[0] ?? null);
   }
 
-  async refreshMajorEventUserAttendancesFor(
-    majorEventId: string,
-  ): Promise<void> {
-    if (
-      this.majorEventAttendanceForm.controls.majorEventId.value !== majorEventId
-    ) {
+  async refreshMajorEventUserAttendancesFor(majorEventId: string): Promise<void> {
+    if (this.majorEventAttendanceForm.controls.majorEventId.value !== majorEventId) {
       return;
     }
 
@@ -486,22 +415,14 @@ export class WorkspaceAttendancesService {
     this.selectedMajorEventUserAttendance.set(attendance);
   }
 
-  getMajorEventUserAttendanceCategory(
-    attendance: MajorEventUserAttendance,
-  ): AttendanceCategory {
+  getMajorEventUserAttendanceCategory(attendance: MajorEventUserAttendance): AttendanceCategory {
     for (const category of ATTENDANCE_CATEGORY_ORDER) {
-      if (
-        attendance.attendances.some(
-          (status) => status.attended && status.category === category,
-        )
-      ) {
+      if (attendance.attendances.some((status) => status.attended && status.category === category)) {
         return category;
       }
     }
 
-    return attendance.attendances.some((status) => status.attended)
-      ? 'UNKNOWN'
-      : 'REGULAR';
+    return attendance.attendances.some((status) => status.attended) ? 'UNKNOWN' : 'REGULAR';
   }
 
   getAttendanceCategoryLabel(category: AttendanceCategory): string {
@@ -557,9 +478,7 @@ export class WorkspaceAttendancesService {
     }
 
     const [headerRecord, ...dataRecords] = records;
-    const headers = (headerRecord ?? []).map((header) =>
-      header.replace(/^\uFEFF/, '').trim(),
-    );
+    const headers = (headerRecord ?? []).map((header) => header.replace(/^\uFEFF/, '').trim());
     if (headers.length === 0) {
       throw new Error('O CSV precisa incluir uma linha de cabeçalho.');
     }

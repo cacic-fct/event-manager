@@ -12,20 +12,13 @@
       applyLabel="Buscar"
       resetLabel="Limpar"
       (applyFilters)="workspace.searchAttendanceEvents()"
-      (resetFilters)="workspace.resetAttendanceEventFilters()"
-    />
+      (resetFilters)="workspace.resetAttendanceEventFilters()" />
 
     <mat-list class="event-result-list">
-      @for (
-        eventItem of workspace.attendanceEventResults();
-        track eventItem.id
-      ) {
+      @for (eventItem of workspace.attendanceEventResults(); track eventItem.id) {
         <mat-list-item
           (click)="workspace.selectAttendanceEvent(eventItem)"
-          [class.selected-list-item]="
-            workspace.selectedAttendanceEvent()?.id === eventItem.id
-          "
-        >
+          [class.selected-list-item]="workspace.selectedAttendanceEvent()?.id === eventItem.id">
           <span matListItemTitle class="list-title">
             <app-twemoji [emoji]="eventItem.emoji" />
             <span>{{ eventItem.name }}</span>
@@ -57,9 +50,7 @@
         </h3>
         <p>
           @if (workspace.selectedAttendanceEvent()) {
-            {{
-              workspace.selectedAttendanceEvent()?.startDate | date: 'medium'
-            }}
+            {{ workspace.selectedAttendanceEvent()?.startDate | date: 'medium' }}
           } @else {
             A lista de presença e os registros manuais aparecem aqui.
           }
@@ -71,24 +62,13 @@
         hidden
         type="file"
         accept=".csv,text/csv"
-        (change)="
-          workspace.importAttendancesFromCsv(
-            $any($event.target).files?.[0] ?? null
-          );
-          csvInput.value = ''
-        "
-      />
+        (change)="workspace.importAttendancesFromCsv($any($event.target).files?.[0] ?? null); csvInput.value = ''" />
       <div class="panel-actions">
         <button
           mat-stroked-button
           type="button"
           [disabled]="!workspace.selectedAttendanceEvent()"
-          (click)="
-            workspace.loadAttendances(
-              workspace.attendanceForm.controls['eventId'].value
-            )
-          "
-        >
+          (click)="workspace.loadAttendances(workspace.attendanceForm.controls['eventId'].value)">
           <mat-icon>refresh</mat-icon>
           Atualizar
         </button>
@@ -100,20 +80,15 @@
             workspace.isImportingCsv() ||
             !permissions.canEdit('event-attendance#edit')
           "
-          (click)="csvInput.click()"
-        >
+          (click)="csvInput.click()">
           <mat-icon>upload_file</mat-icon>
           Importar CSV
         </button>
         <button
           mat-flat-button
           type="button"
-          [disabled]="
-            !workspace.selectedAttendanceEvent() ||
-            !permissions.canEdit('event-attendance#edit')
-          "
-          (click)="workspace.scanAttendance()"
-        >
+          [disabled]="!workspace.selectedAttendanceEvent() || !permissions.canEdit('event-attendance#edit')"
+          (click)="workspace.scanAttendance()">
           <mat-icon>qr_code_scanner</mat-icon>
           Escanear presenças
         </button>
@@ -143,24 +118,19 @@
             mat-stroked-button
             type="button"
             [disabled]="!workspace.selectedAttendanceEvent()"
-            (click)="workspace.findAttendancePerson()"
-          >
+            (click)="workspace.findAttendancePerson()">
             <mat-icon>person_search</mat-icon>
             Buscar pessoa
           </button>
         </form>
 
         <div class="inline-list">
-          @for (
-            person of workspace.attendancePersonMatches();
-            track person.id
-          ) {
+          @for (person of workspace.attendancePersonMatches(); track person.id) {
             <button
               mat-stroked-button
               type="button"
               [disabled]="!permissions.canEdit('event-attendance#edit')"
-              (click)="workspace.registerAttendance(person)"
-            >
+              (click)="workspace.registerAttendance(person)">
               Registrar {{ person.name }}
             </button>
           } @empty {
@@ -176,10 +146,7 @@
         </div>
 
         <mat-list class="attendance-list">
-          @for (
-            attendance of workspace.attendances();
-            track attendance.attendedAt + attendance.personName
-          ) {
+          @for (attendance of workspace.attendances(); track attendance.attendedAt + attendance.personName) {
             <mat-list-item>
               <span matListItemTitle class="attendance-item-title">
                 {{ attendance.personName }}

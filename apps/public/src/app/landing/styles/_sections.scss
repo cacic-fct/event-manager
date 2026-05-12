@@ -1,7 +1,7 @@
 // Page sections styles
 
-@use "mixins";
-@use "components";
+@use 'mixins';
+@use 'components';
 
 .value-proposition {
   @include mixins.section-spacing;

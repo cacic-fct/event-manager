@@ -1,10 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  MAJOR_EVENT_BASE_SELECT,
-  MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT,
-} from './selects';
+import { MAJOR_EVENT_BASE_SELECT, MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT } from './selects';
 import {
   PUBLIC_EVENT_GROUP_SELECT,
   PUBLIC_EVENT_SELECT,
@@ -37,9 +34,7 @@ export class CurrentUserPublicEventService {
     return event;
   }
 
-  async requirePublicEventGroup(
-    eventGroupId: string,
-  ): Promise<PublicEventGroup> {
+  async requirePublicEventGroup(eventGroupId: string): Promise<PublicEventGroup> {
     const eventGroup = await this.prisma.eventGroup.findFirst({
       where: {
         id: eventGroupId,
@@ -55,9 +50,7 @@ export class CurrentUserPublicEventService {
     return eventGroup;
   }
 
-  async requirePublicMajorEvent(
-    majorEventId: string,
-  ): Promise<PublicMajorEvent> {
+  async requirePublicMajorEvent(majorEventId: string): Promise<PublicMajorEvent> {
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
         id: majorEventId,
@@ -73,9 +66,7 @@ export class CurrentUserPublicEventService {
     return mapPublicMajorEvent(majorEvent);
   }
 
-  getMajorEventSelect(
-    paymentInfoTableExists: boolean,
-  ): Prisma.MajorEventSelect {
+  getMajorEventSelect(paymentInfoTableExists: boolean): Prisma.MajorEventSelect {
     if (paymentInfoTableExists) {
       return MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT;
     }
@@ -100,9 +91,7 @@ export class CurrentUserPublicEventService {
 
   async hasPaymentInfoTable(): Promise<boolean> {
     if (!this.paymentInfoTableExistsPromise) {
-      this.paymentInfoTableExistsPromise = this.prisma.$queryRaw<
-        Array<{ exists: boolean }>
-      >`
+      this.paymentInfoTableExistsPromise = this.prisma.$queryRaw<Array<{ exists: boolean }>>`
           SELECT EXISTS (
             SELECT 1
             FROM information_schema.tables

@@ -1,16 +1,6 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -24,18 +14,8 @@ import {
   PublicCertificateValidationEvent,
   formatCreditMinutes,
   formatDateRange,
-import {
-  catchError,
-  combineLatest,
-  distinctUntilChanged,
-  finalize,
-  map,
-  of,
-  startWith,
-  switchMap,
-  tap,
-} from 'rxjs';
 } from '@cacic-fct/shared-utils';
+import { catchError, combineLatest, distinctUntilChanged, finalize, map, of, startWith, switchMap, tap } from 'rxjs';
 import { CertificateFileDownloadService } from '../shared/certificate-file-download.service';
 import { EmojiService } from '../profile/attendances/emoji.service';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
@@ -86,19 +66,14 @@ export class CertificateValidation {
       .pipe(
         map(([params, queryParams]) => ({
           // Accept certificateId coming from either the path or query params.
-          certificateId: this.normalizeId(
-            params.get('certificateId') ?? queryParams.get('certificateId'),
-          ),
+          certificateId: this.normalizeId(params.get('certificateId') ?? queryParams.get('certificateId')),
           invalidId: this.normalizeId(queryParams.get('invalidId')),
         })),
         distinctUntilChanged(
           (previous, current) =>
-            previous.certificateId === current.certificateId &&
-            previous.invalidId === current.invalidId,
+            previous.certificateId === current.certificateId && previous.invalidId === current.invalidId,
         ),
-        tap(({ certificateId, invalidId }) =>
-          this.syncInput(certificateId, invalidId),
-        ),
+        tap(({ certificateId, invalidId }) => this.syncInput(certificateId, invalidId)),
         switchMap(({ certificateId }) => {
           if (!certificateId) {
             return of({ status: 'idle' } satisfies ValidationState);
@@ -175,10 +150,7 @@ export class CertificateValidation {
     return formatCreditMinutes(creditMinutes);
   }
 
-  private syncInput(
-    certificateId: string | null,
-    invalidId: string | null,
-  ): void {
+  private syncInput(certificateId: string | null, invalidId: string | null): void {
     const value = certificateId ?? invalidId ?? '';
     this.certificateIdControl.setValue(value, { emitEvent: false });
     this.certificateIdControl.markAsPristine();
@@ -197,10 +169,7 @@ export class CertificateValidation {
 
   private getErrorMessage(error: unknown): string {
     const message = error instanceof Error ? error.message : '';
-    if (
-      message.includes('Too Many Requests') ||
-      message.includes('ThrottlerException')
-    ) {
+    if (message.includes('Too Many Requests') || message.includes('ThrottlerException')) {
       return 'Muitas tentativas. Aguarde um instante e tente novamente.';
     }
 
@@ -209,10 +178,7 @@ export class CertificateValidation {
 
   private getDownloadErrorMessage(error: unknown): string {
     const message = error instanceof Error ? error.message : '';
-    if (
-      message.includes('Too Many Requests') ||
-      message.includes('ThrottlerException')
-    ) {
+    if (message.includes('Too Many Requests') || message.includes('ThrottlerException')) {
       return 'Muitas tentativas de download. Aguarde um instante e tente novamente.';
     }
 

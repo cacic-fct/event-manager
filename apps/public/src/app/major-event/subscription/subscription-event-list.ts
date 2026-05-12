@@ -1,12 +1,5 @@
 import { DatePipe, formatDate } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  input,
-  output,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
@@ -38,22 +31,14 @@ interface SubscriptionListGroup {
 
 @Component({
   selector: 'app-subscription-event-list',
-  imports: [
-    DatePipe,
-    MatButtonModule,
-    MatCheckboxModule,
-    MatIconModule,
-    MatListModule,
-    MatTooltipModule,
-  ],
+  imports: [DatePipe, MatButtonModule, MatCheckboxModule, MatIconModule, MatListModule, MatTooltipModule],
   templateUrl: './subscription-event-list.html',
   styleUrl: './subscription-event-list.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SubscriptionEventList {
   readonly events = input.required<PublicEvent[]>();
-  readonly summariesByEventId =
-    input.required<Map<string, PublicEventSubscriptionSummary>>();
+  readonly summariesByEventId = input.required<Map<string, PublicEventSubscriptionSummary>>();
   readonly selectedEventIds = input.required<ReadonlySet<string>>();
   readonly autoSelectedEventIds = input.required<ReadonlySet<string>>();
   readonly disabledReasons = input.required<ReadonlyMap<string, string>>();

@@ -1,10 +1,6 @@
 import { AuthenticatedUser as AuthenticatedUserObject, Person, User } from '@cacic-fct/shared-data-types';
 import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
-import {
-  PublicEvent,
-  PublicEventGroup,
-  PublicMajorEvent,
-} from '../public-events/models';
+import { PublicEvent, PublicEventGroup, PublicMajorEvent } from '../public-events/models';
 
 @ObjectType()
 export class CurrentUserProfileContext {
@@ -122,8 +118,7 @@ export class CurrentUserSubscriptionFeedEventGroup {
   eventGroup!: PublicEventGroup;
 
   @Field(() => Date, {
-    description:
-      'Earliest subscribed event start date used to sort the subscription feed.',
+    description: 'Earliest subscribed event start date used to sort the subscription feed.',
   })
   date!: Date;
 

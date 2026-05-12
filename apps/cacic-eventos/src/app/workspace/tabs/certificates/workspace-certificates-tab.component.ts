@@ -43,11 +43,7 @@ export class WorkspaceCertificatesTabComponent {
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      void this.workspace.selectTargetByRoute(
-        params.get('targetType'),
-        params.get('targetId'),
-        params.get('configId'),
-      );
+      void this.workspace.selectTargetByRoute(params.get('targetType'), params.get('targetId'), params.get('configId'));
     });
   }
 }

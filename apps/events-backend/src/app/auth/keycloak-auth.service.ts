@@ -1,15 +1,7 @@
-import {
-  ForbiddenException,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
 import { randomBytes } from 'node:crypto';
-import {
-  DEFAULT_KEYCLOAK_CLIENT_ID,
-  DEFAULT_KEYCLOAK_REALM_URL,
-} from './auth.constants';
+import { DEFAULT_KEYCLOAK_CLIENT_ID, DEFAULT_KEYCLOAK_REALM_URL } from './auth.constants';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
 
@@ -50,64 +42,39 @@ export class KeycloakAuthService {
   private readonly userCache = new Map<string, CachedUser>();
   private readonly sessionCache = new Map<string, AuthSession>();
 
-  private readonly realmUrl = (
-    process.env.KEYCLOAK_REALM_URL ?? DEFAULT_KEYCLOAK_REALM_URL
-  ).replace(/\/+$/, '');
+  private readonly realmUrl = (process.env.KEYCLOAK_REALM_URL ?? DEFAULT_KEYCLOAK_REALM_URL).replace(/\/+$/, '');
 
-  private readonly clientId =
-    process.env.KEYCLOAK_CLIENT_ID ?? DEFAULT_KEYCLOAK_CLIENT_ID;
+  private readonly clientId = process.env.KEYCLOAK_CLIENT_ID ?? DEFAULT_KEYCLOAK_CLIENT_ID;
 
   private readonly clientSecret = process.env.KEYCLOAK_CLIENT_SECRET;
-  private readonly defaultRedirectUri =
-    process.env.KEYCLOAK_REDIRECT_URI ??
-    'http://localhost:3000/api/auth/callback';
+  private readonly defaultRedirectUri = process.env.KEYCLOAK_REDIRECT_URI ?? 'http://localhost:3000/api/auth/callback';
 
-  private readonly defaultPostLogoutRedirectUri =
-    process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI;
+  private readonly defaultPostLogoutRedirectUri = process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI;
   private readonly defaultPostLoginRedirectUri =
     process.env.KEYCLOAK_POST_LOGIN_REDIRECT_URI ?? 'http://localhost:4200';
-  private readonly allowedPostLoginRedirectOrigins =
-    this.readAllowedPostLoginRedirectOrigins();
+  private readonly allowedPostLoginRedirectOrigins = this.readAllowedPostLoginRedirectOrigins();
 
-  private readonly cacheTtlMs = this.parseCacheTtlMs(
-    process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS,
-  );
+  private readonly cacheTtlMs = this.parseCacheTtlMs(process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS);
 
-  async authenticateAccessToken(
-    accessToken: string,
-    requiredAuthorities: string[] = [],
-  ): Promise<AuthenticatedUser> {
+  async authenticateAccessToken(accessToken: string, requiredAuthorities: string[] = []): Promise<AuthenticatedUser> {
     const principal = await this.getOrCreatePrincipal(accessToken);
 
-    const requiredPermissions = requiredAuthorities.filter((value) =>
-      this.isPermissionRequirement(value),
-    );
-    const requiredRoles = requiredAuthorities.filter(
-      (value) => !this.isPermissionRequirement(value),
-    );
+    const requiredPermissions = requiredAuthorities.filter((value) => this.isPermissionRequirement(value));
+    const requiredRoles = requiredAuthorities.filter((value) => !this.isPermissionRequirement(value));
 
-    const missingRoles = requiredRoles.filter(
-      (role) => !principal.roleSet.has(role),
-    );
+    const missingRoles = requiredRoles.filter((role) => !principal.roleSet.has(role));
 
-    let missingPermissions = requiredPermissions.filter(
-      (permission) => !principal.permissionSet.has(permission),
-    );
+    let missingPermissions = requiredPermissions.filter((permission) => !principal.permissionSet.has(permission));
 
     if (missingPermissions.length > 0) {
-      const grantedPermissions = await this.evaluatePermissions(
-        accessToken,
-        missingPermissions,
-      );
+      const grantedPermissions = await this.evaluatePermissions(accessToken, missingPermissions);
 
       for (const permission of grantedPermissions) {
         principal.permissionSet.add(permission);
       }
       principal.permissions = [...principal.permissionSet];
 
-      missingPermissions = requiredPermissions.filter(
-        (permission) => !principal.permissionSet.has(permission),
-      );
+      missingPermissions = requiredPermissions.filter((permission) => !principal.permissionSet.has(permission));
     }
 
     const missing = [...missingRoles, ...missingPermissions];
@@ -140,36 +107,23 @@ export class KeycloakAuthService {
       client_id: this.clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope:
-        options?.scope ??
-        'openid profile email identity-document academic-profile',
+      scope: options?.scope ?? 'openid profile email identity-document academic-profile',
       kc_idp_hint: 'google',
       ...(state ? { state } : {}),
       ...(options?.prompt ? { prompt: options.prompt } : {}),
     });
 
-    const authorizationUrl = new URL(
-      `${this.realmUrl}/protocol/openid-connect/auth?${params.toString()}`,
-    );
+    const authorizationUrl = new URL(`${this.realmUrl}/protocol/openid-connect/auth?${params.toString()}`);
 
     return authorizationUrl.toString();
   }
 
-  async exchangeCodeForTokens(
-    code: string,
-    state?: string,
-    redirectUri?: string,
-  ): Promise<Record<string, unknown>> {
+  async exchangeCodeForTokens(code: string, state?: string, redirectUri?: string): Promise<Record<string, unknown>> {
     const payload = new URLSearchParams();
     payload.set('grant_type', 'authorization_code');
     payload.set('client_id', this.clientId);
     payload.set('code', code);
-    payload.set(
-      'redirect_uri',
-      this.getAuthorizationRedirectUri(state) ??
-        redirectUri ??
-        this.defaultRedirectUri,
-    );
+    payload.set('redirect_uri', this.getAuthorizationRedirectUri(state) ?? redirectUri ?? this.defaultRedirectUri);
 
     if (this.clientSecret) {
       payload.set('client_secret', this.clientSecret);
@@ -192,15 +146,11 @@ export class KeycloakAuthService {
         this.logger.error(error.response?.data);
       }
 
-      throw new UnauthorizedException(
-        'Could not exchange authorization code for tokens.',
-      );
+      throw new UnauthorizedException('Could not exchange authorization code for tokens.');
     }
   }
 
-  async refreshAccessToken(
-    refreshToken: string,
-  ): Promise<Record<string, unknown>> {
+  async refreshAccessToken(refreshToken: string): Promise<Record<string, unknown>> {
     const payload = new URLSearchParams();
     payload.set('grant_type', 'refresh_token');
     payload.set('client_id', this.clientId);
@@ -241,37 +191,27 @@ export class KeycloakAuthService {
       payload.set('token_type_hint', 'refresh_token');
 
       try {
-        await axios.post(
-          `${this.realmUrl}/protocol/openid-connect/revoke`,
-          payload.toString(),
-          {
-            headers: {
-              'content-type': 'application/x-www-form-urlencoded',
-            },
+        await axios.post(`${this.realmUrl}/protocol/openid-connect/revoke`, payload.toString(), {
+          headers: {
+            'content-type': 'application/x-www-form-urlencoded',
           },
-        );
+        });
         refreshTokenRevoked = true;
       } catch {
         this.logger.warn('Failed to revoke refresh token at Keycloak.');
       }
     }
 
-    const logoutUrl = new URL(
-      `${this.realmUrl}/protocol/openid-connect/logout`,
-    );
+    const logoutUrl = new URL(`${this.realmUrl}/protocol/openid-connect/logout`);
     logoutUrl.searchParams.set('client_id', this.clientId);
 
     if (input.idTokenHint) {
       logoutUrl.searchParams.set('id_token_hint', input.idTokenHint);
     }
 
-    const postLogoutRedirectUri =
-      input.postLogoutRedirectUri ?? this.defaultPostLogoutRedirectUri;
+    const postLogoutRedirectUri = input.postLogoutRedirectUri ?? this.defaultPostLogoutRedirectUri;
     if (postLogoutRedirectUri) {
-      logoutUrl.searchParams.set(
-        'post_logout_redirect_uri',
-        postLogoutRedirectUri,
-      );
+      logoutUrl.searchParams.set('post_logout_redirect_uri', postLogoutRedirectUri);
     }
 
     return {
@@ -290,24 +230,14 @@ export class KeycloakAuthService {
       throw new UnauthorizedException('Missing access token in auth response.');
     }
 
-    const accessTokenExpiresAt = this.resolveAccessTokenExpiration(
-      tokens.access_token,
-      tokens.expires_in,
-    );
-    const sessionExpiresAt = this.resolveRefreshTokenExpiration(
-      tokens,
-      accessTokenExpiresAt,
-    );
+    const accessTokenExpiresAt = this.resolveAccessTokenExpiration(tokens.access_token, tokens.expires_in);
+    const sessionExpiresAt = this.resolveRefreshTokenExpiration(tokens, accessTokenExpiresAt);
     const sessionId = randomBytes(32).toString('base64url');
 
     this.sessionCache.set(sessionId, {
       accessToken: tokens.access_token,
-      refreshToken:
-        typeof tokens.refresh_token === 'string'
-          ? tokens.refresh_token
-          : undefined,
-      idTokenHint:
-        typeof tokens.id_token === 'string' ? tokens.id_token : undefined,
+      refreshToken: typeof tokens.refresh_token === 'string' ? tokens.refresh_token : undefined,
+      idTokenHint: typeof tokens.id_token === 'string' ? tokens.id_token : undefined,
       accessTokenExpiresAt,
       sessionExpiresAt,
     });
@@ -333,25 +263,13 @@ export class KeycloakAuthService {
       throw new UnauthorizedException('Missing access token in auth response.');
     }
 
-    const accessTokenExpiresAt = this.resolveAccessTokenExpiration(
-      tokens.access_token,
-      tokens.expires_in,
-    );
-    const sessionExpiresAt = this.resolveRefreshTokenExpiration(
-      tokens,
-      session.sessionExpiresAt,
-    );
+    const accessTokenExpiresAt = this.resolveAccessTokenExpiration(tokens.access_token, tokens.expires_in);
+    const sessionExpiresAt = this.resolveRefreshTokenExpiration(tokens, session.sessionExpiresAt);
 
     this.sessionCache.set(sessionId, {
       accessToken: tokens.access_token,
-      refreshToken:
-        typeof tokens.refresh_token === 'string'
-          ? tokens.refresh_token
-          : session.refreshToken,
-      idTokenHint:
-        typeof tokens.id_token === 'string'
-          ? tokens.id_token
-          : session.idTokenHint,
+      refreshToken: typeof tokens.refresh_token === 'string' ? tokens.refresh_token : session.refreshToken,
+      idTokenHint: typeof tokens.id_token === 'string' ? tokens.id_token : session.idTokenHint,
       accessTokenExpiresAt,
       sessionExpiresAt,
     });
@@ -359,10 +277,7 @@ export class KeycloakAuthService {
     return { expiresAt: accessTokenExpiresAt, sessionExpiresAt };
   }
 
-  async authenticateSession(
-    sessionId: string,
-    requiredRoles: string[] = [],
-  ): Promise<AuthenticatedUser> {
+  async authenticateSession(sessionId: string, requiredRoles: string[] = []): Promise<AuthenticatedUser> {
     const session = this.readSession(sessionId);
     if (!session) {
       throw new UnauthorizedException('Missing authenticated session.');
@@ -371,23 +286,13 @@ export class KeycloakAuthService {
     return this.authenticateAccessToken(session.accessToken, requiredRoles);
   }
 
-  async evaluateAccessTokenPermissions(
-    accessToken: string,
-    requiredPermissions: string[],
-  ): Promise<string[]> {
+  async evaluateAccessTokenPermissions(accessToken: string, requiredPermissions: string[]): Promise<string[]> {
     const principal = await this.getOrCreatePrincipal(accessToken);
-    const permissionRequirements = requiredPermissions.filter((value) =>
-      this.isPermissionRequirement(value),
-    );
-    const missingPermissions = permissionRequirements.filter(
-      (permission) => !principal.permissionSet.has(permission),
-    );
+    const permissionRequirements = requiredPermissions.filter((value) => this.isPermissionRequirement(value));
+    const missingPermissions = permissionRequirements.filter((permission) => !principal.permissionSet.has(permission));
 
     if (missingPermissions.length > 0) {
-      const grantedPermissions = await this.evaluatePermissions(
-        accessToken,
-        missingPermissions,
-      );
+      const grantedPermissions = await this.evaluatePermissions(accessToken, missingPermissions);
 
       for (const permission of grantedPermissions) {
         principal.permissionSet.add(permission);
@@ -395,24 +300,16 @@ export class KeycloakAuthService {
       principal.permissions = [...principal.permissionSet];
     }
 
-    return permissionRequirements.filter((permission) =>
-      principal.permissionSet.has(permission),
-    );
+    return permissionRequirements.filter((permission) => principal.permissionSet.has(permission));
   }
 
-  async evaluateSessionPermissions(
-    sessionId: string,
-    requiredPermissions: string[],
-  ): Promise<string[]> {
+  async evaluateSessionPermissions(sessionId: string, requiredPermissions: string[]): Promise<string[]> {
     const session = this.readSession(sessionId);
     if (!session) {
       throw new UnauthorizedException('Missing authenticated session.');
     }
 
-    return this.evaluateAccessTokenPermissions(
-      session.accessToken,
-      requiredPermissions,
-    );
+    return this.evaluateAccessTokenPermissions(session.accessToken, requiredPermissions);
   }
 
   assertMachineToMachinePrincipal(
@@ -423,12 +320,9 @@ export class KeycloakAuthService {
       throw new UnauthorizedException('Missing authenticated M2M principal.');
     }
 
-    const requireServiceAccount =
-      process.env.KEYCLOAK_M2M_REQUIRE_SERVICE_ACCOUNT !== 'false';
+    const requireServiceAccount = process.env.KEYCLOAK_M2M_REQUIRE_SERVICE_ACCOUNT !== 'false';
     if (requireServiceAccount && !this.isServiceAccountPrincipal(principal)) {
-      throw new ForbiddenException(
-        'A Keycloak service-account token is required.',
-      );
+      throw new ForbiddenException('A Keycloak service-account token is required.');
     }
 
     const audience = process.env.KEYCLOAK_M2M_AUDIENCE?.trim();
@@ -438,21 +332,14 @@ export class KeycloakAuthService {
 
     const allowedClients = this.readAllowedM2mClients();
     const clientId = this.readClientId(principal);
-    if (
-      allowedClients.size > 0 &&
-      (!clientId || !allowedClients.has(clientId))
-    ) {
+    if (allowedClients.size > 0 && (!clientId || !allowedClients.has(clientId))) {
       throw new ForbiddenException('M2M client is not allowed.');
     }
 
     const requiredRoles = options.requiredRoles ?? [];
-    const missingRoles = requiredRoles.filter(
-      (role) => !principal.roleSet.has(role),
-    );
+    const missingRoles = requiredRoles.filter((role) => !principal.roleSet.has(role));
     if (missingRoles.length > 0) {
-      throw new ForbiddenException(
-        `Missing required M2M roles: ${missingRoles.join(', ')}.`,
-      );
+      throw new ForbiddenException(`Missing required M2M roles: ${missingRoles.join(', ')}.`);
     }
 
     return principal;
@@ -518,17 +405,13 @@ export class KeycloakAuthService {
     return this.readStringClaim(decodedState, 'redirectUri');
   }
 
-  private readAuthorizationState(
-    state?: string,
-  ): AuthorizationState | undefined {
+  private readAuthorizationState(state?: string): AuthorizationState | undefined {
     if (!state) {
       return undefined;
     }
 
     try {
-      const decodedState = JSON.parse(
-        Buffer.from(state, 'base64url').toString('utf8'),
-      );
+      const decodedState = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
 
       if (!this.isRecord(decodedState)) {
         return undefined;
@@ -551,15 +434,12 @@ export class KeycloakAuthService {
     }
 
     if (normalizedReturnTo.startsWith('/')) {
-      return this.isAllowedAppPath(normalizedReturnTo)
-        ? normalizedReturnTo
-        : undefined;
+      return this.isAllowedAppPath(normalizedReturnTo) ? normalizedReturnTo : undefined;
     }
 
     try {
       const returnToUrl = new URL(normalizedReturnTo);
-      return this.allowedPostLoginRedirectOrigins.has(returnToUrl.origin) &&
-        this.isAllowedAppPath(returnToUrl.pathname)
+      return this.allowedPostLoginRedirectOrigins.has(returnToUrl.origin) && this.isAllowedAppPath(returnToUrl.pathname)
         ? returnToUrl.toString()
         : undefined;
     } catch {
@@ -577,9 +457,7 @@ export class KeycloakAuthService {
     const origins = new Set<string>();
     this.addUrlOrigin(origins, this.defaultPostLoginRedirectUri);
 
-    for (const origin of (
-      process.env.KEYCLOAK_ALLOWED_POST_LOGIN_REDIRECT_ORIGINS ?? ''
-    ).split(',')) {
+    for (const origin of (process.env.KEYCLOAK_ALLOWED_POST_LOGIN_REDIRECT_ORIGINS ?? '').split(',')) {
       this.addUrlOrigin(origins, origin.trim());
     }
 
@@ -603,15 +481,11 @@ export class KeycloakAuthService {
     try {
       origins.add(new URL(rawUrl).origin);
     } catch {
-      this.logger.warn(
-        `Ignoring invalid Keycloak post-login redirect origin: ${rawUrl}`,
-      );
+      this.logger.warn(`Ignoring invalid Keycloak post-login redirect origin: ${rawUrl}`);
     }
   }
 
-  private async getOrCreatePrincipal(
-    accessToken: string,
-  ): Promise<AuthenticatedUser> {
+  private async getOrCreatePrincipal(accessToken: string): Promise<AuthenticatedUser> {
     const now = Date.now();
     const cachedUser = this.userCache.get(accessToken);
     if (cachedUser && cachedUser.expiresAt > now) {
@@ -620,32 +494,18 @@ export class KeycloakAuthService {
 
     const keycloakClaims = await this.fetchTokenClaims(accessToken);
     const decodedClaims = this.decodeJwtPayload(accessToken);
-    const introspectionJwtClaims = this.decodeJwtPayload(
-      this.readStringClaim(keycloakClaims, 'jwt') ?? '',
-    );
+    const introspectionJwtClaims = this.decodeJwtPayload(this.readStringClaim(keycloakClaims, 'jwt') ?? '');
     const mergedClaims: Record<string, unknown> = {
       ...decodedClaims,
       ...introspectionJwtClaims,
       ...keycloakClaims,
     };
 
-    const roles = this.extractRoles(
-      decodedClaims,
-      introspectionJwtClaims,
-      keycloakClaims,
-    );
+    const roles = this.extractRoles(decodedClaims, introspectionJwtClaims, keycloakClaims);
     const roleSet = new Set(roles);
-    const permissions = this.extractPermissions(
-      decodedClaims,
-      introspectionJwtClaims,
-      keycloakClaims,
-    );
+    const permissions = this.extractPermissions(decodedClaims, introspectionJwtClaims, keycloakClaims);
     const permissionSet = new Set(permissions);
-    const oidcScopes = this.extractOidcScopes(
-      decodedClaims,
-      introspectionJwtClaims,
-      keycloakClaims,
-    );
+    const oidcScopes = this.extractOidcScopes(decodedClaims, introspectionJwtClaims, keycloakClaims);
     const oidcScopeSet = new Set(oidcScopes);
 
     const principal: AuthenticatedUser = {
@@ -657,10 +517,7 @@ export class KeycloakAuthService {
         ),
       },
       sub: this.readStringClaim(mergedClaims, 'sub'),
-      preferredUsername: this.readStringClaim(
-        mergedClaims,
-        'preferred_username',
-      ),
+      preferredUsername: this.readStringClaim(mergedClaims, 'preferred_username'),
       email: this.readStringClaim(mergedClaims, 'email'),
       token: accessToken,
       roles,
@@ -675,9 +532,7 @@ export class KeycloakAuthService {
     };
 
     const expSeconds = this.readNumberClaim(mergedClaims, 'exp');
-    const expBasedCache = expSeconds
-      ? expSeconds * 1000
-      : now + this.cacheTtlMs;
+    const expBasedCache = expSeconds ? expSeconds * 1000 : now + this.cacheTtlMs;
 
     this.userCache.set(accessToken, {
       user: principal,
@@ -721,21 +576,16 @@ export class KeycloakAuthService {
           throw error;
         }
 
-        this.logger.warn(
-          'Keycloak token introspection failed; falling back to userinfo endpoint.',
-        );
+        this.logger.warn('Keycloak token introspection failed; falling back to userinfo endpoint.');
       }
     }
 
     try {
-      const { data } = await axios.get<TokenClaims>(
-        `${this.realmUrl}/protocol/openid-connect/userinfo`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+      const { data } = await axios.get<TokenClaims>(`${this.realmUrl}/protocol/openid-connect/userinfo`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
-      );
+      });
 
       if (introspectionClaims) {
         return {
@@ -754,9 +604,7 @@ export class KeycloakAuthService {
         return introspectionClaims;
       }
 
-      throw new UnauthorizedException(
-        'Unable to validate access token with Keycloak.',
-      );
+      throw new UnauthorizedException('Unable to validate access token with Keycloak.');
     }
   }
 
@@ -772,10 +620,7 @@ export class KeycloakAuthService {
     return [...roles];
   }
 
-  private extractClientRoles(
-    resourceAccessClaim: unknown,
-    roles: Set<string>,
-  ): void {
+  private extractClientRoles(resourceAccessClaim: unknown, roles: Set<string>): void {
     if (!this.isRecord(resourceAccessClaim)) {
       return;
     }
@@ -803,9 +648,7 @@ export class KeycloakAuthService {
     }
   }
 
-  private extractOidcScopes(
-    ...claimsSources: Record<string, unknown>[]
-  ): string[] {
+  private extractOidcScopes(...claimsSources: Record<string, unknown>[]): string[] {
     const scopes = new Set<string>();
     for (const claims of claimsSources) {
       this.extractOidcScopeClaim(claims['scope'], scopes);
@@ -814,10 +657,7 @@ export class KeycloakAuthService {
     return [...scopes];
   }
 
-  private extractOidcScopeClaim(
-    scopeClaim: unknown,
-    scopeSet: Set<string>,
-  ): void {
+  private extractOidcScopeClaim(scopeClaim: unknown, scopeSet: Set<string>): void {
     if (typeof scopeClaim !== 'string') {
       return;
     }
@@ -830,29 +670,21 @@ export class KeycloakAuthService {
     }
   }
 
-  private extractPermissions(
-    ...claimsSources: Record<string, unknown>[]
-  ): string[] {
+  private extractPermissions(...claimsSources: Record<string, unknown>[]): string[] {
     const permissions = new Set<string>();
     for (const claims of claimsSources) {
       this.extractPermissionClaims(claims['permissions'], permissions);
 
       const authorizationClaim = claims['authorization'];
       if (this.isRecord(authorizationClaim)) {
-        this.extractPermissionClaims(
-          authorizationClaim['permissions'],
-          permissions,
-        );
+        this.extractPermissionClaims(authorizationClaim['permissions'], permissions);
       }
     }
 
     return [...permissions];
   }
 
-  private extractPermissionClaims(
-    rawPermissions: unknown,
-    permissionSet: Set<string>,
-  ): void {
+  private extractPermissionClaims(rawPermissions: unknown, permissionSet: Set<string>): void {
     if (!Array.isArray(rawPermissions)) {
       return;
     }
@@ -871,8 +703,7 @@ export class KeycloakAuthService {
       }
 
       const resourceName =
-        this.readStringClaim(permission, 'rsname') ??
-        this.readStringClaim(permission, 'resource_name');
+        this.readStringClaim(permission, 'rsname') ?? this.readStringClaim(permission, 'resource_name');
 
       const rawScopes = permission['scopes'];
       if (!Array.isArray(rawScopes)) {
@@ -898,10 +729,7 @@ export class KeycloakAuthService {
     }
   }
 
-  private async evaluatePermissions(
-    accessToken: string,
-    requiredPermissions: string[],
-  ): Promise<string[]> {
+  private async evaluatePermissions(accessToken: string, requiredPermissions: string[]): Promise<string[]> {
     const payload = new URLSearchParams();
     payload.set('grant_type', 'urn:ietf:params:oauth:grant-type:uma-ticket');
     payload.set('audience', this.clientId);
@@ -918,16 +746,12 @@ export class KeycloakAuthService {
     }
 
     try {
-      const { data } = await axios.post(
-        `${this.realmUrl}/protocol/openid-connect/token`,
-        payload.toString(),
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'content-type': 'application/x-www-form-urlencoded',
-          },
+      const { data } = await axios.post(`${this.realmUrl}/protocol/openid-connect/token`, payload.toString(), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'content-type': 'application/x-www-form-urlencoded',
         },
-      );
+      });
 
       const grantedPermissions = new Set<string>();
       this.extractPermissionClaims(data, grantedPermissions);
@@ -937,9 +761,7 @@ export class KeycloakAuthService {
         return [];
       }
 
-      this.logger.warn(
-        'Keycloak authorization permission evaluation failed while resolving required permissions.',
-      );
+      this.logger.warn('Keycloak authorization permission evaluation failed while resolving required permissions.');
       return [];
     }
   }
@@ -977,14 +799,9 @@ export class KeycloakAuthService {
       return {};
     }
 
-    const normalizedPayload = payloadSegment
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
+    const normalizedPayload = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
     const paddingLength = (4 - (normalizedPayload.length % 4)) % 4;
-    const paddedPayload = normalizedPayload.padEnd(
-      normalizedPayload.length + paddingLength,
-      '=',
-    );
+    const paddedPayload = normalizedPayload.padEnd(normalizedPayload.length + paddingLength, '=');
 
     try {
       const payloadJson = Buffer.from(paddedPayload, 'base64').toString('utf8');
@@ -995,10 +812,7 @@ export class KeycloakAuthService {
     }
   }
 
-  private resolveAccessTokenExpiration(
-    accessToken: string,
-    expiresInSeconds?: number,
-  ): number {
+  private resolveAccessTokenExpiration(accessToken: string, expiresInSeconds?: number): number {
     const now = Date.now();
     if (typeof expiresInSeconds === 'number' && expiresInSeconds > 0) {
       return now + expiresInSeconds * 1000;
@@ -1013,15 +827,9 @@ export class KeycloakAuthService {
     return now + 60 * 60 * 1000;
   }
 
-  private resolveRefreshTokenExpiration(
-    tokens: TokenResponse,
-    fallbackExpiresAt: number,
-  ): number {
+  private resolveRefreshTokenExpiration(tokens: TokenResponse, fallbackExpiresAt: number): number {
     const now = Date.now();
-    if (
-      typeof tokens.refresh_expires_in === 'number' &&
-      tokens.refresh_expires_in > 0
-    ) {
+    if (typeof tokens.refresh_expires_in === 'number' && tokens.refresh_expires_in > 0) {
       return now + tokens.refresh_expires_in * 1000;
     }
 
@@ -1059,18 +867,12 @@ export class KeycloakAuthService {
     return parsedTtl;
   }
 
-  private readStringClaim(
-    claims: Record<string, unknown>,
-    key: string,
-  ): string | undefined {
+  private readStringClaim(claims: Record<string, unknown>, key: string): string | undefined {
     const value = claims[key];
     return typeof value === 'string' ? value : undefined;
   }
 
-  private readNumberClaim(
-    claims: Record<string, unknown>,
-    key: string,
-  ): number | undefined {
+  private readNumberClaim(claims: Record<string, unknown>, key: string): number | undefined {
     const value = claims[key];
     return typeof value === 'number' ? value : undefined;
   }
@@ -1088,10 +890,7 @@ export class KeycloakAuthService {
   }
 
   private readClientId(principal: AuthenticatedUser): string | undefined {
-    return (
-      this.readStringClaim(principal.claims, 'azp') ??
-      this.readStringClaim(principal.claims, 'client_id')
-    );
+    return this.readStringClaim(principal.claims, 'azp') ?? this.readStringClaim(principal.claims, 'client_id');
   }
 
   private hasAudience(rawAudience: unknown, expectedAudience: string): boolean {

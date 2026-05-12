@@ -22,11 +22,7 @@ import {
   SubscriptionFeedSingleEventRecord,
   UserRecord,
 } from './selects';
-import {
-  PublicEvent,
-  PublicEventGroup,
-  PublicMajorEvent,
-} from '../public-events/models';
+import { PublicEvent, PublicEventGroup, PublicMajorEvent } from '../public-events/models';
 
 @Injectable()
 export class CurrentUserEventMapperService {
@@ -57,8 +53,7 @@ export class CurrentUserEventMapperService {
       id: eventGroup.id,
       name: eventGroup.name,
       emoji: eventGroup.emoji,
-      shouldIssueCertificateForEachEvent:
-        eventGroup.shouldIssueCertificateForEachEvent,
+      shouldIssueCertificateForEachEvent: eventGroup.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: eventGroup.shouldIssuePartialCertificate,
       shouldIssueCertificate: eventGroup.shouldIssueCertificate,
     };
@@ -79,13 +74,9 @@ export class CurrentUserEventMapperService {
       longitude: event.longitude ?? undefined,
       locationDescription: event.locationDescription ?? undefined,
       majorEventId: event.majorEventId ?? undefined,
-      majorEvent: event.majorEvent
-        ? this.mapPublicMajorEvent(event.majorEvent as PublicMajorEventRecord)
-        : undefined,
+      majorEvent: event.majorEvent ? this.mapPublicMajorEvent(event.majorEvent as PublicMajorEventRecord) : undefined,
       eventGroupId: event.eventGroupId ?? undefined,
-      eventGroup: event.eventGroup
-        ? this.mapPublicEventGroup(event.eventGroup)
-        : undefined,
+      eventGroup: event.eventGroup ? this.mapPublicEventGroup(event.eventGroup) : undefined,
       allowSubscription: event.allowSubscription,
       subscriptionStartDate: event.subscriptionStartDate ?? undefined,
       subscriptionEndDate: event.subscriptionEndDate ?? undefined,
@@ -162,8 +153,7 @@ export class CurrentUserEventMapperService {
     return {
       eventId: subscription.eventId,
       event: this.mapPublicEvent(subscription.event),
-      eventGroupSubscriptionId:
-        subscription.eventGroupSubscriptionId ?? undefined,
+      eventGroupSubscriptionId: subscription.eventGroupSubscriptionId ?? undefined,
       createdAt: subscription.createdAt,
     };
   }
@@ -181,11 +171,7 @@ export class CurrentUserEventMapperService {
     };
   }
 
-  mapSubscribedSingleEventItem(
-    eventId: string,
-    event: PublicEvent,
-    startDate: Date,
-  ) {
+  mapSubscribedSingleEventItem(eventId: string, event: PublicEvent, startDate: Date) {
     return {
       id: eventId,
       type: 'single' as const,
@@ -281,21 +267,12 @@ export class CurrentUserEventMapperService {
 
   getEarliestEventStartDate(events: PublicEvent[]): Date {
     return events.reduce(
-      (earliestDate, event) =>
-        event.startDate < earliestDate ? event.startDate : earliestDate,
+      (earliestDate, event) => (event.startDate < earliestDate ? event.startDate : earliestDate),
       events[0].startDate,
     );
   }
 
-  compareFeedDatesDescending(
-    firstDate: Date,
-    firstCreatedAt: Date,
-    secondDate: Date,
-    secondCreatedAt: Date,
-  ): number {
-    return (
-      secondDate.getTime() - firstDate.getTime() ||
-      secondCreatedAt.getTime() - firstCreatedAt.getTime()
-    );
+  compareFeedDatesDescending(firstDate: Date, firstCreatedAt: Date, secondDate: Date, secondCreatedAt: Date): number {
+    return secondDate.getTime() - firstDate.getTime() || secondCreatedAt.getTime() - firstCreatedAt.getTime();
   }
 }

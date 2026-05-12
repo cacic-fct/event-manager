@@ -7,11 +7,7 @@
           <p>Nome, e-mail, telefone ou documento.</p>
         </div>
 
-        <button
-          mat-stroked-button
-          type="button"
-          (click)="workspace.startNewPerson()"
-        >
+        <button mat-stroked-button type="button" (click)="workspace.startNewPerson()">
           <mat-icon>person_add</mat-icon>
           Nova
         </button>
@@ -23,11 +19,7 @@
           <mat-icon matPrefix>search</mat-icon>
           <input matInput #peopleSearchInput />
         </mat-form-field>
-        <button
-          mat-flat-button
-          type="button"
-          (click)="workspace.searchPeople(peopleSearchInput.value)"
-        >
+        <button mat-flat-button type="button" (click)="workspace.searchPeople(peopleSearchInput.value)">
           <mat-icon>search</mat-icon>
           Buscar
         </button>
@@ -37,10 +29,7 @@
         @for (person of workspace.people(); track person.id) {
           <mat-list-item
             (click)="workspace.selectPerson(person)"
-            [class.selected-list-item]="
-              workspace.selectedPerson()?.id === person.id
-            "
-          >
+            [class.selected-list-item]="workspace.selectedPerson()?.id === person.id">
             <span matListItemTitle>{{ person.name }}</span>
             <span matListItemLine>
               {{ person.email || person.phone || '-' }} ·
@@ -69,9 +58,7 @@
             </h3>
             <p>
               @if (workspace.selectedPerson()) {
-                {{
-                  workspace.selectedPerson()?.email || 'Sem e-mail principal'
-                }}
+                {{ workspace.selectedPerson()?.email || 'Sem e-mail principal' }}
               } @else {
                 Preencha os dados cadastrais.
               }
@@ -79,11 +66,7 @@
           </div>
 
           <div class="panel-actions">
-            <button
-              mat-button
-              type="button"
-              (click)="workspace.resetPersonForm()"
-            >
+            <button mat-button type="button" (click)="workspace.resetPersonForm()">
               <mat-icon>close</mat-icon>
               Fechar
             </button>
@@ -91,8 +74,7 @@
               mat-flat-button
               type="button"
               [disabled]="!permissions.canEdit('person#edit')"
-              (click)="workspace.savePerson()"
-            >
+              (click)="workspace.savePerson()">
               <mat-icon>save</mat-icon>
               Salvar
             </button>

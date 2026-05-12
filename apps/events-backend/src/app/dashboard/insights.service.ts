@@ -28,9 +28,7 @@ const DEFAULT_EMOJI = '❔';
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
 const SUSPICIOUS_EARLIEST_DATE = new Date('2010-01-01T00:00:00.000Z');
-const UNFAVORABLE_WEATHER_CODES = new Set([
-  51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99,
-]);
+const UNFAVORABLE_WEATHER_CODES = new Set([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99]);
 const DASHBOARD_PERMISSION_REQUIREMENTS = [
   'event#edit',
   'major-event#edit',
@@ -107,10 +105,7 @@ type InsightEvent = Prisma.EventGetPayload<{
   select: typeof EVENT_INSIGHT_SELECT;
 }>;
 
-type CachedDashboardInsights = Omit<
-  WorkspaceDashboardInsights,
-  'generatedAt'
-> & {
+type CachedDashboardInsights = Omit<WorkspaceDashboardInsights, 'generatedAt'> & {
   generatedAt: string;
   calendarEvents: (Omit<DashboardCalendarEvent, 'startDate' | 'endDate'> & {
     startDate: string;
@@ -126,10 +121,7 @@ type CachedDashboardInsights = Omit<
 
 @Injectable()
 export class DashboardInsightsService {
-  private readonly inFlightInsights = new Map<
-    string,
-    Promise<WorkspaceDashboardInsights>
-  >();
+  private readonly inFlightInsights = new Map<string, Promise<WorkspaceDashboardInsights>>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -141,13 +133,9 @@ export class DashboardInsightsService {
     private readonly insightsQueue: Queue,
   ) {}
 
-  async getWorkspaceDashboardInsights(
-    context: GraphqlContext,
-  ): Promise<WorkspaceDashboardInsights> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const permissionResolution =
-      await this.resolveDashboardPermissions(authenticatedUser);
+  async getWorkspaceDashboardInsights(context: GraphqlContext): Promise<WorkspaceDashboardInsights> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const permissionResolution = await this.resolveDashboardPermissions(authenticatedUser);
     const permissions = permissionResolution.permissions;
     if (!permissionResolution.cacheable) {
       return this.generateInsights(permissions);
@@ -214,34 +202,23 @@ export class DashboardInsightsService {
     await Promise.all(batches);
   }
 
-  private async generateAndCacheInsights(
-    cacheKey: string,
-    permissions: string[],
-  ): Promise<WorkspaceDashboardInsights> {
+  private async generateAndCacheInsights(cacheKey: string, permissions: string[]): Promise<WorkspaceDashboardInsights> {
     const insights = await this.generateInsights(permissions);
-    await this.redis.set(
-      cacheKey,
-      JSON.stringify(insights),
-      'EX',
-      CACHE_TTL_SECONDS,
-    );
+    await this.redis.set(cacheKey, JSON.stringify(insights), 'EX', CACHE_TTL_SECONDS);
     return insights;
   }
 
-  private async resolveDashboardPermissions(
-    authenticatedUser: AuthenticatedUser,
-  ): Promise<{
+  private async resolveDashboardPermissions(authenticatedUser: AuthenticatedUser): Promise<{
     permissions: string[];
     cacheable: boolean;
   }> {
     const permissions = new Set(authenticatedUser.permissionSet);
 
     try {
-      const grantedPermissions =
-        await this.keycloakAuthService.evaluateAccessTokenPermissions(
-          authenticatedUser.token,
-          [...DASHBOARD_PERMISSION_REQUIREMENTS],
-        );
+      const grantedPermissions = await this.keycloakAuthService.evaluateAccessTokenPermissions(
+        authenticatedUser.token,
+        [...DASHBOARD_PERMISSION_REQUIREMENTS],
+      );
       for (const permission of grantedPermissions) {
         permissions.add(permission);
       }
@@ -260,9 +237,7 @@ export class DashboardInsightsService {
     }
   }
 
-  private async generateInsights(
-    permissions: string[],
-  ): Promise<WorkspaceDashboardInsights> {
+  private async generateInsights(permissions: string[]): Promise<WorkspaceDashboardInsights> {
     const now = new Date();
     const today = this.startOfLocalDay(now);
     const sevenDaysFromToday = new Date(today);
@@ -434,18 +409,13 @@ export class DashboardInsightsService {
         majorEventsCount,
       },
       suggestions: this.buildSuggestions({
-        upcomingActivitiesCount:
-          calendarEvents.length + upcomingMajorEventsCount,
+        upcomingActivitiesCount: calendarEvents.length + upcomingMajorEventsCount,
         canManageEvents,
         canManageMajorEvents,
       }),
-      calendarEvents: calendarEvents.map((event) =>
-        this.mapCalendarEvent(event, now),
-      ),
+      calendarEvents: calendarEvents.map((event) => this.mapCalendarEvent(event, now)),
       weatherAlerts: await this.buildWeatherAlerts(calendarEvents),
-      pendingCertificates: canManageCertificates
-        ? await this.buildPendingCertificates(now)
-        : [],
+      pendingCertificates: canManageCertificates ? await this.buildPendingCertificates(now) : [],
       inconsistencies:
         canManageEvents || canManageCertificates
           ? this.buildInconsistencies({
@@ -492,10 +462,7 @@ export class DashboardInsightsService {
     return suggestions;
   }
 
-  private mapCalendarEvent(
-    event: InsightEvent,
-    now: Date,
-  ): DashboardCalendarEvent {
+  private mapCalendarEvent(event: InsightEvent, now: Date): DashboardCalendarEvent {
     return {
       id: event.id,
       name: event.name,
@@ -516,26 +483,16 @@ export class DashboardInsightsService {
     };
   }
 
-  private async buildWeatherAlerts(
-    events: InsightEvent[],
-  ): Promise<DashboardWeatherAlert[]> {
+  private async buildWeatherAlerts(events: InsightEvent[]): Promise<DashboardWeatherAlert[]> {
     const weatherEvents = events.filter(
-      (event) =>
-        event.latitude != null &&
-        event.longitude != null &&
-        event.startDate.getTime() > Date.now(),
+      (event) => event.latitude != null && event.longitude != null && event.startDate.getTime() > Date.now(),
     );
 
     const forecasts = await Promise.all(
       weatherEvents.map(async (event) => {
         try {
-          const forecast = await this.weatherService.getPublicEventWeather(
-            event.id,
-          );
-          if (
-            !forecast ||
-            !UNFAVORABLE_WEATHER_CODES.has(forecast.weatherCode)
-          ) {
+          const forecast = await this.weatherService.getPublicEventWeather(event.id);
+          if (!forecast || !UNFAVORABLE_WEATHER_CODES.has(forecast.weatherCode)) {
             return null;
           }
 
@@ -556,16 +513,8 @@ export class DashboardInsightsService {
     return forecasts.filter((forecast) => forecast != null);
   }
 
-  private async buildPendingCertificates(
-    now: Date,
-  ): Promise<DashboardCertificatePendingItem[]> {
-    const [
-      events,
-      eventGroups,
-      majorEvents,
-      lecturerCertificateEvents,
-      majorEventsWithLecturers,
-    ] = await Promise.all([
+  private async buildPendingCertificates(now: Date): Promise<DashboardCertificatePendingItem[]> {
+    const [events, eventGroups, majorEvents, lecturerCertificateEvents, majorEventsWithLecturers] = await Promise.all([
       this.prisma.event.findMany({
         where: {
           deletedAt: null,
@@ -772,12 +721,8 @@ export class DashboardInsightsService {
     const pending: DashboardCertificatePendingItem[] = [];
     for (const event of events) {
       const groupIssuesCertificate =
-        event.eventGroup?.shouldIssueCertificate ||
-        Boolean(event.eventGroup?.certificateConfigs.length);
-      if (
-        !groupIssuesCertificate &&
-        this.hasMissingCertificatesOrConfig(event)
-      ) {
+        event.eventGroup?.shouldIssueCertificate || Boolean(event.eventGroup?.certificateConfigs.length);
+      if (!groupIssuesCertificate && this.hasMissingCertificatesOrConfig(event)) {
         pending.push({
           targetType: 'EVENT',
           targetId: event.id,
@@ -818,8 +763,7 @@ export class DashboardInsightsService {
           targetType: 'EVENT',
           targetId: event.id,
           title: event.name,
-          subtitle:
-            'Há palestrantes cadastrados no evento sem certificados emitidos.',
+          subtitle: 'Há palestrantes cadastrados no evento sem certificados emitidos.',
           finishedAt: event.endDate,
         });
       }
@@ -836,26 +780,17 @@ export class DashboardInsightsService {
           targetType: 'MAJOR_EVENT_LECTURERS',
           targetId: majorEvent.id,
           title: majorEvent.name,
-          subtitle:
-            'Há palestrantes cadastrados no grande evento sem certificados emitidos.',
+          subtitle: 'Há palestrantes cadastrados no grande evento sem certificados emitidos.',
           finishedAt: majorEvent.endDate,
         });
       }
     }
 
-    return pending
-      .sort(
-        (left, right) => right.finishedAt.getTime() - left.finishedAt.getTime(),
-      )
-      .slice(0, 12);
+    return pending.sort((left, right) => right.finishedAt.getTime() - left.finishedAt.getTime()).slice(0, 12);
   }
 
-  private hasConfigWithoutCertificate(target: {
-    certificateConfigs: { certificates: { id: string }[] }[];
-  }): boolean {
-    return target.certificateConfigs.some(
-      (config) => config.certificates.length === 0,
-    );
+  private hasConfigWithoutCertificate(target: { certificateConfigs: { certificates: { id: string }[] }[] }): boolean {
+    return target.certificateConfigs.some((config) => config.certificates.length === 0);
   }
 
   private hasMissingCertificatesOrConfig(target: {
@@ -863,8 +798,7 @@ export class DashboardInsightsService {
     certificateConfigs: { certificates: { id: string }[] }[];
   }): boolean {
     return (
-      (target.shouldIssueCertificate &&
-        target.certificateConfigs.length === 0) ||
+      (target.shouldIssueCertificate && target.certificateConfigs.length === 0) ||
       this.hasConfigWithoutCertificate(target)
     );
   }
@@ -873,22 +807,16 @@ export class DashboardInsightsService {
     lecturers: { personId: string }[];
     certificateConfigs: { certificates: { personId: string }[] }[];
   }): boolean {
-    const lecturerIds = new Set(
-      target.lecturers.map((lecturer) => lecturer.personId),
-    );
+    const lecturerIds = new Set(target.lecturers.map((lecturer) => lecturer.personId));
 
     if (lecturerIds.size === 0) {
       return false;
     }
 
     return target.certificateConfigs.some((config) => {
-      const issuedPersonIds = new Set(
-        config.certificates.map((certificate) => certificate.personId),
-      );
+      const issuedPersonIds = new Set(config.certificates.map((certificate) => certificate.personId));
 
-      return [...lecturerIds].some(
-        (lecturerId) => !issuedPersonIds.has(lecturerId),
-      );
+      return [...lecturerIds].some((lecturerId) => !issuedPersonIds.has(lecturerId));
     });
   }
 
@@ -932,10 +860,7 @@ export class DashboardInsightsService {
     }
 
     for (const event of input.mismatchingCertificateGroupEvents) {
-      if (
-        !event.eventGroup ||
-        event.shouldIssueCertificate === event.eventGroup.shouldIssueCertificate
-      ) {
+      if (!event.eventGroup || event.shouldIssueCertificate === event.eventGroup.shouldIssueCertificate) {
         continue;
       }
 
@@ -973,10 +898,7 @@ export class DashboardInsightsService {
         });
       }
 
-      if (
-        event.endDate.getTime() - event.startDate.getTime() >
-        EIGHT_HOURS_MS
-      ) {
+      if (event.endDate.getTime() - event.startDate.getTime() > EIGHT_HOURS_MS) {
         inconsistencies.push({
           type: 'SUSPICIOUS_DURATION',
           severity: 'WARNING',
@@ -1006,9 +928,7 @@ export class DashboardInsightsService {
         });
       }
 
-      const lecturerIds = new Set(
-        event.lecturers.map((lecturer) => lecturer.personId),
-      );
+      const lecturerIds = new Set(event.lecturers.map((lecturer) => lecturer.personId));
       for (const subscription of event.subscriptions) {
         if (lecturerIds.has(subscription.personId)) {
           inconsistencies.push({
@@ -1043,17 +963,10 @@ export class DashboardInsightsService {
 
     for (const lecturerEvents of eventsByLecturer.values()) {
       for (let leftIndex = 0; leftIndex < lecturerEvents.length; leftIndex++) {
-        for (
-          let rightIndex = leftIndex + 1;
-          rightIndex < lecturerEvents.length;
-          rightIndex++
-        ) {
+        for (let rightIndex = leftIndex + 1; rightIndex < lecturerEvents.length; rightIndex++) {
           const left = lecturerEvents[leftIndex];
           const right = lecturerEvents[rightIndex];
-          if (
-            left.startDate < right.endDate &&
-            right.startDate < left.endDate
-          ) {
+          if (left.startDate < right.endDate && right.startDate < left.endDate) {
             inconsistencies.push({
               type: 'LECTURER_DOUBLE_BOOKED',
               severity: 'CRITICAL',
@@ -1094,9 +1007,7 @@ export class DashboardInsightsService {
       }
     }
 
-    return [...groupedPermissions.values()].sort((left, right) =>
-      left.label.localeCompare(right.label),
-    );
+    return [...groupedPermissions.values()].sort((left, right) => left.label.localeCompare(right.label));
   }
 
   private getFormattedAction(action: string): string {
@@ -1181,9 +1092,7 @@ export class DashboardInsightsService {
     }
   }
 
-  private async getCachedInsights(
-    cacheKey: string,
-  ): Promise<WorkspaceDashboardInsights | null> {
+  private async getCachedInsights(cacheKey: string): Promise<WorkspaceDashboardInsights | null> {
     const cached = await this.redis.get(cacheKey);
     if (!cached) {
       return null;

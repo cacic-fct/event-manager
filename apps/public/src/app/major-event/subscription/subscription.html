@@ -24,11 +24,7 @@
 
   <header class="page-header">
     <div class="emoji-frame">
-      <img
-        class="twemoji"
-        [src]="emoji.getTwemojiUrl(majorEvent.emoji)"
-        [alt]="majorEvent.emoji"
-      />
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(majorEvent.emoji)" [alt]="majorEvent.emoji" />
     </div>
     <div class="header-copy">
       <p class="eyebrow">Evento principal</p>
@@ -38,16 +34,10 @@
   </header>
 
   <mat-chip-set aria-label="Resumo da inscrição">
-    @if (majorEvent.maxCoursesPerAttendee !== null &&
-    majorEvent.maxCoursesPerAttendee !== undefined) {
-    <mat-chip>
-      {{ courseCount() }} / {{ majorEvent.maxCoursesPerAttendee }} minicursos
-    </mat-chip>
-    } @if (majorEvent.maxLecturesPerAttendee !== null &&
-    majorEvent.maxLecturesPerAttendee !== undefined) {
-    <mat-chip>
-      {{ lectureCount() }} / {{ majorEvent.maxLecturesPerAttendee }} palestras
-    </mat-chip>
+    @if (majorEvent.maxCoursesPerAttendee !== null && majorEvent.maxCoursesPerAttendee !== undefined) {
+    <mat-chip> {{ courseCount() }} / {{ majorEvent.maxCoursesPerAttendee }} minicursos </mat-chip>
+    } @if (majorEvent.maxLecturesPerAttendee !== null && majorEvent.maxLecturesPerAttendee !== undefined) {
+    <mat-chip> {{ lectureCount() }} / {{ majorEvent.maxLecturesPerAttendee }} palestras </mat-chip>
     } @if (majorEvent.isPaymentRequired) {
     <mat-chip>
       <mat-icon matChipAvatar>payments</mat-icon>
@@ -72,8 +62,7 @@
     [autoSelectedEventIds]="autoSelectedEventIds()"
     [disabledReasons]="disabledReasons()"
     (toggleEvent)="toggleEvent($event)"
-    (openInfo)="openInfo($event)"
-  />
+    (openInfo)="openInfo($event)" />
 
   <button
     mat-fab
@@ -81,8 +70,7 @@
     type="button"
     class="subscribe-fab"
     [disabled]="isSubmitting() || selectedEvents().length === 0"
-    (click)="submit()"
-  >
+    (click)="submit()">
     <mat-icon>event_available</mat-icon>
     Inscrever-se
   </button>

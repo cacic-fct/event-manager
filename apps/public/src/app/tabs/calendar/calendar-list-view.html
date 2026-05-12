@@ -4,8 +4,7 @@
     type="button"
     class="load-older-button"
     [disabled]="!canLoadOlder() || isLoadingOlder()"
-    (click)="loadOlder.emit()"
-  >
+    (click)="loadOlder.emit()">
     <mat-icon>history</mat-icon>
     {{ isLoadingOlder() ? 'Carregando...' : 'Mostrar eventos mais antigos' }}
   </button>

@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma, SubscriptionStatus } from '@prisma/client';
 import {
@@ -196,11 +192,7 @@ export class EventSubscriptionsResolver {
           createdByMethod: true,
         },
       });
-      await this.attendanceCategories.refreshForAttendance(
-        input.personId,
-        input.eventId,
-        tx,
-      );
+      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
       await this.refreshEventSubscriptionCounters(tx, [input.eventId]);
       return created;
     });
@@ -250,10 +242,7 @@ export class EventSubscriptionsResolver {
     const status = this.normalizeStatus(input.subscriptionStatus);
     await this.ensurePersonExists(input.personId);
     await this.ensureMajorEventExists(input.majorEventId);
-    await this.ensureSelectedEventsBelongToMajorEvent(
-      input.majorEventId,
-      selectedEventIds,
-    );
+    await this.ensureSelectedEventsBelongToMajorEvent(input.majorEventId, selectedEventIds);
     await this.ensurePersonIsNotLecturer(input.personId, selectedEventIds);
 
     const subscription = await this.prisma.$transaction(async (tx) => {
@@ -292,20 +281,13 @@ export class EventSubscriptionsResolver {
         });
       }
 
-      await this.attendanceCategories.refreshForMajorEventPerson(
-        input.majorEventId,
-        input.personId,
-        tx,
-      );
+      await this.attendanceCategories.refreshForMajorEventPerson(input.majorEventId, input.personId, tx);
       await this.refreshEventSubscriptionCounters(tx, selectedEventIds);
 
       return majorEventSubscription;
     });
 
-    const [result] = await this.attachMajorEventSubscriptionEvents(
-      input.majorEventId,
-      [subscription],
-    );
+    const [result] = await this.attachMajorEventSubscriptionEvents(input.majorEventId, [subscription]);
     return result;
   }
 
@@ -335,24 +317,17 @@ export class EventSubscriptionsResolver {
     }
 
     const selectedEventIds =
-      input.selectedEventIds == null
-        ? undefined
-        : this.normalizeEventIds(input.selectedEventIds);
+      input.selectedEventIds == null ? undefined : this.normalizeEventIds(input.selectedEventIds);
 
     if (selectedEventIds) {
-      await this.ensureSelectedEventsBelongToMajorEvent(
-        existing.majorEventId,
-        selectedEventIds,
-      );
+      await this.ensureSelectedEventsBelongToMajorEvent(existing.majorEventId, selectedEventIds);
       await this.ensurePersonIsNotLecturer(existing.personId, selectedEventIds);
     }
 
     const subscription = await this.prisma.$transaction(async (tx) => {
       const updateData: Prisma.MajorEventSubscriptionUpdateInput = {};
       if (input.subscriptionStatus !== undefined) {
-        updateData.subscriptionStatus = this.normalizeStatus(
-          input.subscriptionStatus,
-        );
+        updateData.subscriptionStatus = this.normalizeStatus(input.subscriptionStatus);
       }
       if (input.amountPaid !== undefined) {
         updateData.amountPaid = input.amountPaid;
@@ -395,23 +370,13 @@ export class EventSubscriptionsResolver {
         updated.subscriptionStatus,
       );
 
-      await this.attendanceCategories.refreshForMajorEventPerson(
-        existing.majorEventId,
-        existing.personId,
-        tx,
-      );
-      await this.refreshEventSubscriptionCounters(
-        tx,
-        effectiveSelectedEventIds,
-      );
+      await this.attendanceCategories.refreshForMajorEventPerson(existing.majorEventId, existing.personId, tx);
+      await this.refreshEventSubscriptionCounters(tx, effectiveSelectedEventIds);
 
       return updated;
     });
 
-    const [result] = await this.attachMajorEventSubscriptionEvents(
-      existing.majorEventId,
-      [subscription],
-    );
+    const [result] = await this.attachMajorEventSubscriptionEvents(existing.majorEventId, [subscription]);
     return result;
   }
 
@@ -440,9 +405,7 @@ export class EventSubscriptionsResolver {
     majorEventId: string,
     subscriptions: Array<
       Prisma.MajorEventSubscriptionGetPayload<{
-        select: ReturnType<
-          EventSubscriptionsResolver['majorEventSubscriptionSelect']
-        >;
+        select: ReturnType<EventSubscriptionsResolver['majorEventSubscriptionSelect']>;
       }>
     >,
   ): Promise<WorkspaceMajorEventSubscription[]> {
@@ -470,11 +433,8 @@ export class EventSubscriptionsResolver {
       },
     });
     const eventIds = events.map((event) => event.id);
-    const personIds = subscriptions.map(
-      (subscription) => subscription.personId,
-    );
-    const eventSelections =
-      await this.prisma.majorEventSubscriptionEventSelection.findMany({
+    const personIds = subscriptions.map((subscription) => subscription.personId);
+    const eventSelections = await this.prisma.majorEventSubscriptionEventSelection.findMany({
       where: {
         deletedAt: null,
         subscription: {
@@ -498,9 +458,7 @@ export class EventSubscriptionsResolver {
       },
     });
     const subscribedKeys = new Set(
-      eventSelections.map(
-        (selection) => `${selection.subscription.personId}:${selection.eventId}`,
-      ),
+      eventSelections.map((selection) => `${selection.subscription.personId}:${selection.eventId}`),
     );
 
     return subscriptions.map((subscription) => ({
@@ -510,9 +468,7 @@ export class EventSubscriptionsResolver {
         eventName: event.name,
         eventStartDate: event.startDate,
         subscribed: subscribedKeys.has(`${subscription.personId}:${event.id}`),
-        isLecturerSubscription: event.lecturers.some(
-          (lecturer) => lecturer.personId === subscription.personId,
-        ),
+        isLecturerSubscription: event.lecturers.some((lecturer) => lecturer.personId === subscription.personId),
       })),
     }));
   }
@@ -526,23 +482,18 @@ export class EventSubscriptionsResolver {
     status: SubscriptionStatus,
   ): Promise<void> {
     const selectedEventIdSet = new Set(selectedEventIds);
-    const activeSelections =
-      await tx.majorEventSubscriptionEventSelection.findMany({
-        where: {
-          subscriptionId,
-          deletedAt: null,
-        },
-        select: {
-          eventId: true,
-        },
-      });
-    const activeSelectionIdSet = new Set(
-      activeSelections.map((selection) => selection.eventId),
-    );
+    const activeSelections = await tx.majorEventSubscriptionEventSelection.findMany({
+      where: {
+        subscriptionId,
+        deletedAt: null,
+      },
+      select: {
+        eventId: true,
+      },
+    });
+    const activeSelectionIdSet = new Set(activeSelections.map((selection) => selection.eventId));
     const now = new Date();
-    const selectionEventIdsToArchive = [...activeSelectionIdSet].filter(
-      (eventId) => !selectedEventIdSet.has(eventId),
-    );
+    const selectionEventIdsToArchive = [...activeSelectionIdSet].filter((eventId) => !selectedEventIdSet.has(eventId));
     if (selectionEventIdsToArchive.length > 0) {
       await tx.majorEventSubscriptionEventSelection.updateMany({
         where: {
@@ -558,9 +509,7 @@ export class EventSubscriptionsResolver {
       });
     }
 
-    const selectionEventIdsToCreate = selectedEventIds.filter(
-      (eventId) => !activeSelectionIdSet.has(eventId),
-    );
+    const selectionEventIdsToCreate = selectedEventIds.filter((eventId) => !activeSelectionIdSet.has(eventId));
     if (selectionEventIdsToCreate.length > 0) {
       await tx.majorEventSubscriptionEventSelection.createMany({
         data: selectionEventIdsToCreate.map((eventId) => ({
@@ -583,13 +532,9 @@ export class EventSubscriptionsResolver {
         eventId: true,
       },
     });
-    const activeEventIdSet = new Set(
-      activeSubscriptions.map((subscription) => subscription.eventId),
-    );
+    const activeEventIdSet = new Set(activeSubscriptions.map((subscription) => subscription.eventId));
     const eventIdsToArchive = [...activeEventIdSet].filter(
-      (eventId) =>
-        status !== SubscriptionStatus.CONFIRMED ||
-        !selectedEventIdSet.has(eventId),
+      (eventId) => status !== SubscriptionStatus.CONFIRMED || !selectedEventIdSet.has(eventId),
     );
     if (eventIdsToArchive.length > 0) {
       await tx.eventSubscription.updateMany({
@@ -627,18 +572,16 @@ export class EventSubscriptionsResolver {
     ]);
   }
 
-  private async refreshEventSubscriptionCounters(
-    tx: Prisma.TransactionClient,
-    eventIds: string[],
-  ): Promise<void> {
+  private async refreshEventSubscriptionCounters(tx: Prisma.TransactionClient, eventIds: string[]): Promise<void> {
     const uniqueEventIds = [...new Set(eventIds)];
     if (uniqueEventIds.length === 0) {
       return;
     }
 
     await Promise.all(
-      uniqueEventIds.map((eventId) =>
-        tx.$executeRaw`
+      uniqueEventIds.map(
+        (eventId) =>
+          tx.$executeRaw`
           UPDATE "events" event
           SET
             "queueCount" = (
@@ -711,10 +654,7 @@ export class EventSubscriptionsResolver {
     }
   }
 
-  private async ensureSelectedEventsBelongToMajorEvent(
-    majorEventId: string,
-    eventIds: string[],
-  ): Promise<void> {
+  private async ensureSelectedEventsBelongToMajorEvent(majorEventId: string, eventIds: string[]): Promise<void> {
     if (eventIds.length === 0) {
       return;
     }
@@ -740,15 +680,10 @@ export class EventSubscriptionsResolver {
     }
   }
 
-  private async ensurePersonIsNotLecturer(
-    personId: string,
-    eventIds: string[],
-  ): Promise<void> {
+  private async ensurePersonIsNotLecturer(personId: string, eventIds: string[]): Promise<void> {
     const lecturerPersonIds = await this.getLecturerPersonIds(eventIds);
     if (lecturerPersonIds.has(personId)) {
-      throw new BadRequestException(
-        `Person ${personId} is a lecturer for one of the selected events.`,
-      );
+      throw new BadRequestException(`Person ${personId} is a lecturer for one of the selected events.`);
     }
   }
 
@@ -771,9 +706,7 @@ export class EventSubscriptionsResolver {
   }
 
   private normalizeEventIds(eventIds: string[]): string[] {
-    return [
-      ...new Set(eventIds.map((eventId) => eventId.trim()).filter(Boolean)),
-    ];
+    return [...new Set(eventIds.map((eventId) => eventId.trim()).filter(Boolean))];
   }
 
   private normalizeStatus(status?: string): SubscriptionStatus {
@@ -788,9 +721,7 @@ export class EventSubscriptionsResolver {
     return normalizedStatus;
   }
 
-  private normalizeNullableText(
-    value?: string | null,
-  ): string | null | undefined {
+  private normalizeNullableText(value?: string | null): string | null | undefined {
     if (value === undefined) {
       return undefined;
     }

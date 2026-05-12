@@ -160,9 +160,7 @@ export class EventLecturersResolver {
     });
 
     if (!eventLecturer) {
-      throw new NotFoundException(
-        `Event lecturer ${eventId}/${personId} was not found.`,
-      );
+      throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
     }
 
     return eventLecturer;
@@ -196,9 +194,7 @@ export class EventLecturersResolver {
     });
 
     if (count === 0) {
-      throw new NotFoundException(
-        `Event lecturer ${eventId}/${personId} was not found.`,
-      );
+      throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
     }
 
     return this.prisma.eventLecturer.findUnique({
@@ -235,9 +231,7 @@ export class EventLecturersResolver {
     });
 
     if (count === 0) {
-      throw new NotFoundException(
-        `Event lecturer ${eventId}/${personId} was not found.`,
-      );
+      throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
     }
 
     return {

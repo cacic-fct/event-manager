@@ -1,10 +1,5 @@
-import {
-  ConflictException,
-  Logger,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
 import { DeletionResult, Person, PersonCreateInput, PersonUpdateInput } from '@cacic-fct/shared-data-types';
+import { ConflictException, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
@@ -58,10 +53,7 @@ export class PeopleResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchPeople(
-          normalizedQuery,
-          take ?? 200,
-        );
+        prioritizedIds = await this.typesenseSearch.searchPeople(normalizedQuery, take ?? 200);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -95,9 +87,7 @@ export class PeopleResolver {
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
     return [...people].sort(
-      (left, right) =>
-        (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-        (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
     );
   }
 
@@ -125,9 +115,7 @@ export class PeopleResolver {
 
   @Mutation(() => Person, { name: 'createPerson' })
   @RequireScopes('person#edit')
-  async createPerson(
-    @Args('input', { type: () => PersonCreateInput }) input: PersonCreateInput,
-  ) {
+  async createPerson(@Args('input', { type: () => PersonCreateInput }) input: PersonCreateInput) {
     await this.ensureNoDuplicateIdentity(input);
 
     const person = await this.prisma.people.create({
@@ -206,9 +194,7 @@ export class PeopleResolver {
     }
     if (person && this.shouldRefreshCertificates(existingPerson, person)) {
       try {
-        await this.certificateIssuingService.refreshIssuedCertificatesForPerson(
-          person.id,
-        );
+        await this.certificateIssuingService.refreshIssuedCertificatesForPerson(person.id);
       } catch (error) {
         this.logger.error(
           `Failed to refresh certificates after admin update for person ${person.id}.`,
@@ -247,11 +233,7 @@ export class PeopleResolver {
     input: PersonCreateInput | PersonUpdateInput,
     excludeId?: string,
   ): Promise<void> {
-    if (
-      !input.identityDocument?.trim() &&
-      !input.email?.trim() &&
-      !input.name?.trim()
-    ) {
+    if (!input.identityDocument?.trim() && !input.email?.trim() && !input.name?.trim()) {
       throw new UnprocessableEntityException(
         'A person must include at least one of: identityDocument, email, or name.',
       );
@@ -305,9 +287,6 @@ export class PeopleResolver {
     before: Pick<Person, 'name' | 'identityDocument'>,
     after: Pick<Person, 'name' | 'identityDocument'>,
   ): boolean {
-    return (
-      before.name !== after.name ||
-      before.identityDocument !== after.identityDocument
-    );
+    return before.name !== after.name || before.identityDocument !== after.identityDocument;
   }
 }

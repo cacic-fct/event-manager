@@ -14,17 +14,13 @@ import {
   SubscriptionsFeed,
 } from './attendance-models';
 
-export function sortSubscriptionsFeed(
-  feed: SubscriptionsFeed,
-): SubscriptionsFeed {
+export function sortSubscriptionsFeed(feed: SubscriptionsFeed): SubscriptionsFeed {
   return {
     ...feed,
     majorEventItems: [...feed.majorEventItems].sort((left, right) =>
       compareIsoDateAsc(left.majorEvent.startDate, right.majorEvent.startDate),
     ),
-    eventItems: [...feed.eventItems].sort((left, right) =>
-      compareIsoDateAsc(left.startDate, right.startDate),
-    ),
+    eventItems: [...feed.eventItems].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)),
   };
 }
 
@@ -62,26 +58,19 @@ export function getSubscribedItemDateLine(item: SubscribedItem): string {
   return formatDateRange(firstEvent.startDate, lastEvent.endDate);
 }
 
-export function getSubscribedItemStatusLine(
-  item: SubscribedItem,
-  attendances: CurrentUserEventAttendance[],
-): string {
+export function getSubscribedItemStatusLine(item: SubscribedItem, attendances: CurrentUserEventAttendance[]): string {
   const participationLabels = getParticipationStatusLabels(item.participation);
   const attendanceByEventId = getAttendanceByEventId(attendances);
 
   if (item.__typename === 'SubscribedSingleEventItem') {
     const attendance = attendanceByEventId.get(item.event.id);
     return formatStatusLine([
-      attendance
-        ? `Presença registrada às ${formatDateTime(attendance.attendedAt)}`
-        : undefined,
+      attendance ? `Presença registrada às ${formatDateTime(attendance.attendedAt)}` : undefined,
       ...participationLabels,
     ]);
   }
 
-  const attendedCount = item.events.filter((event) =>
-    attendanceByEventId.has(event.id),
-  ).length;
+  const attendedCount = item.events.filter((event) => attendanceByEventId.has(event.id)).length;
 
   if (attendedCount === 0) {
     return formatStatusLine(participationLabels);
@@ -93,21 +82,13 @@ export function getSubscribedItemStatusLine(
   ]);
 }
 
-export function getMajorEventDateLine(
-  subscription: CurrentUserMajorEventFeedItem,
-): string {
-  return formatDateRange(
-    subscription.majorEvent.startDate,
-    subscription.majorEvent.endDate,
-  );
+export function getMajorEventDateLine(subscription: CurrentUserMajorEventFeedItem): string {
+  return formatDateRange(subscription.majorEvent.startDate, subscription.majorEvent.endDate);
 }
 
-export function getMajorEventStatusLine(
-  subscription: CurrentUserMajorEventFeedItem,
-): string {
+export function getMajorEventStatusLine(subscription: CurrentUserMajorEventFeedItem): string {
   return formatStatusLine([
-    subscription.subscriptionStatus &&
-    subscription.subscriptionStatus !== 'CONFIRMED'
+    subscription.subscriptionStatus && subscription.subscriptionStatus !== 'CONFIRMED'
       ? getSubscriptionStatusLabel(subscription.subscriptionStatus)
       : undefined,
     ...getParticipationStatusLabels(subscription.participation),
@@ -118,9 +99,7 @@ export function getEventDateLine(event: PublicEvent): string {
   return formatDateRange(event.startDate, event.endDate);
 }
 
-export function getParticipationStatusLabels(
-  participation: CurrentUserEventParticipation,
-): string[] {
+export function getParticipationStatusLabels(participation: CurrentUserEventParticipation): string[] {
   return [
     participation.isSubscribed ? 'Inscrito' : undefined,
     participation.isLecturer ? 'Palestrante' : undefined,

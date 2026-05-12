@@ -15,9 +15,7 @@ export class CurrentUserMajorEventSubscriptionService {
   ) {}
 
   normalizeSelectedEventIds(eventIds: string[]): string[] {
-    const normalizedEventIds = eventIds
-      .map((eventId) => eventId.trim())
-      .filter((eventId) => eventId.length > 0);
+    const normalizedEventIds = eventIds.map((eventId) => eventId.trim()).filter((eventId) => eventId.length > 0);
     return [...new Set(normalizedEventIds)];
   }
 
@@ -54,52 +52,27 @@ export class CurrentUserMajorEventSubscriptionService {
     return normalizedPaymentTier;
   }
 
-  ensureMajorEventSubscriptionWindowOpen(
-    majorEvent: MajorEventBaseRecord,
-  ): void {
+  ensureMajorEventSubscriptionWindowOpen(majorEvent: MajorEventBaseRecord): void {
     const now = new Date();
-    if (
-      majorEvent.subscriptionStartDate &&
-      now < majorEvent.subscriptionStartDate
-    ) {
-      throw new BadRequestException(
-        `Subscriptions for major event ${majorEvent.id} are not open yet.`,
-      );
+    if (majorEvent.subscriptionStartDate && now < majorEvent.subscriptionStartDate) {
+      throw new BadRequestException(`Subscriptions for major event ${majorEvent.id} are not open yet.`);
     }
 
-    if (
-      majorEvent.subscriptionEndDate &&
-      now > majorEvent.subscriptionEndDate
-    ) {
-      throw new BadRequestException(
-        `Subscriptions for major event ${majorEvent.id} are already closed.`,
-      );
+    if (majorEvent.subscriptionEndDate && now > majorEvent.subscriptionEndDate) {
+      throw new BadRequestException(`Subscriptions for major event ${majorEvent.id} are already closed.`);
     }
   }
 
-  ensureMajorEventEventLimits(
-    majorEvent: MajorEventBaseRecord,
-    selectedEvents: EventRecord[],
-  ): void {
-    const selectedCourseCount = selectedEvents.filter(
-      (event) => event.type === EventType.MINICURSO,
-    ).length;
-    if (
-      majorEvent.maxCoursesPerAttendee != null &&
-      selectedCourseCount > majorEvent.maxCoursesPerAttendee
-    ) {
+  ensureMajorEventEventLimits(majorEvent: MajorEventBaseRecord, selectedEvents: EventRecord[]): void {
+    const selectedCourseCount = selectedEvents.filter((event) => event.type === EventType.MINICURSO).length;
+    if (majorEvent.maxCoursesPerAttendee != null && selectedCourseCount > majorEvent.maxCoursesPerAttendee) {
       throw new BadRequestException(
         `Selected ${selectedCourseCount} courses, but maximum is ${majorEvent.maxCoursesPerAttendee}.`,
       );
     }
 
-    const selectedLectureCount = selectedEvents.filter(
-      (event) => event.type === EventType.PALESTRA,
-    ).length;
-    if (
-      majorEvent.maxLecturesPerAttendee != null &&
-      selectedLectureCount > majorEvent.maxLecturesPerAttendee
-    ) {
+    const selectedLectureCount = selectedEvents.filter((event) => event.type === EventType.PALESTRA).length;
+    if (majorEvent.maxLecturesPerAttendee != null && selectedLectureCount > majorEvent.maxLecturesPerAttendee) {
       throw new BadRequestException(
         `Selected ${selectedLectureCount} lectures, but maximum is ${majorEvent.maxLecturesPerAttendee}.`,
       );
@@ -109,21 +82,14 @@ export class CurrentUserMajorEventSubscriptionService {
   ensureMajorEventScheduleHasNoConflicts(selectedEvents: EventRecord[]): void {
     for (let leftIndex = 0; leftIndex < selectedEvents.length; leftIndex += 1) {
       const leftEvent = selectedEvents[leftIndex];
-      for (
-        let rightIndex = leftIndex + 1;
-        rightIndex < selectedEvents.length;
-        rightIndex += 1
-      ) {
+      for (let rightIndex = leftIndex + 1; rightIndex < selectedEvents.length; rightIndex += 1) {
         const rightEvent = selectedEvents[rightIndex];
         if (
-          (!leftEvent.eventGroupId ||
-            leftEvent.eventGroupId !== rightEvent.eventGroupId) &&
+          (!leftEvent.eventGroupId || leftEvent.eventGroupId !== rightEvent.eventGroupId) &&
           leftEvent.startDate < rightEvent.endDate &&
           leftEvent.endDate > rightEvent.startDate
         ) {
-          throw new BadRequestException(
-            `Events ${leftEvent.id} and ${rightEvent.id} have conflicting schedules.`,
-          );
+          throw new BadRequestException(`Events ${leftEvent.id} and ${rightEvent.id} have conflicting schedules.`);
         }
       }
     }
@@ -152,25 +118,21 @@ export class CurrentUserMajorEventSubscriptionService {
         eventIds.some((eventId) => selectedEventIds.has(eventId)) &&
         eventIds.some((eventId) => !selectedEventIds.has(eventId))
       ) {
-        throw new BadRequestException(
-          `All events from group ${eventGroupId} must be selected together.`,
-        );
+        throw new BadRequestException(`All events from group ${eventGroupId} must be selected together.`);
       }
     }
   }
 
-  async refreshEventSubscriptionCounters(
-    tx: Prisma.TransactionClient,
-    eventIds: string[],
-  ): Promise<void> {
+  async refreshEventSubscriptionCounters(tx: Prisma.TransactionClient, eventIds: string[]): Promise<void> {
     const uniqueEventIds = [...new Set(eventIds)];
     if (uniqueEventIds.length === 0) {
       return;
     }
 
     await Promise.all(
-      uniqueEventIds.map((eventId) =>
-        tx.$executeRaw`
+      uniqueEventIds.map(
+        (eventId) =>
+          tx.$executeRaw`
           UPDATE "events" event
           SET
             "queueCount" = (
@@ -220,16 +182,12 @@ export class CurrentUserMajorEventSubscriptionService {
     return undefined;
   }
 
-  async getSelectedEventsByMajorEvent(
-    personId: string,
-    majorEventIds: string[],
-  ): Promise<Map<string, PublicEvent[]>> {
+  async getSelectedEventsByMajorEvent(personId: string, majorEventIds: string[]): Promise<Map<string, PublicEvent[]>> {
     if (majorEventIds.length === 0) {
       return new Map();
     }
 
-    const eventSelections =
-      await this.prisma.majorEventSubscriptionEventSelection.findMany({
+    const eventSelections = await this.prisma.majorEventSubscriptionEventSelection.findMany({
       where: {
         deletedAt: null,
         subscription: {
@@ -271,10 +229,7 @@ export class CurrentUserMajorEventSubscriptionService {
     return selectedEventsByMajorEventId;
   }
 
-  async getConfirmedEventsByMajorEvent(
-    personId: string,
-    majorEventIds: string[],
-  ): Promise<Map<string, PublicEvent[]>> {
+  async getConfirmedEventsByMajorEvent(personId: string, majorEventIds: string[]): Promise<Map<string, PublicEvent[]>> {
     if (majorEventIds.length === 0) {
       return new Map();
     }
@@ -317,12 +272,8 @@ export class CurrentUserMajorEventSubscriptionService {
     return confirmedEventsByMajorEventId;
   }
 
-  async getSelectedEventsForMajorEventSubscription(
-    personId: string,
-    majorEventId: string,
-  ): Promise<PublicEvent[]> {
-    const eventSelections =
-      await this.prisma.majorEventSubscriptionEventSelection.findMany({
+  async getSelectedEventsForMajorEventSubscription(personId: string, majorEventId: string): Promise<PublicEvent[]> {
+    const eventSelections = await this.prisma.majorEventSubscriptionEventSelection.findMany({
       where: {
         deletedAt: null,
         subscription: {
@@ -407,78 +358,75 @@ export class CurrentUserMajorEventSubscriptionService {
     personId: string,
     paymentInfoTableExists: boolean,
   ): Promise<CurrentUserMajorEventFeedItem[]> {
-    const [subscriptions, lecturerMajorEvents, certificates] =
-      await Promise.all([
-        this.prisma.majorEventSubscription.findMany({
-          where: {
-            personId,
+    const [subscriptions, lecturerMajorEvents, certificates] = await Promise.all([
+      this.prisma.majorEventSubscription.findMany({
+        where: {
+          personId,
+          deletedAt: null,
+          majorEvent: {
+            deletedAt: null,
+          },
+        },
+        select: this.getMajorEventSubscriptionSelect(paymentInfoTableExists),
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.eventLecturer.findMany({
+        where: {
+          personId,
+          event: {
             deletedAt: null,
             majorEvent: {
               deletedAt: null,
             },
           },
-          select: this.getMajorEventSubscriptionSelect(paymentInfoTableExists),
-          orderBy: {
-            createdAt: 'desc',
-          },
-        }),
-        this.prisma.eventLecturer.findMany({
-          where: {
-            personId,
-            event: {
-              deletedAt: null,
+        },
+        select: {
+          event: {
+            select: {
+              majorEventId: true,
               majorEvent: {
-                deletedAt: null,
+                select: MAJOR_EVENT_BASE_SELECT,
               },
             },
           },
-          select: {
-            event: {
-              select: {
-                majorEventId: true,
-                majorEvent: {
-                  select: MAJOR_EVENT_BASE_SELECT,
-                },
-              },
-            },
+        },
+        orderBy: {
+          event: {
+            startDate: 'desc',
           },
-          orderBy: {
-            event: {
-              startDate: 'desc',
-            },
-          },
-        }),
-        this.prisma.certificate.findMany({
-          where: {
-            personId,
+        },
+      }),
+      this.prisma.certificate.findMany({
+        where: {
+          personId,
+          deletedAt: null,
+          config: {
             deletedAt: null,
-            config: {
+            scope: CertificateScope.MAJOR_EVENT,
+            majorEvent: {
               deletedAt: null,
-              scope: CertificateScope.MAJOR_EVENT,
+            },
+          },
+        },
+        select: {
+          config: {
+            select: {
+              majorEventId: true,
               majorEvent: {
-                deletedAt: null,
+                select: MAJOR_EVENT_BASE_SELECT,
               },
             },
           },
-          select: {
-            config: {
-              select: {
-                majorEventId: true,
-                majorEvent: {
-                  select: MAJOR_EVENT_BASE_SELECT,
-                },
-              },
-            },
-          },
-          orderBy: {
-            issuedAt: 'desc',
-          },
-        }),
-      ]);
+        },
+        orderBy: {
+          issuedAt: 'desc',
+        },
+      }),
+    ]);
 
-    const subscribedMajorEventIds = new Set(
-      subscriptions.map((subscription) => subscription.majorEventId),
-    );
+    const subscribedMajorEventIds = new Set(subscriptions.map((subscription) => subscription.majorEventId));
     const lecturerMajorEventIds = new Set(
       lecturerMajorEvents
         .map(({ event }) => event.majorEventId)
@@ -490,15 +438,11 @@ export class CurrentUserMajorEventSubscriptionService {
         .filter((majorEventId): majorEventId is string => !!majorEventId),
     );
 
-    const selectedEventsByMajorEventId =
-      await this.getSelectedEventsByMajorEvent(personId, [
-        ...subscribedMajorEventIds,
-      ]);
+    const selectedEventsByMajorEventId = await this.getSelectedEventsByMajorEvent(personId, [
+      ...subscribedMajorEventIds,
+    ]);
 
-    const itemsByMajorEventId = new Map<
-      string,
-      CurrentUserMajorEventFeedItem
-    >();
+    const itemsByMajorEventId = new Map<string, CurrentUserMajorEventFeedItem>();
     for (const subscription of subscriptions) {
       itemsByMajorEventId.set(subscription.majorEventId, {
         id: subscription.id,
@@ -508,15 +452,12 @@ export class CurrentUserMajorEventSubscriptionService {
         amountPaid: subscription.amountPaid ?? undefined,
         paymentDate: subscription.paymentDate ?? undefined,
         paymentTier: subscription.paymentTier ?? undefined,
-        selectedEvents:
-          selectedEventsByMajorEventId.get(subscription.majorEventId) ?? [],
+        selectedEvents: selectedEventsByMajorEventId.get(subscription.majorEventId) ?? [],
         notSubscribedEvents: [],
         participation: {
           isSubscribed: true,
           isLecturer: lecturerMajorEventIds.has(subscription.majorEventId),
-          hasIssuedCertificate: certificateMajorEventIds.has(
-            subscription.majorEventId,
-          ),
+          hasIssuedCertificate: certificateMajorEventIds.has(subscription.majorEventId),
         },
       });
     }
@@ -535,18 +476,13 @@ export class CurrentUserMajorEventSubscriptionService {
         participation: {
           isSubscribed: false,
           isLecturer: true,
-          hasIssuedCertificate: certificateMajorEventIds.has(
-            event.majorEventId,
-          ),
+          hasIssuedCertificate: certificateMajorEventIds.has(event.majorEventId),
         },
       });
     }
 
     for (const { config } of certificates) {
-      if (
-        !config.majorEventId ||
-        itemsByMajorEventId.has(config.majorEventId)
-      ) {
+      if (!config.majorEventId || itemsByMajorEventId.has(config.majorEventId)) {
         continue;
       }
 
@@ -565,9 +501,7 @@ export class CurrentUserMajorEventSubscriptionService {
     }
 
     return [...itemsByMajorEventId.values()].sort(
-      (left, right) =>
-        right.majorEvent.startDate.getTime() -
-        left.majorEvent.startDate.getTime(),
+      (left, right) => right.majorEvent.startDate.getTime() - left.majorEvent.startDate.getTime(),
     );
   }
 

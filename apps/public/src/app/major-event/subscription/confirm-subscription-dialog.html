@@ -3,11 +3,7 @@
 <mat-dialog-content>
   <header class="dialog-header">
     <div class="emoji-frame">
-      <img
-        class="twemoji"
-        [src]="emoji.getTwemojiUrl(data.majorEvent.emoji)"
-        [alt]="data.majorEvent.emoji"
-      />
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(data.majorEvent.emoji)" [alt]="data.majorEvent.emoji" />
     </div>
     <div>
       <p>Você está se inscrevendo em</p>
@@ -23,17 +19,10 @@
     @for (event of day.events; track event.id) {
     <mat-list-item>
       <div matListItemIcon class="emoji-frame">
-        <img
-          class="twemoji"
-          [src]="emoji.getTwemojiUrl(event.emoji)"
-          [alt]="event.emoji"
-        />
+        <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
       </div>
       <div matListItemTitle>{{ event.name }}</div>
-      <div matListItemLine>
-        {{ event.startDate | date: 'HH:mm' }} às
-        {{ event.endDate | date: 'HH:mm' }}
-      </div>
+      <div matListItemLine>{{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }}</div>
     </mat-list-item>
     } } }
   </mat-list>

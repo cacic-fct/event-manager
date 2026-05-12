@@ -1,11 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import {
-  HttpErrorResponse,
-  HttpEvent,
-  HttpHandlerFn,
-  HttpInterceptorFn,
-  HttpRequest,
-} from '@angular/common/http';
+import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { PLATFORM_ID, inject } from '@angular/core';
 import { Observable, catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
@@ -40,8 +34,6 @@ export const authInterceptor: HttpInterceptorFn = (
 
 function shouldSkipRefresh(req: HttpRequest<unknown>): boolean {
   return (
-    req.url.includes('/api/auth/refresh') ||
-    req.url.includes('/api/auth/me') ||
-    req.url.includes('/api/auth/logout')
+    req.url.includes('/api/auth/refresh') || req.url.includes('/api/auth/me') || req.url.includes('/api/auth/logout')
   );
 }

@@ -1,12 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import {
-  Args,
-  Context,
-  Mutation,
-  Query,
-  Resolver,
-  createUnionType,
-} from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver, createUnionType } from '@nestjs/graphql';
 import {
   CurrentUserEventGroupSubscription,
   CurrentUserEventSubscription,
@@ -53,44 +46,35 @@ export class CurrentUserEventSubscriptionsResolver {
   @Query(() => [PublicEvent], {
     name: 'currentUserStandaloneEventSubscriptions',
   })
-  async currentUserStandaloneEventSubscriptions(
-    @Context() context: GraphqlContext,
-  ): Promise<PublicEvent[]> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+  async currentUserStandaloneEventSubscriptions(@Context() context: GraphqlContext): Promise<PublicEvent[]> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return [];
     }
 
-    const standaloneSubscriptions =
-      await this.prisma.eventSubscription.findMany({
-        where: {
-          personId: person.id,
+    const standaloneSubscriptions = await this.prisma.eventSubscription.findMany({
+      where: {
+        personId: person.id,
+        deletedAt: null,
+        event: {
           deletedAt: null,
-          event: {
-            deletedAt: null,
-            majorEventId: null,
-          },
+          majorEventId: null,
         },
-        select: {
-          event: {
-            select: EVENT_SELECT,
-          },
+      },
+      select: {
+        event: {
+          select: EVENT_SELECT,
         },
-        orderBy: {
-          event: {
-            startDate: 'asc',
-          },
+      },
+      orderBy: {
+        event: {
+          startDate: 'asc',
         },
-      });
+      },
+    });
 
-    return standaloneSubscriptions.map((subscription) =>
-      this.mapper.mapPublicEvent(subscription.event),
-    );
+    return standaloneSubscriptions.map((subscription) => this.mapper.mapPublicEvent(subscription.event));
   }
 
   @Query(() => CurrentUserEventSubscription, {
@@ -101,12 +85,8 @@ export class CurrentUserEventSubscriptionsResolver {
     @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventSubscription | null> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return null;
     }
@@ -136,10 +116,7 @@ export class CurrentUserEventSubscriptionsResolver {
     @Context() context: GraphqlContext,
   ): Promise<PublicEvent> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    return this.eventSubscriptions.subscribeCurrentUserEvent(
-      person.id,
-      eventId,
-    );
+    return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId);
   }
 
   @Query(() => [CurrentUserEventGroupSubscription], {
@@ -148,12 +125,8 @@ export class CurrentUserEventSubscriptionsResolver {
   async currentUserEventGroupSubscriptions(
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventGroupSubscription[]> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return [];
     }
@@ -172,49 +145,34 @@ export class CurrentUserEventSubscriptionsResolver {
       },
     });
 
-    const eventsBySubscriptionId =
-      await this.eventSubscriptions.getSubscribedEventsByEventGroupSubscription(
-        person.id,
-        subscriptions.map((subscription) => subscription.id),
-      );
+    const eventsBySubscriptionId = await this.eventSubscriptions.getSubscribedEventsByEventGroupSubscription(
+      person.id,
+      subscriptions.map((subscription) => subscription.id),
+    );
 
     return subscriptions.map((subscription) =>
-      this.mapper.mapCurrentUserEventGroupSubscription(
-        subscription,
-        eventsBySubscriptionId.get(subscription.id) ?? [],
-      ),
+      this.mapper.mapCurrentUserEventGroupSubscription(subscription, eventsBySubscriptionId.get(subscription.id) ?? []),
     );
   }
 
   @Query(() => [SubscribedItemUnion], {
     name: 'currentUserSubscribedItems',
-    description:
-      'Get all subscribed events and event groups, merged and ordered by date',
+    description: 'Get all subscribed events and event groups, merged and ordered by date',
   })
   async currentUserSubscribedItems(
     @Context() context: GraphqlContext,
   ): Promise<Array<SubscribedSingleEventItem | SubscribedEventGroupItem>> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return [];
     }
 
-    const items = await this.eventSubscriptions.getCurrentUserSubscribedItems(
-      person.id,
-    );
+    const items = await this.eventSubscriptions.getCurrentUserSubscribedItems(person.id);
 
     return items.map((item) => {
       if (item.type === 'single') {
-        return this.mapper.mapSubscribedSingleEventItem(
-          item.id,
-          item.event,
-          item.startDate,
-        );
+        return this.mapper.mapSubscribedSingleEventItem(item.id, item.event, item.startDate);
       } else {
         return this.mapper.mapSubscribedEventGroupItem(
           item.id,
@@ -234,12 +192,8 @@ export class CurrentUserEventSubscriptionsResolver {
     @Args('eventGroupId', { type: () => String }) eventGroupId: string,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventGroupSubscription | null> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-      );
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
     if (!person) {
       return null;
     }
@@ -260,11 +214,10 @@ export class CurrentUserEventSubscriptionsResolver {
       return null;
     }
 
-    const eventsBySubscriptionId =
-      await this.eventSubscriptions.getSubscribedEventsByEventGroupSubscription(
-        person.id,
-        [subscription.id],
-      );
+    const eventsBySubscriptionId = await this.eventSubscriptions.getSubscribedEventsByEventGroupSubscription(
+      person.id,
+      [subscription.id],
+    );
 
     return this.mapper.mapCurrentUserEventGroupSubscription(
       subscription,
@@ -280,10 +233,7 @@ export class CurrentUserEventSubscriptionsResolver {
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventGroupSubscription> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    return this.eventSubscriptions.subscribeCurrentUserEventGroup(
-      person.id,
-      eventGroupId,
-    );
+    return this.eventSubscriptions.subscribeCurrentUserEventGroup(person.id, eventGroupId);
   }
 
   @Query(() => [PublicEvent], { name: 'eventsByMajorEventId' })

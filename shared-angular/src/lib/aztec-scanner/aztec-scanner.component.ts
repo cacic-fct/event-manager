@@ -30,12 +30,7 @@ type ScannerState =
 
 @Component({
   selector: 'lib-aztec-scanner',
-  imports: [
-    MatButtonModule,
-    MatIconModule,
-    MatProgressBarModule,
-    MatTooltipModule,
-  ],
+  imports: [MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
   template: `
     <section class="scanner-shell">
       <div class="video-frame">
@@ -57,8 +52,7 @@ type ScannerState =
           type="button"
           matTooltip="Trocar câmera"
           [disabled]="devices().length < 2 || isBusy()"
-          (click)="selectNextDevice()"
-        >
+          (click)="selectNextDevice()">
           <mat-icon>cameraswitch</mat-icon>
         </button>
       </div>
@@ -117,8 +111,7 @@ export class AztecScannerComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly video =
-    viewChild.required<ElementRef<HTMLVideoElement>>('scannerVideo');
+  private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('scannerVideo');
 
   private readonly scannerCanvas = this.document.createElement('canvas');
   private readonly context = this.scannerCanvas.getContext('2d', {
@@ -141,9 +134,7 @@ export class AztecScannerComponent {
   readonly state = signal<ScannerState>('idle');
   readonly errorMessage = signal('');
 
-  readonly isBusy = computed(() =>
-    ['idle', 'requesting-permission'].includes(this.state()),
-  );
+  readonly isBusy = computed(() => ['idle', 'requesting-permission'].includes(this.state()));
 
   readonly statusText = computed(() => {
     switch (this.state()) {
@@ -213,11 +204,7 @@ export class AztecScannerComponent {
     }
 
     const currentDevice = this.selectedDevice();
-    const currentIndex = currentDevice
-      ? devices.findIndex(
-          (device) => device.deviceId === currentDevice.deviceId,
-        )
-      : -1;
+    const currentIndex = currentDevice ? devices.findIndex((device) => device.deviceId === currentDevice.deviceId) : -1;
 
     const nextDevice = devices[(currentIndex + 1) % devices.length];
 
@@ -249,12 +236,8 @@ export class AztecScannerComponent {
     return devices.filter((device) => device.kind === 'videoinput');
   }
 
-  private pickPreferredCamera(
-    devices: readonly MediaDeviceInfo[],
-  ): MediaDeviceInfo {
-    const rearCamera = devices.find(({ label }) =>
-      /back|trás|rear|traseira|environment|ambiente/i.test(label),
-    );
+  private pickPreferredCamera(devices: readonly MediaDeviceInfo[]): MediaDeviceInfo {
+    const rearCamera = devices.find(({ label }) => /back|trás|rear|traseira|environment|ambiente/i.test(label));
 
     return rearCamera ?? devices[devices.length - 1];
   }
@@ -302,15 +285,10 @@ export class AztecScannerComponent {
     this.state.set('error');
   }
 
-  private getFallbackDeviceOrder(
-    firstDevice: MediaDeviceInfo,
-  ): MediaDeviceInfo[] {
+  private getFallbackDeviceOrder(firstDevice: MediaDeviceInfo): MediaDeviceInfo[] {
     const devices = this.devices();
 
-    return [
-      firstDevice,
-      ...devices.filter((device) => device.deviceId !== firstDevice.deviceId),
-    ];
+    return [firstDevice, ...devices.filter((device) => device.deviceId !== firstDevice.deviceId)];
   }
 
   private async startDevice(device: MediaDeviceInfo): Promise<void> {
@@ -331,9 +309,7 @@ export class AztecScannerComponent {
 
   private formatCameraError(error: unknown): string {
     if (!(error instanceof DOMException)) {
-      return error instanceof Error
-        ? error.message
-        : 'Não foi possível iniciar nenhuma câmera disponível.';
+      return error instanceof Error ? error.message : 'Não foi possível iniciar nenhuma câmera disponível.';
     }
 
     switch (error.name) {
@@ -346,18 +322,14 @@ export class AztecScannerComponent {
       case 'NotReadableError':
         return 'A câmera está em uso por outro aplicativo ou não pôde ser acessada.';
       default:
-        return (
-          error.message || 'Não foi possível iniciar nenhuma câmera disponível.'
-        );
+        return error.message || 'Não foi possível iniciar nenhuma câmera disponível.';
     }
   }
 
   private scheduleFrame(): void {
     this.stopScanningLoop();
 
-    this.animationFrameId = requestAnimationFrame(
-      () => void this.processFrame(),
-    );
+    this.animationFrameId = requestAnimationFrame(() => void this.processFrame());
   }
 
   private async processFrame(): Promise<void> {
@@ -376,10 +348,7 @@ export class AztecScannerComponent {
 
     const video = this.video().nativeElement;
 
-    if (
-      !this.context ||
-      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-    ) {
+    if (!this.context || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
       this.scheduleFrame();
       return;
     }
@@ -416,10 +385,7 @@ export class AztecScannerComponent {
   private resizeScannerCanvas(): void {
     const size = this.frameSize();
 
-    if (
-      this.scannerCanvas.width !== size ||
-      this.scannerCanvas.height !== size
-    ) {
+    if (this.scannerCanvas.width !== size || this.scannerCanvas.height !== size) {
       this.scannerCanvas.width = size;
       this.scannerCanvas.height = size;
     }
@@ -428,10 +394,7 @@ export class AztecScannerComponent {
   private acceptsCode(code: string): boolean {
     const acceptedPrefixes = this.acceptedPrefixes();
 
-    return (
-      acceptedPrefixes.length === 0 ||
-      acceptedPrefixes.some((prefix) => code.startsWith(prefix))
-    );
+    return acceptedPrefixes.length === 0 || acceptedPrefixes.some((prefix) => code.startsWith(prefix));
   }
 
   private stop(): void {
@@ -452,9 +415,7 @@ export class AztecScannerComponent {
   private stopStream(): void {
     const video = this.video().nativeElement;
 
-    this.terminateStream(
-      video.srcObject instanceof MediaStream ? video.srcObject : null,
-    );
+    this.terminateStream(video.srcObject instanceof MediaStream ? video.srcObject : null);
 
     video.srcObject = null;
   }

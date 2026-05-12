@@ -45,8 +45,8 @@ export class WorkspaceEventGroupsService {
   });
 
   constructor() {
-    this.eventGroupForm.controls.shouldIssueCertificate.valueChanges.subscribe(
-      () => this.syncCertificateRuleControls(),
+    this.eventGroupForm.controls.shouldIssueCertificate.valueChanges.subscribe(() =>
+      this.syncCertificateRuleControls(),
     );
     effect(() => {
       this.selectedEventGroupHasMajorEventEvents();
@@ -55,14 +55,10 @@ export class WorkspaceEventGroupsService {
   }
 
   async loadEventGroups(): Promise<void> {
-    this.eventGroups.set(
-      await firstValueFrom(this.api.listEventGroups({ take: 200 })),
-    );
+    this.eventGroups.set(await firstValueFrom(this.api.listEventGroups({ take: 200 })));
     const selectedGroup = this.selectedEventGroup();
     if (selectedGroup) {
-      const refreshed = this.eventGroups().find(
-        (group) => group.id === selectedGroup.id,
-      );
+      const refreshed = this.eventGroups().find((group) => group.id === selectedGroup.id);
       if (refreshed) {
         this.selectedEventGroup.set(refreshed);
       }
@@ -81,17 +77,14 @@ export class WorkspaceEventGroupsService {
       emoji: raw.emoji.trim() || DEFAULT_EVENT_GROUP_EMOJI,
       shouldIssueCertificate: raw.shouldIssueCertificate,
       shouldIssueCertificateForNonPayingAttendees:
-        raw.shouldIssueCertificate &&
-        raw.shouldIssueCertificateForNonPayingAttendees,
+        raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonPayingAttendees,
       shouldIssueCertificateForNonSubscribedAttendees:
-        raw.shouldIssueCertificate &&
-        raw.shouldIssueCertificateForNonSubscribedAttendees,
+        raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldIssueCertificateForEachEvent:
         raw.shouldIssueCertificate &&
         !this.selectedEventGroupHasMajorEventEvents() &&
         raw.shouldIssueCertificateForEachEvent,
-      shouldIssuePartialCertificate:
-        raw.shouldIssueCertificate && raw.shouldIssuePartialCertificate,
+      shouldIssuePartialCertificate: raw.shouldIssueCertificate && raw.shouldIssuePartialCertificate,
     };
 
     if (raw.id) {
@@ -162,12 +155,9 @@ export class WorkspaceEventGroupsService {
       name: group.name,
       emoji: group.emoji || DEFAULT_EVENT_GROUP_EMOJI,
       shouldIssueCertificate: group.shouldIssueCertificate,
-      shouldIssueCertificateForNonPayingAttendees:
-        group.shouldIssueCertificateForNonPayingAttendees,
-      shouldIssueCertificateForNonSubscribedAttendees:
-        group.shouldIssueCertificateForNonSubscribedAttendees,
-      shouldIssueCertificateForEachEvent:
-        group.shouldIssueCertificateForEachEvent,
+      shouldIssueCertificateForNonPayingAttendees: group.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees: group.shouldIssueCertificateForNonSubscribedAttendees,
+      shouldIssueCertificateForEachEvent: group.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: group.shouldIssuePartialCertificate,
     });
     this.syncCertificateRuleControls();
@@ -202,12 +192,8 @@ export class WorkspaceEventGroupsService {
       return;
     }
 
-    const events = await firstValueFrom(
-      this.eventsApi.listEvents({ query, take: 20 }),
-    );
-    this.eventGroupEventSearchResults.set(
-      events.filter((eventItem) => eventItem.eventGroupId !== selectedGroup.id),
-    );
+    const events = await firstValueFrom(this.eventsApi.listEvents({ query, take: 20 }));
+    this.eventGroupEventSearchResults.set(events.filter((eventItem) => eventItem.eventGroupId !== selectedGroup.id));
   }
 
   async addEventToSelectedGroup(eventItem: Event): Promise<void> {
@@ -219,25 +205,18 @@ export class WorkspaceEventGroupsService {
     await firstValueFrom(
       this.eventsApi.updateEvent(eventItem.id, {
         eventGroupId: selectedGroup.id,
-        shouldIssueCertificate: selectedGroup.shouldIssueCertificate
-          ? eventItem.shouldIssueCertificate
-          : false,
+        shouldIssueCertificate: selectedGroup.shouldIssueCertificate ? eventItem.shouldIssueCertificate : false,
         shouldIssueCertificateForNonPayingAttendees:
-          selectedGroup.shouldIssueCertificate &&
-          selectedGroup.shouldIssueCertificateForNonPayingAttendees
+          selectedGroup.shouldIssueCertificate && selectedGroup.shouldIssueCertificateForNonPayingAttendees
             ? eventItem.shouldIssueCertificateForNonPayingAttendees
             : false,
         shouldIssueCertificateForNonSubscribedAttendees:
-          selectedGroup.shouldIssueCertificate &&
-          selectedGroup.shouldIssueCertificateForNonSubscribedAttendees
+          selectedGroup.shouldIssueCertificate && selectedGroup.shouldIssueCertificateForNonSubscribedAttendees
             ? eventItem.shouldIssueCertificateForNonSubscribedAttendees
             : false,
       }),
     );
-    await Promise.all([
-      this.eventsService.loadEvents(),
-      this.loadEventsForGroup(selectedGroup.id),
-    ]);
+    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id)]);
   }
 
   async removeEventFromSelectedGroup(eventItem: Event): Promise<void> {
@@ -251,10 +230,7 @@ export class WorkspaceEventGroupsService {
         eventGroupId: null,
       }),
     );
-    await Promise.all([
-      this.eventsService.loadEvents(),
-      this.loadEventsForGroup(selectedGroup.id),
-    ]);
+    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id)]);
   }
 
   private async loadEventsForGroup(groupId: string): Promise<void> {
@@ -270,17 +246,11 @@ export class WorkspaceEventGroupsService {
   }
 
   private syncCertificateRuleControls(): void {
-    const shouldIssueCertificate =
-      this.eventGroupForm.controls.shouldIssueCertificate.value;
-    const forEachControl =
-      this.eventGroupForm.controls.shouldIssueCertificateForEachEvent;
-    const partialControl =
-      this.eventGroupForm.controls.shouldIssuePartialCertificate;
-    const nonPayingControl =
-      this.eventGroupForm.controls.shouldIssueCertificateForNonPayingAttendees;
-    const nonSubscribedControl =
-      this.eventGroupForm.controls
-        .shouldIssueCertificateForNonSubscribedAttendees;
+    const shouldIssueCertificate = this.eventGroupForm.controls.shouldIssueCertificate.value;
+    const forEachControl = this.eventGroupForm.controls.shouldIssueCertificateForEachEvent;
+    const partialControl = this.eventGroupForm.controls.shouldIssuePartialCertificate;
+    const nonPayingControl = this.eventGroupForm.controls.shouldIssueCertificateForNonPayingAttendees;
+    const nonSubscribedControl = this.eventGroupForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
 
     if (!shouldIssueCertificate) {
       nonPayingControl.setValue(false, { emitEvent: false });

@@ -1,11 +1,4 @@
-import {
-  Field,
-  Float,
-  InputType,
-  Int,
-  ObjectType,
-  registerEnumType,
-} from '@nestjs/graphql';
+import { Field, Float, InputType, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
 
 export const UserRole = {
   USER: 'USER',
@@ -46,8 +39,7 @@ export const AttendanceCreationMethod = {
   ONLINE_CODE: 'ONLINE_CODE',
   UNKNOWN: 'UNKNOWN',
 } as const;
-export type AttendanceCreationMethod =
-  (typeof AttendanceCreationMethod)[keyof typeof AttendanceCreationMethod];
+export type AttendanceCreationMethod = (typeof AttendanceCreationMethod)[keyof typeof AttendanceCreationMethod];
 registerEnumType(AttendanceCreationMethod, {
   name: 'AttendanceCreationMethod',
 });
@@ -57,8 +49,7 @@ export const SubscriptionCreationMethod = {
   SELF_SUBSCRIPTION: 'SELF_SUBSCRIPTION',
   UNKNOWN: 'UNKNOWN',
 } as const;
-export type SubscriptionCreationMethod =
-  (typeof SubscriptionCreationMethod)[keyof typeof SubscriptionCreationMethod];
+export type SubscriptionCreationMethod = (typeof SubscriptionCreationMethod)[keyof typeof SubscriptionCreationMethod];
 registerEnumType(SubscriptionCreationMethod, {
   name: 'SubscriptionCreationMethod',
 });
@@ -69,8 +60,7 @@ export const CertificateScope = {
   EVENT: 'EVENT',
   OTHER: 'OTHER',
 } as const;
-export type CertificateScope =
-  (typeof CertificateScope)[keyof typeof CertificateScope];
+export type CertificateScope = (typeof CertificateScope)[keyof typeof CertificateScope];
 registerEnumType(CertificateScope, {
   name: 'CertificateScope',
 });
@@ -80,8 +70,7 @@ export const CertificateIssuedTo = {
   LECTURER: 'LECTURER',
   OTHER: 'OTHER',
 } as const;
-export type CertificateIssuedTo =
-  (typeof CertificateIssuedTo)[keyof typeof CertificateIssuedTo];
+export type CertificateIssuedTo = (typeof CertificateIssuedTo)[keyof typeof CertificateIssuedTo];
 registerEnumType(CertificateIssuedTo, {
   name: 'CertificateIssuedTo',
 });
@@ -92,8 +81,7 @@ export const MergeCandidateStatus = {
   REJECTED: 'REJECTED',
   STALE: 'STALE',
 } as const;
-export type MergeCandidateStatus =
-  (typeof MergeCandidateStatus)[keyof typeof MergeCandidateStatus];
+export type MergeCandidateStatus = (typeof MergeCandidateStatus)[keyof typeof MergeCandidateStatus];
 registerEnumType(MergeCandidateStatus, {
   name: 'MergeCandidateStatus',
 });
@@ -103,8 +91,7 @@ export const MergeMatchMethod = {
   EMAIL: 'EMAIL',
   NORMALIZED_NAME: 'NORMALIZED_NAME',
 } as const;
-export type MergeMatchMethod =
-  (typeof MergeMatchMethod)[keyof typeof MergeMatchMethod];
+export type MergeMatchMethod = (typeof MergeMatchMethod)[keyof typeof MergeMatchMethod];
 registerEnumType(MergeMatchMethod, {
   name: 'MergeMatchMethod',
 });
@@ -117,8 +104,7 @@ export const PersonMergeField = {
   USER_ID: 'USER_ID',
   EXTERNAL_REF: 'EXTERNAL_REF',
 } as const;
-export type PersonMergeField =
-  (typeof PersonMergeField)[keyof typeof PersonMergeField];
+export type PersonMergeField = (typeof PersonMergeField)[keyof typeof PersonMergeField];
 registerEnumType(PersonMergeField, {
   name: 'PersonMergeField',
 });
@@ -128,8 +114,7 @@ export const AttendanceImportMatchType = {
   EMAIL: 'EMAIL',
   FULL_NAME: 'FULL_NAME',
 } as const;
-export type AttendanceImportMatchType =
-  (typeof AttendanceImportMatchType)[keyof typeof AttendanceImportMatchType];
+export type AttendanceImportMatchType = (typeof AttendanceImportMatchType)[keyof typeof AttendanceImportMatchType];
 registerEnumType(AttendanceImportMatchType, {
   name: 'AttendanceImportMatchType',
 });
@@ -140,8 +125,7 @@ export const AttendanceCategory = {
   REGULAR: 'REGULAR',
   UNKNOWN: 'UNKNOWN',
 } as const;
-export type AttendanceCategory =
-  (typeof AttendanceCategory)[keyof typeof AttendanceCategory];
+export type AttendanceCategory = (typeof AttendanceCategory)[keyof typeof AttendanceCategory];
 registerEnumType(AttendanceCategory, {
   name: 'AttendanceCategory',
 });

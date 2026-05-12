@@ -22,13 +22,7 @@ import { ToolbarItem } from './bottom-toolbar.layout';
 @Component({
   selector: 'app-bottom-toolbar',
   standalone: true,
-  imports: [
-    RouterLink,
-    RouterLinkActive,
-    MatToolbarModule,
-    MatButtonModule,
-    MatIconModule,
-  ],
+  imports: [RouterLink, RouterLinkActive, MatToolbarModule, MatButtonModule, MatIconModule],
   templateUrl: './bottom-toolbar.component.html',
   styleUrls: ['./bottom-toolbar.component.scss'],
 })
@@ -51,10 +45,7 @@ export class BottomToolbarComponent implements AfterViewInit {
   // side-effect: whenever height changes, update CSS var on :root
   private readonly _syncToCssVar = effect(() => {
     const h = this.height();
-    this.document.documentElement.style.setProperty(
-      '--app-bottom-toolbar-height',
-      `${h}px`,
-    );
+    this.document.documentElement.style.setProperty('--app-bottom-toolbar-height', `${h}px`);
   });
 
   ngAfterViewInit(): void {

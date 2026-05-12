@@ -91,9 +91,7 @@ describe('CertificateEligibilityService', () => {
       },
     } as never);
 
-    await expect(
-      service.resolveEligibleRecipients(config as never),
-    ).resolves.toEqual([]);
+    await expect(service.resolveEligibleRecipients(config as never)).resolves.toEqual([]);
   });
 
   it('keeps major-event subscribers who attended at least one event', async () => {
@@ -126,9 +124,7 @@ describe('CertificateEligibilityService', () => {
       },
     } as never);
 
-    await expect(
-      service.resolveEligibleRecipients(config as never),
-    ).resolves.toEqual([
+    await expect(service.resolveEligibleRecipients(config as never)).resolves.toEqual([
       {
         person,
         events: [event],
@@ -201,9 +197,7 @@ describe('CertificateEligibilityService', () => {
       },
     } as never);
 
-    await expect(
-      service.resolveEligibleRecipients(config as never),
-    ).resolves.toEqual([
+    await expect(service.resolveEligibleRecipients(config as never)).resolves.toEqual([
       {
         person,
         events: groupedEvents,

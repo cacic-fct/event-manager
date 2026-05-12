@@ -1,11 +1,5 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
 import { MergeCandidateMergeInput, PersonMergeField } from '@cacic-fct/shared-data-types';
+import { ConflictException, Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { People, Prisma } from '@prisma/client';
 import { CertificateIssuingService } from '../../certificate/certificate-issuing.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -120,9 +114,7 @@ export class MergeCandidateOperationsService {
       },
     });
 
-    const existingByPairKey = new Map(
-      existingCandidates.map((candidate) => [candidate.pairKey, candidate]),
-    );
+    const existingByPairKey = new Map(existingCandidates.map((candidate) => [candidate.pairKey, candidate]));
 
     let touchedCandidates = 0;
 
@@ -145,10 +137,7 @@ export class MergeCandidateOperationsService {
         continue;
       }
 
-      if (
-        existingCandidate.status !== 'PENDING' &&
-        existingCandidate.status !== 'STALE'
-      ) {
+      if (existingCandidate.status !== 'PENDING' && existingCandidate.status !== 'STALE') {
         continue;
       }
 
@@ -172,10 +161,7 @@ export class MergeCandidateOperationsService {
     return touchedCandidates + staleResult.count;
   }
 
-  async mergeCandidatePeople(
-    input: MergeCandidateMergeInput,
-    actorId: string | null,
-  ) {
+  async mergeCandidatePeople(input: MergeCandidateMergeInput, actorId: string | null) {
     const migrateFields = this.normalizeMigrateFields(input.migrateFields);
 
     const mergeResult = await this.prisma.$transaction(async (tx) => {
@@ -190,30 +176,18 @@ export class MergeCandidateOperationsService {
       });
 
       if (!candidate) {
-        throw new NotFoundException(
-          `Merge candidate ${input.candidateId} was not found.`,
-        );
+        throw new NotFoundException(`Merge candidate ${input.candidateId} was not found.`);
       }
 
       if (candidate.status !== 'PENDING') {
-        throw new ConflictException(
-          `Merge candidate ${candidate.id} is not pending anymore.`,
-        );
+        throw new ConflictException(`Merge candidate ${candidate.id} is not pending anymore.`);
       }
 
-      if (
-        input.targetPersonId !== candidate.personAId &&
-        input.targetPersonId !== candidate.personBId
-      ) {
-        throw new UnprocessableEntityException(
-          'The selected target person does not belong to this merge candidate.',
-        );
+      if (input.targetPersonId !== candidate.personAId && input.targetPersonId !== candidate.personBId) {
+        throw new UnprocessableEntityException('The selected target person does not belong to this merge candidate.');
       }
 
-      const sourcePersonId =
-        input.targetPersonId === candidate.personAId
-          ? candidate.personBId
-          : candidate.personAId;
+      const sourcePersonId = input.targetPersonId === candidate.personAId ? candidate.personBId : candidate.personAId;
 
       const [targetPerson, sourcePerson] = await Promise.all([
         tx.people.findUnique({
@@ -225,42 +199,26 @@ export class MergeCandidateOperationsService {
       ]);
 
       if (!targetPerson) {
-        throw new NotFoundException(
-          `Target person ${input.targetPersonId} was not found.`,
-        );
+        throw new NotFoundException(`Target person ${input.targetPersonId} was not found.`);
       }
 
       if (!sourcePerson) {
-        throw new NotFoundException(
-          `Source person ${sourcePersonId} was not found.`,
-        );
+        throw new NotFoundException(`Source person ${sourcePersonId} was not found.`);
       }
 
       if (targetPerson.deletedAt || targetPerson.mergedIntoId) {
-        throw new ConflictException(
-          `Target person ${targetPerson.id} is not available for merge.`,
-        );
+        throw new ConflictException(`Target person ${targetPerson.id} is not available for merge.`);
       }
 
       if (sourcePerson.deletedAt || sourcePerson.mergedIntoId) {
-        throw new ConflictException(
-          `Source person ${sourcePerson.id} is not available for merge.`,
-        );
+        throw new ConflictException(`Source person ${sourcePerson.id} is not available for merge.`);
       }
 
       const targetSnapshot = this.toPersonSnapshot(targetPerson);
       const sourceSnapshot = this.toPersonSnapshot(sourcePerson);
-      const targetMigrationData = this.buildTargetMigrationData(
-        migrateFields,
-        targetPerson,
-        sourcePerson,
-      );
+      const targetMigrationData = this.buildTargetMigrationData(migrateFields, targetPerson, sourcePerson);
 
-      const movedRelations = await this.moveRelations(
-        tx,
-        targetPerson.id,
-        sourcePerson.id,
-      );
+      const movedRelations = await this.moveRelations(tx, targetPerson.id, sourcePerson.id);
 
       await tx.people.update({
         where: {
@@ -322,9 +280,7 @@ export class MergeCandidateOperationsService {
 
     await this.refreshCertificatesAfterMerge(
       input.targetPersonId,
-      mergeResult.personAId === input.targetPersonId
-        ? mergeResult.personBId
-        : mergeResult.personAId,
+      mergeResult.personAId === input.targetPersonId ? mergeResult.personBId : mergeResult.personAId,
       actorId,
     );
 
@@ -340,9 +296,7 @@ export class MergeCandidateOperationsService {
       });
 
       if (!candidate) {
-        throw new NotFoundException(
-          `Merge candidate ${candidateId} was not found.`,
-        );
+        throw new NotFoundException(`Merge candidate ${candidateId} was not found.`);
       }
 
       const operation = await tx.peopleMergeOperation.findFirst({
@@ -356,19 +310,11 @@ export class MergeCandidateOperationsService {
       });
 
       if (!operation) {
-        throw new NotFoundException(
-          `No applied merge operation was found for merge candidate ${candidateId}.`,
-        );
+        throw new NotFoundException(`No applied merge operation was found for merge candidate ${candidateId}.`);
       }
 
-      const targetSnapshot = this.parsePersonSnapshot(
-        operation.targetSnapshot,
-        'targetSnapshot',
-      );
-      const sourceSnapshot = this.parsePersonSnapshot(
-        operation.sourceSnapshot,
-        'sourceSnapshot',
-      );
+      const targetSnapshot = this.parsePersonSnapshot(operation.targetSnapshot, 'targetSnapshot');
+      const sourceSnapshot = this.parsePersonSnapshot(operation.sourceSnapshot, 'sourceSnapshot');
       const movedRelations = this.parseMovedRelations(operation.movedRelations);
 
       const [targetPerson, sourcePerson] = await Promise.all([
@@ -377,15 +323,11 @@ export class MergeCandidateOperationsService {
       ]);
 
       if (!targetPerson || !sourcePerson) {
-        throw new NotFoundException(
-          `Merge operation ${operation.id} references missing people.`,
-        );
+        throw new NotFoundException(`Merge operation ${operation.id} references missing people.`);
       }
 
       if (sourcePerson.mergedIntoId !== targetPerson.id) {
-        throw new ConflictException(
-          `Source person ${sourcePerson.id} is not merged into target ${targetPerson.id}.`,
-        );
+        throw new ConflictException(`Source person ${sourcePerson.id} is not merged into target ${targetPerson.id}.`);
       }
 
       if (movedRelations.movedEventSubscriptionIds.length > 0) {
@@ -550,9 +492,7 @@ export class MergeCandidateOperationsService {
     }
   }
 
-  private normalizeMigrateFields(
-    rawFields?: PersonMergeField[] | null,
-  ): PersonMergeField[] {
+  private normalizeMigrateFields(rawFields?: PersonMergeField[] | null): PersonMergeField[] {
     const fields = rawFields ?? [];
     return [...new Set(fields)];
   }
@@ -634,13 +574,7 @@ export class MergeCandidateOperationsService {
     }
 
     for (const [normalizedName, group] of byName.entries()) {
-      this.registerPairs(
-        group,
-        matches,
-        'NORMALIZED_NAME',
-        normalizedName,
-        0.6,
-      );
+      this.registerPairs(group, matches, 'NORMALIZED_NAME', normalizedName, 0.6);
     }
   }
 
@@ -711,9 +645,7 @@ export class MergeCandidateOperationsService {
       },
     });
 
-    const sourceAttendanceEventIds = sourceAttendances.map(
-      (attendance) => attendance.eventId,
-    );
+    const sourceAttendanceEventIds = sourceAttendances.map((attendance) => attendance.eventId);
     const targetAttendances = sourceAttendanceEventIds.length
       ? await tx.eventAttendance.findMany({
           where: {
@@ -728,9 +660,7 @@ export class MergeCandidateOperationsService {
         })
       : [];
 
-    const targetAttendanceSet = new Set(
-      targetAttendances.map((attendance) => attendance.eventId),
-    );
+    const targetAttendanceSet = new Set(targetAttendances.map((attendance) => attendance.eventId));
     const insertedAttendanceRows = sourceAttendances.filter(
       (attendance) => !targetAttendanceSet.has(attendance.eventId),
     );
@@ -762,9 +692,7 @@ export class MergeCandidateOperationsService {
       },
     });
 
-    const sourceLectureEventIds = sourceLectures.map(
-      (lecture) => lecture.eventId,
-    );
+    const sourceLectureEventIds = sourceLectures.map((lecture) => lecture.eventId);
     const targetLectures = sourceLectureEventIds.length
       ? await tx.eventLecturer.findMany({
           where: {
@@ -779,12 +707,8 @@ export class MergeCandidateOperationsService {
         })
       : [];
 
-    const targetLectureSet = new Set(
-      targetLectures.map((lecture) => lecture.eventId),
-    );
-    const insertedLectureRows = sourceLectures.filter(
-      (lecture) => !targetLectureSet.has(lecture.eventId),
-    );
+    const targetLectureSet = new Set(targetLectures.map((lecture) => lecture.eventId));
+    const insertedLectureRows = sourceLectures.filter((lecture) => !targetLectureSet.has(lecture.eventId));
 
     if (insertedLectureRows.length > 0) {
       await tx.eventLecturer.createMany({
@@ -815,9 +739,7 @@ export class MergeCandidateOperationsService {
       },
     });
 
-    const movedEventSubscriptionIds = sourceEventSubscriptions.map(
-      (subscription) => subscription.id,
-    );
+    const movedEventSubscriptionIds = sourceEventSubscriptions.map((subscription) => subscription.id);
     if (movedEventSubscriptionIds.length > 0) {
       await tx.eventSubscription.updateMany({
         where: {
@@ -831,19 +753,16 @@ export class MergeCandidateOperationsService {
       });
     }
 
-    const sourceEventGroupSubscriptions =
-      await tx.eventGroupSubscription.findMany({
-        where: {
-          personId: sourcePersonId,
-        },
-        select: {
-          id: true,
-        },
-      });
+    const sourceEventGroupSubscriptions = await tx.eventGroupSubscription.findMany({
+      where: {
+        personId: sourcePersonId,
+      },
+      select: {
+        id: true,
+      },
+    });
 
-    const movedEventGroupSubscriptionIds = sourceEventGroupSubscriptions.map(
-      (subscription) => subscription.id,
-    );
+    const movedEventGroupSubscriptionIds = sourceEventGroupSubscriptions.map((subscription) => subscription.id);
     if (movedEventGroupSubscriptionIds.length > 0) {
       await tx.eventGroupSubscription.updateMany({
         where: {
@@ -857,19 +776,16 @@ export class MergeCandidateOperationsService {
       });
     }
 
-    const sourceMajorEventSubscriptions =
-      await tx.majorEventSubscription.findMany({
-        where: {
-          personId: sourcePersonId,
-        },
-        select: {
-          id: true,
-        },
-      });
+    const sourceMajorEventSubscriptions = await tx.majorEventSubscription.findMany({
+      where: {
+        personId: sourcePersonId,
+      },
+      select: {
+        id: true,
+      },
+    });
 
-    const movedMajorEventSubscriptionIds = sourceMajorEventSubscriptions.map(
-      (subscription) => subscription.id,
-    );
+    const movedMajorEventSubscriptionIds = sourceMajorEventSubscriptions.map((subscription) => subscription.id);
     if (movedMajorEventSubscriptionIds.length > 0) {
       await tx.majorEventSubscription.updateMany({
         where: {
@@ -895,12 +811,8 @@ export class MergeCandidateOperationsService {
         createdAt: lecture.createdAt.toISOString(),
         createdById: lecture.createdById,
       })),
-      insertedAttendanceEventIds: insertedAttendanceRows.map(
-        (attendance) => attendance.eventId,
-      ),
-      insertedLectureEventIds: insertedLectureRows.map(
-        (lecture) => lecture.eventId,
-      ),
+      insertedAttendanceEventIds: insertedAttendanceRows.map((attendance) => attendance.eventId),
+      insertedLectureEventIds: insertedLectureRows.map((lecture) => lecture.eventId),
       movedEventSubscriptionIds,
       movedEventGroupSubscriptionIds,
       movedMajorEventSubscriptionIds,
@@ -913,11 +825,7 @@ export class MergeCandidateOperationsService {
     sourcePerson: People,
   ): Prisma.PeopleUncheckedUpdateInput {
     const updateData: Prisma.PeopleUncheckedUpdateInput = {};
-    const mergedSecondaryEmails = this.mergeSecondaryEmails(
-      migrateFields,
-      targetPerson,
-      sourcePerson,
-    );
+    const mergedSecondaryEmails = this.mergeSecondaryEmails(migrateFields, targetPerson, sourcePerson);
 
     if (mergedSecondaryEmails !== targetPerson.secondaryEmails) {
       updateData.secondaryEmails = mergedSecondaryEmails;
@@ -930,42 +838,27 @@ export class MergeCandidateOperationsService {
       }
 
       if (field === 'EMAIL') {
-        updateData.email = this.ensureMigratableValue(
-          sourcePerson.email,
-          field,
-        );
+        updateData.email = this.ensureMigratableValue(sourcePerson.email, field);
         continue;
       }
 
       if (field === 'IDENTITY_DOCUMENT') {
-        updateData.identityDocument = this.ensureMigratableValue(
-          sourcePerson.identityDocument,
-          field,
-        );
+        updateData.identityDocument = this.ensureMigratableValue(sourcePerson.identityDocument, field);
         continue;
       }
 
       if (field === 'ACADEMIC_ID') {
-        updateData.academicId = this.ensureMigratableValue(
-          sourcePerson.academicId,
-          field,
-        );
+        updateData.academicId = this.ensureMigratableValue(sourcePerson.academicId, field);
         continue;
       }
 
       if (field === 'USER_ID') {
-        updateData.userId = this.ensureMigratableValue(
-          sourcePerson.userId,
-          field,
-        );
+        updateData.userId = this.ensureMigratableValue(sourcePerson.userId, field);
         continue;
       }
 
       if (field === 'EXTERNAL_REF') {
-        updateData.externalRef = this.ensureMigratableValue(
-          sourcePerson.externalRef,
-          field,
-        );
+        updateData.externalRef = this.ensureMigratableValue(sourcePerson.externalRef, field);
       }
     }
 
@@ -986,9 +879,7 @@ export class MergeCandidateOperationsService {
     };
   }
 
-  private toPersonUpdateData(
-    snapshot: PersonSnapshot,
-  ): Prisma.PeopleUncheckedUpdateInput {
+  private toPersonUpdateData(snapshot: PersonSnapshot): Prisma.PeopleUncheckedUpdateInput {
     return {
       name: snapshot.name,
       email: snapshot.email,
@@ -1002,10 +893,7 @@ export class MergeCandidateOperationsService {
     };
   }
 
-  private parsePersonSnapshot(
-    value: Prisma.JsonValue,
-    fieldName: string,
-  ): PersonSnapshot {
+  private parsePersonSnapshot(value: Prisma.JsonValue, fieldName: string): PersonSnapshot {
     if (!this.isRecord(value)) {
       throw new ConflictException(`Invalid ${fieldName} payload.`);
     }
@@ -1014,10 +902,7 @@ export class MergeCandidateOperationsService {
     return {
       name,
       email: this.readNullableString(value, 'email'),
-      secondaryEmails:
-        value.secondaryEmails === undefined
-          ? []
-          : this.readStringArray(value, 'secondaryEmails'),
+      secondaryEmails: value.secondaryEmails === undefined ? [] : this.readStringArray(value, 'secondaryEmails'),
       identityDocument: this.readNullableString(value, 'identityDocument'),
       academicId: this.readNullableString(value, 'academicId'),
       userId: this.readNullableString(value, 'userId'),
@@ -1032,59 +917,41 @@ export class MergeCandidateOperationsService {
       throw new ConflictException('Invalid movedRelations payload.');
     }
 
-    const sourceAttendances = this.readArray(value, 'sourceAttendances').map(
-      (entry) => {
-        if (!this.isRecord(entry)) {
-          throw new ConflictException(
-            'Invalid sourceAttendances payload entry.',
-          );
-        }
-        return {
-          eventId: this.readRequiredString(entry, 'eventId'),
-          attendedAt: this.readRequiredString(entry, 'attendedAt'),
-          createdAt: this.readRequiredString(entry, 'createdAt'),
-          createdById: this.readNullableString(entry, 'createdById'),
-        };
-      },
-    );
+    const sourceAttendances = this.readArray(value, 'sourceAttendances').map((entry) => {
+      if (!this.isRecord(entry)) {
+        throw new ConflictException('Invalid sourceAttendances payload entry.');
+      }
+      return {
+        eventId: this.readRequiredString(entry, 'eventId'),
+        attendedAt: this.readRequiredString(entry, 'attendedAt'),
+        createdAt: this.readRequiredString(entry, 'createdAt'),
+        createdById: this.readNullableString(entry, 'createdById'),
+      };
+    });
 
-    const sourceLectures = this.readArray(value, 'sourceLectures').map(
-      (entry) => {
-        if (!this.isRecord(entry)) {
-          throw new ConflictException('Invalid sourceLectures payload entry.');
-        }
+    const sourceLectures = this.readArray(value, 'sourceLectures').map((entry) => {
+      if (!this.isRecord(entry)) {
+        throw new ConflictException('Invalid sourceLectures payload entry.');
+      }
 
-        return {
-          eventId: this.readRequiredString(entry, 'eventId'),
-          createdAt: this.readRequiredString(entry, 'createdAt'),
-          createdById: this.readNullableString(entry, 'createdById'),
-        };
-      },
-    );
+      return {
+        eventId: this.readRequiredString(entry, 'eventId'),
+        createdAt: this.readRequiredString(entry, 'createdAt'),
+        createdById: this.readNullableString(entry, 'createdById'),
+      };
+    });
 
     return {
       sourceAttendances,
       sourceLectures,
-      insertedAttendanceEventIds: this.readStringArray(
-        value,
-        'insertedAttendanceEventIds',
-      ),
-      insertedLectureEventIds: this.readStringArray(
-        value,
-        'insertedLectureEventIds',
-      ),
-      movedEventSubscriptionIds: this.readStringArray(
-        value,
-        'movedEventSubscriptionIds',
-      ),
+      insertedAttendanceEventIds: this.readStringArray(value, 'insertedAttendanceEventIds'),
+      insertedLectureEventIds: this.readStringArray(value, 'insertedLectureEventIds'),
+      movedEventSubscriptionIds: this.readStringArray(value, 'movedEventSubscriptionIds'),
       movedEventGroupSubscriptionIds:
         value.movedEventGroupSubscriptionIds === undefined
           ? []
           : this.readStringArray(value, 'movedEventGroupSubscriptionIds'),
-      movedMajorEventSubscriptionIds: this.readStringArray(
-        value,
-        'movedMajorEventSubscriptionIds',
-      ),
+      movedMajorEventSubscriptionIds: this.readStringArray(value, 'movedMajorEventSubscriptionIds'),
     };
   }
 
@@ -1113,9 +980,7 @@ export class MergeCandidateOperationsService {
     const firstVerifier = this.calculateCpfVerifierDigit(cpf.slice(0, 9), 10);
     const secondVerifier = this.calculateCpfVerifierDigit(cpf.slice(0, 10), 11);
 
-    return (
-      cpf[9] === String(firstVerifier) && cpf[10] === String(secondVerifier)
-    );
+    return cpf[9] === String(firstVerifier) && cpf[10] === String(secondVerifier);
   }
 
   private calculateCpfVerifierDigit(base: string, factorStart: number): number {
@@ -1189,10 +1054,7 @@ export class MergeCandidateOperationsService {
     return value;
   }
 
-  private readStringArray(
-    record: Record<string, Prisma.JsonValue>,
-    key: string,
-  ) {
+  private readStringArray(record: Record<string, Prisma.JsonValue>, key: string) {
     return this.readArray(record, key).map((entry) => {
       if (typeof entry !== 'string') {
         throw new ConflictException(`Invalid ${key} payload entry.`);
@@ -1201,10 +1063,7 @@ export class MergeCandidateOperationsService {
     });
   }
 
-  private readRequiredString(
-    record: Record<string, Prisma.JsonValue>,
-    key: string,
-  ): string {
+  private readRequiredString(record: Record<string, Prisma.JsonValue>, key: string): string {
     const value = record[key];
     if (typeof value !== 'string' || !value.trim()) {
       throw new ConflictException(`Invalid ${key} payload value.`);
@@ -1212,10 +1071,7 @@ export class MergeCandidateOperationsService {
     return value;
   }
 
-  private readNullableString(
-    record: Record<string, Prisma.JsonValue>,
-    key: string,
-  ): string | null {
+  private readNullableString(record: Record<string, Prisma.JsonValue>, key: string): string | null {
     const value = record[key];
     if (value === null || value === undefined) {
       return null;
@@ -1226,27 +1082,18 @@ export class MergeCandidateOperationsService {
     return value;
   }
 
-  private isRecord(
-    value: Prisma.JsonValue,
-  ): value is Record<string, Prisma.JsonValue> {
+  private isRecord(value: Prisma.JsonValue): value is Record<string, Prisma.JsonValue> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
-  private ensureMigratableValue(
-    value: string | null,
-    field: PersonMergeField,
-  ): string {
+  private ensureMigratableValue(value: string | null, field: PersonMergeField): string {
     if (value === null) {
-      throw new UnprocessableEntityException(
-        `Cannot migrate ${field} because source value is null.`,
-      );
+      throw new UnprocessableEntityException(`Cannot migrate ${field} because source value is null.`);
     }
 
     const normalized = value.trim();
     if (!normalized) {
-      throw new UnprocessableEntityException(
-        `Cannot migrate ${field} because source value is empty.`,
-      );
+      throw new UnprocessableEntityException(`Cannot migrate ${field} because source value is empty.`);
     }
 
     return normalized;

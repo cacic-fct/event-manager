@@ -1,14 +1,5 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  OnDestroy,
-  OnInit,
-  Signal,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, Signal, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -32,10 +23,7 @@ import { TwemojiComponent } from '../../shared/components/twemoji.component';
 import { workspaceNavItems } from '../workspace-nav';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
-type WorkspaceDashboardHomeInsights = Omit<
-  WorkspaceDashboardInsights,
-  'permissions'
->;
+type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
 @Component({
   selector: 'app-home',
@@ -71,18 +59,10 @@ export class Home implements OnInit, OnDestroy {
   readonly error = signal<string | null>(null);
 
   readonly greetings: Signal<string> = computed(() => this.getGreetings());
-  readonly navMap = computed(() =>
-    Object.fromEntries(workspaceNavItems.map((item) => [item.id, item])),
-  );
-  readonly todayEvents = computed(
-    () =>
-      this.insights()?.calendarEvents.filter((event) => this.isToday(event)) ??
-      [],
-  );
+  readonly navMap = computed(() => Object.fromEntries(workspaceNavItems.map((item) => [item.id, item])));
+  readonly todayEvents = computed(() => this.insights()?.calendarEvents.filter((event) => this.isToday(event)) ?? []);
   readonly upcomingEvents = computed(
-    () =>
-      this.insights()?.calendarEvents.filter((event) => !this.isToday(event)) ??
-      [],
+    () => this.insights()?.calendarEvents.filter((event) => !this.isToday(event)) ?? [],
   );
   readonly calendarHeadline = computed(() => {
     const count = this.insights()?.calendarEvents.length ?? 0;
@@ -110,11 +90,7 @@ export class Home implements OnInit, OnDestroy {
           this.loading.set(false);
         },
         error: (error: unknown) => {
-          this.error.set(
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível carregar o painel.',
-          );
+          this.error.set(error instanceof Error ? error.message : 'Não foi possível carregar o painel.');
           this.loading.set(false);
         },
       });
@@ -143,10 +119,7 @@ export class Home implements OnInit, OnDestroy {
     return [path];
   }
 
-  hasSuggestion(
-    suggestions: DashboardActionLink[],
-    action: DashboardInsightAction,
-  ): boolean {
+  hasSuggestion(suggestions: DashboardActionLink[], action: DashboardInsightAction): boolean {
     return suggestions.some((suggestion) => suggestion.action === action);
   }
 
@@ -173,26 +146,14 @@ export class Home implements OnInit, OnDestroy {
   }
 
   eventAttendanceLink(event: DashboardCalendarEvent): string[] {
-    return [
-      this.navMap()['attendances']?.path ?? 'attendances',
-      'event',
-      event.id,
-    ];
+    return [this.navMap()['attendances']?.path ?? 'attendances', 'event', event.id];
   }
 
   certificateLink(item: DashboardCertificatePendingItem): string[] {
     const targetType =
-      item.targetType === 'EVENT'
-        ? 'event'
-        : item.targetType === 'EVENT_GROUP'
-          ? 'event-group'
-          : 'major-event';
+      item.targetType === 'EVENT' ? 'event' : item.targetType === 'EVENT_GROUP' ? 'event-group' : 'major-event';
 
-    return [
-      this.navMap()['certificates']?.path ?? 'certificates',
-      targetType,
-      item.targetId,
-    ];
+    return [this.navMap()['certificates']?.path ?? 'certificates', targetType, item.targetId];
   }
 
   describeEventType(type: string): string {
@@ -229,8 +190,7 @@ export class Home implements OnInit, OnDestroy {
   private scheduleClock(): void {
     const update = () => this.currentDate.set(new Date());
     const now = new Date();
-    const msToNextMinute =
-      (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
 
     this.minuteTimeoutId = setTimeout(() => {
       update();
@@ -241,14 +201,7 @@ export class Home implements OnInit, OnDestroy {
   private getGreetings(): string {
     const hour = new Date().getHours();
     const name = this.authService.user()?.claims?.name;
-    const greeting =
-      hour < 5
-        ? 'Boa madrugada'
-        : hour < 12
-          ? 'Bom dia'
-          : hour < 18
-            ? 'Boa tarde'
-            : 'Boa noite';
+    const greeting = hour < 5 ? 'Boa madrugada' : hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
 
     return name ? `${greeting}, ${name}!` : `${greeting}!`;
   }

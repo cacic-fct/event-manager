@@ -1,9 +1,5 @@
 <mat-toolbar>
-  <a
-    mat-icon-button
-    routerLink="/profile/attendances"
-    aria-label="Voltar para inscrições"
-  >
+  <a mat-icon-button routerLink="/profile/attendances" aria-label="Voltar para inscrições">
     <mat-icon>arrow_back</mat-icon>
   </a>
   <span>Detalhes</span>
@@ -21,11 +17,7 @@
 
   <header class="detail-header">
     <div class="emoji-frame">
-      <img
-        class="twemoji"
-        [src]="emoji.getTwemojiUrl(detail.emoji)"
-        [alt]="detail.emoji"
-      />
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(detail.emoji)" [alt]="detail.emoji" />
     </div>
     <div class="header-copy">
       <p class="eyebrow">{{ detail.typeLabel }}</p>
@@ -46,23 +38,13 @@
       <mat-icon>workspace_premium</mat-icon>
       Certificados
     </button>
-    } @if (detail.events.length === 1 && detail.events[0].canRegisterAttendance)
-    {
-    <button
-      mat-stroked-button
-      type="button"
-      (click)="registerAttendanceLater()"
-    >
+    } @if (detail.events.length === 1 && detail.events[0].canRegisterAttendance) {
+    <button mat-stroked-button type="button" (click)="registerAttendanceLater()">
       <mat-icon>how_to_reg</mat-icon>
       Registrar presença
     </button>
     } @if (detail.buttonLink) {
-    <a
-      mat-stroked-button
-      [href]="detail.buttonLink"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <a mat-stroked-button [href]="detail.buttonLink" target="_blank" rel="noopener noreferrer">
       <mat-icon>open_in_new</mat-icon>
       {{ detail.buttonText || 'Abrir link' }}
     </a>
@@ -103,14 +85,9 @@
         mat-list-item
         [routerLink]="eventRoute(item.event.id)"
         [queryParams]="eventRouteQueryParams()"
-        [attr.aria-label]="'Abrir evento ' + item.event.name"
-      >
+        [attr.aria-label]="'Abrir evento ' + item.event.name">
         <div matListItemIcon class="small-emoji-frame">
-          <img
-            class="small-twemoji"
-            [src]="emoji.getTwemojiUrl(item.event.emoji)"
-            [alt]="item.event.emoji"
-          />
+          <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" [alt]="item.event.emoji" />
         </div>
         <div matListItemTitle>{{ item.event.name }}</div>
         <div matListItemLine>{{ item.dateLine }}</div>
@@ -132,14 +109,9 @@
         mat-list-item
         [routerLink]="eventRoute(item.event.id)"
         [queryParams]="eventRouteQueryParams()"
-        [attr.aria-label]="'Abrir evento ' + item.event.name"
-      >
+        [attr.aria-label]="'Abrir evento ' + item.event.name">
         <div matListItemIcon class="small-emoji-frame">
-          <img
-            class="small-twemoji"
-            [src]="emoji.getTwemojiUrl(item.event.emoji)"
-            [alt]="item.event.emoji"
-          />
+          <img class="small-twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" [alt]="item.event.emoji" />
         </div>
         <div matListItemTitle>{{ item.event.name }}</div>
         <div matListItemLine>{{ item.dateLine }}</div>

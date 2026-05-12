@@ -1,10 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -69,14 +64,10 @@ export class WorkspaceMajorEventsService {
   }
 
   async loadMajorEvents(): Promise<void> {
-    this.majorEvents.set(
-      await firstValueFrom(this.api.listMajorEvents({ take: 200 })),
-    );
+    this.majorEvents.set(await firstValueFrom(this.api.listMajorEvents({ take: 200 })));
     const selectedMajorEvent = this.selectedMajorEvent();
     if (selectedMajorEvent) {
-      const refreshed = this.majorEvents().find(
-        (majorEvent) => majorEvent.id === selectedMajorEvent.id,
-      );
+      const refreshed = this.majorEvents().find((majorEvent) => majorEvent.id === selectedMajorEvent.id);
       if (refreshed) {
         this.selectedMajorEvent.set(refreshed);
       }
@@ -93,9 +84,7 @@ export class WorkspaceMajorEventsService {
     const payload = this.buildMajorEventPayload();
 
     if (raw.id) {
-      const updatedMajorEvent = await firstValueFrom(
-        this.api.updateMajorEvent(raw.id, payload),
-      );
+      const updatedMajorEvent = await firstValueFrom(this.api.updateMajorEvent(raw.id, payload));
       this.snackbar.open('Grande evento atualizado.', 'Fechar', {
         duration: 2500,
       });
@@ -157,9 +146,7 @@ export class WorkspaceMajorEventsService {
       return;
     }
 
-    const majorEvent = await firstValueFrom(
-      this.api.getMajorEvent(majorEventId),
-    );
+    const majorEvent = await firstValueFrom(this.api.getMajorEvent(majorEventId));
     this.populateMajorEventSelection(majorEvent);
   }
 
@@ -177,25 +164,18 @@ export class WorkspaceMajorEventsService {
       endDate: this.fromIsoToLocalInput(majorEvent.endDate),
       description: majorEvent.description ?? '',
       subscriptionStartDate:
-        majorEvent.subscriptionStartDate != null
-          ? this.fromIsoToLocalInput(majorEvent.subscriptionStartDate)
-          : '',
+        majorEvent.subscriptionStartDate != null ? this.fromIsoToLocalInput(majorEvent.subscriptionStartDate) : '',
       subscriptionEndDate:
-        majorEvent.subscriptionEndDate != null
-          ? this.fromIsoToLocalInput(majorEvent.subscriptionEndDate)
-          : '',
+        majorEvent.subscriptionEndDate != null ? this.fromIsoToLocalInput(majorEvent.subscriptionEndDate) : '',
       maxCoursesPerAttendee: majorEvent.maxCoursesPerAttendee?.toString() ?? '',
-      maxLecturesPerAttendee:
-        majorEvent.maxLecturesPerAttendee?.toString() ?? '',
+      maxLecturesPerAttendee: majorEvent.maxLecturesPerAttendee?.toString() ?? '',
       buttonText: majorEvent.buttonText ?? '',
       buttonLink: majorEvent.buttonLink ?? '',
       contactInfo: majorEvent.contactInfo ?? '',
       contactType: majorEvent.contactType ?? '',
       isPaymentRequired: majorEvent.isPaymentRequired,
-      shouldIssueCertificateForNonPayingAttendees:
-        majorEvent.shouldIssueCertificateForNonPayingAttendees,
-      shouldIssueCertificateForNonSubscribedAttendees:
-        majorEvent.shouldIssueCertificateForNonSubscribedAttendees,
+      shouldIssueCertificateForNonPayingAttendees: majorEvent.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees: majorEvent.shouldIssueCertificateForNonSubscribedAttendees,
       additionalPaymentInfo: majorEvent.additionalPaymentInfo ?? '',
       paymentBankName: majorEvent.paymentInfo?.bankName ?? '',
       paymentAgency: majorEvent.paymentInfo?.agency ?? '',
@@ -230,13 +210,9 @@ export class WorkspaceMajorEventsService {
       return;
     }
 
-    const events = await firstValueFrom(
-      this.eventsApi.listEvents({ query, take: 20 }),
-    );
+    const events = await firstValueFrom(this.eventsApi.listEvents({ query, take: 20 }));
     this.majorEventEventSearchResults.set(
-      events.filter(
-        (eventItem) => eventItem.majorEventId !== selectedMajorEvent.id,
-      ),
+      events.filter((eventItem) => eventItem.majorEventId !== selectedMajorEvent.id),
     );
   }
 
@@ -277,9 +253,7 @@ export class WorkspaceMajorEventsService {
       holder: raw.paymentHolder.trim(),
       document: raw.paymentDocument.trim(),
     };
-    const hasAnyPaymentInfo = Object.values(paymentInfoInput).some(
-      (value) => value.length > 0,
-    );
+    const hasAnyPaymentInfo = Object.values(paymentInfoInput).some((value) => value.length > 0);
 
     return {
       name: raw.name.trim(),
@@ -287,24 +261,18 @@ export class WorkspaceMajorEventsService {
       startDate: this.toIsoDateTime(raw.startDate),
       endDate: this.toIsoDateTime(raw.endDate),
       description: raw.description.trim() || null,
-      subscriptionStartDate: this.toOptionalIsoDateTime(
-        raw.subscriptionStartDate,
-      ),
+      subscriptionStartDate: this.toOptionalIsoDateTime(raw.subscriptionStartDate),
       subscriptionEndDate: this.toOptionalIsoDateTime(raw.subscriptionEndDate),
       maxCoursesPerAttendee: this.toOptionalNumber(raw.maxCoursesPerAttendee),
       maxLecturesPerAttendee: this.toOptionalNumber(raw.maxLecturesPerAttendee),
       buttonText: raw.buttonText.trim() || null,
       buttonLink: raw.buttonLink.trim() || null,
       contactInfo: raw.contactInfo.trim() || null,
-      contactType: raw.contactType
-        ? (raw.contactType as MajorEventInput['contactType'])
-        : null,
+      contactType: raw.contactType ? (raw.contactType as MajorEventInput['contactType']) : null,
       isPaymentRequired: raw.isPaymentRequired,
       shouldIssueCertificateForNonPayingAttendees:
-        !raw.isPaymentRequired &&
-        raw.shouldIssueCertificateForNonPayingAttendees,
-      shouldIssueCertificateForNonSubscribedAttendees:
-        raw.shouldIssueCertificateForNonSubscribedAttendees,
+        !raw.isPaymentRequired && raw.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees: raw.shouldIssueCertificateForNonSubscribedAttendees,
       additionalPaymentInfo: raw.additionalPaymentInfo.trim() || null,
       paymentInfo: hasAnyPaymentInfo ? paymentInfoInput : null,
     };
@@ -336,9 +304,7 @@ export class WorkspaceMajorEventsService {
   private fromIsoToLocalInput(rawValue: string): string {
     const date = new Date(rawValue);
     const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
-    return new Date(date.getTime() - timezoneOffsetMs)
-      .toISOString()
-      .slice(0, 16);
+    return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
   }
 
   private requireBothOrNeither(firstKey: string, secondKey: string) {
@@ -352,11 +318,8 @@ export class WorkspaceMajorEventsService {
   }
 
   private syncCertificateExceptionControls(): void {
-    const nonPayingControl =
-      this.majorEventForm.controls.shouldIssueCertificateForNonPayingAttendees;
-    const nonSubscribedControl =
-      this.majorEventForm.controls
-        .shouldIssueCertificateForNonSubscribedAttendees;
+    const nonPayingControl = this.majorEventForm.controls.shouldIssueCertificateForNonPayingAttendees;
+    const nonSubscribedControl = this.majorEventForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
     if (this.majorEventForm.controls.isPaymentRequired.value) {
       nonPayingControl.setValue(false, { emitEvent: false });
       nonPayingControl.disable({ emitEvent: false });

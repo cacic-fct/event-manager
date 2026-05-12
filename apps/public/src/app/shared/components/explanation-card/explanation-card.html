@@ -1,0 +1,12 @@
+<mat-card class="explanation-card" appearance="outlined">
+  <div class="explanation-header">
+    <mat-icon class="explanation-icon" aria-hidden="true"> {{ icon() }} </mat-icon>
+    <h1 class="explanation-title">{{ title() }}</h1>
+  </div>
+
+  <mat-card-content>
+    <p>
+      <ng-content />
+    </p>
+  </mat-card-content>
+</mat-card>

@@ -72,11 +72,8 @@ export class PublicCertificateValidationService {
     private readonly validation: CertificateValidationService,
   ) {}
 
-  async validateCertificate(
-    certificateId: string,
-  ): Promise<PublicCertificateValidation | null> {
-    const normalizedCertificateId =
-      this.validation.normalizeOptionalId(certificateId);
+  async validateCertificate(certificateId: string): Promise<PublicCertificateValidation | null> {
+    const normalizedCertificateId = this.validation.normalizeOptionalId(certificateId);
     if (!normalizedCertificateId) {
       return null;
     }
@@ -99,10 +96,7 @@ export class PublicCertificateValidationService {
       id: certificate.id,
       issuedAt: certificate.issuedAt,
       personName: certificate.person.name,
-      maskedIdentityDocument: this.maskCpf(
-        certificate.person.identityDocument,
-        certificate.person.isCPF,
-      ),
+      maskedIdentityDocument: this.maskCpf(certificate.person.identityDocument, certificate.person.isCPF),
       scope: certificate.config.scope as CertificateScope,
       certificateName: certificate.config.name,
       targetName: this.getTargetName(certificate),
@@ -171,17 +165,10 @@ export class PublicCertificateValidationService {
     }
 
     if (eventGroup.shouldIssuePartialCertificate) {
-      return this.listAttendedEventGroupCertificateEvents(
-        certificate.personId,
-        eventGroup.id,
-      );
+      return this.listAttendedEventGroupCertificateEvents(certificate.personId, eventGroup.id);
     }
 
-    const subscribedEvents =
-      await this.listSubscribedEventGroupCertificateEvents(
-        certificate.personId,
-        eventGroup.id,
-      );
+    const subscribedEvents = await this.listSubscribedEventGroupCertificateEvents(certificate.personId, eventGroup.id);
 
     if (subscribedEvents.length > 0) {
       return subscribedEvents;
@@ -247,9 +234,7 @@ export class PublicCertificateValidationService {
     return subscriptions.map((subscription) => subscription.event);
   }
 
-  private listAllEventGroupCertificateEvents(
-    eventGroupId: string,
-  ): Promise<CertificateValidationEventRecord[]> {
+  private listAllEventGroupCertificateEvents(eventGroupId: string): Promise<CertificateValidationEventRecord[]> {
     return this.prisma.event.findMany({
       where: {
         eventGroupId,
@@ -301,11 +286,7 @@ export class PublicCertificateValidationService {
       {
         title: 'Outros',
         type: EventType.OTHER,
-        events: events.filter(
-          (event) =>
-            event.type !== EventType.MINICURSO &&
-            event.type !== EventType.PALESTRA,
-        ),
+        events: events.filter((event) => event.type !== EventType.MINICURSO && event.type !== EventType.PALESTRA),
       },
     ]
       .filter((section) => section.events.length > 0)
@@ -316,9 +297,7 @@ export class PublicCertificateValidationService {
       }));
   }
 
-  private getDefaultSectionTitle(
-    certificate: PublicCertificateValidationRecord,
-  ): string {
+  private getDefaultSectionTitle(certificate: PublicCertificateValidationRecord): string {
     if (certificate.config.scope === CertificateScope.EVENT_GROUP) {
       return certificate.config.eventGroup?.shouldIssuePartialCertificate
         ? 'Eventos com presença'
@@ -328,9 +307,7 @@ export class PublicCertificateValidationService {
     return 'Evento';
   }
 
-  private mapEvent(
-    event: CertificateValidationEventRecord,
-  ): PublicCertificateValidationEvent {
+  private mapEvent(event: CertificateValidationEventRecord): PublicCertificateValidationEvent {
     return {
       name: event.name,
       id: event.id,
@@ -341,9 +318,7 @@ export class PublicCertificateValidationService {
     };
   }
 
-  private getTargetName(
-    certificate: PublicCertificateValidationRecord,
-  ): string | undefined {
+  private getTargetName(certificate: PublicCertificateValidationRecord): string | undefined {
     return (
       certificate.config.majorEvent?.name ??
       certificate.config.eventGroup?.name ??
@@ -352,27 +327,15 @@ export class PublicCertificateValidationService {
     );
   }
 
-  private getTargetEmoji(
-    certificate: PublicCertificateValidationRecord,
-  ): string | undefined {
-    return (
-      certificate.config.majorEvent?.emoji ??
-      certificate.config.event?.emoji ??
-      undefined
-    );
+  private getTargetEmoji(certificate: PublicCertificateValidationRecord): string | undefined {
+    return certificate.config.majorEvent?.emoji ?? certificate.config.event?.emoji ?? undefined;
   }
 
   private sumCreditMinutes(events: CertificateValidationEventRecord[]): number {
-    return events.reduce(
-      (total, event) => total + (event.creditMinutes ?? 0),
-      0,
-    );
+    return events.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
   }
 
-  private maskCpf(
-    identityDocument: string | null,
-    isCpf: boolean | null,
-  ): string | undefined {
+  private maskCpf(identityDocument: string | null, isCpf: boolean | null): string | undefined {
     if (isCpf === false || !identityDocument) {
       return undefined;
     }
@@ -393,16 +356,11 @@ export class PublicCertificateValidationService {
     const firstDigit = this.calculateCpfDigit(digits.slice(0, 9), 10);
     const secondDigit = this.calculateCpfDigit(digits.slice(0, 10), 11);
 
-    return (
-      firstDigit === Number(digits[9]) && secondDigit === Number(digits[10])
-    );
+    return firstDigit === Number(digits[9]) && secondDigit === Number(digits[10]);
   }
 
   private calculateCpfDigit(digits: string, firstWeight: number): number {
-    const sum = [...digits].reduce(
-      (total, digit, index) => total + Number(digit) * (firstWeight - index),
-      0,
-    );
+    const sum = [...digits].reduce((total, digit, index) => total + Number(digit) * (firstWeight - index), 0);
     const calculatedDigit = 11 - (sum % 11);
     return calculatedDigit >= 10 ? 0 : calculatedDigit;
   }

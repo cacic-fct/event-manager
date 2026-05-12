@@ -34,15 +34,9 @@ export type {
   PublicEventGroup,
   SubscribedItem,
   SubscriptionsFeed,
-
-type GraphqlVariable =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | readonly string[];
 } from '@cacic-fct/shared-utils';
+
+type GraphqlVariable = string | number | boolean | null | undefined | readonly string[];
 type GraphqlVariables = Record<string, GraphqlVariable>;
 
 interface GraphqlResponse<TData> {
@@ -250,17 +244,13 @@ export class AttendancesApiService {
     ).pipe(
       map((data) => ({
         majorEventItems: data.currentUserMajorEventFeed,
-        eventItems: this.mapSubscriptionFeedItems(
-          data.currentUserSubscriptionFeed.items ?? [],
-        ),
+        eventItems: this.mapSubscriptionFeedItems(data.currentUserSubscriptionFeed.items ?? []),
         attendances: data.currentUserEventAttendances,
       })),
     );
   }
 
-  private mapSubscriptionFeedItems(
-    items: CurrentUserSubscriptionFeedItem[],
-  ): SubscribedItem[] {
+  private mapSubscriptionFeedItems(items: CurrentUserSubscriptionFeedItem[]): SubscribedItem[] {
     return items.map((item) => {
       if (item.type === 'SINGLE_EVENT') {
         return {
@@ -323,8 +313,7 @@ export class AttendancesApiService {
       map(({ details, feedItem }) => ({
         subscription: details.currentUserMajorEventSubscription,
         majorEvent: feedItem?.majorEvent ?? null,
-        hasIssuedCertificate:
-          feedItem?.participation.hasIssuedCertificate ?? false,
+        hasIssuedCertificate: feedItem?.participation.hasIssuedCertificate ?? false,
         attendances: details.currentUserEventAttendances,
       })),
     );
@@ -362,9 +351,7 @@ export class AttendancesApiService {
     }).pipe(
       map(({ details, certificates }) => ({
         subscription: details.currentUserEventSubscription,
-        event: details.currentUserEventSubscription
-          ? null
-          : details.publicEvent,
+        event: details.currentUserEventSubscription ? null : details.publicEvent,
         hasIssuedCertificate: certificates.length > 0,
         attendance: details.currentUserEventAttendance,
       })),
@@ -402,10 +389,7 @@ export class AttendancesApiService {
         `,
         { eventGroupId },
       ),
-      certificates: this.getCurrentUserCertificates(
-        'EVENT_GROUP',
-        eventGroupId,
-      ),
+      certificates: this.getCurrentUserCertificates('EVENT_GROUP', eventGroupId),
     }).pipe(
       map(({ details, certificates }) => {
         const fallbackEvents = details.publicEvents ?? [];
@@ -413,12 +397,8 @@ export class AttendancesApiService {
 
         return {
           subscription: details.currentUserEventGroupSubscription,
-          eventGroup: details.currentUserEventGroupSubscription
-            ? null
-            : eventGroup,
-          events: details.currentUserEventGroupSubscription
-            ? []
-            : fallbackEvents,
+          eventGroup: details.currentUserEventGroupSubscription ? null : eventGroup,
+          events: details.currentUserEventGroupSubscription ? [] : fallbackEvents,
           hasIssuedCertificate: certificates.length > 0,
           attendances: details.currentUserEventAttendances,
         };
@@ -426,27 +406,17 @@ export class AttendancesApiService {
     );
   }
 
-  getCurrentUserCertificatesForTargets(
-    targets: CertificateTarget[],
-  ): Observable<Certificate[]> {
+  getCurrentUserCertificatesForTargets(targets: CertificateTarget[]): Observable<Certificate[]> {
     if (targets.length === 0) {
       return of([]);
     }
 
-    return forkJoin(
-      targets.map((target) =>
-        this.getCurrentUserCertificates(target.scope, target.targetId),
-      ),
-    ).pipe(
-      map((certificateGroups) =>
-        this.deduplicateCertificates(certificateGroups.flat()),
-      ),
+    return forkJoin(targets.map((target) => this.getCurrentUserCertificates(target.scope, target.targetId))).pipe(
+      map((certificateGroups) => this.deduplicateCertificates(certificateGroups.flat())),
     );
   }
 
-  downloadCurrentUserCertificate(
-    certificateId: string,
-  ): Observable<CertificateDownload> {
+  downloadCurrentUserCertificate(certificateId: string): Observable<CertificateDownload> {
     return this.query<{ downloadCurrentUserCertificate: CertificateDownload }>(
       `
         query DownloadCurrentUserCertificate($certificateId: String!) {
@@ -461,10 +431,7 @@ export class AttendancesApiService {
     ).pipe(map((data) => data.downloadCurrentUserCertificate));
   }
 
-  private getCurrentUserCertificates(
-    scope: CertificateScope,
-    targetId: string,
-  ): Observable<Certificate[]> {
+  private getCurrentUserCertificates(scope: CertificateScope, targetId: string): Observable<Certificate[]> {
     return this.query<{ currentUserCertificates: Certificate[] }>(
       `
         query CurrentUserCertificates($scope: CertificateScope!, $targetId: String!) {
@@ -477,9 +444,7 @@ export class AttendancesApiService {
     ).pipe(map((data) => data.currentUserCertificates));
   }
 
-  private getMajorEventFeedItem(
-    majorEventId: string,
-  ): Observable<CurrentUserMajorEventFeedItem | null> {
+  private getMajorEventFeedItem(majorEventId: string): Observable<CurrentUserMajorEventFeedItem | null> {
     return this.query<{
       currentUserMajorEventFeed: CurrentUserMajorEventFeedItem[];
     }>(
@@ -503,37 +468,23 @@ export class AttendancesApiService {
           }
         }
       `,
-    ).pipe(
-      map(
-        (data) =>
-          data.currentUserMajorEventFeed.find(
-            (item) => item.majorEventId === majorEventId,
-          ) ?? null,
-      ),
-    );
+    ).pipe(map((data) => data.currentUserMajorEventFeed.find((item) => item.majorEventId === majorEventId) ?? null));
   }
 
-  private query<TData>(
-    query: string,
-    variables?: GraphqlVariables,
-  ): Observable<TData> {
-    return this.http
-      .post<GraphqlResponse<TData>>('/api/graphql', { query, variables })
-      .pipe(
-        map((response) => {
-          if (response.errors?.length) {
-            throw new Error(
-              response.errors.map((error) => error.message).join('\n'),
-            );
-          }
+  private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {
+    return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
+      map((response) => {
+        if (response.errors?.length) {
+          throw new Error(response.errors.map((error) => error.message).join('\n'));
+        }
 
-          if (!response.data) {
-            throw new Error('Resposta GraphQL sem dados.');
-          }
+        if (!response.data) {
+          throw new Error('Resposta GraphQL sem dados.');
+        }
 
-          return response.data;
-        }),
-      );
+        return response.data;
+      }),
+    );
   }
 
   private deduplicateCertificates(certificates: Certificate[]): Certificate[] {
@@ -543,8 +494,7 @@ export class AttendancesApiService {
     }
 
     return [...certificatesById.values()].sort(
-      (left, right) =>
-        new Date(right.issuedAt).getTime() - new Date(left.issuedAt).getTime(),
+      (left, right) => new Date(right.issuedAt).getTime() - new Date(left.issuedAt).getTime(),
     );
   }
 }

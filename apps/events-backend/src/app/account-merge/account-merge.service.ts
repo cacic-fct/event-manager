@@ -5,11 +5,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import {
-  ExternalAccountMergeResult,
-  People,
-  Prisma,
-} from '@prisma/client';
+import { ExternalAccountMergeResult, People, Prisma } from '@prisma/client';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -73,9 +69,7 @@ export class AccountMergeService {
     private readonly certificateIssuingService: CertificateIssuingService,
   ) {}
 
-  async scoreAccountMergeCandidates(
-    body: AccountMergeScoreRequestDto,
-  ): Promise<AccountMergeScoreResponseDto> {
+  async scoreAccountMergeCandidates(body: AccountMergeScoreRequestDto): Promise<AccountMergeScoreResponseDto> {
     const userIds = this.normalizeUserIds(body.userIds);
     const scores: Record<string, number> = {};
 
@@ -143,11 +137,10 @@ export class AccountMergeService {
 
       return this.toAcknowledgement(input);
     } catch (error) {
-      const alreadyApplied =
-        await this.prisma.externalAccountMergeOperation.findUnique({
-          where: { eventId: input.eventId },
-          select: { status: true },
-        });
+      const alreadyApplied = await this.prisma.externalAccountMergeOperation.findUnique({
+        where: { eventId: input.eventId },
+        select: { status: true },
+      });
       if (alreadyApplied?.status !== 'APPLIED') {
         await this.recordFailure(input, actorId, error);
       }
@@ -155,9 +148,7 @@ export class AccountMergeService {
         `Failed to process account merge event=${input.eventId}, oldUser=${input.oldUserId}, newUser=${input.newUserId}.`,
         error instanceof Error ? error.stack : String(error),
       );
-      throw new InternalServerErrorException(
-        'Account merge notification was registered but could not be applied.',
-      );
+      throw new InternalServerErrorException('Account merge notification was registered but could not be applied.');
     }
   }
 
@@ -183,9 +174,7 @@ export class AccountMergeService {
       currentUserId = merge.newUserId;
     }
 
-    this.logger.error(
-      `Detected account merge cycle while resolving user ${initialUserId}.`,
-    );
+    this.logger.error(`Detected account merge cycle while resolving user ${initialUserId}.`);
     return currentUserId;
   }
 
@@ -234,24 +223,16 @@ export class AccountMergeService {
       return 0;
     }
 
-    const personScore = people.reduce(
-      (total, person) => total + this.scorePerson(person),
-      0,
-    );
-    const confirmedMajorEventSubscriptions = await this.prisma
-      .majorEventSubscription.count({
-        where: {
-          personId: { in: people.map((person) => person.id) },
-          deletedAt: null,
-          subscriptionStatus: 'CONFIRMED',
-        },
-      });
+    const personScore = people.reduce((total, person) => total + this.scorePerson(person), 0);
+    const confirmedMajorEventSubscriptions = await this.prisma.majorEventSubscription.count({
+      where: {
+        personId: { in: people.map((person) => person.id) },
+        deletedAt: null,
+        subscriptionStatus: 'CONFIRMED',
+      },
+    });
 
-    return (
-      personScore +
-      this.scoreCapped(confirmedMajorEventSubscriptions, 15, 60) +
-      this.scoreUserAccount(user)
-    );
+    return personScore + this.scoreCapped(confirmedMajorEventSubscriptions, 15, 60) + this.scoreUserAccount(user);
   }
 
   private scorePerson(person: {
@@ -289,17 +270,12 @@ export class AccountMergeService {
     );
   }
 
-  private scoreUserAccount(
-    user: { role: string; createdAt: Date } | null,
-  ): number {
+  private scoreUserAccount(user: { role: string; createdAt: Date } | null): number {
     if (!user) {
       return 0;
     }
 
-    return (
-      (user.role !== 'USER' ? 10 : 0) +
-      this.scoreEstablishedDate(user.createdAt)
-    );
+    return (user.role !== 'USER' ? 10 : 0) + this.scoreEstablishedDate(user.createdAt);
   }
 
   private scoreCapped(count: number, pointsPerItem: number, max: number): number {
@@ -307,9 +283,7 @@ export class AccountMergeService {
   }
 
   private scoreEstablishedDate(createdAt: Date): number {
-    return Date.now() - createdAt.getTime() >= this.establishedAccountAgeMs
-      ? 3
-      : 0;
+    return Date.now() - createdAt.getTime() >= this.establishedAccountAgeMs ? 3 : 0;
   }
 
   private async applyLocalMerge(
@@ -332,11 +306,7 @@ export class AccountMergeService {
       };
     }
 
-    const finalPersonData = await this.buildFinalPersonUserData(
-      tx,
-      input.newUserId,
-      newUser ? input.newUserId : null,
-    );
+    const finalPersonData = await this.buildFinalPersonUserData(tx, input.newUserId, newUser ? input.newUserId : null);
 
     if (!targetPerson || targetPerson.id === sourcePerson.id) {
       await tx.people.update({
@@ -354,16 +324,8 @@ export class AccountMergeService {
 
     const targetSnapshot = this.toPersonSnapshot(targetPerson);
     const sourceSnapshot = this.toPersonSnapshot(sourcePerson);
-    const movedRelations = await this.moveRelations(
-      tx,
-      targetPerson.id,
-      sourcePerson.id,
-    );
-    const targetData = this.buildTargetMergeData(
-      targetPerson,
-      sourcePerson,
-      finalPersonData,
-    );
+    const movedRelations = await this.moveRelations(tx, targetPerson.id, sourcePerson.id);
+    const targetData = this.buildTargetMergeData(targetPerson, sourcePerson, finalPersonData);
 
     await tx.people.update({
       where: { id: sourcePerson.id },
@@ -410,9 +372,7 @@ export class AccountMergeService {
     });
 
     if (existing && existing.newUserId !== newUserId) {
-      throw new ConflictException(
-        `User ${oldUserId} is already merged into ${existing.newUserId}.`,
-      );
+      throw new ConflictException(`User ${oldUserId} is already merged into ${existing.newUserId}.`);
     }
 
     if (!existing) {
@@ -425,10 +385,7 @@ export class AccountMergeService {
     }
   }
 
-  private async findSingleActivePersonForUser(
-    tx: Prisma.TransactionClient,
-    userId: string,
-  ): Promise<People | null> {
+  private async findSingleActivePersonForUser(tx: Prisma.TransactionClient, userId: string): Promise<People | null> {
     const people = await tx.people.findMany({
       where: {
         deletedAt: null,
@@ -439,9 +396,7 @@ export class AccountMergeService {
     });
 
     if (people.length > 1) {
-      throw new ConflictException(
-        `Multiple active people records are linked to user ${userId}.`,
-      );
+      throw new ConflictException(`Multiple active people records are linked to user ${userId}.`);
     }
 
     return people[0] ?? null;
@@ -473,8 +428,7 @@ export class AccountMergeService {
       ...finalPersonData,
       secondaryEmails: this.mergeSecondaryEmails(targetPerson, sourcePerson),
       phone: targetPerson.phone ?? sourcePerson.phone,
-      identityDocument:
-        targetPerson.identityDocument ?? sourcePerson.identityDocument,
+      identityDocument: targetPerson.identityDocument ?? sourcePerson.identityDocument,
       academicId: targetPerson.academicId ?? sourcePerson.academicId,
     };
   }
@@ -487,28 +441,16 @@ export class AccountMergeService {
     const sourceAttendances = await tx.eventAttendance.findMany({
       where: { personId: sourcePersonId },
     });
-    const insertedAttendanceRows = await this.copyMissingAttendances(
-      tx,
-      targetPersonId,
-      sourceAttendances,
-    );
+    const insertedAttendanceRows = await this.copyMissingAttendances(tx, targetPersonId, sourceAttendances);
     await tx.eventAttendance.deleteMany({ where: { personId: sourcePersonId } });
 
     const sourceLectures = await tx.eventLecturer.findMany({
       where: { personId: sourcePersonId },
     });
-    const insertedLectureRows = await this.copyMissingLectures(
-      tx,
-      targetPersonId,
-      sourceLectures,
-    );
+    const insertedLectureRows = await this.copyMissingLectures(tx, targetPersonId, sourceLectures);
     await tx.eventLecturer.deleteMany({ where: { personId: sourcePersonId } });
 
-    const movedEventSubscriptionIds = await this.moveById(
-      tx.eventSubscription,
-      targetPersonId,
-      sourcePersonId,
-    );
+    const movedEventSubscriptionIds = await this.moveById(tx.eventSubscription, targetPersonId, sourcePersonId);
     const movedEventGroupSubscriptionIds = await this.moveById(
       tx.eventGroupSubscription,
       targetPersonId,
@@ -532,12 +474,8 @@ export class AccountMergeService {
         createdAt: lecture.createdAt.toISOString(),
         createdById: lecture.createdById,
       })),
-      insertedAttendanceEventIds: insertedAttendanceRows.map(
-        (attendance) => attendance.eventId,
-      ),
-      insertedLectureEventIds: insertedLectureRows.map(
-        (lecture) => lecture.eventId,
-      ),
+      insertedAttendanceEventIds: insertedAttendanceRows.map((attendance) => attendance.eventId),
+      insertedLectureEventIds: insertedLectureRows.map((lecture) => lecture.eventId),
       movedEventSubscriptionIds,
       movedEventGroupSubscriptionIds,
       movedMajorEventSubscriptionIds,
@@ -547,13 +485,9 @@ export class AccountMergeService {
   private async copyMissingAttendances(
     tx: Prisma.TransactionClient,
     targetPersonId: string,
-    sourceAttendances: Awaited<
-      ReturnType<Prisma.TransactionClient['eventAttendance']['findMany']>
-    >,
+    sourceAttendances: Awaited<ReturnType<Prisma.TransactionClient['eventAttendance']['findMany']>>,
   ) {
-    const sourceEventIds = sourceAttendances.map(
-      (attendance) => attendance.eventId,
-    );
+    const sourceEventIds = sourceAttendances.map((attendance) => attendance.eventId);
     const existing = sourceEventIds.length
       ? await tx.eventAttendance.findMany({
           where: {
@@ -564,9 +498,7 @@ export class AccountMergeService {
         })
       : [];
     const existingEventIds = new Set(existing.map((item) => item.eventId));
-    const inserted = sourceAttendances.filter(
-      (attendance) => !existingEventIds.has(attendance.eventId),
-    );
+    const inserted = sourceAttendances.filter((attendance) => !existingEventIds.has(attendance.eventId));
 
     if (inserted.length > 0) {
       await tx.eventAttendance.createMany({
@@ -589,9 +521,7 @@ export class AccountMergeService {
   private async copyMissingLectures(
     tx: Prisma.TransactionClient,
     targetPersonId: string,
-    sourceLectures: Awaited<
-      ReturnType<Prisma.TransactionClient['eventLecturer']['findMany']>
-    >,
+    sourceLectures: Awaited<ReturnType<Prisma.TransactionClient['eventLecturer']['findMany']>>,
   ) {
     const sourceEventIds = sourceLectures.map((lecture) => lecture.eventId);
     const existing = sourceEventIds.length
@@ -604,9 +534,7 @@ export class AccountMergeService {
         })
       : [];
     const existingEventIds = new Set(existing.map((item) => item.eventId));
-    const inserted = sourceLectures.filter(
-      (lecture) => !existingEventIds.has(lecture.eventId),
-    );
+    const inserted = sourceLectures.filter((lecture) => !existingEventIds.has(lecture.eventId));
 
     if (inserted.length > 0) {
       await tx.eventLecturer.createMany({
@@ -625,14 +553,8 @@ export class AccountMergeService {
 
   private async moveById(
     delegate: {
-      findMany: (args: {
-        where: { personId: string };
-        select: { id: true };
-      }) => Promise<Array<{ id: string }>>;
-      updateMany: (args: {
-        where: { id: { in: string[] } };
-        data: { personId: string };
-      }) => Promise<unknown>;
+      findMany: (args: { where: { personId: string }; select: { id: true } }) => Promise<Array<{ id: string }>>;
+      updateMany: (args: { where: { id: { in: string[] } }; data: { personId: string } }) => Promise<unknown>;
     },
     targetPersonId: string,
     sourcePersonId: string,
@@ -658,8 +580,7 @@ export class AccountMergeService {
     actorId: string | null,
     error: unknown,
   ): Promise<void> {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown account merge error.';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown account merge error.';
 
     await this.prisma.externalAccountMergeOperation.upsert({
       where: { eventId: input.eventId },
@@ -698,15 +619,11 @@ export class AccountMergeService {
       existing.oldUserId !== input.oldUserId ||
       existing.newUserId !== input.newUserId
     ) {
-      throw new ConflictException(
-        `Event ${input.eventId} was already registered with different account merge data.`,
-      );
+      throw new ConflictException(`Event ${input.eventId} was already registered with different account merge data.`);
     }
   }
 
-  private normalizeNotification(
-    body: AccountMergeNotificationDto,
-  ): NormalizedAccountMergeNotification {
+  private normalizeNotification(body: AccountMergeNotificationDto): NormalizedAccountMergeNotification {
     const eventId = this.readRequiredString(body.eventId, 'eventId');
     const type = this.readRequiredString(body.type, 'type');
     if (type !== 'account.merged') {
@@ -719,10 +636,7 @@ export class AccountMergeService {
       throw new BadRequestException('oldUserId and newUserId must be distinct.');
     }
 
-    const occurredAtValue = this.readRequiredString(
-      body.occurredAt,
-      'occurredAt',
-    );
+    const occurredAtValue = this.readRequiredString(body.occurredAt, 'occurredAt');
     const occurredAt = new Date(occurredAtValue);
     if (Number.isNaN(occurredAt.getTime())) {
       throw new BadRequestException('occurredAt must be a valid ISO date.');
@@ -744,9 +658,7 @@ export class AccountMergeService {
     };
   }
 
-  private toAcknowledgement(
-    input: NormalizedAccountMergeNotification,
-  ): AccountMergeAcknowledgementDto {
+  private toAcknowledgement(input: NormalizedAccountMergeNotification): AccountMergeAcknowledgementDto {
     return {
       eventId: input.eventId,
       type: input.type,
@@ -820,9 +732,7 @@ export class AccountMergeService {
     const userIds = new Set<string>();
     for (const rawUserId of rawUserIds) {
       if (typeof rawUserId !== 'string' || !rawUserId.trim()) {
-        throw new BadRequestException(
-          'userIds must contain only non-empty strings.',
-        );
+        throw new BadRequestException('userIds must contain only non-empty strings.');
       }
 
       userIds.add(rawUserId.trim());

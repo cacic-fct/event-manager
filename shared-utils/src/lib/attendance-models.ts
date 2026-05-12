@@ -1,9 +1,5 @@
 export type EventTargetType = 'event' | 'event-group' | 'major-event';
-export type CertificateScope =
-  | 'EVENT'
-  | 'EVENT_GROUP'
-  | 'MAJOR_EVENT'
-  | 'OTHER';
+export type CertificateScope = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT' | 'OTHER';
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 
@@ -148,9 +144,7 @@ export interface SubscribedEventGroupItem {
   participation: CurrentUserEventParticipation;
 }
 
-export type SubscribedItem =
-  | SubscribedSingleEventItem
-  | SubscribedEventGroupItem;
+export type SubscribedItem = SubscribedSingleEventItem | SubscribedEventGroupItem;
 
 export interface SubscriptionsFeed {
   majorEventItems: CurrentUserMajorEventFeedItem[];

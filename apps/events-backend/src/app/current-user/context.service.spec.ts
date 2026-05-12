@@ -72,16 +72,11 @@ describe('CurrentUserContextService', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue(user);
-    prisma.people.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([person]);
+    prisma.people.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([person]);
     prisma.people.findFirst.mockResolvedValue(null);
     prisma.people.update.mockResolvedValue(updatedPerson);
 
-    const result = await service.resolveCurrentUserContext(
-      authenticatedUser,
-      true,
-    );
+    const result = await service.resolveCurrentUserContext(authenticatedUser, true);
 
     expect(result).toEqual({
       user,
@@ -101,9 +96,10 @@ describe('CurrentUserContextService', () => {
         }),
       }),
     );
-    expect(
-      certificateIssuingService.refreshIssuedCertificatesForPerson,
-    ).toHaveBeenCalledWith('person-email', 'keycloak-sub');
+    expect(certificateIssuingService.refreshIssuedCertificatesForPerson).toHaveBeenCalledWith(
+      'person-email',
+      'keycloak-sub',
+    );
     expect(prisma.people.create).not.toHaveBeenCalled();
   });
 
@@ -133,17 +129,11 @@ describe('CurrentUserContextService', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue(user);
-    prisma.people.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([person]);
+    prisma.people.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([person]);
     prisma.people.findFirst.mockResolvedValue(null);
     prisma.people.update.mockResolvedValue(updatedPerson);
 
-    const result = await service.resolveCurrentUserContext(
-      authenticatedUser,
-      true,
-    );
+    const result = await service.resolveCurrentUserContext(authenticatedUser, true);
 
     expect(result.person).toEqual(updatedPerson);
     expect(prisma.people.findMany).toHaveBeenLastCalledWith(
@@ -179,21 +169,14 @@ describe('CurrentUserContextService', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue(user);
-    prisma.people.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([person]);
+    prisma.people.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([person]);
     prisma.people.findFirst.mockResolvedValue(null);
     prisma.people.update.mockResolvedValue(updatedPerson);
 
-    const result = await service.resolveCurrentUserContext(
-      authenticatedUser,
-      true,
-    );
+    const result = await service.resolveCurrentUserContext(authenticatedUser, true);
 
     expect(result.person).toEqual(updatedPerson);
-    expect(
-      certificateIssuingService.refreshIssuedCertificatesForPerson,
-    ).not.toHaveBeenCalled();
+    expect(certificateIssuingService.refreshIssuedCertificatesForPerson).not.toHaveBeenCalled();
   });
 
   it('refreshes certificates when the matched person name changes', async () => {
@@ -227,17 +210,16 @@ describe('CurrentUserContextService', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue(user);
-    prisma.people.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([person]);
+    prisma.people.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([person]);
     prisma.people.findFirst.mockResolvedValue(null);
     prisma.people.update.mockResolvedValue(updatedPerson);
 
     await service.resolveCurrentUserContext(authenticatedUser, true);
 
-    expect(
-      certificateIssuingService.refreshIssuedCertificatesForPerson,
-    ).toHaveBeenCalledWith('person-name-change', 'keycloak-sub');
+    expect(certificateIssuingService.refreshIssuedCertificatesForPerson).toHaveBeenCalledWith(
+      'person-name-change',
+      'keycloak-sub',
+    );
   });
 
   it('creates a new person with inferred Keycloak profile data when no match exists', async () => {
@@ -256,17 +238,11 @@ describe('CurrentUserContextService', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue(user);
-    prisma.people.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+    prisma.people.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     prisma.people.findFirst.mockResolvedValue(null);
     prisma.people.create.mockResolvedValue(createdPerson);
 
-    const result = await service.resolveCurrentUserContext(
-      authenticatedUser,
-      true,
-    );
+    const result = await service.resolveCurrentUserContext(authenticatedUser, true);
 
     expect(result.person).toEqual(createdPerson);
     expect(prisma.people.create).toHaveBeenCalledWith(
@@ -285,9 +261,7 @@ describe('CurrentUserContextService', () => {
   });
 });
 
-function createAuthenticatedUser(
-  overrides: Partial<AuthenticatedUser> = {},
-): AuthenticatedUser {
+function createAuthenticatedUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
   return {
     realm_access: {
       roles: [],
@@ -330,9 +304,7 @@ function createUserRecord(overrides: Partial<UserRecord> = {}): UserRecord {
   };
 }
 
-function createPersonRecord(
-  overrides: Partial<PersonRecord> = {},
-): PersonRecord {
+function createPersonRecord(overrides: Partial<PersonRecord> = {}): PersonRecord {
   return {
     id: 'person-id',
     name: 'Student Name',

@@ -1,17 +1,15 @@
-import {
-  Component,
-  DestroyRef,
-  inject,
-  signal,
-  WritableSignal,
-} from '@angular/core';
+import { Component, DestroyRef, inject, signal, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatIcon } from '@angular/material/icon';
+import { MatToolbar } from '@angular/material/toolbar';
+import { RouterLink } from '@angular/router';
 import { AztecScannerDialogComponent, ScannerSoundsService } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-scanner-debug',
-  imports: [],
+  imports: [MatButtonModule, MatToolbar, MatIcon, RouterLink],
   templateUrl: './scanner-debug.html',
   styleUrl: './scanner-debug.css',
 })
@@ -34,7 +32,7 @@ export class ScannerDebug {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((code) => {
-        if (!code) {
+        if (!code && code !== '') {
           this.scannerSoundsService.invalid();
           return;
         }

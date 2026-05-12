@@ -2,14 +2,9 @@
   mat-list-item
   [routerLink]="['/event', event().id]"
   [queryParams]="{ returnUrl: returnUrl() }"
-  [attr.aria-label]="'Abrir evento ' + event().name"
->
+  [attr.aria-label]="'Abrir evento ' + event().name">
   <div matListItemIcon class="emoji-frame">
-    <img
-      class="twemoji"
-      [src]="emoji.getTwemojiUrl(event().emoji)"
-      [alt]="event().emoji"
-    />
+    <img class="twemoji" [src]="emoji.getTwemojiUrl(event().emoji)" [alt]="event().emoji" />
   </div>
   <div matListItemTitle>{{ event().name }}</div>
   <div matListItemLine>{{ contextLine() }}</div>

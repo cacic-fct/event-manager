@@ -11,4 +11,9 @@ export const routes: Route[] = [
     loadComponent: () => import('./legal/legal').then((m) => m.Legal),
     title: 'Legal',
   },
+  {
+    path: 'service-worker',
+    loadComponent: () => import('./service-worker/service-worker').then((m) => m.ServiceWorker),
+    title: 'Service Worker',
+  },
 ];

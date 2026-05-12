@@ -11,11 +11,7 @@ export type DashboardInsightAction =
   | 'OPEN_CERTIFICATES'
   | 'OPEN_MERGE_CANDIDATES';
 
-export type DashboardCertificateTargetType =
-  | 'EVENT'
-  | 'EVENT_GROUP'
-  | 'MAJOR_EVENT'
-  | 'MAJOR_EVENT_LECTURERS';
+export type DashboardCertificateTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT' | 'MAJOR_EVENT_LECTURERS';
 
 export type DashboardInconsistencyType =
   | 'EVENT_GROUP_WITH_SINGLE_EVENT'

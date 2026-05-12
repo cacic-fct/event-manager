@@ -12,16 +12,9 @@ export class CurrentUserProfileResolver {
   ) {}
 
   @Query(() => CurrentUserProfileContext, { name: 'currentUserProfileContext' })
-  async currentUserProfileContext(
-    @Context() context: GraphqlContext,
-  ): Promise<CurrentUserProfileContext> {
-    const authenticatedUser =
-      this.currentUserContext.getAuthenticatedUser(context);
-    const { user, person } =
-      await this.currentUserContext.resolveCurrentUserContext(
-        authenticatedUser,
-        true,
-      );
+  async currentUserProfileContext(@Context() context: GraphqlContext): Promise<CurrentUserProfileContext> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { user, person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser, true);
 
     return {
       sub: authenticatedUser.sub,

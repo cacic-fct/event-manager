@@ -48,11 +48,7 @@ export class AttendanceApiService {
       .pipe(map((data) => data.createEventAttendanceFromAztecCode));
   }
 
-  importEventAttendancesFromCsv(input: {
-    eventId: string;
-    csvContent: string;
-    selectedHeader: string;
-  }) {
+  importEventAttendancesFromCsv(input: { eventId: string; csvContent: string; selectedHeader: string }) {
     return this.graphqlHttp
       .request<{
         importEventAttendancesFromCsv: EventAttendanceCsvImportResult;

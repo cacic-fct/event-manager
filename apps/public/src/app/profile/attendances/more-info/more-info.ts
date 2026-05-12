@@ -11,10 +11,7 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { DetailViewModel, EventTargetType, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
 import { Observable, catchError, map, of, startWith, switchMap } from 'rxjs';
 import { AttendancesApiService } from '../attendances-api.service';
-import {
-  CertificateDialog,
-  CertificateDialogData,
-} from '../certificate-dialog/certificate-dialog';
+import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
 import { EmojiService } from '../emoji.service';
 
 type DetailState =
@@ -54,16 +51,13 @@ export class MoreInfo {
   );
 
   openCertificates(detail: DetailViewModel): void {
-    this.dialog.open<CertificateDialog, CertificateDialogData>(
-      CertificateDialog,
-      {
-        data: {
-          title: detail.title,
-          targets: detail.certificateTargets,
-        },
-        width: 'min(560px, calc(100vw - 32px))',
+    this.dialog.open<CertificateDialog, CertificateDialogData>(CertificateDialog, {
+      data: {
+        title: detail.title,
+        targets: detail.certificateTargets,
       },
-    );
+      width: 'min(560px, calc(100vw - 32px))',
+    });
   }
 
   registerAttendanceLater(): void {
@@ -102,24 +96,16 @@ export class MoreInfo {
       catchError((error: unknown) =>
         of({
           status: 'error',
-          message:
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível carregar os detalhes.',
+          message: error instanceof Error ? error.message : 'Não foi possível carregar os detalhes.',
         } satisfies DetailState),
       ),
     );
   }
 
-  private loadDetail(
-    eventType: EventTargetType,
-    eventId: string,
-  ): Observable<DetailViewModel | null> {
+  private loadDetail(eventType: EventTargetType, eventId: string): Observable<DetailViewModel | null> {
     switch (eventType) {
       case 'event':
-        return this.api
-          .getEventDetails(eventId)
-          .pipe(map((details) => buildDetailViewModel({ eventType, details })));
+        return this.api.getEventDetails(eventId).pipe(map((details) => buildDetailViewModel({ eventType, details })));
       case 'event-group':
         return this.api
           .getEventGroupDetails(eventId)

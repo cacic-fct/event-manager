@@ -83,9 +83,7 @@ export type PublicMajorEventRecord = Prisma.MajorEventGetPayload<{
   select: typeof PUBLIC_MAJOR_EVENT_SELECT;
 }>;
 
-export function mapPublicMajorEvent(
-  majorEvent: PublicMajorEventRecord,
-): PublicMajorEvent {
+export function mapPublicMajorEvent(majorEvent: PublicMajorEventRecord): PublicMajorEvent {
   return {
     id: majorEvent.id,
     name: majorEvent.name,

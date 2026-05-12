@@ -7,7 +7,6 @@ export const routes: Route[] = [
   },
   {
     path: ':eventType/:eventId',
-    loadComponent: () =>
-      import('./more-info/more-info').then((m) => m.MoreInfo),
+    loadComponent: () => import('./more-info/more-info').then((m) => m.MoreInfo),
   },
 ];

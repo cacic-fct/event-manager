@@ -12,8 +12,7 @@ import { MajorEventSubscriptionCsvImportResult } from '../../graphql/models';
     <h2 mat-dialog-title>Importação concluída</h2>
     <div mat-dialog-content>
       <p>
-        {{ data.createdSubscriptionCount }} inscrições criadas,
-        {{ data.updatedSubscriptionCount }} atualizadas,
+        {{ data.createdSubscriptionCount }} inscrições criadas, {{ data.updatedSubscriptionCount }} atualizadas,
         {{ data.duplicateCount }} duplicadas, {{ data.failedCount }} falhas.
       </p>
       <p>{{ data.createdPeopleCount }} pessoas criadas automaticamente.</p>
@@ -25,12 +24,7 @@ import { MajorEventSubscriptionCsvImportResult } from '../../graphql/models';
             <mat-list-item>
               <span matListItemTitle>{{ person.name }}</span>
               <span matListItemLine>
-                {{
-                  person.email ??
-                    person.academicId ??
-                    person.identityDocument ??
-                    person.id
-                }}
+                {{ person.email ?? person.academicId ?? person.identityDocument ?? person.id }}
               </span>
             </mat-list-item>
           }
@@ -54,6 +48,5 @@ import { MajorEventSubscriptionCsvImportResult } from '../../graphql/models';
   `,
 })
 export class SubscriptionCsvImportResultDialogComponent {
-  readonly data =
-    inject<MajorEventSubscriptionCsvImportResult>(MAT_DIALOG_DATA);
+  readonly data = inject<MajorEventSubscriptionCsvImportResult>(MAT_DIALOG_DATA);
 }

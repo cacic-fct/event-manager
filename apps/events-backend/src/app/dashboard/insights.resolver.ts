@@ -10,9 +10,7 @@ export class DashboardInsightsResolver {
   @Query(() => WorkspaceDashboardInsights, {
     name: 'workspaceDashboardInsights',
   })
-  workspaceDashboardInsights(
-    @Context() context: GraphqlContext,
-  ): Promise<WorkspaceDashboardInsights> {
+  workspaceDashboardInsights(@Context() context: GraphqlContext): Promise<WorkspaceDashboardInsights> {
     return this.insightsService.getWorkspaceDashboardInsights(context);
   }
 }

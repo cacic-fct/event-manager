@@ -1,16 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import {
-  SubscriptionStatus,
-  WorkspaceEventSubscription,
-  WorkspaceMajorEventSubscription,
-} from './models';
-import {
-  EVENT_FIELDS,
-  MAJOR_EVENT_FIELDS,
-  PERSON_FIELDS,
-} from './graphql-query-fragments';
+import { SubscriptionStatus, WorkspaceEventSubscription, WorkspaceMajorEventSubscription } from './models';
+import { EVENT_FIELDS, MAJOR_EVENT_FIELDS, PERSON_FIELDS } from './graphql-query-fragments';
 
 const WORKSPACE_EVENT_SUBSCRIPTION_FIELDS = `
   id

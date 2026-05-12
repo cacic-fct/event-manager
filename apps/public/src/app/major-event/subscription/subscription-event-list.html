@@ -19,23 +19,13 @@
     class="event-row"
     [class.event-row-disabled]="isDisabled(event)"
     [class.event-row-readonly]="isAutoSelected(event)"
-    (click)="onItemClick(event)"
-  >
+    (click)="onItemClick(event)">
     <div matListItemIcon class="emoji-frame">
-      <img
-        class="twemoji"
-        [src]="emoji.getTwemojiUrl(event.emoji)"
-        [alt]="event.emoji"
-      />
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
     </div>
     <div matListItemTitle>{{ event.name }}</div>
-    <div matListItemLine>
-      {{ event.shortDescription || eventTypeLabel(event) }}
-    </div>
-    <div matListItemLine>
-      {{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm'
-      }}
-    </div>
+    <div matListItemLine>{{ event.shortDescription || eventTypeLabel(event) }}</div>
+    <div matListItemLine>{{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }}</div>
     @if (event.locationDescription) {
     <div matListItemLine>{{ event.locationDescription }}</div>
     }
@@ -45,12 +35,7 @@
     <div matListItemLine class="disabled-reason">{{ reason }}</div>
     }
     <div matListItemMeta class="row-actions">
-      <button
-        mat-button
-        type="button"
-        class="info-button"
-        (click)="$event.stopPropagation(); openInfo.emit(event)"
-      >
+      <button mat-button type="button" class="info-button" (click)="$event.stopPropagation(); openInfo.emit(event)">
         <mat-icon>info</mat-icon>
         INFO
       </button>
@@ -59,8 +44,7 @@
         [disabled]="isDisabled(event) || isAutoSelected(event)"
         [attr.aria-label]="'Selecionar ' + event.name"
         (click)="$event.stopPropagation()"
-        (change)="toggleEvent.emit(event)"
-      />
+        (change)="toggleEvent.emit(event)" />
     </div>
   </mat-list-item>
   } } } }

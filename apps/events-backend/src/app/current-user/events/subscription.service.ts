@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
@@ -44,11 +40,7 @@ export class CurrentUserEventSubscriptionService {
   getEventSubscriptionError(
     event: Pick<
       EventRecord,
-      | 'id'
-      | 'allowSubscription'
-      | 'subscriptionStartDate'
-      | 'subscriptionEndDate'
-      | 'startDate'
+      'id' | 'allowSubscription' | 'subscriptionStartDate' | 'subscriptionEndDate' | 'startDate'
     >,
     now = new Date(),
   ): string | null {
@@ -74,11 +66,7 @@ export class CurrentUserEventSubscriptionService {
   ensureEventSubscriptionWindowOpen(
     event: Pick<
       EventRecord,
-      | 'id'
-      | 'allowSubscription'
-      | 'subscriptionStartDate'
-      | 'subscriptionEndDate'
-      | 'startDate'
+      'id' | 'allowSubscription' | 'subscriptionStartDate' | 'subscriptionEndDate' | 'startDate'
     >,
     now = new Date(),
   ): void {
@@ -88,74 +76,60 @@ export class CurrentUserEventSubscriptionService {
     }
   }
 
-  async subscribeCurrentUserEvent(
-    personId: string,
-    eventId: string,
-  ): Promise<PublicEvent> {
-    const event = await this.runSerializableSubscriptionTransaction(
-      async (tx) => {
-        const targetEvent = await tx.event.findFirst({
-          where: {
-            id: eventId,
-            deletedAt: null,
-          },
-          select: EVENT_SELECT,
-        });
+  async subscribeCurrentUserEvent(personId: string, eventId: string): Promise<PublicEvent> {
+    const event = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const targetEvent = await tx.event.findFirst({
+        where: {
+          id: eventId,
+          deletedAt: null,
+        },
+        select: EVENT_SELECT,
+      });
 
-        if (!targetEvent) {
-          throw new NotFoundException(`Event ${eventId} was not found.`);
-        }
+      if (!targetEvent) {
+        throw new NotFoundException(`Event ${eventId} was not found.`);
+      }
 
-        if (targetEvent.majorEventId) {
-          throw new BadRequestException(
-            `Event ${eventId} belongs to major event ${targetEvent.majorEventId}. Direct event subscription for major-event content is still pending.`,
-          );
-        }
+      if (targetEvent.majorEventId) {
+        throw new BadRequestException(
+          `Event ${eventId} belongs to major event ${targetEvent.majorEventId}. Direct event subscription for major-event content is still pending.`,
+        );
+      }
 
-        const now = new Date();
-        this.ensureEventSubscriptionWindowOpen(targetEvent, now);
+      const now = new Date();
+      this.ensureEventSubscriptionWindowOpen(targetEvent, now);
 
-        if (targetEvent.eventGroupId) {
-          await this.subscribeCurrentUserEventGroupTx(
-            tx,
-            personId,
-            targetEvent.eventGroupId,
-            now,
-          );
-          return targetEvent;
-        }
+      if (targetEvent.eventGroupId) {
+        await this.subscribeCurrentUserEventGroupTx(tx, personId, targetEvent.eventGroupId, now);
+        return targetEvent;
+      }
 
-        const existingSubscription = await tx.eventSubscription.findFirst({
-          where: {
+      const existingSubscription = await tx.eventSubscription.findFirst({
+        where: {
+          eventId: targetEvent.id,
+          personId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!existingSubscription) {
+        await this.ensureAvailableSlots(tx, targetEvent);
+        await tx.eventSubscription.create({
+          data: {
             eventId: targetEvent.id,
             personId,
-            deletedAt: null,
-          },
-          select: {
-            id: true,
+            createdByMethod: 'SELF_SUBSCRIPTION',
           },
         });
+        await this.attendanceCategories.refreshForAttendance(personId, targetEvent.id, tx);
+        await this.refreshEventSubscriptionCounters(tx, [targetEvent.id]);
+      }
 
-        if (!existingSubscription) {
-          await this.ensureAvailableSlots(tx, targetEvent);
-          await tx.eventSubscription.create({
-            data: {
-              eventId: targetEvent.id,
-              personId,
-              createdByMethod: 'SELF_SUBSCRIPTION',
-            },
-          });
-          await this.attendanceCategories.refreshForAttendance(
-            personId,
-            targetEvent.id,
-            tx,
-          );
-          await this.refreshEventSubscriptionCounters(tx, [targetEvent.id]);
-        }
-
-        return targetEvent;
-      },
-    );
+      return targetEvent;
+    });
 
     return this.mapper.mapPublicEvent(event);
   }
@@ -164,14 +138,11 @@ export class CurrentUserEventSubscriptionService {
     personId: string,
     eventGroupId: string,
   ): Promise<CurrentUserEventGroupSubscription> {
-    const subscription = await this.runSerializableSubscriptionTransaction(
-      (tx) => this.subscribeCurrentUserEventGroupTx(tx, personId, eventGroupId),
+    const subscription = await this.runSerializableSubscriptionTransaction((tx) =>
+      this.subscribeCurrentUserEventGroupTx(tx, personId, eventGroupId),
     );
 
-    return this.mapper.mapCurrentUserEventGroupSubscription(
-      subscription.subscription,
-      subscription.events,
-    );
+    return this.mapper.mapCurrentUserEventGroupSubscription(subscription.subscription, subscription.events);
   }
 
   async getSubscribedEventsByEventGroupSubscription(
@@ -209,9 +180,7 @@ export class CurrentUserEventSubscriptionService {
     return this.groupEventsBySubscriptionId(eventSubscriptions);
   }
 
-  async getCurrentUserSubscribedItems(
-    personId: string,
-  ): Promise<CurrentUserSubscribedItem[]> {
+  async getCurrentUserSubscribedItems(personId: string): Promise<CurrentUserSubscribedItem[]> {
     const [standaloneSubscriptions, groupSubscriptions] = await Promise.all([
       this.prisma.eventSubscription.findMany({
         where: {
@@ -241,11 +210,10 @@ export class CurrentUserEventSubscriptionService {
       }),
     ]);
 
-    const eventsBySubscriptionId =
-      await this.getSubscribedEventsByEventGroupSubscription(
-        personId,
-        groupSubscriptions.map((subscription) => subscription.id),
-      );
+    const eventsBySubscriptionId = await this.getSubscribedEventsByEventGroupSubscription(
+      personId,
+      groupSubscriptions.map((subscription) => subscription.id),
+    );
 
     const items: CurrentUserSubscribedItem[] = [];
 
@@ -260,10 +228,7 @@ export class CurrentUserEventSubscriptionService {
 
     for (const subscription of groupSubscriptions) {
       const events = eventsBySubscriptionId.get(subscription.id) ?? [];
-      const startDate =
-        events.length > 0
-          ? this.mapper.getEarliestEventStartDate(events)
-          : new Date();
+      const startDate = events.length > 0 ? this.mapper.getEarliestEventStartDate(events) : new Date();
 
       items.push({
         type: 'group',
@@ -274,10 +239,7 @@ export class CurrentUserEventSubscriptionService {
       });
     }
 
-    return items.sort(
-      (a, b) =>
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
-    );
+    return items.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
   }
 
   private async subscribeCurrentUserEventGroupTx(
@@ -289,42 +251,41 @@ export class CurrentUserEventSubscriptionService {
     subscription: EventGroupSubscriptionRecord;
     events: PublicEvent[];
   }> {
-    const [groupEvents, existingSubscription, activeChildSubscriptions] =
-      await Promise.all([
-        tx.event.findMany({
-          where: {
+    const [groupEvents, existingSubscription, activeChildSubscriptions] = await Promise.all([
+      tx.event.findMany({
+        where: {
+          eventGroupId,
+          deletedAt: null,
+        },
+        select: EVENT_SELECT,
+        orderBy: {
+          startDate: 'asc',
+        },
+      }),
+      tx.eventGroupSubscription.findFirst({
+        where: {
+          eventGroupId,
+          personId,
+          deletedAt: null,
+        },
+        select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
+      }),
+      tx.eventSubscription.findMany({
+        where: {
+          personId,
+          deletedAt: null,
+          event: {
             eventGroupId,
             deletedAt: null,
+            majorEventId: null,
           },
-          select: EVENT_SELECT,
-          orderBy: {
-            startDate: 'asc',
-          },
-        }),
-        tx.eventGroupSubscription.findFirst({
-          where: {
-            eventGroupId,
-            personId,
-            deletedAt: null,
-          },
-          select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
-        }),
-        tx.eventSubscription.findMany({
-          where: {
-            personId,
-            deletedAt: null,
-            event: {
-              eventGroupId,
-              deletedAt: null,
-              majorEventId: null,
-            },
-          },
-          select: {
-            eventId: true,
-            eventGroupSubscriptionId: true,
-          },
-        }),
-      ]);
+        },
+        select: {
+          eventId: true,
+          eventGroupSubscriptionId: true,
+        },
+      }),
+    ]);
 
     if (groupEvents.length === 0) {
       const eventGroup = await tx.eventGroup.findFirst({
@@ -337,14 +298,10 @@ export class CurrentUserEventSubscriptionService {
         },
       });
       if (!eventGroup) {
-        throw new NotFoundException(
-          `Event group ${eventGroupId} was not found.`,
-        );
+        throw new NotFoundException(`Event group ${eventGroupId} was not found.`);
       }
 
-      throw new BadRequestException(
-        `Event group ${eventGroupId} has no active events available for subscription.`,
-      );
+      throw new BadRequestException(`Event group ${eventGroupId} has no active events available for subscription.`);
     }
 
     if (groupEvents.some((event) => event.majorEventId != null)) {
@@ -353,11 +310,8 @@ export class CurrentUserEventSubscriptionService {
       );
     }
 
-    const eligibleEvents = groupEvents.filter(
-      (event) => this.getEventSubscriptionError(event, now) === null,
-    );
-    const hasExistingSubscriptionState =
-      existingSubscription != null || activeChildSubscriptions.length > 0;
+    const eligibleEvents = groupEvents.filter((event) => this.getEventSubscriptionError(event, now) === null);
+    const hasExistingSubscriptionState = existingSubscription != null || activeChildSubscriptions.length > 0;
 
     if (!hasExistingSubscriptionState && eligibleEvents.length === 0) {
       throw new BadRequestException(
@@ -376,9 +330,7 @@ export class CurrentUserEventSubscriptionService {
         select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
       }));
 
-    const childEventIds = activeChildSubscriptions.map(
-      (childSubscription) => childSubscription.eventId,
-    );
+    const childEventIds = activeChildSubscriptions.map((childSubscription) => childSubscription.eventId);
     if (childEventIds.length > 0) {
       await tx.eventSubscription.updateMany({
         where: {
@@ -394,14 +346,8 @@ export class CurrentUserEventSubscriptionService {
       });
     }
 
-    const activeEventIdSet = new Set(
-      activeChildSubscriptions.map(
-        (childSubscription) => childSubscription.eventId,
-      ),
-    );
-    const missingEligibleEvents = eligibleEvents.filter(
-      (event) => !activeEventIdSet.has(event.id),
-    );
+    const activeEventIdSet = new Set(activeChildSubscriptions.map((childSubscription) => childSubscription.eventId));
+    const missingEligibleEvents = eligibleEvents.filter((event) => !activeEventIdSet.has(event.id));
 
     const eventsToCreate: EventRecord[] = [];
     for (const event of missingEligibleEvents) {
@@ -430,10 +376,7 @@ export class CurrentUserEventSubscriptionService {
         tx,
       );
     }
-    await this.refreshEventSubscriptionCounters(tx, [
-      ...childEventIds,
-      ...eventsToCreate.map((event) => event.id),
-    ]);
+    await this.refreshEventSubscriptionCounters(tx, [...childEventIds, ...eventsToCreate.map((event) => event.id)]);
 
     const events = await tx.eventSubscription.findMany({
       where: {
@@ -462,10 +405,7 @@ export class CurrentUserEventSubscriptionService {
     };
   }
 
-  private async ensureAvailableSlots(
-    tx: TransactionClient,
-    event: Pick<EventRecord, 'id' | 'slots'>,
-  ): Promise<void> {
+  private async ensureAvailableSlots(tx: TransactionClient, event: Pick<EventRecord, 'id' | 'slots'>): Promise<void> {
     if (event.slots == null) {
       return;
     }
@@ -478,24 +418,20 @@ export class CurrentUserEventSubscriptionService {
     });
 
     if (activeSubscriptionsCount >= event.slots) {
-      throw new BadRequestException(
-        `Event ${event.id} has no available slots for subscription.`,
-      );
+      throw new BadRequestException(`Event ${event.id} has no available slots for subscription.`);
     }
   }
 
-  private async refreshEventSubscriptionCounters(
-    tx: TransactionClient,
-    eventIds: string[],
-  ): Promise<void> {
+  private async refreshEventSubscriptionCounters(tx: TransactionClient, eventIds: string[]): Promise<void> {
     const uniqueEventIds = [...new Set(eventIds)];
     if (uniqueEventIds.length === 0) {
       return;
     }
 
     await Promise.all(
-      uniqueEventIds.map((eventId) =>
-        tx.$executeRaw`
+      uniqueEventIds.map(
+        (eventId) =>
+          tx.$executeRaw`
           UPDATE "events" event
           SET
             "queueCount" = (
@@ -535,8 +471,7 @@ export class CurrentUserEventSubscriptionService {
         continue;
       }
 
-      const events =
-        eventsBySubscriptionId.get(subscription.eventGroupSubscriptionId) ?? [];
+      const events = eventsBySubscriptionId.get(subscription.eventGroupSubscriptionId) ?? [];
       events.push(subscription.event);
       eventsBySubscriptionId.set(subscription.eventGroupSubscriptionId, events);
     }
@@ -554,11 +489,7 @@ export class CurrentUserEventSubscriptionService {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         });
       } catch (error) {
-        if (
-          attempt < maxAttempts &&
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2034'
-        ) {
+        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
           continue;
         }
 

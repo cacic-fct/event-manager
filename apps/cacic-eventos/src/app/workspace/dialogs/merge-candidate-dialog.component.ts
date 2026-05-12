@@ -3,11 +3,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MergeCandidate, Person, PersonMergeField } from '../../graphql/models';
 
@@ -77,21 +73,14 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
 @Component({
   selector: 'app-merge-candidate-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    NgTemplateOutlet,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatCheckboxModule,
-    MatTabsModule,
-  ],
+  imports: [NgTemplateOutlet, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatCheckboxModule, MatTabsModule],
   template: `
     <h2 mat-dialog-title>Unificar pessoas duplicadas</h2>
     <div mat-dialog-content [formGroup]="form" class="content">
       <header class="dialog-header">
         <p>
-          Cada aba mostra quem será mantido como cadastro principal. Marque
-          apenas os campos que devem ser copiados do cadastro que será removido.
+          Cada aba mostra quem será mantido como cadastro principal. Marque apenas os campos que devem ser copiados do
+          cadastro que será removido.
         </p>
       </header>
 
@@ -99,8 +88,7 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
         animationDuration="160ms"
         mat-stretch-tabs="false"
         [selectedIndex]="selectedTargetIndex"
-        (selectedIndexChange)="selectTargetIndex($event)"
-      >
+        (selectedIndexChange)="selectTargetIndex($event)">
         <mat-tab>
           <ng-template mat-tab-label>
             <span class="tab-label">
@@ -110,8 +98,7 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
           </ng-template>
           <ng-template
             [ngTemplateOutlet]="mergePreview"
-            [ngTemplateOutletContext]="{ target: personA, source: personB }"
-          />
+            [ngTemplateOutletContext]="{ target: personA, source: personB }" />
         </mat-tab>
 
         <mat-tab>
@@ -123,8 +110,7 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
           </ng-template>
           <ng-template
             [ngTemplateOutlet]="mergePreview"
-            [ngTemplateOutletContext]="{ target: personB, source: personA }"
-          />
+            [ngTemplateOutletContext]="{ target: personB, source: personA }" />
         </mat-tab>
       </mat-tab-group>
 
@@ -152,10 +138,7 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
           </header>
 
           @for (field of fieldOptions; track field.key) {
-            <div
-              class="field-row"
-              [class.selected-field-row]="isFieldSelected(field)"
-            >
+            <div class="field-row" [class.selected-field-row]="isFieldSelected(field)">
               <mat-checkbox [formControlName]="field.controlName" />
               <span class="field-name">{{ field.label }}</span>
               <span class="value kept-value">
@@ -178,13 +161,7 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
     </div>
     <div mat-dialog-actions>
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button
-        mat-flat-button
-        (click)="confirmMerge()"
-        [disabled]="form.invalid"
-      >
-        Unificar
-      </button>
+      <button mat-flat-button (click)="confirmMerge()" [disabled]="form.invalid">Unificar</button>
     </div>
   `,
   styles: [
@@ -238,19 +215,11 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
 
       .kept {
         background: color-mix(in srgb, var(--mat-sys-primary) 9%, transparent);
-        border-color: color-mix(
-          in srgb,
-          var(--mat-sys-primary) 42%,
-          var(--mat-sys-outline-variant)
-        );
+        border-color: color-mix(in srgb, var(--mat-sys-primary) 42%, var(--mat-sys-outline-variant));
       }
 
       .removed {
-        background: color-mix(
-          in srgb,
-          var(--mat-sys-error-container) 32%,
-          transparent
-        );
+        background: color-mix(in srgb, var(--mat-sys-error-container) 32%, transparent);
       }
 
       .panel-kicker,
@@ -290,11 +259,7 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
 
       .selected-field-row {
         background: color-mix(in srgb, var(--mat-sys-primary) 7%, transparent);
-        border-color: color-mix(
-          in srgb,
-          var(--mat-sys-primary) 35%,
-          var(--mat-sys-outline-variant)
-        );
+        border-color: color-mix(in srgb, var(--mat-sys-primary) 35%, var(--mat-sys-outline-variant));
       }
 
       .field-name,
@@ -350,12 +315,7 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
 export class MergeCandidateDialogComponent {
   private readonly data = inject<MergeCandidateDialogData>(MAT_DIALOG_DATA);
   private readonly formBuilder = inject(FormBuilder);
-  private readonly dialogRef = inject(
-    MatDialogRef<
-      MergeCandidateDialogComponent,
-      MergeCandidateDialogResult | null
-    >,
-  );
+  private readonly dialogRef = inject(MatDialogRef<MergeCandidateDialogComponent, MergeCandidateDialogResult | null>);
 
   readonly candidate = this.data.candidate;
   readonly personA = this.ensurePerson(this.candidate.personA, 'personA');
@@ -384,9 +344,7 @@ export class MergeCandidateDialogComponent {
   }
 
   selectTargetIndex(index: number): void {
-    this.form.controls.targetPersonId.setValue(
-      index === 1 ? this.personB.id : this.personA.id,
-    );
+    this.form.controls.targetPersonId.setValue(index === 1 ? this.personB.id : this.personA.id);
   }
 
   confirmMerge(): void {
@@ -432,18 +390,11 @@ export class MergeCandidateDialogComponent {
     for (const field of this.fieldOptions) {
       const sourceValue = field.valueAccessor(source)?.trim();
       const targetValue = field.valueAccessor(target)?.trim();
-      this.setFieldControl(
-        field.controlName,
-        !!sourceValue && !targetValue,
-        false,
-      );
+      this.setFieldControl(field.controlName, !!sourceValue && !targetValue, false);
     }
   }
 
-  private ensurePerson(
-    person: Person | null | undefined,
-    position: string,
-  ): Person {
+  private ensurePerson(person: Person | null | undefined, position: string): Person {
     if (!person) {
       throw new Error(`Candidato de unificação sem ${position}.`);
     }
@@ -473,11 +424,7 @@ export class MergeCandidateDialogComponent {
     return rawValue.migrateExternalRef;
   }
 
-  private setFieldControl(
-    controlName: MergeFieldControlName,
-    value: boolean,
-    emitEvent: boolean,
-  ): void {
+  private setFieldControl(controlName: MergeFieldControlName, value: boolean, emitEvent: boolean): void {
     if (controlName === 'migrateName') {
       this.form.controls.migrateName.setValue(value, { emitEvent });
       return;

@@ -48,9 +48,7 @@ export class ConfirmSubscriptionDialog {
   }
 
   private groupByMonthAndDay(events: PublicEvent[]): ConfirmSubscriptionListMonth[] {
-    const sortedEvents = [...events].sort(
-      (left, right) => Date.parse(left.startDate) - Date.parse(right.startDate),
-    );
+    const sortedEvents = [...events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
     const months: ConfirmSubscriptionListMonth[] = [];
 
     for (const event of sortedEvents) {

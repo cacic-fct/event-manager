@@ -26,10 +26,7 @@ export class EventGroupsResolver {
 
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEventGroups(
-          normalizedQuery,
-          take ?? 200,
-        );
+        prioritizedIds = await this.typesenseSearch.searchEventGroups(normalizedQuery, take ?? 200);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -54,9 +51,7 @@ export class EventGroupsResolver {
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
     return [...groups].sort(
-      (left, right) =>
-        (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-        (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
     );
   }
 
@@ -104,10 +99,7 @@ export class EventGroupsResolver {
     @Args('input', { type: () => EventGroupUpdateInput })
     input: EventGroupUpdateInput,
   ) {
-    const normalizedInput = this.normalizeEventGroupCertificateInput(
-      input,
-      await this.hasMajorEventEvents(id),
-    );
+    const normalizedInput = this.normalizeEventGroupCertificateInput(input, await this.hasMajorEventEvents(id));
     const { count } = await this.prisma.eventGroup.updateMany({
       where: {
         id,
@@ -144,12 +136,10 @@ export class EventGroupsResolver {
           deletedAt: null,
         },
         data: {
-          ...(normalizedInput.shouldIssueCertificateForNonPayingAttendees ===
-          false
+          ...(normalizedInput.shouldIssueCertificateForNonPayingAttendees === false
             ? { shouldIssueCertificateForNonPayingAttendees: false }
             : {}),
-          ...(normalizedInput.shouldIssueCertificateForNonSubscribedAttendees ===
-          false
+          ...(normalizedInput.shouldIssueCertificateForNonSubscribedAttendees === false
             ? { shouldIssueCertificateForNonSubscribedAttendees: false }
             : {}),
         },
@@ -194,9 +184,10 @@ export class EventGroupsResolver {
     };
   }
 
-  private normalizeEventGroupCertificateInput<
-    T extends EventGroupCreateInput | EventGroupUpdateInput,
-  >(input: T, hasMajorEventEvents = false): T {
+  private normalizeEventGroupCertificateInput<T extends EventGroupCreateInput | EventGroupUpdateInput>(
+    input: T,
+    hasMajorEventEvents = false,
+  ): T {
     if (input.shouldIssueCertificate === false) {
       return {
         ...input,

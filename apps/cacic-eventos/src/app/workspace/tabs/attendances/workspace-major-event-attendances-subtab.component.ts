@@ -24,10 +24,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
     TwemojiComponent,
   ],
   templateUrl: './workspace-major-event-attendances-subtab.component.html',
-  styleUrls: [
-    '../workspace-tab.shared.scss',
-    './workspace-attendance-subtabs.shared.scss',
-  ],
+  styleUrls: ['../workspace-tab.shared.scss', './workspace-attendance-subtabs.shared.scss'],
 })
 export class WorkspaceMajorEventAttendancesSubtabComponent {
   readonly workspace = inject(WorkspaceAttendancesService);

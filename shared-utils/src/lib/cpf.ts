@@ -17,10 +17,7 @@ export function isValidCPF(cpf: string): boolean {
   const firstCheckDigit = calculateCheckDigit(cpf, 10);
   const secondCheckDigit = calculateCheckDigit(cpf, 11);
 
-  return (
-    firstCheckDigit === parseInt(cpf.charAt(9)) &&
-    secondCheckDigit === parseInt(cpf.charAt(10))
-  );
+  return firstCheckDigit === parseInt(cpf.charAt(9)) && secondCheckDigit === parseInt(cpf.charAt(10));
 }
 
 export function formatCPF(cpf: string): string {
@@ -30,10 +27,7 @@ export function formatCPF(cpf: string): string {
     return cpf; // Return unformatted if length is not 11
   }
 
-  return `${cpf.substring(0, 3)}.${cpf.substring(3, 6)}.${cpf.substring(
-    6,
-    9,
-  )}-${cpf.substring(9)}`;
+  return `${cpf.substring(0, 3)}.${cpf.substring(3, 6)}.${cpf.substring(6, 9)}-${cpf.substring(9)}`;
 }
 
 export function unformatCPF(cpf: string): string {

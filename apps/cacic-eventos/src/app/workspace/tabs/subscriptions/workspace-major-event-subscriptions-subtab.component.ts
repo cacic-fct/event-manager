@@ -29,10 +29,7 @@ import { WorkspaceSubscriptionsService } from '../../../shared/services/workspac
     TwemojiComponent,
   ],
   templateUrl: './workspace-major-event-subscriptions-subtab.component.html',
-  styleUrls: [
-    '../workspace-tab.shared.scss',
-    './workspace-subscription-subtabs.shared.scss',
-  ],
+  styleUrls: ['../workspace-tab.shared.scss', './workspace-subscription-subtabs.shared.scss'],
 })
 export class WorkspaceMajorEventSubscriptionsSubtabComponent {
   readonly workspace = inject(WorkspaceSubscriptionsService);
@@ -49,11 +46,7 @@ export class WorkspaceMajorEventSubscriptionsSubtabComponent {
     'CANCELED',
   ] as const;
 
-  protected hasSubscribedLecturer(
-    subscription: WorkspaceMajorEventSubscription,
-  ): boolean {
-    return subscription.events.some(
-      (eventItem) => eventItem.isLecturerSubscription && eventItem.subscribed,
-    );
+  protected hasSubscribedLecturer(subscription: WorkspaceMajorEventSubscription): boolean {
+    return subscription.events.some((eventItem) => eventItem.isLecturerSubscription && eventItem.subscribed);
   }
 }

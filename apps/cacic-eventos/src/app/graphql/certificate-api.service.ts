@@ -27,11 +27,7 @@ import {
 export class CertificateApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 
-  listCertificateIssuableEvents(filters?: {
-    query?: string;
-    skip?: number;
-    take?: number;
-  }) {
+  listCertificateIssuableEvents(filters?: { query?: string; skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ certificateIssuableEvents: Event[] }>(
         `query ListCertificateIssuableEvents(
@@ -48,11 +44,7 @@ export class CertificateApiService {
       .pipe(map((data) => data.certificateIssuableEvents));
   }
 
-  listCertificateIssuableEventGroups(filters?: {
-    query?: string;
-    skip?: number;
-    take?: number;
-  }) {
+  listCertificateIssuableEventGroups(filters?: { query?: string; skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ certificateIssuableEventGroups: EventGroup[] }>(
         `query ListCertificateIssuableEventGroups(
@@ -69,11 +61,7 @@ export class CertificateApiService {
       .pipe(map((data) => data.certificateIssuableEventGroups));
   }
 
-  listCertificateIssuableMajorEvents(filters?: {
-    query?: string;
-    skip?: number;
-    take?: number;
-  }) {
+  listCertificateIssuableMajorEvents(filters?: { query?: string; skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ certificateIssuableMajorEvents: MajorEvent[] }>(
         `query ListCertificateIssuableMajorEvents(
@@ -90,12 +78,7 @@ export class CertificateApiService {
       .pipe(map((data) => data.certificateIssuableMajorEvents));
   }
 
-  listCertificateTemplates(filters?: {
-    query?: string;
-    includeInactive?: boolean;
-    skip?: number;
-    take?: number;
-  }) {
+  listCertificateTemplates(filters?: { query?: string; includeInactive?: boolean; skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ certificateTemplates: CertificateTemplate[] }>(
         `query ListCertificateTemplates(

@@ -1,12 +1,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
-export type ScannerSoundKind =
-  | 'valid'
-  | 'invalid'
-  | 'duplicate'
-  | 'nonPaying'
-  | 'nonSubscribed';
+export type ScannerSoundKind = 'valid' | 'invalid' | 'duplicate' | 'nonPaying' | 'nonSubscribed';
 
 type ToneOptions = {
   start?: number;
@@ -74,6 +69,7 @@ export class ScannerSoundsService {
       start: 0.1,
       duration: 0.12,
       frequency: 880,
+      endFrequency: 885,
       volume: 0.9,
       type: 'sine',
     });
@@ -175,8 +171,7 @@ export class ScannerSoundsService {
     }
 
     if (!this.audioContext) {
-      const AudioContextClass =
-        window.AudioContext ?? window.webkitAudioContext;
+      const AudioContextClass = window.AudioContext ?? window.webkitAudioContext;
 
       if (!AudioContextClass) {
         return false;
@@ -238,10 +233,7 @@ export class ScannerSoundsService {
     oscillator.frequency.setValueAtTime(frequency, now);
 
     if (endFrequency !== frequency) {
-      oscillator.frequency.linearRampToValueAtTime(
-        endFrequency,
-        now + duration,
-      );
+      oscillator.frequency.linearRampToValueAtTime(endFrequency, now + duration);
     }
 
     highpass.type = 'highpass';

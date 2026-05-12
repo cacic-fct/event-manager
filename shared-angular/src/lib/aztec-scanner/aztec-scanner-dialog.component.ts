@@ -1,14 +1,5 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  signal,
-} from '@angular/core';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { AztecScannerComponent } from './aztec-scanner.component';
 
@@ -29,8 +20,7 @@ export type AztecScannerDialogData = {
         [title]="data.title ?? 'Escanear código'"
         [acceptedPrefixes]="data.acceptedPrefixes ?? []"
         [pauseAfterScanMs]="data.pauseAfterScanMs ?? 1800"
-        (scan)="handleScan($event)"
-      />
+        (scan)="handleScan($event)" />
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>Cancelar</button>
@@ -40,8 +30,7 @@ export type AztecScannerDialogData = {
 })
 export class AztecScannerDialogComponent {
   readonly data: AztecScannerDialogData = inject(MAT_DIALOG_DATA);
-  private readonly dialogRef =
-    inject<MatDialogRef<AztecScannerDialogComponent, string>>(MatDialogRef);
+  private readonly dialogRef = inject<MatDialogRef<AztecScannerDialogComponent, string>>(MatDialogRef);
 
   readonly lastScannedCode = signal<string | null>(null);
 

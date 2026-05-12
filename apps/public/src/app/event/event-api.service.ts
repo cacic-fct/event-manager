@@ -30,13 +30,7 @@ export interface EventPageData {
   currentUserAttendance: CurrentUserEventAttendance | null;
 }
 
-export type GraphqlVariable =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | readonly string[];
+export type GraphqlVariable = string | number | boolean | null | undefined | readonly string[];
 type GraphqlVariables = Record<string, GraphqlVariable>;
 
 interface GraphqlResponse<TData> {
@@ -115,10 +109,7 @@ const PUBLIC_EVENT_FIELDS = `
 export class EventApiService {
   private readonly http = inject(HttpClient);
 
-  getEventPageData(
-    eventId: string,
-    includeCurrentUser: boolean,
-  ): Observable<EventPageData> {
+  getEventPageData(eventId: string, includeCurrentUser: boolean): Observable<EventPageData> {
     return this.query<{
       publicEvent: PublicEvent;
       publicEventSubscriptionSummary: PublicEventSubscriptionSummary;
@@ -193,10 +184,7 @@ export class EventApiService {
     ).pipe(map((data) => data.subscribeCurrentUserStandaloneEvent));
   }
 
-  confirmAttendance(
-    eventId: string,
-    code: string,
-  ): Observable<CurrentUserEventAttendance> {
+  confirmAttendance(eventId: string, code: string): Observable<CurrentUserEventAttendance> {
     return this.query<{
       confirmCurrentUserOnlineAttendance: CurrentUserEventAttendance;
     }>(
@@ -212,26 +200,19 @@ export class EventApiService {
     ).pipe(map((data) => data.confirmCurrentUserOnlineAttendance));
   }
 
-  private query<TData>(
-    query: string,
-    variables?: GraphqlVariables,
-  ): Observable<TData> {
-    return this.http
-      .post<GraphqlResponse<TData>>('/api/graphql', { query, variables })
-      .pipe(
-        map((response) => {
-          if (response.errors?.length) {
-            throw new Error(
-              response.errors.map((error) => error.message).join('\n'),
-            );
-          }
+  private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {
+    return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
+      map((response) => {
+        if (response.errors?.length) {
+          throw new Error(response.errors.map((error) => error.message).join('\n'));
+        }
 
-          if (!response.data) {
-            throw new Error('Resposta GraphQL sem dados.');
-          }
+        if (!response.data) {
+          throw new Error('Resposta GraphQL sem dados.');
+        }
 
-          return response.data;
-        }),
-      );
+        return response.data;
+      }),
+    );
   }
 }

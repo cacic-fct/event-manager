@@ -7,11 +7,7 @@ import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import {
-  CertificateConfig,
-  CertificateConfigInput,
-  CertificateTemplate,
-} from '../../graphql/models';
+import { CertificateConfig, CertificateConfigInput, CertificateTemplate } from '../../graphql/models';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
 
 describe('WorkspaceCertificatesService', () => {
@@ -63,8 +59,7 @@ describe('WorkspaceCertificatesService', () => {
           majorEventId: payload.majorEventId,
           eventGroupId: payload.eventGroupId,
           eventId: payload.eventId,
-          certificateTemplateId:
-            payload.certificateTemplateId ?? certificateTemplate.id,
+          certificateTemplateId: payload.certificateTemplateId ?? certificateTemplate.id,
           certificateTemplate,
           certificateText: payload.certificateText,
           isActive: payload.isActive ?? true,
@@ -79,28 +74,25 @@ describe('WorkspaceCertificatesService', () => {
       listCertificateIssuableEvents: vi.fn(() => of([])),
       listCertificateTemplates: vi.fn(() => of([certificateTemplate])),
       listCertificates: vi.fn(() => of([])),
-      updateCertificateConfig: vi.fn(
-        (id: string, payload: CertificateConfigInput) => {
-          lastPayload = payload;
-          return of({
-            id,
-            name: payload.name ?? 'Certificate',
-            scope: payload.scope ?? 'EVENT',
-            majorEventId: payload.majorEventId,
-            eventGroupId: payload.eventGroupId,
-            eventId: payload.eventId,
-            certificateTemplateId:
-              payload.certificateTemplateId ?? certificateTemplate.id,
-            certificateTemplate,
-            certificateText: payload.certificateText,
-            isActive: payload.isActive ?? true,
-            issuedTo: payload.issuedTo ?? 'ATTENDEE',
-            certificateFieldsJson: payload.certificateFieldsJson,
-            createdAt: '2026-05-05T00:00:00.000Z',
-            updatedAt: '2026-05-05T00:00:00.000Z',
-          } satisfies CertificateConfig);
-        },
-      ),
+      updateCertificateConfig: vi.fn((id: string, payload: CertificateConfigInput) => {
+        lastPayload = payload;
+        return of({
+          id,
+          name: payload.name ?? 'Certificate',
+          scope: payload.scope ?? 'EVENT',
+          majorEventId: payload.majorEventId,
+          eventGroupId: payload.eventGroupId,
+          eventId: payload.eventId,
+          certificateTemplateId: payload.certificateTemplateId ?? certificateTemplate.id,
+          certificateTemplate,
+          certificateText: payload.certificateText,
+          isActive: payload.isActive ?? true,
+          issuedTo: payload.issuedTo ?? 'ATTENDEE',
+          certificateFieldsJson: payload.certificateFieldsJson,
+          createdAt: '2026-05-05T00:00:00.000Z',
+          updatedAt: '2026-05-05T00:00:00.000Z',
+        } satisfies CertificateConfig);
+      }),
     };
 
     await TestBed.configureTestingModule({
@@ -120,9 +112,7 @@ describe('WorkspaceCertificatesService', () => {
     await service.loadCertificateTemplates();
     service.selectedTarget.set({ id: 'event-1', name: 'Event' });
     service.certificateConfigForm.name().value.set('Certificate');
-    service.certificateConfigForm
-      .certificateTemplateId()
-      .value.set(certificateTemplate.id);
+    service.certificateConfigForm.certificateTemplateId().value.set(certificateTemplate.id);
   });
 
   it('does not post template defaults as stored custom fields', async () => {
@@ -132,15 +122,11 @@ describe('WorkspaceCertificatesService', () => {
   });
 
   it('posts edited custom fields as stored overrides', async () => {
-    service
-      .certificateField('top-text')()
-      .value.set('Certificamos a presença de');
+    service.certificateField('top-text')().value.set('Certificamos a presença de');
 
     await service.saveCertificateConfig();
 
-    expect(lastPayload?.certificateFieldsJson).toBe(
-      JSON.stringify({ 'top-text': 'Certificamos a presença de' }),
-    );
+    expect(lastPayload?.certificateFieldsJson).toBe(JSON.stringify({ 'top-text': 'Certificamos a presença de' }));
   });
 
   it('persists current recipient type before issuing pending certificates', async () => {

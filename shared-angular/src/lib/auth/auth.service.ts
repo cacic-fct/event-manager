@@ -1,38 +1,20 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import {
-  Injectable,
-  PLATFORM_ID,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
-import {
-  Observable,
-  catchError,
-  finalize,
-  firstValueFrom,
-  map,
-  shareReplay,
-  switchMap,
-  tap,
-  throwError,
-} from 'rxjs';
+import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthenticatedUser, AuthRefreshResult } from './auth.types';
 import type { LoginOptions } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly accountLoginUrl =
-    'https://account.cacic.dev.br/api/auth/login';
-  private readonly onboardingReturnStorageKey =
-    'cacic-eventos:onboarding-return-url';
-  private readonly onboardingRefreshAttemptStorageKey =
-    'cacic-eventos:onboarding-refresh-attempted';
-  private readonly silentSsoAttemptStorageKey =
-    'cacic-eventos:silent-sso-attempted';
+  private readonly accountLoginUrl = 'https://account.cacic.dev.br/api/auth/login';
+  private readonly onboardingReturnStorageKey = 'cacic-eventos:onboarding-return-url';
+  private readonly onboardingRefreshAttemptStorageKey = 'cacic-eventos:onboarding-refresh-attempted';
+  private readonly silentSsoAttemptStorageKey = 'cacic-eventos:silent-sso-attempted';
+
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
+
   private refreshRequest$: Observable<AuthRefreshResult> | null = null;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
 
@@ -46,10 +28,15 @@ export class AuthService {
       return;
     }
 
-    await this.refreshMe();
+    try {
+      await this.refreshMe();
 
-    if (!this.isAuthenticated()) {
-      this.loginWithExistingSsoSession();
+      if (!this.isAuthenticated()) {
+        this.loginWithExistingSsoSession();
+      }
+    } catch (error) {
+      this.logUnexpectedAuthError('Auth initialization failed', error);
+      this.clearSession();
     }
   }
 
@@ -62,14 +49,16 @@ export class AuthService {
   }
 
   loginWithExistingSsoSession(): void {
-    if (
-      !isPlatformBrowser(this.platformId) ||
-      window.sessionStorage.getItem(this.silentSsoAttemptStorageKey)
-    ) {
+    if (!isPlatformBrowser(this.platformId)) {
       return;
     }
 
-    window.sessionStorage.setItem(this.silentSsoAttemptStorageKey, 'true');
+    if (this.getSessionStorageItem(this.silentSsoAttemptStorageKey)) {
+      return;
+    }
+
+    this.setSessionStorageItem(this.silentSsoAttemptStorageKey, 'true');
+
     window.location.assign(
       this.buildLoginRedirectUrl({
         prompt: 'none',
@@ -81,17 +70,23 @@ export class AuthService {
     this.clearRefreshTimer();
 
     if (isPlatformBrowser(this.platformId)) {
-      const { logoutUrl } = await firstValueFrom(
-        this.http.post<{ logoutUrl?: string }>('/api/auth/logout', {
-          postLogoutRedirectUri: window.location.origin,
-        }),
-      );
+      try {
+        const { logoutUrl } = await firstValueFrom(
+          this.http.post<{ logoutUrl?: string }>('/api/auth/logout', {
+            postLogoutRedirectUri: window.location.origin,
+          }),
+        );
 
-      this.clearSession();
-      if (logoutUrl) {
-        window.location.assign(logoutUrl);
+        this.clearSession();
+
+        if (logoutUrl) {
+          window.location.assign(logoutUrl);
+        }
+
+        return;
+      } catch (error) {
+        this.logUnexpectedAuthError('Logout failed', error);
       }
-      return;
     }
 
     this.clearSession();
@@ -107,12 +102,8 @@ export class AuthService {
       await firstValueFrom(this.refreshTokenSilently());
       await this.redirectToOnboardingIfNeeded();
     } catch (error) {
-      if (this.isAuthenticationError(error)) {
-        this.clearSession();
-        return;
-      }
-
-      throw error;
+      this.logUnexpectedAuthError('Silent token refresh failed', error);
+      this.clearSession();
     }
   }
 
@@ -121,26 +112,24 @@ export class AuthService {
       return this.refreshRequest$;
     }
 
-    this.refreshRequest$ = this.http
-      .post<AuthRefreshResult>('/api/auth/refresh', {})
-      .pipe(
-        tap(({ expiresAt }) => this.scheduleRefresh(expiresAt)),
-        switchMap((result) =>
-          this.http.get<AuthenticatedUser | null>('/api/auth/me').pipe(
-            tap((user) => this.user.set(user)),
-            tap((user) => this.scheduleRefreshFromUser(user)),
-            map(() => result),
-          ),
+    this.refreshRequest$ = this.http.post<AuthRefreshResult>('/api/auth/refresh', {}).pipe(
+      tap(({ expiresAt }) => this.scheduleRefresh(expiresAt)),
+      switchMap((result) =>
+        this.http.get<AuthenticatedUser | null>('/api/auth/me').pipe(
+          tap((user) => this.user.set(user)),
+          tap((user) => this.scheduleRefreshFromUser(user)),
+          map(() => result),
         ),
-        catchError((error) => {
-          this.clearSession();
-          return throwError(() => error);
-        }),
-        finalize(() => {
-          this.refreshRequest$ = null;
-        }),
-        shareReplay({ bufferSize: 1, refCount: true }),
-      );
+      ),
+      catchError((error) => {
+        this.clearSession();
+        return throwError(() => error);
+      }),
+      finalize(() => {
+        this.refreshRequest$ = null;
+      }),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
 
     return this.refreshRequest$;
   }
@@ -160,21 +149,27 @@ export class AuthService {
 
   private async loadCurrentUser(): Promise<boolean> {
     try {
-      const user = await firstValueFrom(
-        this.http.get<AuthenticatedUser | null>('/api/auth/me'),
-      );
+      const user = await firstValueFrom(this.http.get<AuthenticatedUser | null>('/api/auth/me'));
+
       this.user.set(user);
+
       if (user) {
-        window.sessionStorage.removeItem(this.silentSsoAttemptStorageKey);
+        this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
       }
+
       this.scheduleRefreshFromUser(user);
-      return true;
+
+      return Boolean(user);
     } catch (error) {
-      if (this.isAuthenticationError(error)) {
+      this.user.set(null);
+
+      if (this.isHttpError(error)) {
+        this.logUnexpectedAuthError('Failed to load current user', error);
         return false;
       }
 
-      throw error;
+      this.logUnexpectedAuthError('Unexpected error while loading user', error);
+      return false;
     }
   }
 
@@ -184,47 +179,36 @@ export class AuthService {
     }
 
     const user = this.user();
+
     if (!user || this.isUserOnboarded(user)) {
-      window.sessionStorage.removeItem(this.onboardingReturnStorageKey);
-      window.sessionStorage.removeItem(this.onboardingRefreshAttemptStorageKey);
+      this.removeSessionStorageItem(this.onboardingReturnStorageKey);
+      this.removeSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
       return;
     }
 
     const currentUrl = this.getCurrentAbsoluteUrl();
-    const pendingReturnUrl = window.sessionStorage.getItem(
-      this.onboardingReturnStorageKey,
-    );
-    const refreshAttempted = window.sessionStorage.getItem(
-      this.onboardingRefreshAttemptStorageKey,
-    );
+    const pendingReturnUrl = this.getSessionStorageItem(this.onboardingReturnStorageKey);
+    const refreshAttempted = this.getSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
 
     if (pendingReturnUrl === currentUrl && !refreshAttempted) {
-      window.sessionStorage.setItem(
-        this.onboardingRefreshAttemptStorageKey,
-        'true',
-      );
+      this.setSessionStorageItem(this.onboardingRefreshAttemptStorageKey, 'true');
 
       try {
         await firstValueFrom(this.refreshTokenSilently());
       } catch (error) {
-        if (this.isAuthenticationError(error)) {
-          this.clearSession();
-          return;
-        }
-
-        throw error;
+        this.logUnexpectedAuthError('Silent token refresh before onboarding failed', error);
+        this.clearSession();
+        return;
       }
 
       if (this.isUserOnboarded(this.user())) {
-        window.sessionStorage.removeItem(this.onboardingReturnStorageKey);
-        window.sessionStorage.removeItem(
-          this.onboardingRefreshAttemptStorageKey,
-        );
+        this.removeSessionStorageItem(this.onboardingReturnStorageKey);
+        this.removeSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
         return;
       }
     }
 
-    window.sessionStorage.setItem(this.onboardingReturnStorageKey, currentUrl);
+    this.setSessionStorageItem(this.onboardingReturnStorageKey, currentUrl);
     window.location.assign(this.buildAccountOnboardingRedirectUrl(currentUrl));
   }
 
@@ -245,9 +229,13 @@ export class AuthService {
     this.clearRefreshTimer();
 
     const refreshDelayMs = Math.max(expiresAt - Date.now() - 60_000, 5_000);
+
     this.refreshTimerId = setTimeout(() => {
       this.refreshTokenSilently().subscribe({
-        error: () => this.clearSession(),
+        error: (error) => {
+          this.logUnexpectedAuthError('Scheduled token refresh failed', error);
+          this.clearSession();
+        },
       });
     }, refreshDelayMs);
   }
@@ -258,17 +246,17 @@ export class AuthService {
     }
 
     const [, payload] = user.token.split('.');
+
     if (!payload) {
       return;
     }
 
     try {
       const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
-      const paddedPayload = normalizedPayload.padEnd(
-        Math.ceil(normalizedPayload.length / 4) * 4,
-        '=',
-      );
+      const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=');
+
       const claims: unknown = JSON.parse(atob(paddedPayload));
+
       if (!this.isRecord(claims) || typeof claims['exp'] !== 'number') {
         return;
       }
@@ -317,14 +305,65 @@ export class AuthService {
     }
   }
 
-  private isAuthenticationError(error: unknown): boolean {
-    return (
-      error instanceof HttpErrorResponse &&
-      (error.status === 401 || error.status === 403)
-    );
+  private isHttpError(error: unknown): error is HttpErrorResponse {
+    return error instanceof HttpErrorResponse;
   }
 
   private isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
+  }
+
+  private getSessionStorageItem(key: string): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+
+    try {
+      return window.sessionStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  private setSessionStorageItem(key: string, value: string): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(key, value);
+    } catch {
+      return;
+    }
+  }
+
+  private removeSessionStorageItem(key: string): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    try {
+      window.sessionStorage.removeItem(key);
+    } catch {
+      return;
+    }
+  }
+
+  private logUnexpectedAuthError(message: string, error: unknown): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    if (this.isHttpError(error)) {
+      console.warn(message, {
+        status: error.status,
+        statusText: error.statusText,
+        url: error.url,
+        message: error.message,
+      });
+      return;
+    }
+
+    console.warn(message, error);
   }
 }

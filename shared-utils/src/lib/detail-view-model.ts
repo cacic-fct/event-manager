@@ -35,9 +35,7 @@ type DetailViewModelInput =
   | { eventType: 'event-group'; details: EventGroupDetails }
   | { eventType: 'major-event'; details: MajorEventDetails };
 
-export function parseEventTargetType(
-  value: string | null,
-): EventTargetType | null {
+export function parseEventTargetType(value: string | null): EventTargetType | null {
   if (value === 'event' || value === 'event-group' || value === 'major-event') {
     return value;
   }
@@ -45,9 +43,7 @@ export function parseEventTargetType(
   return null;
 }
 
-export function buildDetailViewModel(
-  input: DetailViewModelInput,
-): DetailViewModel | null {
+export function buildDetailViewModel(input: DetailViewModelInput): DetailViewModel | null {
   switch (input.eventType) {
     case 'event':
       return buildEventDetail(input.details);
@@ -58,9 +54,7 @@ export function buildDetailViewModel(
   }
 }
 
-export function buildEventDetail(
-  details: EventDetails,
-): DetailViewModel | null {
+export function buildEventDetail(details: EventDetails): DetailViewModel | null {
   const subscription = details.subscription;
   const event = subscription?.event ?? details.event;
   if (!event || (!subscription && !details.hasIssuedCertificate)) {
@@ -83,20 +77,14 @@ export function buildEventDetail(
     events: [eventItem],
     notSubscribedEvents: [],
     certificateTargets:
-      event.shouldIssueCertificate || details.hasIssuedCertificate
-        ? [{ scope: 'EVENT', targetId: event.id }]
-        : [],
-    shouldIssueCertificate: Boolean(
-      event.shouldIssueCertificate || details.hasIssuedCertificate,
-    ),
+      event.shouldIssueCertificate || details.hasIssuedCertificate ? [{ scope: 'EVENT', targetId: event.id }] : [],
+    shouldIssueCertificate: Boolean(event.shouldIssueCertificate || details.hasIssuedCertificate),
     buttonText: event.buttonText,
     buttonLink: event.buttonLink,
   };
 }
 
-export function buildEventGroupDetail(
-  details: EventGroupDetails,
-): DetailViewModel | null {
+export function buildEventGroupDetail(details: EventGroupDetails): DetailViewModel | null {
   const subscription = details.subscription;
   const eventGroup = subscription?.eventGroup ?? details.eventGroup;
   const rawEvents = subscription?.events ?? details.events ?? [];
@@ -107,13 +95,8 @@ export function buildEventGroupDetail(
   const attendanceByEventId = getAttendanceByEventId(details.attendances);
   const isSubscribed = Boolean(subscription);
   const events = sortEvents(rawEvents);
-  const eventItems = events.map((event) =>
-    buildEventItem(event, attendanceByEventId.get(event.id), isSubscribed),
-  );
-  const certificateTargets = getEventGroupCertificateTargets(
-    eventGroup,
-    events,
-  );
+  const eventItems = events.map((event) => buildEventItem(event, attendanceByEventId.get(event.id), isSubscribed));
+  const certificateTargets = getEventGroupCertificateTargets(eventGroup, events);
   if (certificateTargets.length === 0 && details.hasIssuedCertificate) {
     certificateTargets.push({ scope: 'EVENT_GROUP', targetId: eventGroup.id });
   }
@@ -130,13 +113,9 @@ export function buildEventGroupDetail(
         .filter((description): description is string => Boolean(description)),
     ),
     location: joinUnique(
-      events
-        .map((event) => event.locationDescription)
-        .filter((location): location is string => Boolean(location)),
+      events.map((event) => event.locationDescription).filter((location): location is string => Boolean(location)),
     ),
-    statusLabel: isSubscribed
-      ? getGroupedStatusLine(eventItems)
-      : 'Certificado emitido',
+    statusLabel: isSubscribed ? getGroupedStatusLine(eventItems) : 'Certificado emitido',
     infoRows: eventGroupInfoRows(eventGroup, events),
     events: eventItems,
     notSubscribedEvents: [],
@@ -145,9 +124,7 @@ export function buildEventGroupDetail(
   };
 }
 
-export function buildMajorEventDetail(
-  details: MajorEventDetails,
-): DetailViewModel | null {
+export function buildMajorEventDetail(details: MajorEventDetails): DetailViewModel | null {
   const subscription = details.subscription;
   const majorEvent = subscription?.majorEvent ?? details.majorEvent;
   if (!majorEvent || (!subscription && !details.hasIssuedCertificate)) {
@@ -155,13 +132,9 @@ export function buildMajorEventDetail(
   }
 
   const selectedEvents = sortEvents(subscription?.selectedEvents ?? []);
-  const notSubscribedEvents = sortEvents(
-    subscription?.notSubscribedEvents ?? [],
-  );
+  const notSubscribedEvents = sortEvents(subscription?.notSubscribedEvents ?? []);
   const attendanceByEventId = getAttendanceByEventId(details.attendances);
-  const eventItems = selectedEvents.map((event) =>
-    buildEventItem(event, attendanceByEventId.get(event.id), true),
-  );
+  const eventItems = selectedEvents.map((event) => buildEventItem(event, attendanceByEventId.get(event.id), true));
   const notSubscribedEventItems = notSubscribedEvents.map((event) =>
     buildEventItem(event, attendanceByEventId.get(event.id), false),
   );
@@ -173,9 +146,7 @@ export function buildMajorEventDetail(
     emoji: majorEvent.emoji,
     dateLine: formatDateRange(majorEvent.startDate, majorEvent.endDate),
     description: majorEvent.description,
-    statusLabel: subscription
-      ? getSubscriptionStatusLabel(subscription.subscriptionStatus)
-      : 'Certificado emitido',
+    statusLabel: subscription ? getSubscriptionStatusLabel(subscription.subscriptionStatus) : 'Certificado emitido',
     infoRows: majorEventInfoRows(majorEvent, subscription),
     events: eventItems,
     notSubscribedEvents: notSubscribedEventItems,
@@ -183,9 +154,7 @@ export function buildMajorEventDetail(
       majorEvent.shouldIssueCertificate || details.hasIssuedCertificate
         ? [{ scope: 'MAJOR_EVENT', targetId: majorEvent.id }]
         : [],
-    shouldIssueCertificate: Boolean(
-      majorEvent.shouldIssueCertificate || details.hasIssuedCertificate,
-    ),
+    shouldIssueCertificate: Boolean(majorEvent.shouldIssueCertificate || details.hasIssuedCertificate),
     buttonText: majorEvent.buttonText,
     buttonLink: majorEvent.buttonLink,
   };
@@ -206,15 +175,11 @@ export function buildEventItem(
     event,
     dateLine: formatDateRange(event.startDate, event.endDate),
     statusLine,
-    canRegisterAttendance:
-      !attendance && isOnlineAttendanceRegistrationOpen(event),
+    canRegisterAttendance: !attendance && isOnlineAttendanceRegistrationOpen(event),
   };
 }
 
-export function getEventGroupCertificateTargets(
-  group: PublicEventGroup,
-  events: PublicEvent[],
-): CertificateTarget[] {
+export function getEventGroupCertificateTargets(group: PublicEventGroup, events: PublicEvent[]): CertificateTarget[] {
   const targets: CertificateTarget[] = [];
 
   if (!group.shouldIssueCertificate) {
@@ -233,21 +198,14 @@ export function getEventGroupCertificateTargets(
     }
   }
 
-  if (
-    targets.length === 0 &&
-    group.shouldIssueCertificate &&
-    !group.shouldIssueCertificateForEachEvent
-  ) {
+  if (targets.length === 0 && group.shouldIssueCertificate && !group.shouldIssueCertificateForEachEvent) {
     targets.push({ scope: 'EVENT_GROUP', targetId: group.id });
   }
 
   return targets;
 }
 
-function getDetailStatusLine(
-  eventItem: DetailEventItem,
-  hasIssuedCertificate: boolean | undefined,
-): string {
+function getDetailStatusLine(eventItem: DetailEventItem, hasIssuedCertificate: boolean | undefined): string {
   if (eventItem.statusLine !== 'Não inscrito') {
     return eventItem.statusLine;
   }
@@ -255,10 +213,7 @@ function getDetailStatusLine(
   return hasIssuedCertificate ? 'Certificado emitido' : eventItem.statusLine;
 }
 
-function eventInfoRows(
-  event: PublicEvent,
-  statusLine: string | null,
-): InfoRow[] {
+function eventInfoRows(event: PublicEvent, statusLine: string | null): InfoRow[] {
   return cleanRows([
     statusLine ? { label: 'Status', value: statusLine } : undefined,
     {
@@ -272,27 +227,15 @@ function eventInfoRows(
           value: formatCreditMinutes(event.creditMinutes),
         }
       : undefined,
-    event.locationDescription
-      ? { label: 'Local', value: event.locationDescription }
-      : undefined,
+    event.locationDescription ? { label: 'Local', value: event.locationDescription } : undefined,
     event.slots ? { label: 'Vagas', value: String(event.slots) } : undefined,
-    event.majorEvent?.name
-      ? { label: 'Grande evento', value: event.majorEvent.name }
-      : undefined,
-    event.eventGroup?.name
-      ? { label: 'Grupo', value: event.eventGroup.name }
-      : undefined,
+    event.majorEvent?.name ? { label: 'Grande evento', value: event.majorEvent.name } : undefined,
+    event.eventGroup?.name ? { label: 'Grupo', value: event.eventGroup.name } : undefined,
   ]);
 }
 
-function eventGroupInfoRows(
-  group: PublicEventGroup,
-  events: PublicEvent[],
-): InfoRow[] {
-  const totalCreditMinutes = events.reduce(
-    (total, event) => total + (event.creditMinutes ?? 0),
-    0,
-  );
+function eventGroupInfoRows(group: PublicEventGroup, events: PublicEvent[]): InfoRow[] {
+  const totalCreditMinutes = events.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
 
   return cleanRows([
     { label: 'Eventos', value: String(events.length) },
@@ -322,10 +265,7 @@ function majorEventInfoRows(
     majorEvent.subscriptionStartDate && majorEvent.subscriptionEndDate
       ? {
           label: 'Inscrições',
-          value: formatDateRange(
-            majorEvent.subscriptionStartDate,
-            majorEvent.subscriptionEndDate,
-          ),
+          value: formatDateRange(majorEvent.subscriptionStartDate, majorEvent.subscriptionEndDate),
         }
       : undefined,
     subscription
@@ -346,9 +286,7 @@ function majorEventInfoRows(
           value: formatCurrency(subscription.amountPaid),
         }
       : undefined,
-    subscription?.paymentTier
-      ? { label: 'Categoria', value: subscription.paymentTier }
-      : undefined,
+    subscription?.paymentTier ? { label: 'Categoria', value: subscription.paymentTier } : undefined,
     majorEvent.maxCoursesPerAttendee
       ? {
           label: 'Limite de minicursos',
@@ -377,9 +315,7 @@ function majorEventInfoRows(
 }
 
 function getGroupedStatusLine(eventItems: DetailEventItem[]): string {
-  const attendedCount = eventItems.filter(
-    (item) => item.statusLine !== 'Sem presença registrada',
-  ).length;
+  const attendedCount = eventItems.filter((item) => item.statusLine !== 'Sem presença registrada').length;
 
   if (attendedCount === 0) {
     return 'Inscrito';
@@ -391,9 +327,7 @@ function getGroupedStatusLine(eventItems: DetailEventItem[]): string {
 }
 
 function sortEvents(events: PublicEvent[]): PublicEvent[] {
-  return [...events].sort((left, right) =>
-    compareIsoDateAsc(left.startDate, right.startDate),
-  );
+  return [...events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
 }
 
 function cleanRows(rows: Array<InfoRow | undefined>): InfoRow[] {

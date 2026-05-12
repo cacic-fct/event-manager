@@ -14,10 +14,7 @@ import {
 } from '../../graphql/models';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { SubscriptionApiService } from '../../graphql/subscription-api.service';
-import {
-  buildEventListFilters,
-  resetEventFiltersForm,
-} from '../event-list-filters';
+import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspaceAttendancesService } from './workspace-attendances.service';
 
@@ -48,14 +45,10 @@ export class WorkspaceSubscriptionsService {
   readonly selectedEvent = signal<Event | null>(null);
   readonly eventSubscriptions = signal<WorkspaceEventSubscription[]>([]);
   readonly eventLecturerSubscriptions = computed(() =>
-    this.eventSubscriptions().filter(
-      (subscription) => subscription.isLecturerSubscription,
-    ),
+    this.eventSubscriptions().filter((subscription) => subscription.isLecturerSubscription),
   );
   readonly eventRegularSubscriptions = computed(() =>
-    this.eventSubscriptions().filter(
-      (subscription) => !subscription.isLecturerSubscription,
-    ),
+    this.eventSubscriptions().filter((subscription) => !subscription.isLecturerSubscription),
   );
   readonly eventPersonMatches = signal<Person[]>([]);
 
@@ -73,23 +66,16 @@ export class WorkspaceSubscriptionsService {
     identifier: ['', [Validators.required]],
   });
   readonly majorEventEditForm = this.formBuilder.group({
-    subscriptionStatus:
-      this.formBuilder.nonNullable.control<SubscriptionStatus>(
-        DEFAULT_SUBSCRIPTION_STATUS,
-        [Validators.required],
-      ),
+    subscriptionStatus: this.formBuilder.nonNullable.control<SubscriptionStatus>(DEFAULT_SUBSCRIPTION_STATUS, [
+      Validators.required,
+    ]),
     amountPaid: this.formBuilder.control<number | null>(null),
     paymentDate: this.formBuilder.control<string | null>(null),
     paymentTier: this.formBuilder.control<string | null>(null),
   });
-  readonly majorEventSubscriptions = signal<WorkspaceMajorEventSubscription[]>(
-    [],
-  );
-  readonly majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>(
-    [],
-  );
-  readonly selectedMajorEventSubscription =
-    signal<WorkspaceMajorEventSubscription | null>(null);
+  readonly majorEventSubscriptions = signal<WorkspaceMajorEventSubscription[]>([]);
+  readonly majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>([]);
+  readonly selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(null);
   readonly majorEventPersonMatches = signal<Person[]>([]);
   readonly selectedMajorEventPerson = signal<Person | null>(null);
   readonly editMode = signal(false);
@@ -97,9 +83,7 @@ export class WorkspaceSubscriptionsService {
 
   async searchEvents(): Promise<void> {
     const events = await firstValueFrom(
-      this.eventApi.listEvents(
-        buildEventListFilters(this.eventFiltersForm.value, 80),
-      ),
+      this.eventApi.listEvents(buildEventListFilters(this.eventFiltersForm.value, 80)),
     );
     this.eventResults.set(events);
   }
@@ -118,24 +102,19 @@ export class WorkspaceSubscriptionsService {
 
   async selectEventById(eventId: string): Promise<void> {
     if (this.selectedEvent()?.id !== eventId) {
-      this.selectedEvent.set(
-        await firstValueFrom(this.eventApi.getEvent(eventId)),
-      );
+      this.selectedEvent.set(await firstValueFrom(this.eventApi.getEvent(eventId)));
     }
     this.eventSubscriptionForm.controls.eventId.setValue(eventId);
     await this.loadEventSubscriptions(eventId);
   }
 
   async loadEventSubscriptions(eventId?: string): Promise<void> {
-    const resolvedEventId =
-      eventId || this.eventSubscriptionForm.controls.eventId.value;
+    const resolvedEventId = eventId || this.eventSubscriptionForm.controls.eventId.value;
     if (!resolvedEventId) {
       this.eventSubscriptions.set([]);
       return;
     }
-    this.eventSubscriptions.set(
-      await firstValueFrom(this.api.listEventSubscriptions(resolvedEventId)),
-    );
+    this.eventSubscriptions.set(await firstValueFrom(this.api.listEventSubscriptions(resolvedEventId)));
   }
 
   async findEventPerson(): Promise<void> {
@@ -152,9 +131,7 @@ export class WorkspaceSubscriptionsService {
     if (!eventId) {
       return;
     }
-    await firstValueFrom(
-      this.api.createEventSubscription({ eventId, personId: person.id }),
-    );
+    await firstValueFrom(this.api.createEventSubscription({ eventId, personId: person.id }));
     await this.loadEventSubscriptions(eventId);
     await this.refreshMajorEventAttendancesForEvent(eventId);
     this.eventPersonMatches.set([]);
@@ -175,16 +152,10 @@ export class WorkspaceSubscriptionsService {
       return;
     }
     void this.router.navigate(['/subscriptions/major-event', majorEventId]);
-    const subscriptions = await firstValueFrom(
-      this.api.listMajorEventSubscriptions(majorEventId),
-    );
+    const subscriptions = await firstValueFrom(this.api.listMajorEventSubscriptions(majorEventId));
     const events =
       subscriptions[0]?.events ??
-      (
-        await firstValueFrom(
-          this.eventApi.listEvents({ majorEventId, take: 200 }),
-        )
-      ).map((eventItem) => ({
+      (await firstValueFrom(this.eventApi.listEvents({ majorEventId, take: 200 }))).map((eventItem) => ({
         eventId: eventItem.id,
         eventName: eventItem.name,
         eventStartDate: eventItem.startDate,
@@ -196,9 +167,7 @@ export class WorkspaceSubscriptionsService {
     this.selectMajorEventSubscription(subscriptions[0] ?? null);
   }
 
-  selectMajorEventSubscription(
-    subscription: WorkspaceMajorEventSubscription | null,
-  ): void {
+  selectMajorEventSubscription(subscription: WorkspaceMajorEventSubscription | null): void {
     this.selectedMajorEventSubscription.set(subscription);
     this.selectedMajorEventPerson.set(null);
     this.editMode.set(false);
@@ -213,11 +182,7 @@ export class WorkspaceSubscriptionsService {
       paymentTier: subscription.paymentTier ?? null,
     });
     this.selectedEventIds.set(
-      new Set(
-        subscription.events
-          .filter((eventItem) => eventItem.subscribed)
-          .map((eventItem) => eventItem.eventId),
-      ),
+      new Set(subscription.events.filter((eventItem) => eventItem.subscribed).map((eventItem) => eventItem.eventId)),
     );
   }
 
@@ -236,8 +201,7 @@ export class WorkspaceSubscriptionsService {
   }
 
   readonly selectedMajorEventEvents = computed(
-    () =>
-      this.selectedMajorEventSubscription()?.events ?? this.majorEventEvents(),
+    () => this.selectedMajorEventSubscription()?.events ?? this.majorEventEvents(),
   );
 
   enableMajorEventEdit(): void {
@@ -281,16 +245,12 @@ export class WorkspaceSubscriptionsService {
     };
 
     const saved = selected
-      ? await firstValueFrom(
-          this.api.updateMajorEventSubscription(selected.id, input),
-        )
+      ? await firstValueFrom(this.api.updateMajorEventSubscription(selected.id, input))
       : await this.createMajorEventSubscription(input);
 
     this.replaceMajorEventSubscription(saved);
     this.selectMajorEventSubscription(saved);
-    await this.attendancesService.refreshMajorEventUserAttendancesFor(
-      saved.majorEventId,
-    );
+    await this.attendancesService.refreshMajorEventUserAttendancesFor(saved.majorEventId);
     this.snackbar.open('Inscrição salva.', 'Fechar', { duration: 2500 });
   }
 
@@ -316,28 +276,17 @@ export class WorkspaceSubscriptionsService {
     );
   }
 
-  private replaceMajorEventSubscription(
-    subscription: WorkspaceMajorEventSubscription,
-  ): void {
+  private replaceMajorEventSubscription(subscription: WorkspaceMajorEventSubscription): void {
     const subscriptions = this.majorEventSubscriptions();
-    const index = subscriptions.findIndex(
-      (item) => item.id === subscription.id,
-    );
+    const index = subscriptions.findIndex((item) => item.id === subscription.id);
     if (index === -1) {
       this.majorEventSubscriptions.set([subscription, ...subscriptions]);
       return;
     }
-    this.majorEventSubscriptions.set(
-      subscriptions.map((item) =>
-        item.id === subscription.id ? subscription : item,
-      ),
-    );
+    this.majorEventSubscriptions.set(subscriptions.map((item) => (item.id === subscription.id ? subscription : item)));
   }
 
-  private async findPeople(
-    identifierType: string,
-    identifierValue: string,
-  ): Promise<Person[]> {
+  private async findPeople(identifierType: string, identifierValue: string): Promise<Person[]> {
     const identifier = identifierValue.trim();
     if (!identifier) {
       return [];
@@ -345,9 +294,7 @@ export class WorkspaceSubscriptionsService {
     return firstValueFrom(
       this.peopleApi.listPeople({
         ...(identifierType === 'userId' ? { userId: identifier } : {}),
-        ...(identifierType === 'identityDocument'
-          ? { identityDocument: identifier }
-          : {}),
+        ...(identifierType === 'identityDocument' ? { identityDocument: identifier } : {}),
         ...(identifierType === 'email' ? { email: identifier } : {}),
         ...(identifierType === 'phone' ? { phone: identifier } : {}),
         ...(identifierType === 'query' ? { query: identifier } : {}),
@@ -356,16 +303,12 @@ export class WorkspaceSubscriptionsService {
     );
   }
 
-  private async refreshMajorEventAttendancesForEvent(
-    eventId: string,
-  ): Promise<void> {
+  private async refreshMajorEventAttendancesForEvent(eventId: string): Promise<void> {
     const event = this.selectedEvent();
     if (event?.id !== eventId || !event.majorEventId) {
       return;
     }
 
-    await this.attendancesService.refreshMajorEventUserAttendancesFor(
-      event.majorEventId,
-    );
+    await this.attendancesService.refreshMajorEventUserAttendancesFor(event.majorEventId);
   }
 }

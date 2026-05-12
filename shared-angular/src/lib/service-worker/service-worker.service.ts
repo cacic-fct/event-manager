@@ -1,18 +1,6 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import {
-  ApplicationRef,
-  DestroyRef,
-  Injectable,
-  PLATFORM_ID,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
-import {
-  SwUpdate,
-  UnrecoverableStateEvent,
-  VersionEvent,
-} from '@angular/service-worker';
+import { ApplicationRef, DestroyRef, Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { SwUpdate, UnrecoverableStateEvent, VersionEvent } from '@angular/service-worker';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { first } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -21,13 +9,7 @@ import { UpdateModalComponent } from './dialog-components/update.component';
 import { UpdateErrorDialogComponent } from './dialog-components/update-error.component';
 import { TooOldDialogComponent } from './dialog-components/too-old.component';
 
-type UpdateState =
-  | 'idle'
-  | 'checking'
-  | 'downloading'
-  | 'ready'
-  | 'failed'
-  | 'unrecoverable';
+type UpdateState = 'idle' | 'checking' | 'downloading' | 'ready' | 'failed' | 'unrecoverable';
 
 @Injectable({ providedIn: 'root' })
 export class ServiceWorkerService {
@@ -44,9 +26,7 @@ export class ServiceWorkerService {
   readonly isBrowser = computed(() => isPlatformBrowser(this.platformId));
 
   readonly hasServiceWorker = computed(() => {
-    return (
-      this.canUseServiceWorker() && Boolean(navigator.serviceWorker.controller)
-    );
+    return this.canUseServiceWorker() && Boolean(navigator.serviceWorker.controller);
   });
 
   private updateDialogRef: MatDialogRef<UpdateModalComponent> | null = null;
@@ -90,9 +70,7 @@ export class ServiceWorkerService {
 
     const registrations = await navigator.serviceWorker.getRegistrations();
 
-    await Promise.all(
-      registrations.map((registration) => registration.update()),
-    );
+    await Promise.all(registrations.map((registration) => registration.update()));
   }
 
   async unregisterServiceWorker(): Promise<void> {
@@ -102,17 +80,13 @@ export class ServiceWorkerService {
 
     const registrations = await navigator.serviceWorker.getRegistrations();
 
-    await Promise.all(
-      registrations.map((registration) => registration.unregister()),
-    );
+    await Promise.all(registrations.map((registration) => registration.unregister()));
   }
 
   private listenForServiceWorkerUpdates(): void {
-    this.swUpdate.versionUpdates
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((event: VersionEvent) => {
-        void this.handleVersionEvent(event);
-      });
+    this.swUpdate.versionUpdates.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event: VersionEvent) => {
+      void this.handleVersionEvent(event);
+    });
 
     this.swUpdate.unrecoverable
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -179,18 +153,16 @@ export class ServiceWorkerService {
       data: { error },
     });
 
-    dialogRef
-      .afterClosed()
-      .subscribe((result: 'reload' | 'unregister' | undefined) => {
-        if (result === 'unregister') {
-          void this.unregisterServiceWorker().finally(() => this.reload());
-          return;
-        }
+    dialogRef.afterClosed().subscribe((result: 'reload' | 'unregister' | undefined) => {
+      if (result === 'unregister') {
+        void this.unregisterServiceWorker().finally(() => this.reload());
+        return;
+      }
 
-        if (result === 'reload') {
-          this.reload();
-        }
-      });
+      if (result === 'reload') {
+        this.reload();
+      }
+    });
   }
 
   private canUseServiceWorker(): boolean {
