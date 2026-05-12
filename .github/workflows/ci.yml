@@ -163,4 +163,4 @@ jobs:
         run: bunx nx affected -t lint --parallel=3
 
       - name: Build deployable apps
-        run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=1
+        run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=3
