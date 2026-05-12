@@ -72,7 +72,6 @@ storage.rules
 .nx/cache
 .nx/workspace-data
 
-# Local dev runtime data (logs, postgres data, etc.)
 .local/
 
 node_modules/
