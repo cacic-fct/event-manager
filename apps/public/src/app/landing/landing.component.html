@@ -1,39 +1,145 @@
-<main>
-  <section class="hero-section">
-    <!-- Individual twinkling stars -->
-    <div class="star-container">
-      <!-- @for (star of stars(); track $index) {
-      <app-star [star]="star" />
-    } -->
-    </div>
-
-    <div class="hero-content">
-      <div class="hero-visual">
-        <lib-cacic-logo class="hero-icon" fillColor="#fff" />
+<main class="landing">
+  <section class="landing__hero" aria-labelledby="landing-hero-title">
+    <div class="landing__hero-inner">
+      <div class="landing__hero-visual">
+        <lib-cacic-logo class="landing__logo" fillColor="currentColor" />
       </div>
-      <div class="hero-text">
-        <h1 class="hero-title">
-          <span class="brand-highlight">Eventos</span>
-        </h1>
-        <h2 class="hero-subtitle">
-          <b>Faça login com o e-mail institucional</b> se você possui vínculo
-          com a Unesp.
-        </h2>
 
-        <div class="hero-actions">
-          <a
-            mat-raised-button
-            color="primary"
-            class="login-button"
-            routerLink="/menu"
+      <div class="landing__hero-text">
+        <p class="landing__eyebrow">CACiC · Eventos acadêmicos</p>
+        <h1 id="landing-hero-title" class="landing__title">
+          Inscreva-se, participe e receba seu certificado.
+        </h1>
+        <p class="landing__subtitle">
+          A plataforma oficial do CACiC para eventos da Unesp — inscrições
+          rápidas, presença por QR Code e certificados digitais com validação
+          instantânea.
+        </p>
+
+        <div class="landing__actions">
+          <button
+            type="button"
+            mat-flat-button
+            class="landing__cta"
+            (click)="login()"
           >
-            <mat-icon>start</mat-icon>
-            Acessar o app
+            <mat-icon>login</mat-icon>
+            Entrar com Conta CACiC
+          </button>
+          <a mat-stroked-button routerLink="/calendar">
+            <mat-icon>calendar_month</mat-icon>
+            Explorar eventos
           </a>
         </div>
+
+        <p class="landing__hint">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          Use seu e-mail institucional se você possui vínculo com a Unesp.
+        </p>
       </div>
     </div>
   </section>
 
-  <app-value-proposition />
+  <section class="landing__section" aria-labelledby="landing-calendar-title">
+    <header class="landing__section-header">
+      <div>
+        <p class="landing__eyebrow">Calendário</p>
+        <h2 id="landing-calendar-title" class="landing__section-title">
+          Próximos eventos
+        </h2>
+      </div>
+      <a mat-button routerLink="/calendar" class="landing__section-cta">
+        Ver tudo
+        <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+      </a>
+    </header>
+
+    @let state = calendarState(); @if (state.status === 'loading') {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando eventos" />
+    } @else if (state.status === 'error') {
+    <div class="landing__empty" role="status">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ state.message }}</p>
+    </div>
+    } @else if (state.events.length === 0) {
+    <div class="landing__empty" role="status">
+      <mat-icon aria-hidden="true">event_busy</mat-icon>
+      <p>Nenhum evento próximo no momento.</p>
+    </div>
+    } @else {
+    <mat-list class="landing__events">
+      @for (event of state.events; track event.id) {
+      <app-calendar-event-list-item [event]="event" returnUrl="/" />
+      }
+    </mat-list>
+    }
+  </section>
+
+  <section
+    class="landing__section landing__section--features"
+    aria-labelledby="landing-features-title"
+  >
+    <header class="landing__section-header">
+      <div>
+        <p class="landing__eyebrow">Plataforma</p>
+        <h2 id="landing-features-title" class="landing__section-title">
+          Tudo o que você precisa para participar
+        </h2>
+      </div>
+    </header>
+
+    <div class="landing__features">
+      <mat-card appearance="outlined" class="landing__feature">
+        <mat-card-content>
+          <mat-icon class="landing__feature-icon" aria-hidden="true"
+            >event_available</mat-icon
+          >
+          <h3>Inscrições rápidas</h3>
+          <p>
+            Use os dados da sua Conta CACiC para se inscrever em segundos, sem
+            preencher formulários.
+          </p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="landing__feature">
+        <mat-card-content>
+          <mat-icon class="landing__feature-icon" aria-hidden="true"
+            >qr_code_scanner</mat-icon
+          >
+          <h3>Presença sem listas</h3>
+          <p>
+            Registre presença por QR Code presencial ou pelo modo on-line, sem
+            assinaturas em papel.
+          </p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="landing__feature">
+        <mat-card-content>
+          <mat-icon class="landing__feature-icon" aria-hidden="true"
+            >verified</mat-icon
+          >
+          <h3>Certificados digitais</h3>
+          <p>
+            Receba certificados com QR Code para validação instantânea, com
+            autenticidade e segurança.
+          </p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="landing__feature">
+        <mat-card-content>
+          <mat-icon class="landing__feature-icon" aria-hidden="true"
+            >privacy_tip</mat-icon
+          >
+          <h3>Conformidade LGPD</h3>
+          <p>
+            Seus dados pessoais protegidos conforme a legislação brasileira de
+            proteção de dados.
+          </p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </section>
 </main>

@@ -1,6 +1,226 @@
-@use 'styles/variables';
-@use 'styles/mixins';
-@use 'styles/animations';
-@use 'styles/components';
-@use 'styles/hero';
-@use 'styles/sections';
+:host {
+  display: block;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  min-height: 100%;
+}
+
+.landing {
+  --landing-max-width: 1080px;
+  --landing-section-padding-inline: clamp(16px, 4vw, 32px);
+
+  display: flex;
+  flex-direction: column;
+  gap: clamp(48px, 8vw, 96px);
+  padding-bottom: clamp(48px, 8vw, 96px);
+}
+
+.landing__hero {
+  background: linear-gradient(
+    180deg,
+    var(--mat-sys-primary-container) 0%,
+    var(--mat-sys-surface) 100%
+  );
+  color: var(--mat-sys-on-primary-container);
+  padding: clamp(48px, 9vw, 96px) var(--landing-section-padding-inline);
+}
+
+.landing__hero-inner {
+  align-items: center;
+  display: grid;
+  gap: clamp(32px, 6vw, 64px);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  margin: 0 auto;
+  max-width: var(--landing-max-width);
+}
+
+.landing__hero-visual {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.landing__logo {
+  color: var(--mat-sys-primary);
+  display: block;
+  height: clamp(140px, 18vw, 240px);
+  width: auto;
+}
+
+.landing__hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.landing__eyebrow {
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-large);
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.landing__title {
+  font: var(--mat-sys-display-small);
+  margin: 0;
+}
+
+.landing__subtitle {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-title-medium);
+  margin: 0;
+  max-width: 60ch;
+}
+
+.landing__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.landing__cta {
+  min-height: 48px;
+}
+
+.landing__hint {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: flex;
+  font: var(--mat-sys-body-medium);
+  gap: 8px;
+  margin: 12px 0 0;
+
+  mat-icon {
+    color: var(--mat-sys-primary);
+    flex: none;
+    font-size: 20px;
+    height: 20px;
+    width: 20px;
+  }
+}
+
+.landing__section {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: var(--landing-max-width);
+  padding-inline: var(--landing-section-padding-inline);
+  width: 100%;
+}
+
+.landing__section-header {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+
+  .landing__eyebrow {
+    margin-bottom: 4px;
+  }
+}
+
+.landing__section-title {
+  font: var(--mat-sys-headline-small);
+  margin: 0;
+}
+
+.landing__section-cta {
+  flex: none;
+}
+
+.landing__empty {
+  align-items: center;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 16px;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 48px 24px;
+  text-align: center;
+
+  mat-icon {
+    font-size: 36px;
+    height: 36px;
+    width: 36px;
+  }
+
+  p {
+    font: var(--mat-sys-body-large);
+    margin: 0;
+  }
+}
+
+.landing__events {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 4px 0;
+}
+
+.landing__features {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+
+.landing__feature {
+  height: 100%;
+
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 24px;
+  }
+
+  h3 {
+    font: var(--mat-sys-title-medium);
+    margin: 0;
+  }
+
+  p {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-medium);
+    margin: 0;
+  }
+}
+
+.landing__feature-icon {
+  color: var(--mat-sys-primary);
+  font-size: 32px;
+  height: 32px;
+  margin-bottom: 4px;
+  width: 32px;
+}
+
+@media (max-width: 768px) {
+  .landing__hero-inner {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .landing__hero-text {
+    align-items: center;
+  }
+
+  .landing__subtitle {
+    margin-inline: auto;
+  }
+
+  .landing__actions {
+    justify-content: center;
+  }
+
+  .landing__hint {
+    justify-content: center;
+    text-align: left;
+  }
+
+  .landing__title {
+    font: var(--mat-sys-headline-medium);
+  }
+}
