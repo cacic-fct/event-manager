@@ -17,6 +17,15 @@ jobs:
   checks:
     name: Lint, test, and build
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    if: >
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -26,13 +35,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate Prisma client
         run: bunx prisma generate --schema apps/events-backend/prisma/schema.prisma
@@ -43,8 +54,113 @@ jobs:
       - name: Lint affected projects
         run: bunx nx affected -t lint --parallel=3
 
-      # - name: Test affected projects
-      #   run: bunx nx affected -t test --parallel=3
-
       - name: Build deployable apps
         run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=1
+
+  prepare-untrusted-pr:
+    name: Prepare untrusted PR dependencies
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect sensitive file changes
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+
+          changed_files="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)"
+
+          echo "$changed_files"
+
+          if echo "$changed_files" | grep -E '(^\.github/workflows/.*\.ya?ml$|(^|/)(package\.json|bun\.lock|\.npmrc|bunfig\.toml)$)'; then
+            echo "::error::Fork PR changed CI/CD, dependency, or auth-related files."
+            echo "::error::A maintainer must review this and run full CI from a trusted branch."
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove npm auth material
+        run: |
+          rm -f ~/.npmrc
+          rm -f .npmrc
+          unset NODE_AUTH_TOKEN
+
+      - name: Upload prepared dependencies
+        uses: actions/upload-artifact@v6
+        with:
+          name: untrusted-pr-node-modules
+          path: |
+            node_modules
+            apps/**/node_modules
+            libs/**/node_modules
+          retention-days: 1
+          include-hidden-files: false
+
+  untrusted-pr-checks:
+    name: Untrusted PR checks
+    runs-on: ubuntu-latest
+
+    needs:
+      - prepare-untrusted-pr
+
+    permissions:
+      contents: read
+
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Download prepared dependencies
+        uses: actions/download-artifact@v6
+        with:
+          name: untrusted-pr-node-modules
+          path: .
+
+      - name: Generate Prisma client
+        run: bunx prisma generate --schema apps/events-backend/prisma/schema.prisma
+
+      - name: Derive Nx SHAs
+        uses: nrwl/nx-set-shas@v5
+
+      - name: Lint affected projects
+        run: bunx nx affected -t lint --parallel=3
+
+      - name: Build deployable apps
+        run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=3
