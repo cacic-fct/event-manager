@@ -1,5 +1,5 @@
 {
-  "name": "@cacic-eventos/source",
+  "name": "@cacic-fct/source",
   "version": "0.0.0",
   "license": "AGPL-3.0-only",
   "scripts": {},
@@ -25,6 +25,7 @@
     "@aws-sdk/lib-storage": "^3.1045.0",
     "@bwip-js/browser": "^4.10.1",
     "@bwip-js/node": "^4.10.1",
+    "@cacic-fct/ngx-umami": "^1.1.0",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/source-code-pro": "^5.2.7",
     "@fontsource/material-icons-outlined": "^5.2.6",

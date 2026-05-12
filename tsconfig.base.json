@@ -15,10 +15,10 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@cacic-eventos/shared-data-types": ["shared-data-types/src/index.ts"],
-      "@cacic-eventos/shared-utils": ["shared-utils/src/index.ts"],
-      "@cacic-eventos/shared-frontend-types": ["shared-data-types/src/lib/frontend-types.ts"],
-      "@cacic-eventos/shared-angular": ["shared-angular/src/index.ts"]
+      "@cacic-fct/shared-data-types": ["shared-data-types/src/index.ts"],
+      "@cacic-fct/shared-utils": ["shared-utils/src/index.ts"],
+      "@cacic-fct/shared-frontend-types": ["shared-data-types/src/lib/frontend-types.ts"],
+      "@cacic-fct/shared-angular": ["shared-angular/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
