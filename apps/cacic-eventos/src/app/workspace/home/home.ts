@@ -17,7 +17,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltip } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '@cacic-eventos/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular';
 import type {
   DashboardActionLink,
   DashboardCalendarEvent,
@@ -25,7 +25,7 @@ import type {
   DashboardInconsistency,
   DashboardInsightAction,
   WorkspaceDashboardInsights,
-} from '@cacic-eventos/shared-frontend-types';
+} from '@cacic-fct/shared-frontend-types';
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
 import { DashboardApiService } from '../../graphql/dashboard-api.service';
 import { TwemojiComponent } from '../../shared/components/twemoji.component';

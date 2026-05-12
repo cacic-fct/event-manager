@@ -9,7 +9,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Router } from '@angular/router';
-import { AuthService, CacicLogoComponent } from '@cacic-eventos/shared-angular';
+import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-login-page',

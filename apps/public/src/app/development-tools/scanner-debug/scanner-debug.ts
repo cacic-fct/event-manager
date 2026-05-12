@@ -7,10 +7,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
-import {
-  AztecScannerDialogComponent,
-  ScannerSoundsService,
-} from '@cacic-eventos/shared-angular';
+import { AztecScannerDialogComponent, ScannerSoundsService } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-scanner-debug',

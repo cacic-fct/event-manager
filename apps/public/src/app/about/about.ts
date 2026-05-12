@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink } from '@angular/router';
-import { ServiceWorkerService } from '@cacic-eventos/shared-angular';
+import { ServiceWorkerService } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-about',

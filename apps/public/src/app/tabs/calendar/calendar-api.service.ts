@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { EventType } from '@cacic-eventos/shared-data-types';
-import type { PublicEvent } from '@cacic-eventos/shared-utils';
+import type { EventType } from '@cacic-fct/shared-data-types';
+import type { PublicEvent } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
 
 export type CalendarEventTypeFilter = EventType | 'ALL';

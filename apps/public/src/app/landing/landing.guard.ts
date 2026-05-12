@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '@cacic-eventos/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular';
 
 /**
  * Guard that redirects authenticated users to /menu.

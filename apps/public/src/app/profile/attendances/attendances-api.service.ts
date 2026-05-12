@@ -17,7 +17,7 @@ import type {
   PublicEventGroup,
   SubscribedItem,
   SubscriptionsFeed,
-} from '@cacic-eventos/shared-utils';
+} from '@cacic-fct/shared-utils';
 import { Observable, forkJoin, map, of } from 'rxjs';
 
 export type {
@@ -34,7 +34,6 @@ export type {
   PublicEventGroup,
   SubscribedItem,
   SubscriptionsFeed,
-} from '@cacic-eventos/shared-utils';
 
 type GraphqlVariable =
   | string
@@ -43,6 +42,7 @@ type GraphqlVariable =
   | null
   | undefined
   | readonly string[];
+} from '@cacic-fct/shared-utils';
 type GraphqlVariables = Record<string, GraphqlVariable>;
 
 interface GraphqlResponse<TData> {

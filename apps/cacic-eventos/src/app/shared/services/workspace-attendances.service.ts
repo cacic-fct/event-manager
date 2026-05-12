@@ -9,7 +9,7 @@ import {
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AztecScannerDialogComponent } from '@cacic-eventos/shared-angular';
+import { AztecScannerDialogComponent } from '@cacic-fct/shared-angular';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';

@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
 import { RouterLink } from '@angular/router';
-import { PublicEvent, getEventTypeLabel } from '@cacic-eventos/shared-utils';
+import { PublicEvent, getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { EmojiService } from '../../profile/attendances/emoji.service';
 
 @Component({

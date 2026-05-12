@@ -13,7 +13,9 @@ COPY shared-angular/project.json shared-angular/tsconfig*.json ./shared-angular/
 COPY shared-data-types/project.json shared-data-types/tsconfig*.json ./shared-data-types/
 COPY shared-utils/project.json shared-utils/tsconfig*.json ./shared-utils/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-  bun install --frozen-lockfile
+    --mount=type=secret,id=npm_token \
+    export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
+    bun install --frozen-lockfile
 
 FROM deps AS builder
 COPY apps/cacic-eventos ./apps/cacic-eventos
@@ -26,7 +28,9 @@ FROM base AS runtime-deps
 ENV NODE_ENV=production
 COPY package.json bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-  bun install --frozen-lockfile --production
+    --mount=type=secret,id=npm_token \
+    export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
+    bun install --frozen-lockfile --production
 
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production \

@@ -9,12 +9,12 @@ import {
   MajorEventSubscriptionCsvImportInput,
   MajorEventSubscriptionCsvImportResult,
   MajorEventUserAttendance,
-} from '@cacic-eventos/shared-data-types';
 import {
   BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+} from '@cacic-fct/shared-data-types';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import {
   AttendanceCreationMethod,

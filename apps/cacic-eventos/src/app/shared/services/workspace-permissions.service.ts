@@ -7,7 +7,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { AuthService } from '@cacic-eventos/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { firstValueFrom } from 'rxjs';
 
 export type WorkspacePermissionScope =

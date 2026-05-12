@@ -1,4 +1,4 @@
-import { Person, User } from '@cacic-eventos/shared-data-types';
+import { Person, User } from '@cacic-fct/shared-data-types';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {

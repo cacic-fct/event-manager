@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '@cacic-eventos/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { LandingComponent } from './landing.component';
 
 /**

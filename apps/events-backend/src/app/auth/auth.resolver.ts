@@ -1,4 +1,4 @@
-import { AuthenticatedUser } from '@cacic-eventos/shared-data-types';
+import { AuthenticatedUser } from '@cacic-fct/shared-data-types';
 import { Context, Query, Resolver } from '@nestjs/graphql';
 import { Request } from 'express';
 import { AuthenticatedUser as AuthenticatedUserPayload } from './interfaces/authenticated-user.interface';

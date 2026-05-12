@@ -10,14 +10,14 @@ import {
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from '@cacic-eventos/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular';
 import {
   PublicEvent,
   formatCreditMinutes,
   formatDateRange,
   getEventTypeLabel,
   isOnlineAttendanceRegistrationOpen,
-} from '@cacic-eventos/shared-utils';
+} from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule } from '@angular/material/dialog';

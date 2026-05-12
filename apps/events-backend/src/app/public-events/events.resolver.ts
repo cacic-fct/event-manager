@@ -2,7 +2,7 @@ import { Args, Int, Query, Resolver } from '@nestjs/graphql';
 import { NotFoundException } from '@nestjs/common';
 import { subMonths } from 'date-fns';
 import { Prisma } from '@prisma/client';
-import { EventType } from '@cacic-eventos/shared-data-types';
+import { EventType } from '@cacic-fct/shared-data-types';
 import { Public } from '../auth/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';

@@ -15,10 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { toSignal } from '@angular/core/rxjs-interop';
-import {
-  SUBSCRIPTION_STATUS_VALUES,
-  getSubscriptionStatusLabel,
-} from '@cacic-eventos/shared-utils';
+import { SUBSCRIPTION_STATUS_VALUES, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { startWith } from 'rxjs';
 import {
   MajorEventSubscriptionCsvColumnMapping,

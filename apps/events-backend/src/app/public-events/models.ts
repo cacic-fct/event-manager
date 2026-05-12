@@ -1,4 +1,4 @@
-import { ContactType, EventType } from '@cacic-eventos/shared-data-types';
+import { ContactType, EventType } from '@cacic-fct/shared-data-types';
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 

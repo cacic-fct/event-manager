@@ -15,8 +15,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import type { PublicEvent } from '@cacic-eventos/shared-utils';
-import { getEventTypeLabel } from '@cacic-eventos/shared-utils';
 import {
   addDays,
   isAfter,
@@ -26,6 +24,8 @@ import {
   subDays,
   subMonths,
 } from 'date-fns';
+import type { PublicEvent } from '@cacic-fct/shared-utils';
+import { getEventTypeLabel } from '@cacic-fct/shared-utils';
 import {
   Observable,
   catchError,
