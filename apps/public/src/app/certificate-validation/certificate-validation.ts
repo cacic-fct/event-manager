@@ -24,7 +24,6 @@ import {
   PublicCertificateValidationEvent,
   formatCreditMinutes,
   formatDateRange,
-} from '@cacic-eventos/shared-utils';
 import {
   catchError,
   combineLatest,
@@ -36,6 +35,7 @@ import {
   switchMap,
   tap,
 } from 'rxjs';
+} from '@cacic-fct/shared-utils';
 import { CertificateFileDownloadService } from '../shared/certificate-file-download.service';
 import { EmojiService } from '../profile/attendances/emoji.service';
 import { CertificateValidationApiService } from './certificate-validation-api.service';

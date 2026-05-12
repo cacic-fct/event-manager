@@ -1,9 +1,4 @@
-import {
-  Certificate,
-  CertificateConfig,
-  CertificateScope,
-  CertificateTemplate,
-} from '@cacic-eventos/shared-data-types';
+import { Certificate, CertificateConfig, CertificateScope, CertificateTemplate } from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
 
 export const MAJOR_EVENT_SELECT = {

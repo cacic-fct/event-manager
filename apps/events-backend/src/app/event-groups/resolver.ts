@@ -1,9 +1,4 @@
-import {
-  DeletionResult,
-  EventGroup,
-  EventGroupCreateInput,
-  EventGroupUpdateInput,
-} from '@cacic-eventos/shared-data-types';
+import { DeletionResult, EventGroup, EventGroupCreateInput, EventGroupUpdateInput } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';

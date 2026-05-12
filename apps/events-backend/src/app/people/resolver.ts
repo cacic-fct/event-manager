@@ -1,15 +1,10 @@
 import {
-  DeletionResult,
-  Person,
-  PersonCreateInput,
-  PersonUpdateInput,
-} from '@cacic-eventos/shared-data-types';
-import {
   ConflictException,
   Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { DeletionResult, Person, PersonCreateInput, PersonUpdateInput } from '@cacic-fct/shared-data-types';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';

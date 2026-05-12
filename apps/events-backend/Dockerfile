@@ -12,6 +12,8 @@ FROM base AS deps
 COPY package.json bun.lock ./
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
+    --mount=type=secret,id=npm_token \
+    export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
     bun install --frozen-lockfile
 
 FROM deps AS playwright
@@ -45,6 +47,8 @@ ENV NODE_ENV=production
 COPY package.json bun.lock ./
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
+    --mount=type=secret,id=npm_token \
+    export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
     bun install --frozen-lockfile --production
 
 COPY --from=prisma-deps /workspace/node_modules/.prisma ./node_modules/.prisma

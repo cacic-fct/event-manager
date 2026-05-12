@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { appRoutes } from './app/app.routes';
 
 // Sitemap
-import { collectPaths } from '@cacic-eventos/shared-angular';
+import { collectPaths } from '@cacic-fct/shared-angular';
 import xmlbuilder from 'xmlbuilder';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));

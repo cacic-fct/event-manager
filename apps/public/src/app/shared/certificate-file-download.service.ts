@@ -1,6 +1,6 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
-import type { CertificateDownload } from '@cacic-eventos/shared-utils';
+import type { CertificateDownload } from '@cacic-fct/shared-utils';
 
 @Injectable({ providedIn: 'root' })
 export class CertificateFileDownloadService {

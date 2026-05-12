@@ -4,7 +4,7 @@ import {
   PublicCertificateValidation,
   PublicCertificateValidationEvent,
   PublicCertificateValidationEventSection,
-} from '@cacic-eventos/shared-data-types';
+} from '@cacic-fct/shared-data-types';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';

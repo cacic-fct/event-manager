@@ -4,12 +4,12 @@ import {
   CertificateScope,
   DeletionResult,
   EventType,
-} from '@cacic-eventos/shared-data-types';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+} from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {

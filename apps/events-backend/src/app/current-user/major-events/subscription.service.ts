@@ -1,4 +1,4 @@
-import { EventType } from '@cacic-eventos/shared-data-types';
+import { EventType } from '@cacic-fct/shared-data-types';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { CertificateScope, Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';

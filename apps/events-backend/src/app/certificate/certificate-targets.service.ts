@@ -1,4 +1,4 @@
-import { CertificateScope } from '@cacic-eventos/shared-data-types';
+import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {

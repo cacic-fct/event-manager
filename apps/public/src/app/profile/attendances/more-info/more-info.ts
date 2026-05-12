@@ -8,12 +8,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
-import {
-  DetailViewModel,
-  EventTargetType,
-  buildDetailViewModel,
-  parseEventTargetType,
-} from '@cacic-eventos/shared-utils';
+import { DetailViewModel, EventTargetType, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
 import { Observable, catchError, map, of, startWith, switchMap } from 'rxjs';
 import { AttendancesApiService } from '../attendances-api.service';
 import {

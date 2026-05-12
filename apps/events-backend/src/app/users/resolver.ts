@@ -1,4 +1,4 @@
-import { User } from '@cacic-eventos/shared-data-types';
+import { User } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';

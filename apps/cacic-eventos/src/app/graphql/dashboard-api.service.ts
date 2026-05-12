@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import type { WorkspaceDashboardInsights } from '@cacic-eventos/shared-frontend-types';
+import type { WorkspaceDashboardInsights } from '@cacic-fct/shared-frontend-types';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 

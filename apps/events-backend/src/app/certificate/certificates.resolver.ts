@@ -11,7 +11,7 @@ import {
   EventGroup,
   MajorEvent,
   PublicCertificateValidation,
-} from '@cacic-eventos/shared-data-types';
+} from '@cacic-fct/shared-data-types';
 import { UseGuards } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Throttle } from '@nestjs/throttler';

@@ -1,8 +1,4 @@
-import {
-  Certificate,
-  CertificateDownload,
-  CertificateScope,
-} from '@cacic-eventos/shared-data-types';
+import { Certificate, CertificateDownload, CertificateScope } from '@cacic-fct/shared-data-types';
 import { Args, Context, Int, Query, Resolver } from '@nestjs/graphql';
 import { NotFoundException } from '@nestjs/common';
 import {

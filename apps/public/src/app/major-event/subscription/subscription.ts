@@ -23,12 +23,10 @@ import {
   RouterLink,
   RouterOutlet,
 } from '@angular/router';
-import { AuthService } from '@cacic-eventos/shared-angular';
-import type {
-  CurrentUserMajorEventSubscription,
-  PublicEvent,
-} from '@cacic-eventos/shared-utils';
-import { formatDateRange } from '@cacic-eventos/shared-utils';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { AuthService } from '@cacic-fct/shared-angular';
+import type { CurrentUserMajorEventSubscription, PublicEvent } from '@cacic-fct/shared-utils';
+import { formatDateRange } from '@cacic-fct/shared-utils';
 import { filter, finalize, map } from 'rxjs';
 import { EmojiService } from '../../profile/attendances/emoji.service';
 import {

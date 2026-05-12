@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Event } from './event';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { signal } from '@angular/core';
-import { AuthService } from '@cacic-eventos/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { EventApiService } from './event-api.service';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';

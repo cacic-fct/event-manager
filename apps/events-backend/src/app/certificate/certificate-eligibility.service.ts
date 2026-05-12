@@ -1,13 +1,9 @@
 import {
-  CertificateIssuedTo,
-  CertificateScope,
-  EventType,
-} from '@cacic-eventos/shared-data-types';
-import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { AttendanceCategory, Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {

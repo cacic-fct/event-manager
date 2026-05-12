@@ -15,7 +15,7 @@ import {
   getSubscribedItemStatusLine,
   getSubscribedItemTitle,
   sortSubscriptionsFeed,
-} from '@cacic-eventos/shared-utils';
+} from '@cacic-fct/shared-utils';
 import { catchError, map, of, startWith } from 'rxjs';
 import { AttendancesApiService } from './attendances-api.service';
 import { EmojiService } from './emoji.service';

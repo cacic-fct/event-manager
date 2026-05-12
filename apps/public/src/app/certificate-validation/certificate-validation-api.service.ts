@@ -1,9 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type {
-  CertificateDownload,
-  PublicCertificateValidation,
-} from '@cacic-eventos/shared-utils';
+import type { CertificateDownload, PublicCertificateValidation } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
 
 type GraphqlVariable = string | number | boolean | null | undefined;

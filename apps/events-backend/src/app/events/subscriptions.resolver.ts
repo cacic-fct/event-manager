@@ -11,7 +11,7 @@ import {
   WorkspaceMajorEventSubscription,
   WorkspaceMajorEventSubscriptionCreateInput,
   WorkspaceMajorEventSubscriptionUpdateInput,
-} from '@cacic-eventos/shared-data-types';
+} from '@cacic-fct/shared-data-types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { PrismaService } from '../prisma/prisma.service';

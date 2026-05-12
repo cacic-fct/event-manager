@@ -23,7 +23,7 @@ import type {
 import { catchError, finalize, map, of, startWith } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { AttendancesApiService } from '../attendances-api.service';
-import { AuthService, MailtoService } from '@cacic-eventos/shared-angular';
+import { AuthService, MailtoService } from '@cacic-fct/shared-angular';
 
 export interface CertificateDialogData {
   title: string;

@@ -1,4 +1,4 @@
-import { CertificateScope, EventType } from '@cacic-eventos/shared-data-types';
+import { CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
 describe('CertificateIssuingService', () => {

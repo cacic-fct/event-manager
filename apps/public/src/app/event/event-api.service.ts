@@ -1,10 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type {
-  CurrentUserEventAttendance,
-  CurrentUserEventSubscription,
-  PublicEvent,
-} from '@cacic-eventos/shared-utils';
+import type { CurrentUserEventAttendance, CurrentUserEventSubscription, PublicEvent } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
 
 export interface PublicEventWeather {

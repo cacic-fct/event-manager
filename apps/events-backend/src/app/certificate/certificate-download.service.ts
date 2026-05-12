@@ -1,10 +1,10 @@
-import { CertificateDownload } from '@cacic-eventos/shared-data-types';
 import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { CertificateDownload } from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';

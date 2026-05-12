@@ -2,7 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
-import { AuthService, CacicLogoComponent } from '@cacic-eventos/shared-angular';
+import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
 import { ValuePropositionComponent } from './components/value-proposition.component';
 import { MatIconModule } from '@angular/material/icon';
 

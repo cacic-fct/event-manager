@@ -3,7 +3,7 @@ import {
   EventLecturer,
   EventLecturerCreateInput,
   EventLecturerUpdateInput,
-} from '@cacic-eventos/shared-data-types';
+} from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';

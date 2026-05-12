@@ -9,7 +9,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import type { PublicEvent } from '@cacic-eventos/shared-utils';
+import type { PublicEvent } from '@cacic-fct/shared-utils';
 import { isSameDay } from 'date-fns';
 import { CalendarEventListItem } from './calendar-event-list-item';
 

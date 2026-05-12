@@ -20,7 +20,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { AztecScannerDialogComponent } from '@cacic-eventos/shared-angular';
+import { AztecScannerDialogComponent } from '@cacic-fct/shared-angular';
 import { catchError, combineLatest, finalize, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../profile/attendances/emoji.service';
 import {

@@ -1,7 +1,4 @@
-import {
-  CertificateIssuedTo,
-  CertificateScope,
-} from '@cacic-eventos/shared-data-types';
+import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { AttendanceCategory, SubscriptionStatus } from '@prisma/client';
 import { CertificateEligibilityService } from './certificate-eligibility.service';
 

@@ -20,7 +20,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AuthService, CacicLogoComponent } from '@cacic-eventos/shared-angular';
+import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
 import { filter, map, startWith } from 'rxjs';
 
 import { WorkspacePermissionsService } from '../shared/services/workspace-permissions.service';

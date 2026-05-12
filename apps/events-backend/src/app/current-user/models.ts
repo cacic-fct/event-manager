@@ -1,8 +1,4 @@
-import {
-  AuthenticatedUser as AuthenticatedUserObject,
-  Person,
-  User,
-} from '@cacic-eventos/shared-data-types';
+import { AuthenticatedUser as AuthenticatedUserObject, Person, User } from '@cacic-fct/shared-data-types';
 import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
 import {
   PublicEvent,

@@ -1,14 +1,11 @@
 import {
-  MergeCandidateMergeInput,
-  PersonMergeField,
-} from '@cacic-eventos/shared-data-types';
-import {
   ConflictException,
   Injectable,
   Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { MergeCandidateMergeInput, PersonMergeField } from '@cacic-fct/shared-data-types';
 import { People, Prisma } from '@prisma/client';
 import { CertificateIssuingService } from '../../certificate/certificate-issuing.service';
 import { PrismaService } from '../../prisma/prisma.service';

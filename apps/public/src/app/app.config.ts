@@ -19,7 +19,7 @@ import {
   withFetch,
   withInterceptors,
 } from '@angular/common/http';
-import { AuthService, authInterceptor } from '@cacic-eventos/shared-angular';
+import { AuthService, authInterceptor } from '@cacic-fct/shared-angular';
 import { MatIconRegistry } from '@angular/material/icon';
 import { provideServiceWorker } from '@angular/service-worker';
 import { OnlineAttendanceCoordinatorService } from './attendance/online-attendance-coordinator.service';
