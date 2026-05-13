@@ -63,23 +63,62 @@ jobs:
           set -euo pipefail
 
           HEAD="${{ github.event.workflow_run.head_sha }}"
-          BASE="$(git rev-parse "${HEAD}^")"
 
-          AFFECTED="$(
-            bunx nx show projects \
-              --affected \
-              --type=app \
-              --base="$BASE" \
-              --head="$HEAD"
+          git fetch --tags origin
+
+          BASE="$(
+            git rev-list \
+              --tags \
+              --max-count=1 \
+              --first-parent \
+              2>/dev/null || true
           )"
 
-          DEPLOYABLE="$(
-            printf '%s\n' "$AFFECTED" \
-              | grep -E '^(cacic-eventos|events-backend|public)$' \
-              || true
-          )"
+          if [ -z "$BASE" ]; then
+            echo "No previous release tag found."
+            echo "Publishing all deployable apps."
+
+            DEPLOYABLE="$(printf '%s\n' \
+              cacic-eventos \
+              events-backend \
+              public
+            )"
+          else
+            echo "BASE=$BASE"
+            echo "HEAD=$HEAD"
+
+            git cat-file -e "${BASE}^{commit}"
+            git cat-file -e "${HEAD}^{commit}"
+
+            CHANGED_FILES="$(git diff --name-only "$BASE" "$HEAD")"
+            DEPLOYABLE_APPS_PATTERN='^(cacic-eventos|events-backend|public)$'
+            GLOBAL_CHANGE_PATTERN='(^package\.json$|^bun\.lock$|^nx\.json$|^tsconfig\.base\.json$|^\.npmrc$|^bunfig\.toml$|^\.github/workflows/.*\.ya?ml$|^Dockerfile$|^apps/[^/]+/Dockerfile$)'
+
+            if printf '%s\n' "$CHANGED_FILES" | grep -E "$GLOBAL_CHANGE_PATTERN"; then
+              DEPLOYABLE="$(printf '%s\n' \
+                cacic-eventos \
+                events-backend \
+                public
+              )"
+            else
+              AFFECTED="$(
+                bunx nx show projects \
+                  --affected \
+                  --type=app \
+                  --base="$BASE" \
+                  --head="$HEAD"
+              )"
+
+              DEPLOYABLE="$(
+                printf '%s\n' "$AFFECTED" \
+                  | grep -E "$DEPLOYABLE_APPS_PATTERN" \
+                  || true
+              )"
+            fi
+          fi
 
           if [ -z "$DEPLOYABLE" ]; then
+            echo "No deployable apps were affected."
             echo 'matrix={"app":[]}' >> "$GITHUB_OUTPUT"
             echo 'has_apps=false' >> "$GITHUB_OUTPUT"
             exit 0
@@ -87,12 +126,10 @@ jobs:
 
           MATRIX="$(
             printf '%s\n' "$DEPLOYABLE" \
+              | sed '/^[[:space:]]*$/d' \
               | jq -R . \
               | jq -cs '{app: .}'
           )"
-
-          echo "Affected deployable apps:"
-          echo "$DEPLOYABLE"
 
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "has_apps=true" >> "$GITHUB_OUTPUT"
