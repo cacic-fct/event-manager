@@ -36,6 +36,10 @@ export class ServiceWorker {
       return 'Service Worker não registrado';
     }
 
+    if (this.serviceWorkerService.state() === 'idle') {
+      return 'Service Worker normal';
+    }
+
     return this.serviceWorkerService.error() || this.serviceWorkerService.state();
   });
 

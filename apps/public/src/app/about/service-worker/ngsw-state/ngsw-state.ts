@@ -21,7 +21,7 @@ export class NgswState {
     this.refreshState$.pipe(
       startWith(undefined),
       switchMap(() =>
-        this.http.get('/ngsw/state', { responseType: 'text' }).pipe(
+        this.http.get('/app/ngsw/state', { responseType: 'text' }).pipe(
           catchError((error) => {
             console.error('Failed to fetch ngsw state:', error);
             return of('Erro ao carregar estado do Service Worker');
