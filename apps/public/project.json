@@ -22,7 +22,8 @@
             "glob": "**/*",
             "input": "apps/public/public"
           },
-          "apps/public/src/robots.txt"
+          "apps/public/src/robots.txt",
+          "apps/public/src/.well-known/security.txt"
         ],
         "styles": [
           "apps/public/src/styles.scss"

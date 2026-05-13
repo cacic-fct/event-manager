@@ -161,6 +161,17 @@ services:
       - 'traefik.http.middlewares.event-manager-public-slash.redirectregex.replacement=https://$${1}/app/'
       - 'traefik.http.middlewares.event-manager-public-slash.redirectregex.permanent=true'
 
+      # Redirect /robots.txt, /humans.txt and /.well-known/security.txt to /app/*.txt
+      - 'traefik.http.routers.event-manager-public-textfiles.entrypoints=web,websecure'
+      - 'traefik.http.routers.event-manager-public-textfiles.rule=Host(`eventos.cacic.dev.br`) && (Path(`/robots.txt`) || Path(`/humans.txt`) || Path(`/.well-known/security.txt`))'
+      - 'traefik.http.routers.event-manager-public-textfiles.tls=true'
+      - 'traefik.http.routers.event-manager-public-textfiles.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-public-textfiles.middlewares=event-manager-public-textfiles-redirect'
+      - 'traefik.http.middlewares.event-manager-public-textfiles-redirect.redirectregex.regex=^https?://([^/]+)(/.*)$$'
+      - 'traefik.http.middlewares.event-manager-public-textfiles-redirect.redirectregex.replacement=https://$${1}/app$${2}'
+      - 'traefik.http.middlewares.event-manager-public-textfiles-redirect.redirectregex.permanent=true'
+
+      # Redirect /validar/* to /app/validate/*
       - 'traefik.http.routers.event-manager-validar.entrypoints=web,websecure'
       - 'traefik.http.routers.event-manager-validar.rule=Host(`eventos.cacic.dev.br`) && PathPrefix(`/validar/`)'
       - 'traefik.http.routers.event-manager-validar.tls=true'
