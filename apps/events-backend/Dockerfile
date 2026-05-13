@@ -11,6 +11,7 @@ WORKDIR /workspace
 
 FROM base AS deps
 COPY package.json bun.lock ./
+COPY .npmrc ./
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKEN,required=true \
