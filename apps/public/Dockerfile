@@ -21,10 +21,17 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile
 
 FROM deps AS builder
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
 COPY apps/public ./apps/public
 COPY shared-angular ./shared-angular
 COPY shared-data-types ./shared-data-types
 COPY shared-utils ./shared-utils
+
+RUN find . -type f \
+    \( -name "*.ts" -o -name "*.js" -o -name "*.html" -o -name "*.json" \) \
+    -exec sed -i "s/APP_VERSION_PLACEHOLDER/${APP_VERSION}/g" {} +
 RUN bun x nx build public --configuration=production
 
 FROM base AS runtime-deps
