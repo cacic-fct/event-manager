@@ -29,6 +29,7 @@ RUN bun x nx build cacic-eventos --configuration=production
 FROM base AS runtime-deps
 ENV NODE_ENV=production
 COPY package.json bun.lock ./
+COPY .npmrc ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKEN,required=true \
     bun install --frozen-lockfile
