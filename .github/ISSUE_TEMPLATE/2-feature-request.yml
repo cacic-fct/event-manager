@@ -26,9 +26,9 @@ body:
     attributes:
       label: Checklist
       options:
-        - label: Eu escrevi a issue em português
-          required: true
         - label: Eu conferi se esta funcionalidade já foi solicitada antes
+          required: true
+        - label: Eu escrevi o título e as descrições da issue em português
           required: true
         - label: O título e a descrição são suficientemente descritivos
           required: true
