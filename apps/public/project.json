@@ -8,7 +8,9 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "baseHref": "/app/",
         "outputPath": "dist/apps/public",
@@ -19,9 +21,12 @@
           {
             "glob": "**/*",
             "input": "apps/public/public"
-          }
+          },
+          "apps/public/src/robots.txt"
         ],
-        "styles": ["apps/public/src/styles.scss"],
+        "styles": [
+          "apps/public/src/styles.scss"
+        ],
         "server": "apps/public/src/main.server.ts",
         "ssr": {
           "entry": "apps/public/src/server.ts"
