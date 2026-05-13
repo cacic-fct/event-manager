@@ -74,8 +74,12 @@ app.get('/app/sitemap.xml', (req, res) => {
 
   routes.forEach((route) => {
     const path = route.startsWith('/') ? route : `/${route}`;
+    // Skip dynamic routes with parameters
+    if (path.includes(':')) {
+      return;
+    }
     const url = root.ele('url');
-    url.ele('loc', `https://metro.yudi.com.br/app${path}`);
+    url.ele('loc', `https://eventos.cacic.dev.br/app${path}`);
   });
 
   res.type('application/xml; charset=utf-8');
