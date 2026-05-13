@@ -1,0 +1,21 @@
+changelog:
+  exclude:
+    authors:
+      - dependabot
+      - dependabot[bot]
+
+  categories:
+    - title: Feature
+      labels:
+        - feature
+        - missing feature
+
+    - title: Bugs
+      labels:
+        - bug
+        - bug/visual
+        - but/can't reproduce
+
+    - title: Other
+      labels:
+        - '*'
