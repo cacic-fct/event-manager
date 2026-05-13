@@ -46,6 +46,7 @@ FROM base AS production-deps
 ENV NODE_ENV=production
 
 COPY package.json bun.lock ./
+COPY .npmrc ./
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     --mount=type=secret,id=npm_token \
