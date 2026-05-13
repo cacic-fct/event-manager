@@ -73,6 +73,10 @@ export const appRoutes: Route[] = [
     loadChildren: () => import('./about/about.routes').then((m) => m.routes),
   },
   {
+    path: 'humans.txt',
+    redirectTo: 'about',
+  },
+  {
     path: 'validate',
     loadComponent: () => import('./certificate-validation/certificate-validation').then((m) => m.CertificateValidation),
   },
