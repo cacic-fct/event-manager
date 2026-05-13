@@ -210,6 +210,8 @@ jobs:
             APP_VERSION=${{ needs.prepare-release.outputs.version }}
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+          secrets: |
+            "npm_token=${{ secrets.GITHUB_TOKEN }}"
 
   publish:
     name: Publish app images
@@ -257,6 +259,8 @@ jobs:
           context: .
           file: apps/${{ matrix.app }}/Dockerfile
           push: true
+          secrets: |
+            "npm_token=${{ secrets.GITHUB_TOKEN }}"
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
