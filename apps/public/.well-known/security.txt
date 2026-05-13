@@ -1,0 +1,10 @@
+# Report on GitHub (preferred)
+Contact: https://github.com/cacic-fct/event-manager/security/advisories/new
+
+# Get in touch
+Contact: mailto:fctapp@cacic.dev.br
+
+# We speak English, Portuguese and Spanish
+Preferred-Languages: en, pt, es
+
+Expires: 2050-01-01T00:00:00z
