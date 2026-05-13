@@ -9,6 +9,7 @@ WORKDIR /workspace
 
 FROM base AS deps
 COPY package.json bun.lock nx.json tsconfig.base.json ./
+COPY .npmrc ./
 COPY eslint.config.mjs jest.config.ts jest.preset.js ./
 COPY apps/public/project.json apps/public/tsconfig*.json apps/public/ngsw-config.json ./apps/public/
 COPY shared-angular/project.json shared-angular/tsconfig*.json ./shared-angular/

@@ -8,6 +8,7 @@ WORKDIR /workspace
 
 FROM base AS deps
 COPY package.json bun.lock nx.json tsconfig.base.json ./
+COPY .npmrc ./
 COPY eslint.config.mjs jest.config.ts jest.preset.js ./
 COPY apps/cacic-eventos/project.json apps/cacic-eventos/tsconfig*.json ./apps/cacic-eventos/
 COPY shared-angular/project.json shared-angular/tsconfig*.json ./shared-angular/
