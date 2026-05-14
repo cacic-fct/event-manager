@@ -6,10 +6,17 @@
   display: block;
   min-height: 100vh;
 }
+// Dark
+@media (prefers-color-scheme: dark) {
+  .hero-section {
+    background: #0b003d !important; // Dark background for contrast
+    color: inherit;
+  }
+}
 
 .hero-section {
-  background: linear-gradient(180deg, rgb(97, 172, 192) 0%);
-  color: #ffffff; // Fixed white color for contrast against dark starry background
+  background: #fff7d3; // Dark background for contrast
+  color: inherit;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -19,22 +26,18 @@
 
   .hero-content {
     @include mixins.container;
+
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
+    grid-template-columns: 1.25fr 1.2fr;
+    gap: 2rem;
     align-items: center;
     position: relative;
     z-index: 2; // Above the fixed stars
 
-    // Glass morphism effect
-    backdrop-filter: blur(2px);
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 20px;
-    box-shadow:
-      0 20px 40px rgba(0, 0, 0, 0.3),
-      0 8px 16px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    @media (min-width: 1175px) {
+      grid-template-columns: 1.45fr 1fr;
+      gap: 3rem;
+    }
 
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
@@ -44,13 +47,18 @@
   }
 
   .hero-text {
+    @media (max-width: 768px) {
+      font-size: 2.5rem;
+      padding: 0 1rem;
+    }
+
     .hero-title {
       font-size: 3.5rem;
       font-weight: 700;
       margin-bottom: 1rem;
-
+      line-height: 1;
       @media (max-width: 768px) {
-        font-size: 2.5rem;
+        line-height: 3rem;
       }
 
       // .brand-highlight {
@@ -66,7 +74,11 @@
       font-size: 1.5rem;
       font-weight: 300;
       margin-bottom: 1.5rem;
-      opacity: 0.9;
+      line-height: 1;
+
+      b {
+        font-weight: 500;
+      }
 
       @media (max-width: 768px) {
         font-size: 1.2rem;
@@ -88,7 +100,10 @@
 
   .hero-actions {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    @media (max-width: 768px) {
+      flex-direction: column;
+    }
     gap: 1rem;
     align-items: center;
 
@@ -97,22 +112,17 @@
       padding: 1.2rem 2.5rem;
       font-size: 1.1rem;
       font-weight: 500;
+      text-wrap: nowrap;
 
-      // Enhanced glass morphism shadow
-      box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.3),
-        0 4px 16px rgba(0, 0, 0, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(0, 0, 0, 0.2);
 
       &:hover:not(:disabled) {
         transform: translateY(-3px) scale(1.02);
         background: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.3);
-
-        box-shadow:
-          0 16px 48px rgba(0, 0, 0, 0.4),
-          0 8px 24px rgba(0, 0, 0, 0.3),
-          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        border-color: black;
+        @media (prefers-color-scheme: dark) {
+          border-color: rgb(178, 178, 178);
+        }
 
         &::after {
           width: 300px;
@@ -178,6 +188,10 @@
     justify-content: center;
     align-items: center;
 
+    .doodles {
+      width: 100%;
+    }
+
     .hero-icon {
       height: 15rem;
 
@@ -185,5 +199,30 @@
         height: 10rem;
       }
     }
+  }
+
+  .hero-chevron {
+    position: absolute;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    z-index: 3;
+    animation: chevron-bounce 1.8s ease-in-out infinite;
+
+    &:hover {
+      animation-play-state: paused;
+      transform: translateX(-50%) translateY(-2px);
+    }
+  }
+}
+
+@keyframes chevron-bounce {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  50% {
+    transform: translateX(-50%) translateY(6px);
   }
 }

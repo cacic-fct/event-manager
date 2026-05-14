@@ -14,11 +14,11 @@
     grid-template-columns: 1fr 1fr;
     gap: 5rem;
     align-items: center;
+    text-align: justify;
 
     @media (max-width: 968px) {
       grid-template-columns: 1fr;
       gap: 3rem;
-      text-align: center;
     }
   }
 
@@ -39,7 +39,6 @@
       font-size: 1.25rem;
       line-height: 1.6;
       color: var(--light-text);
-      margin-bottom: 3rem;
       font-weight: 300;
     }
   }

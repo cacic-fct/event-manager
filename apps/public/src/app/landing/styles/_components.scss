@@ -1,8 +1,5 @@
-// Reusable component styles
-
 @use 'mixins';
 
-// Benefit item with icon
 @mixin benefit-item {
   display: flex;
   align-items: flex-start;
