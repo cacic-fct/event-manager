@@ -67,7 +67,11 @@
       {{ event.buttonText || 'Acompanhar evento' }}
     </a>
     } @if (event.allowSubscription) {
-    <button mat-flat-button type="button" [disabled]="!canSubscribe(data) || isSubscribing()" (click)="subscribe(data)">
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="!isOnline() || !canSubscribe(data) || isSubscribing()"
+      (click)="subscribe(data)">
       <mat-icon>{{ data.currentUserSubscription ? 'check' : 'event_available' }}</mat-icon>
       {{ data.currentUserSubscription ? 'Inscrito' : 'Inscrever-se' }}
     </button>
