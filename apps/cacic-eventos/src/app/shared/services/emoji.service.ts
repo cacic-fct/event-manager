@@ -17,7 +17,7 @@ export class EmojiService {
 
     return parse(value, {
       buildUrl: (codepoints, assetType) =>
-        `https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/${codepoints}.${assetType}`,
+        `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${codepoints}.${assetType}`,
     });
   }
 }
