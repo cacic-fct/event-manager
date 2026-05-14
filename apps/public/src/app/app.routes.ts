@@ -16,11 +16,13 @@ export const appRoutes: Route[] = [
         path: 'menu',
         loadComponent: () => import('./tabs/menu/menu.component').then((m) => m.MenuComponent),
         title: 'Menu',
+        data: { reuseTab: true },
       },
       {
         path: 'calendar',
         loadComponent: () => import('./tabs/calendar/calendar').then((m) => m.Calendar),
         title: 'Calendário',
+        data: { reuseTab: true },
       },
     ],
   },
