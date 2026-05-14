@@ -24,6 +24,7 @@ import { Observable, catchError, combineLatest, finalize, map, of, startWith, sw
 import { EventApiService, EventPageData } from './event-api.service';
 import { EventLocationMap } from './event-location-map';
 import { EmojiService } from '../profile/attendances/emoji.service';
+import { NetworkStatusService } from '../shared/network-status.service';
 
 type EventPageState =
   | { status: 'loading' }
@@ -57,12 +58,14 @@ export class Event {
   private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly networkStatus = inject(NetworkStatusService);
   private readonly platformId = inject(PLATFORM_ID);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.authService.isAuthenticated;
+  readonly isOnline = this.networkStatus.isOnline;
   readonly isSubscribing = signal(false);
   readonly isConfirmingAttendance = signal(false);
 
@@ -167,6 +170,7 @@ export class Event {
 
     return (
       Boolean(event.allowSubscription) &&
+      this.isOnline() &&
       !data.currentUserSubscription &&
       data.subscriptionSummary.hasAvailableSlots &&
       Date.parse(event.startDate) > now &&
@@ -198,6 +202,10 @@ export class Event {
 
     if (!data.event.allowSubscription) {
       return 'Inscrições indisponíveis.';
+    }
+
+    if (!this.isOnline()) {
+      return 'Inscrições indisponíveis offline.';
     }
 
     if (!data.subscriptionSummary.hasAvailableSlots) {

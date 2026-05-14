@@ -15,6 +15,7 @@ COPY apps/public/project.json apps/public/tsconfig*.json apps/public/ngsw-config
 COPY shared-angular/project.json shared-angular/tsconfig*.json ./shared-angular/
 COPY shared-data-types/project.json shared-data-types/tsconfig*.json ./shared-data-types/
 COPY shared-utils/project.json shared-utils/tsconfig*.json ./shared-utils/
+COPY offline-public-data-access/project.json offline-public-data-access/tsconfig*.json ./offline-public-data-access/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     --mount=type=secret,id=npm_token \
     export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
@@ -28,6 +29,7 @@ COPY apps/public ./apps/public
 COPY shared-angular ./shared-angular
 COPY shared-data-types ./shared-data-types
 COPY shared-utils ./shared-utils
+COPY offline-public-data-access ./offline-public-data-access
 
 RUN find . -type f \
     \( -name "*.ts" -o -name "*.js" -o -name "*.html" -o -name "*.json" \) \
@@ -39,7 +41,7 @@ ENV NODE_ENV=production
 COPY package.json bun.lock ./
 COPY .npmrc ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKEN,required=true \
+    --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKENVocê está of,required=true \
     bun install --frozen-lockfile
 
 FROM node:22-alpine AS runtime

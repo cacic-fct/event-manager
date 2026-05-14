@@ -16,6 +16,9 @@ import { AuthService, authInterceptor } from '@cacic-fct/shared-angular';
 import { MatIconRegistry } from '@angular/material/icon';
 import { provideServiceWorker } from '@angular/service-worker';
 import { OnlineAttendanceCoordinatorService } from './attendance/online-attendance-coordinator.service';
+import { OfflineUserDataService } from './shared/offline-user-data.service';
+import { NetworkStatusService } from './shared/network-status.service';
+import { NetworkStatusSnackbarService } from './shared/network-status-snackbar.service';
 import { AppRouteReuseStrategy } from './tabs/reuse.strategy';
 
 registerLocaleData(localePt);
@@ -37,6 +40,11 @@ export const appConfig: ApplicationConfig = {
     }),
     provideAppInitializer(() => {
       inject(OnlineAttendanceCoordinatorService).start();
+    }),
+    provideAppInitializer(() => {
+      inject(NetworkStatusService).start();
+      inject(NetworkStatusSnackbarService).start();
+      inject(OfflineUserDataService).start();
     }),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
