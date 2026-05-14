@@ -41,7 +41,7 @@ ENV NODE_ENV=production
 COPY package.json bun.lock ./
 COPY .npmrc ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKENVocê está of,required=true \
+    --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKEN,required=true \
     bun install --frozen-lockfile
 
 FROM node:22-alpine AS runtime
