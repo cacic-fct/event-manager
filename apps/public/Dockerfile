@@ -49,7 +49,7 @@ WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=runtime-deps --chown=app:app /workspace/node_modules ./node_modules
 COPY --from=builder --chown=app:app /workspace/dist/apps/public ./
-COPY --from=builder ./3rdpartylicenses.txt ./browser
+COPY --from=builder --chown=app:app /workspace/dist/apps/public/3rdpartylicenses.txt ./browser/3rdpartylicenses.txt
 
 USER app
 EXPOSE 4000
