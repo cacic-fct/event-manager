@@ -11,6 +11,8 @@ import { AccountMergeController } from './account-merge/account-merge.controller
 import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuthModule } from './auth/auth.module';
 import { KeycloakScopeGuard } from './auth/guards/keycloak-scope.guard';
+import { LgpdController } from './lgpd/lgpd.controller';
+import { LgpdService } from './lgpd/lgpd.service';
 import { GqlThrottlerGuard } from './common/gql-throttler.guard';
 import { CertificateConfigsService } from './certificate/certificate-configs.service';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
@@ -94,10 +96,11 @@ import { WeatherService } from './weather/weather.service';
       context: ({ req, res }) => ({ req, res }),
     }),
   ],
-  controllers: [AppController, AccountMergeController, PublicRealtimeEventsController],
+  controllers: [AppController, AccountMergeController, LgpdController, PublicRealtimeEventsController],
   providers: [
     AppService,
     AccountMergeService,
+    LgpdService,
     MajorEventsResolver,
     PublicMajorEventsResolver,
     EventGroupsResolver,
