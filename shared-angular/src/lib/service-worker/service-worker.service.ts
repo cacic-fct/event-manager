@@ -70,6 +70,8 @@ export class ServiceWorkerService {
 
     const registrations = await navigator.serviceWorker.getRegistrations();
 
+    console.info('Updating service worker registrations:', registrations);
+
     await Promise.all(registrations.map((registration) => registration.update()));
   }
 
@@ -81,6 +83,8 @@ export class ServiceWorkerService {
     const registrations = await navigator.serviceWorker.getRegistrations();
 
     await Promise.all(registrations.map((registration) => registration.unregister()));
+
+    this.reload();
   }
 
   private listenForServiceWorkerUpdates(): void {
@@ -170,6 +174,9 @@ export class ServiceWorkerService {
   }
 
   private reload(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
     this.document.location.reload();
   }
 
