@@ -24,10 +24,10 @@
     "clsx": "^2.1.1",
     "docusaurus-plugin-openapi-docs": "^5.0.2",
     "docusaurus-theme-openapi-docs": "^5.0.2",
-    "lucide-react": "^1.14.0",
+    "lucide-react": "^1.16.0",
     "prism-react-renderer": "^2.4.1",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.10.1",
