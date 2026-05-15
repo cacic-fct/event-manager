@@ -44,6 +44,8 @@ export const PAYMENT_INFO_SELECT = {
   account: true,
   holder: true,
   document: true,
+  pixKey: true,
+  pixCity: true,
   majorEventId: true,
 } satisfies Prisma.PaymentInfoSelect;
 
@@ -76,12 +78,25 @@ export const MAJOR_EVENT_BASE_SELECT = {
     },
     take: 1,
   },
+  majorEventPrices: {
+    select: {
+      id: true,
+      type: true,
+      tiers: {
+        select: {
+          id: true,
+          name: true,
+          value: true,
+        },
+      },
+    },
+  },
   deletedAt: true,
   createdAt: true,
   createdById: true,
   updatedAt: true,
   updatedById: true,
-} satisfies Prisma.MajorEventSelect;
+} as const satisfies Prisma.MajorEventSelect;
 
 export const MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT = {
   ...MAJOR_EVENT_BASE_SELECT,

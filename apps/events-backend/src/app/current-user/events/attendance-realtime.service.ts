@@ -3,7 +3,6 @@ import { SubscriptionStatus } from '@prisma/client';
 import type { Request } from 'express';
 import { Observable, Subject, interval, map, merge } from 'rxjs';
 import { AUTH_SESSION_COOKIE_NAME } from '../../auth/auth.constants';
-import { Public } from '../../auth/decorators/public.decorator';
 import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
@@ -14,11 +13,13 @@ import { PublicEventsResolver } from '../../public-events/events.resolver';
 
 const ONLINE_ATTENDANCE_CHANNEL = 'current-user.online-attendance';
 const MAJOR_EVENT_SUBSCRIPTION_CHANNEL = 'public.major-event-subscription';
+const EVENT_SUBSCRIPTION_CHANNEL = 'current-user.event-subscription';
 
 interface RealtimeClient {
   personId?: string;
   events: Subject<RealtimeServerMessage>;
   majorEventSubscriptionIds: Set<string>;
+  eventSubscriptionIds: Set<string>;
 }
 
 interface PendingOnlineAttendanceMessage {
@@ -40,13 +41,28 @@ interface MajorEventSubscriptionChangedMessage {
   };
 }
 
-type RealtimeServerMessage = PendingOnlineAttendanceMessage | MajorEventSubscriptionChangedMessage;
+interface EventSubscriptionChangedMessage {
+  type: 'event';
+  channel: typeof EVENT_SUBSCRIPTION_CHANNEL;
+  event: 'eventSubscriptionAvailabilityChanged';
+  eventId: string;
+  payload: {
+    eventId: string;
+    hasAvailableSlots: boolean;
+  };
+}
+
+type RealtimeServerMessage =
+  | PendingOnlineAttendanceMessage
+  | MajorEventSubscriptionChangedMessage
+  | EventSubscriptionChangedMessage;
 
 @Injectable()
 export class CurrentUserOnlineAttendanceRealtimeService {
   private readonly logger = new Logger(CurrentUserOnlineAttendanceRealtimeService.name);
   private readonly clients = new Set<RealtimeClient>();
   private readonly majorEventSubscriptionSnapshots = new Map<string, string>();
+  private readonly eventSubscriptionSnapshots = new Map<string, string>();
   private readonly heartbeat$ = interval(25_000).pipe(
     map(() => ({ data: { type: 'heartbeat', timestamp: Date.now() } })),
   );
@@ -60,13 +76,18 @@ export class CurrentUserOnlineAttendanceRealtimeService {
     private readonly publicEvents: PublicEventsResolver,
   ) {}
 
-  stream(request: Request, majorEventSubscriptionIds: string[]): Observable<MessageEvent> {
+  stream(
+    request: Request,
+    majorEventSubscriptionIds: string[],
+    eventSubscriptionIds: string[],
+  ): Observable<MessageEvent> {
     this.ensureMajorEventSubscriptionPolling();
 
     const events = new Subject<RealtimeServerMessage>();
     const client: RealtimeClient = {
       events,
       majorEventSubscriptionIds: new Set(majorEventSubscriptionIds),
+      eventSubscriptionIds: new Set(eventSubscriptionIds),
     };
     this.clients.add(client);
 
@@ -79,6 +100,9 @@ export class CurrentUserOnlineAttendanceRealtimeService {
 
     for (const majorEventId of client.majorEventSubscriptionIds) {
       void this.notifyMajorEvent(client, majorEventId);
+    }
+    for (const eventId of client.eventSubscriptionIds) {
+      void this.notifyEventSubscription(client, eventId);
     }
 
     return new Observable<MessageEvent>((subscriber) => {
@@ -205,8 +229,12 @@ export class CurrentUserOnlineAttendanceRealtimeService {
 
   private async notifySubscribedMajorEvents(): Promise<void> {
     const majorEventIds = new Set([...this.clients].flatMap((client) => [...client.majorEventSubscriptionIds]));
+    const eventIds = new Set([...this.clients].flatMap((client) => [...client.eventSubscriptionIds]));
 
-    await Promise.all([...majorEventIds].map((majorEventId) => this.notifyMajorEventSubscribers(majorEventId)));
+    await Promise.all([
+      ...[...majorEventIds].map((majorEventId) => this.notifyMajorEventSubscribers(majorEventId)),
+      ...[...eventIds].map((eventId) => this.notifyEventSubscriptionSubscribers(eventId)),
+    ]);
   }
 
   private async notifyMajorEventSubscribers(majorEventId: string) {
@@ -257,6 +285,55 @@ export class CurrentUserOnlineAttendanceRealtimeService {
     }
   }
 
+  private async notifyEventSubscriptionSubscribers(eventId: string): Promise<void> {
+    let payload: EventSubscriptionChangedMessage['payload'];
+    try {
+      payload = await this.getEventSubscriptionDeltaPayload(eventId);
+    } catch (error) {
+      this.logger.warn(error instanceof Error ? error.message : 'Could not publish event subscription update.');
+      return;
+    }
+
+    const message: EventSubscriptionChangedMessage = {
+      type: 'event',
+      channel: EVENT_SUBSCRIPTION_CHANNEL,
+      event: 'eventSubscriptionAvailabilityChanged',
+      eventId,
+      payload,
+    };
+    const serializedMessage = JSON.stringify(message);
+    const previousSnapshot = this.eventSubscriptionSnapshots.get(eventId);
+    if (previousSnapshot === serializedMessage) {
+      return;
+    }
+
+    this.eventSubscriptionSnapshots.set(eventId, serializedMessage);
+
+    for (const client of this.clients) {
+      if (client.eventSubscriptionIds.has(eventId)) {
+        client.events.next(message);
+      }
+    }
+  }
+
+  private async notifyEventSubscription(client: RealtimeClient, eventId: string): Promise<void> {
+    try {
+      const payload = await this.getEventSubscriptionDeltaPayload(eventId);
+      const message = {
+        type: 'event',
+        channel: EVENT_SUBSCRIPTION_CHANNEL,
+        event: 'eventSubscriptionAvailabilityChanged',
+        eventId,
+        payload,
+      } satisfies EventSubscriptionChangedMessage;
+      const serializedMessage = JSON.stringify(message);
+      this.eventSubscriptionSnapshots.set(eventId, serializedMessage);
+      client.events.next(message);
+    } catch (error) {
+      this.logger.warn(error instanceof Error ? error.message : 'Could not publish event subscription update.');
+    }
+  }
+
   private toMessageEvent(message: RealtimeServerMessage): MessageEvent {
     return {
       data: message,
@@ -270,6 +347,15 @@ export class CurrentUserOnlineAttendanceRealtimeService {
 
     return {
       subscriptionSummaries: page.subscriptionSummaries,
+    };
+  }
+
+  private async getEventSubscriptionDeltaPayload(eventId: string): Promise<EventSubscriptionChangedMessage['payload']> {
+    const summary = await this.publicEvents.publicEventSubscriptionSummary(eventId);
+
+    return {
+      eventId: summary.eventId,
+      hasAvailableSlots: summary.hasAvailableSlots,
     };
   }
 
@@ -302,17 +388,20 @@ export class CurrentUserOnlineAttendanceRealtimeService {
   }
 }
 
-@Controller('public/events')
-@Public()
-export class PublicRealtimeEventsController {
+@Controller('current-user/events/realtime')
+export class CurrentUserRealtimeEventsController {
   constructor(private readonly realtime: CurrentUserOnlineAttendanceRealtimeService) {}
 
   @Sse()
-  stream(@Req() request: Request, @Query('majorEventIds') majorEventIds?: string | string[]): Observable<MessageEvent> {
-    return this.realtime.stream(request, this.parseMajorEventIds(majorEventIds));
+  stream(
+    @Req() request: Request,
+    @Query('majorEventIds') majorEventIds?: string | string[],
+    @Query('eventIds') eventIds?: string | string[],
+  ): Observable<MessageEvent> {
+    return this.realtime.stream(request, this.parseIds(majorEventIds), this.parseIds(eventIds));
   }
 
-  private parseMajorEventIds(value?: string | string[]): string[] {
+  private parseIds(value?: string | string[]): string[] {
     const values = Array.isArray(value) ? value : [value ?? ''];
 
     return [

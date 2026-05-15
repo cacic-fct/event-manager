@@ -44,7 +44,9 @@ type ScannerState =
       <div class="scanner-controls">
         <div>
           <p class="scanner-title">{{ title() }}</p>
-          <p class="scanner-status" aria-live="polite">{{ statusText() }}</p>
+          <p class="scanner-status" aria-live="polite">
+            {{ statusText() }}
+          </p>
         </div>
 
         <button

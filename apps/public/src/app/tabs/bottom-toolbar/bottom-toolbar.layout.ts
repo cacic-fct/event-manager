@@ -54,6 +54,12 @@ export class ToolbarLayoutComponent {
       route: '/calendar',
     },
     {
+      label: 'Eventos',
+      shortLabel: 'Eventos',
+      icon: 'event',
+      route: '/major-event',
+    },
+    {
       label: 'Menu',
       shortLabel: 'Menu',
       icon: 'menu',

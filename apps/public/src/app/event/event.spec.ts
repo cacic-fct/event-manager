@@ -46,8 +46,6 @@ describe('Event', () => {
                 },
                 subscriptionSummary: {
                   eventId: 'event-1',
-                  slots: null,
-                  availableSlots: null,
                   hasAvailableSlots: true,
                 },
                 weather: null,

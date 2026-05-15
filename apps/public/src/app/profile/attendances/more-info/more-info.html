@@ -33,6 +33,17 @@
   </mat-chip-set>
 
   <div class="actions">
+    @if (detail.targetType === 'major-event') {
+    <a mat-flat-button [routerLink]="paymentRoute(detail)">
+      <mat-icon>payments</mat-icon>
+      Informações de pagamento
+    </a>
+    } @if (canUploadMajorEventReceipt(detail)) {
+    <a mat-stroked-button [routerLink]="paymentRoute(detail)">
+      <mat-icon>upload_file</mat-icon>
+      Enviar comprovante
+    </a>
+    }
     @if (detail.shouldIssueCertificate) {
     <button mat-flat-button type="button" (click)="openCertificates(detail)">
       <mat-icon>workspace_premium</mat-icon>

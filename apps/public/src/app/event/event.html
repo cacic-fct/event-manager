@@ -66,14 +66,28 @@
       <mat-icon>open_in_new</mat-icon>
       {{ event.buttonText || 'Acompanhar evento' }}
     </a>
-    } @if (event.allowSubscription) {
+    } @if (event.allowSubscription && !isAuthenticated() && !data.currentUserSubscription) {
+    <button mat-flat-button type="button" [disabled]="!isOnline()" (click)="login()">
+      <mat-icon>login</mat-icon>
+      Entrar para inscrever-se
+    </button>
+    } @else if (event.allowSubscription && data.currentUserSubscription) {
+    <button
+      mat-stroked-button
+      type="button"
+      [disabled]="!canUnsubscribe(data) || isUnsubscribing()"
+      (click)="unsubscribe(data)">
+      <mat-icon>event_busy</mat-icon>
+      Cancelar inscrição
+    </button>
+    } @else if (event.allowSubscription) {
     <button
       mat-flat-button
       type="button"
       [disabled]="!isOnline() || !canSubscribe(data) || isSubscribing()"
       (click)="subscribe(data)">
-      <mat-icon>{{ data.currentUserSubscription ? 'check' : 'event_available' }}</mat-icon>
-      {{ data.currentUserSubscription ? 'Inscrito' : 'Inscrever-se' }}
+      <mat-icon>event_available</mat-icon>
+      Inscrever-se
     </button>
     } @if (canConfirmAttendance(event)) {
     <button
@@ -89,9 +103,7 @@
 
   @if (event.allowSubscription) {
   <p class="status-line">
-    {{ subscriptionStatusLine(data) }} @if (slotsLine(data); as slots) {
-    <span>{{ slots }}</span>
-    }
+    {{ subscriptionStatusLine(data) }}
   </p>
   }
 

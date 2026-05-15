@@ -1,4 +1,13 @@
 <section class="workspace-tab">
+  @if (permissions.has('validate-receipt:read')) {
+  <div class="subscription-actions">
+    <a matButton="filled" routerLink="/subscriptions/validate-receipts">
+      <mat-icon>receipt_long</mat-icon>
+      Validar comprovantes ({{ pendingReceiptsCount() }})
+    </a>
+  </div>
+  }
+
   <mat-tab-group [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="onSelectedTabIndexChange($event)">
     <mat-tab label="Eventos">
       <app-workspace-event-subscriptions-subtab />

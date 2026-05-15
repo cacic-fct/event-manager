@@ -23,6 +23,10 @@
   position: relative;
   overflow: visible;
 
+  @media (max-width: 768px) {
+    align-items: flex-start;
+  }
+
   .hero-content {
     @include mixins.container;
 
@@ -183,6 +187,9 @@
 
     .doodles {
       width: 100%;
+      @media (max-width: 768px) {
+        margin-top: 2rem;
+      }
     }
 
     .hero-icon {

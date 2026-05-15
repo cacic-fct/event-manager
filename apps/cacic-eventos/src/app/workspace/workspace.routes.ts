@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Route } from '@angular/router';
-import { workspaceCanReadTabGuard } from './workspace.guard';
+import { canValidateReceiptsGuard, workspaceCanReadTabGuard } from './workspace.guard';
 import { workspaceNavItems } from './workspace-nav';
 
 const eventsData = getWorkspaceRouteData('events');
@@ -137,6 +137,21 @@ export const workspaceRoutes: Route[] = [
           (m) => m.WorkspaceSubscriptionsTabComponent,
         ),
       ),
+      {
+        path: `${subscriptionsData.path}/validate-receipts`,
+        data: subscriptionsData,
+        canMatch: [canValidateReceiptsGuard],
+        loadComponent: () =>
+          import('./tabs/subscriptions/receipt-validation/workspace-receipt-validation.component').then(
+            (m) => m.WorkspaceReceiptValidationComponent,
+          ),
+      },
+      {
+        path: `${subscriptionsData.path}/validate-receipts`,
+        data: subscriptionsData,
+        loadComponent: () =>
+          import('./workspace-permission-denied.component').then((m) => m.WorkspacePermissionDeniedComponent),
+      },
 
       ...guardedWorkspaceTabRoute(permissionsData.path, permissionsData, () =>
         import('./tabs/permissions/workspace-permissions-tab.component').then(

@@ -1,0 +1,241 @@
+<section class="section receipt-validation-page">
+  <header class="validation-header">
+    <div>
+      <h1>Validação de comprovantes</h1>
+      <p>{{ queue().pendingCount }} pendente{{ queue().pendingCount === 1 ? '' : 's' }}</p>
+    </div>
+
+    <div class="header-actions">
+      @if (lastAction(); as action) {
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="undoLastAction()">
+        <mat-icon>undo</mat-icon>
+        Desfazer
+      </button>
+      }
+      <a mat-button routerLink="/subscriptions">
+        <mat-icon>arrow_back</mat-icon>
+        Inscrições
+      </a>
+    </div>
+  </header>
+
+  @if (loading()) {
+  <section class="loading-state">
+    <mat-spinner diameter="32" />
+    <span>Carregando comprovantes...</span>
+  </section>
+  } @else if (error()) {
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>error</mat-icon>
+      <mat-card-title>Não foi possível atualizar a fila</mat-card-title>
+      <mat-card-subtitle>{{ error() }}</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+  } @else if (!currentItem()) {
+  <mat-card appearance="outlined" class="empty-state">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>task_alt</mat-icon>
+      <mat-card-title>Nenhum comprovante pendente</mat-card-title>
+      <mat-card-subtitle>A fila será atualizada automaticamente.</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+  } @else if (currentItem(); as item) {
+  <section class="receipt-stack">
+    <mat-card appearance="outlined" class="subscriber-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>person</mat-icon>
+        <mat-card-title>{{ item.personName }}</mat-card-title>
+        <mat-card-subtitle>
+          {{ item.majorEventName }} · atualização em {{ item.subscriptionUpdatedAt | date: 'dd/MM/yyyy HH:mm' }}
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="subscriber-grid">
+          <span>
+            <strong>Valor</strong>
+            {{ item.amountPaid !== null && item.amountPaid !== undefined ? (item.amountPaid / 100 | currency: 'BRL') :
+            'Não informado' }}
+          </span>
+          <span>
+            <strong>Lote</strong>
+            {{ item.paymentTier || 'Não informado' }}
+          </span>
+          <span>
+            <strong>Status</strong>
+            {{ item.subscriptionStatus }}
+          </span>
+        </div>
+
+        <div class="contact-actions">
+          @if (item.personEmail) {
+          <a mat-icon-button [href]="'mailto:' + item.personEmail" aria-label="Enviar e-mail" matTooltip="E-mail">
+            <mat-icon>mail</mat-icon>
+          </a>
+          } @if (item.personPhone) {
+          <a
+            mat-icon-button
+            [href]="'https://wa.me/' + formatPhoneWhatsApp(item.personPhone)"
+            aria-label="Abrir WhatsApp"
+            matTooltip="WhatsApp">
+            <mat-icon>chat</mat-icon>
+          </a>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <section class="stack-toolbar" aria-label="Navegação de comprovantes">
+      <button mat-icon-button type="button" [disabled]="selectedIndex() === 0" (click)="previousReceipt()">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span>{{ currentPosition() }} de {{ queue().items.length }}</span>
+      <button
+        mat-icon-button
+        type="button"
+        [disabled]="selectedIndex() + 1 >= queue().items.length"
+        (click)="nextReceipt()">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </section>
+
+    <section class="validation-layout">
+      <mat-card appearance="outlined" class="events-panel">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>event</mat-icon>
+          <mat-card-title>Eventos selecionados</mat-card-title>
+          <mat-card-subtitle>Conflitos em vermelho, sem vagas em amarelo.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (eventGroups().length === 0) {
+          <p class="muted">Nenhum evento selecionado.</p>
+          } @else {
+          @for (group of eventGroups(); track group.dayKey) {
+          <div class="day-group">
+            <div class="sticky-day">{{ group.dayLabel | date: 'EEEE, dd/MM' }}</div>
+            <mat-list>
+              @for (event of group.events; track event.id) {
+              <mat-list-item
+                class="event-row"
+                [class.conflict-event]="event.hasScheduleConflict"
+                [class.no-slots-event]="event.hasNoSlots && !event.hasScheduleConflict">
+                <span matListItemTitle>
+                  <span class="event-emoji">{{ event.emoji }}</span>
+                  {{ event.name }}
+                </span>
+                <span matListItemLine>
+                  {{ event.startDate | date: 'HH:mm' }} - {{ event.endDate | date: 'HH:mm' }}
+                  @if (event.locationDescription) { · {{ event.locationDescription }} }
+                </span>
+                <span matListItemLine>
+                  @if (event.slotsAvailable === null || event.slotsAvailable === undefined) { Vagas ilimitadas } @else
+                  { {{ event.slotsAvailable }} vaga{{ event.slotsAvailable === 1 ? '' : 's' }} disponível{{
+                  event.slotsAvailable === 1 ? '' : 'is' }} }
+                </span>
+              </mat-list-item>
+              }
+            </mat-list>
+          </div>
+          }
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="receipt-panel">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>receipt_long</mat-icon>
+          <mat-card-title>Comprovante</mat-card-title>
+          <mat-card-subtitle>
+            @if (item.receipt) { Enviado em {{ item.receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }} · {{
+            item.receipt.processingStatus }} } @else { Nenhum arquivo encontrado }
+          </mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          @if (item.receipt && !imageUnavailable()) {
+          <div class="receipt-image-shell">
+            <img [src]="item.receipt.imageUrl" alt="Comprovante enviado" (error)="onImageError()" />
+          </div>
+          } @else if (item.receipt?.ocrText) {
+          <pre class="ocr-fallback">{{ item.receipt?.ocrText }}</pre>
+          } @else {
+          <div class="missing-receipt">
+            <mat-icon>image_not_supported</mat-icon>
+            <span>Comprovante indisponível. A inscrição continua na fila para recusa manual.</span>
+          </div>
+          }
+
+          @if (hasOcrMatches(item) && item.receipt) {
+          <mat-divider />
+          <section class="ocr-matches">
+            <h3>Dados encontrados pelo OCR</h3>
+            <mat-chip-set>
+              @if (item.receipt.nameMatched) {
+              <mat-chip>Nome: {{ item.receipt.matchedNameText }}</mat-chip>
+              } @if (item.receipt.amountMatched) {
+              <mat-chip>Valor: {{ item.receipt.matchedAmountText }}</mat-chip>
+              }
+            </mat-chip-set>
+          </section>
+          }
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    @if (rejectPanelOpen()) {
+    <mat-card appearance="outlined" class="reject-panel">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>cancel</mat-icon>
+        <mat-card-title>Recusar comprovante</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="rejectionForm" class="reject-form">
+          <mat-radio-group formControlName="rejectionCode" aria-label="Motivo da recusa">
+            <mat-radio-button value="INVALID_RECEIPT">Erro no comprovante</mat-radio-button>
+            <mat-radio-button value="NO_SLOTS">Não há mais vagas</mat-radio-button>
+            <mat-radio-button value="SCHEDULE_CONFLICT">Choque de horário</mat-radio-button>
+            <mat-radio-button value="GENERIC">Outro motivo</mat-radio-button>
+          </mat-radio-group>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Motivo para o participante</mat-label>
+            <textarea matInput rows="3" formControlName="reason"></textarea>
+          </mat-form-field>
+        </form>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button type="button" (click)="closeRejectPanel()">Cancelar</button>
+        <button matButton="filled" type="button" [disabled]="rejectionForm.invalid || saving()" (click)="reject(item)">
+          <mat-icon>close</mat-icon>
+          Confirmar recusa
+        </button>
+      </mat-card-actions>
+    </mat-card>
+    }
+
+    <div class="validation-fab">
+      <button
+        mat-fab
+        color="warn"
+        type="button"
+        [disabled]="saving()"
+        aria-label="Recusar comprovante"
+        matTooltip="Recusar"
+        (click)="openRejectPanel()">
+        <mat-icon>close</mat-icon>
+      </button>
+      <button
+        mat-fab
+        color="primary"
+        type="button"
+        [disabled]="saving() || !item.receipt"
+        aria-label="Aprovar comprovante"
+        matTooltip="Aprovar"
+        (click)="approve(item)">
+        <mat-icon>check</mat-icon>
+      </button>
+    </div>
+  </section>
+  }
+</section>

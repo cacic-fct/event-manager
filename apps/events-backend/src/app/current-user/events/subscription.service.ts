@@ -134,6 +134,56 @@ export class CurrentUserEventSubscriptionService {
     return this.mapper.mapPublicEvent(event);
   }
 
+  async unsubscribeCurrentUserEvent(personId: string, eventId: string): Promise<PublicEvent> {
+    const event = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const targetEvent = await tx.event.findFirst({
+        where: {
+          id: eventId,
+          deletedAt: null,
+        },
+        select: EVENT_SELECT,
+      });
+
+      if (!targetEvent) {
+        throw new NotFoundException(`Event ${eventId} was not found.`);
+      }
+
+      const now = new Date();
+      if (targetEvent.startDate <= now) {
+        throw new BadRequestException(`Event ${eventId} has already started and cannot be unsubscribed.`);
+      }
+
+      const existingSubscription = await tx.eventSubscription.findFirst({
+        where: {
+          eventId: targetEvent.id,
+          personId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!existingSubscription) {
+        throw new BadRequestException(`Current user is not subscribed to event ${eventId}.`);
+      }
+
+      await tx.eventSubscription.update({
+        where: {
+          id: existingSubscription.id,
+        },
+        data: {
+          deletedAt: now,
+        },
+      });
+      await this.refreshEventSubscriptionCounters(tx, [targetEvent.id]);
+
+      return targetEvent;
+    });
+
+    return this.mapper.mapPublicEvent(event);
+  }
+
   async subscribeCurrentUserEventGroup(
     personId: string,
     eventGroupId: string,

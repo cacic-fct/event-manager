@@ -29,7 +29,20 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
     },
     take: 1,
   },
-} satisfies Prisma.MajorEventSelect;
+  majorEventPrices: {
+    select: {
+      id: true,
+      type: true,
+      tiers: {
+        select: {
+          id: true,
+          name: true,
+          value: true,
+        },
+      },
+    },
+  },
+} as const satisfies Prisma.MajorEventSelect;
 
 export const PUBLIC_EVENT_GROUP_SELECT = {
   id: true,
@@ -83,7 +96,26 @@ export type PublicMajorEventRecord = Prisma.MajorEventGetPayload<{
   select: typeof PUBLIC_MAJOR_EVENT_SELECT;
 }>;
 
+export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
+  select: {
+    id: true;
+    bankName: true;
+    agency: true;
+    account: true;
+    holder: true;
+    document: true;
+    pixKey: true;
+    pixCity: true;
+    majorEventId: true;
+  };
+}>;
+
 export function mapPublicMajorEvent(majorEvent: PublicMajorEventRecord): PublicMajorEvent {
+  const paymentInfo =
+    'paymentInfo' in majorEvent && majorEvent.paymentInfo
+      ? mapPublicPaymentInfo(majorEvent.paymentInfo as PublicPaymentInfoRecord)
+      : undefined;
+
   return {
     id: majorEvent.id,
     name: majorEvent.name,
@@ -102,7 +134,85 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventRecord): PublicM
     isPaymentRequired: majorEvent.isPaymentRequired,
     additionalPaymentInfo: majorEvent.additionalPaymentInfo ?? undefined,
     shouldIssueCertificate: majorEvent.certificateConfigs.length > 0,
+    paymentInfo,
+    majorEventPrices: majorEvent.majorEventPrices.map((price) => ({
+      id: price.id,
+      type: price.type,
+      tiers: price.tiers.map((tier) => ({
+        id: tier.id,
+        name: tier.name,
+        value: tier.value,
+      })),
+    })),
   };
+}
+
+export function mapPublicPaymentInfo(paymentInfo: PublicPaymentInfoRecord): PublicPaymentInfo {
+  return {
+    id: paymentInfo.id,
+    bankName: paymentInfo.bankName,
+    agency: paymentInfo.agency,
+    account: paymentInfo.account,
+    holder: paymentInfo.holder,
+    document: paymentInfo.document,
+    pixKey: paymentInfo.pixKey ?? undefined,
+    pixCity: paymentInfo.pixCity ?? undefined,
+    majorEventId: paymentInfo.majorEventId,
+  };
+}
+
+@ObjectType()
+export class PublicPaymentInfo {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  bankName!: string;
+
+  @Field(() => String)
+  agency!: string;
+
+  @Field(() => String)
+  account!: string;
+
+  @Field(() => String)
+  holder!: string;
+
+  @Field(() => String)
+  document!: string;
+
+  @Field(() => String, { nullable: true })
+  pixKey?: string | null;
+
+  @Field(() => String, { nullable: true })
+  pixCity?: string | null;
+
+  @Field(() => String)
+  majorEventId!: string;
+}
+
+@ObjectType()
+export class PublicMajorEventPriceTier {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => Int)
+  value!: number;
+}
+
+@ObjectType()
+export class PublicMajorEventPrice {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  type!: string;
+
+  @Field(() => [PublicMajorEventPriceTier])
+  tiers!: PublicMajorEventPriceTier[];
 }
 
 @ObjectType()
@@ -157,6 +267,12 @@ export class PublicMajorEvent {
 
   @Field(() => Boolean, { nullable: true })
   shouldIssueCertificate?: boolean | null;
+
+  @Field(() => PublicPaymentInfo, { nullable: true })
+  paymentInfo?: PublicPaymentInfo | null;
+
+  @Field(() => [PublicMajorEventPrice])
+  majorEventPrices!: PublicMajorEventPrice[];
 }
 
 @ObjectType()
@@ -242,10 +358,8 @@ export class PublicEvent {
   @Field(() => Int, { nullable: true })
   slots?: number | null;
 
-  @Field(() => Int, { nullable: true })
   slotsAvailable?: number | null;
 
-  @Field(() => Int)
   queueCount!: number;
 
   @Field(() => Boolean, { nullable: true })
@@ -284,17 +398,8 @@ export class PublicEventSubscriptionSummary {
   @Field(() => String)
   eventId!: string;
 
-  @Field(() => Int, { nullable: true })
-  slots?: number | null;
-
-  @Field(() => Int, { nullable: true })
-  availableSlots?: number | null;
-
   @Field(() => Boolean)
   hasAvailableSlots!: boolean;
-
-  @Field(() => Int)
-  queueCount!: number;
 }
 
 @ObjectType()

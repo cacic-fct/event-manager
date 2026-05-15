@@ -21,8 +21,8 @@ export interface S3Config {
 @Injectable()
 export class S3Service {
   private readonly logger = new Logger(S3Service.name);
-  private readonly s3Client: S3Client;
-  private readonly bucketName: string;
+  private readonly s3Client?: S3Client;
+  private readonly bucketName?: string;
 
   constructor(private readonly configService: ConfigService) {
     const endpoint = this.configService.get<string>('S3_ENDPOINT');
@@ -32,9 +32,10 @@ export class S3Service {
     const region = this.configService.get<string>('S3_REGION', 'us-east-1');
 
     if (!endpoint || !accessKeyId || !secretAccessKey || !bucketName) {
-      throw new Error(
+      this.logger.warn(
         'S3 configuration is incomplete. Please check S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, and S3_BUCKET_NAME environment variables.',
       );
+      return;
     }
 
     this.bucketName = bucketName;
@@ -61,26 +62,29 @@ export class S3Service {
     body: Buffer | Readable,
     contentType?: string,
     metadata?: Record<string, string>,
+    expiresAt?: Date,
   ): Promise<{ key: string; size: number }> {
     try {
+      const { s3Client, bucketName } = this.requireConfig();
       const upload = new Upload({
-        client: this.s3Client,
+        client: s3Client,
         params: {
-          Bucket: this.bucketName,
+          Bucket: bucketName,
           Key: key,
           Body: body,
           ContentType: contentType,
           ContentLength: body instanceof Buffer ? body.length : undefined,
           Metadata: metadata,
+          Expires: expiresAt,
         },
       });
 
       await upload.done();
 
       // Get file size
-      const headResult = await this.s3Client.send(
+      const headResult = await s3Client.send(
         new HeadObjectCommand({
-          Bucket: this.bucketName,
+          Bucket: bucketName,
           Key: key,
         }),
       );
@@ -106,12 +110,13 @@ export class S3Service {
     metadata?: Record<string, string>;
   }> {
     try {
+      const { s3Client, bucketName } = this.requireConfig();
       const command = new GetObjectCommand({
-        Bucket: this.bucketName,
+        Bucket: bucketName,
         Key: key,
       });
 
-      const response = await this.s3Client.send(command);
+      const response = await s3Client.send(command);
 
       if (!response.Body) {
         throw new Error('File not found or empty');
@@ -134,9 +139,10 @@ export class S3Service {
    */
   async deleteFile(key: string): Promise<void> {
     try {
-      await this.s3Client.send(
+      const { s3Client, bucketName } = this.requireConfig();
+      await s3Client.send(
         new DeleteObjectCommand({
-          Bucket: this.bucketName,
+          Bucket: bucketName,
           Key: key,
         }),
       );
@@ -153,9 +159,10 @@ export class S3Service {
    */
   async fileExists(key: string): Promise<boolean> {
     try {
-      await this.s3Client.send(
+      const { s3Client, bucketName } = this.requireConfig();
+      await s3Client.send(
         new HeadObjectCommand({
-          Bucket: this.bucketName,
+          Bucket: bucketName,
           Key: key,
         }),
       );
@@ -189,9 +196,10 @@ export class S3Service {
     metadata?: Record<string, string>;
   }> {
     try {
-      const response = await this.s3Client.send(
+      const { s3Client, bucketName } = this.requireConfig();
+      const response = await s3Client.send(
         new HeadObjectCommand({
-          Bucket: this.bucketName,
+          Bucket: bucketName,
           Key: key,
         }),
       );
@@ -219,12 +227,13 @@ export class S3Service {
     }>
   > {
     try {
+      const { s3Client, bucketName } = this.requireConfig();
       const command = new ListObjectsV2Command({
-        Bucket: this.bucketName,
+        Bucket: bucketName,
         Prefix: prefix,
       });
 
-      const response = await this.s3Client.send(command);
+      const response = await s3Client.send(command);
 
       return (response.Contents || []).map((obj) => ({
         key: obj.Key!,
@@ -250,5 +259,18 @@ export class S3Service {
     const ts = timestamp || new Date();
     const timestampStr = ts.toISOString().replace(/[:.]/g, '-');
     return `${category}/${userId}/${timestampStr}-${filename}`;
+  }
+
+  private requireConfig(): { s3Client: S3Client; bucketName: string } {
+    if (!this.s3Client || !this.bucketName) {
+      throw new Error(
+        'S3 configuration is incomplete. Please check S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, and S3_BUCKET_NAME environment variables.',
+      );
+    }
+
+    return {
+      s3Client: this.s3Client,
+      bucketName: this.bucketName,
+    };
   }
 }

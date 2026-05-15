@@ -30,7 +30,6 @@
     <div matListItemLine>{{ event.locationDescription }}</div>
     }
     <div matListItemLine>{{ slotsLine(event) }}</div>
-    <div matListItemLine>{{ queueLine(event) }}</div>
     @if (disabledReasons().get(event.id); as reason) {
     <div matListItemLine class="disabled-reason">{{ reason }}</div>
     }

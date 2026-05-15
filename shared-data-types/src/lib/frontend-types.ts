@@ -169,6 +169,30 @@ export interface Event {
   updatedById?: string | null;
 }
 
+export interface PublicPaymentInfo {
+  id: string;
+  bankName: string;
+  agency: string;
+  account: string;
+  holder: string;
+  document: string;
+  pixKey?: string | null;
+  pixCity?: string | null;
+  majorEventId: string;
+}
+
+export interface PublicMajorEventPriceTier {
+  id: string;
+  name: string;
+  value: number;
+}
+
+export interface PublicMajorEventPrice {
+  id: string;
+  type: 'SINGLE' | 'TIERED';
+  tiers: PublicMajorEventPriceTier[];
+}
+
 export interface PublicMajorEvent {
   id: string;
   name: string;
@@ -189,6 +213,8 @@ export interface PublicMajorEvent {
   shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
   additionalPaymentInfo?: string | null;
   shouldIssueCertificate?: boolean | null;
+  paymentInfo?: PublicPaymentInfo | null;
+  majorEventPrices?: PublicMajorEventPrice[];
 }
 
 export interface PublicEventGroup {

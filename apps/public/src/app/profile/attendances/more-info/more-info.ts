@@ -78,6 +78,14 @@ export class MoreInfo {
     return { returnUrl: this.router.url };
   }
 
+  paymentRoute(detail: DetailViewModel): string[] {
+    return ['/major-event', detail.targetId, 'payment'];
+  }
+
+  canUploadMajorEventReceipt(detail: DetailViewModel): boolean {
+    return detail.targetType === 'major-event' && detail.subscriptionStatus !== 'CONFIRMED';
+  }
+
   private loadDetailState(params: ParamMap): Observable<DetailState> {
     const eventType = parseEventTargetType(params.get('eventType'));
     const eventId = params.get('eventId')?.trim();
