@@ -25,6 +25,10 @@ jobs:
     name: Detect affected deployable apps
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      packages: read
+
     if: >
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
