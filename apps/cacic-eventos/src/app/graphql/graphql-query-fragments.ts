@@ -84,7 +84,18 @@ export const MAJOR_EVENT_FIELDS = `
     account
     holder
     document
+    pixKey
+    pixCity
     majorEventId
+  }
+  majorEventPrices {
+    id
+    type
+    tiers {
+      id
+      name
+      value
+    }
   }
   deletedAt
   createdAt

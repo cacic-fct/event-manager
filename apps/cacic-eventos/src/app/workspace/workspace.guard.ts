@@ -22,3 +22,15 @@ export const workspaceCanReadTabGuard: CanMatchFn = async (route: Route) => {
 
   return permissions.canReadTab(permissionTab);
 };
+
+export const canValidateReceiptsGuard: CanMatchFn = async () => {
+  const permissions = inject(WorkspacePermissionsService);
+  const platformId = inject(PLATFORM_ID);
+
+  if (!isPlatformBrowser(platformId)) {
+    return true;
+  }
+
+  await permissions.evaluateWorkspacePermissions();
+  return permissions.has('validate-receipt:read');
+};

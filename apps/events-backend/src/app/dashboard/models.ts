@@ -237,6 +237,9 @@ export class WorkspaceDashboardInsights {
   @Field(() => [DashboardCertificatePendingItem])
   pendingCertificates!: DashboardCertificatePendingItem[];
 
+  @Field(() => Int)
+  pendingReceiptValidationsCount!: number;
+
   @Field(() => [DashboardInconsistency])
   inconsistencies!: DashboardInconsistency[];
 

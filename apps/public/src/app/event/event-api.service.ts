@@ -16,10 +16,7 @@ export interface PublicEventWeather {
 
 export interface PublicEventSubscriptionSummary {
   eventId: string;
-  slots?: number | null;
-  availableSlots?: number | null;
   hasAvailableSlots: boolean;
-  queueCount: number;
 }
 
 export interface EventPageData {
@@ -84,9 +81,6 @@ const PUBLIC_EVENT_FIELDS = `
   allowSubscription
   subscriptionStartDate
   subscriptionEndDate
-  slots
-  slotsAvailable
-  queueCount
   autoSubscribe
   shouldIssueCertificate
   shouldCollectAttendance
@@ -124,10 +118,7 @@ export class EventApiService {
           }
           publicEventSubscriptionSummary(eventId: $eventId) {
             eventId
-            slots
-            availableSlots
             hasAvailableSlots
-            queueCount
           }
           publicEventWeather(eventId: $eventId) {
             eventId
@@ -182,6 +173,19 @@ export class EventApiService {
       `,
       { eventId },
     ).pipe(map((data) => data.subscribeCurrentUserStandaloneEvent));
+  }
+
+  unsubscribeFromEvent(eventId: string): Observable<PublicEvent> {
+    return this.query<{ unsubscribeCurrentUserStandaloneEvent: PublicEvent }>(
+      `
+        mutation UnsubscribeCurrentUserStandaloneEvent($eventId: String!) {
+          unsubscribeCurrentUserStandaloneEvent(eventId: $eventId) {
+            ${PUBLIC_EVENT_FIELDS}
+          }
+        }
+      `,
+      { eventId },
+    ).pipe(map((data) => data.unsubscribeCurrentUserStandaloneEvent));
   }
 
   confirmAttendance(eventId: string, code: string): Observable<CurrentUserEventAttendance> {

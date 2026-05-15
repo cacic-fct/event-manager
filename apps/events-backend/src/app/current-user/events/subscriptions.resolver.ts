@@ -119,6 +119,15 @@ export class CurrentUserEventSubscriptionsResolver {
     return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId);
   }
 
+  @Mutation(() => PublicEvent, { name: 'unsubscribeCurrentUserStandaloneEvent' })
+  async unsubscribeCurrentUserStandaloneEvent(
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<PublicEvent> {
+    const person = await this.currentUserContext.requireCurrentPerson(context);
+    return this.eventSubscriptions.unsubscribeCurrentUserEvent(person.id, eventId);
+  }
+
   @Query(() => [CurrentUserEventGroupSubscription], {
     name: 'currentUserEventGroupSubscriptions',
   })

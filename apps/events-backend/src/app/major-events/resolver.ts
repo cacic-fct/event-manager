@@ -1,5 +1,6 @@
 import {
   DeletionResult,
+  MajorEventPriceInput,
   MajorEvent,
   MajorEventCreateInput,
   MajorEventUpdateInput,
@@ -19,8 +20,25 @@ const PAYMENT_INFO_SELECT = {
   account: true,
   holder: true,
   document: true,
+  pixKey: true,
+  pixCity: true,
   majorEventId: true,
 } satisfies Prisma.PaymentInfoSelect;
+
+const MAJOR_EVENT_PRICE_SELECT = {
+  id: true,
+  type: true,
+  tiers: {
+    select: {
+      id: true,
+      name: true,
+      value: true,
+    },
+    orderBy: {
+      value: 'asc',
+    },
+  },
+} satisfies Prisma.MajorEventPriceSelect;
 
 const MAJOR_EVENT_SELECT = {
   id: true,
@@ -41,6 +59,9 @@ const MAJOR_EVENT_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
+  majorEventPrices: {
+    select: MAJOR_EVENT_PRICE_SELECT,
+  },
   deletedAt: true,
   createdAt: true,
   createdById: true,
@@ -294,6 +315,13 @@ export class MajorEventsResolver {
       }
     }
 
+    const price = this.buildPricePayload(input.price);
+    if (price) {
+      data.majorEventPrices = {
+        create: price,
+      };
+    }
+
     return data;
   }
 
@@ -376,6 +404,26 @@ export class MajorEventsResolver {
       }
     }
 
+    if (input.price !== undefined) {
+      if (input.price === null) {
+        data.majorEventPrices = {
+          deleteMany: {},
+        };
+      } else {
+        const price = this.buildPricePayload(input.price);
+        if (price) {
+          data.majorEventPrices = {
+            deleteMany: {},
+            create: price,
+          };
+        } else {
+          data.majorEventPrices = {
+            deleteMany: {},
+          };
+        }
+      }
+    }
+
     return data;
   }
 
@@ -415,19 +463,60 @@ export class MajorEventsResolver {
       account: paymentInfo.account.trim(),
       holder: paymentInfo.holder.trim(),
       document: paymentInfo.document.trim(),
+      pixKey: paymentInfo.pixKey?.trim() || null,
+      pixCity: paymentInfo.pixCity?.trim() || null,
     };
 
-    const values = Object.values(normalized);
-    const hasAnyValue = values.some((value) => value.length > 0);
-    if (!hasAnyValue) {
+    const bankValues = [normalized.bankName, normalized.agency, normalized.account, normalized.holder];
+    const hasAnyBankValue = bankValues.some((value) => value.length > 0);
+    const hasAllBankValues = bankValues.every((value) => value.length > 0);
+    const hasDocument = normalized.document.length > 0;
+    const hasPixValue = Boolean(normalized.pixKey);
+
+    if (!hasAnyBankValue && !hasDocument && !hasPixValue) {
       return undefined;
     }
 
-    const hasAllValues = values.every((value) => value.length > 0);
-    if (!hasAllValues) {
-      throw new BadRequestException('Payment info requires bankName, agency, account, holder, and document.');
+    if (hasAnyBankValue && !hasAllBankValues) {
+      throw new BadRequestException('Bank payment info requires bankName, agency, account, and holder.');
+    }
+
+    if (hasAllBankValues && !hasDocument) {
+      throw new BadRequestException('Bank payment info requires document.');
     }
 
     return normalized;
+  }
+
+  private buildPricePayload(input: MajorEventPriceInput | null | undefined): Prisma.MajorEventPriceCreateWithoutMajorEventInput | undefined {
+    if (!input) {
+      return undefined;
+    }
+
+    const tiers = input.tiers
+      .map((tier) => ({
+        name: tier.name.trim(),
+        value: Math.round(tier.value),
+      }))
+      .filter((tier) => tier.name.length > 0);
+
+    if (tiers.length === 0) {
+      return undefined;
+    }
+
+    if (tiers.some((tier) => !Number.isFinite(tier.value) || tier.value < 0)) {
+      throw new BadRequestException('Price tier values must be valid non-negative amounts in cents.');
+    }
+
+    if (input.type === 'SINGLE' && tiers.length !== 1) {
+      throw new BadRequestException('Single price requires exactly one tier.');
+    }
+
+    return {
+      type: input.type,
+      tiers: {
+        create: tiers,
+      },
+    };
   }
 }

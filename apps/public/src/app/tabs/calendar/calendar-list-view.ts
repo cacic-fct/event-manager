@@ -72,7 +72,7 @@ export class CalendarListView {
   }
 
   private formatMonth(date: string): string {
-    const formatted = formatDate(date, "MMMM 'de' yyyy", 'pt-BR');
+    const formatted = formatDate(date, 'MMMM', 'pt-BR');
     return this.capitalize(formatted);
   }
 

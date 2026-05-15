@@ -1,11 +1,11 @@
 <div class="global-container">
   <section>
     <div>
-      @if (authService.isAuthenticated()) {
+      @if (displayUser(); as user) {
         <mat-list>
           <mat-list-item>
             <img
-              [src]="authService.user()?.claims?.['picture'] || 'https://placehold.co/40x40'"
+              [src]="user.picture || 'https://placehold.co/40x40'"
               matListItemIcon
               alt="Avatar"
               width="32"
@@ -13,10 +13,12 @@
               style="border-radius: 50%"
               referrerpolicy="no-referrer"
               class="avatar-placeholder" />
-            <span matListItemTitle>{{ authService.user()?.claims?.['name'] || 'Desconhecido' }}</span>
+            <span matListItemTitle>{{ user.name }}</span>
+            @if (authService.isAuthenticated()) {
             <button matIconButton aria-label="Sair da conta" (click)="authService.logout()" matListItemMeta>
               <mat-icon>logout</mat-icon>
             </button>
+            }
           </mat-list-item>
         </mat-list>
       } @else {
@@ -40,7 +42,7 @@
   </section>
 
   <section>
-    @if (authService.isAuthenticated()) {
+    @if (isProfileAvailable()) {
       <mat-nav-list>
         <h3 matSubheader>Perfil</h3>
 

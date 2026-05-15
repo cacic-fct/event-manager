@@ -1,4 +1,5 @@
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AccountMergeService } from '../account-merge/account-merge.service';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUserContextService } from './context.service';
@@ -24,6 +25,9 @@ describe('CurrentUserContextService', () => {
   let certificateIssuingService: {
     refreshIssuedCertificatesForPerson: jest.Mock;
   };
+  let accountMergeService: {
+    resolveFinalUserId: jest.Mock;
+  };
   let service: CurrentUserContextService;
 
   beforeEach(() => {
@@ -44,10 +48,14 @@ describe('CurrentUserContextService', () => {
     certificateIssuingService = {
       refreshIssuedCertificatesForPerson: jest.fn().mockResolvedValue([]),
     };
+    accountMergeService = {
+      resolveFinalUserId: jest.fn().mockResolvedValue(null),
+    };
 
     service = new CurrentUserContextService(
       prisma as unknown as PrismaService,
       certificateIssuingService as unknown as CertificateIssuingService,
+      accountMergeService as unknown as AccountMergeService,
     );
   });
 

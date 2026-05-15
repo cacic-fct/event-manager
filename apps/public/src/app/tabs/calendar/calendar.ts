@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import type { PublicEvent } from '@cacic-fct/shared-utils';
 import { getEventTypeLabel } from '@cacic-fct/shared-utils';
+import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
 import { addDays, isAfter, isBefore, startOfDay, startOfWeek, subDays, subMonths } from 'date-fns';
 import {
   Observable,
@@ -18,11 +19,14 @@ import {
   combineLatest,
   debounceTime,
   distinctUntilChanged,
+  filter,
+  from,
   map,
   of,
   startWith,
   switchMap,
 } from 'rxjs';
+import { NetworkStatusService } from '../../shared/network-status.service';
 import { CalendarApiService, CalendarEventTypeFilter } from './calendar-api.service';
 import { CalendarListView } from './calendar-list-view';
 import { CalendarWeekDay, CalendarWeekView } from './calendar-week-view';
@@ -60,8 +64,12 @@ interface CalendarFilterValue {
 })
 export class Calendar {
   private readonly api = inject(CalendarApiService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly networkStatus = inject(NetworkStatusService);
+  private readonly offlineData = inject(OfflinePublicDataAccessService);
   private readonly todayDate = startOfDay(new Date());
   private readonly minimumDate = startOfDay(subMonths(this.todayDate, 1));
+  private readonly refreshCooldownMs = 5 * 60 * 1000;
 
   readonly queryControl = new FormControl('', { nonNullable: true });
   readonly eventTypeControl = new FormControl<CalendarEventTypeFilter>('ALL', {
@@ -72,6 +80,7 @@ export class Calendar {
   readonly listStartDate = signal(this.todayDate);
   readonly weekBaseDate = signal(startOfWeek(this.todayDate, { weekStartsOn: 0 }));
   readonly selectedDate = signal(this.todayDate);
+  private readonly reconnectRefreshCounter = signal(0);
 
   readonly eventTypeOptions: Array<{
     value: CalendarEventTypeFilter;
@@ -102,6 +111,18 @@ export class Calendar {
   readonly calendarState = toSignal(this.createCalendarState(), {
     initialValue: { status: 'loading' } satisfies CalendarState,
   });
+
+  constructor() {
+    this.networkStatus
+      .watchStatusChanges()
+      .pipe(
+        filter((status) => status === 'online'),
+        switchMap(() => from(this.shouldRefreshAfterReconnect())),
+        filter((shouldRefresh) => shouldRefresh),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.reconnectRefreshCounter.update((value) => value + 1));
+  }
 
   setViewMode(mode: string): void {
     if (mode === 'list' || mode === 'week') {
@@ -146,32 +167,62 @@ export class Calendar {
   }
 
   private createCalendarState(): Observable<CalendarState> {
-    return combineLatest([this.filterChanges(), toObservable(this.listStartDate)]).pipe(
+    return combineLatest([this.filterChanges(), toObservable(this.listStartDate), toObservable(this.reconnectRefreshCounter)]).pipe(
       switchMap(([filters, startDate]) =>
-        this.api
-          .getCalendarEvents({
-            query: filters.query.trim(),
-            eventType: filters.eventType,
-            startDateFrom: startDate.toISOString(),
-          })
-          .pipe(
-            map(
-              (events) =>
-                ({
-                  status: 'ready',
-                  events,
-                }) satisfies CalendarState,
-            ),
-            startWith({ status: 'loading' } satisfies CalendarState),
-            catchError((error: unknown) =>
-              of({
-                status: 'error',
-                message: error instanceof Error ? error.message : 'Não foi possível carregar o calendário.',
-              } satisfies CalendarState),
-            ),
+        this.loadEvents(filters, startDate).pipe(
+          map(
+            (events) =>
+              ({
+                status: 'ready',
+                events,
+              }) satisfies CalendarState,
           ),
+          startWith({ status: 'loading' } satisfies CalendarState),
+          catchError((error: unknown) =>
+            of({
+              status: 'error',
+              message: error instanceof Error ? error.message : 'Não foi possível carregar o calendário.',
+            } satisfies CalendarState),
+          ),
+        ),
       ),
     );
+  }
+
+  private loadEvents(filters: CalendarFilterValue, startDate: Date): Observable<PublicEvent[]> {
+    const query = filters.query.trim();
+    const startDateFrom = startDate.toISOString();
+
+    if (!this.networkStatus.isOnline()) {
+      return from(this.getCachedCalendarEvents(filters, startDateFrom));
+    }
+
+    return this.api
+      .getCalendarEvents({
+        query,
+        eventType: filters.eventType,
+        startDateFrom,
+      })
+      .pipe(
+        switchMap((events) => from(this.offlineData.upsertCalendarEvents(events)).pipe(map(() => events))),
+        catchError(() => from(this.getCachedCalendarEvents(filters, startDateFrom))),
+      );
+  }
+
+  private async getCachedCalendarEvents(filters: CalendarFilterValue, startDateFrom: string): Promise<PublicEvent[]> {
+    const events = await this.offlineData.getCalendarEvents(startDateFrom);
+    const query = filters.query.trim().toLocaleLowerCase('pt-BR');
+
+    return events.filter((event) => {
+      const matchesType = filters.eventType === 'ALL' || event.type === filters.eventType;
+      const matchesQuery =
+        !query ||
+        event.name.toLocaleLowerCase('pt-BR').includes(query) ||
+        (event.shortDescription ?? '').toLocaleLowerCase('pt-BR').includes(query) ||
+        (event.majorEvent?.name ?? '').toLocaleLowerCase('pt-BR').includes(query);
+
+      return matchesType && matchesQuery;
+    });
   }
 
   private filterChanges(): Observable<CalendarFilterValue> {
@@ -189,5 +240,11 @@ export class Calendar {
     if (isBefore(date, this.listStartDate())) {
       this.listStartDate.set(isBefore(date, this.minimumDate) ? this.minimumDate : startOfDay(date));
     }
+  }
+
+  private async shouldRefreshAfterReconnect(): Promise<boolean> {
+    const lastRefresh = await this.offlineData.getLastRefresh('calendarEvents');
+
+    return lastRefresh === null || Date.now() - lastRefresh >= this.refreshCooldownMs;
   }
 }

@@ -66,6 +66,7 @@ export function buildEventDetail(details: EventDetails): DetailViewModel | null 
 
   return {
     targetType: 'event',
+    targetId: event.id,
     typeLabel: getEventTypeLabel(event.type),
     title: event.name,
     emoji: event.emoji,
@@ -103,6 +104,7 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
 
   return {
     targetType: 'event-group',
+    targetId: eventGroup.id,
     typeLabel: 'Grupo de eventos',
     title: eventGroup.name,
     emoji: eventGroup.emoji,
@@ -141,12 +143,14 @@ export function buildMajorEventDetail(details: MajorEventDetails): DetailViewMod
 
   return {
     targetType: 'major-event',
+    targetId: majorEvent.id,
     typeLabel: 'Grande evento',
     title: majorEvent.name,
     emoji: majorEvent.emoji,
     dateLine: formatDateRange(majorEvent.startDate, majorEvent.endDate),
     description: majorEvent.description,
     statusLabel: subscription ? getSubscriptionStatusLabel(subscription.subscriptionStatus) : 'Certificado emitido',
+    subscriptionStatus: subscription?.subscriptionStatus,
     infoRows: majorEventInfoRows(majorEvent, subscription),
     events: eventItems,
     notSubscribedEvents: notSubscribedEventItems,

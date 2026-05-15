@@ -1,25 +1,31 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
+type RequestLike = Record<string, any>;
+
 type GraphqlContext = {
-  req?: Record<string, unknown>;
-  res?: Record<string, unknown>;
-  request?: Record<string, unknown>;
-  reply?: Record<string, unknown>;
+  req?: RequestLike;
+  res?: RequestLike;
+  request?: RequestLike;
+  reply?: RequestLike;
 };
 
 @Injectable()
 export class GqlThrottlerGuard extends ThrottlerGuard {
   protected override getRequestResponse(context: ExecutionContext): {
-    req: Record<string, unknown>;
-    res: Record<string, unknown>;
+    req: RequestLike;
+    res: RequestLike;
   } {
-    const gqlContext = GqlExecutionContext.create(context).getContext<GraphqlContext>();
+    if (context.getType<'http' | 'graphql'>() === 'graphql') {
+      const gqlContext = GqlExecutionContext.create(context).getContext<GraphqlContext>();
 
-    return {
-      req: gqlContext.req ?? gqlContext.request ?? {},
-      res: gqlContext.res ?? gqlContext.reply ?? {},
-    };
+      return {
+        req: gqlContext.req ?? gqlContext.request ?? {},
+        res: gqlContext.res ?? gqlContext.reply ?? gqlContext.req?.res ?? gqlContext.request?.res ?? {},
+      };
+    }
+
+    return super.getRequestResponse(context);
   }
 }

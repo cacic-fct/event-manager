@@ -1,4 +1,4 @@
-import { Component, HostListener, PLATFORM_ID, Signal, computed, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, Signal, computed, effect, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -12,9 +12,12 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { toSVG } from '@bwip-js/browser';
 
 import { AuthService, SafePipe, ServiceWorkerService } from '@cacic-fct/shared-angular';
+import { OfflineUserSnapshot } from '@cacic-fct/offline-public-data-access';
 import { formatCPF, isValidCPF } from '@cacic-fct/shared-utils';
 
 import { PrintDialog } from './print-dialog';
+import { NetworkStatusService } from '../../shared/network-status.service';
+import { OfflineUserDataService } from '../../shared/offline-user-data.service';
 
 @Component({
   selector: 'app-wallet',
@@ -26,33 +29,72 @@ export class Wallet {
   public readonly authService = inject(AuthService);
   public readonly serviceWorkerService = inject(ServiceWorkerService);
 
+  private readonly networkStatus = inject(NetworkStatusService);
+  private readonly offlineUserData = inject(OfflineUserDataService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly offlineSnapshot = signal<OfflineUserSnapshot | null>(null);
 
   private get isBrowser(): boolean {
     return isPlatformBrowser(this.platformId);
   }
 
   public readonly profileBarcode: Signal<string> = computed(() => {
-    const user = this.authService.user();
+    const user = this.cardUser();
 
-    if (!user?.sub || !this.isBrowser) {
+    if (!user?.userId || !this.isBrowser) {
       return '';
     }
 
-    return this.renderAztecCode(user.sub, '35');
+    return this.renderAztecCode(user.userId, '35');
   });
 
   public readonly printProfileBarcode: Signal<string> = computed(() => {
-    const user = this.authService.user();
+    const user = this.cardUser();
 
-    if (!user?.sub || !this.isBrowser) {
+    if (!user?.userId || !this.isBrowser) {
       return '';
     }
 
-    return this.renderAztecCode(user.sub, '60');
+    return this.renderAztecCode(user.userId, '60');
   });
+
+  public readonly cardUser = computed(() => {
+    const user = this.authService.user();
+    if (user?.sub) {
+      return {
+        userId: user.sub,
+        name: typeof user.claims?.name === 'string' ? user.claims.name : null,
+        picture: typeof user.claims?.['picture'] === 'string' ? user.claims['picture'] : null,
+        unespRole: user.claims?.['unesp_role'] ?? null,
+        identityDocument: typeof user.claims?.identity_document === 'string' ? user.claims.identity_document : null,
+      };
+    }
+
+    const snapshot = this.offlineSnapshot();
+
+    return snapshot
+      ? {
+          userId: snapshot.userId,
+          name: snapshot.name,
+          picture: snapshot.picture,
+          unespRole: snapshot.unespRole,
+          identityDocument: snapshot.identityDocument,
+        }
+      : null;
+  });
+
+  constructor() {
+    effect(() => {
+      if (this.authService.isAuthenticated() || this.networkStatus.isOnline()) {
+        this.offlineSnapshot.set(null);
+        return;
+      }
+
+      void this.offlineUserData.getOfflineSnapshot().then((snapshot) => this.offlineSnapshot.set(snapshot));
+    });
+  }
 
   private renderAztecCode(userSub: string, errorCorrectionLevel: string): string {
     if (!this.isBrowser) {
@@ -84,6 +126,14 @@ export class Wallet {
     }
 
     return document;
+  }
+
+  public roleLine(role: string | string[] | null | undefined): string {
+    if (Array.isArray(role)) {
+      return role.join(', ');
+    }
+
+    return role ?? '';
   }
 
   public print(): void {

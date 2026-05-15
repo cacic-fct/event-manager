@@ -96,6 +96,17 @@ const PUBLIC_MAJOR_EVENT_FIELDS = `
   isPaymentRequired
   additionalPaymentInfo
   shouldIssueCertificate
+  paymentInfo {
+    id
+    bankName
+    agency
+    account
+    holder
+    document
+    pixKey
+    pixCity
+    majorEventId
+  }
 `;
 
 const PUBLIC_EVENT_GROUP_FIELDS = `

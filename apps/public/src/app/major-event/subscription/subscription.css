@@ -68,6 +68,37 @@ mat-chip-set {
   white-space: pre-line;
 }
 
+.price-section {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  margin-top: 20px;
+  padding-top: 20px;
+}
+
+.price-section h2 {
+  font: var(--mat-sys-title-medium);
+  margin: 0 0 12px;
+}
+
+.price-section p {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}
+
+.price-options {
+  display: grid;
+  gap: 8px;
+}
+
+.price-options mat-radio-button {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.price-options span {
+  margin-right: 12px;
+}
+
 .subscribe-fab {
   bottom: 24px;
   position: fixed;

@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthenticatedUser, AuthRefreshResult } from './auth.types';
 import type { LoginOptions } from './auth.types';
@@ -31,7 +31,7 @@ export class AuthService {
     try {
       await this.refreshMe();
 
-      if (!this.isAuthenticated()) {
+      if (!this.isAuthenticated() && !isDevMode()) {
         this.loginWithExistingSsoSession();
       }
     } catch (error) {

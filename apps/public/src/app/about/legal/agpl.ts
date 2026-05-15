@@ -3,9 +3,18 @@ import { Component } from '@angular/core';
 @Component({
   selector: 'app-agpl',
   imports: [],
+  styles: `
+    .text-center {
+      text-align: center;
+    }
+    p {
+      text-align: justify;
+    }
+  `,
+
   template: `
-    <h3 style="text-align: center;">GNU AFFERO GENERAL PUBLIC LICENSE</h3>
-    <p style="text-align: center;">Version 3, 19 November 2007</p>
+    <h3 class="text-center">GNU AFFERO GENERAL PUBLIC LICENSE</h3>
+    <p class="text-center">Version 3, 19 November 2007</p>
 
     <p>
       Copyright © 2007 Free Software Foundation, Inc. &lt;<a href="https://fsf.org/">https://fsf.org/</a>&gt;

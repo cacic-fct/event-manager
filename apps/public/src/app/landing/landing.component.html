@@ -1,31 +1,45 @@
 <main>
   <section class="hero-section">
-    <!-- Individual twinkling stars -->
-    <div class="star-container">
-      <!-- @for (star of stars(); track $index) {
-      <app-star [star]="star" />
-    } -->
-    </div>
-
     <div class="hero-content">
       <div class="hero-visual">
-        <lib-cacic-logo class="hero-icon" fillColor="#fff" />
+        <app-doodles class="doodles" />
       </div>
       <div class="hero-text">
         <h1 class="hero-title">
-          <span class="brand-highlight">Eventos</span>
+          <span class="brand-highlight">CACiC Eventos</span>
         </h1>
-        <h2 class="hero-subtitle"><b>Faça login com o e-mail institucional</b> se você possui vínculo com a Unesp.</h2>
+        <h2 class="hero-subtitle">
+          <b>Faça login com o e&#8209;mail&nbsp;institucional</b>
+          se você possui vínculo com a Unesp.
+        </h2>
 
         <div class="hero-actions">
-          <a mat-raised-button color="primary" class="login-button" routerLink="/menu">
-            <mat-icon>start</mat-icon>
-            Acessar o app
+          <button mat-raised-button color="primary" class="login-button" (click)="login()">
+            <mat-icon>login</mat-icon>
+            Entrar com o Google
+          </button>
+          <a mat-raised-button color="secondary" class="login-button" routerLink="/calendar">
+            <mat-icon>calendar_month</mat-icon>
+            Explorar
           </a>
         </div>
       </div>
     </div>
+
+    <button matIconButton class="hero-chevron" aria-label="Ir para a próxima seção" (click)="scrollToNextSection()">
+      <mat-icon>keyboard_arrow_down</mat-icon>
+    </button>
   </section>
 
-  <app-value-proposition />
+  <section #nextSection>
+    <app-value-proposition />
+  </section>
+
+  <section>
+    <app-developer />
+  </section>
 </main>
+
+<footer>
+  <a href="https://cacic.dev.br/legal/privacy-policy">Política de Privacidade</a>
+</footer>

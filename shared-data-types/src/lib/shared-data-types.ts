@@ -32,6 +32,15 @@ registerEnumType(ContactType, {
   name: 'ContactType',
 });
 
+export const PriceType = {
+  SINGLE: 'SINGLE',
+  TIERED: 'TIERED',
+} as const;
+export type PriceType = (typeof PriceType)[keyof typeof PriceType];
+registerEnumType(PriceType, {
+  name: 'PriceType',
+});
+
 export const AttendanceCreationMethod = {
   CSV_IMPORT: 'CSV_IMPORT',
   MANUAL_INPUT: 'MANUAL_INPUT',
@@ -210,8 +219,38 @@ export class PaymentInfo {
   @Field(() => String)
   document!: string;
 
+  @Field(() => String, { nullable: true })
+  pixKey?: string;
+
+  @Field(() => String, { nullable: true })
+  pixCity?: string;
+
   @Field(() => String)
   majorEventId!: string;
+}
+
+@ObjectType()
+export class MajorEventPriceTier {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => Int)
+  value!: number;
+}
+
+@ObjectType()
+export class MajorEventPrice {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => PriceType)
+  type!: PriceType;
+
+  @Field(() => [MajorEventPriceTier])
+  tiers!: MajorEventPriceTier[];
 }
 
 @ObjectType()
@@ -272,6 +311,9 @@ export class MajorEvent {
 
   @Field(() => PaymentInfo, { nullable: true })
   paymentInfo?: PaymentInfo;
+
+  @Field(() => [MajorEventPrice], { nullable: true })
+  majorEventPrices?: MajorEventPrice[];
 
   @Field(() => Date, { nullable: true })
   deletedAt?: Date;
@@ -1049,6 +1091,33 @@ export class PaymentInfoInput {
 
   @Field(() => String)
   document!: string;
+
+  @Field(() => String, { nullable: true })
+  pixKey?: string;
+
+  @Field(() => String, { nullable: true })
+  pixCity?: string;
+}
+
+@InputType()
+export class PriceTierInput {
+  @Field(() => String, { nullable: true })
+  id?: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => Int)
+  value!: number;
+}
+
+@InputType()
+export class MajorEventPriceInput {
+  @Field(() => PriceType)
+  type!: PriceType;
+
+  @Field(() => [PriceTierInput])
+  tiers!: PriceTierInput[];
 }
 
 @InputType()
@@ -1109,6 +1178,9 @@ export class MajorEventCreateInput {
 
   @Field(() => PaymentInfoInput, { nullable: true })
   paymentInfo?: PaymentInfoInput | null;
+
+  @Field(() => MajorEventPriceInput, { nullable: true })
+  price?: MajorEventPriceInput | null;
 
   @Field(() => Date, { nullable: true })
   deletedAt?: Date;
@@ -1181,6 +1253,9 @@ export class MajorEventUpdateInput {
 
   @Field(() => PaymentInfoInput, { nullable: true })
   paymentInfo?: PaymentInfoInput | null;
+
+  @Field(() => MajorEventPriceInput, { nullable: true })
+  price?: MajorEventPriceInput | null;
 
   @Field(() => Date, { nullable: true })
   deletedAt?: Date;

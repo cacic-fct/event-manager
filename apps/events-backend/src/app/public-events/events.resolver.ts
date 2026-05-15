@@ -203,7 +203,6 @@ export class PublicEventsResolver {
         id: true,
         slots: true,
         slotsAvailable: true,
-        queueCount: true,
       },
     });
 
@@ -211,25 +210,9 @@ export class PublicEventsResolver {
       throw new NotFoundException(`Event ${eventId} was not found.`);
     }
 
-    if (event.slots == null) {
-      return {
-        eventId,
-        slots: null,
-        availableSlots: null,
-        hasAvailableSlots: true,
-        queueCount: event.queueCount,
-      };
-    }
+    const subscribedPeopleCount = await this.countSubscribedPeopleByEventId([event.id]);
 
-    const availableSlots = event.slotsAvailable ?? event.slots;
-
-    return {
-      eventId,
-      slots: event.slots,
-      availableSlots,
-      hasAvailableSlots: availableSlots > 0,
-      queueCount: event.queueCount,
-    };
+    return this.mapPublicEventSubscriptionSummary(event, subscribedPeopleCount.get(event.id) ?? 0);
   }
 
   @Query(() => PublicMajorEventSubscriptionPage, {
@@ -264,10 +247,14 @@ export class PublicEventsResolver {
       throw new NotFoundException(`Major event ${majorEventId} was not found.`);
     }
 
+    const subscribedPeopleCount = await this.countSubscribedPeopleByEventId(events.map((event) => event.id));
+
     return {
       majorEvent: mapPublicMajorEvent(majorEvent),
       events,
-      subscriptionSummaries: events.map((event) => this.mapPublicEventSubscriptionSummary(event)),
+      subscriptionSummaries: events.map((event) =>
+        this.mapPublicEventSubscriptionSummary(event, subscribedPeopleCount.get(event.id) ?? 0),
+      ),
     };
   }
 
@@ -275,19 +262,39 @@ export class PublicEventsResolver {
     return this.publicMajorEventSubscriptionPage(majorEventId);
   }
 
-  private mapPublicEventSubscriptionSummary(event: {
-    id: string;
-    slots: number | null;
-    slotsAvailable: number | null;
-    queueCount: number;
-  }): PublicEventSubscriptionSummary {
-    const availableSlots = event.slots == null ? null : event.slotsAvailable;
+  private mapPublicEventSubscriptionSummary(
+    event: {
+      id: string;
+      slots: number | null;
+    },
+    subscribedPeopleCount: number,
+  ): PublicEventSubscriptionSummary {
+    const availableSlots = event.slots == null ? null : Math.max(event.slots - subscribedPeopleCount, 0);
     return {
       eventId: event.id,
-      slots: event.slots,
-      availableSlots,
       hasAvailableSlots: availableSlots == null || availableSlots > 0,
-      queueCount: event.queueCount,
     };
+  }
+
+  private async countSubscribedPeopleByEventId(eventIds: string[]): Promise<Map<string, number>> {
+    const uniqueEventIds = [...new Set(eventIds)];
+    if (uniqueEventIds.length === 0) {
+      return new Map();
+    }
+
+    const counts = await this.prisma.eventSubscription.groupBy({
+      by: ['eventId'],
+      where: {
+        eventId: {
+          in: uniqueEventIds,
+        },
+        deletedAt: null,
+      },
+      _count: {
+        personId: true,
+      },
+    });
+
+    return new Map(counts.map((count) => [count.eventId, count._count.personId]));
   }
 }

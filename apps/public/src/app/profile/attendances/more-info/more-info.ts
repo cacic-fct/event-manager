@@ -8,8 +8,11 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
+import { AuthService } from '@cacic-fct/shared-angular';
+import { OfflineAttendanceDetail, OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
 import { DetailViewModel, EventTargetType, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
-import { Observable, catchError, map, of, startWith, switchMap } from 'rxjs';
+import { Observable, catchError, from, map, of, startWith, switchMap } from 'rxjs';
+import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
 import { EmojiService } from '../emoji.service';
@@ -39,6 +42,9 @@ export class MoreInfo {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(AttendancesApiService);
+  private readonly auth = inject(AuthService);
+  private readonly networkStatus = inject(NetworkStatusService);
+  private readonly offlineData = inject(OfflinePublicDataAccessService);
   private readonly dialog = inject(MatDialog);
   readonly emoji = inject(EmojiService);
 
@@ -72,6 +78,14 @@ export class MoreInfo {
     return { returnUrl: this.router.url };
   }
 
+  paymentRoute(detail: DetailViewModel): string[] {
+    return ['/major-event', detail.targetId, 'payment'];
+  }
+
+  canUploadMajorEventReceipt(detail: DetailViewModel): boolean {
+    return detail.targetType === 'major-event' && detail.subscriptionStatus !== 'CONFIRMED';
+  }
+
   private loadDetailState(params: ParamMap): Observable<DetailState> {
     const eventType = parseEventTargetType(params.get('eventType'));
     const eventId = params.get('eventId')?.trim();
@@ -103,17 +117,63 @@ export class MoreInfo {
   }
 
   private loadDetail(eventType: EventTargetType, eventId: string): Observable<DetailViewModel | null> {
+    if (!this.networkStatus.isOnline()) {
+      return from(this.loadOfflineDetail(eventType, eventId));
+    }
+
+    const userId = this.auth.user()?.sub;
+
+    if (!userId) {
+      void this.offlineData.purgeUserData();
+      return of(null);
+    }
+
     switch (eventType) {
       case 'event':
-        return this.api.getEventDetails(eventId).pipe(map((details) => buildDetailViewModel({ eventType, details })));
+        return this.api.getEventDetails(eventId).pipe(
+          switchMap((details) =>
+            from(this.offlineData.replaceAttendanceDetail(userId, eventId, { eventType, details })).pipe(
+              map(() => buildDetailViewModel({ eventType, details })),
+            ),
+          ),
+          catchError(() => from(this.loadOfflineDetail(eventType, eventId))),
+        );
       case 'event-group':
-        return this.api
-          .getEventGroupDetails(eventId)
-          .pipe(map((details) => buildDetailViewModel({ eventType, details })));
+        return this.api.getEventGroupDetails(eventId).pipe(
+          switchMap((details) =>
+            from(this.offlineData.replaceAttendanceDetail(userId, eventId, { eventType, details })).pipe(
+              map(() => buildDetailViewModel({ eventType, details })),
+            ),
+          ),
+          catchError(() => from(this.loadOfflineDetail(eventType, eventId))),
+        );
       case 'major-event':
-        return this.api
-          .getMajorEventDetails(eventId)
-          .pipe(map((details) => buildDetailViewModel({ eventType, details })));
+        return this.api.getMajorEventDetails(eventId).pipe(
+          switchMap((details) =>
+            from(this.offlineData.replaceAttendanceDetail(userId, eventId, { eventType, details })).pipe(
+              map(() => buildDetailViewModel({ eventType, details })),
+            ),
+          ),
+          catchError(() => from(this.loadOfflineDetail(eventType, eventId))),
+        );
+    }
+  }
+
+  private async loadOfflineDetail(eventType: EventTargetType, eventId: string): Promise<DetailViewModel | null> {
+    const userId = this.auth.user()?.sub ?? (await this.offlineData.getLatestUserSnapshot())?.userId;
+    const cachedDetail = userId ? await this.offlineData.getAttendanceDetail(userId, eventType, eventId) : null;
+
+    return cachedDetail ? this.buildCachedDetail(cachedDetail) : null;
+  }
+
+  private buildCachedDetail(cachedDetail: OfflineAttendanceDetail): DetailViewModel | null {
+    switch (cachedDetail.eventType) {
+      case 'event':
+        return buildDetailViewModel(cachedDetail);
+      case 'event-group':
+        return buildDetailViewModel(cachedDetail);
+      case 'major-event':
+        return buildDetailViewModel(cachedDetail);
     }
   }
 }

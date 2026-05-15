@@ -22,11 +22,16 @@ import {
   SubscriptionFeedSingleEventRecord,
   UserRecord,
 } from './selects';
-import { PublicEvent, PublicEventGroup, PublicMajorEvent } from '../public-events/models';
+import { PublicEvent, PublicEventGroup, PublicMajorEvent, mapPublicPaymentInfo } from '../public-events/models';
 
 @Injectable()
 export class CurrentUserEventMapperService {
   mapPublicMajorEvent(majorEvent: PublicMajorEventRecord): PublicMajorEvent {
+    const paymentInfo =
+      'paymentInfo' in majorEvent && majorEvent.paymentInfo
+        ? mapPublicPaymentInfo(majorEvent.paymentInfo as Parameters<typeof mapPublicPaymentInfo>[0])
+        : undefined;
+
     return {
       id: majorEvent.id,
       name: majorEvent.name,
@@ -45,6 +50,16 @@ export class CurrentUserEventMapperService {
       isPaymentRequired: majorEvent.isPaymentRequired,
       additionalPaymentInfo: majorEvent.additionalPaymentInfo ?? undefined,
       shouldIssueCertificate: majorEvent.certificateConfigs.length > 0,
+      paymentInfo,
+      majorEventPrices: majorEvent.majorEventPrices.map((price) => ({
+        id: price.id,
+        type: price.type,
+        tiers: price.tiers.map((tier) => ({
+          id: tier.id,
+          name: tier.name,
+          value: tier.value,
+        })),
+      })),
     };
   }
 

@@ -34,6 +34,7 @@ const DASHBOARD_PERMISSION_REQUIREMENTS = [
   'major-event#edit',
   'certificate#edit',
   'merge-candidate#read',
+  'validate-receipt:read',
 ] as const;
 
 const EVENT_INSIGHT_SELECT = {
@@ -250,6 +251,7 @@ export class DashboardInsightsService {
       eventGroupsCount,
       majorEventsCount,
       duplicatePeopleCount,
+      pendingReceiptValidationsCount,
       calendarEvents,
       upcomingMajorEventsCount,
       consistencyEvents,
@@ -262,6 +264,16 @@ export class DashboardInsightsService {
       this.prisma.majorEvent.count({ where: { deletedAt: null } }),
       this.prisma.mergeCandidate.count({
         where: actionablePendingMergeCandidateWhere,
+      }),
+      this.prisma.majorEventSubscription.count({
+        where: {
+          deletedAt: null,
+          subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
+          majorEvent: {
+            deletedAt: null,
+            isPaymentRequired: true,
+          },
+        },
       }),
       this.prisma.event.findMany({
         where: {
@@ -400,6 +412,7 @@ export class DashboardInsightsService {
     const canManageMajorEvents = permissionSet.has('major-event#edit');
     const canManageCertificates = permissionSet.has('certificate#edit');
     const canManageMergeCandidates = permissionSet.has('merge-candidate#read');
+    const canValidateReceipts = permissionSet.has('validate-receipt:read');
 
     return {
       generatedAt: now,
@@ -416,6 +429,7 @@ export class DashboardInsightsService {
       calendarEvents: calendarEvents.map((event) => this.mapCalendarEvent(event, now)),
       weatherAlerts: await this.buildWeatherAlerts(calendarEvents),
       pendingCertificates: canManageCertificates ? await this.buildPendingCertificates(now) : [],
+      pendingReceiptValidationsCount: canValidateReceipts ? pendingReceiptValidationsCount : 0,
       inconsistencies:
         canManageEvents || canManageCertificates
           ? this.buildInconsistencies({

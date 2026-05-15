@@ -10,8 +10,7 @@ on:
       - main
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 concurrency:
   group: cd-${{ github.event.workflow_run.head_branch }}
@@ -25,6 +24,10 @@ jobs:
   detect-affected:
     name: Detect affected deployable apps
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
 
     if: >
       github.event.workflow_run.conclusion == 'success' &&
@@ -185,6 +188,10 @@ jobs:
       - prepare-release
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      packages: read
+
     if: needs.detect-affected.outputs.has_apps == 'true'
 
     strategy:
@@ -220,6 +227,10 @@ jobs:
       - prepare-release
       - verify-images
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
 
     if: needs.detect-affected.outputs.has_apps == 'true'
 
@@ -274,6 +285,9 @@ jobs:
       - prepare-release
       - publish
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout completed commit

@@ -5,6 +5,9 @@
 mat-list {
   border-radius: 8px;
   overflow: visible;
+  mat-list-item {
+    padding: 1rem 0;
+  }
 }
 
 .month-header {

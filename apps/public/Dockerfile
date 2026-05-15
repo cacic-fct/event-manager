@@ -15,6 +15,7 @@ COPY apps/public/project.json apps/public/tsconfig*.json apps/public/ngsw-config
 COPY shared-angular/project.json shared-angular/tsconfig*.json ./shared-angular/
 COPY shared-data-types/project.json shared-data-types/tsconfig*.json ./shared-data-types/
 COPY shared-utils/project.json shared-utils/tsconfig*.json ./shared-utils/
+COPY offline-public-data-access/project.json offline-public-data-access/tsconfig*.json ./offline-public-data-access/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     --mount=type=secret,id=npm_token \
     export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
@@ -28,6 +29,7 @@ COPY apps/public ./apps/public
 COPY shared-angular ./shared-angular
 COPY shared-data-types ./shared-data-types
 COPY shared-utils ./shared-utils
+COPY offline-public-data-access ./offline-public-data-access
 
 RUN find . -type f \
     \( -name "*.ts" -o -name "*.js" -o -name "*.html" -o -name "*.json" \) \
@@ -49,6 +51,8 @@ WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=runtime-deps --chown=app:app /workspace/node_modules ./node_modules
 COPY --from=builder --chown=app:app /workspace/dist/apps/public ./
+COPY --from=builder --chown=app:app /workspace/dist/apps/public/3rdpartylicenses.txt ./browser/3rdpartylicenses.txt
+
 USER app
 EXPOSE 4000
 CMD ["node", "server/server.mjs"]

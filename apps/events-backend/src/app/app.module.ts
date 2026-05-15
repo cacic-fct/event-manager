@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { BullModule } from '@nestjs/bullmq';
+import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ThrottlerModule } from '@nestjs/throttler';
 import Redis from 'ioredis';
@@ -11,6 +12,8 @@ import { AccountMergeController } from './account-merge/account-merge.controller
 import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuthModule } from './auth/auth.module';
 import { KeycloakScopeGuard } from './auth/guards/keycloak-scope.guard';
+import { LgpdController } from './lgpd/lgpd.controller';
+import { LgpdService } from './lgpd/lgpd.service';
 import { GqlThrottlerGuard } from './common/gql-throttler.guard';
 import { CertificateConfigsService } from './certificate/certificate-configs.service';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
@@ -31,7 +34,7 @@ import { CurrentUserEventSubscriptionService } from './current-user/events/subsc
 import { CurrentUserEventAttendanceResolver } from './current-user/events/attendance.resolver';
 import {
   CurrentUserOnlineAttendanceRealtimeService,
-  PublicRealtimeEventsController,
+  CurrentUserRealtimeEventsController,
 } from './current-user/events/attendance-realtime.service';
 import { CurrentUserEventSubscriptionsResolver } from './current-user/events/subscriptions.resolver';
 import { CurrentUserMajorEventSubscriptionService } from './current-user/major-events/subscription.service';
@@ -55,6 +58,12 @@ import { MergeCandidatesResolver } from './people/merge-candidates/resolver';
 import { PeopleResolver } from './people/resolver';
 import { UsersResolver } from './users/resolver';
 import { TypesenseSearchService } from './search/typesense-search.service';
+import { S3Service } from './s3/s3.service';
+import { MajorEventReceiptsController } from './major-event-receipts/major-event-receipts.controller';
+import { MajorEventReceiptsProcessor } from './major-event-receipts/major-event-receipts.processor';
+import { MajorEventReceiptsService } from './major-event-receipts/major-event-receipts.service';
+import { ReceiptAnalysisService } from './major-event-receipts/receipt-analysis.service';
+import { MAJOR_EVENT_RECEIPTS_QUEUE } from './major-event-receipts/receipt.types';
 import { getRedisConnectionOptions } from './weather/redis-connection';
 import { WeatherProcessor } from './weather/weather.processor';
 import { WeatherResolver } from './weather/weather.resolver';
@@ -63,6 +72,9 @@ import { WeatherService } from './weather/weather.service';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     PrismaModule,
     AuthModule,
     BullModule.forRoot({
@@ -74,9 +86,16 @@ import { WeatherService } from './weather/weather.service';
     BullModule.registerQueue({
       name: DASHBOARD_INSIGHTS_QUEUE,
     }),
+    BullModule.registerQueue({
+      name: MAJOR_EVENT_RECEIPTS_QUEUE,
+    }),
     ThrottlerModule.forRoot({
       setHeaders: false,
       throttlers: [
+        {
+          ttl: 60_000,
+          limit: 100,
+        },
         {
           name: 'publicCertificateValidation',
           limit: 20,
@@ -94,10 +113,17 @@ import { WeatherService } from './weather/weather.service';
       context: ({ req, res }) => ({ req, res }),
     }),
   ],
-  controllers: [AppController, AccountMergeController, PublicRealtimeEventsController],
+  controllers: [
+    AppController,
+    AccountMergeController,
+    LgpdController,
+    CurrentUserRealtimeEventsController,
+    MajorEventReceiptsController,
+  ],
   providers: [
     AppService,
     AccountMergeService,
+    LgpdService,
     MajorEventsResolver,
     PublicMajorEventsResolver,
     EventGroupsResolver,
@@ -129,6 +155,10 @@ import { WeatherService } from './weather/weather.service';
     MergeCandidatesResolver,
     MergeCandidateOperationsService,
     TypesenseSearchService,
+    S3Service,
+    MajorEventReceiptsService,
+    MajorEventReceiptsProcessor,
+    ReceiptAnalysisService,
     CertificatesResolver,
     WeatherResolver,
     CertificateTargetsService,

@@ -106,8 +106,6 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       return null;
     }
 
-    const majorEvent = await this.publicEvents.requirePublicMajorEvent(majorEventId);
-
     const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
     const subscription = await this.prisma.majorEventSubscription.findFirst({
       where: {
@@ -119,6 +117,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     });
 
     if (!subscription) {
+      await this.publicEvents.requirePublicMajorEvent(majorEventId);
       return null;
     }
 
@@ -130,7 +129,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     return {
       id: subscription.id,
       majorEventId: subscription.majorEventId,
-      majorEvent,
+      majorEvent: this.mapper.mapPublicMajorEvent(subscription.majorEvent),
       subscriptionStatus: subscription.subscriptionStatus,
       amountPaid: subscription.amountPaid ?? undefined,
       paymentDate: subscription.paymentDate ?? undefined,

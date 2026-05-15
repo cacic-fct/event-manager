@@ -1,11 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
-import { Event, MajorEvent, MajorEventInput } from '../../graphql/models';
+import { Event, MajorEvent, MajorEventInput, PriceType } from '../../graphql/models';
 
 @Injectable({
   providedIn: 'root',
@@ -47,9 +47,13 @@ export class WorkspaceMajorEventsService {
       paymentAccount: [''],
       paymentHolder: [''],
       paymentDocument: [''],
+      pixKey: [''],
+      pixCity: [''],
+      priceType: ['SINGLE' as PriceType],
+      priceTiers: this.formBuilder.array([this.createPriceTierGroup('Preço único', '')]),
     },
     {
-      validators: [this.requireBothOrNeither('buttonText', 'buttonLink')],
+      validators: [this.requireBothOrNeither('buttonText', 'buttonLink'), this.validatePaymentInfo()],
     },
   );
 
@@ -61,6 +65,25 @@ export class WorkspaceMajorEventsService {
     this.majorEventForm.controls.isPaymentRequired.valueChanges.subscribe(() =>
       this.syncCertificateExceptionControls(),
     );
+    this.majorEventForm.controls.priceType.valueChanges.subscribe((type) => this.syncPriceTierControls(type));
+  }
+
+  get priceTiers(): FormArray<ReturnType<WorkspaceMajorEventsService['createPriceTierGroup']>> {
+    return this.majorEventForm.controls.priceTiers;
+  }
+
+  addPriceTier(): void {
+    this.priceTiers.push(this.createPriceTierGroup('', ''));
+    this.syncPriceTierControls(this.majorEventForm.controls.priceType.value);
+  }
+
+  removePriceTier(index: number): void {
+    if (this.priceTiers.length <= 1) {
+      return;
+    }
+
+    this.priceTiers.removeAt(index);
+    this.syncPriceTierControls(this.majorEventForm.controls.priceType.value);
   }
 
   async loadMajorEvents(): Promise<void> {
@@ -132,7 +155,11 @@ export class WorkspaceMajorEventsService {
       paymentAccount: '',
       paymentHolder: '',
       paymentDocument: '',
+      pixKey: '',
+      pixCity: '',
+      priceType: 'SINGLE',
     });
+    this.resetPriceTiers([this.createPriceTierGroup('Preço único', '')]);
     this.syncCertificateExceptionControls();
   }
 
@@ -182,7 +209,16 @@ export class WorkspaceMajorEventsService {
       paymentAccount: majorEvent.paymentInfo?.account ?? '',
       paymentHolder: majorEvent.paymentInfo?.holder ?? '',
       paymentDocument: majorEvent.paymentInfo?.document ?? '',
+      pixKey: majorEvent.paymentInfo?.pixKey ?? '',
+      pixCity: majorEvent.paymentInfo?.pixCity ?? '',
+      priceType: majorEvent.majorEventPrices[0]?.type ?? 'SINGLE',
     });
+    const price = majorEvent.majorEventPrices[0];
+    this.resetPriceTiers(
+      price?.tiers.length
+        ? price.tiers.map((tier) => this.createPriceTierGroup(tier.name, (tier.value / 100).toFixed(2)))
+        : [this.createPriceTierGroup('Preço único', '')],
+    );
     this.syncCertificateExceptionControls();
     void this.loadEventsForMajorEvent(majorEvent.id);
   }
@@ -252,8 +288,18 @@ export class WorkspaceMajorEventsService {
       account: raw.paymentAccount.trim(),
       holder: raw.paymentHolder.trim(),
       document: raw.paymentDocument.trim(),
+      pixKey: raw.pixKey.trim(),
+      pixCity: raw.pixCity.trim(),
     };
     const hasAnyPaymentInfo = Object.values(paymentInfoInput).some((value) => value.length > 0);
+    const priceTiers = this.priceTiers.controls
+      .map((tierControl) => tierControl.getRawValue())
+      .map((tier) => ({
+        name: tier.name.trim(),
+        value: this.toCents(tier.value),
+      }))
+      .filter((tier) => tier.name.length > 0 || tier.value !== null);
+    const validPriceTiers = priceTiers.filter((tier): tier is { name: string; value: number } => tier.value !== null);
 
     return {
       name: raw.name.trim(),
@@ -275,6 +321,13 @@ export class WorkspaceMajorEventsService {
       shouldIssueCertificateForNonSubscribedAttendees: raw.shouldIssueCertificateForNonSubscribedAttendees,
       additionalPaymentInfo: raw.additionalPaymentInfo.trim() || null,
       paymentInfo: hasAnyPaymentInfo ? paymentInfoInput : null,
+      price:
+        validPriceTiers.length > 0
+          ? {
+              type: raw.priceType,
+              tiers: validPriceTiers,
+            }
+          : null,
     };
   }
 
@@ -293,12 +346,38 @@ export class WorkspaceMajorEventsService {
     return new Date(rawValue).toISOString();
   }
 
-  private toOptionalIsoDateTime(rawValue: string): string | null {
+  private toOptionalIsoDateTime(rawValue: string | null | undefined): string | null {
+    if (!rawValue || typeof rawValue !== 'string') return null;
     return rawValue.trim() ? this.toIsoDateTime(rawValue) : null;
   }
 
-  private toOptionalNumber(rawValue: string): number | null {
+  private toOptionalNumber(rawValue: string | null | undefined): number | null {
+    if (!rawValue || typeof rawValue !== 'string') return null;
     return rawValue.trim() ? Number(rawValue) : null;
+  }
+
+  private toCents(rawValue: string | number | null | undefined): number | null {
+    if (rawValue === null || rawValue === undefined || rawValue === '') {
+      return null;
+    }
+
+    const parsed = typeof rawValue === 'number' ? rawValue : Number(rawValue.replace(',', '.'));
+    return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
+  }
+
+  private createPriceTierGroup(name: string, value: string) {
+    return this.formBuilder.nonNullable.group({
+      name: [name],
+      value: [value],
+    });
+  }
+
+  private resetPriceTiers(groups: ReturnType<WorkspaceMajorEventsService['createPriceTierGroup']>[]): void {
+    this.priceTiers.clear();
+    for (const group of groups) {
+      this.priceTiers.push(group);
+    }
+    this.syncPriceTierControls(this.majorEventForm.controls.priceType.value);
   }
 
   private fromIsoToLocalInput(rawValue: string): string {
@@ -315,6 +394,38 @@ export class WorkspaceMajorEventsService {
         ? { [`${firstKey}Requires${secondKey}`]: true }
         : null;
     };
+  }
+
+  private validatePaymentInfo() {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const bankFields = ['paymentBankName', 'paymentAgency', 'paymentAccount', 'paymentHolder'];
+      const bankValues = bankFields.map((key) => control.get(key)?.value?.toString().trim() ?? '');
+      const hasAnyBankValue = bankValues.some((value) => value.length > 0);
+      const hasAllBankValues = bankValues.every((value) => value.length > 0);
+      const document = control.get('paymentDocument')?.value?.toString().trim() ?? '';
+
+      if (hasAnyBankValue && !hasAllBankValues) {
+        return { incompleteBankPaymentInfo: true };
+      }
+
+      if (hasAllBankValues && !document) {
+        return { bankPaymentDocumentRequired: true };
+      }
+
+      return null;
+    };
+  }
+
+  private syncPriceTierControls(type: PriceType): void {
+    if (type === 'SINGLE') {
+      while (this.priceTiers.length > 1) {
+        this.priceTiers.removeAt(this.priceTiers.length - 1);
+      }
+      const tier = this.priceTiers.at(0) as ReturnType<WorkspaceMajorEventsService['createPriceTierGroup']> | null;
+      if (tier && !tier.controls.name.value.trim()) {
+        tier.controls.name.setValue('Preço único', { emitEvent: false });
+      }
+    }
   }
 
   private syncCertificateExceptionControls(): void {

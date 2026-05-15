@@ -87,8 +87,26 @@
       }
     </mat-list>
   </section>
-  } @if ( dashboard.pendingCertificates.length > 0 || dashboard.duplicatePeopleCount > 0 ) {
+  } @if ( dashboard.pendingCertificates.length > 0 || dashboard.duplicatePeopleCount > 0 ||
+  dashboard.pendingReceiptValidationsCount > 0 ) {
   <section class="dashboard-grid">
+    @if (dashboard.pendingReceiptValidationsCount > 0) {
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>receipt_long</mat-icon>
+        <mat-card-title>Comprovantes pendentes</mat-card-title>
+        <mat-card-subtitle>
+          Há {{ dashboard.pendingReceiptValidationsCount }} comprovantes aguardando validação.
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-actions align="end">
+        <a matButton="filled" routerLink="/subscriptions/validate-receipts">
+          <mat-icon>receipt_long</mat-icon>
+          Validar
+        </a>
+      </mat-card-actions>
+    </mat-card>
+    }
     @if (dashboard.pendingCertificates.length > 0) {
     <mat-card appearance="outlined">
       <mat-card-header>

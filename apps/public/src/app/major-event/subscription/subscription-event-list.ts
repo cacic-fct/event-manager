@@ -67,22 +67,11 @@ export class SubscriptionEventList {
 
   slotsLine(event: PublicEvent): string {
     const summary = this.summariesByEventId().get(event.id);
-    if (!summary || summary.availableSlots == null) {
-      return 'Vagas ilimitadas';
+    if (!summary?.hasAvailableSlots) {
+      return 'Sem vagas disponíveis';
     }
 
-    return `${summary.availableSlots} vaga${
-      summary.availableSlots === 1 ? '' : 's'
-    } restante${summary.availableSlots === 1 ? '' : 's'}`;
-  }
-
-  queueLine(event: PublicEvent): string {
-    const summary = this.summariesByEventId().get(event.id);
-    if (!summary) {
-      return 'Sua posição na fila: desconhecida';
-    }
-
-    return `Sua posição na fila: ${summary.queueCount}`;
+    return 'Vagas disponíveis';
   }
 
   onItemClick(event: PublicEvent): void {
@@ -143,7 +132,7 @@ export class SubscriptionEventList {
   }
 
   private formatMonth(date: string): string {
-    const formatted = formatDate(date, "MMMM 'de' yyyy", 'pt-BR');
+    const formatted = formatDate(date, 'MMMM', 'pt-BR');
     return this.capitalize(formatted);
   }
 

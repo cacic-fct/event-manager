@@ -1,5 +1,6 @@
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
+export type PriceType = 'SINGLE' | 'TIERED';
 export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
 export type CertificateScope = 'MAJOR_EVENT' | 'EVENT_GROUP' | 'EVENT' | 'OTHER';
 export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
@@ -39,6 +40,7 @@ export interface MajorEvent {
   shouldIssueCertificateForNonSubscribedAttendees: boolean;
   additionalPaymentInfo?: string | null;
   paymentInfo?: PaymentInfo | null;
+  majorEventPrices: MajorEventPrice[];
   deletedAt?: string | null;
   createdAt: string;
   createdById?: string | null;
@@ -53,7 +55,21 @@ export interface PaymentInfo {
   account: string;
   holder: string;
   document: string;
+  pixKey?: string | null;
+  pixCity?: string | null;
   majorEventId: string;
+}
+
+export interface MajorEventPriceTier {
+  id: string;
+  name: string;
+  value: number;
+}
+
+export interface MajorEventPrice {
+  id: string;
+  type: PriceType;
+  tiers: MajorEventPriceTier[];
 }
 
 export interface EventGroup {
@@ -350,6 +366,7 @@ export interface MajorEventInput {
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
   additionalPaymentInfo?: string | null;
   paymentInfo?: PaymentInfoInput | null;
+  price?: MajorEventPriceInput | null;
   deletedAt?: string | null;
   createdAt?: string;
   createdById?: string;
@@ -362,6 +379,19 @@ export interface PaymentInfoInput {
   account: string;
   holder: string;
   document: string;
+  pixKey?: string;
+  pixCity?: string;
+}
+
+export interface PriceTierInput {
+  id?: string;
+  name: string;
+  value: number;
+}
+
+export interface MajorEventPriceInput {
+  type: PriceType;
+  tiers: PriceTierInput[];
 }
 
 export interface EventGroupInput {

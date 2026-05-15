@@ -3,6 +3,30 @@ export type CertificateScope = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT' | 'OTHER'
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 
+export interface PublicPaymentInfo {
+  id: string;
+  bankName: string;
+  agency: string;
+  account: string;
+  holder: string;
+  document: string;
+  pixKey?: string | null;
+  pixCity?: string | null;
+  majorEventId: string;
+}
+
+export interface PublicMajorEventPriceTier {
+  id: string;
+  name: string;
+  value: number;
+}
+
+export interface PublicMajorEventPrice {
+  id: string;
+  type: 'SINGLE' | 'TIERED';
+  tiers: PublicMajorEventPriceTier[];
+}
+
 export interface PublicMajorEvent {
   id: string;
   name: string;
@@ -23,6 +47,8 @@ export interface PublicMajorEvent {
   shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
   additionalPaymentInfo?: string | null;
   shouldIssueCertificate?: boolean | null;
+  paymentInfo?: PublicPaymentInfo | null;
+  majorEventPrices?: PublicMajorEventPrice[];
 }
 
 export interface PublicEventGroup {
@@ -250,6 +276,7 @@ export interface DetailEventItem {
 
 export interface DetailViewModel {
   targetType: EventTargetType;
+  targetId: string;
   typeLabel: string;
   title: string;
   emoji: string;
@@ -257,6 +284,7 @@ export interface DetailViewModel {
   description?: string | null;
   location?: string | null;
   statusLabel?: string;
+  subscriptionStatus?: string | null;
   infoRows: InfoRow[];
   events: DetailEventItem[];
   notSubscribedEvents: DetailEventItem[];
