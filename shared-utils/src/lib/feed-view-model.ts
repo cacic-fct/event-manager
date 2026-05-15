@@ -1,5 +1,5 @@
 import {
-  compareIsoDateAsc,
+  compareIsoDateDesc,
   formatDateRange,
   formatDateTime,
   getAttendanceByEventId,
@@ -18,9 +18,9 @@ export function sortSubscriptionsFeed(feed: SubscriptionsFeed): SubscriptionsFee
   return {
     ...feed,
     majorEventItems: [...feed.majorEventItems].sort((left, right) =>
-      compareIsoDateAsc(left.majorEvent.startDate, right.majorEvent.startDate),
+      compareIsoDateDesc(left.majorEvent.startDate, right.majorEvent.startDate),
     ),
-    eventItems: [...feed.eventItems].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)),
+    eventItems: [...feed.eventItems].sort((left, right) => compareIsoDateDesc(left.startDate, right.startDate)),
   };
 }
 
