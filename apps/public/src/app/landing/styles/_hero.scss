@@ -15,14 +15,13 @@
 }
 
 .hero-section {
-  background: #fff7d3; // Dark background for contrast
+  background: #fff9dd;
   color: inherit;
   min-height: 100vh;
   display: flex;
   align-items: center;
   position: relative;
-  overflow: visible; // Allow content to scroll
-  z-index: 1; // Above the fixed stars
+  overflow: visible;
 
   .hero-content {
     @include mixins.container;
@@ -32,12 +31,6 @@
     gap: 2rem;
     align-items: center;
     position: relative;
-    z-index: 2; // Above the fixed stars
-
-    @media (min-width: 1175px) {
-      grid-template-columns: 1.45fr 1fr;
-      gap: 3rem;
-    }
 
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
