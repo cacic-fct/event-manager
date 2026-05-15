@@ -1,1 +1,106 @@
-<p>major-event works!</p>
+<mat-toolbar>
+  <span>Grandes eventos</span>
+</mat-toolbar>
+
+<main class="major-event-page">
+  @let state = pageState(); @if (state.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+    <p>Carregando eventos...</p>
+  </section>
+  } @else if (state.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ state.message }}</p>
+  </section>
+  } @else if (majorEvents().length === 0) {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">event_busy</mat-icon>
+    <p>Nenhum grande evento disponível.</p>
+  </section>
+  } @else {
+  <section class="event-grid" aria-label="Grandes eventos">
+    @for (majorEvent of majorEvents(); track majorEvent.id) { @let subscription = subscriptionFor(majorEvent.id);
+    <mat-card appearance="outlined" class="event-card">
+      <mat-card-header>
+        <div mat-card-avatar class="emoji-frame">
+          <img class="twemoji" [src]="emoji.getTwemojiUrl(majorEvent.emoji)" [alt]="majorEvent.emoji" />
+        </div>
+        <mat-card-title>{{ majorEvent.name }}</mat-card-title>
+        <mat-card-subtitle>{{ dateLine(majorEvent) }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (majorEvent.description) {
+        <p class="description">{{ majorEvent.description }}</p>
+        } @if (majorEvent.subscriptionStartDate || majorEvent.subscriptionEndDate) {
+        <p class="subscription-window">
+          Inscrições: @if (majorEvent.subscriptionStartDate) { {{ majorEvent.subscriptionStartDate | date: 'dd/MM/yyyy
+          HH:mm' }} } @else { início livre } - @if (majorEvent.subscriptionEndDate) { {{ majorEvent.subscriptionEndDate
+          | date: 'dd/MM/yyyy HH:mm' }} } @else { sem prazo final }
+        </p>
+        }
+
+        <mat-chip-set aria-label="Características do evento">
+          @if (majorEvent.isPaymentRequired) {
+          <mat-chip>
+            <mat-icon matChipAvatar>payments</mat-icon>
+            Requer pagamento
+          </mat-chip>
+          } @else {
+          <mat-chip>
+            <mat-icon matChipAvatar>volunteer_activism</mat-icon>
+            Gratuito
+          </mat-chip>
+          } @if (subscription) {
+          <mat-chip>
+            <mat-icon matChipAvatar>assignment_turned_in</mat-icon>
+            {{ statusLabel(subscription.subscriptionStatus) }}
+          </mat-chip>
+          }
+        </mat-chip-set>
+      </mat-card-content>
+
+      <mat-card-actions align="end">
+        @if (subscription?.subscriptionStatus === 'CONFIRMED') {
+        <button mat-flat-button type="button" disabled>
+          <mat-icon>check</mat-icon>
+          Inscrito
+        </button>
+        } @else if (subscription) { @if (canEditSubscription(subscription)) {
+        <a mat-stroked-button [routerLink]="['/major-event', majorEvent.id, 'subscription']">
+          <mat-icon>edit</mat-icon>
+          Editar inscrição
+        </a>
+        } @if (canUploadReceipt(subscription)) {
+        <a mat-flat-button [routerLink]="['/major-event', majorEvent.id, 'payment']">
+          <mat-icon>cloud_upload</mat-icon>
+          Enviar comprovante
+        </a>
+        } } @else if (!isAuthenticated()) {
+        <button mat-flat-button type="button" (click)="login()">
+          <mat-icon>login</mat-icon>
+          Entrar para inscrever-se
+        </button>
+        } @else {
+        <a
+          mat-flat-button
+          [routerLink]="['/major-event', majorEvent.id, 'subscription']"
+          [disabled]="!isSubscriptionOpen(majorEvent)"
+          [attr.aria-disabled]="!isSubscriptionOpen(majorEvent)">
+          <mat-icon>event_available</mat-icon>
+          @if (isSubscriptionOpen(majorEvent)) { Inscrever-se } @else { Inscrições encerradas }
+        </a>
+        } @if (majorEvent.buttonLink) {
+        <a mat-button [href]="majorEvent.buttonLink" target="_blank" rel="noopener">
+          <mat-icon>open_in_new</mat-icon>
+          {{ majorEvent.buttonText || 'Saiba mais' }}
+        </a>
+        }
+      </mat-card-actions>
+    </mat-card>
+    }
+  </section>
+  }
+</main>

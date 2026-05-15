@@ -66,7 +66,7 @@ export class CurrentUserPublicEventService {
     return mapPublicMajorEvent(majorEvent);
   }
 
-  getMajorEventSelect(paymentInfoTableExists: boolean): Prisma.MajorEventSelect {
+  getMajorEventSelect(paymentInfoTableExists: boolean) {
     if (paymentInfoTableExists) {
       return MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT;
     }

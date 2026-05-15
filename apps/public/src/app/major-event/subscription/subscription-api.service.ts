@@ -5,10 +5,7 @@ import { Observable, map } from 'rxjs';
 
 export interface PublicEventSubscriptionSummary {
   eventId: string;
-  slots?: number | null;
-  availableSlots?: number | null;
   hasAvailableSlots: boolean;
-  queueCount: number;
 }
 
 export interface PublicMajorEventSubscriptionPage {
@@ -43,6 +40,26 @@ const PUBLIC_MAJOR_EVENT_FIELDS = `
   isPaymentRequired
   additionalPaymentInfo
   shouldIssueCertificate
+  paymentInfo {
+    id
+    bankName
+    agency
+    account
+    holder
+    document
+    pixKey
+    pixCity
+    majorEventId
+  }
+  majorEventPrices {
+    id
+    type
+    tiers {
+      id
+      name
+      value
+    }
+  }
 `;
 
 const PUBLIC_EVENT_GROUP_FIELDS = `
@@ -72,9 +89,6 @@ const PUBLIC_EVENT_FIELDS = `
   allowSubscription
   subscriptionStartDate
   subscriptionEndDate
-  slots
-  slotsAvailable
-  queueCount
   autoSubscribe
   shouldIssueCertificate
   shouldCollectAttendance
@@ -95,15 +109,55 @@ const PUBLIC_EVENT_FIELDS = `
 
 const SUBSCRIPTION_SUMMARY_FIELDS = `
   eventId
-  slots
-  availableSlots
   hasAvailableSlots
-  queueCount
 `;
 
 @Injectable({ providedIn: 'root' })
 export class MajorEventSubscriptionApiService {
   private readonly http = inject(HttpClient);
+
+  listMajorEvents(startDateFrom?: string): Observable<PublicMajorEvent[]> {
+    return this.query<{
+      publicMajorEvents: PublicMajorEvent[];
+    }>(
+      `
+        query PublicMajorEvents($startDateFrom: DateTime) {
+          publicMajorEvents(startDateFrom: $startDateFrom) {
+            ${PUBLIC_MAJOR_EVENT_FIELDS}
+          }
+        }
+      `,
+      { startDateFrom },
+    ).pipe(map((data) => data.publicMajorEvents));
+  }
+
+  listCurrentUserSubscriptions(): Observable<CurrentUserMajorEventSubscription[]> {
+    return this.query<{
+      currentUserMajorEventSubscriptions: CurrentUserMajorEventSubscription[];
+    }>(
+      `
+        query CurrentUserMajorEventSubscriptions {
+          currentUserMajorEventSubscriptions {
+            id
+            majorEventId
+            subscriptionStatus
+            amountPaid
+            paymentDate
+            paymentTier
+            majorEvent {
+              ${PUBLIC_MAJOR_EVENT_FIELDS}
+            }
+            selectedEvents {
+              ${PUBLIC_EVENT_FIELDS}
+            }
+            notSubscribedEvents {
+              ${PUBLIC_EVENT_FIELDS}
+            }
+          }
+        }
+      `,
+    ).pipe(map((data) => data.currentUserMajorEventSubscriptions));
+  }
 
   getSubscriptionPage(majorEventId: string): Observable<PublicMajorEventSubscriptionPage> {
     return this.query<{
@@ -157,7 +211,11 @@ export class MajorEventSubscriptionApiService {
     ).pipe(map((data) => data.currentUserMajorEventSubscription));
   }
 
-  upsertSubscription(majorEventId: string, selectedEventIds: string[]): Observable<CurrentUserMajorEventSubscription> {
+  upsertSubscription(
+    majorEventId: string,
+    selectedEventIds: string[],
+    paymentTier?: string | null,
+  ): Observable<CurrentUserMajorEventSubscription> {
     return this.query<{
       upsertCurrentUserMajorEventSubscription: CurrentUserMajorEventSubscription;
     }>(
@@ -165,11 +223,13 @@ export class MajorEventSubscriptionApiService {
         mutation UpsertCurrentUserMajorEventSubscription(
           $majorEventId: String!
           $selectedEventIds: [String!]!
+          $paymentTier: String
         ) {
           upsertCurrentUserMajorEventSubscription(
             input: {
               majorEventId: $majorEventId
               selectedEventIds: $selectedEventIds
+              paymentTier: $paymentTier
             }
           ) {
             id
@@ -187,7 +247,7 @@ export class MajorEventSubscriptionApiService {
           }
         }
       `,
-      { majorEventId, selectedEventIds },
+      { majorEventId, selectedEventIds, paymentTier },
     ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
   }
 

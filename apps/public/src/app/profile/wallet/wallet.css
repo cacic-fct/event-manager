@@ -76,13 +76,6 @@
   }
 }
 
-@media screen and (max-width: 400px) {
-  .aztec-code {
-    width: 260px;
-    height: 260px;
-  }
-}
-
 .aztec-code {
   padding: 25px;
   background-color: #fff;
@@ -90,6 +83,20 @@
   overflow: hidden;
   height: 300px;
   width: 300px;
+}
+
+@media screen and (max-width: 400px) {
+  .aztec-code {
+    height: 200px;
+    width: 200px;
+  }
+  mat-card-header {
+    padding-top: 0;
+  }
+
+  mat-card {
+    padding: 0;
+  }
 }
 
 .barcode-print {

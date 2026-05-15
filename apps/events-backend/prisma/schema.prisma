@@ -155,6 +155,8 @@ model PaymentInfo {
   account  String
   holder   String
   document String
+  pixKey   String?
+  pixCity  String?
 
   majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id])
   majorEventId String     @unique
@@ -333,16 +335,105 @@ model MajorEventSubscription {
 
   subscriptionStatus SubscriptionStatus @default(WAITING_RECEIPT_UPLOAD)
   selectedEvents     MajorEventSubscriptionEventSelection[]
+  receipts           MajorEventReceipt[]
+
+  receiptRejectionReason String?
+  receiptValidatedAt     DateTime?
+  receiptValidatedBy     String?
+  validationActions      MajorEventReceiptValidationAction[]
 
   createdAt       DateTime                   @default(now())
   createdById     String?
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
+  updatedAt       DateTime                   @updatedAt
 
   deletedAt DateTime?
 
   @@unique([majorEventId, personId, deletedAt])
   @@index([majorEventId])
   @@map("major_event_subscriptions")
+}
+
+model MajorEventReceipt {
+  id String @id @default(uuid(7))
+
+  subscriptionId String
+  subscription   MajorEventSubscription @relation(fields: [subscriptionId], references: [id])
+
+  majorEventId String
+  personId     String
+
+  objectKey String
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+
+  expiresAt  DateTime
+  uploadedAt DateTime @default(now())
+  uploadedBy String?
+
+  processingStatus ReceiptProcessingStatus @default(PENDING)
+  processedAt      DateTime?
+  processingError  String?
+
+  ocrText String?
+
+  expectedAmountCents Int?
+  matchedAmountCents  Int?
+  amountMatched       Boolean?
+  matchedAmountText   String?
+
+  nameMatched     Boolean?
+  matchedNameText String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  validationActions MajorEventReceiptValidationAction[]
+
+  @@index([subscriptionId])
+  @@index([majorEventId])
+  @@index([personId])
+  @@index([expiresAt])
+  @@map("major_event_receipts")
+}
+
+model MajorEventReceiptValidationAction {
+  id String @id @default(uuid(7))
+
+  subscriptionId String
+  subscription   MajorEventSubscription @relation(fields: [subscriptionId], references: [id])
+
+  receiptId String?
+  receipt   MajorEventReceipt? @relation(fields: [receiptId], references: [id])
+
+  action         ReceiptValidationActionType
+  previousStatus SubscriptionStatus
+  nextStatus     SubscriptionStatus
+
+  previousRejectionReason String?
+  nextRejectionReason     String?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  undoneAt    DateTime?
+  undoneById  String?
+
+  @@index([subscriptionId])
+  @@index([receiptId])
+  @@index([createdAt])
+  @@map("major_event_receipt_validation_actions")
+}
+
+enum ReceiptValidationActionType {
+  APPROVE
+  REJECT
+}
+
+enum ReceiptProcessingStatus {
+  PENDING
+  OCR_DONE
+  CONVERTED
+  FAILED
 }
 
 model MajorEventSubscriptionEventSelection {

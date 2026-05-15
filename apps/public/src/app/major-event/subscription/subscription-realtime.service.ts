@@ -9,10 +9,7 @@ const subscriptionDeltaSchema = z.object({
   subscriptionSummaries: z.array(
     z.object({
       eventId: z.string(),
-      slots: z.number().nullable().optional(),
-      availableSlots: z.number().nullable().optional(),
       hasAvailableSlots: z.boolean(),
-      queueCount: z.number(),
     }),
   ),
 });

@@ -27,7 +27,7 @@
       <img class="twemoji" [src]="emoji.getTwemojiUrl(majorEvent.emoji)" [alt]="majorEvent.emoji" />
     </div>
     <div class="header-copy">
-      <p class="eyebrow">Evento principal</p>
+      <p class="eyebrow">Grande evento</p>
       <h1>{{ majorEvent.name }}</h1>
       <p>{{ dateLine() }}</p>
     </div>
@@ -58,21 +58,44 @@
   <app-subscription-event-list
     [events]="sortedEvents()"
     [summariesByEventId]="summariesByEventId()"
-    [selectedEventIds]="selectedEventIds()"
+    [selectedEventIds]="effectiveSelectedEventIds()"
     [autoSelectedEventIds]="autoSelectedEventIds()"
     [disabledReasons]="disabledReasons()"
     (toggleEvent)="toggleEvent($event)"
     (openInfo)="openInfo($event)" />
+
+  @if (majorEvent.isPaymentRequired && priceTiers().length > 1) {
+    <section class="price-section">
+      <h2>Preço</h2>
+      <mat-radio-group
+        class="price-options"
+        [value]="selectedPriceTierName()"
+        aria-label="Selecionar preço"
+        (change)="selectPriceTier($event.value)">
+        @for (tier of priceTiers(); track tier.id) {
+          <mat-radio-button [value]="tier.name">
+            <span>{{ tier.name }}</span>
+            <strong>{{ tier.value / 100 | currency: 'BRL' }}</strong>
+          </mat-radio-button>
+        }
+      </mat-radio-group>
+    </section>
+  } @else if (majorEvent.isPaymentRequired && priceTiers().length === 1) {
+    <section class="price-section">
+      <h2>Preço</h2>
+      <p>{{ priceTiers()[0].name }} · {{ priceTiers()[0].value / 100 | currency: 'BRL' }}</p>
+    </section>
+  }
 
   <button
     mat-fab
     extended
     type="button"
     class="subscribe-fab"
-    [disabled]="isSubmitting() || selectedEvents().length === 0"
+    [disabled]="isSubmitting() || selectedEvents().length === 0 || currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'"
     (click)="submit()">
-    <mat-icon>event_available</mat-icon>
-    Inscrever-se
+    <mat-icon>{{ submitButtonIcon() }}</mat-icon>
+    {{ submitButtonLabel() }}
   </button>
   }
 </main>

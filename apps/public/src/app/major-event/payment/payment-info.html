@@ -10,8 +10,131 @@
 </mat-toolbar>
 
 <main class="payment-page">
-  <section class="placeholder">
-    <mat-icon aria-hidden="true">payments</mat-icon>
-    <h1>Informações de pagamento</h1>
+  @let currentState = state(); @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  } @else if (currentState.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ currentState.message }}</p>
   </section>
+  } @else { @let subscription = currentState.subscription; @let majorEvent = subscription.majorEvent; @let paymentInfo =
+  majorEvent.paymentInfo; @let receipt = currentState.receipt;
+
+  <header class="payment-header">
+    <div>
+      <p class="eyebrow">Informações de pagamento</p>
+      <h1>{{ majorEvent.name }}</h1>
+    </div>
+    <span class="status-pill">{{ subscription.subscriptionStatus }}</span>
+  </header>
+
+  <section class="detail-section">
+    <h2>Valor</h2>
+    @let price = applicablePrice(); @if (price !== null) {
+    <p class="amount">{{ price / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</p>
+    } @else {
+    <p class="empty-text">Não foi possível determinar o valor da inscrição.</p>
+    }
+  </section>
+
+  <section class="detail-section">
+    <h2>Dados bancários</h2>
+    @if (paymentInfo) {
+    <mat-list>
+      <mat-list-item>
+        <div matListItemTitle>Banco</div>
+        <div matListItemLine>{{ paymentInfo.bankName }}</div>
+      </mat-list-item>
+      <mat-list-item>
+        <div matListItemTitle>Agência</div>
+        <div matListItemLine>{{ paymentInfo.agency }}</div>
+      </mat-list-item>
+      <mat-list-item>
+        <div matListItemTitle>Conta</div>
+        <div matListItemLine>{{ paymentInfo.account }}</div>
+      </mat-list-item>
+      <mat-list-item>
+        <div matListItemTitle>Titular</div>
+        <div matListItemLine>{{ paymentInfo.holder }}</div>
+      </mat-list-item>
+      <mat-list-item>
+        <div matListItemTitle>Documento</div>
+        <div matListItemLine>{{ paymentInfo.document }}</div>
+      </mat-list-item>
+      @if (paymentInfo.pixKey) {
+      <mat-list-item>
+        <div matListItemTitle>Chave Pix</div>
+        <div matListItemLine>{{ paymentInfo.pixKey }}</div>
+      </mat-list-item>
+      }
+    </mat-list>
+    } @else {
+    <p class="empty-text">As informações de pagamento ainda não foram cadastradas ou estão inválidas.</p>
+    } @if (majorEvent.additionalPaymentInfo) {
+    <p class="additional-info">{{ majorEvent.additionalPaymentInfo }}</p>
+    }
+  </section>
+
+  @if (paymentInfo?.pixKey) {
+  <section class="detail-section pix-section">
+    <h2>Pix</h2>
+    @if (pixPayload(); as pix) {
+    <div class="pix-grid">
+      <img class="pix-qr" [src]="pix.qrCodeDataUrl" alt="QR Code do Pix" />
+      <div class="pix-actions">
+        <p>Use o QR Code ou copie o código Pix para pagar.</p>
+        <p>Confira os dados do destinatário e o valor a ser transferido antes de concluir o pagamento.</p>
+        <p>Após o pagamento, anexe o comprovante na seção abaixo.</p>
+        <button mat-flat-button type="button" (click)="copyPixCode()">
+          <mat-icon>content_copy</mat-icon>
+          Pix copia e cola
+        </button>
+        <button mat-stroked-button type="button" (click)="copyPixKey()">
+          <mat-icon>content_copy</mat-icon>
+          Copiar chave Pix
+        </button>
+      </div>
+    </div>
+    } @else {
+    <button mat-stroked-button type="button" (click)="copyPixKey()">
+      <mat-icon>content_copy</mat-icon>
+      Copiar chave Pix
+    </button>
+    }
+  </section>
+  }
+
+  <section class="detail-section">
+    <h2>Comprovante</h2>
+    @if (receipt) {
+    <div class="receipt-view">
+      <img [src]="receipt.imageUrl" alt="Comprovante enviado" />
+      <div>
+        <p>Enviado em {{ receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+        <p>Disponível até {{ receipt.expiresAt | date: 'dd/MM/yyyy' }}</p>
+        <p>{{ receipt.sizeBytes / 1024 / 1024 | number: '1.1-1' }} MB - {{ receipt.processingStatus }}</p>
+      </div>
+    </div>
+    <mat-divider></mat-divider>
+    } @if (canUpload()) {
+    <input #fileInput class="file-input" type="file" accept="image/*" (change)="onFileSelected($event)" />
+    <button
+      class="upload-box"
+      type="button"
+      [class.dragging]="isDragging()"
+      (click)="fileInput.click()"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)">
+      <mat-icon aria-hidden="true">cloud_upload</mat-icon>
+      <span>{{ receipt ? 'Enviar novo comprovante' : 'Enviar comprovante' }}</span>
+      <small>Arraste uma imagem aqui ou clique para selecionar. Máximo 15 MB.</small>
+    </button>
+    @if (uploadProgress() !== null) {
+    <mat-progress-bar mode="determinate" [value]="uploadProgress() ?? 0"></mat-progress-bar>
+    } } @else {
+    <p class="empty-text">O envio de comprovantes não está disponível para esta inscrição.</p>
+    }
+  </section>
+  }
 </main>

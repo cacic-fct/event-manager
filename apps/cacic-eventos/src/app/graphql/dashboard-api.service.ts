@@ -55,6 +55,7 @@ export class DashboardApiService {
               subtitle
               finishedAt
             }
+            pendingReceiptValidationsCount
             inconsistencies {
               type
               action

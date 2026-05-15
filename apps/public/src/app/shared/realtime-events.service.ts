@@ -7,6 +7,7 @@ export interface RealtimeEventMessage<TPayload = unknown> {
   channel?: string;
   event?: string;
   majorEventId?: string;
+  eventId?: string;
   payload?: TPayload;
 }
 
@@ -16,6 +17,7 @@ export class RealtimeEventsService implements OnDestroy {
   private readonly messages = new Subject<RealtimeEventMessage>();
 
   private readonly watchedMajorEventIds = new Map<string, number>();
+  private readonly watchedEventIds = new Map<string, number>();
 
   private source: EventSource | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -52,6 +54,23 @@ export class RealtimeEventsService implements OnDestroy {
       return () => {
         subscription.unsubscribe();
         this.removeMajorEvent(majorEventId);
+      };
+    });
+  }
+
+  watchEvent(eventId: string): Observable<RealtimeEventMessage> {
+    return new Observable((subscriber) => {
+      this.addEvent(eventId);
+
+      const subscription = this.messages.subscribe((message) => {
+        if (!message.eventId || message.eventId === eventId) {
+          subscriber.next(message);
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+        this.removeEvent(eventId);
       };
     });
   }
@@ -108,6 +127,29 @@ export class RealtimeEventsService implements OnDestroy {
     }
   }
 
+  private addEvent(eventId: string): void {
+    const count = this.watchedEventIds.get(eventId) ?? 0;
+    this.watchedEventIds.set(eventId, count + 1);
+
+    this.scheduleReconnect();
+  }
+
+  private removeEvent(eventId: string): void {
+    const count = this.watchedEventIds.get(eventId) ?? 0;
+
+    if (count <= 1) {
+      this.watchedEventIds.delete(eventId);
+    } else {
+      this.watchedEventIds.set(eventId, count - 1);
+    }
+
+    if (this.hasActiveWatchers()) {
+      this.scheduleReconnect();
+    } else {
+      this.disconnect();
+    }
+  }
+
   private scheduleReconnect(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
@@ -140,15 +182,19 @@ export class RealtimeEventsService implements OnDestroy {
   }
 
   private hasActiveWatchers(): boolean {
-    return this.globalWatchers > 0 || this.watchedMajorEventIds.size > 0;
+    return this.globalWatchers > 0 || this.watchedMajorEventIds.size > 0 || this.watchedEventIds.size > 0;
   }
 
   private buildUrl(): string {
-    const url = new URL('/api/public/events', window.location.origin);
+    const url = new URL('/api/current-user/events/realtime', window.location.origin);
     const majorEventIds = [...this.watchedMajorEventIds.keys()];
+    const eventIds = [...this.watchedEventIds.keys()];
 
     if (majorEventIds.length > 0) {
       url.searchParams.set('majorEventIds', majorEventIds.join(','));
+    }
+    if (eventIds.length > 0) {
+      url.searchParams.set('eventIds', eventIds.join(','));
     }
 
     return url.toString();

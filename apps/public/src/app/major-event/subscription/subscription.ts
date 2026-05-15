@@ -1,3 +1,4 @@
+import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -5,6 +6,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -31,9 +33,11 @@ type SubscriptionPageState =
   imports: [
     MatButtonModule,
     MatChipsModule,
+    CurrencyPipe,
     MatDialogModule,
     MatIconModule,
     MatProgressBarModule,
+    MatRadioModule,
     MatSnackBarModule,
     MatToolbarModule,
     RouterLink,
@@ -60,6 +64,7 @@ export class MajorEventSubscription {
   readonly pageState = signal<SubscriptionPageState>({ status: 'loading' });
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
   readonly selectedEventIds = signal<Set<string>>(new Set());
+  readonly selectedPriceTierName = signal<string | null>(null);
 
   private readonly initializedMajorEventId = signal<string | null>(null);
   private readonly pendingRealtimeDelta = signal<MajorEventSubscriptionRealtimeDelta | null>(null);
@@ -125,8 +130,12 @@ export class MajorEventSubscription {
       ),
   );
 
+  readonly effectiveSelectedEventIds = computed(
+    () => new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()]),
+  );
+
   readonly selectedEvents = computed(() =>
-    this.sortedEvents().filter((event) => this.selectedEventIds().has(event.id)),
+    this.sortedEvents().filter((event) => this.effectiveSelectedEventIds().has(event.id)),
   );
 
   readonly courseCount = computed(() => this.selectedEvents().filter((event) => event.type === 'MINICURSO').length);
@@ -134,6 +143,11 @@ export class MajorEventSubscription {
   readonly lectureCount = computed(() => this.selectedEvents().filter((event) => event.type === 'PALESTRA').length);
 
   readonly disabledReasons = computed(() => this.computeDisabledReasons());
+  readonly priceTiers = computed(() => this.data()?.majorEvent.majorEventPrices?.flatMap((price) => price.tiers) ?? []);
+  readonly selectedPriceTier = computed(() => {
+    const selectedName = this.selectedPriceTierName();
+    return this.priceTiers().find((tier) => tier.name === selectedName) ?? null;
+  });
 
   constructor() {
     effect((onCleanup) => {
@@ -149,6 +163,7 @@ export class MajorEventSubscription {
       this.pageState.set({ status: 'loading' });
       this.initializedMajorEventId.set(null);
       this.pendingRealtimeDelta.set(null);
+      this.selectedPriceTierName.set(null);
 
       const initialSubscription = this.api
         .getSubscriptionPage(majorEventId)
@@ -238,6 +253,14 @@ export class MajorEventSubscription {
         this.initializedMajorEventId.set(majorEventId);
       }
 
+      const tierNames = new Set(this.priceTiers().map((tier) => tier.name));
+      const currentTier = currentUserSubscription?.paymentTier ?? this.selectedPriceTierName();
+      if (currentTier && tierNames.has(currentTier) && currentTier !== this.selectedPriceTierName()) {
+        this.selectedPriceTierName.set(currentTier);
+      } else if (!currentTier && this.priceTiers().length === 1) {
+        this.selectedPriceTierName.set(this.priceTiers()[0].name);
+      }
+
       if (!this.setsEqual(this.selectedEventIds(), nextSelected)) {
         this.selectedEventIds.set(nextSelected);
       }
@@ -249,13 +272,29 @@ export class MajorEventSubscription {
     return majorEvent ? formatDateRange(majorEvent.startDate, majorEvent.endDate) : '';
   }
 
+  submitButtonIcon(): string {
+    const subscription = this.currentUserSubscription();
+    if (subscription?.subscriptionStatus === 'CONFIRMED') {
+      return 'check';
+    }
+    return subscription ? 'edit' : 'event_available';
+  }
+
+  submitButtonLabel(): string {
+    const subscription = this.currentUserSubscription();
+    if (subscription?.subscriptionStatus === 'CONFIRMED') {
+      return 'Inscrito';
+    }
+    return subscription ? 'Atualizar inscrição' : 'Inscrever-se';
+  }
+
   toggleEvent(event: PublicEvent): void {
     if (this.autoSelectedEventIds().has(event.id)) {
       return;
     }
 
     const groupEventIds = this.getGroupEventIds(event);
-    const selectedEventIds = new Set(this.selectedEventIds());
+    const selectedEventIds = new Set(this.effectiveSelectedEventIds());
     const shouldUnselect = groupEventIds.every((eventId) => selectedEventIds.has(eventId));
 
     for (const eventId of groupEventIds) {
@@ -289,6 +328,14 @@ export class MajorEventSubscription {
       return;
     }
 
+    const selectedPaymentTier = this.resolveSelectedPaymentTier(data);
+    if (data.majorEvent.isPaymentRequired && selectedPaymentTier === undefined) {
+      this.snackBar.open('Selecione uma opção de preço.', 'OK', {
+        duration: 3000,
+      });
+      return;
+    }
+
     if (!this.isAuthenticated()) {
       void this.auth.login({ returnTo: this.router.url });
       return;
@@ -310,17 +357,22 @@ export class MajorEventSubscription {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((confirmed) => {
         if (confirmed) {
-          this.confirmSubscription(data);
+          this.confirmSubscription(data, selectedPaymentTier ?? null);
         }
       });
   }
 
-  private confirmSubscription(data: PublicMajorEventSubscriptionPage): void {
+  selectPriceTier(tierName: string): void {
+    this.selectedPriceTierName.set(tierName);
+  }
+
+  private confirmSubscription(data: PublicMajorEventSubscriptionPage, paymentTier: string | null): void {
     this.isSubmitting.set(true);
     this.api
       .upsertSubscription(
         data.majorEvent.id,
-        this.selectedEvents().map((event) => event.id),
+        [...this.effectiveSelectedEventIds()],
+        paymentTier,
       )
       .pipe(
         finalize(() => this.isSubmitting.set(false)),
@@ -420,6 +472,20 @@ export class MajorEventSubscription {
     return groupEvents.some((groupEvent) =>
       selectedEvents.some((selectedEvent) => this.eventsConflict(groupEvent, selectedEvent)),
     );
+  }
+
+  private resolveSelectedPaymentTier(data: PublicMajorEventSubscriptionPage): string | null | undefined {
+    const prices = data.majorEvent.majorEventPrices ?? [];
+    const tiers = prices.flatMap((price) => price.tiers);
+    if (tiers.length === 0) {
+      return null;
+    }
+
+    if (tiers.length === 1) {
+      return tiers[0].name;
+    }
+
+    return this.selectedPriceTier()?.name;
   }
 
   private eventsConflict(left: PublicEvent, right: PublicEvent): boolean {

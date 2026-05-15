@@ -9,8 +9,7 @@ export const appRoutes: Route[] = [
   },
   {
     path: '',
-    loadComponent: () =>
-      import('./shared/components/bottom-toolbar/bottom-toolbar.layout').then((m) => m.ToolbarLayoutComponent),
+    loadComponent: () => import('./tabs/bottom-toolbar/bottom-toolbar.layout').then((m) => m.ToolbarLayoutComponent),
     children: [
       {
         path: 'menu',
@@ -22,6 +21,12 @@ export const appRoutes: Route[] = [
         path: 'calendar',
         loadComponent: () => import('./tabs/calendar/calendar').then((m) => m.Calendar),
         title: 'Calendário',
+        data: { reuseTab: true },
+      },
+      {
+        path: 'major-event',
+        loadComponent: () => import('./major-event/major-event').then((m) => m.MajorEvent),
+        title: 'Grandes eventos',
         data: { reuseTab: true },
       },
     ],

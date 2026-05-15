@@ -100,6 +100,7 @@ export interface WorkspaceDashboardInsights {
   calendarEvents: DashboardCalendarEvent[];
   weatherAlerts: DashboardWeatherAlert[];
   pendingCertificates: DashboardCertificatePendingItem[];
+  pendingReceiptValidationsCount: number;
   inconsistencies: DashboardInconsistency[];
   duplicatePeopleCount: number;
   permissions: DashboardPermissionGroup[];

@@ -1,5 +1,5 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -23,6 +23,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Observable, catchError, combineLatest, finalize, map, of, startWith, switchMap } from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
 import { EventLocationMap } from './event-location-map';
+import { EventSubscriptionRealtimeService } from './event-subscription-realtime.service';
 import { EmojiService } from '../profile/attendances/emoji.service';
 import { NetworkStatusService } from '../shared/network-status.service';
 
@@ -59,6 +60,7 @@ export class Event {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly snackBar = inject(MatSnackBar);
   private readonly networkStatus = inject(NetworkStatusService);
+  private readonly realtime = inject(EventSubscriptionRealtimeService);
   private readonly platformId = inject(PLATFORM_ID);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
@@ -67,9 +69,11 @@ export class Event {
   readonly isAuthenticated = this.authService.isAuthenticated;
   readonly isOnline = this.networkStatus.isOnline;
   readonly isSubscribing = signal(false);
+  readonly isUnsubscribing = signal(false);
   readonly isConfirmingAttendance = signal(false);
 
   private readonly reloadCounter = signal(0);
+  private readonly realtimeAvailability = signal<{ eventId: string; hasAvailableSlots: boolean } | null>(null);
 
   private readonly returnUrl = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('returnUrl') || '/menu')),
@@ -81,6 +85,24 @@ export class Event {
   });
 
   readonly backUrl = computed(() => this.returnUrl());
+
+  private readonly realtimeAvailabilityWatcher = effect((onCleanup) => {
+    if (!this.isAuthenticated()) {
+      return;
+    }
+
+    const currentState = this.eventState();
+    if (currentState.status !== 'ready') {
+      return;
+    }
+
+    const eventId = currentState.data.event.id;
+    const subscription = this.realtime.watch(eventId).subscribe((availability) => {
+      this.realtimeAvailability.set(availability);
+    });
+
+    onCleanup(() => subscription.unsubscribe());
+  });
 
   goBack(): void {
     void this.router.navigateByUrl(this.backUrl());
@@ -106,7 +128,7 @@ export class Event {
     }
 
     if (!this.isAuthenticated()) {
-      void this.authService.login();
+      this.login();
       return;
     }
 
@@ -131,13 +153,43 @@ export class Event {
       });
   }
 
+  unsubscribe(data: EventPageData): void {
+    if (!this.isBrowser || !this.canUnsubscribe(data) || this.isUnsubscribing()) {
+      return;
+    }
+
+    this.isUnsubscribing.set(true);
+
+    this.api
+      .unsubscribeFromEvent(data.event.id)
+      .pipe(
+        finalize(() => this.isUnsubscribing.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.snackBar.open('Inscrição cancelada.', 'OK', { duration: 3000 });
+          this.reload();
+        },
+        error: (error: unknown) => this.showError(error),
+      });
+  }
+
+  login(): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    void this.authService.login({ returnTo: this.router.url });
+  }
+
   confirmAttendance(data: EventPageData): void {
     if (!this.isBrowser) {
       return;
     }
 
     if (!this.isAuthenticated()) {
-      void this.authService.login();
+      this.login();
       return;
     }
 
@@ -172,11 +224,15 @@ export class Event {
       Boolean(event.allowSubscription) &&
       this.isOnline() &&
       !data.currentUserSubscription &&
-      data.subscriptionSummary.hasAvailableSlots &&
+      this.hasAvailableSlots(data) &&
       Date.parse(event.startDate) > now &&
       (!subscriptionStart || Date.parse(subscriptionStart) <= now) &&
       (!subscriptionEnd || Date.parse(subscriptionEnd) >= now)
     );
+  }
+
+  canUnsubscribe(data: EventPageData): boolean {
+    return Boolean(data.currentUserSubscription) && this.isOnline() && Date.parse(data.event.startDate) > Date.now();
   }
 
   canConfirmAttendance(event: PublicEvent): boolean {
@@ -197,7 +253,9 @@ export class Event {
 
   subscriptionStatusLine(data: EventPageData): string {
     if (data.currentUserSubscription) {
-      return '';
+      return this.canUnsubscribe(data)
+        ? 'Você pode cancelar sua inscrição até o início do evento.'
+        : 'Inscrição confirmada.';
     }
 
     if (!data.event.allowSubscription) {
@@ -208,23 +266,27 @@ export class Event {
       return 'Inscrições indisponíveis offline.';
     }
 
-    if (!data.subscriptionSummary.hasAvailableSlots) {
+    if (!this.hasAvailableSlots(data)) {
       return 'Não há mais vagas.';
     }
 
-    return 'Inscrições abertas.';
-  }
+    const now = Date.now();
+    const subscriptionStart = data.event.subscriptionStartDate ?? data.event.majorEvent?.subscriptionStartDate;
+    const subscriptionEnd = data.event.subscriptionEndDate ?? data.event.majorEvent?.subscriptionEndDate;
 
-  slotsLine(data: EventPageData): string | null {
-    const availableSlots = data.subscriptionSummary.availableSlots;
-
-    if (availableSlots == null) {
-      return null;
+    if (Date.parse(data.event.startDate) <= now) {
+      return 'O evento já começou.';
     }
 
-    return `${availableSlots} vaga${availableSlots === 1 ? '' : 's'} ${
-      availableSlots === 1 ? 'disponível' : 'disponíveis'
-    }`;
+    if (subscriptionStart && Date.parse(subscriptionStart) > now) {
+      return 'Inscrições ainda não abertas.';
+    }
+
+    if (subscriptionEnd && Date.parse(subscriptionEnd) < now) {
+      return 'Inscrições encerradas.';
+    }
+
+    return 'Inscrições abertas.';
   }
 
   youtubeEmbedUrl(code: string): SafeResourceUrl {
@@ -268,6 +330,16 @@ export class Event {
 
   private reload(): void {
     this.reloadCounter.update((value) => value + 1);
+  }
+
+  private hasAvailableSlots(data: EventPageData): boolean {
+    const realtimeAvailability = this.realtimeAvailability();
+
+    if (realtimeAvailability?.eventId === data.event.id) {
+      return realtimeAvailability.hasAvailableSlots;
+    }
+
+    return data.subscriptionSummary.hasAvailableSlots;
   }
 
   private showError(error: unknown): void {
