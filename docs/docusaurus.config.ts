@@ -181,7 +181,7 @@ const config: Config = {
     [
       '@docusaurus/plugin-content-docs',
       {
-        id: 'backend',
+        id: 'manual',
         path: 'docs-manual',
         routeBasePath: 'Manual',
         sidebarPath: './sidebars/manual.ts',
