@@ -6,7 +6,6 @@
   }
 
   <lib-cacic-logo routerLink="/"></lib-cacic-logo>
-  <span routerLink="/">Event Manager</span>
 
   <span class="internal-badge">interno</span>
 
@@ -35,7 +34,13 @@
           matTooltipPosition="right"
           [routerLink]="item.path"
           (click)="closeSidenavIfMobile(sidenav)">
-          <mat-icon>{{ item.icon }}</mat-icon>
+          @if (item.id === 'notifications') {
+            <lib-novu-notification-badge>
+              <mat-icon>{{ item.icon }}</mat-icon>
+            </lib-novu-notification-badge>
+          } @else {
+            <mat-icon>{{ item.icon }}</mat-icon>
+          }
 
           @if (isMobile()) {
             <span class="nav-label">{{ item.label }}</span>

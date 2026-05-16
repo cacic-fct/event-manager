@@ -20,6 +20,10 @@ import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
 import { DashboardInsightsService } from '../dashboard/insights.service';
 import { AttendanceCategoryService } from '../events/attendance-category.service';
+import {
+  MajorEventSubscriptionNotificationRecord,
+  NovuNotificationsService,
+} from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import {
@@ -46,6 +50,7 @@ export class MajorEventReceiptsService {
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly dashboardInsights: DashboardInsightsService,
     private readonly keycloakAuthService: KeycloakAuthService,
+    private readonly notifications: NovuNotificationsService,
     @InjectQueue(MAJOR_EVENT_RECEIPTS_QUEUE)
     private readonly receiptQueue: Queue<ReceiptProcessingJob>,
   ) {}
@@ -167,6 +172,10 @@ export class MajorEventReceiptsService {
     if (!item) {
       throw new NotFoundException(`Subscription ${subscriptionId} was not found after receipt approval ${result.id}.`);
     }
+    const notificationRecord = await this.findMajorEventSubscriptionNotificationRecord(subscriptionId);
+    if (notificationRecord) {
+      await this.notifications.notifyMajorEventSubscriptionRecordChanged(SubscriptionStatus.RECEIPT_UNDER_REVIEW, notificationRecord);
+    }
     await this.dashboardInsights.invalidateCachedInsights();
     return {
       actionId: result.id,
@@ -225,6 +234,10 @@ export class MajorEventReceiptsService {
     const item = await this.getSubscriptionQueueItem(subscriptionId);
     if (!item) {
       throw new NotFoundException(`Subscription ${subscriptionId} was not found after receipt rejection.`);
+    }
+    const notificationRecord = await this.findMajorEventSubscriptionNotificationRecord(subscriptionId);
+    if (notificationRecord) {
+      await this.notifications.notifyMajorEventSubscriptionRecordChanged(SubscriptionStatus.RECEIPT_UNDER_REVIEW, notificationRecord);
     }
     await this.dashboardInsights.invalidateCachedInsights();
     return {
@@ -324,6 +337,10 @@ export class MajorEventReceiptsService {
     const item = await this.getSubscriptionQueueItem(action.subscriptionId);
     if (!item) {
       throw new NotFoundException(`Subscription ${action.subscriptionId} was not found after undo.`);
+    }
+    const notificationRecord = await this.findMajorEventSubscriptionNotificationRecord(action.subscriptionId);
+    if (notificationRecord) {
+      await this.notifications.notifyMajorEventSubscriptionRecordChanged(action.nextStatus, notificationRecord);
     }
     await this.dashboardInsights.invalidateCachedInsights();
     return item;
@@ -636,6 +653,43 @@ export class MajorEventReceiptsService {
     });
 
     return subscription ? this.mapAdminQueueItem(subscription) : null;
+  }
+
+  private async findMajorEventSubscriptionNotificationRecord(
+    id: string,
+  ): Promise<MajorEventSubscriptionNotificationRecord | null> {
+    return this.prisma.majorEventSubscription.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        majorEventId: true,
+        subscriptionStatus: true,
+        receiptRejectionReason: true,
+        majorEvent: {
+          select: {
+            name: true,
+          },
+        },
+        person: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   private async findActionableSubscription(

@@ -60,6 +60,13 @@ export class ToolbarLayoutComponent {
       route: '/major-event',
     },
     {
+      label: 'Notificações',
+      shortLabel: 'Avisos',
+      icon: 'notifications',
+      route: '/notifications',
+      badge: 'notifications',
+    },
+    {
       label: 'Menu',
       shortLabel: 'Menu',
       icon: 'menu',
@@ -83,4 +90,5 @@ export interface ToolbarItem {
   shortLabel: string;
   route: string;
   icon: string;
+  badge?: 'notifications';
 }

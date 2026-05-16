@@ -11,6 +11,10 @@ import {
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  MajorEventSubscriptionNotificationRecord,
+  NovuNotificationsService,
+} from '../notifications/novu-notifications.service';
 import { AttendanceCategoryService } from './attendance-category.service';
 
 type GraphqlContext = {
@@ -109,6 +113,7 @@ export class EventSubscriptionsResolver {
   constructor(
     private readonly prisma: PrismaService,
     private readonly attendanceCategories: AttendanceCategoryService,
+    private readonly notifications: NovuNotificationsService,
   ) {}
 
   @Query(() => [WorkspaceEventSubscription], {
@@ -377,7 +382,50 @@ export class EventSubscriptionsResolver {
     });
 
     const [result] = await this.attachMajorEventSubscriptionEvents(existing.majorEventId, [subscription]);
+    if (existing.subscriptionStatus !== subscription.subscriptionStatus) {
+      const notificationRecord = await this.findMajorEventSubscriptionNotificationRecord(subscription.id);
+      if (notificationRecord) {
+        await this.notifications.notifyMajorEventSubscriptionRecordChanged(existing.subscriptionStatus, notificationRecord);
+      }
+    }
     return result;
+  }
+
+  private async findMajorEventSubscriptionNotificationRecord(
+    id: string,
+  ): Promise<MajorEventSubscriptionNotificationRecord | null> {
+    return this.prisma.majorEventSubscription.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        majorEventId: true,
+        subscriptionStatus: true,
+        receiptRejectionReason: true,
+        majorEvent: {
+          select: {
+            name: true,
+          },
+        },
+        person: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   private majorEventSubscriptionSelect() {

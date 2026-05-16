@@ -1,0 +1,25 @@
+<section class="section workspace-tab-shell">
+  <section class="panel panel-stack">
+    <div class="panel-heading">
+      <div>
+        <h3>Certificados</h3>
+        <p>Reprocessa emissões pendentes e correções em todas as configurações.</p>
+      </div>
+
+      <div class="panel-actions">
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="reissuingCertificates() || !permissions.canEdit('certificate#edit')"
+          (click)="reissueAllCertificates()">
+          <mat-icon>workspace_premium</mat-icon>
+          Reemitir certificados
+        </button>
+      </div>
+    </div>
+
+    @if (reissuingCertificates()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+  </section>
+</section>

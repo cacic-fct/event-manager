@@ -4,6 +4,7 @@ import { AttendanceCreationMethod } from '@prisma/client';
 import {
   ConfirmCurrentUserOnlineAttendanceInput,
   CurrentUserEventAttendance,
+  CurrentUserOrganizerInfo,
   CurrentUserPendingOnlineAttendanceEvent,
 } from '../models';
 import { CurrentUserContextService } from '../context.service';
@@ -12,6 +13,7 @@ import { CURRENT_USER_EVENT_ATTENDANCE_SELECT, GraphqlContext } from '../selects
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from './attendance-realtime.service';
+import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
 
 @Resolver()
 export class CurrentUserEventAttendanceResolver {
@@ -193,5 +195,142 @@ export class CurrentUserEventAttendanceResolver {
   ): Promise<CurrentUserPendingOnlineAttendanceEvent[]> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     return this.attendanceRealtime.listPendingOnlineAttendanceEvents(person.id);
+  }
+
+  @Query(() => CurrentUserOrganizerInfo, {
+    name: 'currentUserOrganizerInfo',
+    nullable: true,
+  })
+  async currentUserOrganizerInfo(
+    @Args('targetType', { type: () => String }) targetType: string,
+    @Args('targetId', { type: () => String }) targetId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<CurrentUserOrganizerInfo | null> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    if (!person) {
+      return null;
+    }
+
+    const events = await this.findLecturerEvents(person.id, targetType, targetId);
+    if (events.length === 0) {
+      return null;
+    }
+
+    const eventIds = events.map((event) => event.id);
+    const [eventSubscriptionCounts, majorEventSelectionCounts, attendanceCounts] = await Promise.all([
+      this.prisma.eventSubscription.groupBy({
+        by: ['eventId'],
+        where: {
+          eventId: {
+            in: eventIds,
+          },
+          deletedAt: null,
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      this.prisma.majorEventSubscriptionEventSelection.groupBy({
+        by: ['eventId'],
+        where: {
+          eventId: {
+            in: eventIds,
+          },
+          deletedAt: null,
+          subscription: {
+            deletedAt: null,
+          },
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      this.prisma.eventAttendance.groupBy({
+        by: ['eventId'],
+        where: {
+          eventId: {
+            in: eventIds,
+          },
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+    ]);
+
+    const subscriberCountByEventId = new Map(eventSubscriptionCounts.map((item) => [item.eventId, item._count._all]));
+    for (const item of majorEventSelectionCounts) {
+      subscriberCountByEventId.set(item.eventId, (subscriberCountByEventId.get(item.eventId) ?? 0) + item._count._all);
+    }
+    const attendanceCountByEventId = new Map(attendanceCounts.map((item) => [item.eventId, item._count._all]));
+
+    return {
+      targetType,
+      targetId,
+      title: this.resolveOrganizerTitle(targetType, events),
+      events: events.map((event) => ({
+        event: this.mapper.mapPublicEvent(event),
+        subscriberCount: subscriberCountByEventId.get(event.id) ?? 0,
+        attendanceCount: attendanceCountByEventId.get(event.id) ?? 0,
+        onlineAttendanceCode: event.onlineAttendanceCode ?? undefined,
+      })),
+    };
+  }
+
+  private findLecturerEvents(personId: string, targetType: string, targetId: string) {
+    const targetWhere = this.getOrganizerTargetWhere(targetType, targetId);
+    if (!targetWhere) {
+      throw new BadRequestException(`Unsupported organizer info target type ${targetType}.`);
+    }
+
+    return this.prisma.event.findMany({
+      where: {
+        ...targetWhere,
+        deletedAt: null,
+        lecturers: {
+          some: {
+            personId,
+          },
+        },
+      },
+      select: {
+        ...PUBLIC_EVENT_SELECT,
+        onlineAttendanceCode: true,
+      },
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
+  }
+
+  private getOrganizerTargetWhere(targetType: string, targetId: string) {
+    switch (targetType) {
+      case 'event':
+        return { id: targetId };
+      case 'event-group':
+        return { eventGroupId: targetId };
+      case 'major-event':
+        return { majorEventId: targetId };
+      default:
+        return null;
+    }
+  }
+
+  private resolveOrganizerTitle(
+    targetType: string,
+    events: Awaited<ReturnType<CurrentUserEventAttendanceResolver['findLecturerEvents']>>,
+  ): string {
+    const firstEvent = events[0];
+    switch (targetType) {
+      case 'event':
+        return firstEvent.name;
+      case 'event-group':
+        return firstEvent.eventGroup?.name ?? firstEvent.name;
+      case 'major-event':
+        return firstEvent.majorEvent?.name ?? firstEvent.name;
+      default:
+        return firstEvent.name;
+    }
   }
 }

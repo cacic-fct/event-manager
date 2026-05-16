@@ -181,6 +181,18 @@ const config: Config = {
     [
       '@docusaurus/plugin-content-docs',
       {
+        id: 'backend',
+        path: 'docs-manual',
+        routeBasePath: 'Manual',
+        sidebarPath: './sidebars/manual.ts',
+        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-backend/',
+        showLastUpdateAuthor: true,
+        showLastUpdateTime: true,
+      },
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
         id: 'admin',
         path: 'docs-admin',
         routeBasePath: 'Administração',

@@ -64,6 +64,7 @@ import { MajorEventReceiptsProcessor } from './major-event-receipts/major-event-
 import { MajorEventReceiptsService } from './major-event-receipts/major-event-receipts.service';
 import { ReceiptAnalysisService } from './major-event-receipts/receipt-analysis.service';
 import { MAJOR_EVENT_RECEIPTS_QUEUE } from './major-event-receipts/receipt.types';
+import { NovuNotificationsService } from './notifications/novu-notifications.service';
 import { getRedisConnectionOptions } from './weather/redis-connection';
 import { WeatherProcessor } from './weather/weather.processor';
 import { WeatherResolver } from './weather/weather.resolver';
@@ -122,6 +123,7 @@ import { WeatherService } from './weather/weather.service';
   ],
   providers: [
     AppService,
+    NovuNotificationsService,
     AccountMergeService,
     LgpdService,
     MajorEventsResolver,

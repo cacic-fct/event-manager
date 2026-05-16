@@ -46,7 +46,7 @@
     } @if (currentUserSubscription(); as subscription) {
     <mat-chip>
       <mat-icon matChipAvatar>check</mat-icon>
-      {{ subscription.subscriptionStatus }}
+      {{ statusLabel(subscription.subscriptionStatus) }}
     </mat-chip>
     }
   </mat-chip-set>

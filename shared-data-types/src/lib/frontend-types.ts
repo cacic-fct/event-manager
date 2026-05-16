@@ -96,6 +96,8 @@ export interface CertificateConfig {
   certificateTemplateId: string;
   certificateTemplate: CertificateTemplate;
   certificateText?: string | null;
+  shouldAutofillSecondPage: boolean;
+  secondPageText?: string | null;
   isActive: boolean;
   issuedTo: CertificateIssuedTo;
   certificateFieldsJson?: string | null;

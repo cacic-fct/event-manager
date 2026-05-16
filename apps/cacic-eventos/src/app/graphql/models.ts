@@ -115,6 +115,8 @@ export interface CertificateConfig {
   certificateTemplateId: string;
   certificateTemplate: CertificateTemplate;
   certificateText?: string | null;
+  shouldAutofillSecondPage: boolean;
+  secondPageText?: string | null;
   isActive: boolean;
   issuedTo: CertificateIssuedTo;
   certificateFieldsJson?: string | null;
@@ -145,6 +147,11 @@ export interface CertificateDownload {
   fileName: string;
   mimeType: string;
   contentBase64: string;
+}
+
+export interface CertificateReissueResult {
+  configCount: number;
+  certificateCount: number;
 }
 
 export interface Event {
@@ -417,6 +424,8 @@ export interface CertificateConfigInput {
   eventId?: string | null;
   certificateTemplateId?: string;
   certificateText?: string | null;
+  shouldAutofillSecondPage?: boolean;
+  secondPageText?: string | null;
   isActive?: boolean;
   issuedTo?: CertificateIssuedTo;
   certificateFieldsJson?: string | null;

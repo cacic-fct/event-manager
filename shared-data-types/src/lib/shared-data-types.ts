@@ -865,6 +865,12 @@ export class CertificateConfig {
   certificateText?: string;
 
   @Field(() => Boolean)
+  shouldAutofillSecondPage!: boolean;
+
+  @Field(() => String, { nullable: true })
+  secondPageText?: string;
+
+  @Field(() => Boolean)
   isActive!: boolean;
 
   @Field(() => CertificateIssuedTo)
@@ -941,6 +947,15 @@ export class CertificateDownload {
 
   @Field(() => String)
   contentBase64!: string;
+}
+
+@ObjectType()
+export class CertificateReissueResult {
+  @Field(() => Int)
+  configCount!: number;
+
+  @Field(() => Int)
+  certificateCount!: number;
 }
 
 @ObjectType()
@@ -1372,6 +1387,12 @@ export class CertificateConfigCreateInput {
   certificateText?: string;
 
   @Field(() => Boolean, { nullable: true })
+  shouldAutofillSecondPage?: boolean;
+
+  @Field(() => String, { nullable: true })
+  secondPageText?: string;
+
+  @Field(() => Boolean, { nullable: true })
   isActive?: boolean;
 
   @Field(() => CertificateIssuedTo, { nullable: true })
@@ -1403,6 +1424,12 @@ export class CertificateConfigUpdateInput {
 
   @Field(() => String, { nullable: true })
   certificateText?: string;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldAutofillSecondPage?: boolean;
+
+  @Field(() => String, { nullable: true })
+  secondPageText?: string;
 
   @Field(() => Boolean, { nullable: true })
   isActive?: boolean;

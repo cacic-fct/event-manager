@@ -50,9 +50,6 @@
     <div class="section-title">
       <div>
         <h2>{{ calendarHeadline() }}</h2>
-        @if (todayEvents().length > 0) {
-        <p>Hoje acontece</p>
-        }
       </div>
     </div>
 
@@ -106,8 +103,7 @@
         </a>
       </mat-card-actions>
     </mat-card>
-    }
-    @if (dashboard.pendingCertificates.length > 0) {
+    } @if (dashboard.pendingCertificates.length > 0) {
     <mat-card appearance="outlined">
       <mat-card-header>
         <mat-icon mat-card-avatar>workspace_premium</mat-icon>

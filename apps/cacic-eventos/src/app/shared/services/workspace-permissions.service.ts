@@ -47,7 +47,9 @@ export enum WorkspacePermissionTab {
   Certificates = 5,
   Attendances = 6,
   Subscriptions = 7,
-  Permissions = 8,
+  GlobalOperations = 8,
+  Permissions = 9,
+  Notifications = 10,
 }
 
 type KeycloakPermissionClaim =
@@ -108,7 +110,19 @@ const TAB_PERMISSIONS = [
     delete: ['subscription#delete'],
   },
   {
+    label: 'Operações globais',
+    read: ['certificate#read'],
+    edit: ['certificate#edit'],
+    delete: [],
+  },
+  {
     label: 'Permissões',
+    read: [],
+    edit: [],
+    delete: [],
+  },
+  {
+    label: 'Notificações',
     read: [],
     edit: [],
     delete: [],

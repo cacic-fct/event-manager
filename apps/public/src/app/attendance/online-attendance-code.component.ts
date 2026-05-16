@@ -132,7 +132,7 @@ export class OnlineAttendanceCodeComponent {
       maxWidth: '96vw',
       data: {
         acceptedPrefixes: [`online-attendance:${state.item.eventId}:`],
-        title: 'Escanear presença online',
+        title: 'Escanear presença on-line',
       },
     });
 

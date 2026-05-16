@@ -12,7 +12,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription, PublicEvent } from '@cacic-fct/shared-utils';
-import { formatDateRange } from '@cacic-fct/shared-utils';
+import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { filter, finalize, map } from 'rxjs';
 import { EmojiService } from '../../profile/attendances/emoji.service';
 import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
@@ -148,6 +148,10 @@ export class MajorEventSubscription {
     const selectedName = this.selectedPriceTierName();
     return this.priceTiers().find((tier) => tier.name === selectedName) ?? null;
   });
+
+  statusLabel(status: string): string {
+    return getSubscriptionStatusLabel(status);
+  }
 
   constructor() {
     effect((onCleanup) => {

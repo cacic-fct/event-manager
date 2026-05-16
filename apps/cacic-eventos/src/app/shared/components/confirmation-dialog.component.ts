@@ -4,7 +4,8 @@ import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 
 export interface ConfirmationDialogData {
   title: string;
-  message: string;
+  message?: string;
+  actionDescription?: string;
   confirmLabel?: string;
   cancelLabel?: string;
 }
@@ -16,7 +17,7 @@ export interface ConfirmationDialogData {
   template: `
     <h2 mat-dialog-title>{{ data.title }}</h2>
     <div mat-dialog-content>
-      <p>{{ data.message }}</p>
+      <p>{{ data.message ?? defaultMessage }}</p>
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button type="button" [mat-dialog-close]="false">
@@ -30,4 +31,8 @@ export interface ConfirmationDialogData {
 })
 export class ConfirmationDialogComponent {
   readonly data = inject<ConfirmationDialogData>(MAT_DIALOG_DATA);
+
+  get defaultMessage(): string {
+    return `Você tem certeza que quer fazer ${this.data.actionDescription ?? 'essa ação'}?`;
+  }
 }

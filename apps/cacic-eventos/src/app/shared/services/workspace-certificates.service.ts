@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { form, required, submit, type FieldTree } from '@angular/forms/signals';
 import { MatDialog } from '@angular/material/dialog';
@@ -34,6 +34,8 @@ type CertificateConfigFormModel = {
   name: string;
   certificateTemplateId: string;
   certificateText: string;
+  shouldAutofillSecondPage: boolean;
+  secondPageText: string;
   isActive: boolean;
   issuedTo: CertificateIssuedToOption;
   certificateFields: Record<string, string>;
@@ -72,6 +74,7 @@ export class WorkspaceCertificatesService {
   readonly certificates = signal<Certificate[]>([]);
   readonly personSearchResults = signal<Person[]>([]);
   readonly certificateFieldDefinitions = signal<CertificateFieldDefinition[]>([]);
+  readonly shouldShowSecondPageText = computed(() => !this.certificateConfigModel().shouldAutofillSecondPage);
   private certificateFieldValuesJson: string | null | undefined;
 
   private selectedCertificateTemplate(
@@ -238,6 +241,8 @@ export class WorkspaceCertificatesService {
       name: config.name,
       certificateTemplateId: config.certificateTemplateId,
       certificateText: config.certificateText ?? '',
+      shouldAutofillSecondPage: config.shouldAutofillSecondPage,
+      secondPageText: config.secondPageText ?? '',
       isActive: config.isActive,
       issuedTo: this.buildIssuedToOption(
         config.issuedTo,
@@ -508,6 +513,8 @@ export class WorkspaceCertificatesService {
       eventId: scope === 'EVENT' ? targetId : null,
       certificateTemplateId: raw.certificateTemplateId.trim(),
       certificateText: raw.certificateText.trim() || null,
+      shouldAutofillSecondPage: raw.shouldAutofillSecondPage,
+      secondPageText: raw.shouldAutofillSecondPage ? null : raw.secondPageText.trim() || null,
       isActive: raw.isActive,
       issuedTo: this.normalizeIssuedTo(raw.issuedTo),
       certificateFieldsJson: this.buildCertificateFieldsJson(
@@ -631,6 +638,8 @@ export class WorkspaceCertificatesService {
       name: '',
       certificateTemplateId: '',
       certificateText: '',
+      shouldAutofillSecondPage: true,
+      secondPageText: '',
       isActive: true,
       issuedTo: 'ATTENDEE',
       certificateFields: {},

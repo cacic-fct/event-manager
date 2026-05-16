@@ -4,7 +4,6 @@ import {
   formatCurrency,
   formatDateRange,
   formatDateTime,
-  formatDay,
   formatEventsDateRange,
   getAttendanceByEventId,
   getContactLabel,
@@ -57,12 +56,13 @@ export function buildDetailViewModel(input: DetailViewModelInput): DetailViewMod
 export function buildEventDetail(details: EventDetails): DetailViewModel | null {
   const subscription = details.subscription;
   const event = subscription?.event ?? details.event;
-  if (!event || (!subscription && !details.hasIssuedCertificate)) {
+  if (!event || (!subscription && !details.hasIssuedCertificate && !details.isLecturer)) {
     return null;
   }
 
   const isSubscribed = Boolean(subscription);
   const eventItem = buildEventItem(event, details.attendance, isSubscribed);
+  const statusLabel = details.isLecturer && !isSubscribed && !details.hasIssuedCertificate ? 'Ministrante' : undefined;
 
   return {
     targetType: 'event',
@@ -73,13 +73,15 @@ export function buildEventDetail(details: EventDetails): DetailViewModel | null 
     dateLine: eventItem.dateLine,
     description: event.description ?? event.shortDescription,
     location: event.locationDescription,
-    statusLabel: getDetailStatusLine(eventItem, details.hasIssuedCertificate),
+    statusLabel: statusLabel ?? getDetailStatusLine(eventItem, details.hasIssuedCertificate),
+    isSubscribed,
     infoRows: eventInfoRows(event, isSubscribed ? eventItem.statusLine : null),
     events: [eventItem],
     notSubscribedEvents: [],
     certificateTargets:
       event.shouldIssueCertificate || details.hasIssuedCertificate ? [{ scope: 'EVENT', targetId: event.id }] : [],
     shouldIssueCertificate: Boolean(event.shouldIssueCertificate || details.hasIssuedCertificate),
+    canViewOrganizerInfo: Boolean(details.isLecturer),
     buttonText: event.buttonText,
     buttonLink: event.buttonLink,
   };
@@ -89,7 +91,7 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
   const subscription = details.subscription;
   const eventGroup = subscription?.eventGroup ?? details.eventGroup;
   const rawEvents = subscription?.events ?? details.events ?? [];
-  if (!eventGroup || (!subscription && !details.hasIssuedCertificate)) {
+  if (!eventGroup || (!subscription && !details.hasIssuedCertificate && !details.isLecturer)) {
     return null;
   }
 
@@ -117,19 +119,21 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
     location: joinUnique(
       events.map((event) => event.locationDescription).filter((location): location is string => Boolean(location)),
     ),
-    statusLabel: isSubscribed ? getGroupedStatusLine(eventItems) : 'Certificado emitido',
+    statusLabel: isSubscribed ? getGroupedStatusLine(eventItems) : details.isLecturer ? 'Ministrante' : 'Certificado emitido',
+    isSubscribed,
     infoRows: eventGroupInfoRows(eventGroup, events),
     events: eventItems,
     notSubscribedEvents: [],
     certificateTargets,
     shouldIssueCertificate: certificateTargets.length > 0,
+    canViewOrganizerInfo: Boolean(details.isLecturer),
   };
 }
 
 export function buildMajorEventDetail(details: MajorEventDetails): DetailViewModel | null {
   const subscription = details.subscription;
   const majorEvent = subscription?.majorEvent ?? details.majorEvent;
-  if (!majorEvent || (!subscription && !details.hasIssuedCertificate)) {
+  if (!majorEvent || (!subscription && !details.hasIssuedCertificate && !details.isLecturer)) {
     return null;
   }
 
@@ -149,8 +153,13 @@ export function buildMajorEventDetail(details: MajorEventDetails): DetailViewMod
     emoji: majorEvent.emoji,
     dateLine: formatDateRange(majorEvent.startDate, majorEvent.endDate),
     description: majorEvent.description,
-    statusLabel: subscription ? getSubscriptionStatusLabel(subscription.subscriptionStatus) : 'Certificado emitido',
+    statusLabel: subscription
+      ? getSubscriptionStatusLabel(subscription.subscriptionStatus)
+      : details.isLecturer
+        ? 'Ministrante'
+        : 'Certificado emitido',
     subscriptionStatus: subscription?.subscriptionStatus,
+    isSubscribed: Boolean(subscription),
     infoRows: majorEventInfoRows(majorEvent, subscription),
     events: eventItems,
     notSubscribedEvents: notSubscribedEventItems,
@@ -159,6 +168,7 @@ export function buildMajorEventDetail(details: MajorEventDetails): DetailViewMod
         ? [{ scope: 'MAJOR_EVENT', targetId: majorEvent.id }]
         : [],
     shouldIssueCertificate: Boolean(majorEvent.shouldIssueCertificate || details.hasIssuedCertificate),
+    canViewOrganizerInfo: Boolean(details.isLecturer),
     buttonText: majorEvent.buttonText,
     buttonLink: majorEvent.buttonLink,
   };

@@ -85,7 +85,7 @@ export class AuthController {
       state,
       redirectUri ?? this.getCallbackRedirectUri(request),
     );
-    const session = this.keycloakAuthService.createSession(tokenResponse);
+    const session = await this.keycloakAuthService.createSession(tokenResponse);
 
     response.cookie(AUTH_SESSION_COOKIE_NAME, session.sessionId, {
       httpOnly: true,
@@ -102,10 +102,10 @@ export class AuthController {
   @Public()
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response, @Body() body?: LogoutDto) {
     const sessionId = this.readCookie(request, AUTH_SESSION_COOKIE_NAME);
-    const sessionLogoutInput = sessionId ? this.keycloakAuthService.getSessionLogoutInput(sessionId) : null;
+    const sessionLogoutInput = sessionId ? await this.keycloakAuthService.getSessionLogoutInput(sessionId) : null;
 
     if (sessionId) {
-      this.keycloakAuthService.clearSession(sessionId);
+      await this.keycloakAuthService.clearSession(sessionId);
     }
 
     response.clearCookie(AUTH_SESSION_COOKIE_NAME, {
@@ -130,13 +130,13 @@ export class AuthController {
       throw new ForbiddenException('Missing session.');
     }
 
-    const sessionLogoutInput = this.keycloakAuthService.getSessionLogoutInput(sessionId);
+    const sessionLogoutInput = await this.keycloakAuthService.getSessionLogoutInput(sessionId);
     if (!sessionLogoutInput?.refreshToken) {
       throw new ForbiddenException('Missing refresh token in session.');
     }
 
     const tokenResponse = await this.keycloakAuthService.refreshAccessToken(sessionLogoutInput.refreshToken);
-    const { expiresAt, sessionExpiresAt } = this.keycloakAuthService.updateSession(sessionId, tokenResponse);
+    const { expiresAt, sessionExpiresAt } = await this.keycloakAuthService.updateSession(sessionId, tokenResponse);
 
     response.cookie(AUTH_SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,

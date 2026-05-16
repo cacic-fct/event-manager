@@ -62,6 +62,8 @@ describe('WorkspaceCertificatesService', () => {
           certificateTemplateId: payload.certificateTemplateId ?? certificateTemplate.id,
           certificateTemplate,
           certificateText: payload.certificateText,
+          shouldAutofillSecondPage: payload.shouldAutofillSecondPage ?? true,
+          secondPageText: payload.secondPageText,
           isActive: payload.isActive ?? true,
           issuedTo: payload.issuedTo ?? 'ATTENDEE',
           certificateFieldsJson: payload.certificateFieldsJson,
@@ -86,6 +88,8 @@ describe('WorkspaceCertificatesService', () => {
           certificateTemplateId: payload.certificateTemplateId ?? certificateTemplate.id,
           certificateTemplate,
           certificateText: payload.certificateText,
+          shouldAutofillSecondPage: payload.shouldAutofillSecondPage ?? true,
+          secondPageText: payload.secondPageText,
           isActive: payload.isActive ?? true,
           issuedTo: payload.issuedTo ?? 'ATTENDEE',
           certificateFieldsJson: payload.certificateFieldsJson,
@@ -140,6 +144,8 @@ describe('WorkspaceCertificatesService', () => {
       certificateTemplateId: certificateTemplate.id,
       certificateTemplate,
       certificateText: null,
+      shouldAutofillSecondPage: true,
+      secondPageText: null,
       isActive: true,
       issuedTo: 'ATTENDEE',
       certificateFieldsJson: null,
@@ -155,5 +161,30 @@ describe('WorkspaceCertificatesService', () => {
       expect.objectContaining({ issuedTo: 'LECTURER' }),
     );
     expect(api.issueMissedCertificates).toHaveBeenCalledWith('config-1');
+  });
+
+  it('sends custom second page text only when event autofill is disabled', async () => {
+    service.certificateConfigForm.shouldAutofillSecondPage().value.set(false);
+    service.certificateConfigForm.secondPageText().value.set('Texto livre para o verso');
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload).toEqual(
+      expect.objectContaining({
+        shouldAutofillSecondPage: false,
+        secondPageText: 'Texto livre para o verso',
+      }),
+    );
+
+    service.certificateConfigForm.shouldAutofillSecondPage().value.set(true);
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload).toEqual(
+      expect.objectContaining({
+        shouldAutofillSecondPage: true,
+        secondPageText: null,
+      }),
+    );
   });
 });

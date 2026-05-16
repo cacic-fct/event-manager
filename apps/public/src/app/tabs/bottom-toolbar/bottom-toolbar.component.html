@@ -8,7 +8,13 @@
       [routerLinkActiveOptions]="{ exact: true }"
       [attr.aria-label]="item.label">
       <span class="icon-wrap">
-        <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+        @if (item.badge === 'notifications') {
+          <lib-novu-notification-badge>
+            <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+          </lib-novu-notification-badge>
+        } @else {
+          <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+        }
       </span>
       <span class="label">{{ item.shortLabel }}</span>
     </button>

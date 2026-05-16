@@ -61,6 +61,75 @@ describe('CertificateIssuingService', () => {
     expect(prisma.certificate.create).not.toHaveBeenCalled();
     expect(prisma.certificate.update).not.toHaveBeenCalled();
   });
+
+  it('keeps the original issue date when rendered data only differs by object key order', async () => {
+    const originalIssuedAt = new Date('2026-01-01T00:00:00.000Z');
+    const recipient = {
+      person: {
+        id: 'person-valid',
+        name: 'Valid Person',
+        email: null,
+        identityDocument: null,
+        academicId: null,
+      },
+      events: [],
+    };
+    const certificateConfig = {
+      ...mappedCertificateRecord.config,
+      id: 'config-1',
+      scope: CertificateScope.MAJOR_EVENT,
+      majorEvent: {
+        id: 'major-event-1',
+        name: 'Major Event',
+      },
+      certificateFields: null,
+    };
+    const existingCertificate = {
+      ...mappedCertificateRecord,
+      issuedAt: originalIssuedAt,
+      renderedData: {
+        templateData: {
+          name: 'Valid Person',
+          date: '01 de janeiro de 2026',
+        },
+        configId: 'config-1',
+      },
+      deletedAt: null,
+    };
+    const prisma = {
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue(existingCertificate),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never);
+    jest
+      .spyOn(
+        service as unknown as {
+          buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): unknown;
+        },
+        'buildRenderedData',
+      )
+      .mockReturnValue({
+        configId: 'config-1',
+        templateData: {
+          date: '01 de janeiro de 2026',
+          name: 'Valid Person',
+        },
+      });
+
+    await expect(
+      (
+        service as unknown as {
+          upsertCertificateForRecipient(config: unknown, recipient: unknown): Promise<unknown>;
+        }
+      ).upsertCertificateForRecipient(certificateConfig, recipient),
+    ).resolves.toBe(existingCertificate);
+
+    expect(prisma.certificate.create).not.toHaveBeenCalled();
+    expect(prisma.certificate.update).not.toHaveBeenCalled();
+  });
   const mappedCertificateRecord = {
     id: 'certificate-1',
     personId: 'person-valid',
@@ -107,6 +176,8 @@ describe('CertificateIssuingService', () => {
         deletedAt: null,
       },
       certificateText: null,
+      shouldAutofillSecondPage: true,
+      secondPageText: null,
       isActive: true,
       issuedTo: 'ATTENDEE',
       certificateFields: null,
@@ -212,6 +283,47 @@ describe('CertificateIssuingService', () => {
       },
     });
     expect(upsertSpy).not.toHaveBeenCalled();
+  });
+
+  it('reissues certificates for every certificate config', async () => {
+    const prisma = {
+      certificateConfig: {
+        findMany: jest.fn().mockResolvedValue([{ ...config, id: 'config-1' }, { ...config, id: 'config-2' }]),
+      },
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const eligibilityService = {
+      resolveEligibleRecipients: jest
+        .fn()
+        .mockResolvedValueOnce([{ person: { id: 'person-a' }, events: [] }])
+        .mockResolvedValueOnce([
+          { person: { id: 'person-b' }, events: [] },
+          { person: { id: 'person-c' }, events: [] },
+        ]),
+    };
+
+    const service = new CertificateIssuingService(prisma as never, {} as never, eligibilityService as never);
+    const upsertSpy = jest
+      .spyOn(service as never, 'upsertCertificateForRecipient')
+      .mockResolvedValue(mappedCertificateRecord as never);
+
+    await expect(service.reissueAllCertificates('admin-user')).resolves.toEqual({
+      configCount: 2,
+      certificateCount: 3,
+    });
+
+    expect(prisma.certificateConfig.findMany).toHaveBeenCalledWith({
+      where: {
+        deletedAt: null,
+      },
+      select: expect.any(Object),
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+    expect(upsertSpy).toHaveBeenCalledTimes(3);
   });
 
   it('refreshes only existing active certificates for a person without deleting ineligible ones', async () => {
@@ -355,6 +467,97 @@ describe('CertificateIssuingService', () => {
         }
       ).buildMinicursoLines(events),
     ).toEqual(['• 02/01/2026, 03/01/2026 - Grouped minicourse - Carga horária: 4 horas']);
+  });
+
+  it('autofills the second page with event information by default', () => {
+    const service = new CertificateIssuingService({} as never, {} as never, {} as never);
+    const renderedData = (
+      service as unknown as {
+        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+      }
+    ).buildRenderedData(
+      {
+        ...mappedCertificateRecord.config,
+        scope: CertificateScope.EVENT,
+        shouldAutofillSecondPage: true,
+        secondPageText: 'Texto manual ignorado',
+        event: {
+          id: 'event-1',
+          name: 'Palestra Principal',
+        },
+      },
+      {
+        person: {
+          id: 'person-valid',
+          name: 'Valid Person',
+          email: null,
+          identityDocument: '12345678901',
+          academicId: null,
+        },
+        events: [
+          {
+            id: 'event-1',
+            name: 'Palestra Principal',
+            creditMinutes: 60,
+            startDate: new Date('2026-01-02T10:00:00.000Z'),
+            endDate: new Date('2026-01-02T11:00:00.000Z'),
+            type: EventType.PALESTRA,
+            eventGroupId: null,
+            eventGroup: null,
+          },
+        ],
+      },
+      new Date('2026-01-05T00:00:00.000Z'),
+    );
+
+    expect(renderedData.templateData.second_page_content).toContain('Valid Person');
+    expect(renderedData.templateData.second_page_content).toContain('Palestras:');
+    expect(renderedData.templateData.second_page_content).toContain('Palestra Principal');
+    expect(renderedData.templateData.second_page_content).not.toContain('Texto manual ignorado');
+  });
+
+  it('uses custom second page text when event autofill is disabled', () => {
+    const service = new CertificateIssuingService({} as never, {} as never, {} as never);
+    const renderedData = (
+      service as unknown as {
+        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+      }
+    ).buildRenderedData(
+      {
+        ...mappedCertificateRecord.config,
+        scope: CertificateScope.EVENT,
+        shouldAutofillSecondPage: false,
+        secondPageText: 'Texto livre do verso',
+        event: {
+          id: 'event-1',
+          name: 'Palestra Principal',
+        },
+      },
+      {
+        person: {
+          id: 'person-valid',
+          name: 'Valid Person',
+          email: null,
+          identityDocument: null,
+          academicId: null,
+        },
+        events: [
+          {
+            id: 'event-1',
+            name: 'Palestra Principal',
+            creditMinutes: 60,
+            startDate: new Date('2026-01-02T10:00:00.000Z'),
+            endDate: new Date('2026-01-02T11:00:00.000Z'),
+            type: EventType.PALESTRA,
+            eventGroupId: null,
+            eventGroup: null,
+          },
+        ],
+      },
+      new Date('2026-01-05T00:00:00.000Z'),
+    );
+
+    expect(renderedData.templateData.second_page_content).toBe('Texto livre do verso');
   });
 
   describe('formatCargaHoraria', () => {

@@ -66,12 +66,12 @@
       <mat-icon>open_in_new</mat-icon>
       {{ event.buttonText || 'Acompanhar evento' }}
     </a>
-    } @if (event.allowSubscription && !isAuthenticated() && !data.currentUserSubscription) {
+    } @if (hasStandaloneSubscription(event) && !isAuthenticated() && !data.currentUserSubscription) {
     <button mat-flat-button type="button" [disabled]="!isOnline()" (click)="login()">
       <mat-icon>login</mat-icon>
       Entrar para inscrever-se
     </button>
-    } @else if (event.allowSubscription && data.currentUserSubscription) {
+    } @else if (hasStandaloneSubscription(event) && data.currentUserSubscription) {
     <button
       mat-stroked-button
       type="button"
@@ -80,7 +80,7 @@
       <mat-icon>event_busy</mat-icon>
       Cancelar inscrição
     </button>
-    } @else if (event.allowSubscription) {
+    } @else if (hasStandaloneSubscription(event)) {
     <button
       mat-flat-button
       type="button"

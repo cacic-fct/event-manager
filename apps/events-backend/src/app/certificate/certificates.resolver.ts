@@ -4,6 +4,7 @@ import {
   CertificateConfig,
   CertificateConfigCreateInput,
   CertificateConfigUpdateInput,
+  CertificateReissueResult,
   CertificateScope,
   CertificateTemplate,
   DeletionResult,
@@ -191,6 +192,12 @@ export class CertificatesResolver {
     @Context() context: GraphqlContext,
   ) {
     return this.issuingService.issueMissedCertificates(configId, this.getIssuedById(context));
+  }
+
+  @Mutation(() => CertificateReissueResult, { name: 'reissueAllCertificates' })
+  @RequireScopes('certificate#edit')
+  reissueAllCertificates(@Context() context: GraphqlContext) {
+    return this.issuingService.reissueAllCertificates(this.getIssuedById(context));
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteCertificate' })

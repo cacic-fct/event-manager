@@ -775,6 +775,8 @@ model CertificateConfig {
   certificateTemplate   CertificateTemplate @relation(fields: [certificateTemplateId], references: [id])
 
   certificateText String?
+  shouldAutofillSecondPage Boolean @default(true)
+  secondPageText String?
   isActive        Boolean @default(true)
 
   issuedTo CertificateIssuedTo @default(OTHER)

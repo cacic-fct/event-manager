@@ -17,12 +17,13 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { NovuNotificationBadgeComponent } from '@cacic-fct/shared-notifications-angular';
 import { ToolbarItem } from './bottom-toolbar.layout';
 
 @Component({
   selector: 'app-bottom-toolbar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, MatToolbarModule, MatButtonModule, MatIconModule],
+  imports: [RouterLink, RouterLinkActive, MatToolbarModule, MatButtonModule, MatIconModule, NovuNotificationBadgeComponent],
   templateUrl: './bottom-toolbar.component.html',
   styleUrls: ['./bottom-toolbar.component.scss'],
 })

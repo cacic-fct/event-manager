@@ -207,6 +207,9 @@
 
           <div class="checkbox-grid">
             <mat-checkbox [formField]="workspace.certificateConfigForm.isActive"> Ativa </mat-checkbox>
+            <mat-checkbox [formField]="workspace.certificateConfigForm.shouldAutofillSecondPage">
+              Preencher verso com dados dos eventos
+            </mat-checkbox>
           </div>
 
           <div class="field-grid">
@@ -214,6 +217,13 @@
               <mat-label>Texto do certificado</mat-label>
               <textarea matInput rows="3" [formField]="workspace.certificateConfigForm.certificateText"></textarea>
             </mat-form-field>
+
+            @if (workspace.shouldShowSecondPageText()) {
+              <mat-form-field class="span-2">
+                <mat-label>Texto personalizado do verso</mat-label>
+                <textarea matInput rows="5" [formField]="workspace.certificateConfigForm.secondPageText"></textarea>
+              </mat-form-field>
+            }
 
             @if (workspace.certificateFieldDefinitions().length > 0) {
               <div class="span-2 field-grid">
