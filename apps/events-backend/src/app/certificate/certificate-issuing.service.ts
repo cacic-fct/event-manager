@@ -502,9 +502,6 @@ export class CertificateIssuingService {
     contentLines.push('Observações:');
     contentLines.push('Datas em formato "dia/mês/ano".');
     const secondPageEventContent = this.buildSecondPageEventContent({
-      personName: recipient.person.name,
-      identityDocument: formattedDocument,
-      targetName,
       minicursosSection:
         minicursoLines.length > 0
           ? (() => {
@@ -554,6 +551,7 @@ export class CertificateIssuingService {
       event_type: 'no evento',
       major_event_or_event_name: targetName,
       event_name: targetName,
+      'majorEvent or event name': targetName,
       additional_text: config.certificateText ?? '',
       qrcode: verificationUrl,
       url: verificationUrl,
@@ -593,17 +591,11 @@ export class CertificateIssuingService {
   }
 
   private buildSecondPageEventContent(input: {
-    personName: string;
-    identityDocument: string;
-    targetName: string;
     minicursosSection: string;
     palestrasSection: string;
     otherEventTypesList: string;
   }): string {
     return [
-      input.personName,
-      `Documento: ${input.identityDocument}`,
-      input.targetName,
       input.minicursosSection,
       input.palestrasSection,
       input.otherEventTypesList,

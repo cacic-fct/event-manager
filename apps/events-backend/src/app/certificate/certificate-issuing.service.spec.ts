@@ -510,7 +510,8 @@ describe('CertificateIssuingService', () => {
       new Date('2026-01-05T00:00:00.000Z'),
     );
 
-    expect(renderedData.templateData.second_page_content).toContain('Valid Person');
+    expect(renderedData.templateData.name).toBe('Valid Person');
+    expect(renderedData.templateData['majorEvent or event name']).toBe('Palestra Principal');
     expect(renderedData.templateData.second_page_content).toContain('Palestras:');
     expect(renderedData.templateData.second_page_content).toContain('Palestra Principal');
     expect(renderedData.templateData.second_page_content).not.toContain('Texto manual ignorado');
@@ -558,6 +559,7 @@ describe('CertificateIssuingService', () => {
     );
 
     expect(renderedData.templateData.second_page_content).toBe('Texto livre do verso');
+    expect(renderedData.templateData.name).toBe('Valid Person');
   });
 
   describe('formatCargaHoraria', () => {
