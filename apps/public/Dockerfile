@@ -17,6 +17,7 @@ COPY shared-data-types/project.json shared-data-types/tsconfig*.json ./shared-da
 COPY shared-utils/project.json shared-utils/tsconfig*.json ./shared-utils/
 COPY offline-public-data-access/project.json offline-public-data-access/tsconfig*.json ./offline-public-data-access/
 COPY shared-notifications-angular/project.json shared-notifications-angular/tsconfig*.json ./shared-notifications-angular/
+COPY shared-environment/project.json shared-environment/tsconfig*.json ./shared-environment/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     --mount=type=secret,id=npm_token \
     export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
@@ -32,6 +33,7 @@ COPY shared-data-types ./shared-data-types
 COPY shared-utils ./shared-utils
 COPY offline-public-data-access ./offline-public-data-access
 COPY shared-notifications-angular ./shared-notifications-angular
+COPY shared-environment ./shared-environment
 
 RUN find . -type f \
     \( -name "*.ts" -o -name "*.js" -o -name "*.html" -o -name "*.json" \) \
