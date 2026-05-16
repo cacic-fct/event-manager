@@ -8,7 +8,9 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "baseHref": "/admin/",
         "outputPath": "dist/apps/cacic-eventos",
@@ -21,7 +23,9 @@
             "input": "apps/cacic-eventos/public"
           }
         ],
-        "styles": ["apps/cacic-eventos/src/styles.scss"],
+        "styles": [
+          "apps/cacic-eventos/src/styles.scss"
+        ],
         "server": "apps/cacic-eventos/src/main.server.ts",
         "ssr": {
           "entry": "apps/cacic-eventos/src/server.ts"
@@ -83,6 +87,70 @@
         "port": 4200,
         "staticFilePath": "dist/apps/cacic-eventos/browser",
         "spa": true
+      }
+    },
+    "storybook": {
+      "executor": "@storybook/angular:start-storybook",
+      "options": {
+        "port": 4400,
+        "configDir": "apps/cacic-eventos/.storybook",
+        "browserTarget": "cacic-eventos:build-storybook",
+        "compodoc": true,
+        "compodocArgs": [
+          "-e",
+          "json",
+          "-d",
+          "apps/public/.storybook/compodoc"
+        ],
+        "styles": [
+          "@fontsource/material-icons-outlined",
+          "@fontsource-variable/inter",
+          "apps/cacic-eventos/src/styles.scss"
+        ]
+      },
+      "configurations": {
+        "ci": {
+          "quiet": true
+        }
+      }
+    },
+    "build-storybook": {
+      "executor": "@storybook/angular:build-storybook",
+      "outputs": [
+        "{options.outputDir}"
+      ],
+      "options": {
+        "outputDir": "dist/storybook/cacic-eventos",
+        "configDir": "apps/cacic-eventos/.storybook",
+        "browserTarget": "cacic-eventos:build-storybook",
+        "compodoc": false
+      },
+      "configurations": {
+        "ci": {
+          "quiet": true
+        }
+      }
+    },
+    "test-storybook": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "test-storybook -c apps/cacic-eventos/.storybook --url=http://localhost:4400"
+      }
+    },
+    "static-storybook": {
+      "executor": "@nx/web:file-server",
+      "dependsOn": [
+        "build-storybook"
+      ],
+      "options": {
+        "buildTarget": "cacic-eventos:build-storybook",
+        "staticFilePath": "dist/storybook/cacic-eventos",
+        "spa": true
+      },
+      "configurations": {
+        "ci": {
+          "buildTarget": "cacic-eventos:build-storybook:ci"
+        }
       }
     }
   }
