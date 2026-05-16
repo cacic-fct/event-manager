@@ -31,6 +31,7 @@ COPY shared-angular ./shared-angular
 COPY shared-data-types ./shared-data-types
 COPY shared-utils ./shared-utils
 COPY offline-public-data-access ./offline-public-data-access
+COPY shared-notifications-angular ./shared-notifications-angular
 
 RUN find . -type f \
     \( -name "*.ts" -o -name "*.js" -o -name "*.html" -o -name "*.json" \) \
