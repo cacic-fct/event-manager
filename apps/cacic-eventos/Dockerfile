@@ -14,6 +14,7 @@ COPY apps/cacic-eventos/project.json apps/cacic-eventos/tsconfig*.json ./apps/ca
 COPY shared-angular/project.json shared-angular/tsconfig*.json ./shared-angular/
 COPY shared-data-types/project.json shared-data-types/tsconfig*.json ./shared-data-types/
 COPY shared-utils/project.json shared-utils/tsconfig*.json ./shared-utils/
+COPY shared-notifications-angular/project.json shared-notifications-angular/tsconfig*.json ./shared-notifications-angular/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     --mount=type=secret,id=npm_token \
     export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
