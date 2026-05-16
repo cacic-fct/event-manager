@@ -99,6 +99,7 @@ const config: Config = {
         },
         {
           type: 'docSidebar',
+          docsPluginId: 'manual',
           sidebarId: 'manualSidebar',
           position: 'left',
           label: 'Manual',
