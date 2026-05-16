@@ -25,6 +25,7 @@ COPY apps/cacic-eventos ./apps/cacic-eventos
 COPY shared-angular ./shared-angular
 COPY shared-data-types ./shared-data-types
 COPY shared-utils ./shared-utils
+COPY shared-notifications-angular ./shared-notifications-angular
 RUN bun x nx build cacic-eventos --configuration=production
 
 FROM base AS runtime-deps
