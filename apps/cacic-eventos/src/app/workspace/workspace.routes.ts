@@ -2,6 +2,7 @@
 import { Route } from '@angular/router';
 import { canValidateReceiptsGuard, workspaceCanReadTabGuard } from './workspace.guard';
 import { workspaceNavItems } from './workspace-nav';
+import { WorkspaceNotificationsTabComponent } from './tabs/notifications/workspace-notifications-tab.component';
 
 const eventsData = getWorkspaceRouteData('events');
 const groupsData = getWorkspaceRouteData('groups');
@@ -11,6 +12,8 @@ const mergeCandidatesData = getWorkspaceRouteData('merge-candidates');
 const certificatesData = getWorkspaceRouteData('certificates');
 const attendancesData = getWorkspaceRouteData('attendances');
 const subscriptionsData = getWorkspaceRouteData('subscriptions');
+const notificationsData = getWorkspaceRouteData('notifications');
+const globalOperationsData = getWorkspaceRouteData('global-operations');
 const permissionsData = getWorkspaceRouteData('permissions');
 
 function getWorkspaceRouteData(id: (typeof workspaceNavItems)[number]['id']) {
@@ -157,6 +160,14 @@ export const workspaceRoutes: Route[] = [
         import('./tabs/permissions/workspace-permissions-tab.component').then(
           (m) => m.WorkspacePermissionsTabComponent,
         ),
+      ),
+      ...guardedWorkspaceTabRoute(globalOperationsData.path, globalOperationsData, () =>
+        import('./tabs/global-operations/workspace-global-operations-tab.component').then(
+          (m) => m.WorkspaceGlobalOperationsTabComponent,
+        ),
+      ),
+      ...guardedWorkspaceTabRoute(notificationsData.path, notificationsData, () =>
+        Promise.resolve(WorkspaceNotificationsTabComponent),
       ),
     ],
   },

@@ -46,7 +46,7 @@ export const appConfig: ApplicationConfig = {
       inject(NetworkStatusSnackbarService).start();
       inject(OfflineUserDataService).start();
     }),
-    provideServiceWorker('ngsw-worker.js', {
+    provideServiceWorker('novu-ngsw-worker.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',
     }),

@@ -182,6 +182,7 @@ export interface MajorEventDetails {
   subscription: CurrentUserMajorEventSubscription | null;
   majorEvent?: PublicMajorEvent | null;
   hasIssuedCertificate?: boolean;
+  isLecturer?: boolean;
   attendances: CurrentUserEventAttendance[];
 }
 
@@ -189,6 +190,7 @@ export interface EventDetails {
   subscription: CurrentUserEventSubscription | null;
   event?: PublicEvent | null;
   hasIssuedCertificate?: boolean;
+  isLecturer?: boolean;
   attendance: CurrentUserEventAttendance | null;
 }
 
@@ -197,6 +199,7 @@ export interface EventGroupDetails {
   eventGroup?: PublicEventGroup | null;
   events?: PublicEvent[];
   hasIssuedCertificate?: boolean;
+  isLecturer?: boolean;
   attendances: CurrentUserEventAttendance[];
 }
 
@@ -284,12 +287,14 @@ export interface DetailViewModel {
   description?: string | null;
   location?: string | null;
   statusLabel?: string;
+  isSubscribed: boolean;
   subscriptionStatus?: string | null;
   infoRows: InfoRow[];
   events: DetailEventItem[];
   notSubscribedEvents: DetailEventItem[];
   certificateTargets: CertificateTarget[];
   shouldIssueCertificate: boolean;
+  canViewOrganizerInfo?: boolean;
   buttonText?: string | null;
   buttonLink?: string | null;
 }

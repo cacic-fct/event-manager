@@ -10,7 +10,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription, PublicMajorEvent } from '@cacic-fct/shared-utils';
-import { formatDateRange } from '@cacic-fct/shared-utils';
+import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { forkJoin, of } from 'rxjs';
 import { EmojiService } from '../profile/attendances/emoji.service';
 import { MajorEventSubscriptionApiService } from './subscription/subscription-api.service';
@@ -108,26 +108,7 @@ export class MajorEvent {
   }
 
   statusLabel(status: string): string {
-    switch (status) {
-      case 'WAITING_RECEIPT_UPLOAD':
-        return 'Aguardando comprovante';
-      case 'RECEIPT_UNDER_REVIEW':
-        return 'Comprovante em análise';
-      case 'CONFIRMED':
-        return 'Inscrição confirmada';
-      case 'REJECTED_INVALID_RECEIPT':
-        return 'Comprovante inválido';
-      case 'REJECTED_NO_SLOTS':
-        return 'Sem vagas';
-      case 'REJECTED_SCHEDULE_CONFLICT':
-        return 'Conflito de horário';
-      case 'REJECTED_GENERIC':
-        return 'Inscrição rejeitada';
-      case 'CANCELED':
-        return 'Cancelada';
-      default:
-        return status;
-    }
+    return getSubscriptionStatusLabel(status);
   }
 
   login(): void {

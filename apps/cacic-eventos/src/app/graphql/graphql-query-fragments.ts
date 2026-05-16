@@ -167,6 +167,8 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   eventId
   certificateTemplateId
   certificateText
+  shouldAutofillSecondPage
+  secondPageText
   isActive
   issuedTo
   certificateFieldsJson

@@ -1,13 +1,9 @@
-import { compareAsc, compareDesc, format, isSameDay, parseISO } from 'date-fns';
+import { compareAsc, format, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { CurrentUserEventAttendance, PublicEvent, PublicEventGroup, PublicMajorEvent } from './attendance-models';
 
 export function compareIsoDateAsc(leftDate: string, rightDate: string): number {
   return compareAsc(parseISO(leftDate), parseISO(rightDate));
-}
-
-export function compareIsoDateDesc(leftDate: string, rightDate: string): number {
-  return compareDesc(parseISO(leftDate), parseISO(rightDate));
 }
 
 export function formatDateRange(startDate: string, endDate: string): string {

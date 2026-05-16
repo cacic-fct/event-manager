@@ -202,7 +202,6 @@ export class PublicEventsResolver {
       select: {
         id: true,
         slots: true,
-        slotsAvailable: true,
       },
     });
 
@@ -221,6 +220,7 @@ export class PublicEventsResolver {
   async publicMajorEventSubscriptionPage(
     @Args('majorEventId', { type: () => String }) majorEventId: string,
   ): Promise<PublicMajorEventSubscriptionPage> {
+    const now = new Date();
     const [majorEvent, events] = await Promise.all([
       this.prisma.majorEvent.findFirst({
         where: {
@@ -231,10 +231,8 @@ export class PublicEventsResolver {
       }),
       this.prisma.event.findMany({
         where: {
+          ...this.publicSlotSummaryEventWhere(now),
           majorEventId,
-          deletedAt: null,
-          publiclyVisible: true,
-          allowSubscription: true,
         },
         select: PUBLIC_EVENT_SELECT,
         orderBy: {
@@ -260,6 +258,18 @@ export class PublicEventsResolver {
 
   async getPublicEventSubscriptionPagePayload(majorEventId: string): Promise<PublicMajorEventSubscriptionPage> {
     return this.publicMajorEventSubscriptionPage(majorEventId);
+  }
+
+  private publicSlotSummaryEventWhere(now: Date): Prisma.EventWhereInput {
+    return {
+      deletedAt: null,
+      publiclyVisible: true,
+      allowSubscription: true,
+      majorEventId: {
+        not: null,
+      },
+      OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }],
+    };
   }
 
   private mapPublicEventSubscriptionSummary(

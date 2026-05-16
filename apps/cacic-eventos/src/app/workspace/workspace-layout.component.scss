@@ -205,9 +205,6 @@ lib-cacic-logo {
 }
 
 @media (max-width: 768px) {
-  lib-cacic-logo {
-    display: none;
-  }
   .layout {
     height: calc(100dvh - 56px);
   }

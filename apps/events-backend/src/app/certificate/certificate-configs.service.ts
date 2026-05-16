@@ -111,6 +111,7 @@ export class CertificateConfigsService {
     const name = this.validation.normalizeRequiredName(input.name);
     const templateId = this.validation.normalizeRequiredId('certificateTemplateId', input.certificateTemplateId);
     const certificateText = this.validation.normalizeOptionalText(input.certificateText);
+    const secondPageText = this.validation.normalizeOptionalText(input.secondPageText);
     const certificateFields = this.validation.normalizeCertificateFieldsJson(input.certificateFieldsJson);
     const issuedTo = input.issuedTo ?? CertificateIssuedTo.ATTENDEE;
 
@@ -138,6 +139,8 @@ export class CertificateConfigsService {
         eventId: eventId ?? null,
         certificateTemplateId: templateId,
         certificateText: certificateText === undefined ? undefined : certificateText,
+        shouldAutofillSecondPage: input.shouldAutofillSecondPage ?? true,
+        secondPageText: secondPageText === undefined ? undefined : secondPageText,
         isActive: input.isActive ?? true,
         issuedTo,
         ...(certificateFields === undefined
@@ -203,6 +206,8 @@ export class CertificateConfigsService {
 
     const nextText =
       input.certificateText === undefined ? undefined : this.validation.normalizeOptionalText(input.certificateText);
+    const nextSecondPageText =
+      input.secondPageText === undefined ? undefined : this.validation.normalizeOptionalText(input.secondPageText);
     const nextCertificateFields =
       input.certificateFieldsJson === undefined
         ? undefined
@@ -227,6 +232,10 @@ export class CertificateConfigsService {
         : {}),
       ...(input.certificateTemplateId === undefined ? {} : { certificateTemplateId: mergedTemplateId }),
       ...(nextText === undefined ? {} : { certificateText: nextText }),
+      ...(input.shouldAutofillSecondPage === undefined
+        ? {}
+        : { shouldAutofillSecondPage: input.shouldAutofillSecondPage }),
+      ...(nextSecondPageText === undefined ? {} : { secondPageText: nextSecondPageText }),
       ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
       ...(nextIssuedTo === undefined ? {} : { issuedTo: nextIssuedTo }),
       ...(nextCertificateFields === undefined

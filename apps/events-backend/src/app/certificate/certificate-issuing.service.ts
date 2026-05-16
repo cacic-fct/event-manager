@@ -1,6 +1,7 @@
 import {
   Certificate,
   CertificateIssuedTo,
+  CertificateReissueResult,
   CertificateScope,
   DeletionResult,
   EventType,
@@ -9,6 +10,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  CERTIFICATE_CONFIG_SELECT,
   CERTIFICATE_SELECT,
   CertificateRecord,
   CertificateConfigRecord,
@@ -94,6 +96,38 @@ export class CertificateIssuingService {
   async issueMissedCertificates(configId: string, issuedById?: string): Promise<Certificate[]> {
     const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     const config = await this.eligibilityService.getConfigById(normalizedConfigId);
+    const result = await this.issueCertificatesForConfig(config, issuedById);
+
+    return result.certificates.map(mapCertificate);
+  }
+
+  async reissueAllCertificates(issuedById?: string): Promise<CertificateReissueResult> {
+    const configs = await this.prisma.certificateConfig.findMany({
+      where: {
+        deletedAt: null,
+      },
+      select: CERTIFICATE_CONFIG_SELECT,
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    let certificateCount = 0;
+    for (const config of configs) {
+      const result = await this.issueCertificatesForConfig(config, issuedById);
+      certificateCount += result.certificates.length;
+    }
+
+    return {
+      configCount: configs.length,
+      certificateCount,
+    };
+  }
+
+  private async issueCertificatesForConfig(
+    config: CertificateConfigRecord,
+    issuedById?: string,
+  ): Promise<{ certificates: CertificateRecord[] }> {
     const recipients = await this.eligibilityService.resolveEligibleRecipients(config);
     const eligiblePersonIds = new Set(recipients.map((recipient) => recipient.person.id));
     const existingCertificates = await this.prisma.certificate.findMany({
@@ -123,7 +157,7 @@ export class CertificateIssuingService {
       });
     }
     if (recipients.length === 0) {
-      return [];
+      return { certificates: [] };
     }
 
     const certificates: CertificateRecord[] = [];
@@ -135,7 +169,7 @@ export class CertificateIssuingService {
       certificates.push(...issuedBatch);
     }
 
-    return certificates.map(mapCertificate);
+    return { certificates };
   }
 
   async refreshIssuedCertificatesForPerson(personId: string, issuedById?: string): Promise<Certificate[]> {
@@ -359,6 +393,8 @@ export class CertificateIssuingService {
       configId: config.id,
       configName: config.name,
       configText: config.certificateText ?? null,
+      shouldAutofillSecondPage: config.shouldAutofillSecondPage,
+      secondPageText: config.secondPageText ?? null,
       person: {
         id: recipient.person.id,
         name: recipient.person.name,
@@ -392,7 +428,22 @@ export class CertificateIssuingService {
     left: Prisma.JsonValue | Prisma.InputJsonValue,
     right: Prisma.JsonValue | Prisma.InputJsonValue | null,
   ): boolean {
-    return JSON.stringify(left) === JSON.stringify(right);
+    return this.stableJsonStringify(left) === this.stableJsonStringify(right);
+  }
+
+  private stableJsonStringify(value: Prisma.JsonValue | Prisma.InputJsonValue | null): string {
+    if (value === null || typeof value !== 'object') {
+      return JSON.stringify(value);
+    }
+
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.stableJsonStringify(item)).join(',')}]`;
+    }
+
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${this.stableJsonStringify(value[key])}`)
+      .join(',')}}`;
   }
 
   private buildExampleTemplateData(
@@ -450,6 +501,36 @@ export class CertificateIssuingService {
 
     contentLines.push('Observações:');
     contentLines.push('Datas em formato "dia/mês/ano".');
+    const secondPageEventContent = this.buildSecondPageEventContent({
+      personName: recipient.person.name,
+      identityDocument: formattedDocument,
+      targetName,
+      minicursosSection:
+        minicursoLines.length > 0
+          ? (() => {
+              const minicursoTotalMinutes = minicursos.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
+              return `Minicursos:\n${this.applyBulletLineEndings(minicursoLines).join('\n')}\nCarga horária total: ${this.formatCargaHoraria(minicursoTotalMinutes)}.`;
+            })()
+          : '',
+      palestrasSection:
+        palestraLines.length > 0
+          ? (() => {
+              const palestraTotalMinutes = palestras.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
+              return `Palestras:\n${this.applyBulletLineEndings(palestraLines).join('\n')}\nCarga horária total: ${this.formatCargaHoraria(palestraTotalMinutes)}.`;
+            })()
+          : '',
+      otherEventTypesList:
+        otherEventLines.length > 0
+          ? (() => {
+              const otherEventsTotalMinutes = otherEvents.reduce(
+                (total, event) => total + (event.creditMinutes ?? 0),
+                0,
+              );
+              return `${this.applyBulletLineEndings(otherEventLines).join('\n')}\nCarga horária total: ${this.formatCargaHoraria(otherEventsTotalMinutes)}.`;
+            })()
+          : '',
+    });
+    const secondPageCustomContent = config.secondPageText?.trim() ?? '';
 
     return {
       issue_day: issueDay,
@@ -483,6 +564,7 @@ export class CertificateIssuingService {
       document: `Documento: ${formattedDocument}`,
       event_name_small: targetName,
       content: contentLines.join('\n'),
+      second_page_content: config.shouldAutofillSecondPage ? secondPageEventContent : secondPageCustomContent,
       minicursosSection:
         minicursoLines.length > 0
           ? (() => {
@@ -508,6 +590,28 @@ export class CertificateIssuingService {
             })()
           : '',
     };
+  }
+
+  private buildSecondPageEventContent(input: {
+    personName: string;
+    identityDocument: string;
+    targetName: string;
+    minicursosSection: string;
+    palestrasSection: string;
+    otherEventTypesList: string;
+  }): string {
+    return [
+      input.personName,
+      `Documento: ${input.identityDocument}`,
+      input.targetName,
+      input.minicursosSection,
+      input.palestrasSection,
+      input.otherEventTypesList,
+      'Observações:',
+      'Datas em formato "dia/mês/ano".',
+    ]
+      .filter((line) => line.trim().length > 0)
+      .join('\n\n');
   }
 
   private getCertificateFieldValue(

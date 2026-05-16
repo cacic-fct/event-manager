@@ -15,6 +15,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import {
   ReceiptRejectionCode,
@@ -199,6 +200,10 @@ export class WorkspaceReceiptValidationComponent {
     }
     const digits = phone.replace(/\D/g, '');
     return digits.startsWith('55') ? digits : `55${digits}`;
+  }
+
+  protected statusLabel(status: string): string {
+    return getSubscriptionStatusLabel(status);
   }
 
   protected hasOcrMatches(item: ReceiptValidationQueueItem): boolean {

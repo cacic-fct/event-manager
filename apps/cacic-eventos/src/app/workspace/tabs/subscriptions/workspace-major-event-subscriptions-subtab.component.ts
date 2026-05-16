@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
+import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { WorkspaceMajorEventSubscription } from '../../../graphql/models';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
@@ -48,5 +49,9 @@ export class WorkspaceMajorEventSubscriptionsSubtabComponent {
 
   protected hasSubscribedLecturer(subscription: WorkspaceMajorEventSubscription): boolean {
     return subscription.events.some((eventItem) => eventItem.isLecturerSubscription && eventItem.subscribed);
+  }
+
+  protected statusLabel(status: string): string {
+    return getSubscriptionStatusLabel(status);
   }
 }

@@ -1,5 +1,14 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  PLATFORM_ID,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -112,8 +121,7 @@ export class Event {
     if (!this.isBrowser || !navigator.clipboard) {
       return;
     }
-
-    const url = new URL(this.router.url, document.baseURI).toString();
+    const url = new URL(this.router.url, document.baseURI).toString().split('?')[0].split('#')[0];
 
     await navigator.clipboard.writeText(url);
 
@@ -215,6 +223,10 @@ export class Event {
   }
 
   canSubscribe(data: EventPageData): boolean {
+    if (!this.hasStandaloneSubscription(data.event)) {
+      return false;
+    }
+
     const now = Date.now();
     const event = data.event;
     const subscriptionStart = event.subscriptionStartDate ?? event.majorEvent?.subscriptionStartDate;
@@ -232,7 +244,12 @@ export class Event {
   }
 
   canUnsubscribe(data: EventPageData): boolean {
-    return Boolean(data.currentUserSubscription) && this.isOnline() && Date.parse(data.event.startDate) > Date.now();
+    return (
+      this.hasStandaloneSubscription(data.event) &&
+      Boolean(data.currentUserSubscription) &&
+      this.isOnline() &&
+      Date.parse(data.event.startDate) > Date.now()
+    );
   }
 
   canConfirmAttendance(event: PublicEvent): boolean {
@@ -252,6 +269,10 @@ export class Event {
   }
 
   subscriptionStatusLine(data: EventPageData): string {
+    if (!this.hasStandaloneSubscription(data.event)) {
+      return '';
+    }
+
     if (data.currentUserSubscription) {
       return this.canUnsubscribe(data)
         ? 'Você pode cancelar sua inscrição até o início do evento.'
@@ -340,6 +361,10 @@ export class Event {
     }
 
     return data.subscriptionSummary.hasAvailableSlots;
+  }
+
+  hasStandaloneSubscription(event: PublicEvent): boolean {
+    return Boolean(event.allowSubscription) && !event.majorEventId;
   }
 
   private showError(error: unknown): void {

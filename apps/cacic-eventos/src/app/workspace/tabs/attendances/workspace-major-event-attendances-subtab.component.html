@@ -70,7 +70,7 @@
               {{ subscription.person?.name ?? subscription.personId }}
             </span>
             <span matListItemLine class="attendance-item-line">
-              {{ subscription.subscriptionStatus }} · {{ subscription.amountPaid ?? '-' }} ·
+              {{ statusLabel(subscription.subscriptionStatus) }} · {{ subscription.amountPaid ?? '-' }} ·
               {{ subscription.paymentTier ?? '-' }}
             </span>
           </mat-list-item>
@@ -92,7 +92,7 @@
             {{ workspace.selectedMajorEventUserAttendance()?.person?.name ?? 'Pessoa' }}
           </h3>
           <p>
-            {{ workspace.selectedMajorEventUserAttendance()?.subscriptionStatus }}
+            {{ statusLabel(workspace.selectedMajorEventUserAttendance()?.subscriptionStatus) }}
             ·
             {{ workspace.selectedMajorEventUserAttendance()?.paymentTier ?? '-' }}
           </p>

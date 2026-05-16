@@ -44,7 +44,11 @@ export class WorkspacePermissionsTabComponent {
         });
       }
 
-      const group = groupedPermissions.get(resource)!;
+      const group = groupedPermissions.get(resource);
+      if (!group) {
+        continue;
+      }
+
       if (!group.actions.some((entry) => entry.scope === action)) {
         group.actions.push({
           scope: action,

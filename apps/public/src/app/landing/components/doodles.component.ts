@@ -4,12 +4,9 @@ import {
   Component,
   computed,
   DestroyRef,
-  ElementRef,
   inject,
-  input,
   PLATFORM_ID,
   signal,
-  viewChild,
 } from '@angular/core';
 
 @Component({

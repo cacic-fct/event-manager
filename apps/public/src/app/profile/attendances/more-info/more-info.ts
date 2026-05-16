@@ -82,8 +82,17 @@ export class MoreInfo {
     return ['/major-event', detail.targetId, 'payment'];
   }
 
+  organizerInfoRoute(detail: DetailViewModel): string[] {
+    return ['/profile', 'attendances', detail.targetType, detail.targetId, 'organizer'];
+  }
+
   canUploadMajorEventReceipt(detail: DetailViewModel): boolean {
-    return detail.targetType === 'major-event' && detail.subscriptionStatus !== 'CONFIRMED';
+    return (
+      detail.targetType === 'major-event' &&
+      detail.subscriptionStatus !== undefined &&
+      detail.subscriptionStatus !== null &&
+      detail.subscriptionStatus !== 'CONFIRMED'
+    );
   }
 
   private loadDetailState(params: ParamMap): Observable<DetailState> {

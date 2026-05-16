@@ -1,4 +1,5 @@
 import {
+  CertificateIssuedTo,
   CertificateScope,
   EventType,
   PublicCertificateValidation,
@@ -9,6 +10,9 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
+
+const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
+type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
 
 const CERTIFICATE_VALIDATION_EVENT_SELECT = {
   name: true,
@@ -35,6 +39,8 @@ const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
     select: {
       name: true,
       scope: true,
+      issuedTo: true,
+      certificateFields: true,
       event: {
         select: CERTIFICATE_VALIDATION_EVENT_SELECT,
       },
@@ -109,6 +115,10 @@ export class PublicCertificateValidationService {
   private async resolveCertificateEvents(
     certificate: PublicCertificateValidationRecord,
   ): Promise<CertificateValidationEventRecord[]> {
+    if (certificate.config.issuedTo === CertificateIssuedTo.LECTURER) {
+      return this.listLecturerCertificateEvents(certificate);
+    }
+
     if (certificate.config.scope === CertificateScope.MAJOR_EVENT) {
       return this.listAttendedMajorEventCertificateEvents(certificate);
     }
@@ -119,6 +129,53 @@ export class PublicCertificateValidationService {
 
     if (certificate.config.scope === CertificateScope.EVENT) {
       return certificate.config.event ? [certificate.config.event] : [];
+    }
+
+    return [];
+  }
+
+  private async listLecturerCertificateEvents(
+    certificate: PublicCertificateValidationRecord,
+  ): Promise<CertificateValidationEventRecord[]> {
+    const events = await this.listCertificateTargetEvents(certificate);
+    if (events.length === 0) {
+      return [];
+    }
+
+    const lecturers = await this.prisma.eventLecturer.findMany({
+      where: {
+        personId: certificate.personId,
+        eventId: {
+          in: events.map((event) => event.id),
+        },
+      },
+      select: {
+        eventId: true,
+      },
+    });
+
+    const lecturerEventCategory = this.parseLecturerEventCategory(certificate.config.certificateFields);
+    const lecturerEventIds = new Set(lecturers.map((lecturer) => lecturer.eventId));
+    return events.filter(
+      (event) => lecturerEventIds.has(event.id) && this.matchesLecturerCategory(lecturerEventCategory, event),
+    );
+  }
+
+  private listCertificateTargetEvents(
+    certificate: PublicCertificateValidationRecord,
+  ): Promise<CertificateValidationEventRecord[]> | CertificateValidationEventRecord[] {
+    if (certificate.config.scope === CertificateScope.EVENT) {
+      return certificate.config.event ? [certificate.config.event] : [];
+    }
+
+    if (certificate.config.scope === CertificateScope.EVENT_GROUP) {
+      const eventGroupId = certificate.config.eventGroup?.id;
+      return eventGroupId ? this.listAllEventGroupCertificateEvents(eventGroupId) : [];
+    }
+
+    if (certificate.config.scope === CertificateScope.MAJOR_EVENT) {
+      const majorEventId = certificate.config.majorEvent?.id;
+      return majorEventId ? this.listAllMajorEventCertificateEvents(majorEventId) : [];
     }
 
     return [];
@@ -246,6 +303,48 @@ export class PublicCertificateValidationService {
         startDate: 'asc',
       },
     });
+  }
+
+  private listAllMajorEventCertificateEvents(majorEventId: string): Promise<CertificateValidationEventRecord[]> {
+    return this.prisma.event.findMany({
+      where: {
+        majorEventId,
+        deletedAt: null,
+        shouldIssueCertificate: true,
+      },
+      select: CERTIFICATE_VALIDATION_EVENT_SELECT,
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
+  }
+
+  private matchesLecturerCategory(
+    category: LecturerEventCategory | null,
+    event: CertificateValidationEventRecord,
+  ): boolean {
+    if (!category) {
+      return true;
+    }
+
+    if (category === 'PALESTRA') {
+      return event.type === EventType.PALESTRA;
+    }
+
+    if (category === 'MINICURSO') {
+      return event.type === EventType.MINICURSO;
+    }
+
+    return event.type !== EventType.PALESTRA && event.type !== EventType.MINICURSO;
+  }
+
+  private parseLecturerEventCategory(certificateFields: Prisma.JsonValue | null): LecturerEventCategory | null {
+    if (!certificateFields || typeof certificateFields !== 'object' || Array.isArray(certificateFields)) {
+      return null;
+    }
+
+    const value = certificateFields[LECTURER_EVENT_CATEGORY_FIELD];
+    return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER' ? value : null;
   }
 
   private buildSections(

@@ -6,6 +6,7 @@ import {
   CertificateConfig,
   CertificateConfigInput,
   CertificateDownload,
+  CertificateReissueResult,
   CertificateScope,
   CertificateTemplate,
   DeletionResult,
@@ -249,6 +250,19 @@ export class CertificateApiService {
         { configId },
       )
       .pipe(map((data) => data.issueMissedCertificates));
+  }
+
+  reissueAllCertificates() {
+    return this.graphqlHttp
+      .request<{ reissueAllCertificates: CertificateReissueResult }>(
+        `mutation ReissueAllCertificates {
+          reissueAllCertificates {
+            configCount
+            certificateCount
+          }
+        }`,
+      )
+      .pipe(map((data) => data.reissueAllCertificates));
   }
 
   deleteCertificate(id: string) {

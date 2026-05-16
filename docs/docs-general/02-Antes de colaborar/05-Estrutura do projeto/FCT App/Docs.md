@@ -2,7 +2,7 @@
 title: Docs
 ---
 
-Organização padrão de um projeto Starlight.
+Organização padrão de um projeto Docusaurus.
 
 ## /
 

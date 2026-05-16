@@ -17,7 +17,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
+import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { toSVG } from '@bwip-js/browser';
 import { forkJoin } from 'rxjs';
 import { MajorEventSubscriptionApiService } from '../subscription/subscription-api.service';
@@ -133,6 +133,10 @@ export class PaymentInfo {
     if (paymentInfo?.pixKey) {
       void this.copyToClipboard(paymentInfo.pixKey, 'Chave Pix copiada.');
     }
+  }
+
+  statusLabel(status: string): string {
+    return getSubscriptionStatusLabel(status);
   }
 
   canUpload(): boolean {

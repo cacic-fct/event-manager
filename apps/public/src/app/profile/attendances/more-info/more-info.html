@@ -33,7 +33,7 @@
   </mat-chip-set>
 
   <div class="actions">
-    @if (detail.targetType === 'major-event') {
+    @if (detail.isSubscribed && detail.targetType === 'major-event') {
     <a mat-flat-button [routerLink]="paymentRoute(detail)">
       <mat-icon>payments</mat-icon>
       Informações de pagamento
@@ -43,18 +43,23 @@
       <mat-icon>upload_file</mat-icon>
       Enviar comprovante
     </a>
+    } @if (detail.canViewOrganizerInfo) {
+    <a mat-flat-button [routerLink]="organizerInfoRoute(detail)">
+      <mat-icon>admin_panel_settings</mat-icon>
+      Informações do organizador
+    </a>
     }
     @if (detail.shouldIssueCertificate) {
     <button mat-flat-button type="button" (click)="openCertificates(detail)">
       <mat-icon>workspace_premium</mat-icon>
       Certificados
     </button>
-    } @if (detail.events.length === 1 && detail.events[0].canRegisterAttendance) {
+    } @if (detail.isSubscribed && detail.events.length === 1 && detail.events[0].canRegisterAttendance) {
     <button mat-stroked-button type="button" (click)="registerAttendanceLater()">
       <mat-icon>how_to_reg</mat-icon>
       Registrar presença
     </button>
-    } @if (detail.buttonLink) {
+    } @if (detail.isSubscribed && detail.buttonLink) {
     <a mat-stroked-button [href]="detail.buttonLink" target="_blank" rel="noopener noreferrer">
       <mat-icon>open_in_new</mat-icon>
       {{ detail.buttonText || 'Abrir link' }}

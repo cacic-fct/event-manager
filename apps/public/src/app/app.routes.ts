@@ -29,6 +29,12 @@ export const appRoutes: Route[] = [
         title: 'Grandes eventos',
         data: { reuseTab: true },
       },
+      {
+        path: 'notifications',
+        loadComponent: () => import('./notifications/notifications-tab.component').then((m) => m.NotificationsTabComponent),
+        title: 'Notificações',
+        data: { reuseTab: true },
+      },
     ],
   },
   {

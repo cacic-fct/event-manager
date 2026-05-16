@@ -44,7 +44,7 @@
           [class.selected-list-item]="workspace.selectedMajorEventSubscription()?.id === subscription.id">
           <span matListItemTitle>{{ subscription.person?.name ?? subscription.personId }}</span>
           <span matListItemLine>
-            {{ subscription.subscriptionStatus }} ·
+            {{ statusLabel(subscription.subscriptionStatus) }} ·
             {{ subscription.createdByMethod }}
           </span>
           @if (hasSubscribedLecturer(subscription)) {

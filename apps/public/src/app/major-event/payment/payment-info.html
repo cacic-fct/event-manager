@@ -1,9 +1,5 @@
 <mat-toolbar>
-  <button
-    mat-icon-button
-    type="button"
-    [routerLink]="['/major-event', majorEventId, 'subscription']"
-    aria-label="Voltar">
+  <button mat-icon-button type="button" [routerLink]="['/profile/attendances', majorEventId]" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
   <span>Pagamento</span>
@@ -25,7 +21,7 @@
       <p class="eyebrow">Informações de pagamento</p>
       <h1>{{ majorEvent.name }}</h1>
     </div>
-    <span class="status-pill">{{ subscription.subscriptionStatus }}</span>
+    <span class="status-pill">{{ statusLabel(subscription.subscriptionStatus) }}</span>
   </header>
 
   <section class="detail-section">

@@ -30,8 +30,6 @@ import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
       mat-card {
         max-width: 32rem;
         width: min(100%, 32rem);
-        // display: grid;
-        // gap: 1rem;
         padding: 2rem;
       }
     `,

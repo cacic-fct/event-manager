@@ -48,6 +48,36 @@ export class CurrentUserPendingOnlineAttendanceEvent {
 }
 
 @ObjectType()
+export class CurrentUserOrganizerEventInfo {
+  @Field(() => PublicEvent)
+  event!: PublicEvent;
+
+  @Field(() => Int)
+  subscriberCount!: number;
+
+  @Field(() => Int)
+  attendanceCount!: number;
+
+  @Field(() => String, { nullable: true })
+  onlineAttendanceCode?: string;
+}
+
+@ObjectType()
+export class CurrentUserOrganizerInfo {
+  @Field(() => String)
+  targetType!: string;
+
+  @Field(() => String)
+  targetId!: string;
+
+  @Field(() => String)
+  title!: string;
+
+  @Field(() => [CurrentUserOrganizerEventInfo])
+  events!: CurrentUserOrganizerEventInfo[];
+}
+
+@ObjectType()
 export class CurrentUserEventSubscription {
   @Field(() => String)
   eventId!: string;

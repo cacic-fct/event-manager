@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
+import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { WorkspaceAttendancesService } from '../../../shared/services/workspace-attendances.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
@@ -29,4 +30,8 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 export class WorkspaceMajorEventAttendancesSubtabComponent {
   readonly workspace = inject(WorkspaceAttendancesService);
   protected readonly permissions = inject(WorkspacePermissionsService);
+
+  protected statusLabel(status: string | null | undefined): string {
+    return status ? getSubscriptionStatusLabel(status) : '-';
+  }
 }

@@ -12,13 +12,14 @@ import type {
   CurrentUserMajorEventSubscription,
   EventDetails,
   EventGroupDetails,
+  EventTargetType,
   MajorEventDetails,
   PublicEvent,
   PublicEventGroup,
   SubscribedItem,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
-import { Observable, forkJoin, map, of } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 
 export type {
   Certificate,
@@ -76,6 +77,20 @@ interface CurrentUserEventParticipation {
   isSubscribed: boolean;
   isLecturer: boolean;
   hasIssuedCertificate: boolean;
+}
+
+export interface OrganizerEventInfo {
+  event: PublicEvent;
+  subscriberCount: number;
+  attendanceCount: number;
+  onlineAttendanceCode?: string | null;
+}
+
+export interface OrganizerInfo {
+  targetType: EventTargetType;
+  targetId: string;
+  title: string;
+  events: OrganizerEventInfo[];
 }
 
 const PUBLIC_MAJOR_EVENT_FIELDS = `
@@ -320,11 +335,13 @@ export class AttendancesApiService {
         { majorEventId },
       ),
       feedItem: this.getMajorEventFeedItem(majorEventId),
+      organizerInfo: this.getOrganizerInfo('major-event', majorEventId),
     }).pipe(
-      map(({ details, feedItem }) => ({
+      map(({ details, feedItem, organizerInfo }) => ({
         subscription: details.currentUserMajorEventSubscription,
         majorEvent: feedItem?.majorEvent ?? null,
         hasIssuedCertificate: feedItem?.participation.hasIssuedCertificate ?? false,
+        isLecturer: Boolean(feedItem?.participation.isLecturer || organizerInfo),
         attendances: details.currentUserEventAttendances,
       })),
     );
@@ -359,11 +376,13 @@ export class AttendancesApiService {
         { eventId },
       ),
       certificates: this.getCurrentUserCertificates('EVENT', eventId),
+      organizerInfo: this.getOrganizerInfo('event', eventId),
     }).pipe(
-      map(({ details, certificates }) => ({
+      map(({ details, certificates, organizerInfo }) => ({
         subscription: details.currentUserEventSubscription,
         event: details.currentUserEventSubscription ? null : details.publicEvent,
         hasIssuedCertificate: certificates.length > 0,
+        isLecturer: Boolean(organizerInfo),
         attendance: details.currentUserEventAttendance,
       })),
     );
@@ -401,19 +420,47 @@ export class AttendancesApiService {
         { eventGroupId },
       ),
       certificates: this.getCurrentUserCertificates('EVENT_GROUP', eventGroupId),
+      organizerInfo: this.getOrganizerInfo('event-group', eventGroupId),
     }).pipe(
-      map(({ details, certificates }) => {
+      map(({ details, certificates, organizerInfo }) => {
         const fallbackEvents = details.publicEvents ?? [];
         const eventGroup = fallbackEvents[0]?.eventGroup ?? null;
 
         return {
           subscription: details.currentUserEventGroupSubscription,
           eventGroup: details.currentUserEventGroupSubscription ? null : eventGroup,
-          events: details.currentUserEventGroupSubscription ? [] : fallbackEvents,
+          events: details.currentUserEventGroupSubscription ? [] : organizerInfo?.events.map((item) => item.event) ?? fallbackEvents,
           hasIssuedCertificate: certificates.length > 0,
+          isLecturer: Boolean(organizerInfo),
           attendances: details.currentUserEventAttendances,
         };
       }),
+    );
+  }
+
+  getOrganizerInfo(targetType: EventTargetType, targetId: string): Observable<OrganizerInfo | null> {
+    return this.query<{ currentUserOrganizerInfo: OrganizerInfo | null }>(
+      `
+        query CurrentUserOrganizerInfo($targetType: String!, $targetId: String!) {
+          currentUserOrganizerInfo(targetType: $targetType, targetId: $targetId) {
+            targetType
+            targetId
+            title
+            events {
+              subscriberCount
+              attendanceCount
+              onlineAttendanceCode
+              event {
+                ${PUBLIC_EVENT_FIELDS}
+              }
+            }
+          }
+        }
+      `,
+      { targetType, targetId },
+    ).pipe(
+      map((data) => data.currentUserOrganizerInfo),
+      catchError(() => of(null)),
     );
   }
 
