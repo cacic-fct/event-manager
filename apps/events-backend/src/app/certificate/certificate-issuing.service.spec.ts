@@ -560,6 +560,7 @@ describe('CertificateIssuingService', () => {
 
     expect(renderedData.templateData.second_page_content).toBe('Texto livre do verso');
     expect(renderedData.templateData.name).toBe('Valid Person');
+    expect(renderedData.templateData['majorEvent or event name']).toBe('Palestra Principal');
   });
 
   describe('formatCargaHoraria', () => {
