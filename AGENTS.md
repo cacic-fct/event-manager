@@ -61,6 +61,12 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use the `providedIn: 'root'` option for singleton services
 - Use the `inject()` function instead of constructor injection
 
+## Angular SSR
+
+- Write appropriate guards for server-side rendering (SSR) to handle browser-specific APIs and features
+- Use Angular's `isPlatformBrowser` and `isPlatformServer` utilities to conditionally execute code based on the rendering context
+- New or edited components might need to have their RenderMode set manually to `RenderMode.Server` or `RenderMode.Browser` depending on their use case. Evaluate this on a case-by-case basis.
+
 # NestJS Backend
 
 For the backend, we use NestJS with TypeScript to build a scalable and maintainable server-side application. The backend is designed to be modular, with a focus on clean architecture and separation of concerns.
@@ -97,3 +103,11 @@ bunx prisma generate --schema path/to/schema.prisma
 ```
 
 Do not run migrations without user confirmation, as they can cause data loss.
+
+# Storybook
+
+We use Storybook for developing and testing our UI components in isolation. 
+
+When creating a new component, you should evaluate if it would benefit from having a Storybook story. If the component has multiple states, complex interactions, or is likely to be reused across the application, it is a good candidate for Storybook documentation.
+
+When writing Storybook stories, focus on showcasing the different states and variations of the component. This includes default state, edge cases, and any interactive behavior. Use Storybook's controls to allow users to manipulate props and see how the component responds.
