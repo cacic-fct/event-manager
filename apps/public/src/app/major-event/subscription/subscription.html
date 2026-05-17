@@ -2,7 +2,7 @@
 <router-outlet />
 } @else {
 <mat-toolbar>
-  <button mat-icon-button type="button" routerLink="/menu" aria-label="Voltar">
+  <button matIconButton type="button" routerLink="/menu" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
   <span>Inscrição</span>
@@ -65,26 +65,26 @@
     (openInfo)="openInfo($event)" />
 
   @if (majorEvent.isPaymentRequired && priceTiers().length > 1) {
-    <section class="price-section">
-      <h2>Preço</h2>
-      <mat-radio-group
-        class="price-options"
-        [value]="selectedPriceTierName()"
-        aria-label="Selecionar preço"
-        (change)="selectPriceTier($event.value)">
-        @for (tier of priceTiers(); track tier.id) {
-          <mat-radio-button [value]="tier.name">
-            <span>{{ tier.name }}</span>
-            <strong>{{ tier.value / 100 | currency: 'BRL' }}</strong>
-          </mat-radio-button>
-        }
-      </mat-radio-group>
-    </section>
+  <section class="price-section">
+    <h2>Preço</h2>
+    <mat-radio-group
+      class="price-options"
+      [value]="selectedPriceTierName()"
+      aria-label="Selecionar preço"
+      (change)="selectPriceTier($event.value)">
+      @for (tier of priceTiers(); track tier.id) {
+      <mat-radio-button [value]="tier.name">
+        <span>{{ tier.name }}</span>
+        <strong>{{ tier.value / 100 | currency: 'BRL' }}</strong>
+      </mat-radio-button>
+      }
+    </mat-radio-group>
+  </section>
   } @else if (majorEvent.isPaymentRequired && priceTiers().length === 1) {
-    <section class="price-section">
-      <h2>Preço</h2>
-      <p>{{ priceTiers()[0].name }} · {{ priceTiers()[0].value / 100 | currency: 'BRL' }}</p>
-    </section>
+  <section class="price-section">
+    <h2>Preço</h2>
+    <p>{{ priceTiers()[0].name }} · {{ priceTiers()[0].value / 100 | currency: 'BRL' }}</p>
+  </section>
   }
 
   <button

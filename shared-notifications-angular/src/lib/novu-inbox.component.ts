@@ -55,7 +55,7 @@ type InboxTab = 'inbox' | 'unread' | 'archived' | 'snoozed' | 'preferences';
         </button>
       }
 
-      <button mat-icon-button type="button" [matMenuTriggerFor]="bulkMenu" aria-label="Mais ações">
+      <button matIconButton type="button" [matMenuTriggerFor]="bulkMenu" aria-label="Mais ações">
         <mat-icon>more_vert</mat-icon>
       </button>
     </mat-toolbar>
@@ -183,7 +183,7 @@ type InboxTab = 'inbox' | 'unread' | 'archived' | 'snoozed' | 'preferences';
                     <button mat-button type="button" (click)="openRedirect(notification)">Abrir</button>
                   }
 
-                  <button mat-icon-button type="button" [matMenuTriggerFor]="notificationMenu" aria-label="Ações">
+                  <button matIconButton type="button" [matMenuTriggerFor]="notificationMenu" aria-label="Ações">
                     <mat-icon>more_vert</mat-icon>
                   </button>
                 </div>

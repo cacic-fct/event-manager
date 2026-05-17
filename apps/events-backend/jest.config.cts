@@ -7,4 +7,5 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/apps/events-backend',
+  coverageReporters: ['lcov', 'json', 'text', 'clover'],
 };

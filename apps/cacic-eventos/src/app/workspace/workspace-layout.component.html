@@ -1,6 +1,6 @@
 <mat-toolbar class="toolbar">
   @if (isMobile()) {
-    <button mat-icon-button type="button" aria-label="Abrir menu" (click)="sidenav.toggle()">
+    <button matIconButton type="button" aria-label="Abrir menu" (click)="sidenav.toggle()">
       <mat-icon>menu</mat-icon>
     </button>
   }
@@ -74,7 +74,7 @@
 
             <div>
               <a
-                mat-icon-button
+                matIconButton
                 type="button"
                 [href]="activeNavItem().helpLink"
                 target="_blank"

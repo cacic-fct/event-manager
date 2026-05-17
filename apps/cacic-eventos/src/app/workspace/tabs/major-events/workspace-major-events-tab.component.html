@@ -27,7 +27,7 @@
               {{ majorEvent.endDate | date: 'shortDate' }}
             </span>
             <button
-              mat-icon-button
+              matIconButton
               type="button"
               aria-label="Editar grande evento"
               matTooltip="Editar"
@@ -35,7 +35,7 @@
               <mat-icon>edit</mat-icon>
             </button>
             <button
-              mat-icon-button
+              matIconButton
               type="button"
               aria-label="Excluir grande evento"
               matTooltip="Excluir"
@@ -253,7 +253,11 @@
                 </mat-form-field>
 
                 @if (workspace.majorEventForm.controls.priceType.value === 'TIERED') {
-                  <button mat-icon-button type="button" aria-label="Remover preço" (click)="workspace.removePriceTier($index)">
+                  <button
+                    matIconButton
+                    type="button"
+                    aria-label="Remover preço"
+                    (click)="workspace.removePriceTier($index)">
                     <mat-icon>delete</mat-icon>
                   </button>
                 }
@@ -289,7 +293,7 @@
                   {{ eventItem.endDate | date: 'short' }}
                 </span>
                 <button
-                  mat-icon-button
+                  matIconButton
                   type="button"
                   aria-label="Remover atividade do grande evento"
                   matTooltip="Remover"

@@ -392,7 +392,7 @@
                 "name": "DarkMobile",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -402,11 +402,21 @@
                 "name": "DarkMobile",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
                 "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark', network: 'online' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "Default",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  play: async ({ canvasElement }) => {\n    const canvas = within(canvasElement);\n    await expect(canvas.getByText('Credenciamento')).toBeVisible();\n    await expect(canvas.getByText('Ana Beatriz Silva')).toBeVisible();\n    await expect(canvas.getByText('Carlos Eduardo Lima')).toBeVisible();\n  },\n}"
             },
             {
                 "name": "Default",
@@ -542,6 +552,16 @@
                 "name": "DesktopDark",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DesktopDark",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/landing/home.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -553,16 +573,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/landing/landing.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DesktopDark",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -602,6 +612,26 @@
                 "name": "DesktopDark",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DesktopDark",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DesktopDark",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/developer.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -623,26 +653,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/value-proposition.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DesktopDark",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DesktopDark",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -692,6 +702,16 @@
                 "name": "DesktopLight",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DesktopLight",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/landing/home.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -703,16 +723,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/landing/landing.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DesktopLight",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -752,6 +762,26 @@
                 "name": "DesktopLight",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DesktopLight",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DesktopLight",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/developer.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -773,26 +803,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/value-proposition.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DesktopLight",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DesktopLight",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -839,6 +849,16 @@
                 "defaultValue": "{\n  close: () => undefined,\n}"
             },
             {
+                "name": "eventEnd",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "unknown",
+                "defaultValue": "new Date(eventStart.getTime() + 2 * 60 * 60_000)"
+            },
+            {
                 "name": "events",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
@@ -847,6 +867,16 @@
                 "deprecationMessage": "",
                 "type": "unknown",
                 "defaultValue": "Array.from({ length: 10 }, (_, index) => publicEvent(index))"
+            },
+            {
+                "name": "eventStart",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "unknown",
+                "defaultValue": "new Date(now.getTime() + 20 * 60_000)"
             },
             {
                 "name": "exerciseStory",
@@ -893,6 +923,16 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/certificate-validation/certificate-validation.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "unknown",
+                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+            },
+            {
+                "name": "exerciseStory",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "unknown",
@@ -952,16 +992,6 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "unknown",
-                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-            },
-            {
-                "name": "exerciseStory",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/public/src/app/major-event/major-event.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1012,6 +1042,26 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "unknown",
+                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+            },
+            {
+                "name": "exerciseStory",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "unknown",
+                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+            },
+            {
+                "name": "exerciseStory",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/developer.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1033,16 +1083,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/value-proposition.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "unknown",
-                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-            },
-            {
-                "name": "exerciseStory",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "unknown",
@@ -1102,16 +1142,6 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "unknown",
-                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-            },
-            {
-                "name": "exerciseStory",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/public/src/app/profile/wallet/print-dialog.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1143,16 +1173,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/tabs/bottom-toolbar/bottom-toolbar.layout.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "unknown",
-                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-            },
-            {
-                "name": "exerciseStory",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/tabs/menu/menu.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "unknown",
@@ -1202,6 +1222,16 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/tabs/menu/menu.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "unknown",
+                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+            },
+            {
+                "name": "exerciseStory",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/about/service-worker/ngsw-state/ngsw-state.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1212,7 +1242,7 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "unknown",
@@ -1222,7 +1252,7 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "unknown",
@@ -1276,7 +1306,7 @@
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Meta<OnlineAttendanceCodeComponent>",
-                "defaultValue": "{\n  component: OnlineAttendanceCodeComponent,\n  title: 'Public/Attendance/Online Attendance Code',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                "defaultValue": "{\n  component: OnlineAttendanceCodeComponent,\n  title: 'Public/Attendance/Online Attendance Code',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [ScannerFeedbackService],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "meta",
@@ -1297,6 +1327,16 @@
                 "deprecationMessage": "",
                 "type": "Meta<CertificateValidation>",
                 "defaultValue": "{\n  component: CertificateValidation,\n  title: 'Public/Certificate Validation/Certificate Validation',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+            },
+            {
+                "name": "meta",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Meta<DevelopmentTools>",
+                "defaultValue": "{\n  component: DevelopmentTools,\n  title: 'Public/Development Tools/Development Tools',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "meta",
@@ -1352,16 +1392,6 @@
                 "name": "meta",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Meta<DevelopmentTools>",
-                "defaultValue": "{\n  component: DevelopmentTools,\n  title: 'Public/Development Tools/Development Tools',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-            },
-            {
-                "name": "meta",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/public/src/app/major-event/major-event.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1412,11 +1442,41 @@
                 "name": "meta",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Meta<AttendanceScanner>",
+                "defaultValue": "{\n  component: AttendanceScanner,\n  title: 'Public/Attendance/Attendance Scanner',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [\n        provideRouter([]),\n        ScannerFeedbackService,\n        {\n          provide: ActivatedRoute,\n          useValue: {\n            snapshot: {\n              paramMap: convertToParamMap({ eventId: 'event-open' }),\n            },\n          },\n        },\n        {\n          provide: AttendanceCollectionApiService,\n          useValue: {\n            listCollectionEvents: () =>\n              of([\n                {\n                  eventId: 'event-open',\n                  event: {\n                    id: 'event-open',\n                    name: 'Credenciamento',\n                    startDate: eventStart.toISOString(),\n                    endDate: eventEnd.toISOString(),\n                    emoji: '✅',\n                    type: 'OTHER',\n                    locationDescription: 'Hall principal',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n              ]),\n            listFeed: () =>\n              of([\n                {\n                  personId: 'person-1',\n                  eventId: 'event-open',\n                  fullName: 'Ana Beatriz Silva',\n                  unespRole: 'STUDENT',\n                  subscriptionStatus: 'CONFIRMED',\n                  attendedAt: new Date(now.getTime() - 2 * 60_000).toISOString(),\n                  createdByMethod: 'SCANNER',\n                  collectedByFirstName: 'Marina',\n                },\n                {\n                  personId: 'person-2',\n                  eventId: 'event-open',\n                  fullName: 'Carlos Eduardo Lima',\n                  unespRole: 'USER',\n                  subscriptionStatus: null,\n                  attendedAt: new Date(now.getTime() - 8 * 60_000).toISOString(),\n                  createdByMethod: 'MANUAL_INPUT',\n                  collectedByFirstName: 'Marina',\n                },\n              ]),\n            watchFeed: () => NEVER,\n            registerScannerCode: () => of({}),\n            registerManual: () => of({}),\n          },\n        },\n      ],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+            },
+            {
+                "name": "meta",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/attendance/collection/scanner-event-list.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Meta<ScannerEventList>",
-                "defaultValue": "{\n  component: ScannerEventList,\n  title: 'Public/Attendance/Scanner Event List',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [\n        provideRouter([]),\n        {\n          provide: AttendanceCollectionApiService,\n          useValue: {\n            listCollectionEvents: () =>\n              of([\n                {\n                  eventId: 'event-open',\n                  event: {\n                    id: 'event-open',\n                    name: 'Credenciamento',\n                    startDate: openStart.toISOString(),\n                    endDate: new Date(openStart.getTime() + 2 * 60 * 60_000).toISOString(),\n                    emoji: '✅',\n                    type: 'OTHER',\n                    locationDescription: 'Hall principal',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n                {\n                  eventId: 'event-later',\n                  event: {\n                    id: 'event-later',\n                    name: 'Oficina da tarde',\n                    startDate: closedStart.toISOString(),\n                    endDate: new Date(closedStart.getTime() + 2 * 60 * 60_000).toISOString(),\n                    emoji: '🧪',\n                    type: 'MINICURSO',\n                    locationDescription: 'Laboratório 3',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n              ]),\n          },\n        },\n      ],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                "defaultValue": "{\n  component: ScannerEventList,\n  title: 'Public/Attendance/Scanner Event List',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [\n        provideRouter([]),\n        {\n          provide: AttendanceCollectionApiService,\n          useValue: {\n            listCollectionEvents: () =>\n              of([\n                {\n                  eventId: 'event-open',\n                  event: {\n                    id: 'event-open',\n                    name: 'Credenciamento',\n                    startDate: openStart.toISOString(),\n                    endDate: new Date(openStart.getTime() + 2 * 60 * 60_000).toISOString(),\n                    emoji: '✅',\n                    type: 'OTHER',\n                    locationDescription: 'Hall principal',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n                {\n                  eventId: 'event-later',\n                  event: {\n                    id: 'event-later',\n                    name: 'Oficina da tarde',\n                    startDate: closedStart.toISOString(),\n                    endDate: new Date(closedStart.getTime() + 2 * 60 * 60_000).toISOString(),\n                    emoji: '🧪',\n                    type: 'MINICURSO',\n                    locationDescription: 'Laboratório 3',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n              ]),\n          },\n        },\n      ],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n  beforeEach: () => {\n    Object.defineProperty(navigator, 'geolocation', {\n      configurable: true,\n      value: {\n        getCurrentPosition: (success: PositionCallback) =>\n          success({\n            coords: {\n              latitude: -22.12,\n              longitude: -51.4,\n              accuracy: 12,\n              altitude: null,\n              altitudeAccuracy: null,\n              heading: null,\n              speed: null,\n            },\n            timestamp: Date.now(),\n          } as GeolocationPosition),\n      },\n    });\n  },\n}"
+            },
+            {
+                "name": "meta",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Meta<ScannerDebug>",
+                "defaultValue": "{\n  component: ScannerDebug,\n  title: 'Public/Development Tools/Scanner Debug/Scanner Debug',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [ScannerFeedbackService],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+            },
+            {
+                "name": "meta",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Meta<UserDebug>",
+                "defaultValue": "{\n  component: UserDebug,\n  title: 'Public/Development Tools/User Debug/User Debug',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "meta",
@@ -1447,16 +1507,6 @@
                 "deprecationMessage": "",
                 "type": "Meta<ValuePropositionComponent>",
                 "defaultValue": "{\n  component: ValuePropositionComponent,\n  title: 'Public/Landing/Components/Value Proposition',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-            },
-            {
-                "name": "meta",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Meta<ScannerDebug>",
-                "defaultValue": "{\n  component: ScannerDebug,\n  title: 'Public/Development Tools/Scanner Debug/Scanner Debug',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "meta",
@@ -1512,16 +1562,6 @@
                 "name": "meta",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Meta<UserDebug>",
-                "defaultValue": "{\n  component: UserDebug,\n  title: 'Public/Development Tools/User Debug/User Debug',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-            },
-            {
-                "name": "meta",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/public/src/app/profile/wallet/print-dialog.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1557,16 +1597,6 @@
                 "deprecationMessage": "",
                 "type": "Meta<ToolbarLayoutComponent>",
                 "defaultValue": "{\n  component: ToolbarLayoutComponent,\n  title: 'Public/Tabs/Bottom Toolbar/Bottom Toolbar/Layout',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-            },
-            {
-                "name": "meta",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/tabs/menu/menu.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Meta<MenuComponent>",
-                "defaultValue": "{\n  component: MenuComponent,\n  title: 'Public/Tabs/Menu/Menu',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "meta",
@@ -1612,6 +1642,16 @@
                 "name": "meta",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/tabs/menu/menu.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Meta<MenuComponent>",
+                "defaultValue": "{\n  component: MenuComponent,\n  title: 'Public/Tabs/Menu/Menu',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+            },
+            {
+                "name": "meta",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/about/service-worker/ngsw-state/ngsw-state.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1622,21 +1662,21 @@
                 "name": "meta",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Meta<MoreInfo>",
-                "defaultValue": "{\n  component: MoreInfo,\n  title: 'Public/Profile/Attendances/More Info/More Info',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-            },
-            {
-                "name": "meta",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Meta<CertificateDialog>",
                 "defaultValue": "{\n  component: CertificateDialog,\n  title: 'Public/Profile/Attendances/Certificate Dialog/Certificate Dialog',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+            },
+            {
+                "name": "meta",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Meta<MoreInfo>",
+                "defaultValue": "{\n  component: MoreInfo,\n  title: 'Public/Profile/Attendances/More Info/More Info',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "meta",
@@ -1662,6 +1702,16 @@
                 "name": "MobileDark",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "MobileDark",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/landing/home.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1673,16 +1723,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/landing/landing.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "MobileDark",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -1722,6 +1762,26 @@
                 "name": "MobileDark",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "MobileDark",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "MobileDark",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/developer.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1743,26 +1803,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/value-proposition.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "MobileDark",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "MobileDark",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -1812,6 +1852,16 @@
                 "name": "MobileLight",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "MobileLight",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/landing/home.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1823,16 +1873,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/landing/landing.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "MobileLight",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -1872,6 +1912,26 @@
                 "name": "MobileLight",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "MobileLight",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "MobileLight",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/developer.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1893,26 +1953,6 @@
                 "ctype": "miscellaneous",
                 "subtype": "variable",
                 "file": "apps/public/src/app/landing/components/value-proposition.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "MobileLight",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "MobileLight",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -2017,6 +2057,16 @@
                 "deprecationMessage": "",
                 "type": "unknown",
                 "defaultValue": "new Date('2026-05-16T12:00:00-03:00')"
+            },
+            {
+                "name": "now",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "unknown",
+                "defaultValue": "new Date()"
             },
             {
                 "name": "now",
@@ -2192,7 +2242,7 @@
                 "name": "OfflineFallback",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -2202,7 +2252,7 @@
                 "name": "OfflineFallback",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -2432,7 +2482,7 @@
                 "name": "OnlineDesktop",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -2442,7 +2492,7 @@
                 "name": "OnlineDesktop",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -2612,7 +2662,7 @@
                 "name": "OnlineMobile",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -2622,7 +2672,7 @@
                 "name": "OnlineMobile",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
+                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -3219,6 +3269,17 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
+                "rawtype": "StoryObj<DevelopmentTools>",
+                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "description": "",
+                "kind": 184
+            },
+            {
+                "name": "Story",
+                "ctype": "miscellaneous",
+                "subtype": "typealias",
                 "rawtype": "StoryObj<AttendanceCodeDialog>",
                 "file": "apps/public/src/app/event/attendance-code-dialog.stories.ts",
                 "deprecated": false,
@@ -3265,17 +3326,6 @@
                 "subtype": "typealias",
                 "rawtype": "StoryObj<LandingComponent>",
                 "file": "apps/public/src/app/landing/landing.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "description": "",
-                "kind": 184
-            },
-            {
-                "name": "Story",
-                "ctype": "miscellaneous",
-                "subtype": "typealias",
-                "rawtype": "StoryObj<DevelopmentTools>",
-                "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "description": "",
@@ -3340,8 +3390,41 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
+                "rawtype": "StoryObj<AttendanceScanner>",
+                "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "description": "",
+                "kind": 184
+            },
+            {
+                "name": "Story",
+                "ctype": "miscellaneous",
+                "subtype": "typealias",
                 "rawtype": "StoryObj<ScannerEventList>",
                 "file": "apps/public/src/app/attendance/collection/scanner-event-list.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "description": "",
+                "kind": 184
+            },
+            {
+                "name": "Story",
+                "ctype": "miscellaneous",
+                "subtype": "typealias",
+                "rawtype": "StoryObj<ScannerDebug>",
+                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "description": "",
+                "kind": 184
+            },
+            {
+                "name": "Story",
+                "ctype": "miscellaneous",
+                "subtype": "typealias",
+                "rawtype": "StoryObj<UserDebug>",
+                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "description": "",
@@ -3375,17 +3458,6 @@
                 "subtype": "typealias",
                 "rawtype": "StoryObj<ValuePropositionComponent>",
                 "file": "apps/public/src/app/landing/components/value-proposition.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "description": "",
-                "kind": 184
-            },
-            {
-                "name": "Story",
-                "ctype": "miscellaneous",
-                "subtype": "typealias",
-                "rawtype": "StoryObj<ScannerDebug>",
-                "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "description": "",
@@ -3450,17 +3522,6 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
-                "rawtype": "StoryObj<UserDebug>",
-                "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "description": "",
-                "kind": 184
-            },
-            {
-                "name": "Story",
-                "ctype": "miscellaneous",
-                "subtype": "typealias",
                 "rawtype": "StoryObj<PrintDialog>",
                 "file": "apps/public/src/app/profile/wallet/print-dialog.stories.ts",
                 "deprecated": false,
@@ -3496,17 +3557,6 @@
                 "subtype": "typealias",
                 "rawtype": "StoryObj<ToolbarLayoutComponent>",
                 "file": "apps/public/src/app/tabs/bottom-toolbar/bottom-toolbar.layout.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "description": "",
-                "kind": 184
-            },
-            {
-                "name": "Story",
-                "ctype": "miscellaneous",
-                "subtype": "typealias",
-                "rawtype": "StoryObj<MenuComponent>",
-                "file": "apps/public/src/app/tabs/menu/menu.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "description": "",
@@ -3560,6 +3610,17 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
+                "rawtype": "StoryObj<MenuComponent>",
+                "file": "apps/public/src/app/tabs/menu/menu.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "description": "",
+                "kind": 184
+            },
+            {
+                "name": "Story",
+                "ctype": "miscellaneous",
+                "subtype": "typealias",
                 "rawtype": "StoryObj<NgswState>",
                 "file": "apps/public/src/app/about/service-worker/ngsw-state/ngsw-state.stories.ts",
                 "deprecated": false,
@@ -3571,8 +3632,8 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
-                "rawtype": "StoryObj<MoreInfo>",
-                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                "rawtype": "StoryObj<CertificateDialog>",
+                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "description": "",
@@ -3582,8 +3643,8 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
-                "rawtype": "StoryObj<CertificateDialog>",
-                "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
+                "rawtype": "StoryObj<MoreInfo>",
+                "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "description": "",
@@ -3724,7 +3785,7 @@
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Meta<ScannerEventList>",
-                    "defaultValue": "{\n  component: ScannerEventList,\n  title: 'Public/Attendance/Scanner Event List',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [\n        provideRouter([]),\n        {\n          provide: AttendanceCollectionApiService,\n          useValue: {\n            listCollectionEvents: () =>\n              of([\n                {\n                  eventId: 'event-open',\n                  event: {\n                    id: 'event-open',\n                    name: 'Credenciamento',\n                    startDate: openStart.toISOString(),\n                    endDate: new Date(openStart.getTime() + 2 * 60 * 60_000).toISOString(),\n                    emoji: '✅',\n                    type: 'OTHER',\n                    locationDescription: 'Hall principal',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n                {\n                  eventId: 'event-later',\n                  event: {\n                    id: 'event-later',\n                    name: 'Oficina da tarde',\n                    startDate: closedStart.toISOString(),\n                    endDate: new Date(closedStart.getTime() + 2 * 60 * 60_000).toISOString(),\n                    emoji: '🧪',\n                    type: 'MINICURSO',\n                    locationDescription: 'Laboratório 3',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n              ]),\n          },\n        },\n      ],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                    "defaultValue": "{\n  component: ScannerEventList,\n  title: 'Public/Attendance/Scanner Event List',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [\n        provideRouter([]),\n        {\n          provide: AttendanceCollectionApiService,\n          useValue: {\n            listCollectionEvents: () =>\n              of([\n                {\n                  eventId: 'event-open',\n                  event: {\n                    id: 'event-open',\n                    name: 'Credenciamento',\n                    startDate: openStart.toISOString(),\n                    endDate: new Date(openStart.getTime() + 2 * 60 * 60_000).toISOString(),\n                    emoji: '✅',\n                    type: 'OTHER',\n                    locationDescription: 'Hall principal',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n                {\n                  eventId: 'event-later',\n                  event: {\n                    id: 'event-later',\n                    name: 'Oficina da tarde',\n                    startDate: closedStart.toISOString(),\n                    endDate: new Date(closedStart.getTime() + 2 * 60 * 60_000).toISOString(),\n                    emoji: '🧪',\n                    type: 'MINICURSO',\n                    locationDescription: 'Laboratório 3',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n              ]),\n          },\n        },\n      ],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n  beforeEach: () => {\n    Object.defineProperty(navigator, 'geolocation', {\n      configurable: true,\n      value: {\n        getCurrentPosition: (success: PositionCallback) =>\n          success({\n            coords: {\n              latitude: -22.12,\n              longitude: -51.4,\n              accuracy: 12,\n              altitude: null,\n              altitudeAccuracy: null,\n              heading: null,\n              speed: null,\n            },\n            timestamp: Date.now(),\n          } as GeolocationPosition),\n      },\n    });\n  },\n}"
                 },
                 {
                     "name": "now",
@@ -4222,7 +4283,7 @@
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Meta<OnlineAttendanceCodeComponent>",
-                    "defaultValue": "{\n  component: OnlineAttendanceCodeComponent,\n  title: 'Public/Attendance/Online Attendance Code',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                    "defaultValue": "{\n  component: OnlineAttendanceCodeComponent,\n  title: 'Public/Attendance/Online Attendance Code',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [ScannerFeedbackService],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
                 },
                 {
                     "name": "OfflineFallback",
@@ -5325,68 +5386,6 @@
                     "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light', network: 'online' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
                 }
             ],
-            "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts": [
-                {
-                    "name": "DarkMobile",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark', network: 'online' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "exerciseStory",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "unknown",
-                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-                },
-                {
-                    "name": "meta",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Meta<MoreInfo>",
-                    "defaultValue": "{\n  component: MoreInfo,\n  title: 'Public/Profile/Attendances/More Info/More Info',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-                },
-                {
-                    "name": "OfflineFallback",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'tablet' },\n  },\n  globals: { theme: 'light', network: 'offline' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "OnlineDesktop",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light', network: 'online' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "OnlineMobile",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light', network: 'online' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                }
-            ],
             "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts": [
                 {
                     "name": "DarkMobile",
@@ -5449,6 +5448,120 @@
                     "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light', network: 'online' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
                 }
             ],
+            "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts": [
+                {
+                    "name": "DarkMobile",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark', network: 'online' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "exerciseStory",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "unknown",
+                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+                },
+                {
+                    "name": "meta",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Meta<MoreInfo>",
+                    "defaultValue": "{\n  component: MoreInfo,\n  title: 'Public/Profile/Attendances/More Info/More Info',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                },
+                {
+                    "name": "OfflineFallback",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'tablet' },\n  },\n  globals: { theme: 'light', network: 'offline' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "OnlineDesktop",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light', network: 'online' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "OnlineMobile",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light', network: 'online' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                }
+            ],
+            "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts": [
+                {
+                    "name": "Default",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  play: async ({ canvasElement }) => {\n    const canvas = within(canvasElement);\n    await expect(canvas.getByText('Credenciamento')).toBeVisible();\n    await expect(canvas.getByText('Ana Beatriz Silva')).toBeVisible();\n    await expect(canvas.getByText('Carlos Eduardo Lima')).toBeVisible();\n  },\n}"
+                },
+                {
+                    "name": "eventEnd",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "unknown",
+                    "defaultValue": "new Date(eventStart.getTime() + 2 * 60 * 60_000)"
+                },
+                {
+                    "name": "eventStart",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "unknown",
+                    "defaultValue": "new Date(now.getTime() + 20 * 60_000)"
+                },
+                {
+                    "name": "meta",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Meta<AttendanceScanner>",
+                    "defaultValue": "{\n  component: AttendanceScanner,\n  title: 'Public/Attendance/Attendance Scanner',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [\n        provideRouter([]),\n        ScannerFeedbackService,\n        {\n          provide: ActivatedRoute,\n          useValue: {\n            snapshot: {\n              paramMap: convertToParamMap({ eventId: 'event-open' }),\n            },\n          },\n        },\n        {\n          provide: AttendanceCollectionApiService,\n          useValue: {\n            listCollectionEvents: () =>\n              of([\n                {\n                  eventId: 'event-open',\n                  event: {\n                    id: 'event-open',\n                    name: 'Credenciamento',\n                    startDate: eventStart.toISOString(),\n                    endDate: eventEnd.toISOString(),\n                    emoji: '✅',\n                    type: 'OTHER',\n                    locationDescription: 'Hall principal',\n                    shouldCollectAttendance: true,\n                    publiclyVisible: true,\n                    queueCount: 0,\n                  },\n                },\n              ]),\n            listFeed: () =>\n              of([\n                {\n                  personId: 'person-1',\n                  eventId: 'event-open',\n                  fullName: 'Ana Beatriz Silva',\n                  unespRole: 'STUDENT',\n                  subscriptionStatus: 'CONFIRMED',\n                  attendedAt: new Date(now.getTime() - 2 * 60_000).toISOString(),\n                  createdByMethod: 'SCANNER',\n                  collectedByFirstName: 'Marina',\n                },\n                {\n                  personId: 'person-2',\n                  eventId: 'event-open',\n                  fullName: 'Carlos Eduardo Lima',\n                  unespRole: 'USER',\n                  subscriptionStatus: null,\n                  attendedAt: new Date(now.getTime() - 8 * 60_000).toISOString(),\n                  createdByMethod: 'MANUAL_INPUT',\n                  collectedByFirstName: 'Marina',\n                },\n              ]),\n            watchFeed: () => NEVER,\n            registerScannerCode: () => of({}),\n            registerManual: () => of({}),\n          },\n        },\n      ],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                },
+                {
+                    "name": "now",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "unknown",
+                    "defaultValue": "new Date()"
+                }
+            ],
             "apps/public/src/app/app.stories.ts": [
                 {
                     "name": "DesktopDark",
@@ -5505,6 +5618,68 @@
                     "ctype": "miscellaneous",
                     "subtype": "variable",
                     "file": "apps/public/src/app/app.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                }
+            ],
+            "apps/public/src/app/development-tools/development-tools.stories.ts": [
+                {
+                    "name": "DesktopDark",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "DesktopLight",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "exerciseStory",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "unknown",
+                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+                },
+                {
+                    "name": "meta",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Meta<DevelopmentTools>",
+                    "defaultValue": "{\n  component: DevelopmentTools,\n  title: 'Public/Development Tools/Development Tools',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                },
+                {
+                    "name": "MobileDark",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "MobileLight",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -5629,68 +5804,6 @@
                     "ctype": "miscellaneous",
                     "subtype": "variable",
                     "file": "apps/public/src/app/landing/landing.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                }
-            ],
-            "apps/public/src/app/development-tools/development-tools.stories.ts": [
-                {
-                    "name": "DesktopDark",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "DesktopLight",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "exerciseStory",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "unknown",
-                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-                },
-                {
-                    "name": "meta",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Meta<DevelopmentTools>",
-                    "defaultValue": "{\n  component: DevelopmentTools,\n  title: 'Public/Development Tools/Development Tools',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-                },
-                {
-                    "name": "MobileDark",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "MobileLight",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -5883,6 +5996,130 @@
                     "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
                 }
             ],
+            "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts": [
+                {
+                    "name": "DesktopDark",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "DesktopLight",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "exerciseStory",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "unknown",
+                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+                },
+                {
+                    "name": "meta",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Meta<ScannerDebug>",
+                    "defaultValue": "{\n  component: ScannerDebug,\n  title: 'Public/Development Tools/Scanner Debug/Scanner Debug',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: [ScannerFeedbackService],\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                },
+                {
+                    "name": "MobileDark",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "MobileLight",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                }
+            ],
+            "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts": [
+                {
+                    "name": "DesktopDark",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "DesktopLight",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "exerciseStory",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "unknown",
+                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+                },
+                {
+                    "name": "meta",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Meta<UserDebug>",
+                    "defaultValue": "{\n  component: UserDebug,\n  title: 'Public/Development Tools/User Debug/User Debug',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                },
+                {
+                    "name": "MobileDark",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "MobileLight",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                }
+            ],
             "apps/public/src/app/landing/components/developer.stories.ts": [
                 {
                     "name": "DesktopDark",
@@ -6063,130 +6300,6 @@
                     "ctype": "miscellaneous",
                     "subtype": "variable",
                     "file": "apps/public/src/app/landing/components/value-proposition.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                }
-            ],
-            "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts": [
-                {
-                    "name": "DesktopDark",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "DesktopLight",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "exerciseStory",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "unknown",
-                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-                },
-                {
-                    "name": "meta",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Meta<ScannerDebug>",
-                    "defaultValue": "{\n  component: ScannerDebug,\n  title: 'Public/Development Tools/Scanner Debug/Scanner Debug',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-                },
-                {
-                    "name": "MobileDark",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "MobileLight",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                }
-            ],
-            "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts": [
-                {
-                    "name": "DesktopDark",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "DesktopLight",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "exerciseStory",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "unknown",
-                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-                },
-                {
-                    "name": "meta",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Meta<UserDebug>",
-                    "defaultValue": "{\n  component: UserDebug,\n  title: 'Public/Development Tools/User Debug/User Debug',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-                },
-                {
-                    "name": "MobileDark",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "MobileLight",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -6801,6 +6914,19 @@
                     "kind": 184
                 }
             ],
+            "apps/public/src/app/development-tools/development-tools.stories.ts": [
+                {
+                    "name": "Story",
+                    "ctype": "miscellaneous",
+                    "subtype": "typealias",
+                    "rawtype": "StoryObj<DevelopmentTools>",
+                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "kind": 184
+                }
+            ],
             "apps/public/src/app/event/attendance-code-dialog.stories.ts": [
                 {
                     "name": "Story",
@@ -6860,19 +6986,6 @@
                     "subtype": "typealias",
                     "rawtype": "StoryObj<LandingComponent>",
                     "file": "apps/public/src/app/landing/landing.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "description": "",
-                    "kind": 184
-                }
-            ],
-            "apps/public/src/app/development-tools/development-tools.stories.ts": [
-                {
-                    "name": "Story",
-                    "ctype": "miscellaneous",
-                    "subtype": "typealias",
-                    "rawtype": "StoryObj<DevelopmentTools>",
-                    "file": "apps/public/src/app/development-tools/development-tools.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "description": "",
@@ -6944,6 +7057,19 @@
                     "kind": 184
                 }
             ],
+            "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts": [
+                {
+                    "name": "Story",
+                    "ctype": "miscellaneous",
+                    "subtype": "typealias",
+                    "rawtype": "StoryObj<AttendanceScanner>",
+                    "file": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "kind": 184
+                }
+            ],
             "apps/public/src/app/attendance/collection/scanner-event-list.stories.ts": [
                 {
                     "name": "Story",
@@ -6951,6 +7077,32 @@
                     "subtype": "typealias",
                     "rawtype": "StoryObj<ScannerEventList>",
                     "file": "apps/public/src/app/attendance/collection/scanner-event-list.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "kind": 184
+                }
+            ],
+            "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts": [
+                {
+                    "name": "Story",
+                    "ctype": "miscellaneous",
+                    "subtype": "typealias",
+                    "rawtype": "StoryObj<ScannerDebug>",
+                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "kind": 184
+                }
+            ],
+            "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts": [
+                {
+                    "name": "Story",
+                    "ctype": "miscellaneous",
+                    "subtype": "typealias",
+                    "rawtype": "StoryObj<UserDebug>",
+                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "description": "",
@@ -6990,19 +7142,6 @@
                     "subtype": "typealias",
                     "rawtype": "StoryObj<ValuePropositionComponent>",
                     "file": "apps/public/src/app/landing/components/value-proposition.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "description": "",
-                    "kind": 184
-                }
-            ],
-            "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts": [
-                {
-                    "name": "Story",
-                    "ctype": "miscellaneous",
-                    "subtype": "typealias",
-                    "rawtype": "StoryObj<ScannerDebug>",
-                    "file": "apps/public/src/app/development-tools/scanner-debug/scanner-debug.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "description": "",
@@ -7074,19 +7213,6 @@
                     "kind": 184
                 }
             ],
-            "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts": [
-                {
-                    "name": "Story",
-                    "ctype": "miscellaneous",
-                    "subtype": "typealias",
-                    "rawtype": "StoryObj<UserDebug>",
-                    "file": "apps/public/src/app/development-tools/user-debug/user-debug.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "description": "",
-                    "kind": 184
-                }
-            ],
             "apps/public/src/app/profile/wallet/print-dialog.stories.ts": [
                 {
                     "name": "Story",
@@ -7133,19 +7259,6 @@
                     "subtype": "typealias",
                     "rawtype": "StoryObj<ToolbarLayoutComponent>",
                     "file": "apps/public/src/app/tabs/bottom-toolbar/bottom-toolbar.layout.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "description": "",
-                    "kind": 184
-                }
-            ],
-            "apps/public/src/app/tabs/menu/menu.component.stories.ts": [
-                {
-                    "name": "Story",
-                    "ctype": "miscellaneous",
-                    "subtype": "typealias",
-                    "rawtype": "StoryObj<MenuComponent>",
-                    "file": "apps/public/src/app/tabs/menu/menu.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "description": "",
@@ -7204,6 +7317,19 @@
                     "kind": 184
                 }
             ],
+            "apps/public/src/app/tabs/menu/menu.component.stories.ts": [
+                {
+                    "name": "Story",
+                    "ctype": "miscellaneous",
+                    "subtype": "typealias",
+                    "rawtype": "StoryObj<MenuComponent>",
+                    "file": "apps/public/src/app/tabs/menu/menu.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "kind": 184
+                }
+            ],
             "apps/public/src/app/about/service-worker/ngsw-state/ngsw-state.stories.ts": [
                 {
                     "name": "Story",
@@ -7217,19 +7343,6 @@
                     "kind": 184
                 }
             ],
-            "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts": [
-                {
-                    "name": "Story",
-                    "ctype": "miscellaneous",
-                    "subtype": "typealias",
-                    "rawtype": "StoryObj<MoreInfo>",
-                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "description": "",
-                    "kind": 184
-                }
-            ],
             "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts": [
                 {
                     "name": "Story",
@@ -7237,6 +7350,19 @@
                     "subtype": "typealias",
                     "rawtype": "StoryObj<CertificateDialog>",
                     "file": "apps/public/src/app/profile/attendances/certificate-dialog/certificate-dialog.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "kind": 184
+                }
+            ],
+            "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts": [
+                {
+                    "name": "Story",
+                    "ctype": "miscellaneous",
+                    "subtype": "typealias",
+                    "rawtype": "StoryObj<MoreInfo>",
+                    "file": "apps/public/src/app/profile/attendances/more-info/more-info.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "description": "",
@@ -8028,6 +8154,66 @@
             },
             {
                 "filePath": "apps/public/src/app/app.stories.ts",
+                "type": "type alias",
+                "linktype": "miscellaneous",
+                "linksubtype": "typealias",
+                "name": "Story",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Default",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "eventEnd",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "eventStart",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "meta",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "now",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "apps/public/src/app/attendance/collection/attendance-scanner.stories.ts",
                 "type": "type alias",
                 "linktype": "miscellaneous",
                 "linksubtype": "typealias",

@@ -1,17 +1,17 @@
 <section class="week-shell">
   <div class="week-actions" aria-label="Navegação por semana">
     <button
-      mat-icon-button
+      matIconButton
       type="button"
       [disabled]="!canGoPrevious()"
       (click)="previousWeek.emit()"
       aria-label="Semana anterior">
       <mat-icon>chevron_left</mat-icon>
     </button>
-    <button mat-icon-button type="button" (click)="today.emit()" aria-label="Ir para hoje">
+    <button matIconButton type="button" (click)="today.emit()" aria-label="Ir para hoje">
       <mat-icon>today</mat-icon>
     </button>
-    <button mat-icon-button type="button" (click)="nextWeek.emit()" aria-label="Próxima semana">
+    <button matIconButton type="button" (click)="nextWeek.emit()" aria-label="Próxima semana">
       <mat-icon>chevron_right</mat-icon>
     </button>
   </div>
