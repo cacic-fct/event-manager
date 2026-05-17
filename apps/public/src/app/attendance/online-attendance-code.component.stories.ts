@@ -1,11 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
+import { ScannerFeedbackService } from '@cacic-fct/shared-angular';
 import { OnlineAttendanceCodeComponent } from './online-attendance-code.component';
 
 const meta: Meta<OnlineAttendanceCodeComponent> = {
   component: OnlineAttendanceCodeComponent,
   title: 'Public/Attendance/Online Attendance Code',
   tags: ['autodocs'],
+  decorators: [
+    applicationConfig({
+      providers: [ScannerFeedbackService],
+    }),
+  ],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },

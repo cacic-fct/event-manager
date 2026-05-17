@@ -1,0 +1,66 @@
+<main class="scanner-page">
+  <header>
+    <a mat-icon-button routerLink="/attendance/collect" aria-label="Voltar para eventos">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+    <div>
+      <h1>{{ event()?.event?.name || 'Coletar presença' }}</h1>
+      <p>{{ event()?.event?.startDate | date: 'short' }}</p>
+    </div>
+  </header>
+
+  <section class="location-state" [class.ready]="hasPreciseLocation()">
+    <mat-icon>{{ hasPreciseLocation() ? 'my_location' : 'location_off' }}</mat-icon>
+    <span>{{ locationStatus() }}</span>
+  </section>
+
+  <lib-aztec-scanner
+    title="Escanear presença"
+    [acceptedPrefixes]="['user:']"
+    (scan)="handleScan($event)" />
+
+  <form class="manual-form" [formGroup]="manualForm" (ngSubmit)="registerManualAttendance()">
+    <mat-form-field>
+      <mat-label>E-mail, telefone ou documento</mat-label>
+      <input matInput formControlName="value" autocomplete="off" />
+    </mat-form-field>
+    <button mat-stroked-button type="submit" [disabled]="manualForm.invalid">
+      <mat-icon>person_add</mat-icon>
+      Registrar manualmente
+    </button>
+  </form>
+
+  <section class="feed-panel" aria-live="polite">
+    <div class="feed-heading">
+      <h2>Presenças registradas</h2>
+      <span>{{ attendances().length }} recentes</span>
+    </div>
+
+    <mat-list>
+      @for (attendance of attendances(); track attendance.personId + attendance.eventId + attendance.attendedAt) {
+        <mat-list-item>
+          <span matListItemTitle>{{ attendance.fullName || attendance.personId }}</span>
+          <span matListItemLine>
+            {{ attendance.unespRole || '-' }} · {{ statusLabel(attendance.subscriptionStatus) }}
+          </span>
+          <span matListItemLine>
+            @if (attendance.attendedAt) {
+              {{ attendance.attendedAt | date: 'shortTime' }}
+            } @else {
+              -
+            }
+            · {{ methodLabel(attendance.createdByMethod) }}
+            @if (attendance.collectedByFirstName) {
+              · por {{ attendance.collectedByFirstName }}
+            }
+          </span>
+        </mat-list-item>
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>Nenhuma presença registrada</span>
+          <span matListItemLine>A lista será atualizada automaticamente.</span>
+        </mat-list-item>
+      }
+    </mat-list>
+  </section>
+</main>

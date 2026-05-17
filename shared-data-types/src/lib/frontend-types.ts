@@ -5,6 +5,7 @@ export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 export type CertificateScope = 'MAJOR_EVENT' | 'EVENT_GROUP' | 'EVENT' | 'OTHER';
 export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
 export type SubscriptionCreationMethod = 'ADMIN_DASHBOARD' | 'SELF_SUBSCRIPTION' | 'UNKNOWN';
+export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
 export type SubscriptionStatus =
   | 'WAITING_RECEIPT_UPLOAD'
   | 'RECEIPT_UNDER_REVIEW'
@@ -297,6 +298,19 @@ export interface EventAttendance {
   event?: Event | null;
   category: AttendanceCategory;
   attendedAt: string;
+  createdAt: string;
+  createdById?: string | null;
+  createdByMethod: AttendanceCreationMethod;
+  collectedLatitude?: number | null;
+  collectedLongitude?: number | null;
+  collectedAccuracyMeters?: number | null;
+}
+
+export interface EventAttendanceCollector {
+  eventId: string;
+  personId: string;
+  event?: Event | null;
+  person?: Person | null;
   createdAt: string;
   createdById?: string | null;
 }

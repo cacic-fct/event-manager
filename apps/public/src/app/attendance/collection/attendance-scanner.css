@@ -1,0 +1,80 @@
+.scanner-page {
+  display: grid;
+  gap: 1rem;
+  margin: 0 auto;
+  max-width: 42rem;
+  padding: 1rem;
+}
+
+header,
+.location-state,
+.feed-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+}
+
+header {
+  align-items: flex-start;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  line-height: 1;
+}
+
+h2 {
+  font: var(--mat-sys-title-medium);
+}
+
+p,
+.feed-heading span,
+mat-list-item span[matListItemLine] {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.location-state,
+.feed-panel {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 0.875rem;
+}
+
+.location-state.ready mat-icon {
+  color: var(--mat-sys-primary);
+}
+
+.manual-form {
+  align-items: start;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+}
+
+.feed-heading {
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+mat-list {
+  max-height: 20rem;
+  overflow: auto;
+}
+
+mat-list-item {
+  --mdc-list-list-item-one-line-container-height: auto;
+  --mdc-list-list-item-two-line-container-height: auto;
+  --mdc-list-list-item-three-line-container-height: auto;
+  min-height: 4.75rem;
+}
+
+@media (max-width: 620px) {
+  .manual-form {
+    grid-template-columns: 1fr;
+  }
+}

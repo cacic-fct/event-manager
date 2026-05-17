@@ -5,6 +5,9 @@ import {
   EventAttendanceCreateInput,
   EventAttendanceCsvImportInput,
   EventAttendanceCsvImportResult,
+  EventAttendanceManualInput,
+  EventAttendanceScannerCodeInput,
+  EventAttendanceScannerFeedItem,
   EventAttendanceUpdateInput,
   MajorEventSubscriptionCsvImportInput,
   MajorEventSubscriptionCsvImportResult,
@@ -178,6 +181,12 @@ export class EventAttendancesResolver {
     });
   }
 
+  @Query(() => [EventAttendanceScannerFeedItem], { name: 'eventAttendanceScannerFeed' })
+  @RequireScopes('event-attendance#read')
+  eventAttendanceScannerFeed(@Args('eventId', { type: () => String }) eventId: string) {
+    return this.getScannerFeed(eventId);
+  }
+
   @Query(() => [MajorEventUserAttendance], {
     name: 'majorEventUserAttendances',
   })
@@ -345,11 +354,15 @@ export class EventAttendancesResolver {
   async createEventAttendance(
     @Args('input', { type: () => EventAttendanceCreateInput })
     input: EventAttendanceCreateInput,
+    @Context() context: GraphqlContext,
   ) {
+    const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+
     return this.prisma.$transaction(async (tx) => {
       await tx.eventAttendance.create({
         data: {
           ...input,
+          createdById,
           createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
         },
       });
@@ -453,6 +466,62 @@ export class EventAttendancesResolver {
 
       throw error;
     }
+  }
+
+  @Mutation(() => EventAttendance, {
+    name: 'createEventAttendanceFromScannerCode',
+  })
+  @RequireScopes('event-attendance#edit')
+  async createEventAttendanceFromScannerCode(
+    @Args('input', { type: () => EventAttendanceScannerCodeInput })
+    input: EventAttendanceScannerCodeInput,
+    @Context() context: GraphqlContext,
+  ) {
+    const userId = this.parseUserAztecCode(input.code);
+    if (!userId) {
+      throw new BadRequestException('Código Aztec incompatível.');
+    }
+
+    const person = await this.prisma.people.findFirst({
+      where: {
+        userId,
+        deletedAt: null,
+        mergedIntoId: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (!person) {
+      throw new NotFoundException(`Person for user ${userId} was not found.`);
+    }
+
+    return this.createAttendanceWithMetadata({
+      eventId: input.eventId,
+      personId: person.id,
+      createdByMethod: AttendanceCreationMethod.SCANNER,
+      createdById: this.getActorId(context),
+      location: input.location,
+    });
+  }
+
+  @Mutation(() => EventAttendance, {
+    name: 'createEventAttendanceFromManualInput',
+  })
+  @RequireScopes('event-attendance#edit')
+  async createEventAttendanceFromManualInput(
+    @Args('input', { type: () => EventAttendanceManualInput })
+    input: EventAttendanceManualInput,
+    @Context() context: GraphqlContext,
+  ) {
+    const person = await this.findSinglePersonForManualInput(input.value);
+    return this.createAttendanceWithMetadata({
+      eventId: input.eventId,
+      personId: person.id,
+      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+      createdById: this.getActorId(context),
+      location: input.location,
+    });
   }
 
   @Mutation(() => EventAttendanceCsvImportResult, {
@@ -1094,6 +1163,235 @@ export class EventAttendancesResolver {
     }
 
     return AttendanceImportMatchType.FULL_NAME;
+  }
+
+  private async getScannerFeed(eventId: string): Promise<EventAttendanceScannerFeedItem[]> {
+    const attendances = await this.prisma.eventAttendance.findMany({
+      where: {
+        eventId,
+      },
+      select: {
+        personId: true,
+        eventId: true,
+        attendedAt: true,
+        createdById: true,
+        createdByMethod: true,
+        person: {
+          select: {
+            name: true,
+            user: {
+              select: {
+                role: true,
+              },
+            },
+          },
+        },
+        event: {
+          select: {
+            majorEventId: true,
+          },
+        },
+      },
+      orderBy: {
+        attendedAt: 'desc',
+      },
+      take: 80,
+    });
+
+    const majorEventId = attendances.find((attendance) => attendance.event.majorEventId)?.event.majorEventId;
+    const personIds = attendances.map((attendance) => attendance.personId);
+    const collectorIds = [
+      ...new Set(attendances.map((attendance) => attendance.createdById).filter((id): id is string => Boolean(id))),
+    ];
+
+    const [subscriptions, collectors] = await Promise.all([
+      majorEventId
+        ? this.prisma.majorEventSubscription.findMany({
+            where: {
+              majorEventId,
+              personId: {
+                in: personIds,
+              },
+              deletedAt: null,
+            },
+            select: {
+              personId: true,
+              subscriptionStatus: true,
+            },
+          })
+        : Promise.resolve([]),
+      collectorIds.length
+        ? this.prisma.user.findMany({
+            where: {
+              id: {
+                in: collectorIds,
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const subscriptionStatusByPersonId = new Map(
+      subscriptions.map((subscription) => [subscription.personId, subscription.subscriptionStatus]),
+    );
+    const collectorFirstNameById = new Map(
+      collectors.map((collector) => [collector.id, this.getFirstName(collector.name)]),
+    );
+
+    return attendances.map((attendance) => ({
+      personId: attendance.personId,
+      eventId: attendance.eventId,
+      fullName: attendance.person?.name ?? undefined,
+      unespRole: attendance.person?.user?.role ?? undefined,
+      subscriptionStatus: subscriptionStatusByPersonId.get(attendance.personId) ?? undefined,
+      attendedAt: attendance.attendedAt,
+      createdByMethod: attendance.createdByMethod,
+      collectedByFirstName: attendance.createdById ? (collectorFirstNameById.get(attendance.createdById) ?? undefined) : undefined,
+    }));
+  }
+
+  private async createAttendanceWithMetadata(input: {
+    eventId: string;
+    personId: string;
+    createdByMethod: AttendanceCreationMethod;
+    createdById?: string;
+    location?: { latitude: number; longitude: number; accuracyMeters: number };
+  }) {
+    const locationData = input.location
+      ? {
+          collectedLatitude: input.location.latitude,
+          collectedLongitude: input.location.longitude,
+          collectedAccuracyMeters: input.location.accuracyMeters,
+        }
+      : {};
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.eventAttendance.create({
+          data: {
+            eventId: input.eventId,
+            personId: input.personId,
+            createdById: input.createdById,
+            createdByMethod: input.createdByMethod,
+            ...locationData,
+          },
+        });
+        await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+        return tx.eventAttendance.findUniqueOrThrow({
+          where: {
+            personId_eventId: {
+              personId: input.personId,
+              eventId: input.eventId,
+            },
+          },
+          select: {
+            personId: true,
+            eventId: true,
+            attendedAt: true,
+            createdAt: true,
+            createdById: true,
+            createdByMethod: true,
+            category: true,
+            collectedLatitude: true,
+            collectedLongitude: true,
+            collectedAccuracyMeters: true,
+          },
+        });
+      });
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Presença já registrada para este evento.');
+      }
+
+      throw error;
+    }
+  }
+
+  private async findSinglePersonForManualInput(rawValue: string): Promise<{ id: string }> {
+    const value = rawValue.trim();
+    if (!value) {
+      throw new BadRequestException('Informe e-mail, telefone ou documento.');
+    }
+
+    const digits = value.replace(/\D/g, '');
+    const phoneCandidates = this.getBrazilianPhoneCandidates(digits);
+    const where: Prisma.PeopleWhereInput[] = [
+      {
+        email: {
+          equals: value,
+          mode: 'insensitive',
+        },
+      },
+      {
+        secondaryEmails: {
+          has: value.toLowerCase(),
+        },
+      },
+    ];
+
+    if (digits) {
+      where.push({
+        identityDocument: {
+          in: [value, digits],
+        },
+      });
+    }
+
+    if (phoneCandidates.length > 0) {
+      where.push({
+        phone: {
+          in: phoneCandidates,
+        },
+      });
+    }
+
+    const people = await this.prisma.people.findMany({
+      where: {
+        deletedAt: null,
+        OR: where,
+      },
+      select: {
+        id: true,
+        mergedIntoId: true,
+      },
+      take: 3,
+    });
+
+    const activePeople = people.filter((person) => !person.mergedIntoId);
+    if (activePeople.length > 1) {
+      throw new ConflictException(
+        `Pessoa tem registros duplicados no banco de dados com o dado ${value}. Tire uma captura dessa tela e envie para o administrador do sistema, para correção.`,
+      );
+    }
+
+    const person = activePeople[0] ?? people[0];
+    if (!person) {
+      throw new NotFoundException('Nenhuma pessoa encontrada para o dado informado.');
+    }
+
+    return { id: person.mergedIntoId ?? person.id };
+  }
+
+  private getBrazilianPhoneCandidates(digits: string): string[] {
+    if (!digits) {
+      return [];
+    }
+
+    const withoutCountry = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
+    const withCountry = withoutCountry.length >= 10 ? `55${withoutCountry}` : digits;
+    return [...new Set([digits, withoutCountry, withCountry, `+${withCountry}`])];
+  }
+
+  private getActorId(context: GraphqlContext): string | undefined {
+    return context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+  }
+
+  private getFirstName(name: string): string {
+    return name.trim().split(/\s+/)[0] || name;
   }
 
   private parseUserAztecCode(code: string): string | null {

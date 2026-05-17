@@ -1,0 +1,190 @@
+import {
+  Controller,
+  ForbiddenException,
+  MessageEvent,
+  Param,
+  Req,
+  Sse,
+} from '@nestjs/common';
+import { AttendanceCreationMethod, SubscriptionStatus } from '@prisma/client';
+import { Request } from 'express';
+import { Observable, interval, map, startWith, switchMap } from 'rxjs';
+import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CurrentUserContextService } from '../context.service';
+
+type RequestWithUser = Request & {
+  user?: AuthenticatedUser;
+};
+
+interface EventAttendanceScannerFeedItem {
+  personId: string;
+  eventId: string;
+  fullName: string | null;
+  unespRole: string | null;
+  subscriptionStatus: SubscriptionStatus | null;
+  attendedAt: Date | null;
+  createdByMethod: AttendanceCreationMethod | null;
+  collectedByFirstName: string | null;
+}
+
+@Controller('attendance-collection')
+export class CurrentUserAttendanceCollectionController {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly currentUserContext: CurrentUserContextService,
+  ) {}
+
+  @Sse('events/:eventId/feed/events')
+  streamFeed(@Param('eventId') eventId: string, @Req() request: RequestWithUser): Observable<MessageEvent> {
+    return interval(2_000).pipe(
+      startWith(0),
+      switchMap(async () => {
+        await this.requireCollector(eventId, request, true);
+        return this.getScannerFeed(eventId);
+      }),
+      map((attendances) => ({
+        data: {
+          type: 'event-attendance-scanner-feed',
+          attendances,
+        },
+      })),
+    );
+  }
+
+  private async requireCollector(eventId: string, request: RequestWithUser, enforceCollectionWindow: boolean) {
+    const collectorPerson = await this.currentUserContext.requireCurrentPerson({ req: request });
+    const collector = await this.prisma.eventAttendanceCollector.findUnique({
+      where: {
+        eventId_personId: {
+          eventId,
+          personId: collectorPerson.id,
+        },
+      },
+      select: {
+        personId: true,
+        event: {
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            deletedAt: true,
+            publiclyVisible: true,
+            shouldCollectAttendance: true,
+          },
+        },
+      },
+    });
+
+    if (!collector || collector.event.deletedAt || !collector.event.publiclyVisible || !collector.event.shouldCollectAttendance) {
+      throw new ForbiddenException('Você não pode coletar presença para este evento.');
+    }
+
+    if (enforceCollectionWindow && !this.isCollectionOpen(collector.event.startDate, collector.event.endDate)) {
+      throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
+    }
+
+    return {
+      collectorPerson,
+      collectorUserId: request.user?.sub,
+    };
+  }
+
+  private isCollectionOpen(startDate: Date, endDate: Date): boolean {
+    const now = Date.now();
+    return now >= startDate.getTime() - 3 * 60 * 60_000 && now <= endDate.getTime() + 6 * 60 * 60_000;
+  }
+
+  private async getScannerFeed(eventId: string): Promise<EventAttendanceScannerFeedItem[]> {
+    const attendances = await this.prisma.eventAttendance.findMany({
+      where: {
+        eventId,
+      },
+      select: {
+        personId: true,
+        eventId: true,
+        attendedAt: true,
+        createdById: true,
+        createdByMethod: true,
+        person: {
+          select: {
+            name: true,
+            user: {
+              select: {
+                role: true,
+              },
+            },
+          },
+        },
+        event: {
+          select: {
+            majorEventId: true,
+          },
+        },
+      },
+      orderBy: {
+        attendedAt: 'desc',
+      },
+      take: 80,
+    });
+
+    const majorEventId = attendances.find((attendance) => attendance.event.majorEventId)?.event.majorEventId;
+    const personIds = attendances.map((attendance) => attendance.personId);
+    const collectorIds = [
+      ...new Set(attendances.map((attendance) => attendance.createdById).filter((id): id is string => Boolean(id))),
+    ];
+
+    const [subscriptions, collectors] = await Promise.all([
+      majorEventId
+        ? this.prisma.majorEventSubscription.findMany({
+            where: {
+              majorEventId,
+              personId: {
+                in: personIds,
+              },
+              deletedAt: null,
+            },
+            select: {
+              personId: true,
+              subscriptionStatus: true,
+            },
+          })
+        : Promise.resolve([]),
+      collectorIds.length
+        ? this.prisma.user.findMany({
+            where: {
+              id: {
+                in: collectorIds,
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const subscriptionStatusByPersonId = new Map(
+      subscriptions.map((subscription) => [subscription.personId, subscription.subscriptionStatus]),
+    );
+    const collectorFirstNameById = new Map(
+      collectors.map((collector) => [collector.id, this.getFirstName(collector.name)]),
+    );
+
+    return attendances.map((attendance) => ({
+      personId: attendance.personId,
+      eventId: attendance.eventId,
+      fullName: attendance.person?.name ?? null,
+      unespRole: attendance.person?.user?.role ?? null,
+      subscriptionStatus: subscriptionStatusByPersonId.get(attendance.personId) ?? null,
+      attendedAt: attendance.attendedAt,
+      createdByMethod: attendance.createdByMethod,
+      collectedByFirstName: attendance.createdById ? (collectorFirstNameById.get(attendance.createdById) ?? null) : null,
+    }));
+  }
+
+  private getFirstName(name: string): string {
+    return name.trim().split(/\s+/)[0] || name;
+  }
+}

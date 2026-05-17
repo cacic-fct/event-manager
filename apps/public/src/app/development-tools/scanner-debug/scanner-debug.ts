@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
 import { MatToolbar } from '@angular/material/toolbar';
 import { RouterLink } from '@angular/router';
-import { AztecScannerDialogComponent, ScannerSoundsService } from '@cacic-fct/shared-angular';
+import { AztecScannerDialogComponent, ScannerFeedbackKind, ScannerFeedbackService } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-scanner-debug',
@@ -16,7 +16,7 @@ import { AztecScannerDialogComponent, ScannerSoundsService } from '@cacic-fct/sh
 export class ScannerDebug {
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
-  public readonly scannerSoundsService = inject(ScannerSoundsService);
+  private readonly scannerFeedback = inject(ScannerFeedbackService);
   public scannedCode: WritableSignal<string | null> = signal(null);
 
   scanCode(): void {
@@ -33,12 +33,16 @@ export class ScannerDebug {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((code) => {
         if (!code && code !== '') {
-          this.scannerSoundsService.invalid();
+          this.showFeedback('invalid');
           return;
         }
 
-        this.scannerSoundsService.valid();
+        this.showFeedback('valid');
         this.scannedCode.set(code);
       });
+  }
+
+  showFeedback(kind: ScannerFeedbackKind): void {
+    this.scannerFeedback.show(kind);
   }
 }

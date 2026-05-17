@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { AztecScannerDialogComponent } from '@cacic-fct/shared-angular';
+import { AztecScannerDialogComponent, ScannerFeedbackService } from '@cacic-fct/shared-angular';
 import { catchError, combineLatest, finalize, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../profile/attendances/emoji.service';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
@@ -41,6 +41,7 @@ export class OnlineAttendanceCodeComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly scannerFeedback = inject(ScannerFeedbackService);
 
   readonly emoji = inject(EmojiService);
   readonly isSubmitting = signal(false);
@@ -110,10 +111,12 @@ export class OnlineAttendanceCodeComponent {
       )
       .subscribe({
         next: () => {
+          this.scannerFeedback.show('valid');
           this.snackBar.open('Presença confirmada.', 'OK', { duration: 3000 });
           this.afterRegistration();
         },
         error: (error: unknown) => {
+          this.scannerFeedback.show('invalid');
           this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível confirmar presença.', 'OK', {
             duration: 5000,
           });
@@ -146,6 +149,7 @@ export class OnlineAttendanceCodeComponent {
 
         const parsed = this.parseOnlineAttendanceCode(code);
         if (!parsed || parsed.eventId !== state.item.eventId) {
+          this.scannerFeedback.show('invalid');
           this.snackBar.open('Código Aztec incompatível com este evento.', 'OK', {
             duration: 5000,
           });

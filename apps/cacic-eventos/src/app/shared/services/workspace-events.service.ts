@@ -67,12 +67,14 @@ export class WorkspaceEventsService {
   readonly events = signal<Event[]>([]);
   readonly selectedEvent = signal<Event | null>(null);
   readonly eventLecturers = signal<{ personId: string; name: string }[]>([]);
+  readonly eventAttendanceCollectors = signal<{ personId: string; name: string }[]>([]);
   readonly selectedEventGroupName = signal('');
   readonly selectedEventGroupAllowsCertificates = signal(true);
   readonly selectedEventGroupAllowsNonPayingCertificates = signal(true);
   readonly selectedEventGroupAllowsNonSubscribedCertificates = signal(true);
   readonly eventGroupSearchResults = signal<EventGroup[]>([]);
   readonly lecturerSearchResults = signal<Person[]>([]);
+  readonly attendanceCollectorSearchResults = signal<Person[]>([]);
 
   readonly eventFiltersForm = this.formBuilder.nonNullable.group({
     startDateFrom: [''],
@@ -109,6 +111,7 @@ export class WorkspaceEventsService {
       shouldIssueCertificateForNonSubscribedAttendees: [false],
       shouldCollectAttendance: [false],
       isOnlineAttendanceAllowed: [false],
+      shouldProvideSubscriberListToLecturer: [false],
       onlineAttendanceCode: [''],
       onlineAttendanceStartDate: [''],
       onlineAttendanceEndDate: [''],
@@ -130,6 +133,10 @@ export class WorkspaceEventsService {
   });
 
   readonly lecturerLookupForm = this.formBuilder.nonNullable.group({
+    query: ['', [Validators.required]],
+  });
+
+  readonly attendanceCollectorLookupForm = this.formBuilder.nonNullable.group({
     query: ['', [Validators.required]],
   });
 
@@ -167,14 +174,16 @@ export class WorkspaceEventsService {
     this.populateEventForm(eventDetails);
     this.eventGroupLookupForm.controls.query.setValue(eventDetails.eventGroup?.name ?? '');
     this.eventGroupSearchResults.set([]);
-    await this.loadEventLecturers(eventId);
+    await Promise.all([this.loadEventLecturers(eventId), this.loadEventAttendanceCollectors(eventId)]);
   }
 
   resetEventForm(): void {
     void this.router.navigate(['/events']);
     this.selectedEvent.set(null);
     this.eventLecturers.set([]);
+    this.eventAttendanceCollectors.set([]);
     this.eventGroupSearchResults.set([]);
+    this.attendanceCollectorSearchResults.set([]);
     this.eventGroupLookupForm.reset({
       query: '',
     });
@@ -208,6 +217,7 @@ export class WorkspaceEventsService {
       shouldIssueCertificateForNonSubscribedAttendees: false,
       shouldCollectAttendance: false,
       isOnlineAttendanceAllowed: false,
+      shouldProvideSubscriberListToLecturer: false,
       onlineAttendanceCode: '',
       onlineAttendanceStartDate: '',
       onlineAttendanceEndDate: '',
@@ -364,12 +374,54 @@ export class WorkspaceEventsService {
     await this.loadEventLecturers(selectedEvent.id);
   }
 
+  async searchAttendanceCollectorCandidates(): Promise<void> {
+    const query = this.attendanceCollectorLookupForm.controls.query.value.trim();
+    if (!query) {
+      this.attendanceCollectorSearchResults.set([]);
+      return;
+    }
+    this.attendanceCollectorSearchResults.set(await firstValueFrom(this.peopleApi.listPeople({ query, take: 10 })));
+  }
+
+  async addAttendanceCollector(person: Person): Promise<void> {
+    const selectedEvent = this.selectedEvent();
+    if (!selectedEvent) {
+      return;
+    }
+    await firstValueFrom(
+      this.api.createEventAttendanceCollector({
+        eventId: selectedEvent.id,
+        personId: person.id,
+      }),
+    );
+    await this.loadEventAttendanceCollectors(selectedEvent.id);
+  }
+
+  async removeAttendanceCollector(personId: string): Promise<void> {
+    const selectedEvent = this.selectedEvent();
+    if (!selectedEvent) {
+      return;
+    }
+    await firstValueFrom(this.api.deleteEventAttendanceCollector(selectedEvent.id, personId));
+    await this.loadEventAttendanceCollectors(selectedEvent.id);
+  }
+
   private async loadEventLecturers(eventId: string): Promise<void> {
     const lecturers = await firstValueFrom(this.api.listEventLecturers(eventId));
     this.eventLecturers.set(
       lecturers.map((lecturer) => ({
         personId: lecturer.personId,
         name: lecturer.person?.name ?? lecturer.personId,
+      })),
+    );
+  }
+
+  private async loadEventAttendanceCollectors(eventId: string): Promise<void> {
+    const collectors = await firstValueFrom(this.api.listEventAttendanceCollectors(eventId));
+    this.eventAttendanceCollectors.set(
+      collectors.map((collector) => ({
+        personId: collector.personId,
+        name: collector.person?.name ?? collector.personId,
       })),
     );
   }
@@ -424,6 +476,7 @@ export class WorkspaceEventsService {
         raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: raw.shouldCollectAttendance,
       isOnlineAttendanceAllowed,
+      shouldProvideSubscriberListToLecturer: raw.shouldProvideSubscriberListToLecturer,
       onlineAttendanceCode: isOnlineAttendanceAllowed ? raw.onlineAttendanceCode.trim() || null : null,
       onlineAttendanceStartDate: isOnlineAttendanceAllowed
         ? this.toOptionalIsoDateTime(raw.onlineAttendanceStartDate)
@@ -468,6 +521,7 @@ export class WorkspaceEventsService {
       shouldIssueCertificateForNonSubscribedAttendees: eventItem.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: eventItem.shouldCollectAttendance,
       isOnlineAttendanceAllowed: eventItem.isOnlineAttendanceAllowed,
+      shouldProvideSubscriberListToLecturer: eventItem.shouldProvideSubscriberListToLecturer ?? false,
       onlineAttendanceCode: eventItem.onlineAttendanceCode ?? '',
       onlineAttendanceStartDate:
         eventItem.onlineAttendanceStartDate != null

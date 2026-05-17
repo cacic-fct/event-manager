@@ -24,7 +24,9 @@ import { CertificateValidationService } from './certificate/certificate-validati
 import { CertificatesResolver } from './certificate/certificates.resolver';
 import { PublicCertificateValidationService } from './certificate/public-certificate-validation.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { EventAttendancesController } from './events/attendances.controller';
 import { EventAttendancesResolver } from './events/attendances.resolver';
+import { EventAttendanceCollectorsResolver } from './events/attendance-collectors.resolver';
 import { AttendanceCategoryService } from './events/attendance-category.service';
 import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
@@ -32,6 +34,8 @@ import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
 import { CurrentUserEventSubscriptionService } from './current-user/events/subscription.service';
 import { CurrentUserEventAttendanceResolver } from './current-user/events/attendance.resolver';
+import { CurrentUserAttendanceCollectionController } from './current-user/events/attendance-collection.controller';
+import { CurrentUserAttendanceCollectionResolver } from './current-user/events/attendance-collection.resolver';
 import {
   CurrentUserOnlineAttendanceRealtimeService,
   CurrentUserRealtimeEventsController,
@@ -119,6 +123,8 @@ import { WeatherService } from './weather/weather.service';
     AccountMergeController,
     LgpdController,
     CurrentUserRealtimeEventsController,
+    CurrentUserAttendanceCollectionController,
+    EventAttendancesController,
     MajorEventReceiptsController,
   ],
   providers: [
@@ -144,6 +150,7 @@ import { WeatherService } from './weather/weather.service';
     CurrentUserMajorEventSubscriptionsResolver,
     CurrentUserEventSubscriptionsResolver,
     CurrentUserEventAttendanceResolver,
+    CurrentUserAttendanceCollectionResolver,
     CurrentUserOnlineAttendanceRealtimeService,
     CurrentUserSubscriptionFeedResolver,
     DashboardInsightsResolver,
@@ -151,6 +158,7 @@ import { WeatherService } from './weather/weather.service';
     DashboardInsightsSchedulerService,
     DashboardInsightsProcessor,
     AttendanceCategoryService,
+    EventAttendanceCollectorsResolver,
     EventAttendancesResolver,
     EventSubscriptionsResolver,
     EventLecturersResolver,

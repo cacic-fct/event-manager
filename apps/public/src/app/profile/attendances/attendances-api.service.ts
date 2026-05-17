@@ -84,6 +84,7 @@ export interface OrganizerEventInfo {
   subscriberCount: number;
   attendanceCount: number;
   onlineAttendanceCode?: string | null;
+  canDownloadSubscriberList: boolean;
 }
 
 export interface OrganizerInfo {
@@ -306,6 +307,7 @@ export class AttendancesApiService {
       details: this.query<{
         currentUserMajorEventSubscription: CurrentUserMajorEventSubscription | null;
         currentUserEventAttendances: CurrentUserEventAttendance[];
+        publicEvents: PublicEvent[];
       }>(
         `
           query CurrentUserMajorEventDetails($majorEventId: String!) {
@@ -330,6 +332,9 @@ export class AttendancesApiService {
               eventId
               attendedAt
             }
+            publicEvents(majorEventId: $majorEventId) {
+              ${PUBLIC_EVENT_FIELDS}
+            }
           }
         `,
         { majorEventId },
@@ -338,7 +343,10 @@ export class AttendancesApiService {
       organizerInfo: this.getOrganizerInfo('major-event', majorEventId),
     }).pipe(
       map(({ details, feedItem, organizerInfo }) => ({
-        subscription: details.currentUserMajorEventSubscription,
+        subscription: this.withDerivedNotSubscribedEvents(
+          details.currentUserMajorEventSubscription,
+          details.publicEvents ?? [],
+        ),
         majorEvent: feedItem?.majorEvent ?? null,
         hasIssuedCertificate: feedItem?.participation.hasIssuedCertificate ?? false,
         isLecturer: Boolean(feedItem?.participation.isLecturer || organizerInfo),
@@ -450,6 +458,7 @@ export class AttendancesApiService {
               subscriberCount
               attendanceCount
               onlineAttendanceCode
+              canDownloadSubscriberList
               event {
                 ${PUBLIC_EVENT_FIELDS}
               }
@@ -462,6 +471,21 @@ export class AttendancesApiService {
       map((data) => data.currentUserOrganizerInfo),
       catchError(() => of(null)),
     );
+  }
+
+  downloadEventSubscriberList(eventId: string): Observable<CertificateDownload> {
+    return this.query<{ downloadCurrentUserEventSubscriberList: CertificateDownload }>(
+      `
+        query DownloadCurrentUserEventSubscriberList($eventId: String!) {
+          downloadCurrentUserEventSubscriberList(eventId: $eventId) {
+            fileName
+            mimeType
+            contentBase64
+          }
+        }
+      `,
+      { eventId },
+    ).pipe(map((data) => data.downloadCurrentUserEventSubscriberList));
   }
 
   getCurrentUserCertificatesForTargets(targets: CertificateTarget[]): Observable<Certificate[]> {
@@ -527,6 +551,23 @@ export class AttendancesApiService {
         }
       `,
     ).pipe(map((data) => data.currentUserMajorEventFeed.find((item) => item.majorEventId === majorEventId) ?? null));
+  }
+
+  private withDerivedNotSubscribedEvents(
+    subscription: CurrentUserMajorEventSubscription | null,
+    publicEvents: PublicEvent[],
+  ): CurrentUserMajorEventSubscription | null {
+    if (!subscription) {
+      return null;
+    }
+
+    const selectedEventIds = new Set((subscription.selectedEvents ?? []).map((event) => event.id));
+    const notSubscribedEvents = publicEvents.filter((event) => !selectedEventIds.has(event.id));
+
+    return {
+      ...subscription,
+      notSubscribedEvents,
+    };
   }
 
   private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {

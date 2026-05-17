@@ -48,6 +48,15 @@ export class CurrentUserPendingOnlineAttendanceEvent {
 }
 
 @ObjectType()
+export class CurrentUserAttendanceCollectionEvent {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => PublicEvent)
+  event!: PublicEvent;
+}
+
+@ObjectType()
 export class CurrentUserOrganizerEventInfo {
   @Field(() => PublicEvent)
   event!: PublicEvent;
@@ -60,6 +69,9 @@ export class CurrentUserOrganizerEventInfo {
 
   @Field(() => String, { nullable: true })
   onlineAttendanceCode?: string;
+
+  @Field(() => Boolean)
+  canDownloadSubscriberList!: boolean;
 }
 
 @ObjectType()

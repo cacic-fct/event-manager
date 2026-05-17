@@ -68,6 +68,7 @@ type ScannerState =
     }
 
     .video-frame {
+      aspect-ratio: 1;
       background: #000;
       border-radius: 8px;
       display: grid;
@@ -76,8 +77,8 @@ type ScannerState =
     }
 
     video {
-      aspect-ratio: 1;
       display: block;
+      height: 100%;
       object-fit: cover;
       width: 100%;
     }
@@ -125,7 +126,7 @@ export class AztecScannerComponent {
   readonly title = input('Escanear código');
   readonly acceptedPrefixes = input<readonly string[]>([]);
   readonly pauseAfterScanMs = input(1800);
-  readonly frameSize = input(420);
+  readonly frameSize = input(1280);
 
   readonly scan = output<string>();
   readonly permissionChange = output<boolean>();
@@ -162,8 +163,6 @@ export class AztecScannerComponent {
   private startAttemptId = 0;
 
   constructor() {
-    this.resizeScannerCanvas();
-
     queueMicrotask(() => void this.start());
     this.destroyRef.onDestroy(() => this.stop());
   }
@@ -301,6 +300,9 @@ export class AztecScannerComponent {
         deviceId: {
           exact: device.deviceId,
         },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        facingMode: { ideal: 'environment' },
       },
       audio: false,
     });
@@ -355,13 +357,14 @@ export class AztecScannerComponent {
       return;
     }
 
-    this.resizeScannerCanvas();
+    if (!this.resizeScannerCanvas()) {
+      this.scheduleFrame();
+      return;
+    }
 
-    const size = this.frameSize();
+    this.context.drawImage(video, 0, 0, this.scannerCanvas.width, this.scannerCanvas.height);
 
-    this.context.drawImage(video, 0, 0, size, size);
-
-    const imageData = this.context.getImageData(0, 0, size, size);
+    const imageData = this.context.getImageData(0, 0, this.scannerCanvas.width, this.scannerCanvas.height);
     const results = await readBarcodes(imageData, {
       formats: ['Aztec'],
       tryHarder: true,
@@ -384,13 +387,19 @@ export class AztecScannerComponent {
     this.scheduleFrame();
   }
 
-  private resizeScannerCanvas(): void {
-    const size = this.frameSize();
+  private resizeScannerCanvas(): boolean {
+    const video = this.video().nativeElement;
 
-    if (this.scannerCanvas.width !== size || this.scannerCanvas.height !== size) {
-      this.scannerCanvas.width = size;
-      this.scannerCanvas.height = size;
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      return false;
     }
+
+    if (this.scannerCanvas.width !== video.videoWidth || this.scannerCanvas.height !== video.videoHeight) {
+      this.scannerCanvas.width = video.videoWidth;
+      this.scannerCanvas.height = video.videoHeight;
+    }
+
+    return true;
   }
 
   private acceptsCode(code: string): boolean {

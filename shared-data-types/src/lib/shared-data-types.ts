@@ -63,6 +63,21 @@ registerEnumType(SubscriptionCreationMethod, {
   name: 'SubscriptionCreationMethod',
 });
 
+export const SubscriptionStatus = {
+  WAITING_RECEIPT_UPLOAD: 'WAITING_RECEIPT_UPLOAD',
+  RECEIPT_UNDER_REVIEW: 'RECEIPT_UNDER_REVIEW',
+  REJECTED_INVALID_RECEIPT: 'REJECTED_INVALID_RECEIPT',
+  REJECTED_NO_SLOTS: 'REJECTED_NO_SLOTS',
+  REJECTED_SCHEDULE_CONFLICT: 'REJECTED_SCHEDULE_CONFLICT',
+  REJECTED_GENERIC: 'REJECTED_GENERIC',
+  CONFIRMED: 'CONFIRMED',
+  CANCELED: 'CANCELED',
+} as const;
+export type SubscriptionStatus = (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus];
+registerEnumType(SubscriptionStatus, {
+  name: 'SubscriptionStatus',
+});
+
 export const CertificateScope = {
   MAJOR_EVENT: 'MAJOR_EVENT',
   EVENT_GROUP: 'EVENT_GROUP',
@@ -459,6 +474,9 @@ export class Event {
   @Field(() => Boolean)
   isOnlineAttendanceAllowed!: boolean;
 
+  @Field(() => Boolean, { nullable: true })
+  shouldProvideSubscriberListToLecturer?: boolean;
+
   @Field(() => String, { nullable: true })
   onlineAttendanceCode?: string;
 
@@ -581,6 +599,54 @@ export class EventAttendance {
 
   @Field(() => AttendanceCreationMethod)
   createdByMethod!: AttendanceCreationMethod;
+
+  @Field(() => Float, { nullable: true })
+  collectedLatitude?: number;
+
+  @Field(() => Float, { nullable: true })
+  collectedLongitude?: number;
+
+  @Field(() => Float, { nullable: true })
+  collectedAccuracyMeters?: number;
+}
+
+@ObjectType()
+export class EventAttendanceScannerFeedItem {
+  @Field(() => String)
+  personId!: string;
+
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => String, { nullable: true })
+  fullName?: string;
+
+  @Field(() => String, { nullable: true })
+  unespRole?: string;
+
+  @Field(() => SubscriptionStatus, { nullable: true })
+  subscriptionStatus?: SubscriptionStatus;
+
+  @Field(() => Date, { nullable: true })
+  attendedAt?: Date;
+
+  @Field(() => AttendanceCreationMethod, { nullable: true })
+  createdByMethod?: AttendanceCreationMethod;
+
+  @Field(() => String, { nullable: true })
+  collectedByFirstName?: string;
+}
+
+@InputType()
+export class AttendanceCollectionLocationInput {
+  @Field(() => Float)
+  latitude!: number;
+
+  @Field(() => Float)
+  longitude!: number;
+
+  @Field(() => Float)
+  accuracyMeters!: number;
 }
 
 @ObjectType()
@@ -771,6 +837,27 @@ export class MajorEventSubscriptionCsvImportResult {
 
 @ObjectType()
 export class EventLecturer {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => String)
+  personId!: string;
+
+  @Field(() => Event, { nullable: true })
+  event?: Event;
+
+  @Field(() => Person, { nullable: true })
+  person?: Person;
+
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  createdById?: string;
+}
+
+@ObjectType()
+export class EventAttendanceCollector {
   @Field(() => String)
   eventId!: string;
 
@@ -1515,6 +1602,9 @@ export class EventCreateInput {
   @Field(() => Boolean, { nullable: true })
   isOnlineAttendanceAllowed?: boolean;
 
+  @Field(() => Boolean, { nullable: true })
+  shouldProvideSubscriberListToLecturer?: boolean;
+
   @Field(() => String, { nullable: true })
   onlineAttendanceCode?: string;
 
@@ -1622,6 +1712,9 @@ export class EventUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   isOnlineAttendanceAllowed?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldProvideSubscriberListToLecturer?: boolean;
 
   @Field(() => String, { nullable: true })
   onlineAttendanceCode?: string;
@@ -1766,6 +1859,30 @@ export class EventAttendanceCreateInput {
 }
 
 @InputType()
+export class EventAttendanceScannerCodeInput {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => String)
+  code!: string;
+
+  @Field(() => AttendanceCollectionLocationInput, { nullable: true })
+  location?: AttendanceCollectionLocationInput;
+}
+
+@InputType()
+export class EventAttendanceManualInput {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => String)
+  value!: string;
+
+  @Field(() => AttendanceCollectionLocationInput, { nullable: true })
+  location?: AttendanceCollectionLocationInput;
+}
+
+@InputType()
 export class EventAttendanceCsvImportInput {
   @Field(() => String)
   eventId!: string;
@@ -1892,6 +2009,15 @@ export class EventLecturerCreateInput {
 
   @Field(() => String, { nullable: true })
   createdById?: string;
+}
+
+@InputType()
+export class EventAttendanceCollectorCreateInput {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => String)
+  personId!: string;
 }
 
 @InputType()

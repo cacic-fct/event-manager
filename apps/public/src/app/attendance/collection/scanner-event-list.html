@@ -1,0 +1,46 @@
+<mat-toolbar>
+  <a mat-icon-button routerLink="/menu" aria-label="Voltar ao menu">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <span>Coletar presenças</span>
+</mat-toolbar>
+
+<main class="collection-page">
+  <section class="location-state" [class.ready]="hasPreciseLocation()">
+    <p>{{ locationStatus() }}</p>
+    @if (!hasPreciseLocation()) {
+    <button mat-stroked-button type="button" (click)="requestPreciseLocation()">Permitir localização</button>
+    }
+  </section>
+
+  <mat-list>
+    @for (item of events(); track item.eventId) {
+    <mat-list-item
+      type="button"
+      (click)="openEvent(item)"
+      [disabled]="!canOpen(item)"
+      [class.disabled-item]="!canOpen(item)"
+      [attr.aria-label]="'Coletar presença em ' + item.event.name">
+      <div matListItemIcon class="emoji-frame" [class.disabled-emoji]="!canOpen(item)">
+        <img class="twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" [alt]="item.event.emoji" />
+      </div>
+      <div matListItemTitle>{{ item.event.name }}</div>
+      <div matListItemLine>
+        {{ item.event.majorEvent?.name || item.event.eventGroup?.name || 'Coleta de presença' }}
+      </div>
+      <div matListItemLine>{{ item.event.locationDescription || 'Local não informado' }}</div>
+      <div matListItemMeta class="time-range">
+        <span>{{ item.event.startDate | date: 'HH:mm' }}</span>
+        <br />
+        <span>{{ item.event.endDate | date: 'HH:mm' }}</span>
+      </div>
+    </mat-list-item>
+    } @empty {
+    <mat-list-item>
+      <mat-icon matListItemIcon>event_busy</mat-icon>
+      <span matListItemTitle>Nenhum evento disponível</span>
+      <span matListItemLine>Eventos autorizados para hoje aparecerão aqui.</span>
+    </mat-list-item>
+    }
+  </mat-list>
+</main>

@@ -80,6 +80,7 @@ const EVENT_BASE_SELECT = {
   shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldCollectAttendance: true,
   isOnlineAttendanceAllowed: true,
+  shouldProvideSubscriberListToLecturer: true,
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,

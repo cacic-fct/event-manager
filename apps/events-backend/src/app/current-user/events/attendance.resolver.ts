@@ -1,6 +1,7 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod } from '@prisma/client';
+import { CertificateDownload } from '@cacic-fct/shared-data-types';
 import {
   ConfirmCurrentUserOnlineAttendanceInput,
   CurrentUserEventAttendance,
@@ -274,7 +275,120 @@ export class CurrentUserEventAttendanceResolver {
         subscriberCount: subscriberCountByEventId.get(event.id) ?? 0,
         attendanceCount: attendanceCountByEventId.get(event.id) ?? 0,
         onlineAttendanceCode: event.onlineAttendanceCode ?? undefined,
+        canDownloadSubscriberList: this.canDownloadSubscriberList(event),
       })),
+    };
+  }
+
+  @Query(() => CertificateDownload, {
+    name: 'downloadCurrentUserEventSubscriberList',
+  })
+  async downloadCurrentUserEventSubscriberList(
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<CertificateDownload> {
+    const person = await this.currentUserContext.requireCurrentPerson(context);
+    const event = await this.prisma.event.findFirst({
+      where: {
+        id: eventId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        endDate: true,
+        shouldProvideSubscriberListToLecturer: true,
+        lecturers: {
+          where: {
+            personId: person.id,
+          },
+          select: {
+            personId: true,
+          },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event ${eventId} was not found.`);
+    }
+
+    if (!this.canDownloadSubscriberList(event) || event.lecturers.length === 0) {
+      throw new ForbiddenException('Subscriber list is not available for this event.');
+    }
+
+    const [eventSubscriptions, majorEventSelections] = await Promise.all([
+      this.prisma.eventSubscription.findMany({
+        where: {
+          eventId,
+          deletedAt: null,
+        },
+        select: {
+          person: {
+            select: {
+              id: true,
+              name: true,
+              identityDocument: true,
+            },
+          },
+        },
+        orderBy: {
+          person: {
+            name: 'asc',
+          },
+        },
+      }),
+      this.prisma.majorEventSubscriptionEventSelection.findMany({
+        where: {
+          eventId,
+          deletedAt: null,
+          subscription: {
+            deletedAt: null,
+          },
+        },
+        select: {
+          subscription: {
+            select: {
+              person: {
+                select: {
+                  id: true,
+                  name: true,
+                  identityDocument: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          subscription: {
+            person: {
+              name: 'asc',
+            },
+          },
+        },
+      }),
+    ]);
+
+    const peopleById = new Map<string, { name: string; identityDocument: string | null }>();
+    for (const subscription of eventSubscriptions) {
+      peopleById.set(subscription.person.id, subscription.person);
+    }
+    for (const selection of majorEventSelections) {
+      peopleById.set(selection.subscription.person.id, selection.subscription.person);
+    }
+
+    const rows = [...peopleById.values()].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
+    const csv = [
+      ['Nome', 'CPF'],
+      ...rows.map((personItem) => [personItem.name, this.formatSubscriberIdentityDocument(personItem.identityDocument)]),
+    ]
+      .map((row) => row.map((value) => this.escapeCsvValue(value)).join(','))
+      .join('\n');
+
+    return {
+      fileName: `inscritos-${this.slugifyFileName(event.name)}.csv`,
+      mimeType: 'text/csv;charset=utf-8',
+      contentBase64: Buffer.from(`\uFEFF${csv}\n`, 'utf8').toString('base64'),
     };
   }
 
@@ -297,6 +411,7 @@ export class CurrentUserEventAttendanceResolver {
       select: {
         ...PUBLIC_EVENT_SELECT,
         onlineAttendanceCode: true,
+        shouldProvideSubscriberListToLecturer: true,
       },
       orderBy: {
         startDate: 'asc',
@@ -332,5 +447,63 @@ export class CurrentUserEventAttendanceResolver {
       default:
         return firstEvent.name;
     }
+  }
+
+  private canDownloadSubscriberList(event: {
+    endDate: Date;
+    shouldProvideSubscriberListToLecturer: boolean;
+  }): boolean {
+    return event.shouldProvideSubscriberListToLecturer && event.endDate.getTime() > Date.now();
+  }
+
+  private formatSubscriberIdentityDocument(identityDocument: string | null): string {
+    if (!identityDocument) {
+      return '';
+    }
+
+    const cpf = identityDocument.replace(/\D/g, '');
+    if (!this.isValidCpf(cpf)) {
+      return identityDocument;
+    }
+
+    return `•••.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-••`;
+  }
+
+  private isValidCpf(cpf: string): boolean {
+    if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) {
+      return false;
+    }
+
+    const firstDigit = this.calculateCpfDigit(cpf, 10);
+    const secondDigit = this.calculateCpfDigit(cpf, 11);
+    return firstDigit === Number(cpf[9]) && secondDigit === Number(cpf[10]);
+  }
+
+  private calculateCpfDigit(cpf: string, factor: number): number {
+    let sum = 0;
+    for (let index = 0; index < factor - 1; index++) {
+      sum += Number(cpf[index]) * (factor - index);
+    }
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  }
+
+  private escapeCsvValue(value: string): string {
+    if (!/[",\n\r]/.test(value)) {
+      return value;
+    }
+
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  private slugifyFileName(value: string): string {
+    return (
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'evento'
+    );
   }
 }

@@ -15,9 +15,9 @@
               class="avatar-placeholder" />
             <span matListItemTitle>{{ user.name }}</span>
             @if (authService.isAuthenticated()) {
-            <button matIconButton aria-label="Sair da conta" (click)="authService.logout()" matListItemMeta>
-              <mat-icon>logout</mat-icon>
-            </button>
+              <button matIconButton aria-label="Sair da conta" (click)="authService.logout()" matListItemMeta>
+                <mat-icon>logout</mat-icon>
+              </button>
             }
           </mat-list-item>
         </mat-list>
@@ -56,6 +56,18 @@
           <span matListItemTitle>Participações</span>
         </a>
       </mat-nav-list>
+    }
+
+    @if (canCollectAttendances()) {
+      <mat-divider />
+      <mat-nav-list>
+        <h3 matSubheader>Colaboração</h3>
+        <a mat-list-item routerLink="/attendance/collect">
+          <mat-icon matListItemIcon>qr_code_scanner</mat-icon>
+          <span matListItemTitle>Coletar presenças</span>
+        </a>
+      </mat-nav-list>
+      <mat-divider />
     }
 
     <mat-nav-list>

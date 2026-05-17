@@ -1,5 +1,9 @@
 import { Route } from '@angular/router';
 import { developmentOnlyGuard } from '@cacic-fct/shared-angular';
+import {
+  attendanceCollectionListGuard,
+  attendanceCollectionScannerGuard,
+} from './attendance/collection/attendance-collection-access.service';
 
 export const appRoutes: Route[] = [
   {
@@ -76,6 +80,18 @@ export const appRoutes: Route[] = [
     loadComponent: () =>
       import('./attendance/online-attendance-code.component').then((m) => m.OnlineAttendanceCodeComponent),
     title: 'Confirmar presença',
+  },
+  {
+    path: 'attendance/collect',
+    loadComponent: () => import('./attendance/collection/scanner-event-list').then((m) => m.ScannerEventList),
+    title: 'Coletar presenças',
+    canActivate: [attendanceCollectionListGuard],
+  },
+  {
+    path: 'attendance/collect/:eventId',
+    loadComponent: () => import('./attendance/collection/attendance-scanner').then((m) => m.AttendanceScanner),
+    title: 'Coletar presença',
+    canActivate: [attendanceCollectionScannerGuard],
   },
   {
     path: 'profile',

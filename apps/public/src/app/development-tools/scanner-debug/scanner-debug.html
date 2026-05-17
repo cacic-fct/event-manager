@@ -13,9 +13,9 @@
 {{ scannedCode() }}
 
 <hr />
-<h1>Tocar sons</h1>
-<button mat-button (click)="scannerSoundsService.valid()">Valid</button>
-<button mat-button (click)="scannerSoundsService.invalid()">Invalid</button>
-<button mat-button (click)="scannerSoundsService.duplicate()">Duplicate</button>
-<button mat-button (click)="scannerSoundsService.nonPaying()">Non-paying</button>
-<button mat-button (click)="scannerSoundsService.nonSubscribed()">Non-subscribed</button>
+<h1>Feedback visual e sonoro</h1>
+<button mat-button (click)="showFeedback('valid')">Valid</button>
+<button mat-button (click)="showFeedback('invalid')">Invalid</button>
+<button mat-button (click)="showFeedback('duplicate')">Duplicate</button>
+<button mat-button (click)="showFeedback('nonPaying')">Non-paying</button>
+<button mat-button (click)="showFeedback('nonSubscribed')">Non-subscribed</button>
