@@ -21,3 +21,8 @@
   color: var(--mat-sys-error);
   min-height: auto;
 }
+
+mat-list-item button {
+  width: 40px;
+  height: 40px;
+}
