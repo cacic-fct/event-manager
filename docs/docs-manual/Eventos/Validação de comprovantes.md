@@ -2,7 +2,7 @@
 
 :::danger
 
-**Os comprovantes não comprovam nada!**. 
+**Os comprovantes não comprovam nada!**  
 Não saia validando comprovantes só porque há uma imagem dele.
 
 :::
