@@ -82,6 +82,9 @@
     "test": {
       "executor": "@angular/build:unit-test",
       "options": {
+        "setupFiles": [
+          "apps/public/vitest.setup.ts"
+        ],
         "watch": false,
         "coverage": true
       }
