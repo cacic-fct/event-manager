@@ -83,7 +83,7 @@
       "executor": "@angular/build:unit-test",
       "options": {
         "watch": false,
-        "code-coverage": true
+        "coverage": true
       }
     },
     "serve-static": {
