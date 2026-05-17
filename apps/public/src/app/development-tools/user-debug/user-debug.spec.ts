@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute } from '@angular/router';
+import { of } from 'rxjs';
 import { UserDebug } from './user-debug';
 
 describe('UserDebug', () => {
@@ -8,10 +10,24 @@ describe('UserDebug', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [UserDebug],
+      providers: [
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of({}),
+            queryParamMap: of({}),
+            snapshot: {
+              paramMap: new Map(),
+              queryParamMap: new Map(),
+            },
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(UserDebug);
     component = fixture.componentInstance;
+    fixture.detectChanges();
     await fixture.whenStable();
   });
 
