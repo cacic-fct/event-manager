@@ -9,7 +9,7 @@
         <div matListItemMeta class="permission-action-icons">
           @for (action of permission.actions; track action.scope) {
             <button
-              mat-icon-button
+              matIconButton
               type="button"
               [attr.aria-label]="permission.label + ': ' + action.label"
               [matTooltip]="action.label"

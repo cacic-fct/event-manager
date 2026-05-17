@@ -2,11 +2,11 @@
 
 <mat-toolbar>
   @if (currentState.status === 'ready') {
-  <a mat-icon-button [routerLink]="backRoute(currentState.info)" aria-label="Voltar para detalhes">
+  <a matIconButton [routerLink]="backRoute(currentState.info)" aria-label="Voltar para detalhes">
     <mat-icon>arrow_back</mat-icon>
   </a>
   } @else {
-  <a mat-icon-button routerLink="/profile/attendances" aria-label="Voltar para inscrições">
+  <a matIconButton routerLink="/profile/attendances" aria-label="Voltar para inscrições">
     <mat-icon>arrow_back</mat-icon>
   </a>
   }

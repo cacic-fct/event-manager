@@ -85,7 +85,7 @@
         <div class="panel-actions">
           @if (!workspace.editMode()) {
             <button
-              mat-icon-button
+              matIconButton
               type="button"
               [disabled]="!permissions.canEdit('subscription#edit')"
               (click)="workspace.enableMajorEventEdit()"

@@ -50,7 +50,7 @@ type ScannerState =
         </div>
 
         <button
-          mat-icon-button
+          matIconButton
           type="button"
           matTooltip="Trocar câmera"
           [disabled]="devices().length < 2 || isBusy()"

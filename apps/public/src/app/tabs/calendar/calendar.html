@@ -18,7 +18,7 @@
       <mat-icon matPrefix>search</mat-icon>
       <input matInput type="search" [formControl]="queryControl" autocomplete="off" />
       @if (queryControl.value) {
-      <button mat-icon-button matSuffix type="button" (click)="queryControl.setValue('')" aria-label="Limpar busca">
+      <button matIconButton matSuffix type="button" (click)="queryControl.setValue('')" aria-label="Limpar busca">
         <mat-icon>close</mat-icon>
       </button>
       }

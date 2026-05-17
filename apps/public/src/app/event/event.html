@@ -1,15 +1,10 @@
 <mat-toolbar>
-  <button mat-icon-button type="button" (click)="goBack()" aria-label="Voltar">
+  <button matIconButton type="button" (click)="goBack()" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
   <span>Evento</span>
   <span class="toolbar-spacer"></span>
-  <button
-    mat-icon-button
-    type="button"
-    matTooltip="Compartilhar"
-    aria-label="Compartilhar evento"
-    (click)="shareEvent()">
+  <button matIconButton type="button" matTooltip="Compartilhar" aria-label="Compartilhar evento" (click)="shareEvent()">
     <mat-icon>ios_share</mat-icon>
   </button>
 </mat-toolbar>
@@ -102,9 +97,7 @@
   </section>
 
   @if (event.allowSubscription) {
-  <p class="status-line">
-    {{ subscriptionStatusLine(data) }}
-  </p>
+  <p class="status-line">{{ subscriptionStatusLine(data) }}</p>
   }
 
   <section class="detail-grid">

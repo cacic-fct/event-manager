@@ -1,6 +1,6 @@
 <main class="scanner-page">
   <header>
-    <a mat-icon-button routerLink="/attendance/collect" aria-label="Voltar para eventos">
+    <a matIconButton routerLink="/attendance/collect" aria-label="Voltar para eventos">
       <mat-icon>arrow_back</mat-icon>
     </a>
     <div>
@@ -14,10 +14,7 @@
     <span>{{ locationStatus() }}</span>
   </section>
 
-  <lib-aztec-scanner
-    title="Escanear presença"
-    [acceptedPrefixes]="['user:']"
-    (scan)="handleScan($event)" />
+  <lib-aztec-scanner title="Escanear presença" [acceptedPrefixes]="['user:']" (scan)="handleScan($event)" />
 
   <form class="manual-form" [formGroup]="manualForm" (ngSubmit)="registerManualAttendance()">
     <mat-form-field>
@@ -38,28 +35,22 @@
 
     <mat-list>
       @for (attendance of attendances(); track attendance.personId + attendance.eventId + attendance.attendedAt) {
-        <mat-list-item>
-          <span matListItemTitle>{{ attendance.fullName || attendance.personId }}</span>
-          <span matListItemLine>
-            {{ attendance.unespRole || '-' }} · {{ statusLabel(attendance.subscriptionStatus) }}
-          </span>
-          <span matListItemLine>
-            @if (attendance.attendedAt) {
-              {{ attendance.attendedAt | date: 'shortTime' }}
-            } @else {
-              -
-            }
-            · {{ methodLabel(attendance.createdByMethod) }}
-            @if (attendance.collectedByFirstName) {
-              · por {{ attendance.collectedByFirstName }}
-            }
-          </span>
-        </mat-list-item>
+      <mat-list-item>
+        <span matListItemTitle>{{ attendance.fullName || attendance.personId }}</span>
+        <span matListItemLine>
+          {{ attendance.unespRole || '-' }} · {{ statusLabel(attendance.subscriptionStatus) }}
+        </span>
+        <span matListItemLine>
+          @if (attendance.attendedAt) { {{ attendance.attendedAt | date: 'shortTime' }} } @else { - } · {{
+          methodLabel(attendance.createdByMethod) }} @if (attendance.collectedByFirstName) { · por {{
+          attendance.collectedByFirstName }} }
+        </span>
+      </mat-list-item>
       } @empty {
-        <mat-list-item>
-          <span matListItemTitle>Nenhuma presença registrada</span>
-          <span matListItemLine>A lista será atualizada automaticamente.</span>
-        </mat-list-item>
+      <mat-list-item>
+        <span matListItemTitle>Nenhuma presença registrada</span>
+        <span matListItemLine>A lista será atualizada automaticamente.</span>
+      </mat-list-item>
       }
     </mat-list>
   </section>

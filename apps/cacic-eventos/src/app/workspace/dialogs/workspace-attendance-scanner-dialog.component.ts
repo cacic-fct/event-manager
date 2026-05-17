@@ -51,10 +51,7 @@ export interface WorkspaceAttendanceScannerDialogData {
 
     <mat-dialog-content>
       <section class="scanner-layout">
-        <lib-aztec-scanner
-          title="Escanear presença"
-          [acceptedPrefixes]="['user:']"
-          (scan)="handleScan($event)" />
+        <lib-aztec-scanner title="Escanear presença" [acceptedPrefixes]="['user:']" (scan)="handleScan($event)" />
 
         <form class="manual-form" [formGroup]="manualForm" (ngSubmit)="registerManualAttendance()">
           <mat-form-field>
@@ -73,11 +70,7 @@ export interface WorkspaceAttendanceScannerDialogData {
               <h3>Presenças registradas</h3>
               <p>{{ attendances().length }} registros recentes</p>
             </div>
-            <button
-              mat-icon-button
-              type="button"
-              matTooltip="Atualizar lista"
-              (click)="loadInitialFeed()">
+            <button matIconButton type="button" matTooltip="Atualizar lista" (click)="loadInitialFeed()">
               <mat-icon>refresh</mat-icon>
             </button>
           </div>

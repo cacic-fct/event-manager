@@ -1,11 +1,11 @@
 <mat-toolbar>
-  <button mat-icon-button type="button" (click)="back()" aria-label="Voltar">
+  <button matIconButton type="button" (click)="back()" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
   <span>Confirmar presença</span>
   <span class="toolbar-spacer"></span>
   <button
-    mat-icon-button
+    matIconButton
     type="button"
     aria-label="Escanear código de presença"
     [disabled]="state().status !== 'ready' || isSubmitting()"
