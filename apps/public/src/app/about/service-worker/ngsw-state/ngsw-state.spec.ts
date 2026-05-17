@@ -13,6 +13,7 @@ describe('NgswState', () => {
         {
           provide: MatDialogRef,
           useValue: {
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
             close: () => {},
           },
         },
