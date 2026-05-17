@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Event } from './event';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { signal } from '@angular/core';
@@ -10,12 +12,15 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 describe('Event', () => {
   let component: Event;
   let fixture: ComponentFixture<Event>;
+  let httpTesting: HttpTestingController;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Event],
       providers: [
         provideNoopAnimations(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         {
           provide: ActivatedRoute,
           useValue: {

@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { OfflinePublicDatabaseProvider } from '@cacic-fct/offline-public-data-access';
 import { MoreInfo } from './more-info';
 
 describe('MoreInfo', () => {
@@ -29,6 +30,10 @@ describe('MoreInfo', () => {
               }),
             },
           },
+        },
+        {
+          provide: OfflinePublicDatabaseProvider,
+          useValue: { getDatabase: () => null },
         },
       ],
     }).compileComponents();

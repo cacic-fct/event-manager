@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
+import { OfflinePublicDatabaseProvider } from '@cacic-fct/offline-public-data-access';
 import { Attendances } from './attendances';
 
 describe('Attendances', () => {
@@ -12,7 +13,15 @@ describe('Attendances', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Attendances],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: OfflinePublicDatabaseProvider,
+          useValue: { getDatabase: () => null },
+        },
+      ],
     }).compileComponents();
 
     httpTesting = TestBed.inject(HttpTestingController);
