@@ -24,7 +24,7 @@ describe('Attendances', () => {
   afterEach(() => {
     try {
       httpTesting.verify();
-    } catch (e) {
+    } catch (_e) {
       // Ignore verification errors if no requests were made
     }
   });

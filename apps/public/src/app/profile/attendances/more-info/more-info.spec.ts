@@ -41,7 +41,7 @@ describe('MoreInfo', () => {
   afterEach(() => {
     try {
       httpTesting.verify();
-    } catch (e) {
+    } catch (_e) {
       // Ignore verification errors if no requests match
     }
   });
@@ -50,7 +50,7 @@ describe('MoreInfo', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const requests = httpTesting.match(() => true);
-    
+
     if (requests.length >= 2) {
       const detailsRequest = requests.find((request) =>
         String(request.request.body.query).includes('CurrentUserEventDetails'),
@@ -71,6 +71,37 @@ describe('MoreInfo', () => {
               creditMinutes: 60,
               startDate: '2026-05-01T12:00:00.000Z',
               endDate: '2026-05-01T14:00:00.000Z',
+              emoji: '🎉',
+              type: 'OTHER',
+              description: null,
+              shortDescription: null,
+              latitude: null,
+              longitude: null,
+              locationDescription: null,
+              majorEventId: null,
+              eventGroupId: null,
+              allowSubscription: true,
+              slots: null,
+              shouldIssueCertificate: false,
+              shouldCollectAttendance: false,
+              isOnlineAttendanceAllowed: false,
+              onlineAttendanceStartDate: null,
+              onlineAttendanceEndDate: null,
+              publiclyVisible: true,
+              youtubeCode: null,
+              buttonText: null,
+              buttonLink: null,
+              majorEvent: null,
+              eventGroup: null,
+            },
+          },
+          currentUserEventAttendance: null,
+          publicEvent: {
+            id: 'event-1',
+            name: 'Evento teste',
+            creditMinutes: 60,
+            startDate: '2026-05-01T12:00:00.000Z',
+            endDate: '2026-05-01T14:00:00.000Z',
             emoji: '🎉',
             type: 'OTHER',
             description: null,
@@ -95,43 +126,12 @@ describe('MoreInfo', () => {
             eventGroup: null,
           },
         },
-        currentUserEventAttendance: null,
-        publicEvent: {
-          id: 'event-1',
-          name: 'Evento teste',
-          creditMinutes: 60,
-          startDate: '2026-05-01T12:00:00.000Z',
-          endDate: '2026-05-01T14:00:00.000Z',
-          emoji: '🎉',
-          type: 'OTHER',
-          description: null,
-          shortDescription: null,
-          latitude: null,
-          longitude: null,
-          locationDescription: null,
-          majorEventId: null,
-          eventGroupId: null,
-          allowSubscription: true,
-          slots: null,
-          shouldIssueCertificate: false,
-          shouldCollectAttendance: false,
-          isOnlineAttendanceAllowed: false,
-          onlineAttendanceStartDate: null,
-          onlineAttendanceEndDate: null,
-          publiclyVisible: true,
-          youtubeCode: null,
-          buttonText: null,
-          buttonLink: null,
-          majorEvent: null,
-          eventGroup: null,
+      });
+      certificatesRequest?.flush({
+        data: {
+          currentUserCertificates: [],
         },
-      },
-    });
-    certificatesRequest?.flush({
-      data: {
-        currentUserCertificates: [],
-      },
-    });
+      });
     }
     await fixture.whenStable();
     expect(component).toBeTruthy();
