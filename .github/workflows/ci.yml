@@ -55,7 +55,7 @@ jobs:
         run: bunx nx affected -t lint --parallel=3
 
       - name: Run unit tests with coverage
-        run: bunx nx affected -t test --parallel=3 --coverage
+        run: bunx nx affected -t test --parallel=3
 
       - name: Build deployable apps
         run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=1
@@ -69,7 +69,7 @@ jobs:
             exit 0
           fi
 
-          mapfile -t reports < <(find coverage -type f \( -name 'lcov.info' -o -name 'coverage-final.json' -o -name 'coverage.xml' \) | sort)
+          mapfile -t reports < <(find coverage -type f \( -name 'lcov.info' -o -name 'coverage-final.json' -o -name 'coverage.xml' -o -name 'clover.xml' \) | sort)
 
           if [ "${#reports[@]}" -eq 0 ]; then
             echo "has_reports=false" >> "$GITHUB_OUTPUT"
