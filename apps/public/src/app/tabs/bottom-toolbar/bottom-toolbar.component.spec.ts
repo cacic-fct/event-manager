@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BottomToolbarComponent } from './bottom-toolbar.component';
+import { ToolbarItem } from './bottom-toolbar.layout';
+
 describe('BottomToolbarComponent', () => {
   let component: BottomToolbarComponent;
   let fixture: ComponentFixture<BottomToolbarComponent>;
@@ -9,6 +11,8 @@ describe('BottomToolbarComponent', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(BottomToolbarComponent);
     component = fixture.componentInstance;
+    const items: ToolbarItem[] = [];
+    fixture.componentRef.setInput('items', items);
     fixture.detectChanges();
   });
   it('should create', () => {

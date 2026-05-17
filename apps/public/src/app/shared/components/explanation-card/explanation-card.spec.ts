@@ -11,8 +11,9 @@ describe('ExplanationCard', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(ExplanationCard);
-    component = fixture.componentInstance;
-    await fixture.whenStable();
+    component = fixture.componentInstance;    fixture.componentRef.setInput('title', 'Test Title');
+    fixture.componentRef.setInput('icon', 'info');
+    fixture.detectChanges();    await fixture.whenStable();
   });
 
   it('should create', () => {
