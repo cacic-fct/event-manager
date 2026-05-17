@@ -106,6 +106,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "20.19.9",
     "@typescript-eslint/utils": "^8.59.3",
+    "@vitest/coverage-v8": "^4.1.6",
     "angular-eslint": "^21.4.0",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
