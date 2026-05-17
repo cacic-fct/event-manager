@@ -23,6 +23,7 @@ export const EVENT_FIELDS = `
   shouldIssueCertificateForNonSubscribedAttendees
   shouldCollectAttendance
   isOnlineAttendanceAllowed
+  shouldProvideSubscriberListToLecturer
   onlineAttendanceCode
   onlineAttendanceStartDate
   onlineAttendanceEndDate

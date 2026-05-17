@@ -6,46 +6,65 @@
   "tags": [],
   "targets": {
     "build": {
-      "outputs": ["{workspaceRoot}/dist/apps/events-backend"],
+      "outputs": [
+        "{workspaceRoot}/dist/apps/events-backend"
+      ],
       "executor": "nx:run-commands",
       "options": {
         "command": "webpack-cli build",
-        "args": ["--node-env=production"],
+        "args": [
+          "--node-env=production"
+        ],
         "cwd": "apps/events-backend"
       },
       "configurations": {
         "development": {
-          "args": ["--node-env=development"]
+          "args": [
+            "--node-env=development"
+          ]
         }
       }
     },
     "prune-lockfile": {
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
-      "outputs": ["{workspaceRoot}/dist/apps/events-backend/package.json"],
+      "outputs": [
+        "{workspaceRoot}/dist/apps/events-backend/package.json"
+      ],
       "options": {
         "buildTarget": "events-backend:build"
       }
     },
     "copy-workspace-modules": {
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "cache": true,
-      "outputs": ["{workspaceRoot}/dist/apps/events-backend/workspace_modules"],
+      "outputs": [
+        "{workspaceRoot}/dist/apps/events-backend/workspace_modules"
+      ],
       "executor": "@nx/js:copy-workspace-modules",
       "options": {
         "buildTarget": "events-backend:build"
       }
     },
     "prune": {
-      "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
+      "dependsOn": [
+        "prune-lockfile",
+        "copy-workspace-modules"
+      ],
       "executor": "nx:noop"
     },
     "serve": {
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "options": {
         "buildTarget": "events-backend:build",
         "runBuildTargetDependencies": false
@@ -60,8 +79,14 @@
       }
     },
     "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": [
+        "{workspaceRoot}/coverage/apps/events-backend"
+      ],
       "options": {
-        "passWithNoTests": true
+        "jestConfig": "apps/events-backend/jest.config.cts",
+        "passWithNoTests": true,
+        "coverage": true
       }
     }
   }

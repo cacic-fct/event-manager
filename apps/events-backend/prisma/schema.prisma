@@ -226,8 +226,9 @@ model Event {
   eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id])
   eventGroupId String?
 
-  attendances EventAttendance[]
-  lecturers   EventLecturer[]
+  attendances           EventAttendance[]
+  attendanceCollectors  EventAttendanceCollector[]
+  lecturers             EventLecturer[]
 
   allowSubscription     Boolean             @default(false)
   subscriptionStartDate DateTime?
@@ -250,6 +251,8 @@ model Event {
   onlineAttendanceCode      String?
   onlineAttendanceStartDate DateTime?
   onlineAttendanceEndDate   DateTime?
+
+  shouldProvideSubscriberListToLecturer Boolean @default(false)
 
   // If event should be visible to users or if it's only for internal (admin) use
   publiclyVisible Boolean @default(true)
@@ -527,6 +530,7 @@ model People {
 
   attendances             EventAttendance[]
   lectures                EventLecturer[]
+  attendanceCollectorFor  EventAttendanceCollector[]
   eventSubscriptions      EventSubscription[]
   eventGroupSubscriptions EventGroupSubscription[]
   majorEventSubscriptions MajorEventSubscription[]
@@ -580,10 +584,29 @@ model EventAttendance {
   createdById     String?
   createdByMethod AttendanceCreationMethod @default(UNKNOWN)
 
+  collectedLatitude       Float?
+  collectedLongitude      Float?
+  collectedAccuracyMeters Float?
+
   @@id([personId, eventId])
   @@index([eventId])
   @@index([personId])
   @@map("event_attendances")
+}
+
+model EventAttendanceCollector {
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  personId String
+  person   People @relation(fields: [personId], references: [id])
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@id([eventId, personId])
+  @@index([personId])
+  @@map("event_attendance_collectors")
 }
 
 enum AttendanceCreationMethod {

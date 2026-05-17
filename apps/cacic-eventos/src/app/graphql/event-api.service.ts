@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { DeletionResult, Event, EventInput, EventLecturer } from './models';
+import { DeletionResult, Event, EventAttendanceCollector, EventInput, EventLecturer } from './models';
 import { EVENT_FIELDS, PERSON_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
@@ -150,5 +150,53 @@ export class EventApiService {
         { eventId, personId },
       )
       .pipe(map((data) => data.deleteEventLecturer));
+  }
+
+  listEventAttendanceCollectors(eventId: string) {
+    return this.graphqlHttp
+      .request<{ eventAttendanceCollectors: EventAttendanceCollector[] }>(
+        `query ListEventAttendanceCollectors($eventId: String) {
+          eventAttendanceCollectors(eventId: $eventId) {
+            eventId
+            personId
+            createdAt
+            person {
+              ${PERSON_FIELDS}
+            }
+          }
+        }`,
+        { eventId },
+      )
+      .pipe(map((data) => data.eventAttendanceCollectors));
+  }
+
+  createEventAttendanceCollector(input: { eventId: string; personId: string }) {
+    return this.graphqlHttp
+      .request<{ createEventAttendanceCollector: EventAttendanceCollector }>(
+        `mutation CreateEventAttendanceCollector($input: EventAttendanceCollectorCreateInput!) {
+          createEventAttendanceCollector(input: $input) {
+            eventId
+            personId
+            createdAt
+          }
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.createEventAttendanceCollector));
+  }
+
+  deleteEventAttendanceCollector(eventId: string, personId: string) {
+    return this.graphqlHttp
+      .request<{ deleteEventAttendanceCollector: DeletionResult }>(
+        `mutation DeleteEventAttendanceCollector($eventId: String!, $personId: String!) {
+          deleteEventAttendanceCollector(eventId: $eventId, personId: $personId) {
+            deleted
+            eventId
+            personId
+          }
+        }`,
+        { eventId, personId },
+      )
+      .pipe(map((data) => data.deleteEventAttendanceCollector));
   }
 }

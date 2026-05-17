@@ -270,6 +270,9 @@
             </mat-checkbox>
             <mat-checkbox formControlName="shouldCollectAttendance"> Coletar presença </mat-checkbox>
             <mat-checkbox formControlName="isOnlineAttendanceAllowed"> Presença on-line </mat-checkbox>
+            <mat-checkbox formControlName="shouldProvideSubscriberListToLecturer">
+              Disponibilizar lista de inscritos aos ministrantes
+            </mat-checkbox>
             <mat-checkbox formControlName="publiclyVisible"> Visível para usuários </mat-checkbox>
           </div>
 
@@ -373,6 +376,54 @@
             </button>
           } @empty {
             <span class="empty-note">Nenhum ministrante vinculado.</span>
+          }
+        </div>
+      </section>
+
+      <section class="surface field-group">
+        <div class="surface-heading">
+          <h4>Coletores de presença com permissões limitadas</h4>
+          <span>{{ workspace.eventAttendanceCollectors().length }} vinculados</span>
+        </div>
+
+        <form [formGroup]="workspace.attendanceCollectorLookupForm" class="compact-form">
+          <mat-form-field>
+            <mat-label>Buscar pessoa</mat-label>
+            <input matInput formControlName="query" />
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="workspace.searchAttendanceCollectorCandidates()">
+            <mat-icon>person_search</mat-icon>
+            Buscar
+          </button>
+        </form>
+
+        <div class="inline-list">
+          @for (candidate of workspace.attendanceCollectorSearchResults(); track candidate.id) {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!workspace.selectedEvent() || !permissions.canEdit('event#edit')"
+              (click)="workspace.addAttendanceCollector(candidate)">
+              <mat-icon>add</mat-icon>
+              Adicionar {{ candidate.name }}
+            </button>
+          } @empty {
+            <span class="empty-note">Busque uma pessoa pelo nome.</span>
+          }
+        </div>
+
+        <div class="inline-list">
+          @for (collector of workspace.eventAttendanceCollectors(); track collector.personId) {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!permissions.canEdit('event#edit')"
+              (click)="workspace.removeAttendanceCollector(collector.personId)">
+              <mat-icon>close</mat-icon>
+              {{ collector.name }}
+            </button>
+          } @empty {
+            <span class="empty-note">Nenhum coletor vinculado.</span>
           }
         </div>
       </section>

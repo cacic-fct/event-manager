@@ -41,17 +41,25 @@
         </div>
         @if (item.onlineAttendanceCode) {
         <div matListItemLine>Código de presença on-line: {{ item.onlineAttendanceCode }}</div>
-        } @if (item.onlineAttendanceCode) {
-        <button
-          mat-stroked-button
-          type="button"
-          (click)="downloadOnlineAttendanceCode(item.event.id, item.onlineAttendanceCode)">
-          <mat-icon>download</mat-icon>
-          Baixar código de barras para presença
-        </button>
         } @if (!item.onlineAttendanceCode) {
         <div matListItemLine>Sem código de presença on-line.</div>
         }
+        <div class="event-actions">
+          @if (item.onlineAttendanceCode) {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="downloadOnlineAttendanceCode(item.event.id, item.onlineAttendanceCode)">
+            <mat-icon>download</mat-icon>
+            Baixar código de barras para presença
+          </button>
+          } @if (item.canDownloadSubscriberList) {
+          <button mat-stroked-button type="button" (click)="downloadSubscriberList(item.event.id)">
+            <mat-icon>download</mat-icon>
+            Baixar lista de inscritos
+          </button>
+          }
+        </div>
       </mat-list-item>
       }
     </mat-list>

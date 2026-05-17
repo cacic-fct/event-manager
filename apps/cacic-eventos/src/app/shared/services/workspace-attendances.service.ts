@@ -1,8 +1,7 @@
-import { computed, effect, EffectRef, Injectable, inject, signal } from '@angular/core';
+import { computed, Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AztecScannerDialogComponent } from '@cacic-fct/shared-angular';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
@@ -13,6 +12,7 @@ import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/atte
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
 import { SubscriptionCsvColumnDialogComponent } from '../../workspace/dialogs/subscription-csv-column-dialog.component';
 import { SubscriptionCsvImportResultDialogComponent } from '../../workspace/dialogs/subscription-csv-import-result-dialog.component';
+import { WorkspaceAttendanceScannerDialogComponent } from '../../workspace/dialogs/workspace-attendance-scanner-dialog.component';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 
@@ -200,35 +200,20 @@ export class WorkspaceAttendancesService {
       return;
     }
 
-    const dialogRef = this.dialog.open(AztecScannerDialogComponent, {
-      width: 'min(560px, 96vw)',
+    const dialogRef = this.dialog.open(WorkspaceAttendanceScannerDialogComponent, {
+      width: 'min(720px, 96vw)',
       maxWidth: '96vw',
       data: {
-        acceptedPrefixes: ['user:'],
-        title: 'Escanear presença',
-        continuousMode: true,
+        eventId,
       },
     });
 
-    const component = dialogRef.componentInstance as unknown as {
-      lastScannedCode: { (): string | null };
-    };
-
-    let scanEffect: EffectRef | null = null;
-
-    scanEffect = effect(() => {
-      const code = component.lastScannedCode();
-      if (code) {
-        void this.processScannedCode(eventId, code);
-      }
-    });
-
     dialogRef.afterClosed().subscribe(() => {
-      scanEffect?.destroy();
+      void this.loadAttendances(eventId);
     });
   }
 
-  private async processScannedCode(eventId: string, code: string): Promise<void> {
+  async processScannedCode(eventId: string, code: string): Promise<void> {
     try {
       await firstValueFrom(
         this.api.createEventAttendanceFromAztecCode({

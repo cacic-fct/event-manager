@@ -1,8 +1,10 @@
-import { Injectable, inject } from '@angular/core';
-import { map } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, NgZone, inject } from '@angular/core';
+import { Observable, map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
   EventAttendance,
+  EventAttendanceScannerFeedItem,
   EventAttendanceCsvImportResult,
   MajorEventSubscriptionCsvImportResult,
   MajorEventUserAttendance,
@@ -12,7 +14,9 @@ import { PERSON_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
 export class AttendanceApiService {
+  private readonly http = inject(HttpClient);
   private readonly graphqlHttp = inject(GraphqlHttpService);
+  private readonly zone = inject(NgZone);
 
   createEventAttendance(input: { eventId: string; personId: string }) {
     return this.graphqlHttp
@@ -128,6 +132,90 @@ export class AttendanceApiService {
         { eventId },
       )
       .pipe(map((data) => data.eventAttendances));
+  }
+
+  listEventAttendanceScannerFeed(eventId: string) {
+    return this.graphqlHttp
+      .request<{ eventAttendanceScannerFeed: EventAttendanceScannerFeedItem[] }>(
+        `query EventAttendanceScannerFeed($eventId: String!) {
+          eventAttendanceScannerFeed(eventId: $eventId) {
+            personId
+            eventId
+            fullName
+            unespRole
+            subscriptionStatus
+            attendedAt
+            createdByMethod
+            collectedByFirstName
+          }
+        }`,
+        { eventId },
+      )
+      .pipe(map((data) => data.eventAttendanceScannerFeed));
+  }
+
+  watchEventAttendanceScannerFeed(eventId: string): Observable<EventAttendanceScannerFeedItem[]> {
+    return new Observable<EventAttendanceScannerFeedItem[]>((subscriber) => {
+      const source = new EventSource(
+        `/api/event-attendances/events/${encodeURIComponent(eventId)}/scanner-feed/events`,
+        {
+          withCredentials: true,
+        },
+      );
+
+      source.onmessage = (event) => {
+        this.zone.run(() => {
+          const parsed = JSON.parse(event.data) as {
+            type: string;
+            attendances?: EventAttendanceScannerFeedItem[];
+          };
+          if (parsed.type === 'event-attendance-scanner-feed' && parsed.attendances) {
+            subscriber.next(parsed.attendances);
+          }
+        });
+      };
+
+      source.onerror = () => {
+        this.zone.run(() => subscriber.error(new Error('Não foi possível acompanhar as presenças em tempo real.')));
+        source.close();
+      };
+
+      return () => source.close();
+    });
+  }
+
+  createEventAttendanceFromScannerCode(input: { eventId: string; code: string }) {
+    return this.graphqlHttp
+      .request<{ createEventAttendanceFromScannerCode: EventAttendance }>(
+        `mutation CreateEventAttendanceFromScannerCode($input: EventAttendanceScannerCodeInput!) {
+          createEventAttendanceFromScannerCode(input: $input) {
+            eventId
+            personId
+            attendedAt
+            category
+            createdByMethod
+          }
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.createEventAttendanceFromScannerCode));
+  }
+
+  createEventAttendanceFromManualInput(input: { eventId: string; value: string }) {
+    return this.graphqlHttp
+      .request<{ createEventAttendanceFromManualInput: EventAttendance }>(
+        `mutation CreateEventAttendanceFromManualInput($input: EventAttendanceManualInput!) {
+          createEventAttendanceFromManualInput(input: $input) {
+            eventId
+            personId
+            attendedAt
+            category
+            createdByMethod
+          }
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.createEventAttendanceFromManualInput));
   }
 
   listMajorEventUserAttendances(

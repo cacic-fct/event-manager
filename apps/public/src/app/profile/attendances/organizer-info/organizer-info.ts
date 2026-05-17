@@ -11,6 +11,7 @@ import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 import { toSVG } from '@bwip-js/browser';
 import { parseEventTargetType } from '@cacic-fct/shared-utils';
 import { Observable, catchError, map, of, startWith, switchMap } from 'rxjs';
+import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { AttendancesApiService, OrganizerInfo } from '../attendances-api.service';
 import { EmojiService } from '../emoji.service';
 
@@ -38,6 +39,7 @@ type OrganizerInfoState =
 export class OrganizerInfoComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(AttendancesApiService);
+  private readonly fileDownload = inject(CertificateFileDownloadService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly platformId = inject(PLATFORM_ID);
 
@@ -84,6 +86,18 @@ export class OrganizerInfoComponent {
         duration: 5000,
       });
     }
+  }
+
+  downloadSubscriberList(eventId: string): void {
+    this.api.downloadEventSubscriberList(eventId).subscribe({
+      next: (download) => this.fileDownload.save(download),
+      error: (error: unknown) => {
+        console.error('Failed to download subscriber list:', error);
+        this.snackBar.open('Não foi possível baixar a lista de inscritos.', 'OK', {
+          duration: 5000,
+        });
+      },
+    });
   }
 
   private loadOrganizerInfo(params: ParamMap): Observable<OrganizerInfoState> {

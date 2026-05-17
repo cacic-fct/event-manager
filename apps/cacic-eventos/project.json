@@ -77,7 +77,10 @@
     },
     "test": {
       "executor": "@angular/build:unit-test",
-      "options": {}
+      "options": {
+        "watch": false,
+        "code-coverage": true
+      }
     },
     "serve-static": {
       "continuous": true,

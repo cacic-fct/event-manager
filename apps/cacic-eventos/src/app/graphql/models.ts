@@ -181,6 +181,7 @@ export interface Event {
   shouldIssueCertificateForNonSubscribedAttendees: boolean;
   shouldCollectAttendance: boolean;
   isOnlineAttendanceAllowed: boolean;
+  shouldProvideSubscriberListToLecturer?: boolean;
   onlineAttendanceCode?: string | null;
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
@@ -233,6 +234,29 @@ export interface EventAttendance {
   createdAt: string;
   createdById?: string | null;
   createdByMethod: AttendanceCreationMethod;
+  collectedLatitude?: number | null;
+  collectedLongitude?: number | null;
+  collectedAccuracyMeters?: number | null;
+}
+
+export interface EventAttendanceCollector {
+  eventId: string;
+  personId: string;
+  event?: Event | null;
+  person?: Person | null;
+  createdAt: string;
+  createdById?: string | null;
+}
+
+export interface EventAttendanceScannerFeedItem {
+  personId: string;
+  eventId: string;
+  fullName?: string | null;
+  unespRole?: string | null;
+  subscriptionStatus?: SubscriptionStatus | null;
+  attendedAt?: string | null;
+  createdByMethod?: AttendanceCreationMethod | null;
+  collectedByFirstName?: string | null;
 }
 
 export interface MajorEventEventAttendanceStatus {
@@ -456,6 +480,7 @@ export interface EventInput {
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
   shouldCollectAttendance?: boolean;
   isOnlineAttendanceAllowed?: boolean;
+  shouldProvideSubscriberListToLecturer?: boolean;
   onlineAttendanceCode?: string | null;
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
