@@ -54,8 +54,19 @@ jobs:
       - name: Lint affected projects
         run: bunx nx affected -t lint --parallel=3
 
+      - name: Run unit tests with coverage
+        run: bunx nx affected -t test --parallel=3 --coverage
+
       - name: Build deployable apps
         run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=1
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          flags: unit
+          files: ./coverage/**/*
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
   prepare-untrusted-pr:
     name: Prepare untrusted PR dependencies
@@ -161,6 +172,9 @@ jobs:
 
       - name: Lint affected projects
         run: bunx nx affected -t lint --parallel=3
+
+      - name: Run unit tests with coverage
+        run: bunx nx affected -t test --parallel=3 --coverage
 
       - name: Build deployable apps
         run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=3
