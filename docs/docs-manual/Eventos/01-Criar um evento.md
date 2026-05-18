@@ -2,7 +2,9 @@
 title: Criar um evento
 ---
 
-## Antes de tudo, pergunte-se
+## Antes de tudo
+
+Esteja seguro que você entendeu a [estruturação dos eventos no sistema](./00-Entenda%20a%20estruturação.md) para evitar erros e complicações futuras.
 
 ### O evento é parte de um grande evento?
 
@@ -10,11 +12,10 @@ Se o evento faz parte de um grande evento, crie o grande evento _antes_ de criar
 
 ### O evento é dividido em partes ou dias diferentes?
 
-Se um evento está dividido em várias partes (ex: dias diferentes para um mesmo minicurso), crie um grupo de eventos para agrupá-los antes de criar os eventos individualmente.
+Se um evento está dividido em várias partes (ex: dias diferentes para um mesmo minicurso), crie um grupo de eventos para agrupá-los _antes_ de criar os eventos individualmente.
 
 
 ## Gerenciar
-
 
 ### Evento é obrigatório ou de inscrição automática
 

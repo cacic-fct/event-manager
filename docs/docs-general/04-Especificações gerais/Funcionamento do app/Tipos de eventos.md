@@ -26,4 +26,10 @@ Apesar de estarem relacionados e fazerem parte do mesmo simpósio, são eventos 
 
 ## Grande evento
 
-Agrupa diferentes eventos, de diferentes tipos, gratuitos ou não, que requerem validação de inscrição.
+Agrupa diferentes eventos, de diferentes tipos, gratuitos ou não.
+
+:::tip
+
+Leia a página de [Entenda a estruturação de eventos](/Manual/Eventos/Entenda%20a%20estrutura%C3%A7%C3%A3o) para entender melhor as diferenças entre os tipos de eventos e quando usar cada um.
+
+:::
