@@ -15,6 +15,10 @@ const ONLINE_ATTENDANCE_CHANNEL = 'current-user.online-attendance';
 const MAJOR_EVENT_SUBSCRIPTION_CHANNEL = 'public.major-event-subscription';
 const EVENT_SUBSCRIPTION_CHANNEL = 'current-user.event-subscription';
 
+type RequestWithCookies = Request & {
+  cookies?: Record<string, unknown>;
+};
+
 interface RealtimeClient {
   personId?: string;
   events: Subject<RealtimeServerMessage>;
@@ -372,6 +376,11 @@ export class CurrentUserOnlineAttendanceRealtimeService {
   }
 
   private readCookie(request: Request, name: string): string | null {
+    const parsedCookie = (request as RequestWithCookies).cookies?.[name];
+    if (typeof parsedCookie === 'string') {
+      return parsedCookie;
+    }
+
     const cookieHeader = request.headers.cookie;
     if (!cookieHeader) {
       return null;

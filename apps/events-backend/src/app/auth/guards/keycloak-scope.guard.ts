@@ -8,6 +8,7 @@ import { KeycloakAuthService } from '../keycloak-auth.service';
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUser;
+  cookies?: Record<string, unknown>;
 };
 
 @Injectable()
@@ -40,7 +41,7 @@ export class KeycloakScopeGuard implements CanActivate {
       return true;
     }
 
-    const sessionId = this.extractCookieValue(request.headers.cookie, AUTH_SESSION_COOKIE_NAME);
+    const sessionId = this.extractCookieValue(request, AUTH_SESSION_COOKIE_NAME);
     if (!sessionId) {
       throw new UnauthorizedException('Missing authentication credentials.');
     }
@@ -88,8 +89,13 @@ export class KeycloakScopeGuard implements CanActivate {
     return token;
   }
 
-  private extractCookieValue(cookieHeader: string | string[] | undefined, key: string): string | null {
-    const header = Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader;
+  private extractCookieValue(request: RequestWithUser, key: string): string | null {
+    const parsedCookie = request.cookies?.[key];
+    if (typeof parsedCookie === 'string') {
+      return parsedCookie;
+    }
+
+    const header = Array.isArray(request.headers.cookie) ? request.headers.cookie[0] : request.headers.cookie;
     if (!header) {
       return null;
     }
