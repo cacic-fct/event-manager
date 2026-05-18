@@ -10,6 +10,10 @@ type RequestWithUser = Request & {
   user?: AuthenticatedUser;
 };
 
+type RequestWithCookies = Request & {
+  cookies?: Record<string, unknown>;
+};
+
 type PermissionEvaluationBody = {
   permissions?: unknown;
 };
@@ -92,6 +96,7 @@ export class AuthController {
       sameSite: 'lax',
       secure: this.isSecureRequest(request),
       expires: new Date(session.sessionExpiresAt),
+      maxAge: this.resolveCookieMaxAge(session.sessionExpiresAt),
       path: '/',
     });
 
@@ -130,19 +135,14 @@ export class AuthController {
       throw new ForbiddenException('Missing session.');
     }
 
-    const sessionLogoutInput = await this.keycloakAuthService.getSessionLogoutInput(sessionId);
-    if (!sessionLogoutInput?.refreshToken) {
-      throw new ForbiddenException('Missing refresh token in session.');
-    }
-
-    const tokenResponse = await this.keycloakAuthService.refreshAccessToken(sessionLogoutInput.refreshToken);
-    const { expiresAt, sessionExpiresAt } = await this.keycloakAuthService.updateSession(sessionId, tokenResponse);
+    const { expiresAt, sessionExpiresAt } = await this.keycloakAuthService.refreshSession(sessionId);
 
     response.cookie(AUTH_SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       sameSite: 'lax',
       secure: this.isSecureRequest(request),
       expires: new Date(sessionExpiresAt),
+      maxAge: this.resolveCookieMaxAge(sessionExpiresAt),
       path: '/',
     });
 
@@ -172,6 +172,11 @@ export class AuthController {
   }
 
   private readCookie(request: Request, name: string): string | null {
+    const parsedCookie = (request as RequestWithCookies).cookies?.[name];
+    if (typeof parsedCookie === 'string') {
+      return parsedCookie;
+    }
+
     const cookieHeader = request.headers.cookie;
     if (!cookieHeader) {
       return null;
@@ -188,6 +193,10 @@ export class AuthController {
     }
 
     return null;
+  }
+
+  private resolveCookieMaxAge(expiresAt: number): number {
+    return Math.max(expiresAt - Date.now(), 0);
   }
 
   private getCallbackRedirectUri(request: Request): string {

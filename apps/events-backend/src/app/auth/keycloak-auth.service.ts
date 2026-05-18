@@ -16,12 +16,13 @@ import {
   readNumberClaim,
   readStringClaim,
 } from './keycloak-claims.utils';
-import { CachedUser, TokenClaims, TokenResponse } from './keycloak-auth.types';
+import { AuthSession, CachedUser, TokenClaims, TokenResponse } from './keycloak-auth.types';
 
 @Injectable()
 export class KeycloakAuthService {
   private readonly logger = new Logger(KeycloakAuthService.name);
   private readonly userCache = new Map<string, CachedUser>();
+  private readonly accessTokenRefreshSkewMs = 30_000;
 
   private readonly realmUrl = (process.env.KEYCLOAK_REALM_URL ?? DEFAULT_KEYCLOAK_REALM_URL).replace(/\/+$/, '');
 
@@ -239,10 +240,24 @@ export class KeycloakAuthService {
     sessionId: string,
     tokenResponse: Record<string, unknown>,
   ): Promise<{ expiresAt: number; sessionExpiresAt: number }> {
-    return this.updateStoredSession(sessionId, tokenResponse);
+    return this.updateStoredSessionFromTokenResponse(sessionId, tokenResponse);
   }
 
-  private async updateStoredSession(
+  async refreshSession(sessionId: string): Promise<{ expiresAt: number; sessionExpiresAt: number }> {
+    const session = await this.sessions.get(sessionId);
+    if (!session?.refreshToken) {
+      throw new UnauthorizedException('Missing refresh token in session.');
+    }
+
+    const refreshedSession = await this.refreshStoredSession(sessionId, session.refreshToken);
+
+    return {
+      expiresAt: refreshedSession.accessTokenExpiresAt,
+      sessionExpiresAt: refreshedSession.sessionExpiresAt,
+    };
+  }
+
+  private async updateStoredSessionFromTokenResponse(
     sessionId: string,
     tokenResponse: Record<string, unknown>,
   ): Promise<{ expiresAt: number; sessionExpiresAt: number }> {
@@ -271,12 +286,25 @@ export class KeycloakAuthService {
   }
 
   async authenticateSession(sessionId: string, requiredRoles: string[] = []): Promise<AuthenticatedUser> {
-    const session = await this.sessions.get(sessionId);
+    let session = await this.sessions.get(sessionId);
     if (!session) {
       throw new UnauthorizedException('Missing authenticated session.');
     }
 
-    return this.authenticateAccessToken(session.accessToken, requiredRoles);
+    if (this.shouldRefreshSessionAccessToken(session.accessTokenExpiresAt) && session.refreshToken) {
+      session = await this.refreshStoredSession(sessionId, session.refreshToken);
+    }
+
+    try {
+      return await this.authenticateAccessToken(session.accessToken, requiredRoles);
+    } catch (error) {
+      if (!session.refreshToken || !(error instanceof UnauthorizedException)) {
+        throw error;
+      }
+
+      const refreshedSession = await this.refreshStoredSession(sessionId, session.refreshToken);
+      return this.authenticateAccessToken(refreshedSession.accessToken, requiredRoles);
+    }
   }
 
   async evaluateAccessTokenPermissions(accessToken: string, requiredPermissions: string[]): Promise<string[]> {
@@ -352,6 +380,70 @@ export class KeycloakAuthService {
       refreshToken: session.refreshToken,
       idTokenHint: session.idTokenHint,
     };
+  }
+
+  private async refreshStoredSession(sessionId: string, refreshToken: string): Promise<AuthSession> {
+    const lockOwner = randomBytes(16).toString('base64url');
+    const hasLock = await this.sessions.acquireRefreshLock(sessionId, lockOwner);
+
+    if (!hasLock) {
+      await this.sessions.waitForRefreshLockRelease(sessionId);
+
+      const session = await this.sessions.get(sessionId);
+      if (!session) {
+        throw new UnauthorizedException('Missing authenticated session.');
+      }
+
+      if (!this.shouldRefreshSessionAccessToken(session.accessTokenExpiresAt)) {
+        return session;
+      }
+
+      return this.refreshStoredSessionAfterLockTimeout(sessionId, session.refreshToken ?? refreshToken);
+    }
+
+    try {
+      const tokenResponse = await this.refreshAccessToken(refreshToken);
+      await this.updateStoredSessionFromTokenResponse(sessionId, tokenResponse);
+    } finally {
+      await this.sessions.releaseRefreshLock(sessionId, lockOwner);
+    }
+
+    const session = await this.sessions.get(sessionId);
+    if (!session) {
+      throw new UnauthorizedException('Missing authenticated session.');
+    }
+
+    return session;
+  }
+
+  private async refreshStoredSessionAfterLockTimeout(sessionId: string, refreshToken: string): Promise<AuthSession> {
+    const lockOwner = randomBytes(16).toString('base64url');
+    const hasLock = await this.sessions.acquireRefreshLock(sessionId, lockOwner);
+
+    if (!hasLock) {
+      await this.sessions.waitForRefreshLockRelease(sessionId);
+
+      const session = await this.sessions.get(sessionId);
+      if (!session) {
+        throw new UnauthorizedException('Missing authenticated session.');
+      }
+
+      return session;
+    }
+
+    try {
+      const tokenResponse = await this.refreshAccessToken(refreshToken);
+      await this.updateStoredSessionFromTokenResponse(sessionId, tokenResponse);
+    } finally {
+      await this.sessions.releaseRefreshLock(sessionId, lockOwner);
+    }
+
+    const session = await this.sessions.get(sessionId);
+    if (!session) {
+      throw new UnauthorizedException('Missing authenticated session.');
+    }
+
+    return session;
   }
 
   getPostLoginRedirectUri(state?: string): string {
@@ -548,6 +640,10 @@ export class KeycloakAuthService {
     }
 
     return fallbackExpiresAt;
+  }
+
+  private shouldRefreshSessionAccessToken(accessTokenExpiresAt: number): boolean {
+    return accessTokenExpiresAt - this.accessTokenRefreshSkewMs <= Date.now();
   }
 
   private parseCacheTtlMs(rawTtl?: string): number {
