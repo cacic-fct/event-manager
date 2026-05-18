@@ -112,7 +112,10 @@ export class NovuNotificationsService {
     return data ?? { notifications: [], hasMore: false, filter: {} };
   }
 
-  async loadMoreNotifications(after: string, args: NovuListNotificationsArgs = {}): Promise<{
+  async loadMoreNotifications(
+    after: string,
+    args: NovuListNotificationsArgs = {},
+  ): Promise<{
     notifications: NovuNotification[];
     hasMore: boolean;
   }> {
@@ -290,6 +293,11 @@ export class NovuNotificationsService {
       applicationIdentifier,
       subscriber,
       useCache: true,
+      apiUrl: 'https://notifications.cacic.dev.br/api',
+      socketUrl: 'https://notifications.cacic.dev.br',
+      socketOptions: {
+        path: '/ws',
+      },
     } satisfies NovuOptions);
 
     if (this.auth.user() !== user || this.config()?.applicationIdentifier !== applicationIdentifier) {

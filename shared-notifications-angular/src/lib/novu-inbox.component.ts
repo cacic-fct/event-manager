@@ -67,7 +67,7 @@ type InboxTab = 'inbox' | 'unread' | 'archived' | 'snoozed' | 'preferences';
       } @else if (!notifications.isConfigured()) {
         <mat-card appearance="outlined">
           <mat-card-content>
-            <p>As notificações ainda não foram configuradas para este ambiente.</p>
+            <p>As notificações não foram configuradas para este ambiente.</p>
           </mat-card-content>
         </mat-card>
       } @else {
