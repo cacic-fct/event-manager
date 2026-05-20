@@ -1,0 +1,202 @@
+<mat-toolbar class="inbox-toolbar">
+  <span>{{ title() }}</span>
+  <span class="toolbar-spacer"></span>
+
+  <button matIconButton type="button" [matMenuTriggerFor]="bulkMenu" aria-label="Mais ações">
+    <mat-icon>more_vert</mat-icon>
+  </button>
+</mat-toolbar>
+
+<section class="novu-inbox">
+  @if (notifications.loadingConfig() || loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="36"></mat-spinner>
+    </div>
+  } @else if (!notifications.isConfigured()) {
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <p>As notificações não foram configuradas para este ambiente.</p>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    @if (showPushBanner()) {
+      <mat-card appearance="outlined" class="permission-card">
+        <mat-card-content>
+          <mat-icon>notifications_active</mat-icon>
+          <span>Enviaremos apenas notificações importantes, como informações sobre o estado da sua inscrição.</span>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-button type="button" (click)="dismissPushPermission()">Agora não</button>
+          <button mat-flat-button type="button" (click)="requestPushPermission()">Permitir</button>
+        </mat-card-actions>
+      </mat-card>
+    } @else if (notifications.notificationPermission() === 'denied') {
+      <mat-card appearance="outlined" class="permission-card">
+        <mat-card-content>
+          <mat-icon>notifications_off</mat-icon>
+          <span>As notificações do navegador estão bloqueadas.</span>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-button type="button" (click)="requestPushPermission()">Gerenciar permissão</button>
+        </mat-card-actions>
+      </mat-card>
+    }
+
+    <mat-tab-group
+      class="compact-tabs"
+      mat-stretch-tabs="false"
+      [selectedIndex]="selectedIndex()"
+      (selectedIndexChange)="selectIndex($event)">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            <mat-icon>inbox</mat-icon>
+            <span>Todas</span>
+          </span>
+        </ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            <mat-icon>archive</mat-icon>
+            <span>Arquivadas</span>
+          </span>
+        </ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="tab-label">
+            <mat-icon>tune</mat-icon>
+            <span>Configurações</span>
+          </span>
+        </ng-template>
+      </mat-tab>
+    </mat-tab-group>
+
+    @if (error()) {
+      <p class="error-state">{{ error() }}</p>
+    }
+
+    @if (selectedTab() === 'preferences') {
+      <mat-list class="preference-list">
+        @for (preference of preferences(); track preference.workflow?.id ?? preference.level) {
+          <mat-list-item class="preference-item">
+            <mat-icon matListItemIcon>rule</mat-icon>
+            <span matListItemTitle>{{ preference.workflow?.name ?? 'Preferências globais' }}</span>
+            <span matListItemLine>{{ channelsLabel(preference) }}</span>
+            <div matListItemMeta class="preference-actions">
+              <mat-slide-toggle
+                [checked]="preference.channels.in_app !== false"
+                (change)="updatePreferenceChannel(preference, 'in_app', $event.checked)">
+                In-app
+              </mat-slide-toggle>
+              <mat-slide-toggle
+                [checked]="preference.channels.push !== false"
+                (change)="updatePreferenceChannel(preference, 'push', $event.checked)">
+                Push
+              </mat-slide-toggle>
+            </div>
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            <mat-icon matListItemIcon>tune</mat-icon>
+            <span matListItemTitle>Nenhuma preferência disponível</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    } @else {
+      <mat-list class="notification-list">
+        @for (notification of notificationList(); track notification.id) {
+          <mat-list-item class="notification-item" [class.unread]="!notification.isRead">
+            @if (notification.avatar) {
+              <img matListItemAvatar [src]="notification.avatar" alt="" />
+            } @else {
+              <mat-icon matListItemIcon>{{ notificationIcon(notification) }}</mat-icon>
+            }
+
+            <span matListItemTitle class="notification-title">
+              {{ notification.subject || notification.workflow?.name || 'Notificação' }}
+            </span>
+            <span matListItemLine class="notification-body" [innerHTML]="notificationBody(notification)"></span>
+            <span matListItemLine>{{ notification.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+
+            <div matListItemMeta class="notification-actions">
+              @if (notification.primaryAction) {
+                <button mat-button type="button" (click)="runPrimaryAction(notification)">
+                  {{ notification.primaryAction.label }}
+                </button>
+              } @else if (notification.redirect?.url) {
+                <button mat-button type="button" (click)="openRedirect(notification)">Abrir</button>
+              }
+
+              <button matIconButton type="button" [matMenuTriggerFor]="notificationMenu" aria-label="Ações">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </div>
+
+            <mat-menu #notificationMenu="matMenu">
+              @if (notification.isRead) {
+                <button mat-menu-item type="button" (click)="markAsUnread(notification)">
+                  <mat-icon>mark_email_unread</mat-icon>
+                  <span>Marcar como não lida</span>
+                </button>
+              } @else {
+                <button mat-menu-item type="button" (click)="markAsRead(notification)">
+                  <mat-icon>drafts</mat-icon>
+                  <span>Marcar como lida</span>
+                </button>
+              }
+
+              @if (notification.isArchived) {
+                <button mat-menu-item type="button" (click)="unarchive(notification)">
+                  <mat-icon>unarchive</mat-icon>
+                  <span>Desarquivar</span>
+                </button>
+              } @else {
+                <button mat-menu-item type="button" (click)="archive(notification)">
+                  <mat-icon>archive</mat-icon>
+                  <span>Arquivar</span>
+                </button>
+              }
+
+              @if (notification.secondaryAction) {
+                <button mat-menu-item type="button" (click)="runSecondaryAction(notification)">
+                  <mat-icon>task_alt</mat-icon>
+                  <span>{{ notification.secondaryAction.label }}</span>
+                </button>
+              }
+
+              <button mat-menu-item type="button" (click)="delete(notification)">
+                <mat-icon>delete</mat-icon>
+                <span>Excluir</span>
+              </button>
+            </mat-menu>
+          </mat-list-item>
+          <mat-divider></mat-divider>
+        } @empty {
+          <mat-list-item>
+            <mat-icon matListItemIcon>notifications_none</mat-icon>
+            <span matListItemTitle>Nenhuma notificação</span>
+          </mat-list-item>
+        }
+      </mat-list>
+
+      @if (hasMore()) {
+        <div class="load-more">
+          <button mat-button type="button" (click)="loadMore()">Carregar mais</button>
+        </div>
+      }
+    }
+  }
+
+  <mat-menu #bulkMenu="matMenu">
+    <button mat-menu-item type="button" (click)="archiveAllRead()">
+      <mat-icon>inventory_2</mat-icon>
+      <span>Arquivar lidas</span>
+    </button>
+    <button mat-menu-item type="button" (click)="reload()">
+      <mat-icon>refresh</mat-icon>
+      <span>Atualizar</span>
+    </button>
+  </mat-menu>
+</section>

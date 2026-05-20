@@ -10,6 +10,7 @@ import {
   DestroyRef,
   NgZone,
   PLATFORM_ID,
+  Signal,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { DOCUMENT } from '@angular/common';
@@ -23,7 +24,14 @@ import { ToolbarItem } from './bottom-toolbar.layout';
 @Component({
   selector: 'app-bottom-toolbar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, MatToolbarModule, MatButtonModule, MatIconModule, NovuNotificationBadgeComponent],
+  imports: [
+    RouterLink,
+    RouterLinkActive,
+    MatToolbarModule,
+    MatButtonModule,
+    MatIconModule,
+    NovuNotificationBadgeComponent,
+  ],
   templateUrl: './bottom-toolbar.component.html',
   styleUrls: ['./bottom-toolbar.component.scss'],
 })

@@ -149,6 +149,15 @@
               <mat-label>Máximo de palestras por pessoa</mat-label>
               <input matInput type="number" formControlName="maxLecturesPerAttendee" />
             </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Máximo de outros eventos por pessoa</mat-label>
+              <input matInput type="number" formControlName="maxUncategorizedPerAttendee" />
+            </mat-form-field>
+
+            <mat-checkbox formControlName="rankedSubscriptionEnabled">
+              Inscrição por voto preferencial
+            </mat-checkbox>
           </div>
         </section>
 

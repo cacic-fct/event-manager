@@ -69,7 +69,13 @@
           Inscrito
         </button>
         } @else if (subscription) { @if (canEditSubscription(subscription)) {
-        <a mat-stroked-button [routerLink]="['/major-event', majorEvent.id, 'subscription']">
+        <a
+          mat-stroked-button
+          [routerLink]="[
+            '/major-event',
+            majorEvent.id,
+            majorEvent.rankedSubscriptionEnabled ? 'ranked-subscription' : 'subscription'
+          ]">
           <mat-icon>edit</mat-icon>
           Editar inscrição
         </a>
@@ -86,7 +92,11 @@
         } @else {
         <a
           mat-flat-button
-          [routerLink]="['/major-event', majorEvent.id, 'subscription']"
+          [routerLink]="[
+            '/major-event',
+            majorEvent.id,
+            majorEvent.rankedSubscriptionEnabled ? 'ranked-subscription' : 'subscription'
+          ]"
           [disabled]="!isSubscriptionOpen(majorEvent)"
           [attr.aria-disabled]="!isSubscriptionOpen(majorEvent)">
           <mat-icon>event_available</mat-icon>

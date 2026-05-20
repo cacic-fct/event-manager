@@ -285,6 +285,40 @@ describe('CertificateIssuingService', () => {
     expect(upsertSpy).not.toHaveBeenCalled();
   });
 
+  it('keeps and refreshes existing manual certificates when issuing missed certificates', async () => {
+    const prisma = {
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-a' }, { personId: 'person-b' }]),
+        updateMany: jest.fn(),
+      },
+    };
+    const manualConfig = {
+      ...config,
+      issuedTo: 'OTHER',
+    };
+    const validation = {
+      normalizeRequiredId: jest.fn().mockReturnValue('config-1'),
+    };
+    const eligibilityService = {
+      getConfigById: jest.fn().mockResolvedValue(manualConfig),
+      resolveEligibleRecipients: jest
+        .fn()
+        .mockResolvedValueOnce([{ person: { id: 'person-a' }, events: [] }])
+        .mockResolvedValueOnce([{ person: { id: 'person-b' }, events: [] }]),
+    };
+
+    const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
+    const upsertSpy = jest
+      .spyOn(service as never, 'upsertCertificateForRecipient')
+      .mockResolvedValue(mappedCertificateRecord as never);
+
+    await expect(service.issueMissedCertificates('config-1')).resolves.toHaveLength(2);
+    expect(prisma.certificate.updateMany).not.toHaveBeenCalled();
+    expect(eligibilityService.resolveEligibleRecipients).toHaveBeenCalledWith(manualConfig, 'person-a');
+    expect(eligibilityService.resolveEligibleRecipients).toHaveBeenCalledWith(manualConfig, 'person-b');
+    expect(upsertSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('reissues certificates for every certificate config', async () => {
     const prisma = {
       certificateConfig: {

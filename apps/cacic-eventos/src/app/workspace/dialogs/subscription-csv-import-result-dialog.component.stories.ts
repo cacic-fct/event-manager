@@ -4,7 +4,7 @@ import { SubscriptionCsvImportResultDialogComponent } from './subscription-csv-i
 
 const meta: Meta<SubscriptionCsvImportResultDialogComponent> = {
   component: SubscriptionCsvImportResultDialogComponent,
-  title: 'CACIC Eventos/Workspace/Dialogs/Subscription Csv Import Result Dialog',
+  title: 'CACiC Eventos/Workspace/Dialogs/Subscription Csv Import Result Dialog',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -20,7 +20,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();

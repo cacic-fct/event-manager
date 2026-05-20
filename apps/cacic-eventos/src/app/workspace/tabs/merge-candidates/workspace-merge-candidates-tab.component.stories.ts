@@ -4,7 +4,7 @@ import { WorkspaceMergeCandidatesTabComponent } from './workspace-merge-candidat
 
 const meta: Meta<WorkspaceMergeCandidatesTabComponent> = {
   component: WorkspaceMergeCandidatesTabComponent,
-  title: 'CACIC Eventos/Workspace/Tabs/Merge Candidates/Workspace Merge Candidates Tab',
+  title: 'CACiC Eventos/Workspace/Tabs/Merge Candidates/Workspace Merge Candidates Tab',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -20,7 +20,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();

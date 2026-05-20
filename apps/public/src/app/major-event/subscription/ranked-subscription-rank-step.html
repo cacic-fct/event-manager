@@ -1,0 +1,150 @@
+@let data = store.data(); @if (data) { @let majorEvent = data.majorEvent;
+<section aria-labelledby="ranked-order-title">
+  <h2 id="ranked-order-title" class="step-title">
+    Agora, ordene os eventos por ordem de preferência
+    <br />
+    Tentaremos garantir sua vaga na opção mais alta possível
+  </h2>
+
+  @if (majorEvent.isPaymentRequired && store.priceTiers().length > 1) {
+  <section class="price-section">
+    <h3>Preço</h3>
+    <mat-radio-group
+      class="price-options"
+      [value]="store.selectedPriceTierName()"
+      aria-label="Selecionar preço"
+      (change)="store.selectPriceTier($event.value)">
+      @for (tier of store.priceTiers(); track tier.id) {
+      <mat-radio-button [value]="tier.name">
+        <span>{{ tier.name }}</span>
+        <strong>{{ tier.value / 100 | currency: 'BRL' }}</strong>
+      </mat-radio-button>
+      }
+    </mat-radio-group>
+  </section>
+  } @else if (majorEvent.isPaymentRequired && store.priceTiers().length === 1) {
+  <section class="price-section">
+    <h3>Preço</h3>
+    <p>{{ store.priceTiers()[0].name }} · {{ store.priceTiers()[0].value / 100 | currency: 'BRL' }}</p>
+  </section>
+  }
+
+  <section class="ranking-board">
+    <div class="ranking-section">
+      <h3>Quero participar</h3>
+      <div
+        id="ranking-list"
+        cdkDropList
+        [cdkDropListData]="store.rankingItems()"
+        [cdkDropListConnectedTo]="['not-wanted-list']"
+        class="ranked-list"
+        (cdkDropListDropped)="store.drop($event)">
+        @for (item of store.rankingItems(); track item.key; let index = $index) {
+        <div cdkDrag class="ranked-item ranked-item-with-position">
+          <mat-icon cdkDragHandle class="ranked-drag-handle">drag_indicator</mat-icon>
+          <span class="ranked-position">{{ index + 1 }}</span>
+          <div class="ranked-media">
+            <img class="twemoji" [src]="emoji.getTwemojiUrl(item.emoji)" [alt]="item.emoji" />
+          </div>
+          <div class="ranked-content">
+            <strong>{{ item.label }}</strong>
+            @for (description of uniqueDescriptions(item.events); track description) {
+            <span class="ranked-description">{{ description }}</span>
+            }
+            @for (event of item.events; track event.id) {
+            <span class="ranked-date-line">
+              {{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }} ·
+              {{ event.startDate | date: "EEE, d 'de' MMMM" }}
+            </span>
+            }
+          </div>
+        </div>
+        } @empty {
+        <p class="empty-ranking">Arraste eventos para cá.</p>
+        }
+      </div>
+    </div>
+
+    <div class="ranking-section">
+      <h3>Não quero</h3>
+      <div
+        id="not-wanted-list"
+        cdkDropList
+        [cdkDropListData]="store.notWantedItems()"
+        [cdkDropListConnectedTo]="['ranking-list']"
+        class="ranked-list"
+        (cdkDropListDropped)="store.drop($event)">
+        @for (item of store.notWantedItems(); track item.key) {
+        <div cdkDrag class="ranked-item muted-ranked-item">
+          <mat-icon cdkDragHandle class="ranked-drag-handle">drag_indicator</mat-icon>
+          <div class="ranked-media">
+            <img class="twemoji" [src]="emoji.getTwemojiUrl(item.emoji)" [alt]="item.emoji" />
+          </div>
+          <div class="ranked-content">
+            <strong>{{ item.label }}</strong>
+            @for (description of uniqueDescriptions(item.events); track description) {
+            <span class="ranked-description">{{ description }}</span>
+            }
+            @for (event of item.events; track event.id) {
+            <span class="ranked-date-line">
+              {{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }} ·
+              {{ event.startDate | date: "EEE, d 'de' MMMM" }}
+            </span>
+            }
+          </div>
+        </div>
+        } @empty {
+        <p class="empty-ranking">Tudo que você selecionou está na lista de preferências.</p>
+        }
+      </div>
+    </div>
+  </section>
+
+  @if (store.autoSelectedEvents().length > 0) {
+  <section class="ranking-section">
+    <h3>Inscrição automática</h3>
+    <div class="ranked-list readonly-list">
+      @for (event of store.autoSelectedEvents(); track event.id) {
+      <div class="ranked-item readonly-ranked-item">
+        <div class="ranked-media">
+          <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
+        </div>
+        <div class="ranked-content">
+          <strong>{{ event.name }}</strong>
+          @if (event.shortDescription) {
+          <span class="ranked-description">{{ event.shortDescription }}</span>
+          }
+          <span class="ranked-date-line">
+            {{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }} ·
+            {{ event.startDate | date: "EEE, d 'de' MMMM" }}
+          </span>
+        </div>
+      </div>
+      }
+    </div>
+  </section>
+  }
+
+  <div class="step-actions">
+    <button matButton type="button" (click)="back.emit()">
+      <mat-icon>arrow_back</mat-icon>
+      Voltar
+    </button>
+  </div>
+
+  <button
+    mat-fab
+    extended
+    type="button"
+    class="subscribe-fab"
+    [disabled]="
+      store.isSubmitting() ||
+      store.effectiveSelectedEventIds().size === 0 ||
+      store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'
+    "
+    (click)="store.submit()">
+    <mat-icon>{{ store.currentUserSubscription() ? 'edit' : 'event_available' }}</mat-icon>
+    {{ store.currentUserSubscription() ? 'Atualizar inscrição' : 'Inscrever-se' }}
+  </button>
+</section>
+}

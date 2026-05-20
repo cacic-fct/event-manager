@@ -4,7 +4,7 @@ import { ConfirmationDialogComponent } from './confirmation-dialog.component';
 
 const meta: Meta<ConfirmationDialogComponent> = {
   component: ConfirmationDialogComponent,
-  title: 'CACIC Eventos/Shared/Components/Confirmation Dialog',
+  title: 'CACiC Eventos/Shared/Components/Confirmation Dialog',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -20,7 +20,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();

@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -43,6 +44,7 @@ interface EventDayGroup {
     DatePipe,
     MatButtonModule,
     MatCardModule,
+    MatCheckboxModule,
     MatChipsModule,
     MatDividerModule,
     MatFormFieldModule,
@@ -72,6 +74,7 @@ export class WorkspaceReceiptValidationComponent {
   protected readonly selectedIndex = signal(0);
   protected readonly lastAction = signal<LastValidationAction | null>(null);
   protected readonly error = signal<string | null>(null);
+  protected readonly selectedEventIds = signal<ReadonlySet<string>>(new Set());
 
   protected readonly rejectionForm = this.formBuilder.nonNullable.group({
     rejectionCode: this.formBuilder.nonNullable.control<ReceiptRejectionCode>('INVALID_RECEIPT', Validators.required),
@@ -83,6 +86,7 @@ export class WorkspaceReceiptValidationComponent {
     this.queue().items.length === 0 ? 0 : Math.min(this.selectedIndex() + 1, this.queue().items.length),
   );
   protected readonly eventGroups = computed(() => this.groupEventsByDay(this.currentItem()?.events ?? []));
+  protected readonly selectedEventCount = computed(() => this.selectedEventIds().size);
 
   constructor() {
     this.api
@@ -103,7 +107,10 @@ export class WorkspaceReceiptValidationComponent {
       });
 
     effect(() => {
-      this.currentItem();
+      const item = this.currentItem();
+      this.selectedEventIds.set(
+        new Set(item?.events.filter((event) => event.selectedForConfirmation).map((event) => event.id) ?? []),
+      );
       this.imageUnavailable.set(false);
       this.rejectPanelOpen.set(false);
       this.rejectionForm.reset({
@@ -123,13 +130,14 @@ export class WorkspaceReceiptValidationComponent {
 
   protected async approve(item: ReceiptValidationQueueItem): Promise<void> {
     const receiptId = item.receipt?.id;
-    if (!receiptId || this.saving()) {
+    if (!receiptId || this.saving() || !this.canApprove(item)) {
       return;
     }
 
     this.saving.set(true);
     try {
-      const result = await firstValueFrom(this.api.approve(item.subscriptionId, receiptId));
+      const selectedEventIds = item.subscriptionFlow === 'RANKED_VOTING' ? [...this.selectedEventIds()] : undefined;
+      const result = await firstValueFrom(this.api.approve(item.subscriptionId, receiptId, selectedEventIds));
       this.lastAction.set({ id: result.actionId, label: `Aprovação de ${item.personName}` });
       this.openUndoSnack();
       await this.refreshQueue();
@@ -206,6 +214,44 @@ export class WorkspaceReceiptValidationComponent {
     return getSubscriptionStatusLabel(status);
   }
 
+  protected toggleEvent(event: ReceiptValidationEvent, checked: boolean): void {
+    if (event.autoSubscribe) {
+      return;
+    }
+
+    this.selectedEventIds.update((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(event.id);
+      } else {
+        next.delete(event.id);
+      }
+      return next;
+    });
+  }
+
+  protected canApprove(item: ReceiptValidationQueueItem): boolean {
+    if (item.subscriptionFlow !== 'RANKED_VOTING') {
+      return true;
+    }
+
+    const selectedEvents = item.events.filter((event) => this.selectedEventIds().has(event.id));
+    const recommendedEvents = item.events.filter((event) => event.selectedForConfirmation);
+    return (
+      this.countEventsByType(selectedEvents, 'MINICURSO') === this.countEventsByType(recommendedEvents, 'MINICURSO') &&
+      this.countEventsByType(selectedEvents, 'PALESTRA') === this.countEventsByType(recommendedEvents, 'PALESTRA') &&
+      this.countEventsByType(selectedEvents, 'OTHER') === this.countEventsByType(recommendedEvents, 'OTHER')
+    );
+  }
+
+  protected rankedRequestLine(item: ReceiptValidationQueueItem): string {
+    return [
+      `${item.desiredCourses ?? 0} minicurso(s)`,
+      `${item.desiredLectures ?? 0} palestra(s)`,
+      `${item.desiredUncategorized ?? 0} outro(s)`,
+    ].join(' · ');
+  }
+
   protected hasOcrMatches(item: ReceiptValidationQueueItem): boolean {
     const receipt = item.receipt;
     return Boolean(
@@ -246,6 +292,10 @@ export class WorkspaceReceiptValidationComponent {
       dayLabel: dayEvents[0]?.startDate ?? dayKey,
       events: dayEvents,
     }));
+  }
+
+  private countEventsByType(events: ReceiptValidationEvent[], type: ReceiptValidationEvent['type']): number {
+    return events.filter((event) => event.type === type).length;
   }
 
   private openUndoSnack(): void {

@@ -32,7 +32,7 @@ const meta: Meta<ScannerEventList> = {
                     endDate: new Date(openStart.getTime() + 2 * 60 * 60_000).toISOString(),
                     emoji: '✅',
                     type: 'OTHER',
-                    locationDescription: 'Hall principal',
+                    locationDescription: 'Auditório',
                     shouldCollectAttendance: true,
                     publiclyVisible: true,
                     queueCount: 0,

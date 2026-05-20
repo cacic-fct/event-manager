@@ -51,6 +51,8 @@ const MAJOR_EVENT_SELECT = {
   subscriptionEndDate: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
+  maxUncategorizedPerAttendee: true,
+  rankedSubscriptionEnabled: true,
   buttonText: true,
   buttonLink: true,
   contactInfo: true,
@@ -212,12 +214,24 @@ export class MajorEventsResolver {
 
     const data = this.buildMajorEventUpdateData(input, hasExistingPaymentInfo, paymentInfoTableExists);
 
-    const updatedMajorEvent = await this.prisma.majorEvent.update({
-      where: {
-        id,
-      },
-      data,
-      select: this.getMajorEventSelect(paymentInfoTableExists),
+    const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
+      await tx.majorEvent.update({
+        where: {
+          id,
+        },
+        data,
+      });
+
+      if (input.price !== undefined) {
+        await this.syncMajorEventPrice(tx, id, input.price);
+      }
+
+      return tx.majorEvent.findUniqueOrThrow({
+        where: {
+          id,
+        },
+        select: this.getMajorEventSelect(paymentInfoTableExists),
+      });
     });
     await this.typesenseSearch.upsertMajorEvent({
       id: updatedMajorEvent.id,
@@ -277,6 +291,12 @@ export class MajorEventsResolver {
     }
     if (input.maxLecturesPerAttendee !== undefined) {
       data.maxLecturesPerAttendee = input.maxLecturesPerAttendee;
+    }
+    if (input.maxUncategorizedPerAttendee !== undefined) {
+      data.maxUncategorizedPerAttendee = input.maxUncategorizedPerAttendee;
+    }
+    if (input.rankedSubscriptionEnabled !== undefined) {
+      data.rankedSubscriptionEnabled = input.rankedSubscriptionEnabled;
     }
     if (input.buttonText !== undefined) data.buttonText = input.buttonText;
     if (input.buttonLink !== undefined) data.buttonLink = input.buttonLink;
@@ -350,6 +370,12 @@ export class MajorEventsResolver {
     if (input.maxLecturesPerAttendee !== undefined) {
       data.maxLecturesPerAttendee = input.maxLecturesPerAttendee;
     }
+    if (input.maxUncategorizedPerAttendee !== undefined) {
+      data.maxUncategorizedPerAttendee = input.maxUncategorizedPerAttendee;
+    }
+    if (input.rankedSubscriptionEnabled !== undefined) {
+      data.rankedSubscriptionEnabled = input.rankedSubscriptionEnabled;
+    }
     if (input.buttonText !== undefined) data.buttonText = input.buttonText;
     if (input.buttonLink !== undefined) data.buttonLink = input.buttonLink;
     if (input.contactInfo !== undefined) data.contactInfo = input.contactInfo;
@@ -401,26 +427,6 @@ export class MajorEventsResolver {
       }
       if (input.paymentInfo === null && hasExistingPaymentInfo) {
         data.paymentInfo = { delete: true };
-      }
-    }
-
-    if (input.price !== undefined) {
-      if (input.price === null) {
-        data.majorEventPrices = {
-          deleteMany: {},
-        };
-      } else {
-        const price = this.buildPricePayload(input.price);
-        if (price) {
-          data.majorEventPrices = {
-            deleteMany: {},
-            create: price,
-          };
-        } else {
-          data.majorEventPrices = {
-            deleteMany: {},
-          };
-        }
       }
     }
 
@@ -493,12 +499,7 @@ export class MajorEventsResolver {
       return undefined;
     }
 
-    const tiers = input.tiers
-      .map((tier) => ({
-        name: tier.name.trim(),
-        value: Math.round(tier.value),
-      }))
-      .filter((tier) => tier.name.length > 0);
+    const tiers = this.buildPriceTierPayloads(input);
 
     if (tiers.length === 0) {
       return undefined;
@@ -518,5 +519,75 @@ export class MajorEventsResolver {
         create: tiers,
       },
     };
+  }
+
+  private async syncMajorEventPrice(
+    tx: Prisma.TransactionClient,
+    majorEventId: string,
+    input: MajorEventPriceInput | null,
+  ): Promise<void> {
+    if (input === null) {
+      await this.deleteMajorEventPrice(tx, majorEventId);
+      return;
+    }
+
+    const tiers = this.buildPriceTierPayloads(input);
+
+    if (tiers.length === 0) {
+      await this.deleteMajorEventPrice(tx, majorEventId);
+      return;
+    }
+
+    if (tiers.some((tier) => !Number.isFinite(tier.value) || tier.value < 0)) {
+      throw new BadRequestException('Price tier values must be valid non-negative amounts in cents.');
+    }
+
+    if (input.type === 'SINGLE' && tiers.length !== 1) {
+      throw new BadRequestException('Single price requires exactly one tier.');
+    }
+
+    await tx.majorEventPrice.upsert({
+      where: {
+        majorEventId,
+      },
+      create: {
+        majorEventId,
+        type: input.type,
+        tiers: {
+          create: tiers,
+        },
+      },
+      update: {
+        type: input.type,
+        tiers: {
+          deleteMany: {},
+          create: tiers,
+        },
+      },
+    });
+  }
+
+  private async deleteMajorEventPrice(tx: Prisma.TransactionClient, majorEventId: string): Promise<void> {
+    await tx.priceTier.deleteMany({
+      where: {
+        price: {
+          majorEventId,
+        },
+      },
+    });
+    await tx.majorEventPrice.deleteMany({
+      where: {
+        majorEventId,
+      },
+    });
+  }
+
+  private buildPriceTierPayloads(input: MajorEventPriceInput): Prisma.PriceTierCreateWithoutPriceInput[] {
+    return input.tiers
+      .map((tier) => ({
+        name: tier.name.trim(),
+        value: Math.round(tier.value),
+      }))
+      .filter((tier) => tier.name.length > 0);
   }
 }

@@ -20,7 +20,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();
@@ -32,7 +34,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const OnlineDesktop: Story = {
-  args: { latitude: -22.1211, longitude: -51.4086, title: 'FCT Unesp' },
+  args: { latitude: -22.1211, longitude: -51.4086, title: 'FCT-Unesp' },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },

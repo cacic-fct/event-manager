@@ -7,6 +7,25 @@ import { PUBLIC_EVENT_SELECT, PublicEvent } from '../../public-events/models';
 import { CurrentUserMajorEventFeedItem } from '../models';
 import { CurrentUserEventMapperService } from '../mapper.service';
 
+type RankedCategory = 'course' | 'lecture' | 'uncategorized';
+
+export interface RankedDesiredCounts {
+  desiredCourses: number;
+  desiredLectures: number;
+  desiredUncategorized: number;
+}
+
+interface RankedEventLike {
+  id: string;
+  type: string;
+  eventGroupId: string | null;
+  startDate: Date;
+  endDate: Date;
+  slots: number | null;
+  slotsAvailable?: number | null;
+  autoSubscribe?: boolean | null;
+}
+
 @Injectable()
 export class CurrentUserMajorEventSubscriptionService {
   constructor(
@@ -50,6 +69,106 @@ export class CurrentUserMajorEventSubscriptionService {
     }
 
     return normalizedPaymentTier;
+  }
+
+  normalizeDesiredCount(value: number | null | undefined, fallback: number): number {
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+
+    if (!Number.isInteger(value) || value < 0) {
+      throw new BadRequestException('Desired event counts must be non-negative integers.');
+    }
+
+    return value;
+  }
+
+  resolveRankedDesiredCounts(
+    majorEvent: MajorEventBaseRecord,
+    events: RankedEventLike[],
+    input: {
+      desiredCourses?: number | null;
+      desiredLectures?: number | null;
+      desiredUncategorized?: number | null;
+    },
+  ): RankedDesiredCounts {
+    const capacity = this.getRankedCapacityByCategory(majorEvent, events);
+    const counts = {
+      desiredCourses: this.normalizeDesiredCount(input.desiredCourses, capacity.course),
+      desiredLectures: this.normalizeDesiredCount(input.desiredLectures, capacity.lecture),
+      desiredUncategorized: this.normalizeDesiredCount(input.desiredUncategorized, capacity.uncategorized),
+    };
+
+    if (counts.desiredCourses > capacity.course) {
+      throw new BadRequestException(`Desired course count exceeds available course choices (${capacity.course}).`);
+    }
+    if (counts.desiredLectures > capacity.lecture) {
+      throw new BadRequestException(`Desired lecture count exceeds available lecture choices (${capacity.lecture}).`);
+    }
+    if (counts.desiredUncategorized > capacity.uncategorized) {
+      throw new BadRequestException(
+        `Desired uncategorized event count exceeds available uncategorized choices (${capacity.uncategorized}).`,
+      );
+    }
+
+    const autoCounts = this.countEventsByCategory(events.filter((event) => event.autoSubscribe));
+    if (
+      counts.desiredCourses < autoCounts.course ||
+      counts.desiredLectures < autoCounts.lecture ||
+      counts.desiredUncategorized < autoCounts.uncategorized
+    ) {
+      throw new BadRequestException('Desired counts cannot be lower than automatic subscriptions.');
+    }
+
+    return counts;
+  }
+
+  allocateRankedEventIds(events: RankedEventLike[], desiredCounts: RankedDesiredCounts): string[] {
+    const orderedEvents = [...events];
+    const eventsByPreferenceItem = this.groupRankedEventsByPreferenceItem(orderedEvents);
+    const selected: RankedEventLike[] = [];
+    const counts = {
+      course: 0,
+      lecture: 0,
+      uncategorized: 0,
+    };
+
+    for (const item of eventsByPreferenceItem) {
+      const itemCounts = this.countEventsByCategory(item.events);
+      const isAutomatic = item.events.every((event) => event.autoSubscribe);
+      const desired = {
+        course: Math.max(desiredCounts.desiredCourses, counts.course + (isAutomatic ? itemCounts.course : 0)),
+        lecture: Math.max(desiredCounts.desiredLectures, counts.lecture + (isAutomatic ? itemCounts.lecture : 0)),
+        uncategorized: Math.max(
+          desiredCounts.desiredUncategorized,
+          counts.uncategorized + (isAutomatic ? itemCounts.uncategorized : 0),
+        ),
+      };
+
+      if (
+        !isAutomatic &&
+        (counts.course + itemCounts.course > desired.course ||
+          counts.lecture + itemCounts.lecture > desired.lecture ||
+          counts.uncategorized + itemCounts.uncategorized > desired.uncategorized)
+      ) {
+        continue;
+      }
+
+      if (!this.itemHasAvailableSlots(item.events)) {
+        continue;
+      }
+
+      if (this.itemConflictsWithSelected(item.events, selected)) {
+        continue;
+      }
+
+      selected.push(...item.events);
+      counts.course += itemCounts.course;
+      counts.lecture += itemCounts.lecture;
+      counts.uncategorized += itemCounts.uncategorized;
+    }
+
+    return selected.map((event) => event.id);
   }
 
   ensureMajorEventSubscriptionWindowOpen(majorEvent: MajorEventBaseRecord): void {
@@ -536,6 +655,70 @@ export class CurrentUserMajorEventSubscriptionService {
         },
       },
     } satisfies Prisma.MajorEventSubscriptionSelect;
+  }
+
+  private getRankedCapacityByCategory(
+    majorEvent: MajorEventBaseRecord,
+    events: RankedEventLike[],
+  ): Record<RankedCategory, number> {
+    const counts = this.countEventsByCategory(events);
+    return {
+      course: majorEvent.maxCoursesPerAttendee ?? counts.course,
+      lecture: majorEvent.maxLecturesPerAttendee ?? counts.lecture,
+      uncategorized: majorEvent.maxUncategorizedPerAttendee ?? counts.uncategorized,
+    };
+  }
+
+  private countEventsByCategory(events: RankedEventLike[]): Record<RankedCategory, number> {
+    return events.reduce(
+      (counts, event) => {
+        counts[this.getEventCategory(event)] += 1;
+        return counts;
+      },
+      {
+        course: 0,
+        lecture: 0,
+        uncategorized: 0,
+      } satisfies Record<RankedCategory, number>,
+    );
+  }
+
+  private getEventCategory(event: RankedEventLike): RankedCategory {
+    if (event.type === EventType.MINICURSO) {
+      return 'course';
+    }
+    if (event.type === EventType.PALESTRA) {
+      return 'lecture';
+    }
+    return 'uncategorized';
+  }
+
+  private groupRankedEventsByPreferenceItem(events: RankedEventLike[]): Array<{ key: string; events: RankedEventLike[] }> {
+    const groups = new Map<string, RankedEventLike[]>();
+    for (const event of events) {
+      const key = event.eventGroupId ?? event.id;
+      groups.set(key, [...(groups.get(key) ?? []), event]);
+    }
+
+    return [...groups.entries()].map(([key, groupEvents]) => ({
+      key,
+      events: groupEvents,
+    }));
+  }
+
+  private itemHasAvailableSlots(events: RankedEventLike[]): boolean {
+    return events.every((event) => event.slots == null || event.slotsAvailable == null || event.slotsAvailable > 0);
+  }
+
+  private itemConflictsWithSelected(events: RankedEventLike[], selectedEvents: RankedEventLike[]): boolean {
+    return events.some((event) =>
+      selectedEvents.some(
+        (selectedEvent) =>
+          (!event.eventGroupId || event.eventGroupId !== selectedEvent.eventGroupId) &&
+          event.startDate < selectedEvent.endDate &&
+          event.endDate > selectedEvent.startDate,
+      ),
+    );
   }
 }
 

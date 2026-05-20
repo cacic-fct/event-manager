@@ -19,7 +19,7 @@ type Story = StoryObj<CalendarEventListItem>;
 
 const demoMajorEvent: PublicMajorEvent = {
   id: 'major-story',
-  name: 'CACIC Storybook',
+  name: 'CACiC Storybook',
   emoji: '💻',
   startDate: '2026-05-20T12:00:00.000Z',
   endDate: '2026-05-23T21:00:00.000Z',
@@ -83,7 +83,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();
@@ -104,7 +106,10 @@ export const OnlineDesktop: Story = {
 };
 
 export const OnlineMobile: Story = {
-  args: { event: { ...demoEvent, name: 'Palestra noturna com descrição longa para responsividade' }, returnUrl: '/calendar?view=week' },
+  args: {
+    event: { ...demoEvent, name: 'Palestra noturna com descrição longa para responsividade' },
+    returnUrl: '/calendar?view=week',
+  },
   parameters: {
     viewport: { defaultViewport: 'mobile' },
   },

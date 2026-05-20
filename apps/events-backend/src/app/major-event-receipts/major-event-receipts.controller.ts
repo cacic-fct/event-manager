@@ -45,6 +45,7 @@ interface RejectReceiptBody {
 
 interface ApproveReceiptBody {
   receiptId?: string;
+  selectedEventIds?: string[];
 }
 
 @ApiTags('major-event-receipts')
@@ -145,7 +146,12 @@ export class MajorEventReceiptsController {
     if (!body.receiptId) {
       throw new BadRequestException('receiptId is required.');
     }
-    return this.receipts.approveReceipt(subscriptionId, body.receiptId, this.requireAuthenticatedUser(request));
+    return this.receipts.approveReceipt(
+      subscriptionId,
+      body.receiptId,
+      Array.isArray(body.selectedEventIds) ? body.selectedEventIds : undefined,
+      this.requireAuthenticatedUser(request),
+    );
   }
 
   @Post('admin/subscriptions/:subscriptionId/reject')

@@ -69,6 +69,12 @@
               <strong>Status</strong>
               {{ statusLabel(item.subscriptionStatus) }}
             </span>
+            @if (item.subscriptionFlow === 'RANKED_VOTING') {
+              <span>
+                <strong>Preferências</strong>
+                {{ rankedRequestLine(item) }}
+              </span>
+            }
           </div>
 
           <div class="contact-actions">
@@ -109,7 +115,13 @@
           <mat-card-header>
             <mat-icon mat-card-avatar>event</mat-icon>
             <mat-card-title>Eventos selecionados</mat-card-title>
-            <mat-card-subtitle>Conflitos em vermelho, sem vagas em amarelo.</mat-card-subtitle>
+            <mat-card-subtitle>
+              @if (item.subscriptionFlow === 'RANKED_VOTING') {
+                Ajuste as vagas que serão confirmadas. A seleção acompanha vagas em tempo real.
+              } @else {
+                Conflitos em vermelho, sem vagas em amarelo.
+              }
+            </mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             @if (eventGroups().length === 0) {
@@ -124,9 +136,20 @@
                         class="event-row"
                         [class.conflict-event]="event.hasScheduleConflict"
                         [class.no-slots-event]="event.hasNoSlots && !event.hasScheduleConflict">
+                        @if (item.subscriptionFlow === 'RANKED_VOTING') {
+                          <mat-checkbox
+                            matListItemIcon
+                            [checked]="selectedEventIds().has(event.id)"
+                            [disabled]="event.autoSubscribe || saving()"
+                            [attr.aria-label]="'Confirmar ' + event.name"
+                            (change)="toggleEvent(event, $event.checked)" />
+                        }
                         <span matListItemTitle>
                           <span class="event-emoji">{{ event.emoji }}</span>
                           {{ event.name }}
+                          @if (event.eventGroupName) {
+                            · {{ event.eventGroupName }}
+                          }
                         </span>
                         <span matListItemLine>
                           {{ event.startDate | date: 'HH:mm' }} - {{ event.endDate | date: 'HH:mm' }}
@@ -141,6 +164,9 @@
                             {{ event.slotsAvailable }} vaga{{ event.slotsAvailable === 1 ? '' : 's' }} disponível{{
                               event.slotsAvailable === 1 ? '' : 'is'
                             }}
+                          }
+                          @if (event.autoSubscribe) {
+                            · inscrição automática
                           }
                         </span>
                       </mat-list-item>
@@ -248,7 +274,8 @@
           mat-fab
           color="primary"
           type="button"
-          [disabled]="saving() || !item.receipt"
+          [disabled]="saving() || !item.receipt || !canApprove(item)"
+          [class.validation-disabled]="!canApprove(item)"
           aria-label="Aprovar comprovante"
           matTooltip="Aprovar"
           (click)="approve(item)">

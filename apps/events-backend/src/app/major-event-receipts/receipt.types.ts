@@ -41,6 +41,11 @@ export interface AdminReceiptEventSummary {
   locationDescription?: string | null;
   slots?: number | null;
   slotsAvailable?: number | null;
+  eventGroupId?: string | null;
+  eventGroupName?: string | null;
+  preferenceOrder?: number | null;
+  autoSubscribe: boolean;
+  selectedForConfirmation: boolean;
   hasScheduleConflict: boolean;
   hasNoSlots: boolean;
 }
@@ -55,6 +60,10 @@ export interface AdminReceiptQueueItem {
   personPhone?: string | null;
   amountPaid?: number | null;
   paymentTier?: string | null;
+  subscriptionFlow: string;
+  desiredCourses?: number | null;
+  desiredLectures?: number | null;
+  desiredUncategorized?: number | null;
   subscriptionStatus: string;
   subscriptionUpdatedAt: Date;
   receiptRejectionReason?: string | null;

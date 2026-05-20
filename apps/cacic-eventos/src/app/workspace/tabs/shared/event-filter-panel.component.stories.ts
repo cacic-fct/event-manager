@@ -5,7 +5,7 @@ import { EventFilterPanelComponent } from './event-filter-panel.component';
 
 const meta: Meta<EventFilterPanelComponent> = {
   component: EventFilterPanelComponent,
-  title: 'CACIC Eventos/Workspace/Tabs/Shared/Event Filter Panel',
+  title: 'CACiC Eventos/Workspace/Tabs/Shared/Event Filter Panel',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -26,12 +26,13 @@ const createFilterForm = (query = '') =>
     query: new FormControl(query, { nonNullable: true }),
   });
 
-
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();

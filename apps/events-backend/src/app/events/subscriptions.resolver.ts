@@ -52,6 +52,8 @@ const MAJOR_EVENT_SELECT = {
   subscriptionEndDate: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
+  maxUncategorizedPerAttendee: true,
+  rankedSubscriptionEnabled: true,
   buttonText: true,
   buttonLink: true,
   contactInfo: true,

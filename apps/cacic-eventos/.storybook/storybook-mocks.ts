@@ -59,7 +59,7 @@ function eventGroup(index = 0) {
 function majorEvent(index = 0) {
   return {
     id: `major-${index + 1}`,
-    name: faker.helpers.arrayElement(['CACIC 2026', 'Semana da Computacao', 'Tech FCT']),
+    name: faker.helpers.arrayElement(['CACiC', 'SECOMPP']),
     emoji: faker.helpers.arrayElement(['💻', '🚀', '🎓']),
     startDate: isoDaysFromNow(index + 7, 9),
     endDate: isoDaysFromNow(index + 10, 18),
@@ -81,7 +81,7 @@ function majorEvent(index = 0) {
       bankName: 'Banco Storybook',
       agency: '0001',
       account: '12345-6',
-      holder: 'CACIC FCT',
+      holder: 'CACiC FCT',
       document: '12.345.678/0001-90',
       pixKey: 'pagamentos@example.com',
       pixCity: 'PRESIDENTE PRUDENTE',
@@ -112,7 +112,7 @@ function event(index = 0) {
     id: `event-${index + 1}`,
     name: faker.helpers.arrayElement([
       'Arquitetura Angular com Signals',
-      'IA aplicada a eventos academicos',
+      'IA aplicada a eventos acadêmicos',
       'Observabilidade para APIs GraphQL',
       'Acessibilidade em produtos digitais',
     ]),
@@ -125,11 +125,11 @@ function event(index = 0) {
     shortDescription: faker.lorem.sentence(),
     latitude: -22.1211,
     longitude: -51.4086,
-    locationDescription: 'FCT Unesp, Presidente Prudente',
+    locationDescription: 'FCT-Unesp, Presidente Prudente',
     majorEventId: 'major-1',
     majorEvent: {
       id: 'major-1',
-      name: 'CACIC 2026',
+      name: 'CACiC',
       startDate: isoDaysFromNow(7, 9),
       endDate: isoDaysFromNow(10, 18),
     },
@@ -322,7 +322,7 @@ function receiptQueue() {
         expiresAt: isoDaysFromNow(1, 9),
         imageUrl: 'https://placehold.co/900x1200/png?text=Comprovante',
         processingStatus: 'PROCESSED',
-        ocrText: 'PIX 25,00 CACIC FCT',
+        ocrText: 'PIX 25,00 CACiC FCT',
         amountMatched: true,
         matchedAmountText: 'R$ 25,00',
         nameMatched: index === 0,
@@ -526,7 +526,9 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
   }
 
   if (query.includes('DownloadCertificate')) {
-    return { downloadCertificate: { fileName: 'certificado.pdf', mimeType: 'application/pdf', contentBase64: 'JVBERi0xLjQK' } };
+    return {
+      downloadCertificate: { fileName: 'certificado.pdf', mimeType: 'application/pdf', contentBase64: 'JVBERi0xLjQK' },
+    };
   }
 
   if (query.includes('ListMergeCandidates')) {
@@ -549,7 +551,11 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     };
   }
 
-  if (query.includes('UpdateMergeCandidate') || query.includes('MergeCandidatePeople') || query.includes('UndoMergeCandidatePeople')) {
+  if (
+    query.includes('UpdateMergeCandidate') ||
+    query.includes('MergeCandidatePeople') ||
+    query.includes('UndoMergeCandidatePeople')
+  ) {
     return {
       updateMergeCandidate: { id: 'merge-1', status: 'REJECTED', updatedAt: now.toISOString() },
       mergeCandidatePeople: { id: 'merge-1', status: 'MERGED', updatedAt: now.toISOString() },
@@ -604,13 +610,17 @@ export const cacicEventosHandlers = [
   http.post('/api/major-event-receipts/admin/subscriptions/:subscriptionId/approve', ({ params }) =>
     HttpResponse.json({
       actionId: 'approve-action-1',
-      item: receiptQueue().items.find((item) => item.subscriptionId === params['subscriptionId']) ?? receiptQueue().items[0],
+      item:
+        receiptQueue().items.find((item) => item.subscriptionId === params['subscriptionId']) ??
+        receiptQueue().items[0],
     }),
   ),
   http.post('/api/major-event-receipts/admin/subscriptions/:subscriptionId/reject', ({ params }) =>
     HttpResponse.json({
       actionId: 'reject-action-1',
-      item: receiptQueue().items.find((item) => item.subscriptionId === params['subscriptionId']) ?? receiptQueue().items[0],
+      item:
+        receiptQueue().items.find((item) => item.subscriptionId === params['subscriptionId']) ??
+        receiptQueue().items[0],
     }),
   ),
   http.post('/api/major-event-receipts/admin/actions/:actionId/undo', () => HttpResponse.json(receiptQueue().items[0])),

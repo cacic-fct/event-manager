@@ -17,6 +17,8 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
   subscriptionEndDate: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
+  maxUncategorizedPerAttendee: true,
+  rankedSubscriptionEnabled: true,
   isPaymentRequired: true,
   additionalPaymentInfo: true,
   certificateConfigs: {
@@ -127,6 +129,8 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventRecord): PublicM
     subscriptionEndDate: majorEvent.subscriptionEndDate ?? undefined,
     maxCoursesPerAttendee: majorEvent.maxCoursesPerAttendee ?? undefined,
     maxLecturesPerAttendee: majorEvent.maxLecturesPerAttendee ?? undefined,
+    maxUncategorizedPerAttendee: majorEvent.maxUncategorizedPerAttendee ?? undefined,
+    rankedSubscriptionEnabled: majorEvent.rankedSubscriptionEnabled,
     buttonText: majorEvent.buttonText ?? undefined,
     buttonLink: majorEvent.buttonLink ?? undefined,
     contactInfo: majorEvent.contactInfo ?? undefined,
@@ -258,6 +262,12 @@ export class PublicMajorEvent {
 
   @Field(() => Int, { nullable: true })
   maxLecturesPerAttendee?: number | null;
+
+  @Field(() => Int, { nullable: true })
+  maxUncategorizedPerAttendee?: number | null;
+
+  @Field(() => Boolean)
+  rankedSubscriptionEnabled!: boolean;
 
   @Field(() => Boolean, { nullable: true })
   isPaymentRequired?: boolean | null;

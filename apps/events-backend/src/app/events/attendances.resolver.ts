@@ -1188,6 +1188,7 @@ export class EventAttendancesResolver {
         },
         event: {
           select: {
+            allowSubscription: true,
             majorEventId: true,
           },
         },
@@ -1204,7 +1205,15 @@ export class EventAttendancesResolver {
       ...new Set(attendances.map((attendance) => attendance.createdById).filter((id): id is string => Boolean(id))),
     ];
 
-    const [subscriptions, collectors] = await Promise.all([
+    const standaloneEventIds = [
+      ...new Set(
+        attendances
+          .filter((attendance) => attendance.event.allowSubscription && !attendance.event.majorEventId)
+          .map((attendance) => attendance.eventId),
+      ),
+    ];
+
+    const [majorEventSubscriptions, standaloneEventSubscriptions, collectors] = await Promise.all([
       majorEventId
         ? this.prisma.majorEventSubscription.findMany({
             where: {
@@ -1217,6 +1226,23 @@ export class EventAttendancesResolver {
             select: {
               personId: true,
               subscriptionStatus: true,
+            },
+          })
+        : Promise.resolve([]),
+      standaloneEventIds.length
+        ? this.prisma.eventSubscription.findMany({
+            where: {
+              eventId: {
+                in: standaloneEventIds,
+              },
+              personId: {
+                in: personIds,
+              },
+              deletedAt: null,
+            },
+            select: {
+              eventId: true,
+              personId: true,
             },
           })
         : Promise.resolve([]),
@@ -1235,8 +1261,11 @@ export class EventAttendancesResolver {
         : Promise.resolve([]),
     ]);
 
-    const subscriptionStatusByPersonId = new Map(
-      subscriptions.map((subscription) => [subscription.personId, subscription.subscriptionStatus]),
+    const majorEventSubscriptionStatusByPersonId = new Map(
+      majorEventSubscriptions.map((subscription) => [subscription.personId, subscription.subscriptionStatus]),
+    );
+    const standaloneEventSubscriptionKeys = new Set(
+      standaloneEventSubscriptions.map((subscription) => `${subscription.personId}:${subscription.eventId}`),
     );
     const collectorFirstNameById = new Map(
       collectors.map((collector) => [collector.id, this.getFirstName(collector.name)]),
@@ -1247,7 +1276,9 @@ export class EventAttendancesResolver {
       eventId: attendance.eventId,
       fullName: attendance.person?.name ?? undefined,
       unespRole: attendance.person?.user?.role ?? undefined,
-      subscriptionStatus: subscriptionStatusByPersonId.get(attendance.personId) ?? undefined,
+      subscriptionStatus:
+        majorEventSubscriptionStatusByPersonId.get(attendance.personId) ??
+        (standaloneEventSubscriptionKeys.has(`${attendance.personId}:${attendance.eventId}`) ? 'CONFIRMED' : undefined),
       attendedAt: attendance.attendedAt,
       createdByMethod: attendance.createdByMethod,
       collectedByFirstName: attendance.createdById ? (collectorFirstNameById.get(attendance.createdById) ?? undefined) : undefined,

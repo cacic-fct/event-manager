@@ -300,6 +300,12 @@ export class MajorEvent {
   @Field(() => Int, { nullable: true })
   maxLecturesPerAttendee?: number;
 
+  @Field(() => Int, { nullable: true })
+  maxUncategorizedPerAttendee?: number;
+
+  @Field(() => Boolean)
+  rankedSubscriptionEnabled!: boolean;
+
   @Field(() => String, { nullable: true })
   buttonText?: string;
 
@@ -1254,6 +1260,12 @@ export class MajorEventCreateInput {
   @Field(() => Int, { nullable: true })
   maxLecturesPerAttendee?: number;
 
+  @Field(() => Int, { nullable: true })
+  maxUncategorizedPerAttendee?: number;
+
+  @Field(() => Boolean, { nullable: true })
+  rankedSubscriptionEnabled?: boolean;
+
   @Field(() => String, { nullable: true })
   buttonText?: string;
 
@@ -1328,6 +1340,12 @@ export class MajorEventUpdateInput {
 
   @Field(() => Int, { nullable: true })
   maxLecturesPerAttendee?: number;
+
+  @Field(() => Int, { nullable: true })
+  maxUncategorizedPerAttendee?: number;
+
+  @Field(() => Boolean, { nullable: true })
+  rankedSubscriptionEnabled?: boolean;
 
   @Field(() => String, { nullable: true })
   buttonText?: string;
@@ -1625,6 +1643,12 @@ export class EventCreateInput {
 
   @Field(() => String, { nullable: true })
   buttonLink?: string;
+
+  @Field(() => [String], { nullable: true })
+  lecturerPersonIds?: string[];
+
+  @Field(() => [String], { nullable: true })
+  attendanceCollectorPersonIds?: string[];
 
   @Field(() => Date, { nullable: true })
   deletedAt?: Date;

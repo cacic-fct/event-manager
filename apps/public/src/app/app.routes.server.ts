@@ -50,6 +50,22 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'major-event/:majorEventId/ranked-subscription',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'major-event/:majorEventId/ranked-subscription/select',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'major-event/:majorEventId/ranked-subscription/rank',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'major-event/:majorEventId/ranked-subscription/event/:eventId',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'major-event/:majorEventId/payment',
     renderMode: RenderMode.Client,
   },

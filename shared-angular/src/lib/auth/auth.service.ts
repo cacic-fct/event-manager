@@ -2,6 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError } from 'rxjs';
+import { AuthOnlineStatusService } from './auth-online-status.service';
 import { AuthenticatedUser, AuthRefreshResult } from './auth.types';
 import type { LoginOptions } from './auth.types';
 
@@ -14,6 +15,7 @@ export class AuthService {
 
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly onlineStatus = inject(AuthOnlineStatusService);
 
   private refreshRequest$: Observable<AuthRefreshResult> | null = null;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -31,7 +33,7 @@ export class AuthService {
     try {
       await this.refreshMe();
 
-      if (!this.isAuthenticated() && !isDevMode()) {
+      if (!this.isAuthenticated() && this.onlineStatus.isOnline() && !isDevMode()) {
         this.loginWithExistingSsoSession();
       }
     } catch (error) {
