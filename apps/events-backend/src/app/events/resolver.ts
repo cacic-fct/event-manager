@@ -1,11 +1,17 @@
 import { DeletionResult, Event, EventCreateInput, EventUpdateInput } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+
+type GraphqlContext = {
+  req?: { user?: AuthenticatedUser };
+  request?: { user?: AuthenticatedUser };
+};
 
 const MAJOR_EVENT_SELECT = {
   id: true,
@@ -212,10 +218,53 @@ export class EventsResolver {
 
   @Mutation(() => Event, { name: 'createEvent' })
   @RequireScopes('event#edit')
-  async createEvent(@Args('input', { type: () => EventCreateInput }) input: EventCreateInput) {
+  async createEvent(
+    @Args('input', { type: () => EventCreateInput }) input: EventCreateInput,
+    @Context() context: GraphqlContext,
+  ) {
     const normalizedInput = await this.normalizeEventCertificateInput(input);
+    const eventInput = { ...normalizedInput };
+    const lecturerPersonIds = eventInput.lecturerPersonIds;
+    const attendanceCollectorPersonIds = eventInput.attendanceCollectorPersonIds;
+    delete eventInput.lecturerPersonIds;
+    delete eventInput.attendanceCollectorPersonIds;
+    delete eventInput.deletedAt;
+    delete eventInput.createdAt;
+    delete eventInput.createdById;
+    delete eventInput.updatedById;
+    const actorId = context.req?.user?.sub ?? context.request?.user?.sub;
+    const uniqueLecturerPersonIds = [...new Set(lecturerPersonIds ?? [])];
+    const uniqueAttendanceCollectorPersonIds = [...new Set(attendanceCollectorPersonIds ?? [])];
     const event = await this.prisma.event.create({
-      data: normalizedInput,
+      data: {
+        ...eventInput,
+        lecturers:
+          uniqueLecturerPersonIds.length > 0
+            ? {
+                create: uniqueLecturerPersonIds.map((personId) => ({
+                  person: {
+                    connect: {
+                      id: personId,
+                    },
+                  },
+                  createdById: actorId,
+                })),
+              }
+            : undefined,
+        attendanceCollectors:
+          uniqueAttendanceCollectorPersonIds.length > 0
+            ? {
+                create: uniqueAttendanceCollectorPersonIds.map((personId) => ({
+                  person: {
+                    connect: {
+                      id: personId,
+                    },
+                  },
+                  createdById: actorId,
+                })),
+              }
+            : undefined,
+      },
       select: EVENT_DETAIL_SELECT,
     });
     await this.disableGroupPerEventModeForMajorEvent(event);

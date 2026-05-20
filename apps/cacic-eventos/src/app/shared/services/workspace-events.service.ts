@@ -251,8 +251,8 @@ export class WorkspaceEventsService {
       return;
     }
 
-    const payload = this.buildEventPayload();
     const eventId = this.eventForm.controls.id.value;
+    const payload = this.buildEventPayload(!eventId);
 
     this.ui.loading.set(true);
     try {
@@ -329,9 +329,6 @@ export class WorkspaceEventsService {
 
   async createAndAddLecturer(): Promise<void> {
     const selectedEvent = this.selectedEvent();
-    if (!selectedEvent) {
-      return;
-    }
 
     const dialogRef = this.dialog.open(PersonCreateDialogComponent, {
       width: '48rem',
@@ -339,6 +336,11 @@ export class WorkspaceEventsService {
     });
     const person = await firstValueFrom(dialogRef.afterClosed());
     if (!person) {
+      return;
+    }
+
+    if (!selectedEvent) {
+      this.addPendingLecturer(person);
       return;
     }
 
@@ -354,6 +356,7 @@ export class WorkspaceEventsService {
   async addLecturer(person: Person): Promise<void> {
     const selectedEvent = this.selectedEvent();
     if (!selectedEvent) {
+      this.addPendingLecturer(person);
       return;
     }
     await firstValueFrom(
@@ -368,6 +371,7 @@ export class WorkspaceEventsService {
   async removeLecturer(personId: string): Promise<void> {
     const selectedEvent = this.selectedEvent();
     if (!selectedEvent) {
+      this.eventLecturers.update((lecturers) => lecturers.filter((lecturer) => lecturer.personId !== personId));
       return;
     }
     await firstValueFrom(this.api.deleteEventLecturer(selectedEvent.id, personId));
@@ -386,6 +390,7 @@ export class WorkspaceEventsService {
   async addAttendanceCollector(person: Person): Promise<void> {
     const selectedEvent = this.selectedEvent();
     if (!selectedEvent) {
+      this.addPendingAttendanceCollector(person);
       return;
     }
     await firstValueFrom(
@@ -400,6 +405,9 @@ export class WorkspaceEventsService {
   async removeAttendanceCollector(personId: string): Promise<void> {
     const selectedEvent = this.selectedEvent();
     if (!selectedEvent) {
+      this.eventAttendanceCollectors.update((collectors) =>
+        collectors.filter((collector) => collector.personId !== personId),
+      );
       return;
     }
     await firstValueFrom(this.api.deleteEventAttendanceCollector(selectedEvent.id, personId));
@@ -435,7 +443,7 @@ export class WorkspaceEventsService {
     await this.loadEvents();
   }
 
-  private buildEventPayload(): EventInput {
+  private buildEventPayload(includePeople: boolean): EventInput {
     const raw = this.eventForm.getRawValue();
     const creditValue = this.toOptionalNumber(raw.creditValue);
     const creditMinutes =
@@ -446,7 +454,7 @@ export class WorkspaceEventsService {
           : Math.round(creditValue);
     const isOnlineAttendanceAllowed = raw.isOnlineAttendanceAllowed;
 
-    return {
+    const payload: EventInput = {
       name: raw.name.trim(),
       creditMinutes,
       startDate: this.toIsoDateTime(raw.startDate),
@@ -489,6 +497,41 @@ export class WorkspaceEventsService {
       buttonText: raw.buttonText.trim() || null,
       buttonLink: raw.buttonLink.trim() || null,
     };
+
+    if (includePeople) {
+      payload.lecturerPersonIds = this.eventLecturers().map((lecturer) => lecturer.personId);
+      payload.attendanceCollectorPersonIds = this.eventAttendanceCollectors().map((collector) => collector.personId);
+    }
+
+    return payload;
+  }
+
+  private addPendingLecturer(person: Person): void {
+    this.eventLecturers.update((lecturers) =>
+      lecturers.some((lecturer) => lecturer.personId === person.id)
+        ? lecturers
+        : [
+            ...lecturers,
+            {
+              personId: person.id,
+              name: person.name,
+            },
+          ],
+    );
+  }
+
+  private addPendingAttendanceCollector(person: Person): void {
+    this.eventAttendanceCollectors.update((collectors) =>
+      collectors.some((collector) => collector.personId === person.id)
+        ? collectors
+        : [
+            ...collectors,
+            {
+              personId: person.id,
+              name: person.name,
+            },
+          ],
+    );
   }
 
   private populateEventForm(eventItem: Event): void {

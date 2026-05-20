@@ -19,7 +19,7 @@ type Story = StoryObj<CalendarListView>;
 
 const demoMajorEvent: PublicMajorEvent = {
   id: 'major-story',
-  name: 'CACIC Storybook',
+  name: 'CACiC Storybook',
   emoji: '💻',
   startDate: '2026-05-20T12:00:00.000Z',
   endDate: '2026-05-23T21:00:00.000Z',
@@ -81,16 +81,36 @@ const demoEvent: PublicEvent = {
 
 const demoEvents: PublicEvent[] = [
   demoEvent,
-  { ...demoEvent, id: 'event-story-2', name: 'Acessibilidade em produtos digitais', emoji: '♿', type: 'PALESTRA' as const, startDate: '2026-05-22T13:00:00.000Z', endDate: '2026-05-22T14:00:00.000Z', slotsAvailable: 0 },
-  { ...demoEvent, id: 'event-story-3', name: 'Observabilidade para APIs GraphQL', emoji: '📡', type: 'OTHER' as const, startDate: '2026-06-02T18:00:00.000Z', endDate: '2026-06-02T20:00:00.000Z', eventGroup: null, eventGroupId: null },
+  {
+    ...demoEvent,
+    id: 'event-story-2',
+    name: 'Acessibilidade em produtos digitais',
+    emoji: '♿',
+    type: 'PALESTRA' as const,
+    startDate: '2026-05-22T13:00:00.000Z',
+    endDate: '2026-05-22T14:00:00.000Z',
+    slotsAvailable: 0,
+  },
+  {
+    ...demoEvent,
+    id: 'event-story-3',
+    name: 'Observabilidade para APIs GraphQL',
+    emoji: '📡',
+    type: 'OTHER' as const,
+    startDate: '2026-06-02T18:00:00.000Z',
+    endDate: '2026-06-02T20:00:00.000Z',
+    eventGroup: null,
+    eventGroupId: null,
+  },
 ];
-
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();
@@ -120,7 +140,12 @@ export const OnlineMobile: Story = {
 };
 
 export const DarkMobile: Story = {
-  args: { events: demoEvents.slice(0, 2), canLoadOlder: false, isLoadingOlder: false, returnUrl: '/calendar?offline=true' },
+  args: {
+    events: demoEvents.slice(0, 2),
+    canLoadOlder: false,
+    isLoadingOlder: false,
+    returnUrl: '/calendar?offline=true',
+  },
   parameters: {
     backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'mobile' },

@@ -38,6 +38,8 @@ export interface PublicMajorEvent {
   subscriptionEndDate?: string | null;
   maxCoursesPerAttendee?: number | null;
   maxLecturesPerAttendee?: number | null;
+  maxUncategorizedPerAttendee?: number | null;
+  rankedSubscriptionEnabled?: boolean | null;
   buttonText?: string | null;
   buttonLink?: string | null;
   contactInfo?: string | null;

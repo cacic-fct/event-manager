@@ -12,7 +12,7 @@ import { provideRouter, RouteReuseStrategy } from '@angular/router';
 import { appRoutes } from './app.routes';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
-import { AuthService, authInterceptor } from '@cacic-fct/shared-angular';
+import { AuthOnlineStatusService, AuthService, authInterceptor } from '@cacic-fct/shared-angular';
 import { MatIconRegistry } from '@angular/material/icon';
 import { provideServiceWorker } from '@angular/service-worker';
 import { OnlineAttendanceCoordinatorService } from './attendance/online-attendance-coordinator.service';
@@ -46,6 +46,10 @@ export const appConfig: ApplicationConfig = {
       inject(NetworkStatusSnackbarService).start();
       inject(OfflineUserDataService).start();
     }),
+    {
+      provide: AuthOnlineStatusService,
+      useExisting: NetworkStatusService,
+    },
     provideServiceWorker('novu-ngsw-worker.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',

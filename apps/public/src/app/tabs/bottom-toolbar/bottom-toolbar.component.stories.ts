@@ -20,7 +20,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();
@@ -32,11 +34,13 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const DesktopLight: Story = {
-  args: { items: [
-    { label: 'Calendário', shortLabel: 'Calendário', icon: 'calendar_month', route: '/calendar' },
-    { label: 'Eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event' },
-    { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu' },
-  ] },
+  args: {
+    items: [
+      { label: 'Calendário', shortLabel: 'Calendário', icon: 'calendar_month', route: '/calendar', hidden: false },
+      { label: 'Eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event', hidden: false },
+      { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
+    ],
+  },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -45,11 +49,13 @@ export const DesktopLight: Story = {
 };
 
 export const MobileLight: Story = {
-  args: { items: [
-    { label: 'Calendário', shortLabel: 'Agenda', icon: 'calendar_month', route: '/calendar' },
-    { label: 'Eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event' },
-    { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu' },
-  ] },
+  args: {
+    items: [
+      { label: 'Calendário', shortLabel: 'Agenda', icon: 'calendar_month', route: '/calendar', hidden: false },
+      { label: 'Eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event', hidden: false },
+      { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
+    ],
+  },
   parameters: {
     viewport: { defaultViewport: 'mobile' },
   },
@@ -58,11 +64,13 @@ export const MobileLight: Story = {
 };
 
 export const DesktopDark: Story = {
-  args: { items: [
-    { label: 'Calendário offline', shortLabel: 'Agenda', icon: 'cloud_off', route: '/calendar' },
-    { label: 'Carteira', shortLabel: 'Carteira', icon: 'badge', route: '/wallet' },
-    { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu' },
-  ] },
+  args: {
+    items: [
+      { label: 'Calendário offline', shortLabel: 'Agenda', icon: 'cloud_off', route: '/calendar', hidden: false },
+      { label: 'Carteira', shortLabel: 'Carteira', icon: 'badge', route: '/wallet', hidden: false },
+      { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
+    ],
+  },
   parameters: {
     backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'desktop' },
@@ -72,11 +80,13 @@ export const DesktopDark: Story = {
 };
 
 export const MobileDark: Story = {
-  args: { items: [
-    { label: 'Calendário', shortLabel: 'Agenda', icon: 'calendar_month', route: '/calendar' },
-    { label: 'Eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event' },
-    { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu' },
-  ] },
+  args: {
+    items: [
+      { label: 'Calendário', shortLabel: 'Agenda', icon: 'calendar_month', route: '/calendar', hidden: false },
+      { label: 'Eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event', hidden: false },
+      { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
+    ],
+  },
   parameters: {
     backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'mobile' },

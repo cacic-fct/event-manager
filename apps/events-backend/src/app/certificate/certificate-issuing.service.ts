@@ -128,8 +128,6 @@ export class CertificateIssuingService {
     config: CertificateConfigRecord,
     issuedById?: string,
   ): Promise<{ certificates: CertificateRecord[] }> {
-    const recipients = await this.eligibilityService.resolveEligibleRecipients(config);
-    const eligiblePersonIds = new Set(recipients.map((recipient) => recipient.person.id));
     const existingCertificates = await this.prisma.certificate.findMany({
       where: {
         configId: config.id,
@@ -139,6 +137,17 @@ export class CertificateIssuingService {
         personId: true,
       },
     });
+
+    if (config.issuedTo === CertificateIssuedTo.OTHER) {
+      return this.refreshManualCertificatesForConfig(
+        config,
+        existingCertificates.map((certificate) => certificate.personId),
+        issuedById,
+      );
+    }
+
+    const recipients = await this.eligibilityService.resolveEligibleRecipients(config);
+    const eligiblePersonIds = new Set(recipients.map((recipient) => recipient.person.id));
     const invalidPersonIds = existingCertificates
       .map((certificate) => certificate.personId)
       .filter((personId) => !eligiblePersonIds.has(personId));
@@ -167,6 +176,33 @@ export class CertificateIssuingService {
         batch.map((recipient) => this.upsertCertificateForRecipient(config, recipient, issuedById)),
       );
       certificates.push(...issuedBatch);
+    }
+
+    return { certificates };
+  }
+
+  private async refreshManualCertificatesForConfig(
+    config: CertificateConfigRecord,
+    personIds: string[],
+    issuedById?: string,
+  ): Promise<{ certificates: CertificateRecord[] }> {
+    if (personIds.length === 0) {
+      return { certificates: [] };
+    }
+
+    const certificates: CertificateRecord[] = [];
+    for (let index = 0; index < personIds.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+      const batch = personIds.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
+      const refreshedBatch = await Promise.all(
+        batch.map(async (personId) => {
+          const recipients = await this.eligibilityService.resolveEligibleRecipients(config, personId);
+          const recipient = recipients.find((item) => item.person.id === personId);
+          return recipient ? this.upsertCertificateForRecipient(config, recipient, issuedById) : null;
+        }),
+      );
+      certificates.push(
+        ...refreshedBatch.filter((certificate): certificate is CertificateRecord => certificate !== null),
+      );
     }
 
     return { certificates };

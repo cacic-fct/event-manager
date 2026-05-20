@@ -1,10 +1,11 @@
-import { Component, inject, PLATFORM_ID } from '@angular/core';
+import { Component, computed, inject, PLATFORM_ID } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { RouterOutlet } from '@angular/router';
 import { BottomToolbarComponent } from './bottom-toolbar.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
 import { filter, map } from 'rxjs';
+import { AuthService } from '@cacic-fct/shared-angular';
 
 @Component({
   imports: [BottomToolbarComponent, RouterOutlet],
@@ -13,7 +14,7 @@ import { filter, map } from 'rxjs';
       <main class="toolbar-content" [class.no-x-padding]="noXPadding()">
         <router-outlet />
       </main>
-      <app-bottom-toolbar [items]="items"></app-bottom-toolbar>
+      <app-bottom-toolbar [items]="items()"></app-bottom-toolbar>
     </div>
   `,
   styles: `
@@ -31,6 +32,7 @@ import { filter, map } from 'rxjs';
 export class ToolbarLayoutComponent {
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly authService = inject(AuthService);
 
   private getRouteData(key: string): boolean {
     if (!isPlatformBrowser(this.platformId)) {
@@ -46,33 +48,41 @@ export class ToolbarLayoutComponent {
     return route.snapshot?.data?.[key] ?? false;
   }
 
-  readonly items: ToolbarItem[] = [
-    {
-      label: 'Calendário',
-      shortLabel: 'Calendário',
-      icon: 'calendar_month',
-      route: '/calendar',
-    },
-    {
-      label: 'Eventos',
-      shortLabel: 'Eventos',
-      icon: 'event',
-      route: '/major-event',
-    },
-    {
-      label: 'Notificações',
-      shortLabel: 'Avisos',
-      icon: 'notifications',
-      route: '/notifications',
-      badge: 'notifications',
-    },
-    {
-      label: 'Menu',
-      shortLabel: 'Menu',
-      icon: 'menu',
-      route: '/menu',
-    },
-  ];
+  readonly items = computed<ToolbarItem[]>(() => {
+    const isAuthenticated = this.authService.isAuthenticated();
+
+    return [
+      {
+        label: 'Calendário',
+        shortLabel: 'Calendário',
+        icon: 'calendar_month',
+        route: '/calendar',
+        hidden: false,
+      },
+      {
+        label: 'Eventos',
+        shortLabel: 'Eventos',
+        icon: 'event',
+        route: '/major-event',
+        hidden: false,
+      },
+      {
+        label: 'Notificações',
+        shortLabel: 'Avisos',
+        icon: 'notifications',
+        route: '/notifications',
+        badge: 'notifications',
+        hidden: !isAuthenticated,
+      },
+      {
+        label: 'Menu',
+        shortLabel: 'Menu',
+        icon: 'menu',
+        route: '/menu',
+        hidden: false,
+      },
+    ];
+  });
 
   readonly noXPadding = toSignal(
     this.router.events.pipe(
@@ -91,4 +101,5 @@ export interface ToolbarItem {
   route: string;
   icon: string;
   badge?: 'notifications';
+  hidden: boolean;
 }

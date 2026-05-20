@@ -342,7 +342,7 @@
           <button
             mat-button
             type="button"
-            [disabled]="!workspace.selectedEvent() || !permissions.canEdit('event-lecturer#edit', 'person#edit')"
+            [disabled]="!permissions.canEdit('event-lecturer#edit', 'person#edit')"
             (click)="workspace.createAndAddLecturer()">
             <mat-icon>person_add</mat-icon>
             Criar pessoa
@@ -354,7 +354,7 @@
             <button
               mat-stroked-button
               type="button"
-              [disabled]="!workspace.selectedEvent() || !permissions.canEdit('event-lecturer#edit')"
+              [disabled]="!permissions.canEdit('event-lecturer#edit')"
               (click)="workspace.addLecturer(candidate)">
               <mat-icon>add</mat-icon>
               Adicionar {{ candidate.name }}
@@ -369,7 +369,11 @@
             <button
               mat-stroked-button
               type="button"
-              [disabled]="!permissions.canDelete('event-lecturer#delete')"
+              [disabled]="
+                workspace.selectedEvent()
+                  ? !permissions.canDelete('event-lecturer#delete')
+                  : !permissions.canEdit('event-lecturer#edit')
+              "
               (click)="workspace.removeLecturer(lecturer.personId)">
               <mat-icon>close</mat-icon>
               {{ lecturer.name }}
@@ -402,7 +406,7 @@
             <button
               mat-stroked-button
               type="button"
-              [disabled]="!workspace.selectedEvent() || !permissions.canEdit('event#edit')"
+              [disabled]="!permissions.canEdit('event#edit')"
               (click)="workspace.addAttendanceCollector(candidate)">
               <mat-icon>add</mat-icon>
               Adicionar {{ candidate.name }}

@@ -47,7 +47,7 @@ export const EVENT_FIELDS = `
     name
     emoji
     shouldIssueCertificate
-  shouldIssueCertificateForNonPayingAttendees
+    shouldIssueCertificateForNonPayingAttendees
     shouldIssueCertificateForNonSubscribedAttendees
     shouldIssueCertificateForEachEvent
     shouldIssuePartialCertificate
@@ -70,6 +70,8 @@ export const MAJOR_EVENT_FIELDS = `
   subscriptionEndDate
   maxCoursesPerAttendee
   maxLecturesPerAttendee
+  maxUncategorizedPerAttendee
+  rankedSubscriptionEnabled
   buttonText
   buttonLink
   contactInfo

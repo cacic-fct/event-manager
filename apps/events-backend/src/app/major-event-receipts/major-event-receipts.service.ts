@@ -9,7 +9,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
-import { MajorEventReceipt, Prisma, ReceiptValidationActionType, SubscriptionStatus } from '@prisma/client';
+import {
+  MajorEventReceipt,
+  MajorEventSubscriptionFlow,
+  Prisma,
+  ReceiptValidationActionType,
+  SubscriptionStatus,
+} from '@prisma/client';
 import { Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
@@ -20,6 +26,7 @@ import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
 import { DashboardInsightsService } from '../dashboard/insights.service';
 import { AttendanceCategoryService } from '../events/attendance-category.service';
+import { CurrentUserMajorEventSubscriptionService } from '../current-user/major-events/subscription.service';
 import {
   MajorEventSubscriptionNotificationRecord,
   NovuNotificationsService,
@@ -41,6 +48,33 @@ import {
 
 const RECEIPT_UPLOAD_INTERVAL_MS = 60_000;
 
+type ActionableReceiptSubscription = Prisma.MajorEventSubscriptionGetPayload<{
+  include: {
+    selectedEvents: {
+      select: {
+        eventId: true;
+        preferenceOrder: true;
+        event: {
+          select: {
+            id: true;
+            type: true;
+            eventGroupId: true;
+            startDate: true;
+            endDate: true;
+            slots: true;
+            autoSubscribe: true;
+          };
+        };
+      };
+    };
+    receipts: {
+      select: {
+        id: true;
+      };
+    };
+  };
+}>;
+
 @Injectable()
 export class MajorEventReceiptsService {
   constructor(
@@ -48,6 +82,7 @@ export class MajorEventReceiptsService {
     private readonly s3: S3Service,
     private readonly currentUserContext: CurrentUserContextService,
     private readonly attendanceCategories: AttendanceCategoryService,
+    private readonly majorEventSubscriptions: CurrentUserMajorEventSubscriptionService,
     private readonly dashboardInsights: DashboardInsightsService,
     private readonly keycloakAuthService: KeycloakAuthService,
     private readonly notifications: NovuNotificationsService,
@@ -122,12 +157,13 @@ export class MajorEventReceiptsService {
   async approveReceipt(
     subscriptionId: string,
     receiptId: string,
+    selectedEventIds: string[] | undefined,
     authenticatedUser: AuthenticatedUser,
   ): Promise<AdminReceiptValidationResult> {
     const actorId = this.getActorId(authenticatedUser);
     const result = await this.prisma.$transaction(async (tx) => {
       const subscription = await this.findActionableSubscription(tx, subscriptionId, receiptId);
-      const selectedEventIds = subscription.selectedEvents.map((selection) => selection.eventId);
+      const eventIdsToConfirm = await this.resolveAdminSelectedEventIds(tx, subscription, selectedEventIds);
       const now = new Date();
 
       const action = await tx.majorEventReceiptValidationAction.create({
@@ -158,12 +194,15 @@ export class MajorEventReceiptsService {
         tx,
         subscription.majorEventId,
         subscription.personId,
-        selectedEventIds,
+        eventIdsToConfirm,
         SubscriptionStatus.CONFIRMED,
         actorId,
       );
       await this.attendanceCategories.refreshForMajorEventPerson(subscription.majorEventId, subscription.personId, tx);
-      await this.refreshEventSubscriptionCounters(tx, selectedEventIds);
+      await this.refreshEventSubscriptionCounters(tx, [
+        ...subscription.selectedEvents.map((selection) => selection.eventId),
+        ...eventIdsToConfirm,
+      ]);
 
       return action;
     });
@@ -547,6 +586,10 @@ export class MajorEventReceiptsService {
       },
       amountPaid: true,
       paymentTier: true,
+      subscriptionFlow: true,
+      desiredCourses: true,
+      desiredLectures: true,
+      desiredUncategorized: true,
       subscriptionStatus: true,
       receiptRejectionReason: true,
       updatedAt: true,
@@ -555,25 +598,38 @@ export class MajorEventReceiptsService {
           deletedAt: null,
         },
         select: {
+          preferenceOrder: true,
           event: {
             select: {
               id: true,
               name: true,
               emoji: true,
               type: true,
+              eventGroupId: true,
+              eventGroup: {
+                select: {
+                  name: true,
+                },
+              },
               startDate: true,
               endDate: true,
               locationDescription: true,
               slots: true,
               slotsAvailable: true,
+              autoSubscribe: true,
             },
           },
         },
-        orderBy: {
-          event: {
-            startDate: 'asc',
+        orderBy: [
+          {
+            preferenceOrder: 'asc',
           },
-        },
+          {
+            event: {
+              startDate: 'asc',
+            },
+          },
+        ],
       },
       receipts: {
         orderBy: {
@@ -591,6 +647,28 @@ export class MajorEventReceiptsService {
   ): AdminReceiptQueueItem {
     const events = subscription.selectedEvents.map((selection) => selection.event);
     const conflictIds = this.getScheduleConflictEventIds(events);
+    const recommendedEventIds =
+      subscription.subscriptionFlow === MajorEventSubscriptionFlow.RANKED_VOTING
+        ? new Set(
+            this.majorEventSubscriptions.allocateRankedEventIds(
+              subscription.selectedEvents.map((selection) => ({
+                id: selection.event.id,
+                type: selection.event.type,
+                eventGroupId: selection.event.eventGroupId,
+                startDate: selection.event.startDate,
+                endDate: selection.event.endDate,
+                slots: selection.event.slots,
+                slotsAvailable: selection.event.slotsAvailable,
+                autoSubscribe: selection.event.autoSubscribe,
+              })),
+              {
+                desiredCourses: subscription.desiredCourses ?? 0,
+                desiredLectures: subscription.desiredLectures ?? 0,
+                desiredUncategorized: subscription.desiredUncategorized ?? 0,
+              },
+            ),
+          )
+        : new Set(events.map((event) => event.id));
     const latestReceipt = subscription.receipts[0];
     const hasOcrMatch =
       latestReceipt?.amountMatched === true ||
@@ -608,6 +686,10 @@ export class MajorEventReceiptsService {
       personPhone: subscription.person.phone,
       amountPaid: subscription.amountPaid,
       paymentTier: subscription.paymentTier,
+      subscriptionFlow: subscription.subscriptionFlow,
+      desiredCourses: subscription.desiredCourses,
+      desiredLectures: subscription.desiredLectures,
+      desiredUncategorized: subscription.desiredUncategorized,
       subscriptionStatus: subscription.subscriptionStatus,
       subscriptionUpdatedAt: subscription.updatedAt,
       receiptRejectionReason: subscription.receiptRejectionReason,
@@ -628,18 +710,23 @@ export class MajorEventReceiptsService {
             matchedNameText: hasOcrMatch ? latestReceipt.matchedNameText : null,
           }
         : null,
-      events: events.map((event) => ({
-        id: event.id,
-        name: event.name,
-        emoji: event.emoji,
-        type: event.type,
-        startDate: event.startDate,
-        endDate: event.endDate,
-        locationDescription: event.locationDescription,
-        slots: event.slots,
-        slotsAvailable: event.slotsAvailable,
-        hasScheduleConflict: conflictIds.has(event.id),
-        hasNoSlots: event.slotsAvailable != null && event.slotsAvailable <= 0,
+      events: subscription.selectedEvents.map((selection) => ({
+        id: selection.event.id,
+        name: selection.event.name,
+        emoji: selection.event.emoji,
+        type: selection.event.type,
+        eventGroupId: selection.event.eventGroupId,
+        eventGroupName: selection.event.eventGroup?.name,
+        preferenceOrder: selection.preferenceOrder,
+        startDate: selection.event.startDate,
+        endDate: selection.event.endDate,
+        locationDescription: selection.event.locationDescription,
+        slots: selection.event.slots,
+        slotsAvailable: selection.event.slotsAvailable,
+        autoSubscribe: selection.event.autoSubscribe,
+        selectedForConfirmation: recommendedEventIds.has(selection.event.id),
+        hasScheduleConflict: conflictIds.has(selection.event.id),
+        hasNoSlots: selection.event.slotsAvailable != null && selection.event.slotsAvailable <= 0,
       })),
     };
   }
@@ -653,6 +740,128 @@ export class MajorEventReceiptsService {
     });
 
     return subscription ? this.mapAdminQueueItem(subscription) : null;
+  }
+
+  private async resolveAdminSelectedEventIds(
+    tx: Prisma.TransactionClient,
+    subscription: ActionableReceiptSubscription,
+    requestedEventIds: string[] | undefined,
+  ): Promise<string[]> {
+    const storedEventIds = subscription.selectedEvents.map((selection) => selection.eventId);
+    if (subscription.subscriptionFlow !== MajorEventSubscriptionFlow.RANKED_VOTING) {
+      return requestedEventIds?.length ? this.normalizeRequestedEventIds(requestedEventIds, storedEventIds) : storedEventIds;
+    }
+
+    const rankedEvents = await this.buildRankedEventsWithAvailability(tx, subscription);
+    const desiredCounts = {
+      desiredCourses: subscription.desiredCourses ?? 0,
+      desiredLectures: subscription.desiredLectures ?? 0,
+      desiredUncategorized: subscription.desiredUncategorized ?? 0,
+    };
+    const recommendedEventIds = this.majorEventSubscriptions.allocateRankedEventIds(rankedEvents, desiredCounts);
+    if (!requestedEventIds?.length) {
+      return recommendedEventIds;
+    }
+
+    const normalizedRequestedEventIds = this.normalizeRequestedEventIds(requestedEventIds, storedEventIds);
+    const requestedEventIdSet = new Set(normalizedRequestedEventIds);
+    const autoEventIds = new Set(
+      subscription.selectedEvents
+        .filter((selection) => selection.event.autoSubscribe)
+        .map((selection) => selection.eventId),
+    );
+    for (const autoEventId of autoEventIds) {
+      if (!requestedEventIdSet.has(autoEventId)) {
+        throw new BadRequestException(`Automatic event ${autoEventId} must be confirmed.`);
+      }
+    }
+
+    const eventsById = new Map(rankedEvents.map((event) => [event.id, event]));
+    const requestedEvents = normalizedRequestedEventIds.map((eventId) => eventsById.get(eventId)).filter((event): event is (typeof rankedEvents)[number] => Boolean(event));
+    if (!requestedEvents.every((event) => event.slots == null || event.slotsAvailable == null || event.slotsAvailable > 0)) {
+      throw new BadRequestException('Cannot approve ranked selections with events that have no available slots.');
+    }
+    if (this.getScheduleConflictEventIds(requestedEvents).size > 0) {
+      throw new BadRequestException('Cannot approve ranked selections with schedule conflicts.');
+    }
+
+    const requestedCounts = this.countReceiptEventsByCategory(requestedEvents);
+    const recommendedCounts = this.countReceiptEventsByCategory(
+      recommendedEventIds.map((eventId) => eventsById.get(eventId)).filter((event): event is (typeof rankedEvents)[number] => Boolean(event)),
+    );
+    if (
+      requestedCounts.course !== recommendedCounts.course ||
+      requestedCounts.lecture !== recommendedCounts.lecture ||
+      requestedCounts.uncategorized !== recommendedCounts.uncategorized
+    ) {
+      throw new BadRequestException('Selected ranked events must match the number of currently allocatable requested events.');
+    }
+
+    return normalizedRequestedEventIds;
+  }
+
+  private normalizeRequestedEventIds(requestedEventIds: string[], allowedEventIds: string[]): string[] {
+    const allowedEventIdSet = new Set(allowedEventIds);
+    const normalized = [...new Set(requestedEventIds.map((eventId) => eventId.trim()).filter(Boolean))];
+    const invalidEventIds = normalized.filter((eventId) => !allowedEventIdSet.has(eventId));
+    if (invalidEventIds.length > 0) {
+      throw new BadRequestException(`Invalid events for receipt approval: ${invalidEventIds.join(', ')}.`);
+    }
+    return normalized;
+  }
+
+  private async buildRankedEventsWithAvailability(
+    tx: Prisma.TransactionClient,
+    subscription: ActionableReceiptSubscription,
+  ) {
+    const activeCounts = await Promise.all(
+      subscription.selectedEvents.map(async (selection) => ({
+        eventId: selection.eventId,
+        count: await tx.eventSubscription.count({
+          where: {
+            eventId: selection.eventId,
+            deletedAt: null,
+            personId: {
+              not: subscription.personId,
+            },
+          },
+        }),
+      })),
+    );
+    const activeCountByEventId = new Map(activeCounts.map((item) => [item.eventId, item.count]));
+    return subscription.selectedEvents.map((selection) => ({
+      id: selection.event.id,
+      type: selection.event.type,
+      eventGroupId: selection.event.eventGroupId,
+      startDate: selection.event.startDate,
+      endDate: selection.event.endDate,
+      slots: selection.event.slots,
+      slotsAvailable:
+        selection.event.slots == null
+          ? null
+          : Math.max(selection.event.slots - (activeCountByEventId.get(selection.eventId) ?? 0), 0),
+      autoSubscribe: selection.event.autoSubscribe,
+    }));
+  }
+
+  private countReceiptEventsByCategory(events: Array<{ type: string }>): {
+    course: number;
+    lecture: number;
+    uncategorized: number;
+  } {
+    return events.reduce(
+      (counts, event) => {
+        if (event.type === 'MINICURSO') {
+          counts.course += 1;
+        } else if (event.type === 'PALESTRA') {
+          counts.lecture += 1;
+        } else {
+          counts.uncategorized += 1;
+        }
+        return counts;
+      },
+      { course: 0, lecture: 0, uncategorized: 0 },
+    );
   }
 
   private async findMajorEventSubscriptionNotificationRecord(
@@ -696,22 +905,7 @@ export class MajorEventReceiptsService {
     tx: Prisma.TransactionClient,
     subscriptionId: string,
     receiptId: string | undefined,
-  ): Promise<
-    Prisma.MajorEventSubscriptionGetPayload<{
-      include: {
-        selectedEvents: {
-          select: {
-            eventId: true;
-          };
-        };
-        receipts: {
-          select: {
-            id: true;
-          };
-        };
-      };
-    }>
-  > {
+  ): Promise<ActionableReceiptSubscription> {
     const subscription = await tx.majorEventSubscription.findUnique({
       where: {
         id: subscriptionId,
@@ -723,7 +917,29 @@ export class MajorEventReceiptsService {
           },
           select: {
             eventId: true,
+            preferenceOrder: true,
+            event: {
+              select: {
+                id: true,
+                type: true,
+                eventGroupId: true,
+                startDate: true,
+                endDate: true,
+                slots: true,
+                autoSubscribe: true,
+              },
+            },
           },
+          orderBy: [
+            {
+              preferenceOrder: 'asc',
+            },
+            {
+              event: {
+                startDate: 'asc',
+              },
+            },
+          ],
         },
         receipts: {
           orderBy: {

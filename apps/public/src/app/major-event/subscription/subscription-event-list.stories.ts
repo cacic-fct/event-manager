@@ -19,7 +19,7 @@ type Story = StoryObj<SubscriptionEventList>;
 
 const demoMajorEvent: PublicMajorEvent = {
   id: 'major-story',
-  name: 'CACIC Storybook',
+  name: 'CACiC Storybook',
   emoji: '💻',
   startDate: '2026-05-20T12:00:00.000Z',
   endDate: '2026-05-23T21:00:00.000Z',
@@ -81,18 +81,40 @@ const demoEvent: PublicEvent = {
 
 const demoEvents: PublicEvent[] = [
   demoEvent,
-  { ...demoEvent, id: 'event-story-2', name: 'Acessibilidade em produtos digitais', emoji: '♿', type: 'PALESTRA' as const, startDate: '2026-05-22T13:00:00.000Z', endDate: '2026-05-22T14:00:00.000Z', slotsAvailable: 0 },
-  { ...demoEvent, id: 'event-story-3', name: 'Observabilidade para APIs GraphQL', emoji: '📡', type: 'OTHER' as const, startDate: '2026-06-02T18:00:00.000Z', endDate: '2026-06-02T20:00:00.000Z', eventGroup: null, eventGroupId: null },
+  {
+    ...demoEvent,
+    id: 'event-story-2',
+    name: 'Acessibilidade em produtos digitais',
+    emoji: '♿',
+    type: 'PALESTRA' as const,
+    startDate: '2026-05-22T13:00:00.000Z',
+    endDate: '2026-05-22T14:00:00.000Z',
+    slotsAvailable: 0,
+  },
+  {
+    ...demoEvent,
+    id: 'event-story-3',
+    name: 'Observabilidade para APIs GraphQL',
+    emoji: '📡',
+    type: 'OTHER' as const,
+    startDate: '2026-06-02T18:00:00.000Z',
+    endDate: '2026-06-02T20:00:00.000Z',
+    eventGroup: null,
+    eventGroupId: null,
+  },
 ];
 
-const summariesByEventId = new Map(demoEvents.map((item) => [item.id, { eventId: item.id, hasAvailableSlots: item.slotsAvailable !== 0 }]));
-
+const summariesByEventId = new Map(
+  demoEvents.map((item) => [item.id, { eventId: item.id, hasAvailableSlots: item.slotsAvailable !== 0 }]),
+);
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();
@@ -104,7 +126,13 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const OnlineDesktop: Story = {
-  args: { events: demoEvents, summariesByEventId, selectedEventIds: new Set([demoEvents[0].id]), autoSelectedEventIds: new Set(), disabledReasons: new Map() },
+  args: {
+    events: demoEvents,
+    summariesByEventId,
+    selectedEventIds: new Set([demoEvents[0].id]),
+    autoSelectedEventIds: new Set(),
+    disabledReasons: new Map(),
+  },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -113,7 +141,13 @@ export const OnlineDesktop: Story = {
 };
 
 export const OnlineMobile: Story = {
-  args: { events: demoEvents, summariesByEventId, selectedEventIds: new Set([demoEvents[0].id]), autoSelectedEventIds: new Set([demoEvents[2].id]), disabledReasons: new Map() },
+  args: {
+    events: demoEvents,
+    summariesByEventId,
+    selectedEventIds: new Set([demoEvents[0].id]),
+    autoSelectedEventIds: new Set([demoEvents[2].id]),
+    disabledReasons: new Map(),
+  },
   parameters: {
     viewport: { defaultViewport: 'mobile' },
   },
@@ -122,7 +156,13 @@ export const OnlineMobile: Story = {
 };
 
 export const DarkMobile: Story = {
-  args: { events: demoEvents, summariesByEventId, selectedEventIds: new Set(), autoSelectedEventIds: new Set(), disabledReasons: new Map([[demoEvents[1].id, 'Sem vagas disponíveis']]) },
+  args: {
+    events: demoEvents,
+    summariesByEventId,
+    selectedEventIds: new Set(),
+    autoSelectedEventIds: new Set(),
+    disabledReasons: new Map([[demoEvents[1].id, 'Sem vagas disponíveis']]),
+  },
   parameters: {
     backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'mobile' },
@@ -132,7 +172,13 @@ export const DarkMobile: Story = {
 };
 
 export const OfflineFallback: Story = {
-  args: { events: demoEvents.slice(0, 1), summariesByEventId, selectedEventIds: new Set(), autoSelectedEventIds: new Set(), disabledReasons: new Map() },
+  args: {
+    events: demoEvents.slice(0, 1),
+    summariesByEventId,
+    selectedEventIds: new Set(),
+    autoSelectedEventIds: new Set(),
+    disabledReasons: new Map(),
+  },
   parameters: {
     viewport: { defaultViewport: 'tablet' },
   },

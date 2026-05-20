@@ -1,0 +1,64 @@
+@if (eventChildActive()) {
+<router-outlet />
+} @else {
+<mat-toolbar>
+  <button matIconButton type="button" routerLink="/menu" aria-label="Voltar">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Inscrição</span>
+</mat-toolbar>
+
+<main class="subscription-page">
+  @let state = store.pageState(); @if (state.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+    <p>Carregando inscrição...</p>
+  </section>
+  } @else if (state.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ state.message }}</p>
+  </section>
+  } @else { @let majorEvent = state.data.majorEvent;
+
+  <header class="page-header">
+    <div class="emoji-frame">
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(majorEvent.emoji)" [alt]="majorEvent.emoji" />
+    </div>
+    <div class="header-copy">
+      <p class="eyebrow">Grande evento</p>
+      <h1>{{ majorEvent.name }}</h1>
+      <p>{{ store.dateLine() }}</p>
+    </div>
+  </header>
+
+  <mat-chip-set aria-label="Resumo da inscrição">
+    <mat-chip>
+      <mat-icon matChipAvatar>ballot</mat-icon>
+      Voto preferencial
+    </mat-chip>
+    @if (majorEvent.isPaymentRequired) {
+    <mat-chip>
+      <mat-icon matChipAvatar>payments</mat-icon>
+      Exige pagamento
+    </mat-chip>
+    } @if (store.currentUserSubscription(); as subscription) {
+    <mat-chip>
+      <mat-icon matChipAvatar>check</mat-icon>
+      {{ store.statusLabel(subscription.subscriptionStatus) }}
+    </mat-chip>
+    }
+  </mat-chip-set>
+
+  @if (majorEvent.description) {
+  <p class="description">{{ majorEvent.description }}</p>
+  }
+
+  @if (currentStep() === 'select') {
+  <app-ranked-subscription-select-step (continue)="showRankingStep()" />
+  } @else {
+  <app-ranked-subscription-rank-step (back)="showSelectionStep()" />
+  } }
+</main>
+}

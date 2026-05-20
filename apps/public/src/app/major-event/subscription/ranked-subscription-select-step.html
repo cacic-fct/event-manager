@@ -1,0 +1,50 @@
+<section aria-labelledby="ranked-select-title">
+  <h2 id="ranked-select-title" class="step-title">Selecione todos os eventos que você quer participar</h2>
+
+  <section class="desired-grid" aria-label="Quantidade desejada por categoria">
+    @if (store.courseOptions().length > 1) {
+    <mat-form-field appearance="outline">
+      <mat-label>Minicursos desejados</mat-label>
+      <mat-select [value]="store.desiredCourses()" (valueChange)="store.desiredCourses.set($event)">
+        @for (option of store.courseOptions(); track option) {
+        <mat-option [value]="option">{{ option }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    } @if (store.lectureOptions().length > 1) {
+    <mat-form-field appearance="outline">
+      <mat-label>Palestras desejadas</mat-label>
+      <mat-select [value]="store.desiredLectures()" (valueChange)="store.desiredLectures.set($event)">
+        @for (option of store.lectureOptions(); track option) {
+        <mat-option [value]="option">{{ option }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    } @if (store.uncategorizedOptions().length > 1) {
+    <mat-form-field appearance="outline">
+      <mat-label>Outros eventos desejados</mat-label>
+      <mat-select [value]="store.desiredUncategorized()" (valueChange)="store.desiredUncategorized.set($event)">
+        @for (option of store.uncategorizedOptions(); track option) {
+        <mat-option [value]="option">{{ option }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    }
+  </section>
+
+  <app-subscription-event-list
+    [events]="store.sortedEvents()"
+    [summariesByEventId]="store.summariesByEventId()"
+    [selectedEventIds]="store.effectiveSelectedEventIds()"
+    [autoSelectedEventIds]="store.autoSelectedEventIds()"
+    [disabledReasons]="store.disabledReasons()"
+    (toggleEvent)="store.toggleEvent($event)"
+    (openInfo)="store.openInfo($event)" />
+
+  <div class="step-actions">
+    <button matButton="filled" type="button" (click)="continue.emit()">
+      <mat-icon>arrow_forward</mat-icon>
+      Ordenar preferências
+    </button>
+  </div>
+</section>

@@ -33,6 +33,8 @@ const PUBLIC_MAJOR_EVENT_FIELDS = `
   subscriptionEndDate
   maxCoursesPerAttendee
   maxLecturesPerAttendee
+  maxUncategorizedPerAttendee
+  rankedSubscriptionEnabled
   buttonText
   buttonLink
   contactInfo
@@ -248,6 +250,57 @@ export class MajorEventSubscriptionApiService {
         }
       `,
       { majorEventId, selectedEventIds, paymentTier },
+    ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
+  }
+
+  upsertRankedSubscription(
+    majorEventId: string,
+    selectedEventIds: string[],
+    desiredCounts: {
+      desiredCourses?: number | null;
+      desiredLectures?: number | null;
+      desiredUncategorized?: number | null;
+    },
+    paymentTier?: string | null,
+  ): Observable<CurrentUserMajorEventSubscription> {
+    return this.query<{
+      upsertCurrentUserMajorEventSubscription: CurrentUserMajorEventSubscription;
+    }>(
+      `
+        mutation UpsertCurrentUserRankedMajorEventSubscription(
+          $majorEventId: String!
+          $selectedEventIds: [String!]!
+          $desiredCourses: Int
+          $desiredLectures: Int
+          $desiredUncategorized: Int
+          $paymentTier: String
+        ) {
+          upsertCurrentUserMajorEventSubscription(
+            input: {
+              majorEventId: $majorEventId
+              selectedEventIds: $selectedEventIds
+              desiredCourses: $desiredCourses
+              desiredLectures: $desiredLectures
+              desiredUncategorized: $desiredUncategorized
+              paymentTier: $paymentTier
+            }
+          ) {
+            id
+            majorEventId
+            subscriptionStatus
+            majorEvent {
+              ${PUBLIC_MAJOR_EVENT_FIELDS}
+            }
+            selectedEvents {
+              ${PUBLIC_EVENT_FIELDS}
+            }
+            notSubscribedEvents {
+              ${PUBLIC_EVENT_FIELDS}
+            }
+          }
+        }
+      `,
+      { majorEventId, selectedEventIds, ...desiredCounts, paymentTier },
     ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
   }
 

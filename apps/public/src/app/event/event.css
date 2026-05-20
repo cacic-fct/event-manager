@@ -96,6 +96,10 @@ h2 {
   margin-top: 24px;
 }
 
+.weather-section {
+  margin-bottom: 2rem;
+}
+
 .detail-section + .detail-section {
   margin-top: 28px;
 }

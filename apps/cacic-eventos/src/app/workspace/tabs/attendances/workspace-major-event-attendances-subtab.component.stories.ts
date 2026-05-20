@@ -4,7 +4,7 @@ import { WorkspaceMajorEventAttendancesSubtabComponent } from './workspace-major
 
 const meta: Meta<WorkspaceMajorEventAttendancesSubtabComponent> = {
   component: WorkspaceMajorEventAttendancesSubtabComponent,
-  title: 'CACIC Eventos/Workspace/Tabs/Attendances/Workspace Major Event Attendances Subtab',
+  title: 'CACiC Eventos/Workspace/Tabs/Attendances/Workspace Major Event Attendances Subtab',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -20,7 +20,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();

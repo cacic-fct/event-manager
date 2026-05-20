@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma, SubscriptionStatus } from '@prisma/client';
+import { MajorEventSubscriptionFlow, Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
@@ -148,7 +148,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserMajorEventSubscription> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    const selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(input.selectedEventIds);
+    let selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(input.selectedEventIds);
     if (selectedEventIds.length === 0) {
       throw new BadRequestException('At least one event must be selected for the major-event subscription.');
     }
@@ -168,17 +168,30 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
     this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(majorEvent);
 
-    const selectedEvents = await this.prisma.event.findMany({
+    const isRankedSubscription = majorEvent.rankedSubscriptionEnabled;
+    const allSubscriptionEvents = await this.prisma.event.findMany({
       where: {
-        id: {
-          in: selectedEventIds,
-        },
         majorEventId: input.majorEventId,
         deletedAt: null,
         allowSubscription: true,
       },
       select: EVENT_SELECT,
+      orderBy: {
+        startDate: 'asc',
+      },
     });
+
+    const allSubscriptionEventsById = new Map(allSubscriptionEvents.map((event) => [event.id, event]));
+    const requiredAutoSubscribeEventIds = allSubscriptionEvents
+      .filter((event) => event.autoSubscribe)
+      .map((event) => event.id);
+    selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds([
+      ...requiredAutoSubscribeEventIds,
+      ...selectedEventIds,
+    ]);
+    const selectedEvents = selectedEventIds
+      .map((eventId) => allSubscriptionEventsById.get(eventId))
+      .filter((event): event is EventRecord => Boolean(event));
 
     const selectedEventsById = new Map(selectedEvents.map((event) => [event.id, event]));
     const missingSelectedEventIds = selectedEventIds.filter((eventId) => !selectedEventsById.has(eventId));
@@ -189,8 +202,13 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     }
     const selectedEventIdSet = new Set(selectedEventIds);
 
-    this.majorEventSubscriptions.ensureMajorEventEventLimits(majorEvent, selectedEvents);
-    this.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts(selectedEvents);
+    let desiredCounts: ReturnType<CurrentUserMajorEventSubscriptionService['resolveRankedDesiredCounts']> | null = null;
+    if (isRankedSubscription) {
+      desiredCounts = this.majorEventSubscriptions.resolveRankedDesiredCounts(majorEvent, allSubscriptionEvents, input);
+    } else {
+      this.majorEventSubscriptions.ensureMajorEventEventLimits(majorEvent, selectedEvents);
+      this.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts(selectedEvents);
+    }
 
     const allGroupedEvents = await this.prisma.event.findMany({
       where: {
@@ -208,20 +226,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     });
     this.majorEventSubscriptions.ensureEventGroupsAreFullySelected(selectedEventIdSet, allGroupedEvents);
 
-    const requiredAutoSubscribeEvents = await this.prisma.event.findMany({
-      where: {
-        majorEventId: input.majorEventId,
-        deletedAt: null,
-        allowSubscription: true,
-        autoSubscribe: true,
-      },
-      select: {
-        id: true,
-      },
-    });
-    const missingAutoSubscribeEventIds = requiredAutoSubscribeEvents
-      .map((event) => event.id)
-      .filter((eventId) => !selectedEventIdSet.has(eventId));
+    const missingAutoSubscribeEventIds = requiredAutoSubscribeEventIds.filter((eventId) => !selectedEventIdSet.has(eventId));
     if (missingAutoSubscribeEventIds.length > 0) {
       throw new BadRequestException(
         `Auto-subscribe events must be selected: ${missingAutoSubscribeEventIds.join(', ')}.`,
@@ -264,6 +269,12 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         if ('paymentTier' in input) {
           updateData.paymentTier = normalizedPaymentTier;
         }
+        updateData.subscriptionFlow = isRankedSubscription
+          ? MajorEventSubscriptionFlow.RANKED_VOTING
+          : MajorEventSubscriptionFlow.REGULAR;
+        updateData.desiredCourses = desiredCounts?.desiredCourses ?? null;
+        updateData.desiredLectures = desiredCounts?.desiredLectures ?? null;
+        updateData.desiredUncategorized = desiredCounts?.desiredUncategorized ?? null;
         if (nextStatus) {
           updateData.subscriptionStatus = nextStatus;
         }
@@ -284,6 +295,12 @@ export class CurrentUserMajorEventSubscriptionsResolver {
             amountPaid: normalizedAmountPaid ?? undefined,
             paymentTier: normalizedPaymentTier ?? undefined,
             createdByMethod: 'SELF_SUBSCRIPTION',
+            subscriptionFlow: isRankedSubscription
+              ? MajorEventSubscriptionFlow.RANKED_VOTING
+              : MajorEventSubscriptionFlow.REGULAR,
+            desiredCourses: desiredCounts?.desiredCourses,
+            desiredLectures: desiredCounts?.desiredLectures,
+            desiredUncategorized: desiredCounts?.desiredUncategorized,
             subscriptionStatus:
               nextStatus ??
               (majorEvent.isPaymentRequired ? SubscriptionStatus.WAITING_RECEIPT_UPLOAD : SubscriptionStatus.CONFIRMED),
@@ -341,8 +358,25 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           data: selectionEventIdsToCreate.map((eventId) => ({
             subscriptionId: activeMajorEventSubscription.id,
             eventId,
+            preferenceOrder: isRankedSubscription ? this.getPreferenceOrder(eventId, selectedEventIds, selectedEventsById) : null,
           })),
         });
+      }
+      if (isRankedSubscription) {
+        await Promise.all(
+          selectedEventIds.map((eventId) =>
+            tx.majorEventSubscriptionEventSelection.updateMany({
+              where: {
+                subscriptionId: activeMajorEventSubscription.id,
+                eventId,
+                deletedAt: null,
+              },
+              data: {
+                preferenceOrder: this.getPreferenceOrder(eventId, selectedEventIds, selectedEventsById),
+              },
+            }),
+          ),
+        );
       }
 
       const activeEventSubscriptions = await tx.eventSubscription.findMany({
@@ -360,10 +394,21 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       });
 
       const activeEventIdSet = new Set(activeEventSubscriptions.map((subscription) => subscription.eventId));
+      const confirmationEventIds =
+        isRankedSubscription && desiredCounts
+          ? await this.resolveRankedConfirmationEventIds(
+              tx,
+              person.id,
+              selectedEventIds,
+              selectedEventsById,
+              desiredCounts,
+            )
+          : selectedEventIds;
+      const confirmationEventIdSet = new Set(confirmationEventIds);
       const eventIdsToArchive = [...activeEventIdSet].filter(
         (eventId) =>
           activeMajorEventSubscription.subscriptionStatus !== SubscriptionStatus.CONFIRMED ||
-          !selectedEventIdSet.has(eventId),
+          !confirmationEventIdSet.has(eventId),
       );
 
       if (eventIdsToArchive.length > 0) {
@@ -383,7 +428,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
       const eventIdsToCreate =
         activeMajorEventSubscription.subscriptionStatus === SubscriptionStatus.CONFIRMED
-          ? selectedEventIds.filter((eventId) => !activeEventIdSet.has(eventId))
+          ? confirmationEventIds.filter((eventId) => !activeEventIdSet.has(eventId))
           : [];
       for (const eventId of eventIdsToCreate) {
         const event = selectedEventsById.get(eventId);
@@ -416,6 +461,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       await this.majorEventSubscriptions.refreshEventSubscriptionCounters(tx, [
         ...activeEventIdSet,
         ...selectedEventIds,
+        ...confirmationEventIds,
       ]);
 
       const updatedSubscription = await tx.majorEventSubscription.findFirst({
@@ -521,5 +567,59 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       selectedEvents,
       notSubscribedEvents: [],
     };
+  }
+
+  private getPreferenceOrder(eventId: string, selectedEventIds: string[], selectedEventsById: Map<string, EventRecord>): number {
+    const event = selectedEventsById.get(eventId);
+    if (!event?.eventGroupId) {
+      return selectedEventIds.indexOf(eventId);
+    }
+
+    const groupIndex = selectedEventIds.findIndex((selectedEventId) => {
+      const selectedEvent = selectedEventsById.get(selectedEventId);
+      return selectedEvent?.eventGroupId === event.eventGroupId;
+    });
+    return groupIndex === -1 ? selectedEventIds.indexOf(eventId) : groupIndex;
+  }
+
+  private async resolveRankedConfirmationEventIds(
+    tx: Prisma.TransactionClient,
+    personId: string,
+    selectedEventIds: string[],
+    selectedEventsById: Map<string, EventRecord>,
+    desiredCounts: ReturnType<CurrentUserMajorEventSubscriptionService['resolveRankedDesiredCounts']>,
+  ): Promise<string[]> {
+    const activeCounts = await Promise.all(
+      selectedEventIds.map(async (eventId) => ({
+        eventId,
+        count: await tx.eventSubscription.count({
+          where: {
+            eventId,
+            deletedAt: null,
+            personId: {
+              not: personId,
+            },
+          },
+        }),
+      })),
+    );
+    const activeCountByEventId = new Map(activeCounts.map((item) => [item.eventId, item.count]));
+    const rankedEvents = selectedEventIds
+      .map((eventId) => selectedEventsById.get(eventId))
+      .filter((event): event is EventRecord => Boolean(event))
+      .map((event) => ({
+        id: event.id,
+        type: event.type,
+        eventGroupId: event.eventGroupId,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        slots: event.slots,
+        slotsAvailable: event.slots == null ? null : Math.max(event.slots - (activeCountByEventId.get(event.id) ?? 0), 0),
+        autoSubscribe: event.autoSubscribe,
+      }));
+
+    const allocatedEventIds = this.majorEventSubscriptions.allocateRankedEventIds(rankedEvents, desiredCounts);
+    const allocatedEventIdSet = new Set(allocatedEventIds);
+    return selectedEventIds.filter((eventId) => allocatedEventIdSet.has(eventId));
   }
 }

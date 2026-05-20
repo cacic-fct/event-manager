@@ -89,7 +89,7 @@ export class CertificateDialog {
     const httpError = this.downloadError() ?? (currentState.status === 'error' ? currentState.message : null);
 
     this.mailtoService.open({
-      to: 'fct-app@googlegroups.com',
+      to: 'fctapp@googlegroups.com',
       subject: `[FCT-App] Problema com certificado - ${this.title}`,
       body: `\n\n\n
 === Não apague os dados abaixo ===

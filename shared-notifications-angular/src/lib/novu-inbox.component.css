@@ -1,0 +1,155 @@
+.novu-inbox {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.inbox-toolbar {
+  min-height: 56px;
+  height: 56px;
+  padding-inline: 12px;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+:host ::ng-deep .compact-tabs .mdc-tab {
+  height: 44px;
+  min-width: 0;
+  padding-inline: 12px;
+}
+
+:host ::ng-deep .compact-tabs .mat-mdc-tab-labels {
+  gap: 4px;
+}
+
+.inbox-header,
+.header-actions,
+.notification-actions,
+.preference-actions,
+.load-more,
+.permission-card mat-card-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.permission-card mat-card-content {
+  padding: 12px 12px 4px;
+}
+
+.permission-card mat-card-actions {
+  min-height: 40px;
+  padding: 0 8px 8px;
+}
+
+.inbox-header {
+  justify-content: space-between;
+}
+
+.inbox-header h2,
+.inbox-header p {
+  margin: 0;
+}
+
+.loading-state,
+.load-more {
+  justify-content: center;
+  padding: 24px;
+}
+
+.unread {
+  background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
+}
+
+.notification-title,
+.notification-body {
+  white-space: normal;
+}
+
+:host ::ng-deep .notification-list .mat-mdc-list-item.notification-item {
+  height: auto;
+  min-height: 88px;
+  padding-block: 8px;
+}
+
+:host ::ng-deep .preference-list .mat-mdc-list-item.preference-item {
+  height: auto;
+  min-height: 72px;
+  padding-block: 8px;
+}
+
+.error-state {
+  color: var(--mat-sys-error);
+}
+
+@media (max-width: 720px) {
+  .novu-inbox {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .inbox-toolbar {
+    min-height: 48px;
+    height: 48px;
+    padding-inline: 8px;
+  }
+
+  .permission-card mat-card-content {
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 10px 0;
+  }
+
+  .permission-card mat-card-content mat-icon {
+    margin-top: 1px;
+  }
+
+  .permission-card mat-card-actions {
+    padding: 0 6px 6px;
+  }
+
+  .tab-label span {
+    display: none;
+  }
+
+  :host ::ng-deep .compact-tabs .mdc-tab {
+    flex: 0 0 auto;
+    height: 40px;
+    padding-inline: 14px;
+  }
+
+  :host ::ng-deep .compact-tabs .mat-mdc-tab-label-container {
+    overflow-x: auto;
+  }
+
+  .notification-actions,
+  .preference-actions {
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .notification-actions button[mat-button] {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+
+  :host ::ng-deep .notification-list .mat-mdc-list-item.notification-item {
+    min-height: 104px;
+    padding-inline: 4px;
+  }
+
+  :host ::ng-deep .notification-list .mat-mdc-list-item .mdc-list-item__content,
+  :host ::ng-deep .preference-list .mat-mdc-list-item .mdc-list-item__content {
+    min-width: 0;
+  }
+}

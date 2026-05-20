@@ -65,6 +65,29 @@ export const appRoutes: Route[] = [
     ],
   },
   {
+    path: 'major-event/:majorEventId/ranked-subscription',
+    loadComponent: () =>
+      import('./major-event/subscription/ranked-subscription').then((m) => m.RankedMajorEventSubscription),
+    title: 'Inscrição',
+    children: [
+      {
+        path: 'select',
+        pathMatch: 'full',
+        redirectTo: '',
+      },
+      {
+        path: 'rank',
+        pathMatch: 'full',
+        redirectTo: '',
+      },
+      {
+        path: 'event/:eventId',
+        loadComponent: () => import('./event/event').then((m) => m.Event),
+        title: 'Evento',
+      },
+    ],
+  },
+  {
     path: 'major-event/:majorEventId/payment',
     loadComponent: () => import('./major-event/payment/payment-info').then((m) => m.PaymentInfo),
     title: 'Pagamento',

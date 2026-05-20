@@ -4,7 +4,7 @@ import { Home } from './home';
 
 const meta: Meta<Home> = {
   component: Home,
-  title: 'CACIC Eventos/Workspace/Home/Home',
+  title: 'CACiC Eventos/Workspace/Home/Home',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -20,7 +20,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();

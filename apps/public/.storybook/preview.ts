@@ -2,7 +2,7 @@ import { provideHttpClient, withFetch } from '@angular/common/http';
 import { inject, provideAppInitializer } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { AuthService } from '@cacic-fct/shared-angular';
@@ -130,7 +130,7 @@ const publicDialogData = {
   targets: [{ scope: 'EVENT', targetId: 'event-1' }],
   majorEvent: {
     id: 'major-dialog',
-    name: 'CACIC Storybook',
+    name: 'CACiC Storybook',
     emoji: '💻',
     startDate: '2026-05-20T12:00:00.000Z',
     endDate: '2026-05-23T21:00:00.000Z',
@@ -200,7 +200,7 @@ const preview: Preview = {
       providers: [
         provideHttpClient(withFetch()),
         provideNoopAnimations(),
-        provideRouter([]),
+        provideRouter([], withDisabledInitialNavigation()),
         provideAppInitializer(() => {
           inject(MatIconRegistry).setDefaultFontSetClass('material-icons-outlined');
         }),

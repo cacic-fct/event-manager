@@ -1,4 +1,4 @@
-import { Person, User } from '@cacic-fct/shared-data-types';
+import { Person, User, UserRole } from '@cacic-fct/shared-data-types';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
@@ -43,6 +43,8 @@ export class CurrentUserEventMapperService {
       subscriptionEndDate: majorEvent.subscriptionEndDate ?? undefined,
       maxCoursesPerAttendee: majorEvent.maxCoursesPerAttendee ?? undefined,
       maxLecturesPerAttendee: majorEvent.maxLecturesPerAttendee ?? undefined,
+      maxUncategorizedPerAttendee: majorEvent.maxUncategorizedPerAttendee ?? undefined,
+      rankedSubscriptionEnabled: majorEvent.rankedSubscriptionEnabled,
       buttonText: majorEvent.buttonText ?? undefined,
       buttonLink: majorEvent.buttonLink ?? undefined,
       contactInfo: majorEvent.contactInfo ?? undefined,
@@ -118,7 +120,7 @@ export class CurrentUserEventMapperService {
       name: user.name,
       identityDocument: user.identityDocument ?? undefined,
       academicId: user.academicId ?? undefined,
-      role: user.role,
+      role: user.role === 'CACIC' ? UserRole.CACIC : user.role,
       createdAt: user.createdAt,
       createdById: user.createdById ?? undefined,
       updatedAt: user.updatedAt,

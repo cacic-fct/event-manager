@@ -116,8 +116,10 @@ model MajorEvent {
   subscriptionStartDate DateTime?
   subscriptionEndDate   DateTime?
 
-  maxCoursesPerAttendee  Int?
-  maxLecturesPerAttendee Int?
+  maxCoursesPerAttendee       Int?
+  maxLecturesPerAttendee      Int?
+  maxUncategorizedPerAttendee Int?
+  rankedSubscriptionEnabled   Boolean @default(false)
 
   buttonText String?
   buttonLink String?
@@ -336,9 +338,13 @@ model MajorEventSubscription {
   paymentDate DateTime?
   paymentTier String?
 
-  subscriptionStatus SubscriptionStatus @default(WAITING_RECEIPT_UPLOAD)
-  selectedEvents     MajorEventSubscriptionEventSelection[]
-  receipts           MajorEventReceipt[]
+  subscriptionStatus   SubscriptionStatus @default(WAITING_RECEIPT_UPLOAD)
+  subscriptionFlow     MajorEventSubscriptionFlow @default(REGULAR)
+  desiredCourses       Int?
+  desiredLectures      Int?
+  desiredUncategorized Int?
+  selectedEvents       MajorEventSubscriptionEventSelection[]
+  receipts             MajorEventReceipt[]
 
   receiptRejectionReason String?
   receiptValidatedAt     DateTime?
@@ -448,6 +454,8 @@ model MajorEventSubscriptionEventSelection {
   eventId String
   event   Event  @relation(fields: [eventId], references: [id])
 
+  preferenceOrder Int?
+
   createdAt   DateTime @default(now())
   createdById String?
   deletedAt   DateTime?
@@ -511,6 +519,11 @@ enum SubscriptionCreationMethod {
   ADMIN_DASHBOARD
   SELF_SUBSCRIPTION
   UNKNOWN
+}
+
+enum MajorEventSubscriptionFlow {
+  REGULAR
+  RANKED_VOTING
 }
 
 // PEOPLE

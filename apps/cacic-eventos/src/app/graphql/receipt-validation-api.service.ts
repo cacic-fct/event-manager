@@ -14,6 +14,11 @@ export interface ReceiptValidationEvent {
   locationDescription?: string | null;
   slots?: number | null;
   slotsAvailable?: number | null;
+  eventGroupId?: string | null;
+  eventGroupName?: string | null;
+  preferenceOrder?: number | null;
+  autoSubscribe: boolean;
+  selectedForConfirmation: boolean;
   hasScheduleConflict: boolean;
   hasNoSlots: boolean;
 }
@@ -28,6 +33,10 @@ export interface ReceiptValidationQueueItem {
   personPhone?: string | null;
   amountPaid?: number | null;
   paymentTier?: string | null;
+  subscriptionFlow: string;
+  desiredCourses?: number | null;
+  desiredLectures?: number | null;
+  desiredUncategorized?: number | null;
   subscriptionStatus: string;
   subscriptionUpdatedAt: string;
   receiptRejectionReason?: string | null;
@@ -98,10 +107,10 @@ export class ReceiptValidationApiService {
     });
   }
 
-  approve(subscriptionId: string, receiptId: string): Observable<ReceiptValidationResult> {
+  approve(subscriptionId: string, receiptId: string, selectedEventIds?: string[]): Observable<ReceiptValidationResult> {
     return this.http.post<ReceiptValidationResult>(
       `/api/major-event-receipts/admin/subscriptions/${subscriptionId}/approve`,
-      { receiptId },
+      { receiptId, ...(selectedEventIds ? { selectedEventIds } : {}) },
     );
   }
 

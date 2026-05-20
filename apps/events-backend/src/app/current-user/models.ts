@@ -329,6 +329,15 @@ export class UpsertCurrentUserMajorEventSubscriptionInput {
 
   @Field(() => String, { nullable: true })
   paymentTier?: string | null;
+
+  @Field(() => Int, { nullable: true })
+  desiredCourses?: number | null;
+
+  @Field(() => Int, { nullable: true })
+  desiredLectures?: number | null;
+
+  @Field(() => Int, { nullable: true })
+  desiredUncategorized?: number | null;
 }
 
 @InputType()

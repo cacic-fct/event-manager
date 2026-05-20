@@ -3,6 +3,7 @@ import { Injectable, NgZone, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
+  DeletionResult,
   EventAttendance,
   EventAttendanceScannerFeedItem,
   EventAttendanceCsvImportResult,
@@ -132,6 +133,21 @@ export class AttendanceApiService {
         { eventId },
       )
       .pipe(map((data) => data.eventAttendances));
+  }
+
+  deleteEventAttendance(input: { eventId: string; personId: string }) {
+    return this.graphqlHttp
+      .request<{ deleteEventAttendance: DeletionResult }>(
+        `mutation DeleteEventAttendance($eventId: String!, $personId: String!) {
+          deleteEventAttendance(eventId: $eventId, personId: $personId) {
+            deleted
+            eventId
+            personId
+          }
+        }`,
+        input,
+      )
+      .pipe(map((data) => data.deleteEventAttendance));
   }
 
   listEventAttendanceScannerFeed(eventId: string) {
