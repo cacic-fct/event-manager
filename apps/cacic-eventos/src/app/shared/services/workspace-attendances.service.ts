@@ -22,10 +22,13 @@ type CsvParseResult = {
 };
 
 type AttendanceListItem = {
+  eventId: string;
   eventName: string;
+  personId: string;
   personName: string;
   attendedAt: string;
   createdByMethod: string;
+  category: AttendanceCategory;
 };
 
 type AttendanceCategoryGroup = {
@@ -35,7 +38,7 @@ type AttendanceCategoryGroup = {
   attendances: MajorEventUserAttendance[];
 };
 
-const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['NON_PAYING', 'NON_SUBSCRIBED', 'REGULAR', 'UNKNOWN'];
+const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
 
 const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; description: string }> = {
   NON_PAYING: {
@@ -83,6 +86,21 @@ export class WorkspaceAttendancesService {
   readonly selectedAttendanceEvent = signal<Event | null>(null);
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
+  readonly attendanceGroups = computed(() => {
+    const groups = new Map<AttendanceCategory, AttendanceListItem[]>(
+      ATTENDANCE_CATEGORY_ORDER.map((category) => [category, []]),
+    );
+
+    for (const attendance of this.attendances()) {
+      groups.get(attendance.category)?.push(attendance);
+    }
+
+    return ATTENDANCE_CATEGORY_ORDER.map((category) => ({
+      category,
+      ...ATTENDANCE_CATEGORY_LABELS[category],
+      attendances: groups.get(category) ?? [],
+    })).filter((group) => group.attendances.length > 0);
+  });
   readonly majorEventUserAttendances = signal<MajorEventUserAttendance[]>([]);
   readonly majorEventUserAttendanceGroups = computed<AttendanceCategoryGroup[]>(() => {
     const groups = new Map<AttendanceCategory, MajorEventUserAttendance[]>(
@@ -348,12 +366,27 @@ export class WorkspaceAttendancesService {
     const data = await firstValueFrom(this.api.listEventAttendances(eventId));
     this.attendances.set(
       data.map((attendance) => ({
+        eventId: attendance.eventId,
         eventName: attendance.event?.name ?? attendance.eventId,
+        personId: attendance.personId,
         personName: attendance.person?.name ?? attendance.personId,
         attendedAt: attendance.attendedAt,
         createdByMethod: attendance.createdByMethod,
+        category: attendance.category,
       })),
     );
+  }
+
+  async deleteAttendance(attendance: { eventId: string; personId: string }): Promise<void> {
+    await firstValueFrom(
+      this.api.deleteEventAttendance({
+        eventId: attendance.eventId,
+        personId: attendance.personId,
+      }),
+    );
+
+    await this.loadAttendances(attendance.eventId);
+    this.snackbar.open('Presença removida.', 'Fechar', { duration: 2500 });
   }
 
   async loadMajorEventUserAttendances(): Promise<void> {
