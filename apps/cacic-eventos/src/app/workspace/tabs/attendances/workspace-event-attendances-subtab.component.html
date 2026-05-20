@@ -145,17 +145,43 @@
           <span>{{ workspace.attendances().length }} registros</span>
         </div>
 
-        <mat-list class="attendance-list">
-          @for (attendance of workspace.attendances(); track attendance.attendedAt + attendance.personName) {
-            <mat-list-item>
-              <span matListItemTitle class="attendance-item-title">
-                {{ attendance.personName }}
-              </span>
-              <span matListItemLine class="attendance-item-line">
-                {{ attendance.attendedAt | date: 'short' }} · por
-                {{ attendance.createdByMethod }}
-              </span>
-            </mat-list-item>
+        <mat-list class="attendance-list categorized-list">
+          @for (group of workspace.attendanceGroups(); track group.category) {
+            <div
+              class="category-heading"
+              [class.category-REGULAR]="group.category === 'REGULAR'"
+              [class.category-NON_SUBSCRIBED]="group.category === 'NON_SUBSCRIBED'"
+              [class.category-NON_PAYING]="group.category === 'NON_PAYING'"
+              [class.category-UNKNOWN]="group.category === 'UNKNOWN'">
+              <h4>{{ group.label }}</h4>
+              <span>{{ group.description }}</span>
+            </div>
+
+            @for (attendance of group.attendances; track attendance.eventId + attendance.personId) {
+              <mat-list-item
+                [class.category-REGULAR]="attendance.category === 'REGULAR'"
+                [class.category-NON_SUBSCRIBED]="attendance.category === 'NON_SUBSCRIBED'"
+                [class.category-NON_PAYING]="attendance.category === 'NON_PAYING'"
+                [class.category-UNKNOWN]="attendance.category === 'UNKNOWN'">
+                <span matListItemTitle class="attendance-item-title">
+                  {{ attendance.personName }}
+                </span>
+                <span matListItemLine class="attendance-item-line">
+                  {{ attendance.attendedAt | date: 'short' }} · por
+                  {{ attendance.createdByMethod }}
+                </span>
+                @if (permissions.canDelete('event-attendance#delete')) {
+                  <button
+                    mat-icon-button
+                    matListItemMeta
+                    type="button"
+                    aria-label="Remover presença"
+                    (click)="workspace.deleteAttendance(attendance)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+              </mat-list-item>
+            }
           } @empty {
             <mat-list-item>
               <span matListItemTitle>Nenhuma presença carregada</span>
