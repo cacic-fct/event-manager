@@ -198,6 +198,19 @@ export interface Event {
   updatedById?: string | null;
 }
 
+export interface PlacePreset {
+  id: string;
+  name: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationDescription?: string | null;
+  deletedAt?: string | null;
+  createdAt: string;
+  createdById?: string | null;
+  updatedAt: string;
+  updatedById?: string | null;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -499,6 +512,13 @@ export interface EventInput {
   createdAt?: string;
   createdById?: string;
   updatedById?: string;
+}
+
+export interface PlacePresetInput {
+  name?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationDescription?: string | null;
 }
 
 export interface PersonInput {

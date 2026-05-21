@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, NgZone, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
+import { GraphqlHttpService } from './graphql-http.service';
 
 export type ReceiptRejectionCode = 'INVALID_RECEIPT' | 'NO_SLOTS' | 'SCHEDULE_CONFLICT' | 'GENERIC';
 
@@ -71,14 +72,31 @@ export interface ReceiptValidationResult {
 @Injectable({ providedIn: 'root' })
 export class ReceiptValidationApiService {
   private readonly http = inject(HttpClient);
+  private readonly graphqlHttp = inject(GraphqlHttpService);
   private readonly zone = inject(NgZone);
 
   getPendingCount(): Observable<{ pendingCount: number }> {
-    return this.http.get<{ pendingCount: number }>('/api/major-event-receipts/admin/pending-count');
+    return this.graphqlHttp
+      .request<{ adminReceiptPendingValidationCount: { pendingCount: number } }>(
+        `query AdminReceiptPendingValidationCount {
+          adminReceiptPendingValidationCount {
+            pendingCount
+          }
+        }`,
+      )
+      .pipe(map((data) => data.adminReceiptPendingValidationCount));
   }
 
   getQueue(): Observable<ReceiptValidationQueue> {
-    return this.http.get<ReceiptValidationQueue>('/api/major-event-receipts/admin/queue');
+    return this.graphqlHttp
+      .request<{ adminReceiptValidationQueue: ReceiptValidationQueue }>(
+        `query AdminReceiptValidationQueue {
+          adminReceiptValidationQueue {
+            ${RECEIPT_VALIDATION_QUEUE_FIELDS}
+          }
+        }`,
+      )
+      .pipe(map((data) => data.adminReceiptValidationQueue));
   }
 
   watchQueue(): Observable<ReceiptValidationQueue> {
@@ -108,10 +126,16 @@ export class ReceiptValidationApiService {
   }
 
   approve(subscriptionId: string, receiptId: string, selectedEventIds?: string[]): Observable<ReceiptValidationResult> {
-    return this.http.post<ReceiptValidationResult>(
-      `/api/major-event-receipts/admin/subscriptions/${subscriptionId}/approve`,
-      { receiptId, ...(selectedEventIds ? { selectedEventIds } : {}) },
-    );
+    return this.graphqlHttp
+      .request<{ approveAdminReceipt: ReceiptValidationResult }>(
+        `mutation ApproveAdminReceipt($input: ApproveReceiptInput!) {
+          approveAdminReceipt(input: $input) {
+            ${RECEIPT_VALIDATION_RESULT_FIELDS}
+          }
+        }`,
+        { input: { subscriptionId, receiptId, selectedEventIds } },
+      )
+      .pipe(map((data) => data.approveAdminReceipt));
   }
 
   reject(
@@ -120,20 +144,105 @@ export class ReceiptValidationApiService {
     rejectionCode: ReceiptRejectionCode,
     reason?: string,
   ): Observable<ReceiptValidationResult> {
-    return this.http.post<ReceiptValidationResult>(
-      `/api/major-event-receipts/admin/subscriptions/${subscriptionId}/reject`,
-      {
-        ...(receiptId ? { receiptId } : {}),
-        rejectionCode,
-        reason,
-      },
-    );
+    return this.graphqlHttp
+      .request<{ rejectAdminReceipt: ReceiptValidationResult }>(
+        `mutation RejectAdminReceipt($input: RejectReceiptInput!) {
+          rejectAdminReceipt(input: $input) {
+            ${RECEIPT_VALIDATION_RESULT_FIELDS}
+          }
+        }`,
+        {
+          input: {
+            subscriptionId,
+            receiptId,
+            rejectionCode,
+            reason,
+          },
+        },
+      )
+      .pipe(map((data) => data.rejectAdminReceipt));
   }
 
   undo(actionId: string): Observable<ReceiptValidationQueueItem> {
-    return this.http.post<ReceiptValidationQueueItem>(
-      `/api/major-event-receipts/admin/actions/${actionId}/undo`,
-      {},
-    );
+    return this.graphqlHttp
+      .request<{ undoAdminReceiptValidationAction: ReceiptValidationQueueItem }>(
+        `mutation UndoAdminReceiptValidationAction($actionId: String!) {
+          undoAdminReceiptValidationAction(actionId: $actionId) {
+            ${RECEIPT_VALIDATION_QUEUE_ITEM_FIELDS}
+          }
+        }`,
+        { actionId },
+      )
+      .pipe(map((data) => data.undoAdminReceiptValidationAction));
   }
 }
+
+const RECEIPT_VALIDATION_EVENT_FIELDS = `
+  id
+  name
+  emoji
+  type
+  startDate
+  endDate
+  locationDescription
+  slots
+  slotsAvailable
+  eventGroupId
+  eventGroupName
+  preferenceOrder
+  autoSubscribe
+  selectedForConfirmation
+  hasScheduleConflict
+  hasNoSlots
+`;
+
+const RECEIPT_VALIDATION_QUEUE_ITEM_FIELDS = `
+  subscriptionId
+  majorEventId
+  majorEventName
+  personId
+  personName
+  personEmail
+  personPhone
+  amountPaid
+  paymentTier
+  subscriptionFlow
+  desiredCourses
+  desiredLectures
+  desiredUncategorized
+  subscriptionStatus
+  subscriptionUpdatedAt
+  receiptRejectionReason
+  receipt {
+    id
+    fileName
+    mimeType
+    sizeBytes
+    uploadedAt
+    expiresAt
+    imageUrl
+    processingStatus
+    ocrText
+    amountMatched
+    matchedAmountText
+    nameMatched
+    matchedNameText
+  }
+  events {
+    ${RECEIPT_VALIDATION_EVENT_FIELDS}
+  }
+`;
+
+const RECEIPT_VALIDATION_QUEUE_FIELDS = `
+  pendingCount
+  items {
+    ${RECEIPT_VALIDATION_QUEUE_ITEM_FIELDS}
+  }
+`;
+
+const RECEIPT_VALIDATION_RESULT_FIELDS = `
+  actionId
+  item {
+    ${RECEIPT_VALIDATION_QUEUE_ITEM_FIELDS}
+  }
+`;

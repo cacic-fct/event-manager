@@ -57,6 +57,7 @@ import { EventsResolver } from './events/resolver';
 import { MajorEventsResolver } from './major-events/resolver';
 import { PublicEventsResolver } from './public-events/events.resolver';
 import { PublicMajorEventsResolver } from './public-events/major-events.resolver';
+import { PlacePresetsResolver } from './places/resolver';
 import { MergeCandidateOperationsService } from './people/merge-candidates/operations.service';
 import { MergeCandidatesResolver } from './people/merge-candidates/resolver';
 import { PeopleResolver } from './people/resolver';
@@ -65,9 +66,15 @@ import { TypesenseSearchService } from './search/typesense-search.service';
 import { S3Service } from './s3/s3.service';
 import { MajorEventReceiptsController } from './major-event-receipts/major-event-receipts.controller';
 import { MajorEventReceiptsProcessor } from './major-event-receipts/major-event-receipts.processor';
+import { MajorEventReceiptsResolver } from './major-event-receipts/major-event-receipts.resolver';
 import { MajorEventReceiptsService } from './major-event-receipts/major-event-receipts.service';
+import { ReceiptQueueMapper } from './major-event-receipts/mappers/receipt-queue.mapper';
 import { ReceiptAnalysisService } from './major-event-receipts/receipt-analysis.service';
 import { MAJOR_EVENT_RECEIPTS_QUEUE } from './major-event-receipts/receipt.types';
+import { ReceiptAdminQueueService } from './major-event-receipts/services/receipt-admin-queue.service';
+import { ReceiptSubscriptionSyncService } from './major-event-receipts/services/receipt-subscription-sync.service';
+import { ReceiptUploadService } from './major-event-receipts/services/receipt-upload.service';
+import { ReceiptValidationService } from './major-event-receipts/services/receipt-validation.service';
 import { NovuNotificationsService } from './notifications/novu-notifications.service';
 import { AccountManagerPrivacySyncService } from './privacy/account-manager-privacy-sync.service';
 import { PrivacyController } from './privacy/privacy.controller';
@@ -138,6 +145,7 @@ import { WeatherService } from './weather/weather.service';
     MajorEventsResolver,
     PublicMajorEventsResolver,
     EventGroupsResolver,
+    PlacePresetsResolver,
     EventsResolver,
     PublicEventsResolver,
     UsersResolver,
@@ -169,7 +177,13 @@ import { WeatherService } from './weather/weather.service';
     MergeCandidateOperationsService,
     TypesenseSearchService,
     S3Service,
+    MajorEventReceiptsResolver,
     MajorEventReceiptsService,
+    ReceiptAdminQueueService,
+    ReceiptQueueMapper,
+    ReceiptSubscriptionSyncService,
+    ReceiptUploadService,
+    ReceiptValidationService,
     MajorEventReceiptsProcessor,
     ReceiptAnalysisService,
     AccountManagerPrivacySyncService,

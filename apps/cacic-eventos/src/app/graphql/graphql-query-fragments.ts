@@ -123,6 +123,19 @@ export const EVENT_GROUP_FIELDS = `
   updatedById
 `;
 
+export const PLACE_PRESET_FIELDS = `
+  id
+  name
+  latitude
+  longitude
+  locationDescription
+  deletedAt
+  createdAt
+  createdById
+  updatedAt
+  updatedById
+`;
+
 export const PERSON_FIELDS = `
   id
   name

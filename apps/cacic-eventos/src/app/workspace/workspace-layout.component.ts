@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, PLATFORM_ID, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,6 +16,7 @@ import { filter, map, startWith } from 'rxjs';
 import { WorkspacePermissionsService } from '../shared/services/workspace-permissions.service';
 import { WorkspaceShellService } from '../shared/services/workspace-shell.service';
 import { workspaceNavItems } from './workspace-nav';
+import { isPlatformBrowser } from '@angular/common';
 
 @Component({
   selector: 'app-workspace-layout',
@@ -50,6 +51,10 @@ export class WorkspaceLayoutComponent {
 
   protected readonly navItems = workspaceNavItems;
 
+  private platformId = inject(PLATFORM_ID);
+  private isDarkSignal = signal(false);
+  fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
+
   protected readonly isMobile = toSignal(
     this.breakpointObserver.observe('(max-width: 768px)').pipe(map((result) => result.matches)),
     { initialValue: false },
@@ -71,6 +76,17 @@ export class WorkspaceLayoutComponent {
   });
 
   constructor() {
+    if (isPlatformBrowser(this.platformId)) {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+      this.isDarkSignal.set(media.matches);
+
+      media.addEventListener('change', (e) => {
+        this.isDarkSignal.set(e.matches);
+        console.log('Dark mode changed:', e.matches);
+      });
+    }
+
     void this.shell.loadInitialData();
   }
 

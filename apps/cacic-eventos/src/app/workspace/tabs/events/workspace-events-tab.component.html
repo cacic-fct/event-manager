@@ -219,6 +219,20 @@
         <section class="surface field-group">
           <h4>Local e links</h4>
           <div class="field-grid">
+            <mat-form-field class="span-2">
+              <mat-label>Local</mat-label>
+              <mat-select
+                formControlName="locationPresetId"
+                (selectionChange)="workspace.applyPlacePreset($event.value)">
+                <mat-option value="PERSONALIZADO">Personalizado</mat-option>
+                @for (place of workspace.placePresetsService.sortedPlacePresets(); track place.id) {
+                  <mat-option [value]="place.id">
+                    {{ place.name }}
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
             <mat-form-field>
               <mat-label>Latitude</mat-label>
               <input matInput formControlName="latitude" />
@@ -236,7 +250,7 @@
             }
 
             <mat-form-field class="span-2">
-              <mat-label>Descrição do local</mat-label>
+              <mat-label>Nome e descrição exibidos aos usuários</mat-label>
               <input matInput formControlName="locationDescription" />
             </mat-form-field>
 

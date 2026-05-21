@@ -278,6 +278,26 @@ model Event {
   @@map("events")
 }
 
+model PlacePreset {
+  id                  String  @id @default(uuid(7))
+  name                String
+  latitude            Float?
+  longitude           Float?
+  locationDescription String?
+
+  deletedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@unique([name, deletedAt])
+  @@index([name])
+  @@index([deletedAt])
+  @@map("place_presets")
+}
+
 model EventSubscription {
   id String @id @default(uuid(7))
 

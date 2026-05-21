@@ -5,6 +5,7 @@ import { workspaceNavItems } from './workspace-nav';
 import { WorkspaceNotificationsTabComponent } from './tabs/notifications/workspace-notifications-tab.component';
 
 const eventsData = getWorkspaceRouteData('events');
+const placesData = getWorkspaceRouteData('places');
 const groupsData = getWorkspaceRouteData('groups');
 const majorEventsData = getWorkspaceRouteData('major-events');
 const peopleData = getWorkspaceRouteData('people');
@@ -56,6 +57,13 @@ export const workspaceRoutes: Route[] = [
       ),
       ...guardedWorkspaceTabRoute(`${eventsData.path}/:eventId`, eventsData, () =>
         import('./tabs/events/workspace-events-tab.component').then((m) => m.WorkspaceEventsTabComponent),
+      ),
+
+      ...guardedWorkspaceTabRoute(placesData.path, placesData, () =>
+        import('./tabs/places/workspace-places-tab.component').then((m) => m.WorkspacePlacesTabComponent),
+      ),
+      ...guardedWorkspaceTabRoute(`${placesData.path}/:placeId`, placesData, () =>
+        import('./tabs/places/workspace-places-tab.component').then((m) => m.WorkspacePlacesTabComponent),
       ),
 
       ...guardedWorkspaceTabRoute(groupsData.path, groupsData, () =>
