@@ -7,7 +7,8 @@ import { Component } from '@angular/core';
     .text-center {
       text-align: center;
     }
-    p {
+    p,
+    li {
       text-align: justify;
     }
   `,
