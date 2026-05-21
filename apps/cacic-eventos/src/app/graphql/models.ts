@@ -236,6 +236,7 @@ export interface EventAttendance {
   createdAt: string;
   createdById?: string | null;
   createdByMethod: AttendanceCreationMethod;
+  collectedByFullName?: string | null;
   collectedLatitude?: number | null;
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;

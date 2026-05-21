@@ -12,6 +12,7 @@ import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/atte
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
 import { SubscriptionCsvColumnDialogComponent } from '../../workspace/dialogs/subscription-csv-column-dialog.component';
 import { SubscriptionCsvImportResultDialogComponent } from '../../workspace/dialogs/subscription-csv-import-result-dialog.component';
+import { WorkspaceAttendanceInfoDialogComponent } from '../../workspace/dialogs/workspace-attendance-info-dialog.component';
 import { WorkspaceAttendanceScannerDialogComponent } from '../../workspace/dialogs/workspace-attendance-scanner-dialog.component';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
@@ -27,7 +28,13 @@ type AttendanceListItem = {
   personId: string;
   personName: string;
   attendedAt: string;
+  createdAt: string;
+  createdById?: string | null;
   createdByMethod: string;
+  collectedByFullName?: string | null;
+  collectedLatitude?: number | null;
+  collectedLongitude?: number | null;
+  collectedAccuracyMeters?: number | null;
   category: AttendanceCategory;
 };
 
@@ -371,10 +378,24 @@ export class WorkspaceAttendancesService {
         personId: attendance.personId,
         personName: attendance.person?.name ?? attendance.personId,
         attendedAt: attendance.attendedAt,
+        createdAt: attendance.createdAt,
+        createdById: attendance.createdById,
         createdByMethod: attendance.createdByMethod,
+        collectedByFullName: attendance.collectedByFullName,
+        collectedLatitude: attendance.collectedLatitude,
+        collectedLongitude: attendance.collectedLongitude,
+        collectedAccuracyMeters: attendance.collectedAccuracyMeters,
         category: attendance.category,
       })),
     );
+  }
+
+  showAttendanceInfo(attendance: AttendanceListItem): void {
+    this.dialog.open(WorkspaceAttendanceInfoDialogComponent, {
+      width: 'min(680px, 96vw)',
+      maxWidth: '96vw',
+      data: attendance,
+    });
   }
 
   async deleteAttendance(attendance: { eventId: string; personId: string }): Promise<void> {

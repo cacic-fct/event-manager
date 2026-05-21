@@ -90,6 +90,12 @@
   margin-top: 0.2rem;
 }
 
+.attendance-item-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.25rem;
+}
+
 .categorized-list {
   display: grid;
   gap: 0.25rem;
