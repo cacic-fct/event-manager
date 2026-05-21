@@ -31,11 +31,11 @@ export class WorkspaceEventGroupsService {
   );
   readonly sortedEventGroups = computed(() => {
     const groups = this.eventGroups();
-    const events = this.allEvents();
+    const firstEventsByGroup = this.firstEventsByGroupId();
 
     return [...groups].sort((a, b) => {
-      const aFirstEvent = this.getFirstEventForGroup(a.id, events);
-      const bFirstEvent = this.getFirstEventForGroup(b.id, events);
+      const aFirstEvent = firstEventsByGroup.get(a.id);
+      const bFirstEvent = firstEventsByGroup.get(b.id);
 
       // Groups without events come first
       if (!aFirstEvent && !bFirstEvent) return 0;
@@ -47,6 +47,16 @@ export class WorkspaceEventGroupsService {
       const bDate = new Date(bFirstEvent.startDate).getTime();
       return bDate - aDate;
     });
+  });
+
+  private readonly firstEventsByGroupId = computed(() => {
+    const groups = this.eventGroups();
+    const events = this.allEvents();
+    const firstEventsByGroup = new Map<string, Event | undefined>();
+    for (const group of groups) {
+      firstEventsByGroup.set(group.id, this.getFirstEventForGroup(group.id, events));
+    }
+    return firstEventsByGroup;
   });
 
   readonly eventGroupForm = this.formBuilder.nonNullable.group({
@@ -76,7 +86,7 @@ export class WorkspaceEventGroupsService {
 
   async loadEventGroups(): Promise<void> {
     this.eventGroups.set(await firstValueFrom(this.api.listEventGroups({ take: 200 })));
-    this.allEvents.set(await firstValueFrom(this.eventsApi.listEvents({ take: 200 })));
+    await this.refreshAllEvents();
     const selectedGroup = this.selectedEventGroup();
     if (selectedGroup) {
       const refreshed = this.eventGroups().find((group) => group.id === selectedGroup.id);
@@ -84,6 +94,10 @@ export class WorkspaceEventGroupsService {
         this.selectedEventGroup.set(refreshed);
       }
     }
+  }
+
+  private async refreshAllEvents(): Promise<void> {
+    this.allEvents.set(await firstValueFrom(this.eventsApi.listEvents({ take: 200 })));
   }
 
   async saveEventGroup(): Promise<void> {
@@ -237,8 +251,7 @@ export class WorkspaceEventGroupsService {
             : false,
       }),
     );
-    this.allEvents.set(await firstValueFrom(this.eventsApi.listEvents({ take: 200 })));
-    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id)]);
+    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id), this.refreshAllEvents()]);
   }
 
   async removeEventFromSelectedGroup(eventItem: Event): Promise<void> {
@@ -252,8 +265,7 @@ export class WorkspaceEventGroupsService {
         eventGroupId: null,
       }),
     );
-    this.allEvents.set(await firstValueFrom(this.eventsApi.listEvents({ take: 200 })));
-    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id)]);
+    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id), this.refreshAllEvents()]);
   }
 
   private async loadEventsForGroup(groupId: string): Promise<void> {
@@ -269,7 +281,7 @@ export class WorkspaceEventGroupsService {
   }
 
   getFirstEventForGroupDisplay(groupId: string): Event | undefined {
-    return this.getFirstEventForGroup(groupId, this.allEvents());
+    return this.firstEventsByGroupId().get(groupId);
   }
 
   private getFirstEventForGroup(groupId: string, events: Event[]): Event | undefined {
