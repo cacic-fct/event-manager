@@ -99,7 +99,7 @@
 
       <mat-list>
         @for (event of section.events; track event.name + event.startDate) {
-        <mat-list-item [routerLink]="'/event/' + event.id">
+        <mat-list-item [routerLink]="'/event/' + event.id" [queryParams]="{ back: router.url }">
           <div matListItemIcon class="small-emoji-frame">
             <img class="small-twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
           </div>
