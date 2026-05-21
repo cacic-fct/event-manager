@@ -22,12 +22,32 @@ export class WorkspaceEventGroupsService {
   private readonly router = inject(Router);
 
   readonly eventGroups = signal<EventGroup[]>([]);
+  readonly allEvents = signal<Event[]>([]);
   readonly selectedEventGroup = signal<EventGroup | null>(null);
   readonly eventGroupEvents = signal<Event[]>([]);
   readonly eventGroupEventSearchResults = signal<Event[]>([]);
   readonly selectedEventGroupHasMajorEventEvents = computed(() =>
     this.eventGroupEvents().some((eventItem) => eventItem.majorEventId),
   );
+  readonly sortedEventGroups = computed(() => {
+    const groups = this.eventGroups();
+    const events = this.allEvents();
+
+    return [...groups].sort((a, b) => {
+      const aFirstEvent = this.getFirstEventForGroup(a.id, events);
+      const bFirstEvent = this.getFirstEventForGroup(b.id, events);
+
+      // Groups without events come first
+      if (!aFirstEvent && !bFirstEvent) return 0;
+      if (!aFirstEvent) return -1;
+      if (!bFirstEvent) return 1;
+
+      // Sort by start date descending
+      const aDate = new Date(aFirstEvent.startDate).getTime();
+      const bDate = new Date(bFirstEvent.startDate).getTime();
+      return bDate - aDate;
+    });
+  });
 
   readonly eventGroupForm = this.formBuilder.nonNullable.group({
     id: [''],
@@ -56,6 +76,7 @@ export class WorkspaceEventGroupsService {
 
   async loadEventGroups(): Promise<void> {
     this.eventGroups.set(await firstValueFrom(this.api.listEventGroups({ take: 200 })));
+    this.allEvents.set(await firstValueFrom(this.eventsApi.listEvents({ take: 200 })));
     const selectedGroup = this.selectedEventGroup();
     if (selectedGroup) {
       const refreshed = this.eventGroups().find((group) => group.id === selectedGroup.id);
@@ -216,6 +237,7 @@ export class WorkspaceEventGroupsService {
             : false,
       }),
     );
+    this.allEvents.set(await firstValueFrom(this.eventsApi.listEvents({ take: 200 })));
     await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id)]);
   }
 
@@ -230,6 +252,7 @@ export class WorkspaceEventGroupsService {
         eventGroupId: null,
       }),
     );
+    this.allEvents.set(await firstValueFrom(this.eventsApi.listEvents({ take: 200 })));
     await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id)]);
   }
 
@@ -243,6 +266,17 @@ export class WorkspaceEventGroupsService {
       ),
     );
     this.syncCertificateRuleControls();
+  }
+
+  getFirstEventForGroupDisplay(groupId: string): Event | undefined {
+    return this.getFirstEventForGroup(groupId, this.allEvents());
+  }
+
+  private getFirstEventForGroup(groupId: string, events: Event[]): Event | undefined {
+    return events
+      .filter((event) => event.eventGroupId === groupId)
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+      .at(0);
   }
 
   private syncCertificateRuleControls(): void {
