@@ -1,8 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { parseCsv } from '@cacic-fct/shared-utils';
+import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
 import {
   Event,
@@ -14,6 +17,8 @@ import {
 } from '../../graphql/models';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { SubscriptionApiService } from '../../graphql/subscription-api.service';
+import { SubscriptionCsvColumnDialogComponent } from '../../workspace/dialogs/subscription-csv-column-dialog.component';
+import { SubscriptionCsvImportResultDialogComponent } from '../../workspace/dialogs/subscription-csv-import-result-dialog.component';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspaceAttendancesService } from './workspace-attendances.service';
@@ -27,11 +32,13 @@ export class WorkspaceSubscriptionsService {
   private readonly api = inject(SubscriptionApiService);
   private readonly eventApi = inject(EventApiService);
   private readonly peopleApi = inject(PeopleApiService);
+  private readonly dialog = inject(MatDialog);
   private readonly formBuilder = inject(FormBuilder);
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
   private readonly attendancesService = inject(WorkspaceAttendancesService);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly attendanceApi = inject(AttendanceApiService);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
   readonly eventFiltersForm = this.formBuilder.nonNullable.group({
@@ -80,6 +87,7 @@ export class WorkspaceSubscriptionsService {
   readonly selectedMajorEventPerson = signal<Person | null>(null);
   readonly editMode = signal(false);
   readonly selectedEventIds = signal<Set<string>>(new Set());
+  readonly isImportingCsv = signal(false);
 
   async searchEvents(): Promise<void> {
     const events = await firstValueFrom(
@@ -310,5 +318,59 @@ export class WorkspaceSubscriptionsService {
     }
 
     await this.attendancesService.refreshMajorEventUserAttendancesFor(event.majorEventId);
+  }
+
+  async importMajorEventSubscriptionsFromCsv(file: File | null): Promise<void> {
+    if (!file) {
+      return;
+    }
+
+    const majorEventId = this.majorEventForm.controls.majorEventId.value;
+    if (!majorEventId) {
+      this.majorEventForm.controls.majorEventId.markAsTouched();
+      this.snackbar.open('Selecione um grande evento antes de importar.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    this.isImportingCsv.set(true);
+    try {
+      const csvContent = await file.text();
+      const parsedCsv = parseCsv(csvContent);
+      const columnDialogRef = this.dialog.open(SubscriptionCsvColumnDialogComponent, {
+        width: '40rem',
+        maxHeight: '80vh',
+        data: {
+          fileName: file.name,
+          headers: parsedCsv.headers,
+          previewRows: parsedCsv.rows.slice(0, 12),
+        },
+      });
+      const importConfig = await firstValueFrom(columnDialogRef.afterClosed());
+      if (!importConfig) {
+        return;
+      }
+
+      const result = await firstValueFrom(
+        this.attendanceApi.importMajorEventSubscriptionsFromCsv({
+          majorEventId,
+          csvContent,
+          subscriptionStatus: importConfig.subscriptionStatus,
+          columnMapping: importConfig.columnMapping,
+        }),
+      );
+
+      await this.loadMajorEventSubscriptions();
+      this.dialog.open(SubscriptionCsvImportResultDialogComponent, {
+        width: '40rem',
+        maxHeight: '80vh',
+        data: result,
+      });
+    } catch (error) {
+      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível importar o CSV.', 'Fechar', {
+        duration: 5000,
+      });
+    } finally {
+      this.isImportingCsv.set(false);
+    }
   }
 }
