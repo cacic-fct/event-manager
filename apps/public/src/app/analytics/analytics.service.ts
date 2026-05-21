@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
+import { Injectable, PLATFORM_ID, effect, inject, isDevMode } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { AuthService, type AuthenticatedUser } from '@cacic-fct/shared-angular';
 import { UmamiService } from '@cacic-fct/ngx-umami';
@@ -42,7 +42,7 @@ export class AnalyticsService {
   }
 
   start(): void {
-    if (!this.isBrowser || this.started) {
+    if (!this.isBrowser || this.started || isDevMode()) {
       return;
     }
 

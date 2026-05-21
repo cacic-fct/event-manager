@@ -40,14 +40,14 @@ export const appConfig: ApplicationConfig = {
         dsn: 'https://44b2480fd6cd4402b61590135a093fd6@glitchtip.cacic.dev.br/1',
         beforeSend: (request) => {
           const authService = inject(AuthService);
-          return isUserDiagnosticsEnabled(authService.user()) ? request : null;
+          return !isDevMode() && isUserDiagnosticsEnabled(authService.user()) ? request : null;
         },
       }),
     ),
     provideUmami({
       websiteId: 'df6b1fa8-7566-4cb0-8dff-279d15cc0b5d',
       src: 'https://a.cacic.dev.br/b.js',
-      autoTrack: true,
+      autoTrack: false,
     }),
     provideAppInitializer(() => {
       const registry = inject(MatIconRegistry);
