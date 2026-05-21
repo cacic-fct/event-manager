@@ -85,7 +85,7 @@ export class Event {
   private readonly realtimeAvailability = signal<{ eventId: string; hasAvailableSlots: boolean } | null>(null);
 
   private readonly returnUrl = toSignal(
-    this.route.queryParamMap.pipe(map((params) => params.get('returnUrl') || '/menu')),
+    this.route.queryParamMap.pipe(map((params) => params.get('back') || params.get('returnUrl') || '/menu')),
     { initialValue: '/menu' },
   );
 
