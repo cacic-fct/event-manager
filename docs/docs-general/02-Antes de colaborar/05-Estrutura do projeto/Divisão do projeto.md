@@ -9,7 +9,7 @@ sidebar:
 O CACiC Event Manager é um projeto único, mas está dividido em 2 repositórios:
 
 - [CACiC Event Manager](https://github.com/cacic-fct/event-manager) - Frontend, backend e documentação;
-- [CACiC Event Manager Assets](https://github.com/cacic-fct/event-manager-assets) - Composição de imagens, sons e outros recursos com armazenamento em arquivos binários, inadequados para versionamento.
+- [CACiC Event Manager Assets](https://github.com/cacic-fct/event-manager-assets) - Composição de imagens, sons e outros recursos com armazenamento em arquivos binários e inadequados para versionamento.
 
 O CACiC Event Manager também pode fazer uso de outros projetos ou repositórios da organização do CACiC, mas estes não estarão listados aqui se não forem parte do projeto do CACiC Event Manager em si.
 
