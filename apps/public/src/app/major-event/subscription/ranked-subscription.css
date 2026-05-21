@@ -96,7 +96,7 @@
 
 .ranked-content {
   display: grid;
-  gap: 3px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -104,6 +104,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ranked-event-detail {
+  display: grid;
+  gap: 2px;
 }
 
 .ranked-description,
