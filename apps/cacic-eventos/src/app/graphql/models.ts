@@ -20,6 +20,13 @@ export type SubscriptionStatus =
 export type SubscriptionCreationMethod = 'ADMIN_DASHBOARD' | 'SELF_SUBSCRIPTION' | 'UNKNOWN';
 export type PersonMergeField = 'NAME' | 'EMAIL' | 'IDENTITY_DOCUMENT' | 'ACADEMIC_ID' | 'USER_ID' | 'EXTERNAL_REF';
 
+export interface EventSummary {
+  id: string;
+  eventGroupId: string | null;
+  startDate: string;
+  name: string;
+}
+
 export interface MajorEvent {
   id: string;
   name: string;
