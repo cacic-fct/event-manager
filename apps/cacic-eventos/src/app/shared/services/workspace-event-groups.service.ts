@@ -22,7 +22,7 @@ export class WorkspaceEventGroupsService {
   private readonly router = inject(Router);
 
   readonly eventGroups = signal<EventGroup[]>([]);
-  readonly allEvents = signal<Event[]>([]);
+  readonly eventSummaries = signal<Array<{ id: string; eventGroupId: string | null; startDate: string; name: string }>>([]);
   readonly selectedEventGroup = signal<EventGroup | null>(null);
   readonly eventGroupEvents = signal<Event[]>([]);
   readonly eventGroupEventSearchResults = signal<Event[]>([]);
@@ -51,8 +51,8 @@ export class WorkspaceEventGroupsService {
 
   private readonly firstEventsByGroupId = computed(() => {
     const groups = this.eventGroups();
-    const events = this.allEvents();
-    const firstEventsByGroup = new Map<string, Event | undefined>();
+    const events = this.eventSummaries();
+    const firstEventsByGroup = new Map<string, (typeof events)[0] | undefined>();
     for (const group of groups) {
       firstEventsByGroup.set(group.id, this.getFirstEventForGroup(group.id, events));
     }
@@ -86,7 +86,7 @@ export class WorkspaceEventGroupsService {
 
   async loadEventGroups(): Promise<void> {
     this.eventGroups.set(await firstValueFrom(this.api.listEventGroups({ take: 200 })));
-    await this.refreshAllEvents();
+    await this.refreshEventSummaries();
     const selectedGroup = this.selectedEventGroup();
     if (selectedGroup) {
       const refreshed = this.eventGroups().find((group) => group.id === selectedGroup.id);
@@ -96,8 +96,8 @@ export class WorkspaceEventGroupsService {
     }
   }
 
-  private async refreshAllEvents(): Promise<void> {
-    this.allEvents.set(await firstValueFrom(this.eventsApi.listEvents({ take: 200 })));
+  private async refreshEventSummaries(): Promise<void> {
+    this.eventSummaries.set(await firstValueFrom(this.eventsApi.listEventsSummary({ take: 200 })));
   }
 
   async saveEventGroup(): Promise<void> {
@@ -251,7 +251,7 @@ export class WorkspaceEventGroupsService {
             : false,
       }),
     );
-    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id), this.refreshAllEvents()]);
+    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id), this.refreshEventSummaries()]);
   }
 
   async removeEventFromSelectedGroup(eventItem: Event): Promise<void> {
@@ -265,7 +265,7 @@ export class WorkspaceEventGroupsService {
         eventGroupId: null,
       }),
     );
-    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id), this.refreshAllEvents()]);
+    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id), this.refreshEventSummaries()]);
   }
 
   private async loadEventsForGroup(groupId: string): Promise<void> {
@@ -280,11 +280,14 @@ export class WorkspaceEventGroupsService {
     this.syncCertificateRuleControls();
   }
 
-  getFirstEventForGroupDisplay(groupId: string): Event | undefined {
+  getFirstEventForGroupDisplay(groupId: string): { id: string; eventGroupId: string | null; startDate: string; name: string } | undefined {
     return this.firstEventsByGroupId().get(groupId);
   }
 
-  private getFirstEventForGroup(groupId: string, events: Event[]): Event | undefined {
+  private getFirstEventForGroup(
+    groupId: string,
+    events: Array<{ id: string; eventGroupId: string | null; startDate: string; name: string }>,
+  ): (typeof events)[0] | undefined {
     return events
       .filter((event) => event.eventGroupId === groupId)
       .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())

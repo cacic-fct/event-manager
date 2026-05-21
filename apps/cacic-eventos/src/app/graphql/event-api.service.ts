@@ -51,6 +51,22 @@ export class EventApiService {
       .pipe(map((data) => data.events));
   }
 
+  listEventsSummary(filters?: { skip?: number; take?: number }) {
+    return this.graphqlHttp
+      .request<{ events: Array<{ id: string; eventGroupId: string | null; startDate: string; name: string }> }>(
+        `query ListEventsSummary($skip: Int, $take: Int) {
+          events(skip: $skip, take: $take) {
+            id
+            eventGroupId
+            startDate
+            name
+          }
+        }`,
+        filters,
+      )
+      .pipe(map((data) => data.events));
+  }
+
   getEvent(id: string) {
     return this.graphqlHttp
       .request<{ event: Event }>(
