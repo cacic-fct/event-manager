@@ -10,7 +10,7 @@ import { of } from 'rxjs';
 import { EventApiService } from './event-api.service';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
-function createComponent(queryParamMap: Params = {}): ComponentFixture<Event> {
+function createEventComponentFixture(queryParamMap: Params = {}): ComponentFixture<Event> {
   TestBed.configureTestingModule({
     imports: [Event],
     providers: [
@@ -76,7 +76,7 @@ describe('Event', () => {
   let httpTesting: HttpTestingController;
 
   beforeEach(async () => {
-    fixture = createComponent({});
+    fixture = createEventComponentFixture({});
     await fixture.whenStable();
     component = fixture.componentInstance;
   });
@@ -87,7 +87,7 @@ describe('Event', () => {
 
   it('should use back query parameter as return URL', async () => {
     const testBackUrl = '/validate?certificateId=123';
-    const newFixture = createComponent({ back: testBackUrl });
+    const newFixture = createEventComponentFixture({ back: testBackUrl });
     await newFixture.whenStable();
     const newComponent = newFixture.componentInstance;
 
@@ -96,7 +96,7 @@ describe('Event', () => {
 
   it('should fall back to returnUrl if back parameter is not provided', async () => {
     const testReturnUrl = '/calendar';
-    const newFixture = createComponent({ returnUrl: testReturnUrl });
+    const newFixture = createEventComponentFixture({ returnUrl: testReturnUrl });
     await newFixture.whenStable();
     const newComponent = newFixture.componentInstance;
 
@@ -106,7 +106,7 @@ describe('Event', () => {
   it('should prioritize back over returnUrl if both are provided', async () => {
     const testBackUrl = '/validate?certificateId=123';
     const testReturnUrl = '/calendar';
-    const newFixture = createComponent({ back: testBackUrl, returnUrl: testReturnUrl });
+    const newFixture = createEventComponentFixture({ back: testBackUrl, returnUrl: testReturnUrl });
     await newFixture.whenStable();
     const newComponent = newFixture.componentInstance;
 
