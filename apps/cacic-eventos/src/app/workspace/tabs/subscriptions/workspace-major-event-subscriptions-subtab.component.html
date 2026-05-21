@@ -35,6 +35,22 @@
         <mat-icon>add</mat-icon>
         Nova inscrição
       </button>
+
+      @if (permissions.canEdit('subscription#edit')) {
+        <input
+          #subscriptionCsvInput
+          type="file"
+          accept=".csv,text/csv"
+          hidden
+          (change)="
+            workspace.importMajorEventSubscriptionsFromCsv(subscriptionCsvInput.files?.[0] ?? null);
+            subscriptionCsvInput.value = ''
+          " />
+        <button mat-button type="button" [disabled]="workspace.isImportingCsv()" (click)="subscriptionCsvInput.click()">
+          <mat-icon>upload_file</mat-icon>
+          Importar inscrições
+        </button>
+      }
     </form>
 
     <mat-list class="subscription-list">

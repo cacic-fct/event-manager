@@ -10,8 +10,6 @@ import { PeopleApiService } from '../../graphql/people-api.service';
 import { AttendanceCategory, Event, MajorEventUserAttendance, Person } from '../../graphql/models';
 import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/attendance-csv-column-dialog.component';
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
-import { SubscriptionCsvColumnDialogComponent } from '../../workspace/dialogs/subscription-csv-column-dialog.component';
-import { SubscriptionCsvImportResultDialogComponent } from '../../workspace/dialogs/subscription-csv-import-result-dialog.component';
 import { WorkspaceAttendanceInfoDialogComponent } from '../../workspace/dialogs/workspace-attendance-info-dialog.component';
 import { WorkspaceAttendanceScannerDialogComponent } from '../../workspace/dialogs/workspace-attendance-scanner-dialog.component';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
@@ -299,60 +297,6 @@ export class WorkspaceAttendancesService {
       await this.loadAttendances(eventId);
       this.dialog.open(AttendanceCsvImportResultDialogComponent, {
         width: '36rem',
-        maxHeight: '80vh',
-        data: result,
-      });
-    } catch (error) {
-      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível importar o CSV.', 'Fechar', {
-        duration: 5000,
-      });
-    } finally {
-      this.isImportingCsv.set(false);
-    }
-  }
-
-  async importMajorEventSubscriptionsFromCsv(file: File | null): Promise<void> {
-    if (!file) {
-      return;
-    }
-
-    const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
-    if (!majorEventId) {
-      this.majorEventAttendanceForm.controls.majorEventId.markAsTouched();
-      this.snackbar.open('Selecione um grande evento antes de importar.', 'Fechar', { duration: 3000 });
-      return;
-    }
-
-    this.isImportingCsv.set(true);
-    try {
-      const csvContent = await file.text();
-      const parsedCsv = this.parseCsv(csvContent);
-      const columnDialogRef = this.dialog.open(SubscriptionCsvColumnDialogComponent, {
-        width: '40rem',
-        maxHeight: '80vh',
-        data: {
-          fileName: file.name,
-          headers: parsedCsv.headers,
-          previewRows: parsedCsv.rows.slice(0, 12),
-        },
-      });
-      const importConfig = await firstValueFrom(columnDialogRef.afterClosed());
-      if (!importConfig) {
-        return;
-      }
-
-      const result = await firstValueFrom(
-        this.api.importMajorEventSubscriptionsFromCsv({
-          majorEventId,
-          csvContent,
-          subscriptionStatus: importConfig.subscriptionStatus,
-          columnMapping: importConfig.columnMapping,
-        }),
-      );
-
-      await this.loadMajorEventUserAttendances();
-      this.dialog.open(SubscriptionCsvImportResultDialogComponent, {
-        width: '40rem',
         maxHeight: '80vh',
         data: result,
       });
