@@ -282,7 +282,7 @@ export class WorkspaceAttendanceInfoDialogComponent implements OnDestroy {
           anchor: [400, 700],
           anchorXUnits: 'pixels',
           anchorYUnits: 'pixels',
-          src: '/assets/shared/pin.svg',
+          src: '/admin/assets/shared/pin.svg',
           scale: 0.065,
         }),
       }),

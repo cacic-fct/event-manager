@@ -101,7 +101,7 @@ export class EventLocationMap implements OnDestroy {
           anchor: [400, 700],
           anchorXUnits: 'pixels',
           anchorYUnits: 'pixels',
-          src: '/assets/shared/pin.svg',
+          src: '/app/assets/shared/pin.svg',
           scale: 0.065,
         }),
       }),
