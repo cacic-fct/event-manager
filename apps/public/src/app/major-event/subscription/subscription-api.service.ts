@@ -237,6 +237,9 @@ export class MajorEventSubscriptionApiService {
             id
             majorEventId
             subscriptionStatus
+            amountPaid
+            paymentDate
+            paymentTier
             majorEvent {
               ${PUBLIC_MAJOR_EVENT_FIELDS}
             }
@@ -288,6 +291,9 @@ export class MajorEventSubscriptionApiService {
             id
             majorEventId
             subscriptionStatus
+            amountPaid
+            paymentDate
+            paymentTier
             majorEvent {
               ${PUBLIC_MAJOR_EVENT_FIELDS}
             }

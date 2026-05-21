@@ -29,6 +29,7 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/source-code-pro": "^5.2.7",
     "@fontsource/material-icons-outlined": "^5.2.6",
+    "@micro-sentry/angular": "^7.2.0",
     "@nestjs/apollo": "^13.4.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.21",

@@ -29,6 +29,7 @@
         "@fontsource-variable/inter": "^5.2.8",
         "@fontsource-variable/source-code-pro": "^5.2.7",
         "@fontsource/material-icons-outlined": "^5.2.6",
+        "@micro-sentry/angular": "^7.2.0",
         "@nestjs/apollo": "^13.4.0",
         "@nestjs/bullmq": "^11.0.4",
         "@nestjs/common": "^11.1.21",
@@ -929,6 +930,12 @@
     "@lmdb/lmdb-win32-x64": ["@lmdb/lmdb-win32-x64@3.5.1", "", { "os": "win32", "cpu": "x64" }, "sha512-qwosvPyl+zpUlp3gRb7UcJ3H8S28XHCzkv0Y0EgQToXjQP91ZD67EHSCDmaLjtKhe+GVIW5om1KUpzVLA0l6pg=="],
 
     "@lukeed/csprng": ["@lukeed/csprng@1.1.0", "", {}, "sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA=="],
+
+    "@micro-sentry/angular": ["@micro-sentry/angular@7.2.0", "", { "dependencies": { "@micro-sentry/browser": "7.1.1", "tslib": "2.8.1" }, "peerDependencies": { "@angular/common": ">=14.0.0", "@angular/core": ">=14.0.0" } }, "sha512-XqxYHFMUCEVE+7QDH6VEdSNBdcTs8RBNV8pnfq/sQeQJnUaWY/yutyYJ+JOXLe9XR+Pacv74swe/NIGYcJl27A=="],
+
+    "@micro-sentry/browser": ["@micro-sentry/browser@7.1.1", "", { "dependencies": { "@micro-sentry/core": "7.1.1", "tslib": "^2.0.0" } }, "sha512-wkF1WugjZyJ4sdd0FlcMkqPkJfEU6GsePZUZ2zEL3zRjOdPK+dmtLZ2Xb6ZRu5sfxuLp72K4l/vWTH4nRz/0dQ=="],
+
+    "@micro-sentry/core": ["@micro-sentry/core@7.1.1", "", { "dependencies": { "tslib": "^2.0.0" } }, "sha512-e3rgTGIbw5QPZloClKEomtF6DwT1j0wDj/Lqk9PjIHju8NrtJLqZJUlVJ5qe0oHWGDDHBrvWrz48t8Uwna8/TA=="],
 
     "@microsoft/tsdoc": ["@microsoft/tsdoc@0.16.0", "", {}, "sha512-xgAyonlVVS+q7Vc7qLW0UrJU7rSFcETRWsqdXZtjzRU8dF+6CkozTK4V4y1LwOX7j8r/vHphjDeMeGI4tNGeGA=="],
 
