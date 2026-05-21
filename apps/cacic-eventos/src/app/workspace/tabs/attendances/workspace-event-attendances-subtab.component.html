@@ -170,16 +170,24 @@
                   {{ attendance.attendedAt | date: 'short' }} · por
                   {{ attendance.createdByMethod }}
                 </span>
-                @if (permissions.canDelete('event-attendance#delete')) {
+                <div matListItemMeta class="attendance-item-actions">
                   <button
                     mat-icon-button
-                    matListItemMeta
                     type="button"
-                    aria-label="Remover presença"
-                    (click)="workspace.deleteAttendance(attendance)">
-                    <mat-icon>delete</mat-icon>
+                    aria-label="Ver detalhes da presença"
+                    (click)="workspace.showAttendanceInfo(attendance)">
+                    <mat-icon>info</mat-icon>
                   </button>
-                }
+                  @if (permissions.canDelete('event-attendance#delete')) {
+                    <button
+                      mat-icon-button
+                      type="button"
+                      aria-label="Remover presença"
+                      (click)="workspace.deleteAttendance(attendance)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  }
+                </div>
               </mat-list-item>
             }
           } @empty {

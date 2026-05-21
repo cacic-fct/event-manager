@@ -118,8 +118,14 @@ export class AttendanceApiService {
             eventId
             personId
             attendedAt
+            createdAt
+            createdById
             category
             createdByMethod
+            collectedByFullName
+            collectedLatitude
+            collectedLongitude
+            collectedAccuracyMeters
             person {
               ${PERSON_FIELDS}
             }

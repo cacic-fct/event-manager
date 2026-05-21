@@ -142,7 +142,7 @@ export class EventAttendancesResolver {
 
   @Query(() => [EventAttendance], { name: 'eventAttendances' })
   @RequireScopes('event-attendance#read')
-  eventAttendances(
+  async eventAttendances(
     @Args('personId', { type: () => String, nullable: true }) personId?: string,
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -158,7 +158,7 @@ export class EventAttendancesResolver {
       where.eventId = eventId;
     }
 
-    return this.prisma.eventAttendance.findMany({
+    const attendances = await this.prisma.eventAttendance.findMany({
       where,
       select: {
         personId: true,
@@ -167,6 +167,9 @@ export class EventAttendancesResolver {
         createdAt: true,
         createdById: true,
         createdByMethod: true,
+        collectedLatitude: true,
+        collectedLongitude: true,
+        collectedAccuracyMeters: true,
         category: true,
         person: true,
         event: {
@@ -179,6 +182,29 @@ export class EventAttendancesResolver {
       skip,
       take,
     });
+
+    const collectorIds = [
+      ...new Set(attendances.map((attendance) => attendance.createdById).filter((id): id is string => Boolean(id))),
+    ];
+    const collectors = collectorIds.length
+      ? await this.prisma.user.findMany({
+          where: {
+            id: {
+              in: collectorIds,
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+          },
+        })
+      : [];
+    const collectorNameById = new Map(collectors.map((collector) => [collector.id, collector.name]));
+
+    return attendances.map((attendance) => ({
+      ...attendance,
+      collectedByFullName: attendance.createdById ? (collectorNameById.get(attendance.createdById) ?? undefined) : undefined,
+    }));
   }
 
   @Query(() => [EventAttendanceScannerFeedItem], { name: 'eventAttendanceScannerFeed' })

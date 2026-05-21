@@ -9,6 +9,8 @@
 @import '@fontsource-variable/source-code-pro/index.css';
 @import '@fontsource/material-icons-outlined/index.css';
 
+@import 'node_modules/ol/ol.css';
+
 html {
   height: 100%;
   @include mat.theme(

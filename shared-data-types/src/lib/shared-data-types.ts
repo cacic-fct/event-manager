@@ -606,6 +606,9 @@ export class EventAttendance {
   @Field(() => AttendanceCreationMethod)
   createdByMethod!: AttendanceCreationMethod;
 
+  @Field(() => String, { nullable: true })
+  collectedByFullName?: string;
+
   @Field(() => Float, { nullable: true })
   collectedLatitude?: number;
 

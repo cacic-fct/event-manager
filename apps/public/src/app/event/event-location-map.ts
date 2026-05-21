@@ -69,7 +69,7 @@ export class EventLocationMap implements OnDestroy {
       { fromLonLat },
       { default: OSM },
       { default: VectorSource },
-      { Circle, Fill, Stroke, Style },
+      { Icon, Style },
     ] = await Promise.all([
       import('ol/Feature'),
       import('ol/Map'),
@@ -97,10 +97,12 @@ export class EventLocationMap implements OnDestroy {
 
     marker.setStyle(
       new Style({
-        image: new Circle({
-          radius: 9,
-          fill: new Fill({ color: '#1a73e8' }),
-          stroke: new Stroke({ color: '#ffffff', width: 3 }),
+        image: new Icon({
+          anchor: [400, 700],
+          anchorXUnits: 'pixels',
+          anchorYUnits: 'pixels',
+          src: '/assets/shared/pin.svg',
+          scale: 0.065,
         }),
       }),
     );
