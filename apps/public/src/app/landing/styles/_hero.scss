@@ -6,11 +6,18 @@
   display: block;
   min-height: 100vh;
 }
+
 // Dark
 @media (prefers-color-scheme: dark) {
   .hero-section {
-    background: #0b003d !important; // Dark background for contrast
+    background: #0b003d !important;
     color: inherit;
+  }
+}
+
+@media (max-height: 590px) and (max-width: 768px) {
+  app-doodles {
+    display: none;
   }
 }
 
@@ -24,7 +31,7 @@
   overflow: visible;
 
   @media (max-width: 768px) {
-    align-items: flex-start;
+    align-items: center;
   }
 
   .hero-content {
@@ -32,18 +39,36 @@
 
     display: grid;
     grid-template-columns: 1.25fr 1.2fr;
+    grid-template-areas: 'visual text';
     gap: 2rem;
     align-items: center;
     position: relative;
+    width: 100%;
+
+    .hero-visual {
+      grid-area: visual;
+    }
+
+    .hero-text {
+      grid-area: text;
+    }
 
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
+      grid-template-areas: 'text';
+
       text-align: center;
-      gap: 2rem;
+      gap: 1rem;
+      min-height: 100vh;
+      align-items: center;
     }
   }
 
   .hero-text {
+    position: absolute;
+    top: 10%;
+    z-index: 2;
+
     @media (max-width: 768px) {
       font-size: 2.5rem;
       padding: 0 1rem;
@@ -54,6 +79,7 @@
       font-weight: 700;
       margin-bottom: 1rem;
       line-height: 1;
+
       @media (max-width: 768px) {
         line-height: 3rem;
       }
@@ -98,14 +124,16 @@
   .hero-actions {
     display: flex;
     flex-direction: row;
-    @media (max-width: 768px) {
-      flex-direction: column;
-    }
     gap: 1rem;
     align-items: center;
 
+    @media (max-width: 768px) {
+      flex-direction: column;
+    }
+
     .login-button {
       @include mixins.glass-button;
+
       padding: 1.2rem 2.5rem;
       font-size: 1.1rem;
       font-weight: 500;
@@ -117,6 +145,7 @@
         transform: translateY(-3px) scale(1.02);
         background: rgba(255, 255, 255, 0.2);
         border-color: black;
+
         @media (prefers-color-scheme: dark) {
           border-color: rgb(178, 178, 178);
         }
@@ -152,7 +181,6 @@
         filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
       }
 
-      // Text styling with subtle shadow
       span,
       .mat-button-wrapper {
         position: relative;
@@ -187,9 +215,6 @@
 
     .doodles {
       width: 100%;
-      @media (max-width: 768px) {
-        margin-top: 2rem;
-      }
     }
 
     .hero-icon {
@@ -197,6 +222,21 @@
 
       @media (max-width: 768px) {
         height: 10rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 4rem;
+      z-index: 1;
+      pointer-events: none;
+
+      .doodles {
+        width: 100%;
+        max-height: 32vh;
+        overflow: hidden;
       }
     }
   }

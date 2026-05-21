@@ -171,8 +171,12 @@ export class Wallet {
       return;
     }
 
-    this.snackBar.open('Você precisa de uma conexão com a internet para acessar esta página.', 'Fechar', {
-      duration: 5000,
-    });
+    this.snackBar.open(
+      'Você precisará de uma conexão com a internet para acessar esta página. O Service Worker não está disponível.',
+      'Fechar',
+      {
+        duration: 5000,
+      },
+    );
   }
 }
