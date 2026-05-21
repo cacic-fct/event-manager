@@ -3,14 +3,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Event } from './event';
-import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, Router, Params } from '@angular/router';
 import { signal } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { EventApiService } from './event-api.service';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
-function createComponent(queryParamMap: any = {}) {
+function createComponent(queryParamMap: Params = {}): ComponentFixture<Event> {
   TestBed.configureTestingModule({
     imports: [Event],
     providers: [
