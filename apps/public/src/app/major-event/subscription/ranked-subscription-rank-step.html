@@ -48,13 +48,15 @@
           </div>
           <div class="ranked-content">
             <strong>{{ item.label }}</strong>
-            @for (description of uniqueDescriptions(item.events); track description) {
-            <span class="ranked-description">{{ description }}</span>
-            }
             @for (event of item.events; track event.id) {
-            <span class="ranked-date-line">
-              {{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }} ·
-              {{ event.startDate | date: "EEE, d 'de' MMMM" }}
+            <span class="ranked-event-detail">
+              <span class="ranked-date-line">
+                {{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }} ·
+                {{ event.startDate | date: "EEE, d 'de' MMMM" }}
+              </span>
+              @if (isFirstDescriptionOccurrence(item.events, event)) {
+              <span class="ranked-description">{{ event.shortDescription }}</span>
+              }
             </span>
             }
           </div>
@@ -82,13 +84,15 @@
           </div>
           <div class="ranked-content">
             <strong>{{ item.label }}</strong>
-            @for (description of uniqueDescriptions(item.events); track description) {
-            <span class="ranked-description">{{ description }}</span>
-            }
             @for (event of item.events; track event.id) {
-            <span class="ranked-date-line">
-              {{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }} ·
-              {{ event.startDate | date: "EEE, d 'de' MMMM" }}
+            <span class="ranked-event-detail">
+              <span class="ranked-date-line">
+                {{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }} ·
+                {{ event.startDate | date: "EEE, d 'de' MMMM" }}
+              </span>
+              @if (isFirstDescriptionOccurrence(item.events, event)) {
+              <span class="ranked-description">{{ event.shortDescription }}</span>
+              }
             </span>
             }
           </div>

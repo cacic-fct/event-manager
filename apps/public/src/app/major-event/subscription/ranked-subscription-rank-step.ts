@@ -20,14 +20,11 @@ export class RankedSubscriptionRankStep {
   readonly emoji = inject(EmojiService);
   readonly back = output<void>();
 
-  uniqueDescriptions(events: PublicEvent[]): string[] {
-    const descriptions = new Set<string>();
-    for (const event of events) {
-      const description = event.shortDescription?.trim();
-      if (description) {
-        descriptions.add(description);
-      }
+  isFirstDescriptionOccurrence(events: PublicEvent[], event: PublicEvent): boolean {
+    const description = event.shortDescription?.trim();
+    if (!description) {
+      return false;
     }
-    return [...descriptions];
+    return events.find((item) => item.shortDescription?.trim() === description)?.id === event.id;
   }
 }
