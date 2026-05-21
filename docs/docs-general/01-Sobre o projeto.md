@@ -42,6 +42,7 @@ No entanto, com o objetivo de direcionar o projeto para um caminho mais focaliza
 - [Manual do calouro](https://cacic-fct.github.io/manual-do-calouro):
   - [Página do calouro](https://cacic-fct.github.io/manual-do-calouro/pagina-do-calouro/);
   - [Página de contatos das entidades](https://cacic-fct.github.io/manual-do-calouro/contatos/).
+- [Conta CACiC](https://account.cacic.dev.br)
 
 O CACiC Event Manager continuou com essa tendência e se concentrou exclusivamente em ser um aplicativo para eventos, com o objetivo de ser mais fácil de manter e de evoluir, além de ser mais fácil para os usuários entenderem o propósito do aplicativo.
 
