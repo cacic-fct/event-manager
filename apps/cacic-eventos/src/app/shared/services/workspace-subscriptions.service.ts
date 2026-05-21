@@ -42,7 +42,7 @@ export class WorkspaceSubscriptionsService {
   private readonly attendancesService = inject(WorkspaceAttendancesService);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
-  private readonly attachmentApi = inject(AttendanceApiService);
+  private readonly attendanceApi = inject(AttendanceApiService);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
   readonly eventFiltersForm = this.formBuilder.nonNullable.group({
@@ -355,7 +355,7 @@ export class WorkspaceSubscriptionsService {
       }
 
       const result = await firstValueFrom(
-        this.attachmentApi.importMajorEventSubscriptionsFromCsv({
+        this.attendanceApi.importMajorEventSubscriptionsFromCsv({
           majorEventId,
           csvContent,
           subscriptionStatus: importConfig.subscriptionStatus,
