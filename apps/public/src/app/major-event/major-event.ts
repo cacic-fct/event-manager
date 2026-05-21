@@ -13,6 +13,7 @@ import type { CurrentUserMajorEventSubscription, PublicMajorEvent } from '@cacic
 import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { forkJoin, of } from 'rxjs';
 import { EmojiService } from '../profile/attendances/emoji.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from './subscription/subscription-api.service';
 
 type MajorEventPageState =
@@ -47,6 +48,7 @@ const RECEIPT_UPLOAD_STATUSES = new Set([
 export class MajorEvent {
   private readonly api = inject(MajorEventSubscriptionApiService);
   private readonly auth = inject(AuthService);
+  private readonly analytics = inject(AnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
 
@@ -127,7 +129,13 @@ export class MajorEvent {
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ events, subscriptions }) => this.pageState.set({ status: 'ready', events, subscriptions }),
+        next: ({ events, subscriptions }) => {
+          this.pageState.set({ status: 'ready', events, subscriptions });
+          this.analytics.trackEvent('major_event_list_viewed', {
+            major_event_count: events.length,
+            authenticated: this.isAuthenticated(),
+          });
+        },
         error: (error: unknown) =>
           this.pageState.set({
             status: 'error',

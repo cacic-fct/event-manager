@@ -69,6 +69,8 @@ import { MajorEventReceiptsService } from './major-event-receipts/major-event-re
 import { ReceiptAnalysisService } from './major-event-receipts/receipt-analysis.service';
 import { MAJOR_EVENT_RECEIPTS_QUEUE } from './major-event-receipts/receipt.types';
 import { NovuNotificationsService } from './notifications/novu-notifications.service';
+import { AccountManagerPrivacySyncService } from './privacy/account-manager-privacy-sync.service';
+import { PrivacyController } from './privacy/privacy.controller';
 import { getRedisConnectionOptions } from './weather/redis-connection';
 import { WeatherProcessor } from './weather/weather.processor';
 import { WeatherResolver } from './weather/weather.resolver';
@@ -126,6 +128,7 @@ import { WeatherService } from './weather/weather.service';
     CurrentUserAttendanceCollectionController,
     EventAttendancesController,
     MajorEventReceiptsController,
+    PrivacyController,
   ],
   providers: [
     AppService,
@@ -169,6 +172,7 @@ import { WeatherService } from './weather/weather.service';
     MajorEventReceiptsService,
     MajorEventReceiptsProcessor,
     ReceiptAnalysisService,
+    AccountManagerPrivacySyncService,
     CertificatesResolver,
     WeatherResolver,
     CertificateTargetsService,

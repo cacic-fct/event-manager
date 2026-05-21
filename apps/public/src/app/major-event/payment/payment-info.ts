@@ -20,6 +20,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { toSVG } from '@bwip-js/browser';
 import { forkJoin } from 'rxjs';
+import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from '../subscription/subscription-api.service';
 import { PaymentReceipt, PaymentReceiptApiService } from './payment-receipt-api.service';
 
@@ -60,6 +61,7 @@ interface ConfirmReceiptDialogData {
 })
 export class PaymentInfo {
   private readonly route = inject(ActivatedRoute);
+  private readonly analytics = inject(AnalyticsService);
   private readonly subscriptionApi = inject(MajorEventSubscriptionApiService);
   private readonly receiptApi = inject(PaymentReceiptApiService);
   private readonly snackBar = inject(MatSnackBar);
@@ -124,6 +126,13 @@ export class PaymentInfo {
   copyPixCode(): void {
     const brCode = this.pixPayload()?.brCode;
     if (brCode) {
+      const subscription = this.readySubscription();
+      if (subscription) {
+        this.analytics.trackEvent('major_event_pix_code_copied', {
+          major_event_id: subscription.majorEvent.id,
+          subscription_id: subscription.id,
+        });
+      }
       void this.copyToClipboard(brCode, 'Pix copia e cola copiado.');
     }
   }
@@ -131,6 +140,13 @@ export class PaymentInfo {
   copyPixKey(): void {
     const paymentInfo = this.readySubscription()?.majorEvent.paymentInfo;
     if (paymentInfo?.pixKey) {
+      const subscription = this.readySubscription();
+      if (subscription) {
+        this.analytics.trackEvent('major_event_pix_key_copied', {
+          major_event_id: subscription.majorEvent.id,
+          subscription_id: subscription.id,
+        });
+      }
       void this.copyToClipboard(paymentInfo.pixKey, 'Chave Pix copiada.');
     }
   }
@@ -173,6 +189,12 @@ export class PaymentInfo {
           }
 
           this.state.set({ status: 'ready', subscription, receipt });
+          this.analytics.trackMajorEventTransaction({
+            stage: 'payment_page_viewed',
+            majorEvent: subscription.majorEvent,
+            subscription,
+            priceInCents: this.resolveApplicablePrice(subscription),
+          });
         },
         error: (error: unknown) => {
           this.state.set({
@@ -242,6 +264,14 @@ export class PaymentInfo {
             });
           }
           this.uploadProgress.set(null);
+          if (currentState.status === 'ready') {
+            this.analytics.trackMajorEventTransaction({
+              stage: 'receipt_uploaded',
+              majorEvent: currentState.subscription.majorEvent,
+              subscription: currentState.subscription,
+              priceInCents: this.resolveApplicablePrice(currentState.subscription),
+            });
+          }
           this.snackBar.open('Comprovante enviado.', 'OK', { duration: 3000 });
         },
         error: (error: unknown) => {

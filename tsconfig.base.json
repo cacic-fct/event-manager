@@ -19,6 +19,7 @@
       "@cacic-fct/shared-utils": ["shared-utils/src/index.ts"],
       "@cacic-fct/shared-frontend-types": ["shared-data-types/src/lib/frontend-types.ts"],
       "@cacic-fct/shared-angular": ["shared-angular/src/index.ts"],
+      "@cacic-fct/cookie-banner/angular": ["shared-angular/src/lib/cookie-banner/index.ts"],
       "@cacic-fct/shared-environment": ["shared-environment/src/index.ts"],
       "@cacic-fct/shared-notifications-angular": ["shared-notifications-angular/src/index.ts"],
       "@cacic-fct/offline-public-data-access": ["offline-public-data-access/src/index.ts"]

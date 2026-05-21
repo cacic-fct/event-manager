@@ -15,6 +15,7 @@ import type { CurrentUserMajorEventSubscription, PublicEvent } from '@cacic-fct/
 import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { filter, finalize, map } from 'rxjs';
 import { EmojiService } from '../../profile/attendances/emoji.service';
+import { AnalyticsService } from '../../analytics/analytics.service';
 import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from './subscription-api.service';
 import { SubscriptionEventList } from './subscription-event-list';
@@ -50,6 +51,7 @@ type SubscriptionPageState =
 })
 export class MajorEventSubscription {
   private readonly api = inject(MajorEventSubscriptionApiService);
+  private readonly analytics = inject(AnalyticsService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
@@ -384,7 +386,16 @@ export class MajorEventSubscription {
       )
       .subscribe({
         next: (subscription) => {
+          const action = this.currentUserSubscription() ? 'updated' : 'created';
           this.currentUserSubscription.set(subscription);
+          this.analytics.trackMajorEventSubscription({
+            action,
+            majorEvent: data.majorEvent,
+            subscription,
+            selectedEventCount: this.selectedEvents().length,
+            paymentTier,
+            priceInCents: this.selectedPriceTier()?.value ?? null,
+          });
           this.snackBar.open('Inscrição realizada.', 'OK', { duration: 3000 });
           if (data.majorEvent.isPaymentRequired) {
             void this.router.navigate(['/major-event', data.majorEvent.id, 'payment']);

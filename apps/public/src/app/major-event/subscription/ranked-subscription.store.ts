@@ -8,6 +8,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription, EventType, PublicEvent } from '@cacic-fct/shared-utils';
 import { formatDateRange, getEventTypeLabel, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { finalize, map } from 'rxjs';
+import { AnalyticsService } from '../../analytics/analytics.service';
 import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from './subscription-api.service';
 import {
@@ -34,6 +35,7 @@ export interface RankedItem {
 @Injectable()
 export class RankedSubscriptionStore {
   private readonly api = inject(MajorEventSubscriptionApiService);
+  private readonly analytics = inject(AnalyticsService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
@@ -319,7 +321,17 @@ export class RankedSubscriptionStore {
       )
       .subscribe({
         next: (subscription) => {
+          const action = this.currentUserSubscription() ? 'updated' : 'created';
           this.currentUserSubscription.set(subscription);
+          this.analytics.trackMajorEventSubscription({
+            action,
+            majorEvent: data.majorEvent,
+            subscription,
+            selectedEventCount: eventIds.length,
+            paymentTier,
+            priceInCents: this.selectedPriceTier()?.value ?? null,
+            ranked: true,
+          });
           this.snackBar.open('Inscrição realizada.', 'OK', { duration: 3000 });
           if (data.majorEvent.isPaymentRequired) {
             void this.router.navigate(['/major-event', data.majorEvent.id, 'payment']);
