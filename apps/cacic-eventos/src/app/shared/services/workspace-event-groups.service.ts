@@ -97,7 +97,7 @@ export class WorkspaceEventGroupsService {
   }
 
   private async refreshEventSummaries(): Promise<void> {
-    this.eventSummaries.set(await firstValueFrom(this.eventsApi.listEventsSummary({ take: 200 })));
+    this.eventSummaries.set(await firstValueFrom(this.eventsApi.listEventsSummary({ take: 200, isInGroup: true })));
   }
 
   async saveEventGroup(): Promise<void> {

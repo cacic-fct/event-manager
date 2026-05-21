@@ -51,11 +51,11 @@ export class EventApiService {
       .pipe(map((data) => data.events));
   }
 
-  listEventsSummary(filters?: { skip?: number; take?: number }) {
+  listEventsSummary(filters?: { skip?: number; take?: number; isInGroup?: boolean }) {
     return this.graphqlHttp
       .request<{ events: EventSummary[] }>(
-        `query ListEventsSummary($skip: Int, $take: Int) {
-          events(skip: $skip, take: $take) {
+        `query ListEventsSummary($skip: Int, $take: Int, $isInGroup: Boolean) {
+          events(skip: $skip, take: $take, isInGroup: $isInGroup) {
             id
             eventGroupId
             startDate
