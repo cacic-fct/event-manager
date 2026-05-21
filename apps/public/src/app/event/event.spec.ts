@@ -88,6 +88,7 @@ describe('Event', () => {
 
   it('should use back query parameter as return URL', async () => {
     const testBackUrl = '/validate?certificateId=123';
+    TestBed.resetTestingModule();
     const newFixture = await createEventComponentFixture({ back: testBackUrl });
     await newFixture.whenStable();
     const newComponent = newFixture.componentInstance;
@@ -97,6 +98,7 @@ describe('Event', () => {
 
   it('should fall back to returnUrl if back parameter is not provided', async () => {
     const testReturnUrl = '/calendar';
+    TestBed.resetTestingModule();
     const newFixture = await createEventComponentFixture({ returnUrl: testReturnUrl });
     await newFixture.whenStable();
     const newComponent = newFixture.componentInstance;
@@ -107,6 +109,7 @@ describe('Event', () => {
   it('should prioritize back over returnUrl if both are provided', async () => {
     const testBackUrl = '/validate?certificateId=123';
     const testReturnUrl = '/calendar';
+    TestBed.resetTestingModule();
     const newFixture = await createEventComponentFixture({ back: testBackUrl, returnUrl: testReturnUrl });
     await newFixture.whenStable();
     const newComponent = newFixture.componentInstance;
