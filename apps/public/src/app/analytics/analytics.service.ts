@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, effect, inject, isDevMode } from '@angular/core';
+import { Injectable, Injector, PLATFORM_ID, effect, inject, isDevMode } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { AuthService, type AuthenticatedUser } from '@cacic-fct/shared-angular';
 import { UmamiService } from '@cacic-fct/ngx-umami';
@@ -22,12 +22,13 @@ const MAX_FLUSH_ATTEMPTS = 40;
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
   private readonly auth = inject(AuthService);
+  private readonly injector = inject(Injector);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
-  private readonly umami = inject(UmamiService);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private pendingActions: Array<() => void> = [];
+  private umami: UmamiService | null | undefined;
+  private pendingActions: Array<(umami: UmamiService) => void> = [];
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private flushAttempts = 0;
   private identifiedUserId: string | null = null;
@@ -36,7 +37,7 @@ export class AnalyticsService {
 
   constructor() {
     effect(() => {
-      const user = this.auth.user();
+      const user = this.currentUser();
       this.syncIdentifiedUser(user);
     });
   }
@@ -57,7 +58,7 @@ export class AnalyticsService {
   }
 
   trackEvent(eventName: string, eventData?: AnalyticsEventData): void {
-    this.enqueue(() => this.umami.trackEvent(eventName, this.normalizeEventData(eventData)));
+    this.enqueue((umami) => umami.trackEvent(eventName, this.normalizeEventData(eventData)));
   }
 
   trackMajorEventSubscription(input: {
@@ -129,7 +130,7 @@ export class AnalyticsService {
     }
 
     this.lastTrackedUrl = url;
-    this.enqueue(() => this.umami.trackPageView({ url }));
+    this.enqueue((umami) => umami.trackPageView({ url }));
   }
 
   private syncIdentifiedUser(user: AuthenticatedUser | null): void {
@@ -148,16 +149,21 @@ export class AnalyticsService {
     }
 
     this.identifiedUserId = userId;
-    this.enqueue(() => this.umami.identify(userId, this.buildIdentifyData(user)));
+    this.enqueue((umami) => umami.identify(userId, this.buildIdentifyData(user)));
   }
 
-  private enqueue(action: () => void): void {
+  private enqueue(action: (umami: UmamiService) => void): void {
     if (!this.canTrackCurrentUser()) {
       return;
     }
 
-    if (this.umami.isAvailable()) {
-      action();
+    const umami = this.getUmami();
+    if (!umami) {
+      return;
+    }
+
+    if (umami.isAvailable()) {
+      action(umami);
       return;
     }
 
@@ -186,7 +192,8 @@ export class AnalyticsService {
       return;
     }
 
-    if (!this.umami.isAvailable()) {
+    const umami = this.getUmami();
+    if (!umami || !umami.isAvailable()) {
       if (this.flushAttempts >= MAX_FLUSH_ATTEMPTS) {
         this.pendingActions = [];
         this.clearFlushTimer();
@@ -196,7 +203,7 @@ export class AnalyticsService {
 
     const actions = this.pendingActions.splice(0);
     for (const action of actions) {
-      action();
+      action(umami);
     }
     this.clearFlushTimer();
   }
@@ -210,12 +217,30 @@ export class AnalyticsService {
     this.flushTimer = null;
   }
 
+  private getUmami(): UmamiService | null {
+    if (this.umami !== undefined) {
+      return this.umami;
+    }
+
+    try {
+      this.umami = this.injector.get(UmamiService);
+    } catch {
+      this.umami = null;
+    }
+
+    return this.umami;
+  }
+
   private canTrackCurrentUser(): boolean {
     if (!this.isBrowser) {
       return false;
     }
 
-    return isUserAnalyticsEnabled(this.auth.user());
+    return isUserAnalyticsEnabled(this.currentUser());
+  }
+
+  private currentUser(): AuthenticatedUser | null {
+    return typeof this.auth.user === 'function' ? this.auth.user() : null;
   }
 
   private buildIdentifyData(user: AuthenticatedUser): UmamiIdentifyData {
