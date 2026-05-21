@@ -1,0 +1,147 @@
+<section class="section workspace-tab-shell">
+  <div class="tab-grid">
+    <aside class="panel">
+      <div class="panel-heading">
+        <form [formGroup]="workspace.filterForm" class="filter-form">
+          <mat-form-field>
+            <mat-label>Buscar local</mat-label>
+            <input matInput formControlName="query" />
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="workspace.loadPlacePresets()">
+            <mat-icon>search</mat-icon>
+            Buscar
+          </button>
+        </form>
+
+        <button mat-stroked-button type="button" (click)="workspace.startNewPlacePreset()">
+          <mat-icon>add</mat-icon>
+          Novo
+        </button>
+      </div>
+
+      <mat-list class="result-list">
+        @for (place of workspace.sortedPlacePresets(); track place.id) {
+          <mat-list-item
+            (click)="workspace.pickPlacePreset(place)"
+            [class.selected-list-item]="workspace.selectedPlacePreset()?.id === place.id">
+            <span matListItemTitle class="list-title">
+              <span>{{ place.name }}</span>
+            </span>
+            <span matListItemLine>
+              {{ place.locationDescription || 'Sem descrição' }}
+            </span>
+            <button
+              matIconButton
+              type="button"
+              aria-label="Editar local"
+              matTooltip="Editar"
+              [disabled]="!permissions.canEdit('event#edit')"
+              (click)="$event.stopPropagation(); workspace.pickPlacePreset(place)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button
+              matIconButton
+              type="button"
+              aria-label="Selecionar para unificar"
+              matTooltip="Selecionar duplicado"
+              [disabled]="!permissions.canEdit('event#edit')"
+              (click)="$event.stopPropagation(); workspace.chooseMergeSource(place)">
+              <mat-icon>call_merge</mat-icon>
+            </button>
+            <button
+              matIconButton
+              type="button"
+              aria-label="Excluir local"
+              matTooltip="Excluir"
+              [disabled]="!permissions.canDelete('event#delete')"
+              (click)="$event.stopPropagation(); workspace.deletePlacePreset(place)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            <span matListItemTitle>Nenhum local encontrado</span>
+            <span matListItemLine>Cadastre um preset ou revise a busca.</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    </aside>
+
+    <section class="panel panel-stack">
+      <div class="panel-heading">
+        <div>
+          <h3>
+            @if (workspace.selectedPlacePreset()) {
+              Editar local
+            } @else {
+              Novo local
+            }
+          </h3>
+          <p>{{ workspace.selectedPlacePreset()?.name || 'Crie presets para preencher eventos mais rápido.' }}</p>
+        </div>
+
+        <div class="panel-actions">
+          <button mat-button type="button" (click)="workspace.startNewPlacePreset()">
+            <mat-icon>restart_alt</mat-icon>
+            Limpar
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="
+              !workspace.selectedPlacePreset() || !workspace.mergeSource() || !permissions.canEdit('event#edit')
+            "
+            (click)="workspace.openMergeDialog(workspace.selectedPlacePreset()!)">
+            <mat-icon>call_merge</mat-icon>
+            Unificar
+          </button>
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="!permissions.canEdit('event#edit')"
+            (click)="workspace.savePlacePreset()">
+            <mat-icon>save</mat-icon>
+            Salvar
+          </button>
+        </div>
+      </div>
+
+      <form [formGroup]="workspace.placeForm" class="panel-stack">
+        <section class="surface field-group">
+          <h4>Dados do local</h4>
+          <div class="field-grid">
+            <mat-form-field class="span-2">
+              <mat-label>Nome</mat-label>
+              <input matInput formControlName="name" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Latitude</mat-label>
+              <input matInput formControlName="latitude" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Longitude</mat-label>
+              <input matInput formControlName="longitude" />
+            </mat-form-field>
+
+            <mat-form-field class="span-2">
+              <mat-label>Nome e descrição exibidos aos usuários</mat-label>
+              <input matInput formControlName="locationDescription" />
+            </mat-form-field>
+          </div>
+        </section>
+
+        <section class="surface field-group">
+          <h4>Mapa</h4>
+          <div class="map-preview" aria-label="Prévia da localização">
+            <div #mapTarget class="map-target"></div>
+            @if (!hasLocation()) {
+              <span class="empty-note">Preencha latitude e longitude para visualizar o ponto.</span>
+            }
+          </div>
+        </section>
+      </form>
+    </section>
+  </div>
+</section>

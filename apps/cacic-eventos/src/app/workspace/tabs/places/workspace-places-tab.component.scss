@@ -1,0 +1,39 @@
+@use '../workspace-tab.shared.scss';
+
+.filter-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+  min-width: min(100%, 28rem);
+}
+
+.map-preview {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.map-target {
+  position: absolute;
+  inset: 0;
+}
+
+.empty-note {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .filter-form {
+    grid-template-columns: 1fr;
+  }
+}

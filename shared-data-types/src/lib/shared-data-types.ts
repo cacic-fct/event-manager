@@ -520,6 +520,39 @@ export class Event {
   updatedById?: string;
 }
 
+@ObjectType()
+export class PlacePreset {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => Float, { nullable: true })
+  latitude?: number;
+
+  @Field(() => Float, { nullable: true })
+  longitude?: number;
+
+  @Field(() => String, { nullable: true })
+  locationDescription?: string;
+
+  @Field(() => Date, { nullable: true })
+  deletedAt?: Date;
+
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  createdById?: string;
+
+  @Field(() => Date)
+  updatedAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  updatedById?: string;
+}
+
 @ObjectType('Person')
 export class Person {
   @Field(() => String)
@@ -1775,6 +1808,36 @@ export class EventUpdateInput {
 
   @Field(() => String, { nullable: true })
   updatedById?: string;
+}
+
+@InputType()
+export class PlacePresetCreateInput {
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => Float, { nullable: true })
+  latitude?: number;
+
+  @Field(() => Float, { nullable: true })
+  longitude?: number;
+
+  @Field(() => String, { nullable: true })
+  locationDescription?: string;
+}
+
+@InputType()
+export class PlacePresetUpdateInput {
+  @Field(() => String, { nullable: true })
+  name?: string;
+
+  @Field(() => Float, { nullable: true })
+  latitude?: number;
+
+  @Field(() => Float, { nullable: true })
+  longitude?: number;
+
+  @Field(() => String, { nullable: true })
+  locationDescription?: string;
 }
 
 @InputType()

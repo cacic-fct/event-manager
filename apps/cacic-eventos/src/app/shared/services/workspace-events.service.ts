@@ -7,10 +7,11 @@ import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { Event, EventGroup, EventInput, Person } from '../../graphql/models';
+import { Event, EventGroup, EventInput, Person, PlacePresetInput } from '../../graphql/models';
 import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-create-dialog.component';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
+import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
 import { WorkspaceUiService } from './workspace-ui.service';
 
 const NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS = '2345689ABCDEFGHKMNPQRSTWXYZ';
@@ -59,6 +60,7 @@ export class WorkspaceEventsService {
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
+  readonly placePresetsService = inject(WorkspacePlacePresetsService);
   private readonly ui = inject(WorkspaceUiService);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
@@ -99,6 +101,7 @@ export class WorkspaceEventsService {
       latitude: [''],
       longitude: [''],
       locationDescription: [''],
+      locationPresetId: ['PERSONALIZADO'],
       majorEventId: [''],
       eventGroupId: [''],
       allowSubscription: [false],
@@ -205,6 +208,7 @@ export class WorkspaceEventsService {
       latitude: '',
       longitude: '',
       locationDescription: '',
+      locationPresetId: 'PERSONALIZADO',
       majorEventId: '',
       eventGroupId: '',
       allowSubscription: false,
@@ -253,6 +257,7 @@ export class WorkspaceEventsService {
 
     const eventId = this.eventForm.controls.id.value;
     const payload = this.buildEventPayload(!eventId);
+    const manualPlace = this.buildManualPlacePresetPayload();
 
     this.ui.loading.set(true);
     try {
@@ -264,6 +269,9 @@ export class WorkspaceEventsService {
       } else {
         await firstValueFrom(this.api.createEvent(payload));
         this.snackbar.open('Evento criado.', 'Fechar', { duration: 2500 });
+      }
+      if (manualPlace) {
+        await this.placePresetsService.ensurePresetForManualLocation(manualPlace);
       }
       await this.loadEvents();
       this.resetEventForm();
@@ -304,6 +312,22 @@ export class WorkspaceEventsService {
     this.selectedEventGroupAllowsNonSubscribedCertificates.set(true);
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
+  }
+
+  applyPlacePreset(placeId: string): void {
+    this.eventForm.controls.locationPresetId.setValue(placeId);
+    if (placeId === 'PERSONALIZADO') {
+      return;
+    }
+
+    const place = this.placePresetsService.placePresets().find((preset) => preset.id === placeId);
+    if (!place) {
+      return;
+    }
+
+    this.eventForm.controls.latitude.setValue(place.latitude?.toString() ?? '');
+    this.eventForm.controls.longitude.setValue(place.longitude?.toString() ?? '');
+    this.eventForm.controls.locationDescription.setValue(place.locationDescription ?? place.name);
   }
 
   eventGroupNameById(groupId: string): string {
@@ -506,6 +530,25 @@ export class WorkspaceEventsService {
     return payload;
   }
 
+  private buildManualPlacePresetPayload(): PlacePresetInput | null {
+    const raw = this.eventForm.getRawValue();
+    if (raw.locationPresetId !== 'PERSONALIZADO') {
+      return null;
+    }
+
+    const name = raw.locationDescription.trim();
+    if (!name) {
+      return null;
+    }
+
+    return {
+      name,
+      latitude: raw.latitude ? Number(raw.latitude) : null,
+      longitude: raw.longitude ? Number(raw.longitude) : null,
+      locationDescription: name,
+    };
+  }
+
   private addPendingLecturer(person: Person): void {
     this.eventLecturers.update((lecturers) =>
       lecturers.some((lecturer) => lecturer.personId === person.id)
@@ -550,6 +593,7 @@ export class WorkspaceEventsService {
       latitude: eventItem.latitude?.toString() ?? '',
       longitude: eventItem.longitude?.toString() ?? '',
       locationDescription: eventItem.locationDescription ?? '',
+      locationPresetId: 'PERSONALIZADO',
       majorEventId: eventItem.majorEventId ?? '',
       eventGroupId: eventItem.eventGroupId ?? '',
       allowSubscription: eventItem.allowSubscription,

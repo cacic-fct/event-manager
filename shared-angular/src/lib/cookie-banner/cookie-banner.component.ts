@@ -1,201 +1,145 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, input } from '@angular/core';
-import { CookieBanner, CookieBannerOptions, createCookieBanner } from './cookie-banner';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  PLATFORM_ID,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { CookieBannerAcceptContext, CookieBannerOptions } from './cookie-banner';
+
+const DEFAULT_STORAGE_KEY = 'cacic.cookieBanner.accepted';
 
 @Component({
   selector: 'lib-cookie-banner',
-  template: '',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: `
-    .cacic-cookie-banner {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: var(--cacic-cookie-banner-z-index, 1000);
-      padding: 1rem 1.5rem;
-      background-color: var(--mat-sys-surface);
-      border-top: 3px solid var(--mat-sys-primary);
-      box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.12);
-      animation: cacic-cookie-banner-slide-up 0.3s ease-out;
-      font-family:
-        'Inter Variable',
-        'Inter',
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        'Segoe UI',
-        sans-serif;
-    }
+  template: `
+    @if (visible()) {
+      <section
+        [class]="bannerClass()"
+        role="banner"
+        [attr.aria-label]="ariaLabel()"
+      >
+        <div class="cacic-cookie-banner_content">
+          <div class="cacic-cookie-banner_text">
+            <span class="cacic-cookie-banner_icon" aria-hidden="true">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                height="32"
+                viewBox="0 -960 960 960"
+                width="32"
+                fill="#ff9800"
+                focusable="false"
+              >
+                <path
+                  d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-75 29-147t81-128.5q52-56.5 125-91T475-881q21 0 43 2t45 7q-9 45 6 85t45 66.5q30 26.5 71.5 36.5t85.5-5q-26 59 7.5 113t99.5 56q1 11 1.5 20.5t.5 20.5q0 82-31.5 154.5t-85.5 127q-54 54.5-127 86T480-80Zm-60-480q25 0 42.5-17.5T480-620q0-25-17.5-42.5T420-680q-25 0-42.5 17.5T360-620q0 25 17.5 42.5T420-560Zm-80 200q25 0 42.5-17.5T400-420q0-25-17.5-42.5T340-480q-25 0-42.5 17.5T280-420q0 25 17.5 42.5T340-360Zm260 40q17 0 28.5-11.5T640-360q0-17-11.5-28.5T600-400q-17 0-28.5 11.5T560-360q0 17 11.5 28.5T600-320ZM480-160q122 0 216.5-84T800-458q-50-22-78.5-60T683-603q-77-11-132-66t-68-132q-80-2-140.5 29t-101 79.5Q201-644 180.5-587T160-480q0 133 93.5 226.5T480-160Zm0-324Z"
+                />
+              </svg>
+            </span>
 
-    .cacic-cookie-banner_content {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.5rem;
-    }
+            <div class="cacic-cookie-banner_text-content">
+              <p>
+                {{ text() }}
+                <a [href]="privacyPolicyUrl()" target="_blank" rel="noopener noreferrer">
+                  Política de Privacidade </a
+                >.
+              </p>
+            </div>
+          </div>
 
-    .cacic-cookie-banner_text {
-      display: flex;
-      align-items: flex-start;
-      gap: 1rem;
-      flex: 1;
-    }
-
-    .cacic-cookie-banner_icon {
-      line-height: 1;
-      flex-shrink: 0;
-      width: 32px;
-      height: 32px;
-      margin-top: 0.25rem;
-    }
-
-    .cacic-cookie-banner_text-content {
-      flex: 1;
-    }
-
-    .cacic-cookie-banner_text-content p {
-      margin: 0;
-      color: var(--mat-sys-on-surface-variant);
-      font: var(--mat-sys-body-medium);
-      line-height: 1.4;
-    }
-
-    .cacic-cookie-banner_text-content a {
-      color: var(--mat-sys-primary);
-      text-decoration: none;
-    }
-
-    .cacic-cookie-banner_text-content a:hover {
-      text-decoration: underline;
-    }
-
-    .cacic-cookie-banner_actions {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      flex-shrink: 0;
-    }
-
-    .cacic-cookie-banner_accept {
-      min-width: 120px;
-      border: 0;
-      border-radius: 8px;
-      padding: 0.65rem 1rem;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      font: inherit;
-      font-weight: 500;
-      cursor: pointer;
-      color: var(--mat-sys-on-primary);
-      background: var(--mat-sys-primary);
-    }
-
-    .cacic-cookie-banner_accept:disabled {
-      cursor: wait;
-      color: var(--mat-sys-on-surface-variant);
-      background-color: var(--mat-sys-surface-container-highest);
-    }
-
-    .cacic-cookie-banner_accept-icon {
-      font-size: 1.2rem;
-      line-height: 1;
-    }
-
-    .cacic-cookie-banner_spinner {
-      display: none;
-      width: 1rem;
-      height: 1rem;
-      border: 2px solid currentColor;
-      border-right-color: transparent;
-      border-radius: 999px;
-      animation: cacic-cookie-banner-spin 0.8s linear infinite;
-    }
-
-    .cacic-cookie-banner_accept-loading .cacic-cookie-banner_accept-icon {
-      display: none;
-    }
-
-    .cacic-cookie-banner_accept-loading .cacic-cookie-banner_spinner {
-      display: inline-block;
-    }
-
-    @keyframes cacic-cookie-banner-slide-up {
-      from {
-        transform: translateY(100%);
-        opacity: 0;
-      }
-
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes cacic-cookie-banner-spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    @media (max-width: 768px) {
-      .cacic-cookie-banner {
-        padding: 1rem;
-      }
-
-      .cacic-cookie-banner_content {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1rem;
-      }
-
-      .cacic-cookie-banner_text {
-        align-items: center;
-        text-align: center;
-      }
-
-      .cacic-cookie-banner_icon {
-        margin-top: 0;
-      }
-
-      .cacic-cookie-banner_actions {
-        justify-content: center;
-      }
-
-      .cacic-cookie-banner_accept {
-        width: 100%;
-        max-width: 200px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .cacic-cookie-banner_text {
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .cacic-cookie-banner,
-      .cacic-cookie-banner_spinner {
-        animation: none;
-      }
+          <div class="cacic-cookie-banner_actions">
+            <button
+              class="cacic-cookie-banner_accept"
+              type="button"
+              aria-label="Aceitar cookies"
+              [class.cacic-cookie-banner_accept-loading]="accepting()"
+              [disabled]="accepting()"
+              (click)="accept()"
+            >
+              <span class="cacic-cookie-banner_accept-icon" aria-hidden="true">✓</span>
+              <span class="cacic-cookie-banner_spinner" aria-hidden="true"></span>
+              <span>{{ buttonText() }}</span>
+            </button>
+          </div>
+        </div>
+      </section>
     }
   `,
+  styleUrl: './cookie-banner.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CookieBannerComponent implements OnInit, OnDestroy {
+export class CookieBannerComponent implements OnInit {
   readonly config = input.required<CookieBannerOptions>();
 
-  private cookieBanner: CookieBanner | null = null;
+  protected readonly visible = signal(false);
+  protected readonly accepting = signal(false);
+  protected readonly privacyPolicyUrl = computed(
+    () => this.config().privacyPolicyUrl ?? 'https://cacic.dev.br/legal/privacy-policy',
+  );
+  protected readonly storageKey = computed(() => this.config().storageKey ?? DEFAULT_STORAGE_KEY);
+  protected readonly text = computed(
+    () =>
+      this.config().text ??
+      'Usamos cookies e outras tecnologias para melhorar a sua experiência, analisar o uso do site e personalizar conteúdo. Ao utilizar nossos serviços, você está ciente dessa funcionalidade. Confira a nossa ',
+  );
+  protected readonly buttonText = computed(() => this.config().buttonText ?? 'Prosseguir');
+  protected readonly ariaLabel = computed(() => this.config().ariaLabel ?? 'Aviso sobre cookies');
+  protected readonly bannerClass = computed(() =>
+    ['cacic-cookie-banner', this.config().className ?? ''].filter(Boolean).join(' '),
+  );
 
-  ngOnInit(): void {
-    this.cookieBanner = createCookieBanner(this.config());
+  private readonly platformId = inject(PLATFORM_ID);
+
+  async ngOnInit(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId) || this.hasAcceptedLocally()) {
+      return;
+    }
+
+    const shouldShow = this.config().shouldShow;
+    this.visible.set(shouldShow ? await shouldShow() : true);
   }
 
-  ngOnDestroy(): void {
-    this.cookieBanner?.destroy();
+  protected async accept(): Promise<void> {
+    if (this.accepting()) {
+      return;
+    }
+
+    this.accepting.set(true);
+
+    try {
+      const context: CookieBannerAcceptContext = {
+        isAuthenticated: Boolean(await this.config().isAuthenticated?.()),
+      };
+      const result = await this.config().onAccept?.(context);
+
+      if (result === false) {
+        this.accepting.set(false);
+        return;
+      }
+
+      this.saveAcceptedLocally();
+      this.visible.set(false);
+    } catch (error) {
+      console.error('Error accepting cookie banner:', error);
+      this.accepting.set(false);
+    }
+  }
+
+  private hasAcceptedLocally(): boolean {
+    try {
+      return globalThis.localStorage?.getItem(this.storageKey()) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  private saveAcceptedLocally(): void {
+    try {
+      globalThis.localStorage?.setItem(this.storageKey(), 'true');
+    } catch {
+      return;
+    }
   }
 }

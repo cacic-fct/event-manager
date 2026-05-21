@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  Body,
   Controller,
   Get,
   Header,
@@ -17,19 +16,16 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Observable, interval, map, startWith, switchMap } from 'rxjs';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { MajorEventReceiptsService } from './major-event-receipts.service';
 import {
-  AdminReceiptQueueResponse,
-  CurrentUserReceiptResponse,
   MAX_RECEIPT_FILE_SIZE_BYTES,
-  RECEIPT_ADMIN_EDIT_PERMISSION,
   RECEIPT_ADMIN_PERMISSION,
-  ReceiptRejectionCode,
+  CurrentUserReceiptResponse,
   UploadedReceiptFile,
 } from './receipt.types';
 
@@ -37,31 +33,11 @@ type RequestWithUser = Request & {
   user?: AuthenticatedUser;
 };
 
-interface RejectReceiptBody {
-  receiptId?: string;
-  rejectionCode?: ReceiptRejectionCode;
-  reason?: string;
-}
-
-interface ApproveReceiptBody {
-  receiptId?: string;
-  selectedEventIds?: string[];
-}
-
 @ApiTags('major-event-receipts')
 @ApiBearerAuth()
 @Controller('major-event-receipts')
 export class MajorEventReceiptsController {
   constructor(private readonly receipts: MajorEventReceiptsService) {}
-
-  @Get('major-events/:majorEventId/current')
-  @ApiOkResponse({ description: 'Latest receipt uploaded by the current user for the major event.' })
-  getCurrentReceipt(
-    @Param('majorEventId') majorEventId: string,
-    @Req() request: RequestWithUser,
-  ): Promise<CurrentUserReceiptResponse | null> {
-    return this.receipts.getCurrentReceipt(majorEventId, this.requireAuthenticatedUser(request));
-  }
 
   @Post('major-events/:majorEventId')
   @UseGuards(ThrottlerGuard)
@@ -108,18 +84,6 @@ export class MajorEventReceiptsController {
     return this.receipts.uploadReceipt(majorEventId, file, this.requireAuthenticatedUser(request));
   }
 
-  @Get('admin/pending-count')
-  @RequireScopes(RECEIPT_ADMIN_PERMISSION)
-  getPendingValidationCount(): Promise<{ pendingCount: number }> {
-    return this.receipts.getPendingValidationCount();
-  }
-
-  @Get('admin/queue')
-  @RequireScopes(RECEIPT_ADMIN_PERMISSION)
-  listPendingValidationQueue(@Query('majorEventId') majorEventId?: string): Promise<AdminReceiptQueueResponse> {
-    return this.receipts.listPendingValidationQueue(majorEventId?.trim() || undefined);
-  }
-
   @Sse('admin/queue/events')
   @RequireScopes(RECEIPT_ADMIN_PERMISSION)
   streamPendingValidationQueue(@Query('majorEventId') majorEventId?: string): Observable<MessageEvent> {
@@ -134,49 +98,6 @@ export class MajorEventReceiptsController {
         },
       })),
     );
-  }
-
-  @Post('admin/subscriptions/:subscriptionId/approve')
-  @RequireScopes(RECEIPT_ADMIN_EDIT_PERMISSION)
-  approveReceipt(
-    @Param('subscriptionId') subscriptionId: string,
-    @Body() body: ApproveReceiptBody,
-    @Req() request: RequestWithUser,
-  ) {
-    if (!body.receiptId) {
-      throw new BadRequestException('receiptId is required.');
-    }
-    return this.receipts.approveReceipt(
-      subscriptionId,
-      body.receiptId,
-      Array.isArray(body.selectedEventIds) ? body.selectedEventIds : undefined,
-      this.requireAuthenticatedUser(request),
-    );
-  }
-
-  @Post('admin/subscriptions/:subscriptionId/reject')
-  @RequireScopes(RECEIPT_ADMIN_EDIT_PERMISSION)
-  rejectReceipt(
-    @Param('subscriptionId') subscriptionId: string,
-    @Body() body: RejectReceiptBody,
-    @Req() request: RequestWithUser,
-  ) {
-    if (!body.rejectionCode) {
-      throw new BadRequestException('rejectionCode is required.');
-    }
-    return this.receipts.rejectReceipt(
-      subscriptionId,
-      body.receiptId,
-      body.rejectionCode,
-      body.reason,
-      this.requireAuthenticatedUser(request),
-    );
-  }
-
-  @Post('admin/actions/:actionId/undo')
-  @RequireScopes(RECEIPT_ADMIN_EDIT_PERMISSION)
-  undoValidationAction(@Param('actionId') actionId: string, @Req() request: RequestWithUser) {
-    return this.receipts.undoValidationAction(actionId, this.requireAuthenticatedUser(request));
   }
 
   @Get(':receiptId/image')

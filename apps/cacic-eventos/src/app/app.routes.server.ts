@@ -6,6 +6,10 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'places/:placeId',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'groups/:groupId',
     renderMode: RenderMode.Client,
   },

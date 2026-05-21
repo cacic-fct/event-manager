@@ -4,6 +4,7 @@ import { WorkspaceEventsService } from './workspace-events.service';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspaceMergeCandidatesService } from './workspace-merge-candidates.service';
 import { WorkspacePeopleService } from './workspace-people.service';
+import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
 import { WorkspacePermissionTab, WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspaceUiService } from './workspace-ui.service';
@@ -17,6 +18,7 @@ export class WorkspaceShellService {
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
   private readonly eventGroupsService = inject(WorkspaceEventGroupsService);
   private readonly peopleService = inject(WorkspacePeopleService);
+  private readonly placePresetsService = inject(WorkspacePlacePresetsService);
   private readonly certificatesService = inject(WorkspaceCertificatesService);
   private readonly permissions = inject(WorkspacePermissionsService);
   private readonly mergeCandidatesService = inject(WorkspaceMergeCandidatesService);
@@ -32,6 +34,7 @@ export class WorkspaceShellService {
 
       if (this.permissions.canReadTab(WorkspacePermissionTab.Events)) {
         loads.push(this.eventsService.loadEvents());
+        loads.push(this.placePresetsService.loadPlacePresets());
       }
 
       if (this.permissions.canReadTab(WorkspacePermissionTab.MajorEvents)) {

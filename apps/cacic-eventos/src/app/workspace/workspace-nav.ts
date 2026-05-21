@@ -93,6 +93,15 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    id: 'places',
+    path: 'places',
+    label: 'Locais',
+    description: 'Gerencie presets de locais usados nos eventos.',
+    icon: 'place',
+    permissionTab: WorkspacePermissionTab.Events,
+    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+  },
+  {
     id: 'global-operations',
     path: 'global-operations',
     label: 'Operações globais',

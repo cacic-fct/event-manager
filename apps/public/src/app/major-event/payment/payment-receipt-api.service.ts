@@ -19,12 +19,33 @@ export type ReceiptUploadEvent =
   | { type: 'progress'; progress: number }
   | { type: 'done'; receipt: PaymentReceipt };
 
+interface GraphqlResponse<TData> {
+  data?: TData;
+  errors?: Array<{ message: string }>;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PaymentReceiptApiService {
   private readonly http = inject(HttpClient);
 
   getCurrentReceipt(majorEventId: string): Observable<PaymentReceipt | null> {
-    return this.http.get<PaymentReceipt | null>(`/api/major-event-receipts/major-events/${majorEventId}/current`);
+    return this.query<{ currentUserMajorEventReceipt: PaymentReceipt | null }>(
+      `query CurrentUserMajorEventReceipt($majorEventId: String!) {
+        currentUserMajorEventReceipt(majorEventId: $majorEventId) {
+          id
+          fileName
+          mimeType
+          sizeBytes
+          uploadedAt
+          expiresAt
+          imageUrl
+          processingStatus
+          amountMatched
+          nameMatched
+        }
+      }`,
+      { majorEventId },
+    ).pipe(map((data) => data.currentUserMajorEventReceipt));
   }
 
   uploadReceipt(majorEventId: string, file: File): Observable<ReceiptUploadEvent> {
@@ -57,5 +78,21 @@ export class PaymentReceiptApiService {
         }),
         filter((event): event is ReceiptUploadEvent => event !== null),
       );
+  }
+
+  private query<TData>(query: string, variables?: Record<string, unknown>): Observable<TData> {
+    return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
+      map((response) => {
+        if (response.errors?.length) {
+          throw new Error(response.errors.map((error) => error.message).join('\n'));
+        }
+
+        if (!response.data) {
+          throw new Error('Resposta GraphQL sem dados.');
+        }
+
+        return response.data;
+      }),
+    );
   }
 }
