@@ -31,15 +31,15 @@ describe('buildWeatherAlerts', () => {
     };
 
     const result = await buildWeatherAlerts(weatherService as never, [
-      insightEvent({ id: 'rain-event', name: 'Rain event', latitude: -22.1, longitude: -51.4 }) as never,
-      insightEvent({ id: 'clear-event', name: 'Clear event', latitude: -22.2, longitude: -51.5 }) as never,
-      insightEvent({ id: 'no-location', latitude: null, longitude: -51.5 }) as never,
+      insightEvent({ id: 'rain-event', name: 'Rain event', latitude: -22.1, longitude: -51.4 }),
+      insightEvent({ id: 'clear-event', name: 'Clear event', latitude: -22.2, longitude: -51.5 }),
+      insightEvent({ id: 'no-location', latitude: null, longitude: -51.5 }),
       insightEvent({
         id: 'past-event',
         latitude: -22.3,
         longitude: -51.6,
         startDate: new Date('2026-05-20T12:00:00.000Z'),
-      }) as never,
+      }),
     ]);
 
     expect(result).toEqual([
@@ -62,8 +62,8 @@ describe('buildWeatherAlerts', () => {
 
     await expect(
       buildWeatherAlerts(weatherService as never, [
-        insightEvent({ id: 'missing-forecast', latitude: -22.1, longitude: -51.4 }) as never,
-        insightEvent({ id: 'failed-forecast', latitude: -22.2, longitude: -51.5 }) as never,
+        insightEvent({ id: 'missing-forecast', latitude: -22.1, longitude: -51.4 }),
+        insightEvent({ id: 'failed-forecast', latitude: -22.2, longitude: -51.5 }),
       ]),
     ).resolves.toEqual([]);
   });

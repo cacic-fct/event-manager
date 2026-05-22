@@ -1,5 +1,7 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
+import { AuthSessionStoreService } from './auth-session-store.service';
+import { AuthorizationStateService } from './authorization-state.service';
 import { KeycloakAuthService } from './keycloak-auth.service';
 
 jest.mock('axios', () => ({
@@ -16,11 +18,10 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('KeycloakAuthService', () => {
   const originalEnv = { ...process.env };
   let sessions: ReturnType<typeof createSessionStoreMock>;
-  let authorizationState: {
-    build: jest.Mock;
-    getAuthorizationRedirectUri: jest.Mock;
-    getPostLoginRedirectUri: jest.Mock;
-  };
+  let authorizationState: Pick<
+    jest.Mocked<AuthorizationStateService>,
+    'build' | 'getAuthorizationRedirectUri' | 'getPostLoginRedirectUri'
+  >;
   let service: KeycloakAuthService;
 
   beforeEach(() => {
@@ -39,7 +40,10 @@ describe('KeycloakAuthService', () => {
       getPostLoginRedirectUri: jest.fn().mockReturnValue('/after-login'),
     };
     mockedAxios.isAxiosError.mockReturnValue(false);
-    service = new KeycloakAuthService(sessions as never, authorizationState as never);
+    service = new KeycloakAuthService(
+      sessions as unknown as AuthSessionStoreService,
+      authorizationState as unknown as AuthorizationStateService,
+    );
   });
 
   afterEach(() => {

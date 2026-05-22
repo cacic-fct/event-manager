@@ -88,7 +88,6 @@ export async function buildPendingCertificates(
           },
         },
       },
-      take: 20,
     }),
     prisma.majorEvent.findMany({
       where: {

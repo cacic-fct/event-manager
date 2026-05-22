@@ -77,7 +77,7 @@ export abstract class EventAttendancesSubscriptionImportSupport extends EventAtt
           return this.uniqueEventIds(parsedValue.filter((eventId): eventId is string => typeof eventId === 'string'));
         }
       } catch {
-        return [];
+        return this.uniqueEventIds(trimmedValue.slice(1, -1).split(','));
       }
     }
 
@@ -88,11 +88,14 @@ export abstract class EventAttendancesSubscriptionImportSupport extends EventAtt
     return Array.from(new Set(eventIds.map((eventId) => eventId.trim()).filter((eventId) => eventId)));
   }
 
-  protected async findPersonForSubscriptionImport(personData: SubscriptionImportPersonData): Promise<PersonMatch | null> {
+  protected async findPersonForSubscriptionImport(
+    personData: SubscriptionImportPersonData,
+    prisma: Prisma.TransactionClient | typeof this.prisma = this.prisma,
+  ): Promise<PersonMatch | null> {
     const matchFilters = this.buildSubscriptionImportPersonMatchFilters(personData);
 
     for (const where of matchFilters) {
-      const person = await this.prisma.people.findFirst({
+      const person = await prisma.people.findFirst({
         where: {
           deletedAt: null,
           mergedIntoId: null,
@@ -167,6 +170,7 @@ export abstract class EventAttendancesSubscriptionImportSupport extends EventAtt
   protected async createPersonForSubscriptionImport(
     personData: SubscriptionImportPersonData,
     createdById?: string,
+    prisma: Prisma.TransactionClient | typeof this.prisma = this.prisma,
   ): Promise<PersonMatch> {
     const name =
       personData.fullName ||
@@ -175,7 +179,7 @@ export abstract class EventAttendancesSubscriptionImportSupport extends EventAtt
       personData.identityDocument ||
       'Pessoa importada';
 
-    return this.prisma.people.create({
+    return prisma.people.create({
       data: {
         name,
         email: personData.email || undefined,

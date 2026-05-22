@@ -29,13 +29,22 @@ describe('EventAttendancesMutationsResolver', () => {
     );
     expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
 
-    prisma.$transaction.mockImplementationOnce(async (callback) => callback({ eventAttendance: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) } }));
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementationOnce(async (callback) => callback({ eventAttendance: { updateMany } }));
     prisma.eventAttendance.findUnique.mockResolvedValue({ personId: 'person-1', eventId: 'event-1', createdById: 'collector-2' });
-    await expect(resolver.updateEventAttendance('person-1', 'event-1', { createdById: 'collector-2' })).resolves.toEqual({
+    const attendedAt = new Date('2026-05-21T13:00:00.000Z');
+    await expect(resolver.updateEventAttendance('person-1', 'event-1', { attendedAt })).resolves.toEqual({
       personId: 'person-1',
       eventId: 'event-1',
       createdById: 'collector-2',
     });
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          attendedAt,
+        },
+      }),
+    );
 
     prisma.$transaction.mockImplementationOnce(async (callback) => callback({ eventAttendance: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) } }));
     await expect(resolver.updateEventAttendance('person-1', 'missing-event', {})).rejects.toBeInstanceOf(NotFoundException);

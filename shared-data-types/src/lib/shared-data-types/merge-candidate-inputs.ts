@@ -30,15 +30,6 @@ export class MergeCandidateCreateInput {
 
   @Field(() => String, { nullable: true })
   resolvedById?: string;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }
 
 @InputType()
@@ -69,15 +60,6 @@ export class MergeCandidateUpdateInput {
 
   @Field(() => String, { nullable: true })
   resolvedById?: string;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }
 
 @InputType()

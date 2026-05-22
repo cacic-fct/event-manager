@@ -12,12 +12,6 @@ export class EventAttendanceCreateInput {
 
   @Field(() => Date, { nullable: true })
   attendedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
 }
 
 @InputType()
@@ -66,12 +60,6 @@ export class EventAttendanceUpdateInput {
 
   @Field(() => Date, { nullable: true })
   attendedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
 }
 
 @InputType()

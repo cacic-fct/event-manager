@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT } from './event-attendances.shared';
@@ -21,6 +22,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.EventAttendanceWhereInput = {};
 
     if (personId) {
@@ -52,8 +54,8 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       orderBy: {
         attendedAt: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     const collectorIds = [
@@ -96,6 +98,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
         id: majorEventId,
@@ -146,8 +149,8 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       orderBy: {
         createdAt: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     const attendances = await this.prisma.eventAttendance.findMany({
@@ -180,9 +183,12 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       attendances.map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
     );
 
-    const majorSubscriptionByPerson = new Map(
-      subscriptions.map((subscription) => [subscription.personId, subscription]),
-    );
+    const majorSubscriptionByPerson = new Map<string, (typeof subscriptions)[number]>();
+    for (const subscription of subscriptions) {
+      if (!majorSubscriptionByPerson.has(subscription.personId)) {
+        majorSubscriptionByPerson.set(subscription.personId, subscription);
+      }
+    }
 
     return personIds.map((resolvedPersonId) => {
       const subscription = majorSubscriptionByPerson.get(resolvedPersonId);

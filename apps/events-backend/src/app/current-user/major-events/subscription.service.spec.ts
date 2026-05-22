@@ -112,74 +112,76 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
   it('validates subscription windows, selection limits, schedule conflicts, and full event groups', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-06-01T12:00:00.000Z'));
 
-    expect(() =>
-      service.ensureMajorEventSubscriptionWindowOpen({
-        id: 'major-1',
-        subscriptionStartDate: new Date('2026-06-02T00:00:00.000Z'),
-        subscriptionEndDate: null,
-      } as never),
-    ).toThrow(BadRequestException);
-    expect(() =>
-      service.ensureMajorEventSubscriptionWindowOpen({
-        id: 'major-1',
-        subscriptionStartDate: null,
-        subscriptionEndDate: new Date('2026-05-31T00:00:00.000Z'),
-      } as never),
-    ).toThrow(BadRequestException);
-    expect(() =>
-      service.ensureMajorEventSubscriptionWindowOpen({
-        id: 'major-1',
-        subscriptionStartDate: new Date('2026-05-31T00:00:00.000Z'),
-        subscriptionEndDate: new Date('2026-06-02T00:00:00.000Z'),
-      } as never),
-    ).not.toThrow();
+    try {
+      expect(() =>
+        service.ensureMajorEventSubscriptionWindowOpen({
+          id: 'major-1',
+          subscriptionStartDate: new Date('2026-06-02T00:00:00.000Z'),
+          subscriptionEndDate: null,
+        } as never),
+      ).toThrow(BadRequestException);
+      expect(() =>
+        service.ensureMajorEventSubscriptionWindowOpen({
+          id: 'major-1',
+          subscriptionStartDate: null,
+          subscriptionEndDate: new Date('2026-05-31T00:00:00.000Z'),
+        } as never),
+      ).toThrow(BadRequestException);
+      expect(() =>
+        service.ensureMajorEventSubscriptionWindowOpen({
+          id: 'major-1',
+          subscriptionStartDate: new Date('2026-05-31T00:00:00.000Z'),
+          subscriptionEndDate: new Date('2026-06-02T00:00:00.000Z'),
+        } as never),
+      ).not.toThrow();
 
-    expect(() =>
-      service.ensureMajorEventEventLimits(
-        { maxCoursesPerAttendee: 1, maxLecturesPerAttendee: 1 } as never,
-        [
-          rankedEvent('course-1', 'MINICURSO', 8, 9),
-          rankedEvent('course-2', 'MINICURSO', 9, 10),
-        ] as never,
-      ),
-    ).toThrow(BadRequestException);
-    expect(() =>
-      service.ensureMajorEventEventLimits(
-        { maxCoursesPerAttendee: 2, maxLecturesPerAttendee: 1 } as never,
-        [
-          rankedEvent('lecture-1', 'PALESTRA', 8, 9),
-          rankedEvent('lecture-2', 'PALESTRA', 9, 10),
-        ] as never,
-      ),
-    ).toThrow(BadRequestException);
+      expect(() =>
+        service.ensureMajorEventEventLimits(
+          { maxCoursesPerAttendee: 1, maxLecturesPerAttendee: 1 } as never,
+          [
+            rankedEvent('course-1', 'MINICURSO', 8, 9),
+            rankedEvent('course-2', 'MINICURSO', 9, 10),
+          ] as never,
+        ),
+      ).toThrow(BadRequestException);
+      expect(() =>
+        service.ensureMajorEventEventLimits(
+          { maxCoursesPerAttendee: 2, maxLecturesPerAttendee: 1 } as never,
+          [
+            rankedEvent('lecture-1', 'PALESTRA', 8, 9),
+            rankedEvent('lecture-2', 'PALESTRA', 9, 10),
+          ] as never,
+        ),
+      ).toThrow(BadRequestException);
 
-    expect(() =>
-      service.ensureMajorEventScheduleHasNoConflicts([
-        rankedEvent('event-1', 'OTHER', 8, 10),
-        rankedEvent('event-2', 'OTHER', 9, 11),
-      ] as never),
-    ).toThrow(BadRequestException);
-    expect(() =>
-      service.ensureMajorEventScheduleHasNoConflicts([
-        rankedEvent('event-1', 'OTHER', 8, 10, false, 1, 'group-1'),
-        rankedEvent('event-2', 'OTHER', 9, 11, false, 1, 'group-1'),
-      ] as never),
-    ).not.toThrow();
+      expect(() =>
+        service.ensureMajorEventScheduleHasNoConflicts([
+          rankedEvent('event-1', 'OTHER', 8, 10),
+          rankedEvent('event-2', 'OTHER', 9, 11),
+        ] as never),
+      ).toThrow(BadRequestException);
+      expect(() =>
+        service.ensureMajorEventScheduleHasNoConflicts([
+          rankedEvent('event-1', 'OTHER', 8, 10, false, 1, 'group-1'),
+          rankedEvent('event-2', 'OTHER', 9, 11, false, 1, 'group-1'),
+        ] as never),
+      ).not.toThrow();
 
-    expect(() =>
-      service.ensureEventGroupsAreFullySelected(new Set(['event-1']), [
-        { id: 'event-1', eventGroupId: 'group-1' },
-        { id: 'event-2', eventGroupId: 'group-1' },
-      ]),
-    ).toThrow(BadRequestException);
-    expect(() =>
-      service.ensureEventGroupsAreFullySelected(new Set(['event-1', 'event-2']), [
-        { id: 'event-1', eventGroupId: 'group-1' },
-        { id: 'event-2', eventGroupId: 'group-1' },
-      ]),
-    ).not.toThrow();
-
-    jest.useRealTimers();
+      expect(() =>
+        service.ensureEventGroupsAreFullySelected(new Set(['event-1']), [
+          { id: 'event-1', eventGroupId: 'group-1' },
+          { id: 'event-2', eventGroupId: 'group-1' },
+        ]),
+      ).toThrow(BadRequestException);
+      expect(() =>
+        service.ensureEventGroupsAreFullySelected(new Set(['event-1', 'event-2']), [
+          { id: 'event-1', eventGroupId: 'group-1' },
+          { id: 'event-2', eventGroupId: 'group-1' },
+        ]),
+      ).not.toThrow();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('groups selected and confirmed events by major event', async () => {

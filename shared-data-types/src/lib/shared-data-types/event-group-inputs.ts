@@ -25,18 +25,6 @@ export class EventGroupCreateInput {
 
   @Field(() => Boolean, { nullable: true })
   shouldIssuePartialCertificate?: boolean;
-
-  @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }
 
 @InputType()
@@ -64,16 +52,4 @@ export class EventGroupUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   shouldIssuePartialCertificate?: boolean;
-
-  @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }

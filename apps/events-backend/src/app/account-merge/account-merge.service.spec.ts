@@ -1,5 +1,8 @@
 import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { AccountMergeService } from './account-merge.service';
+import { AccountMergeScoreRequestDto } from './dto';
 
 describe('AccountMergeService', () => {
   let prisma: ReturnType<typeof createPrismaMock>;
@@ -8,7 +11,10 @@ describe('AccountMergeService', () => {
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
     prisma = createPrismaMock();
-    service = new AccountMergeService(prisma as never, {} as never);
+    service = new AccountMergeService(
+      prisma as unknown as PrismaService,
+      {} as unknown as CertificateIssuingService,
+    );
   });
 
   afterEach(() => {
@@ -62,9 +68,9 @@ describe('AccountMergeService', () => {
   });
 
   it('rejects malformed score requests and returns zero for unknown users', async () => {
-    await expect(service.scoreAccountMergeCandidates({ userIds: 'old-user' as never })).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    const malformedRequest = { userIds: 'old-user' } as unknown as AccountMergeScoreRequestDto;
+
+    await expect(service.scoreAccountMergeCandidates(malformedRequest)).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.scoreAccountMergeCandidates({ userIds: [''] })).rejects.toBeInstanceOf(BadRequestException);
 
     prisma.user.findUnique.mockResolvedValue(null);

@@ -26,7 +26,7 @@ describe('certificate constants', () => {
   });
 
   it('maps nullable certificate template fields to optional API fields', () => {
-    expect(mapCertificateTemplate(certificateTemplateRecord({ certificateFields: { name: '{{name}}' } }) as never)).toEqual(
+    expect(mapCertificateTemplate(certificateTemplateRecord({ certificateFields: { name: '{{name}}' } }))).toEqual(
       expect.objectContaining({
         id: 'template-1',
         description: undefined,
@@ -39,7 +39,7 @@ describe('certificate constants', () => {
   });
 
   it('maps certificate configs with nested targets and templates', () => {
-    expect(mapCertificateConfig(certificateConfigRecord() as never)).toEqual(
+    expect(mapCertificateConfig(certificateConfigRecord())).toEqual(
       expect.objectContaining({
         id: 'config-1',
         majorEventId: undefined,
@@ -58,7 +58,7 @@ describe('certificate constants', () => {
   });
 
   it('maps certificates with rendered data and nested config/template records', () => {
-    expect(mapCertificate(certificateRecord() as never)).toEqual(
+    expect(mapCertificate(certificateRecord())).toEqual(
       expect.objectContaining({
         id: 'certificate-1',
         renderedDataJson: '{"personName":"Ada"}',
@@ -71,7 +71,11 @@ describe('certificate constants', () => {
   });
 });
 
-function certificateTemplateRecord(overrides: Record<string, unknown> = {}) {
+type CertificateTemplateFixture = Parameters<typeof mapCertificateTemplate>[0];
+type CertificateConfigFixture = Parameters<typeof mapCertificateConfig>[0];
+type CertificateFixture = Parameters<typeof mapCertificate>[0];
+
+function certificateTemplateRecord(overrides: Partial<CertificateTemplateFixture> = {}): CertificateTemplateFixture {
   return {
     id: 'template-1',
     name: 'Template',
@@ -88,7 +92,7 @@ function certificateTemplateRecord(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function certificateConfigRecord(overrides: Record<string, unknown> = {}) {
+function certificateConfigRecord(overrides: Partial<CertificateConfigFixture> = {}): CertificateConfigFixture {
   return {
     id: 'config-1',
     name: 'Config',
@@ -98,14 +102,14 @@ function certificateConfigRecord(overrides: Record<string, unknown> = {}) {
     eventGroupId: null,
     eventGroup: null,
     eventId: 'event-1',
-    event: { id: 'event-1', name: 'Event' },
+    event: null,
     certificateTemplateId: 'template-1',
     certificateTemplate: certificateTemplateRecord(),
     certificateText: null,
     shouldAutofillSecondPage: true,
     secondPageText: 'Second page',
     isActive: true,
-    issuedTo: 'ATTENDEES',
+    issuedTo: 'ATTENDEE',
     certificateFields: null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     createdById: null,
@@ -116,11 +120,27 @@ function certificateConfigRecord(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function certificateRecord(overrides: Record<string, unknown> = {}) {
+function certificateRecord(overrides: Partial<CertificateFixture> = {}): CertificateFixture {
   return {
     id: 'certificate-1',
     personId: 'person-1',
-    person: { id: 'person-1', name: 'Ada' },
+    person: {
+      id: 'person-1',
+      name: 'Ada',
+      email: null,
+      secondaryEmails: [],
+      phone: null,
+      identityDocument: null,
+      academicId: null,
+      userId: null,
+      mergedIntoId: null,
+      externalRef: null,
+      deletedAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdById: null,
+      updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+      updatedById: null,
+    },
     configId: 'config-1',
     config: certificateConfigRecord(),
     renderedData: { personName: 'Ada' },

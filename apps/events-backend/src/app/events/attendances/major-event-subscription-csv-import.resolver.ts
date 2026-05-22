@@ -66,51 +66,52 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
     const validEventIds = new Set(validEvents.map((event) => event.id));
 
     const failedRows: string[] = [];
-    const createdPeople: PersonMatch[] = [];
-    const personEventIds = new Map<string, Set<string>>();
     const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
-
-    for (const parsedRow of parsedRows) {
-      if (!this.hasAnySubscriptionImportPersonData(parsedRow.personData)) {
-        failedRows.push(`Linha ${parsedRow.rowNumber}: informe ao menos um dado da pessoa.`);
-        continue;
-      }
-
-      if (parsedRow.eventIds.length === 0) {
-        failedRows.push(`Linha ${parsedRow.rowNumber}: informe ao menos um ID de evento.`);
-        continue;
-      }
-
-      const invalidEventIds = parsedRow.eventIds.filter((eventId) => !validEventIds.has(eventId));
-      if (invalidEventIds.length > 0) {
-        failedRows.push(
-          `Linha ${parsedRow.rowNumber}: eventos inválidos para este grande evento: ${invalidEventIds.join(', ')}.`,
-        );
-        continue;
-      }
-
-      let person = await this.findPersonForSubscriptionImport(parsedRow.personData);
-      if (!person) {
-        person = await this.createPersonForSubscriptionImport(parsedRow.personData, createdById);
-        createdPeople.push(person);
-      }
-
-      if (!personEventIds.has(person.id)) {
-        personEventIds.set(person.id, new Set());
-      }
-      for (const eventId of parsedRow.eventIds) {
-        personEventIds.get(person.id)?.add(eventId);
-      }
-    }
 
     let createdSubscriptionCount = 0;
     let updatedSubscriptionCount = 0;
     let duplicateCount = 0;
     const now = new Date();
 
-    for (const [personId, selectedEventIdSet] of personEventIds.entries()) {
-      const selectedEventIds = Array.from(selectedEventIdSet);
-      await this.prisma.$transaction(async (tx) => {
+    const createdPeople = await this.prisma.$transaction(async (tx) => {
+      const transactionCreatedPeople: PersonMatch[] = [];
+      const personEventIds = new Map<string, Set<string>>();
+
+      for (const parsedRow of parsedRows) {
+        if (!this.hasAnySubscriptionImportPersonData(parsedRow.personData)) {
+          failedRows.push(`Linha ${parsedRow.rowNumber}: informe ao menos um dado da pessoa.`);
+          continue;
+        }
+
+        if (parsedRow.eventIds.length === 0) {
+          failedRows.push(`Linha ${parsedRow.rowNumber}: informe ao menos um ID de evento.`);
+          continue;
+        }
+
+        const invalidEventIds = parsedRow.eventIds.filter((eventId) => !validEventIds.has(eventId));
+        if (invalidEventIds.length > 0) {
+          failedRows.push(
+            `Linha ${parsedRow.rowNumber}: eventos inválidos para este grande evento: ${invalidEventIds.join(', ')}.`,
+          );
+          continue;
+        }
+
+        let person = await this.findPersonForSubscriptionImport(parsedRow.personData, tx);
+        if (!person) {
+          person = await this.createPersonForSubscriptionImport(parsedRow.personData, createdById, tx);
+          transactionCreatedPeople.push(person);
+        }
+
+        if (!personEventIds.has(person.id)) {
+          personEventIds.set(person.id, new Set());
+        }
+        for (const eventId of parsedRow.eventIds) {
+          personEventIds.get(person.id)?.add(eventId);
+        }
+      }
+
+      for (const [personId, selectedEventIdSet] of personEventIds.entries()) {
+        const selectedEventIds = Array.from(selectedEventIdSet);
         const existingSubscription = await tx.majorEventSubscription.findFirst({
           where: {
             majorEventId: input.majorEventId,
@@ -192,8 +193,10 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
         }
 
         await this.attendanceCategories.refreshForMajorEventPerson(input.majorEventId, personId, tx);
-      });
-    }
+      }
+
+      return transactionCreatedPeople;
+    });
 
     return {
       createdSubscriptionCount,

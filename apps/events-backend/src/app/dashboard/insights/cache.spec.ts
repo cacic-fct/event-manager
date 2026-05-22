@@ -74,8 +74,19 @@ describe('dashboard insights cache helpers', () => {
     expect(result?.pendingCertificates[0].finishedAt).toEqual(new Date('2026-05-20T12:00:00.000Z'));
   });
 
+  it('returns null for invalid cache payloads', async () => {
+    const redis = {
+      get: jest.fn().mockResolvedValue('{invalid-json'),
+    };
+
+    await expect(getCachedInsights(redis as never, 'cache-key')).resolves.toBeNull();
+  });
+
   it('builds permission-aware cache keys', () => {
     expect(getCacheKey([])).toBe('dashboard:workspace:v2:none');
+    expect(getCacheKey(['event#edit', 'certificate#edit', 'event#edit'])).toBe(
+      'dashboard:workspace:v2:certificate#edit,event#edit',
+    );
     expect(getCacheKey(['certificate#edit', 'event#edit'])).toBe(
       'dashboard:workspace:v2:certificate#edit,event#edit',
     );

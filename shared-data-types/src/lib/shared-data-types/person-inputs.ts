@@ -31,18 +31,6 @@ export class PersonCreateInput {
 
   @Field(() => String, { nullable: true })
   externalRef?: string;
-
-  @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }
 
 @InputType()
@@ -76,16 +64,4 @@ export class PersonUpdateInput {
 
   @Field(() => String, { nullable: true })
   externalRef?: string;
-
-  @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }

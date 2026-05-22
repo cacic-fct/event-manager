@@ -143,7 +143,7 @@ export function buildInconsistencies(input: {
     }
   }
 
-  for (const lecturerEvents of eventsByLecturer.values()) {
+  for (const [personId, lecturerEvents] of eventsByLecturer.entries()) {
     for (let leftIndex = 0; leftIndex < lecturerEvents.length; leftIndex++) {
       for (let rightIndex = leftIndex + 1; rightIndex < lecturerEvents.length; rightIndex++) {
         const left = lecturerEvents[leftIndex];
@@ -156,6 +156,7 @@ export function buildInconsistencies(input: {
             description: `${left.name} e ${right.name}`,
             eventId: left.id,
             relatedEventId: right.id,
+            personId,
           });
         }
       }

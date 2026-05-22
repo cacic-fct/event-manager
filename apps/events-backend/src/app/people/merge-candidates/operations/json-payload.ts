@@ -1,7 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-export function readArray(record: Record<string, Prisma.JsonValue>, key: string) {
+export function readArray(record: Record<string, Prisma.JsonValue>, key: string): Prisma.JsonArray {
   const value = record[key];
   if (!Array.isArray(value)) {
     throw new ConflictException(`Invalid ${key} payload.`);
@@ -9,7 +9,7 @@ export function readArray(record: Record<string, Prisma.JsonValue>, key: string)
   return value;
 }
 
-export function readStringArray(record: Record<string, Prisma.JsonValue>, key: string) {
+export function readStringArray(record: Record<string, Prisma.JsonValue>, key: string): string[] {
   return readArray(record, key).map((entry) => {
     if (typeof entry !== 'string') {
       throw new ConflictException(`Invalid ${key} payload entry.`);

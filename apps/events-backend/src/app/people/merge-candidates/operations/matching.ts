@@ -5,6 +5,7 @@ const MATCH_METHOD_PRIORITY: Record<MergeMatchMethod, number> = {
   EMAIL: 2,
   NORMALIZED_NAME: 1,
 };
+const MAX_PAIRS_PER_BUCKET = 1000;
 
 export function collectCpfMatches(people: MatchablePerson[], matches: Map<string, CandidateMatch>): void {
   const byCpf = new Map<string, MatchablePerson[]>();
@@ -117,8 +118,10 @@ function registerPairs(
     return;
   }
 
-  for (let i = 0; i < group.length - 1; i += 1) {
-    for (let j = i + 1; j < group.length; j += 1) {
+  let pairCount = 0;
+  for (let i = 0; i < group.length - 1 && pairCount < MAX_PAIRS_PER_BUCKET; i += 1) {
+    for (let j = i + 1; j < group.length && pairCount < MAX_PAIRS_PER_BUCKET; j += 1) {
+      pairCount += 1;
       const [personAId, personBId] = [group[i].id, group[j].id].sort();
       const pairKey = `${personAId}:${personBId}`;
       const current = matches.get(pairKey);

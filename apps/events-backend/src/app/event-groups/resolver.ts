@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 
@@ -20,13 +21,14 @@ export class EventGroupsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.EventGroupWhereInput = { deletedAt: null };
     const normalizedQuery = query?.trim();
     let prioritizedIds: string[] = [];
 
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEventGroups(normalizedQuery, take ?? 200);
+        prioritizedIds = await this.typesenseSearch.searchEventGroups(normalizedQuery, pagination.take);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -41,8 +43,8 @@ export class EventGroupsResolver {
       orderBy: {
         name: 'asc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     if (prioritizedIds.length === 0) {

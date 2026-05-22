@@ -1,4 +1,5 @@
 import { AttendanceImportMatchType } from '@cacic-fct/shared-data-types';
+import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { EventAttendancesCsvSupport } from './csv-support';
 import { PersonMatch } from './types';
@@ -62,8 +63,16 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
 
       for (const person of people) {
         for (const key of this.getPersonMatchKeys(person, matchType)) {
-          if (!result.has(key)) {
+          const existingPerson = result.get(key);
+          if (!existingPerson) {
             result.set(key, person);
+            continue;
+          }
+
+          if (existingPerson.id !== person.id) {
+            throw new ConflictException(
+              `Valor de importação ambíguo para ${key}. Existem múltiplas pessoas ativas com o mesmo dado.`,
+            );
           }
         }
       }

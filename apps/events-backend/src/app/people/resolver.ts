@@ -4,6 +4,7 @@ import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 
@@ -29,6 +30,7 @@ export class PeopleResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.PeopleWhereInput = {
       deletedAt: null,
     };
@@ -53,7 +55,7 @@ export class PeopleResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchPeople(normalizedQuery, take ?? 200);
+        prioritizedIds = await this.typesenseSearch.searchPeople(normalizedQuery, pagination.take);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -77,8 +79,8 @@ export class PeopleResolver {
       orderBy: {
         name: 'asc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     if (prioritizedIds.length === 0) {
@@ -119,7 +121,7 @@ export class PeopleResolver {
     await this.ensureNoDuplicateIdentity(input);
 
     const person = await this.prisma.people.create({
-      data: input,
+      data: this.buildPersonCreateData(input),
       include: {
         user: true,
       },
@@ -165,7 +167,7 @@ export class PeopleResolver {
         id,
         deletedAt: null,
       },
-      data: input,
+      data: this.buildPersonUpdateData(input),
     });
 
     if (count === 0) {
@@ -288,5 +290,37 @@ export class PeopleResolver {
     after: Pick<Person, 'name' | 'identityDocument'>,
   ): boolean {
     return before.name !== after.name || before.identityDocument !== after.identityDocument;
+  }
+
+  private buildPersonCreateData(input: PersonCreateInput): Prisma.PeopleUncheckedCreateInput {
+    return {
+      ...(input.id !== undefined ? { id: input.id } : {}),
+      name: input.name,
+      ...(input.email !== undefined ? { email: input.email } : {}),
+      ...(input.secondaryEmails !== undefined ? { secondaryEmails: input.secondaryEmails } : {}),
+      ...(input.phone !== undefined ? { phone: input.phone } : {}),
+      ...(input.identityDocument !== undefined ? { identityDocument: input.identityDocument } : {}),
+      ...(input.academicId !== undefined ? { academicId: input.academicId } : {}),
+      ...(input.userId !== undefined ? { userId: input.userId } : {}),
+      ...(input.mergedIntoId !== undefined ? { mergedIntoId: input.mergedIntoId } : {}),
+      ...(input.externalRef !== undefined ? { externalRef: input.externalRef } : {}),
+    };
+  }
+
+  private buildPersonUpdateData(input: PersonUpdateInput): Prisma.PeopleUncheckedUpdateManyInput {
+    const data: Prisma.PeopleUncheckedUpdateManyInput = {};
+
+    if (input.id !== undefined) data.id = input.id;
+    if (input.name !== undefined) data.name = input.name;
+    if (input.email !== undefined) data.email = input.email;
+    if (input.secondaryEmails !== undefined) data.secondaryEmails = input.secondaryEmails;
+    if (input.phone !== undefined) data.phone = input.phone;
+    if (input.identityDocument !== undefined) data.identityDocument = input.identityDocument;
+    if (input.academicId !== undefined) data.academicId = input.academicId;
+    if (input.userId !== undefined) data.userId = input.userId;
+    if (input.mergedIntoId !== undefined) data.mergedIntoId = input.mergedIntoId;
+    if (input.externalRef !== undefined) data.externalRef = input.externalRef;
+
+    return data;
   }
 }

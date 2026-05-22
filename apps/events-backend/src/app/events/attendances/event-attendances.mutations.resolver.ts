@@ -29,33 +29,43 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   ) {
     const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
 
-    return this.prisma.$transaction(async (tx) => {
-      await tx.eventAttendance.create({
-        data: {
-          ...input,
-          createdById,
-          createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
-        },
-      });
-      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-      return tx.eventAttendance.findUniqueOrThrow({
-        where: {
-          personId_eventId: {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.eventAttendance.create({
+          data: {
             personId: input.personId,
             eventId: input.eventId,
+            attendedAt: input.attendedAt,
+            createdById,
+            createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
           },
-        },
-        select: {
-          personId: true,
-          eventId: true,
-          attendedAt: true,
-          createdAt: true,
-          createdById: true,
-          createdByMethod: true,
-          category: true,
-        },
+        });
+        await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+        return tx.eventAttendance.findUniqueOrThrow({
+          where: {
+            personId_eventId: {
+              personId: input.personId,
+              eventId: input.eventId,
+            },
+          },
+          select: {
+            personId: true,
+            eventId: true,
+            attendedAt: true,
+            createdAt: true,
+            createdById: true,
+            createdByMethod: true,
+            category: true,
+          },
+        });
       });
-    });
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Presença já registrada para este evento.');
+      }
+
+      throw error;
+    }
   }
 
   @Mutation(() => EventAttendance, {
@@ -210,10 +220,12 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           personId,
           eventId,
         },
-        data: input,
+        data: this.buildEventAttendanceUpdateData(input),
       });
 
-      await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
+      if (result.count > 0) {
+        await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
+      }
 
       return result;
     });
@@ -243,6 +255,18 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         },
       },
     });
+  }
+
+  private buildEventAttendanceUpdateData(
+    input: EventAttendanceUpdateInput,
+  ): Prisma.EventAttendanceUncheckedUpdateManyInput {
+    const data: Prisma.EventAttendanceUncheckedUpdateManyInput = {};
+
+    if (input.personId !== undefined) data.personId = input.personId;
+    if (input.eventId !== undefined) data.eventId = input.eventId;
+    if (input.attendedAt !== undefined) data.attendedAt = input.attendedAt;
+
+    return data;
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteEventAttendance' })

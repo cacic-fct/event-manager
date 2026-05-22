@@ -10,6 +10,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 
@@ -98,6 +99,7 @@ export class MajorEventsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.MajorEventWhereInput = {
       deletedAt: null,
     };
@@ -116,7 +118,7 @@ export class MajorEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchMajorEvents(normalizedQuery, take ?? 200);
+        prioritizedIds = await this.typesenseSearch.searchMajorEvents(normalizedQuery, pagination.take);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -133,8 +135,8 @@ export class MajorEventsResolver {
       orderBy: {
         startDate: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     if (prioritizedIds.length === 0) {
@@ -316,10 +318,6 @@ export class MajorEventsResolver {
     if (input.additionalPaymentInfo !== undefined) {
       data.additionalPaymentInfo = input.additionalPaymentInfo;
     }
-    if (input.deletedAt !== undefined) data.deletedAt = input.deletedAt;
-    if (input.createdAt !== undefined) data.createdAt = input.createdAt;
-    if (input.createdById !== undefined) data.createdById = input.createdById;
-    if (input.updatedById !== undefined) data.updatedById = input.updatedById;
 
     if (paymentInfoTableExists) {
       const paymentInfo = this.buildPaymentInfoPayload(input.paymentInfo);
@@ -395,10 +393,6 @@ export class MajorEventsResolver {
     if (input.additionalPaymentInfo !== undefined) {
       data.additionalPaymentInfo = input.additionalPaymentInfo;
     }
-    if (input.deletedAt !== undefined) data.deletedAt = input.deletedAt;
-    if (input.createdAt !== undefined) data.createdAt = input.createdAt;
-    if (input.createdById !== undefined) data.createdById = input.createdById;
-    if (input.updatedById !== undefined) data.updatedById = input.updatedById;
 
     if (paymentInfoTableExists) {
       if (input.paymentInfo !== undefined) {

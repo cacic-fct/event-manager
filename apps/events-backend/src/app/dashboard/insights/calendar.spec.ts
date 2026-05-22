@@ -8,7 +8,7 @@ describe('mapCalendarEvent', () => {
         id: 'event-1',
         name: 'Opening',
         emoji: '🎤',
-        type: 'TALK',
+        type: 'PALESTRA',
         startDate: new Date('2026-05-21T13:00:00.000Z'),
         endDate: new Date('2026-05-21T15:00:00.000Z'),
         locationDescription: 'Main room',
@@ -18,7 +18,7 @@ describe('mapCalendarEvent', () => {
           attendances: 3,
           subscriptions: 8,
         },
-      }) as never,
+      }),
       new Date('2026-05-21T12:00:00.000Z'),
     );
 
@@ -26,7 +26,7 @@ describe('mapCalendarEvent', () => {
       id: 'event-1',
       name: 'Opening',
       emoji: '🎤',
-      type: 'TALK',
+      type: 'PALESTRA',
       startDate: new Date('2026-05-21T13:00:00.000Z'),
       endDate: new Date('2026-05-21T15:00:00.000Z'),
       locationDescription: 'Main room',
@@ -45,7 +45,7 @@ describe('mapCalendarEvent', () => {
         shouldCollectAttendance: false,
         majorEvent: null,
         eventGroup: null,
-      }) as never,
+      }),
       new Date('2026-05-21T12:00:00.000Z'),
     );
 

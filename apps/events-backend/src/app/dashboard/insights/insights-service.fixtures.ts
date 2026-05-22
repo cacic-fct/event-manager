@@ -1,4 +1,11 @@
+import { Queue } from 'bullmq';
+import Redis from 'ioredis';
+import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
+import { CurrentUserContextService } from '../../current-user/context.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { WeatherService } from '../../weather/weather.service';
 import { DashboardInsightsService } from '../insights.service';
+import { InsightEvent } from './insight-event.select';
 
 export function createInsightsServiceTestContext() {
   const prisma = createPrismaMock();
@@ -24,12 +31,12 @@ export function createInsightsServiceTestContext() {
     add: jest.fn().mockResolvedValue({ id: 'job-1' }),
   };
   const service = new DashboardInsightsService(
-    prisma as never,
-    currentUserContext as never,
-    keycloakAuthService as never,
-    weatherService as never,
-    redis as never,
-    queue as never,
+    prisma as unknown as PrismaService,
+    currentUserContext as unknown as CurrentUserContextService,
+    keycloakAuthService as unknown as KeycloakAuthService,
+    weatherService as unknown as WeatherService,
+    redis as unknown as Redis,
+    queue as unknown as Queue,
   );
 
   return {
@@ -66,7 +73,7 @@ export function createPrismaMock() {
   };
 }
 
-export function insightEvent(overrides: Record<string, unknown> = {}) {
+export function insightEvent(overrides: Partial<InsightEvent> = {}): InsightEvent {
   return {
     id: 'event-1',
     name: 'Event',

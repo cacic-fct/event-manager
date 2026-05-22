@@ -7,12 +7,6 @@ export class EventLecturerCreateInput {
 
   @Field(() => String)
   personId!: string;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
 }
 
 @InputType()
@@ -22,10 +16,4 @@ export class EventLecturerUpdateInput {
 
   @Field(() => String, { nullable: true })
   personId?: string;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
 }

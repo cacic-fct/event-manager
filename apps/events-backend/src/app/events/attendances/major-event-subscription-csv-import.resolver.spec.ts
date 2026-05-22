@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { MajorEventSubscriptionCsvImportInput } from '@cacic-fct/shared-data-types';
 import { MajorEventSubscriptionCsvImportResolver } from './major-event-subscription-csv-import.resolver';
 
 describe('MajorEventSubscriptionCsvImportResolver', () => {
@@ -15,10 +16,10 @@ describe('MajorEventSubscriptionCsvImportResolver', () => {
   it('creates people, subscriptions, and event subscriptions from mapped CSV rows', async () => {
     prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
     prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]);
-    prisma.people.findFirst.mockResolvedValue(null);
-    prisma.people.create.mockResolvedValue(personMatch('person-1'));
 
     const tx = createTx();
+    tx.people.findFirst.mockResolvedValue(null);
+    tx.people.create.mockResolvedValue(personMatch('person-1'));
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
@@ -47,7 +48,7 @@ describe('MajorEventSubscriptionCsvImportResolver', () => {
       failedRows: [],
     });
 
-    expect(prisma.people.create).toHaveBeenCalledWith(
+    expect(tx.people.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           name: 'Ada Lovelace',
@@ -108,7 +109,7 @@ describe('MajorEventSubscriptionCsvImportResolver', () => {
             identityDocumentHeader: null,
             subscribedEventIdsHeader: 'events',
           },
-        },
+        } as unknown as MajorEventSubscriptionCsvImportInput,
         {} as never,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -133,6 +134,10 @@ function createPrisma() {
 
 function createTx() {
   return {
+    people: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+    },
     majorEventSubscription: {
       findFirst: jest.fn().mockResolvedValue(null),
       create: jest.fn(),

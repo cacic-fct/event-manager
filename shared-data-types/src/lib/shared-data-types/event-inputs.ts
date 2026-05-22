@@ -105,18 +105,6 @@ export class EventCreateInput {
 
   @Field(() => [String], { nullable: true })
   attendanceCollectorPersonIds?: string[];
-
-  @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }
 
 @InputType()
@@ -216,16 +204,4 @@ export class EventUpdateInput {
 
   @Field(() => String, { nullable: true })
   buttonLink?: string;
-
-  @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }

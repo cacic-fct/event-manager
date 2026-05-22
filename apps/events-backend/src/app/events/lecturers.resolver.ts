@@ -5,10 +5,17 @@ import {
   EventLecturerUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
+
+type GraphqlContext = {
+  req?: { user?: AuthenticatedUser };
+  request?: { user?: AuthenticatedUser };
+};
 
 const MAJOR_EVENT_SELECT = {
   id: true,
@@ -104,6 +111,7 @@ export class EventLecturersResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.EventLecturerWhereInput = {};
 
     if (eventId) {
@@ -129,8 +137,8 @@ export class EventLecturersResolver {
       orderBy: {
         createdAt: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
   }
 
@@ -171,9 +179,14 @@ export class EventLecturersResolver {
   createEventLecturer(
     @Args('input', { type: () => EventLecturerCreateInput })
     input: EventLecturerCreateInput,
+    @Context() context: GraphqlContext,
   ) {
     return this.prisma.eventLecturer.create({
-      data: input,
+      data: {
+        eventId: input.eventId,
+        personId: input.personId,
+        createdById: this.getActorId(context),
+      },
     });
   }
 
@@ -190,7 +203,7 @@ export class EventLecturersResolver {
         eventId,
         personId,
       },
-      data: input,
+      data: this.buildEventLecturerUpdateData(input),
     });
 
     if (count === 0) {
@@ -239,5 +252,18 @@ export class EventLecturersResolver {
       eventId,
       personId,
     };
+  }
+
+  private buildEventLecturerUpdateData(input: EventLecturerUpdateInput): Prisma.EventLecturerUncheckedUpdateManyInput {
+    const data: Prisma.EventLecturerUncheckedUpdateManyInput = {};
+
+    if (input.eventId !== undefined) data.eventId = input.eventId;
+    if (input.personId !== undefined) data.personId = input.personId;
+
+    return data;
+  }
+
+  private getActorId(context: GraphqlContext): string | undefined {
+    return context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
   }
 }

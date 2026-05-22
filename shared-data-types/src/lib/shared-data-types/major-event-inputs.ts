@@ -114,18 +114,6 @@ export class MajorEventCreateInput {
 
   @Field(() => MajorEventPriceInput, { nullable: true })
   price?: MajorEventPriceInput | null;
-
-  @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }
 
 @InputType()
@@ -195,16 +183,4 @@ export class MajorEventUpdateInput {
 
   @Field(() => MajorEventPriceInput, { nullable: true })
   price?: MajorEventPriceInput | null;
-
-  @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
-
-  @Field(() => Date, { nullable: true })
-  createdAt?: Date;
-
-  @Field(() => String, { nullable: true })
-  createdById?: string;
-
-  @Field(() => String, { nullable: true })
-  updatedById?: string;
 }
