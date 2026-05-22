@@ -95,7 +95,6 @@ export const appConfig: ApplicationConfig = {
       src: 'https://a.cacic.dev.br/b.js',
       autoTrack: false,
       domains: ['eventos.cacic.dev.br'],
-      hostUrl: 'https://a.cacic.dev.br/a',
     }),
     provideAppInitializer(() => {
       const registry = inject(MatIconRegistry);
