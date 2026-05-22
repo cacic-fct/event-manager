@@ -1,5 +1,6 @@
 export * from './lib/auth/auth.guard';
 export * from './lib/auth/auth.interceptor';
+export * from './lib/auth/auth-onboarding-enforcement.token';
 export * from './lib/auth/auth-online-status.service';
 export * from './lib/auth/auth.service';
 export * from './lib/auth/auth.types';

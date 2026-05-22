@@ -6,6 +6,11 @@ const meta: Meta<ToolbarLayoutComponent> = {
   component: ToolbarLayoutComponent,
   title: 'Public/Tabs/Bottom Toolbar/Bottom Toolbar/Layout',
   tags: ['autodocs'],
+  argTypes: {
+    calendarTabEnabledOverride: { control: 'boolean', name: 'events-public-calendar-tab-enabled' },
+    majorEventTabEnabledOverride: { control: 'boolean', name: 'events-public-major-event-tab-enabled' },
+    notificationsTabEnabledOverride: { control: 'boolean', name: 'events-public-notifications-tab-enabled' },
+  },
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -32,7 +37,11 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const DesktopLight: Story = {
-  args: {},
+  args: {
+    calendarTabEnabledOverride: true,
+    majorEventTabEnabledOverride: true,
+    notificationsTabEnabledOverride: true,
+  },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -41,7 +50,11 @@ export const DesktopLight: Story = {
 };
 
 export const MobileLight: Story = {
-  args: {},
+  args: {
+    calendarTabEnabledOverride: true,
+    majorEventTabEnabledOverride: true,
+    notificationsTabEnabledOverride: true,
+  },
   parameters: {
     viewport: { defaultViewport: 'mobile' },
   },
@@ -50,7 +63,11 @@ export const MobileLight: Story = {
 };
 
 export const DesktopDark: Story = {
-  args: {},
+  args: {
+    calendarTabEnabledOverride: true,
+    majorEventTabEnabledOverride: true,
+    notificationsTabEnabledOverride: true,
+  },
   parameters: {
     backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'desktop' },
@@ -60,7 +77,11 @@ export const DesktopDark: Story = {
 };
 
 export const MobileDark: Story = {
-  args: {},
+  args: {
+    calendarTabEnabledOverride: true,
+    majorEventTabEnabledOverride: true,
+    notificationsTabEnabledOverride: true,
+  },
   parameters: {
     backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'mobile' },

@@ -1,2 +1,4 @@
 <router-outlet></router-outlet>
-<lib-cookie-banner [config]="cookieBannerConfig" />
+@if (cookieBannerEnabled()) {
+  <lib-cookie-banner [config]="cookieBannerConfig" />
+}

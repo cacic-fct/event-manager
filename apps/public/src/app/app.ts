@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { CookieBannerComponent, CookieBannerOptions } from '@cacic-fct/cookie-banner/angular';
 import { firstValueFrom } from 'rxjs';
 import { CookieBannerSyncService } from './privacy/cookie-banner-sync.service';
+import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
 
 @Component({
   imports: [RouterModule, CookieBannerComponent],
@@ -15,8 +16,14 @@ import { CookieBannerSyncService } from './privacy/cookie-banner-sync.service';
 export class App {
   private readonly auth = inject(AuthService);
   private readonly cookieBannerSync = inject(CookieBannerSyncService);
+  private readonly featureFlags = inject(PublicFeatureFlagService);
+
+  readonly cookieBannerEnabledOverride = input<boolean | null>(null);
 
   protected title = 'public';
+  protected readonly cookieBannerEnabled = computed(
+    () => this.cookieBannerEnabledOverride() ?? this.featureFlags.booleanValue('cookieBannerEnabled'),
+  );
   protected readonly cookieBannerConfig: CookieBannerOptions = {
     privacyPolicyUrl: 'https://cacic.dev.br/legal/privacy-policy',
     isAuthenticated: () => this.auth.isAuthenticated(),

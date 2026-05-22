@@ -5,6 +5,7 @@ import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, swi
 import { AuthOnlineStatusService } from './auth-online-status.service';
 import { AuthenticatedUser, AuthRefreshResult } from './auth.types';
 import type { LoginOptions } from './auth.types';
+import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforcement.token';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -16,6 +17,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly onlineStatus = inject(AuthOnlineStatusService);
+  private readonly isOnboardingEnforcementEnabled = inject(AUTH_ONBOARDING_ENFORCEMENT_ENABLED);
 
   private refreshRequest$: Observable<AuthRefreshResult> | null = null;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -182,7 +184,7 @@ export class AuthService {
 
     const user = this.user();
 
-    if (!user || this.isUserOnboarded(user)) {
+    if (!user || !this.isOnboardingEnforcementEnabled() || this.isUserOnboarded(user)) {
       this.removeSessionStorageItem(this.onboardingReturnStorageKey);
       this.removeSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
       return;

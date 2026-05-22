@@ -1,4 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { DEFAULT_KEYCLOAK_REALM_URL } from '../auth/auth.constants';
 
@@ -17,10 +18,14 @@ export class AccountManagerPrivacySyncService {
     /\/+$/,
     '',
   );
-  private readonly clientId = process.env.ACCOUNT_MANAGER_M2M_CLIENT_ID;
-  private readonly clientSecret = process.env.ACCOUNT_MANAGER_M2M_CLIENT_SECRET;
-  private readonly scope = process.env.ACCOUNT_MANAGER_M2M_SCOPE;
+
+  private readonly clientId = this.configService.get<string>('ACCOUNT_MANAGER_M2M_CLIENT_ID');
+  private readonly clientSecret = this.configService.get<string>('ACCOUNT_MANAGER_M2M_CLIENT_SECRET');
+  private readonly scope = this.configService.get<string>('ACCOUNT_MANAGER_M2M_SCOPE');
+
   private cachedAccessToken: { token: string; expiresAt: number } | null = null;
+
+  constructor(private readonly configService: ConfigService) {}
 
   async recordCookieConsent(userId: string): Promise<void> {
     const accessToken = await this.getAccessToken();
