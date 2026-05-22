@@ -1,4 +1,4 @@
-import { Component, computed, inject, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, PLATFORM_ID } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { RouterOutlet } from '@angular/router';
 import { BottomToolbarComponent } from './bottom-toolbar.component';
@@ -6,9 +6,11 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
 import { filter, map } from 'rxjs';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { PublicFeatureFlagService } from '../../feature-flags/public-feature-flag.service';
 
 @Component({
   imports: [BottomToolbarComponent, RouterOutlet],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="layout-container">
       <main class="toolbar-content" [class.no-x-padding]="noXPadding()">
@@ -33,6 +35,11 @@ export class ToolbarLayoutComponent {
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly authService = inject(AuthService);
+  private readonly featureFlags = inject(PublicFeatureFlagService);
+
+  readonly calendarTabEnabledOverride = input<boolean | null>(null);
+  readonly majorEventTabEnabledOverride = input<boolean | null>(null);
+  readonly notificationsTabEnabledOverride = input<boolean | null>(null);
 
   private getRouteData(key: string): boolean {
     if (!isPlatformBrowser(this.platformId)) {
@@ -57,14 +64,14 @@ export class ToolbarLayoutComponent {
         shortLabel: 'Calendário',
         icon: 'calendar_month',
         route: '/calendar',
-        hidden: false,
+        hidden: !this.isEnabled('calendarTabEnabled', this.calendarTabEnabledOverride()),
       },
       {
         label: 'Eventos',
         shortLabel: 'Eventos',
         icon: 'event',
         route: '/major-event',
-        hidden: false,
+        hidden: !this.isEnabled('majorEventTabEnabled', this.majorEventTabEnabledOverride()),
       },
       {
         label: 'Notificações',
@@ -72,7 +79,7 @@ export class ToolbarLayoutComponent {
         icon: 'notifications',
         route: '/notifications',
         badge: 'notifications',
-        hidden: !isAuthenticated,
+        hidden: !isAuthenticated || !this.isEnabled('notificationsTabEnabled', this.notificationsTabEnabledOverride()),
       },
       {
         label: 'Menu',
@@ -93,6 +100,13 @@ export class ToolbarLayoutComponent {
       initialValue: this.getRouteData('noXPadding'),
     },
   );
+
+  private isEnabled(
+    key: 'calendarTabEnabled' | 'majorEventTabEnabled' | 'notificationsTabEnabled',
+    override: boolean | null,
+  ): boolean {
+    return override ?? this.featureFlags.booleanValue(key);
+  }
 }
 
 export interface ToolbarItem {
