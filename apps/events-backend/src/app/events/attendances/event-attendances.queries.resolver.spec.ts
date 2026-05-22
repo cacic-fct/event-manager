@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { AttendanceCategory, SubscriptionStatus } from '@prisma/client';
 import { EventAttendancesQueriesResolver } from './event-attendances.queries.resolver';
 
 describe('EventAttendancesQueriesResolver', () => {
@@ -50,7 +51,7 @@ describe('EventAttendancesQueriesResolver', () => {
       {
         id: 'subscription-1',
         personId: 'person-1',
-        subscriptionStatus: 'CONFIRMED',
+        subscriptionStatus: SubscriptionStatus.CONFIRMED,
         amountPaid: 1000,
         paymentDate: new Date('2026-05-20T12:00:00.000Z'),
         paymentTier: 'student',
@@ -62,14 +63,14 @@ describe('EventAttendancesQueriesResolver', () => {
         personId: 'person-1',
         eventId: 'event-1',
         attendedAt: new Date('2026-05-21T12:30:00.000Z'),
-        category: 'ATTENDEE',
+        category: AttendanceCategory.REGULAR,
         person: { id: 'person-1', name: 'Ada' },
       },
       {
         personId: 'person-2',
         eventId: 'event-2',
         attendedAt: new Date('2026-05-22T12:30:00.000Z'),
-        category: 'NON_SUBSCRIBER',
+        category: AttendanceCategory.NON_SUBSCRIBED,
         person: { id: 'person-2', name: 'Linus' },
       },
     ]);
@@ -78,10 +79,10 @@ describe('EventAttendancesQueriesResolver', () => {
       expect.objectContaining({
         personId: 'person-1',
         subscriptionId: 'subscription-1',
-        subscriptionStatus: 'CONFIRMED',
+        subscriptionStatus: SubscriptionStatus.CONFIRMED,
         attendances: [
-          expect.objectContaining({ eventId: 'event-1', attended: true, category: 'ATTENDEE' }),
-          expect.objectContaining({ eventId: 'event-2', attended: false, category: 'UNKNOWN' }),
+          expect.objectContaining({ eventId: 'event-1', attended: true, category: AttendanceCategory.REGULAR }),
+          expect.objectContaining({ eventId: 'event-2', attended: false, category: AttendanceCategory.UNKNOWN }),
         ],
       }),
       expect.objectContaining({
@@ -89,7 +90,7 @@ describe('EventAttendancesQueriesResolver', () => {
         subscriptionStatus: 'UNKNOWN',
         attendances: [
           expect.objectContaining({ eventId: 'event-1', attended: false }),
-          expect.objectContaining({ eventId: 'event-2', attended: true, category: 'NON_SUBSCRIBER' }),
+          expect.objectContaining({ eventId: 'event-2', attended: true, category: AttendanceCategory.NON_SUBSCRIBED }),
         ],
       }),
     ]);

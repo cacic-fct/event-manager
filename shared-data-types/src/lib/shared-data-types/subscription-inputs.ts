@@ -1,5 +1,7 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 
+import { SubscriptionStatus } from './enums';
+
 @InputType()
 export class WorkspaceEventSubscriptionCreateInput {
   @Field(() => String)
@@ -17,8 +19,8 @@ export class WorkspaceMajorEventSubscriptionCreateInput {
   @Field(() => String)
   personId!: string;
 
-  @Field(() => String, { nullable: true })
-  subscriptionStatus?: string;
+  @Field(() => SubscriptionStatus, { nullable: true })
+  subscriptionStatus?: SubscriptionStatus;
 
   @Field(() => Int, { nullable: true })
   amountPaid?: number;
@@ -35,8 +37,8 @@ export class WorkspaceMajorEventSubscriptionCreateInput {
 
 @InputType()
 export class WorkspaceMajorEventSubscriptionUpdateInput {
-  @Field(() => String, { nullable: true })
-  subscriptionStatus?: string;
+  @Field(() => SubscriptionStatus, { nullable: true })
+  subscriptionStatus?: SubscriptionStatus;
 
   @Field(() => Int, { nullable: true })
   amountPaid?: number;
@@ -77,8 +79,8 @@ export class MajorEventSubscriptionCsvImportInput {
   @Field(() => String)
   csvContent!: string;
 
-  @Field(() => String)
-  subscriptionStatus!: string;
+  @Field(() => SubscriptionStatus)
+  subscriptionStatus!: SubscriptionStatus;
 
   @Field(() => MajorEventSubscriptionCsvColumnMappingInput)
   columnMapping!: MajorEventSubscriptionCsvColumnMappingInput;

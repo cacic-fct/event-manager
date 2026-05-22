@@ -9,7 +9,6 @@ describe('PrismaService', () => {
 
   afterEach(() => {
     process.env.DATABASE_URL = originalDatabaseUrl;
-    process.removeAllListeners('beforeExit');
     jest.restoreAllMocks();
   });
 

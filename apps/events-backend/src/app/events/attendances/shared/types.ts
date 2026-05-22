@@ -1,9 +1,4 @@
-import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
-
-export type GraphqlContext = {
-  req?: { user?: AuthenticatedUser };
-  request?: { user?: AuthenticatedUser };
-};
+export type { GraphqlContext } from '../../../current-user/selects';
 
 export type CsvRow = Record<string, string>;
 

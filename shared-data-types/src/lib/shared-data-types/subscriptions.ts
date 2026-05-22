@@ -1,6 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
-import { SubscriptionCreationMethod } from './enums';
+import { SubscriptionCreationMethod, SubscriptionStatus } from './enums';
 import { Event } from './events';
 import { MajorEvent } from './major-events';
 import { Person } from './people';
@@ -73,8 +73,8 @@ export class WorkspaceMajorEventSubscription {
   @Field(() => Person, { nullable: true })
   person?: Person;
 
-  @Field(() => String)
-  subscriptionStatus!: string;
+  @Field(() => SubscriptionStatus)
+  subscriptionStatus!: SubscriptionStatus;
 
   @Field(() => Int, { nullable: true })
   amountPaid?: number;
