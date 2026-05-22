@@ -1,6 +1,5 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { EventAttendancesResolver } from './event-attendances.resolver';
-describe('EventAttendancesResolver scanner feed', () => {
+import { EventAttendancesQueriesResolver } from './event-attendances.queries.resolver';
+describe('EventAttendancesQueriesResolver scanner feed', () => {
   it('marks subscribed standalone event attendees as confirmed', async () => {
     const prisma = createPrisma({
       attendances: [
@@ -20,10 +19,9 @@ describe('EventAttendancesResolver scanner feed', () => {
       eventSubscriptions: [{ personId: 'person-subscribed', eventId: 'standalone-event' }],
       majorEventSubscriptions: [],
     });
-    const resolver = new EventAttendancesResolver(prisma as never, {} as never);
+    const resolver = new EventAttendancesQueriesResolver(prisma as never, {} as never);
 
-    const feed = await (resolver as unknown as { getScannerFeed: (eventId: string) => Promise<ScannerFeedItem[]> })
-      .getScannerFeed('standalone-event');
+    const feed = (await resolver.eventAttendanceScannerFeed('standalone-event')) as ScannerFeedItem[];
 
     expect(feed).toEqual(
       expect.arrayContaining([
@@ -52,10 +50,9 @@ describe('EventAttendancesResolver scanner feed', () => {
       eventSubscriptions: [{ personId: 'person-under-review', eventId: 'major-session' }],
       majorEventSubscriptions: [{ personId: 'person-under-review', subscriptionStatus: 'RECEIPT_UNDER_REVIEW' }],
     });
-    const resolver = new EventAttendancesResolver(prisma as never, {} as never);
+    const resolver = new EventAttendancesQueriesResolver(prisma as never, {} as never);
 
-    const feed = await (resolver as unknown as { getScannerFeed: (eventId: string) => Promise<ScannerFeedItem[]> })
-      .getScannerFeed('major-session');
+    const feed = (await resolver.eventAttendanceScannerFeed('major-session')) as ScannerFeedItem[];
 
     expect(feed[0]?.subscriptionStatus).toBe('RECEIPT_UNDER_REVIEW');
     expect(prisma.eventSubscription.findMany).not.toHaveBeenCalled();

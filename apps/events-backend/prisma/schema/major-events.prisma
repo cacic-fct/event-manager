@@ -1,0 +1,178 @@
+model MajorEvent {
+  id        String   @id @default(uuid(7))
+  name      String
+  startDate DateTime
+  endDate   DateTime
+
+  description String?
+  emoji       String  @default("❔")
+
+  events Event[]
+
+  subscriptions         MajorEventSubscription[]
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+
+  maxCoursesPerAttendee       Int?
+  maxLecturesPerAttendee      Int?
+  maxUncategorizedPerAttendee Int?
+  rankedSubscriptionEnabled   Boolean @default(false)
+
+  buttonText String?
+  buttonLink String?
+
+  contactInfo String?
+  contactType ContactType?
+
+  isPaymentRequired                               Boolean      @default(false)
+  shouldIssueCertificateForNonPayingAttendees     Boolean      @default(false)
+  shouldIssueCertificateForNonSubscribedAttendees Boolean      @default(false)
+  paymentInfo                                     PaymentInfo?
+  additionalPaymentInfo                           String?
+
+  majorEventPrices MajorEventPrice[]
+
+  certificateConfigs CertificateConfig[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([name, deletedAt])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([deletedAt])
+  @@map("major_events")
+}
+
+model PaymentInfo {
+  id       String @id @default(uuid(7))
+  bankName String
+  agency   String
+  account  String
+  holder   String
+  document String
+  pixKey   String?
+  pixCity  String?
+
+  majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id])
+  majorEventId String     @unique
+
+  @@map("payment_info")
+}
+
+model MajorEventReceipt {
+  id String @id @default(uuid(7))
+
+  subscriptionId String
+  subscription   MajorEventSubscription @relation(fields: [subscriptionId], references: [id])
+
+  majorEventId String
+  personId     String
+
+  objectKey String
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+
+  expiresAt  DateTime
+  uploadedAt DateTime @default(now())
+  uploadedBy String?
+
+  processingStatus ReceiptProcessingStatus @default(PENDING)
+  processedAt      DateTime?
+  processingError  String?
+
+  ocrText String?
+
+  expectedAmountCents Int?
+  matchedAmountCents  Int?
+  amountMatched       Boolean?
+  matchedAmountText   String?
+
+  nameMatched     Boolean?
+  matchedNameText String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  validationActions MajorEventReceiptValidationAction[]
+
+  @@index([subscriptionId])
+  @@index([majorEventId])
+  @@index([personId])
+  @@index([expiresAt])
+  @@map("major_event_receipts")
+}
+
+model MajorEventReceiptValidationAction {
+  id String @id @default(uuid(7))
+
+  subscriptionId String
+  subscription   MajorEventSubscription @relation(fields: [subscriptionId], references: [id])
+
+  receiptId String?
+  receipt   MajorEventReceipt? @relation(fields: [receiptId], references: [id])
+
+  action         ReceiptValidationActionType
+  previousStatus SubscriptionStatus
+  nextStatus     SubscriptionStatus
+
+  previousRejectionReason String?
+  nextRejectionReason     String?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  undoneAt    DateTime?
+  undoneById  String?
+
+  @@index([subscriptionId])
+  @@index([receiptId])
+  @@index([createdAt])
+  @@map("major_event_receipt_validation_actions")
+}
+
+enum ReceiptValidationActionType {
+  APPROVE
+  REJECT
+}
+
+enum ReceiptProcessingStatus {
+  PENDING
+  OCR_DONE
+  CONVERTED
+  FAILED
+}
+
+model MajorEventPrice {
+  id           String     @id @default(uuid(7))
+  majorEventId String
+  majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id])
+
+  type PriceType
+
+  tiers PriceTier[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([majorEventId])
+  @@map("major_event_prices")
+}
+
+enum PriceType {
+  SINGLE
+  TIERED
+}
+
+model PriceTier {
+  id      String          @id @default(uuid(7))
+  priceId String
+  price   MajorEventPrice @relation(fields: [priceId], references: [id])
+
+  name  String
+  value Int
+
+  @@index([priceId])
+  @@map("price_tiers")
+}

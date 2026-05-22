@@ -1,0 +1,51 @@
+model People {
+  id               String   @id @default(uuid(7))
+  name             String
+  email            String?
+  secondaryEmails  String[]
+  phone            String?
+  identityDocument String?
+  isCPF            Boolean? @default(true)
+  academicId       String?
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  attendances             EventAttendance[]
+  lectures                EventLecturer[]
+  attendanceCollectorFor  EventAttendanceCollector[]
+  eventSubscriptions      EventSubscription[]
+  eventGroupSubscriptions EventGroupSubscription[]
+  majorEventSubscriptions MajorEventSubscription[]
+
+  // Merge tracking
+  mergedIntoId String?
+  mergedInto   People?  @relation("PeopleMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom   People[] @relation("PeopleMerge")
+
+  mergeCandidatesA        MergeCandidate[]       @relation("MergeCandidateA")
+  mergeCandidatesB        MergeCandidate[]       @relation("MergeCandidateB")
+  mergeOperationsAsTarget PeopleMergeOperation[] @relation("MergeTargetOperations")
+  mergeOperationsAsSource PeopleMergeOperation[] @relation("MergeSourceOperations")
+
+  certificates Certificate[]
+
+  externalRef String? @unique // external system reference (optional)
+
+  deletedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@unique([identityDocument, deletedAt])
+  @@index([name])
+  @@index([email])
+  @@index([identityDocument])
+  @@index([academicId])
+  @@index([userId])
+  @@index([mergedIntoId])
+  @@index([deletedAt])
+  @@map("people")
+}

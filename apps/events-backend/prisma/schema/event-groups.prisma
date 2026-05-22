@@ -1,0 +1,29 @@
+model EventGroup {
+  id   String @id @default(uuid(7))
+  name String
+
+  emoji String @default("❔")
+
+  events        Event[]
+  subscriptions EventGroupSubscription[]
+
+  shouldIssueCertificate                          Boolean @default(false)
+  shouldIssueCertificateForNonPayingAttendees     Boolean @default(false)
+  shouldIssueCertificateForNonSubscribedAttendees Boolean @default(false)
+  // If true, attendees may receive one certificate per eligible event in the group.
+  shouldIssueCertificateForEachEvent              Boolean @default(false)
+  // If true, attendees will receive a certificate even if they only attended part of the events in the group. If false, they must attend all events to receive a certificate.
+  shouldIssuePartialCertificate                   Boolean @default(false)
+
+  certificateConfigs CertificateConfig[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([name, deletedAt])
+  @@index([deletedAt])
+  @@map("event_groups")
+}

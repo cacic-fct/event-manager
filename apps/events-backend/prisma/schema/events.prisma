@@ -1,0 +1,112 @@
+enum EventType {
+  MINICURSO
+  PALESTRA
+  OTHER
+}
+
+model Event {
+  id            String    @id @default(uuid(7))
+  name          String
+  creditMinutes Int?
+  startDate     DateTime
+  endDate       DateTime
+  type          EventType @default(OTHER)
+  emoji         String    @default("❔")
+
+  description      String?
+  shortDescription String?
+
+  latitude            Float?
+  longitude           Float?
+  locationDescription String?
+
+  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id])
+  majorEventId String?
+
+  eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id])
+  eventGroupId String?
+
+  attendances           EventAttendance[]
+  attendanceCollectors  EventAttendanceCollector[]
+  lecturers             EventLecturer[]
+
+  allowSubscription     Boolean             @default(false)
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  subscriptions         EventSubscription[]
+  slots                 Int?
+  slotsAvailable        Int?
+  queueCount            Int                 @default(0)
+  // When true and only if event is part of a major event, users will be automatically subscribed to this event when subscribing to the major event
+  autoSubscribe         Boolean             @default(false)
+  majorEventSelections  MajorEventSubscriptionEventSelection[]
+
+  shouldIssueCertificate                          Boolean             @default(false)
+  shouldIssueCertificateForNonPayingAttendees     Boolean             @default(false)
+  shouldIssueCertificateForNonSubscribedAttendees Boolean             @default(false)
+  certificateConfigs                              CertificateConfig[]
+
+  shouldCollectAttendance   Boolean   @default(false)
+  isOnlineAttendanceAllowed Boolean   @default(false)
+  onlineAttendanceCode      String?
+  onlineAttendanceStartDate DateTime?
+  onlineAttendanceEndDate   DateTime?
+
+  shouldProvideSubscriberListToLecturer Boolean @default(false)
+
+  // If event should be visible to users or if it's only for internal (admin) use
+  publiclyVisible Boolean @default(true)
+
+  youtubeCode String?
+  buttonText  String?
+  buttonLink  String?
+
+  deletedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([startDate])
+  @@index([endDate])
+  @@index([majorEventId])
+  @@index([eventGroupId])
+  @@index([deletedAt])
+  @@map("events")
+}
+
+model PlacePreset {
+  id                  String  @id @default(uuid(7))
+  name                String
+  latitude            Float?
+  longitude           Float?
+  locationDescription String?
+
+  deletedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@unique([name, deletedAt])
+  @@index([name])
+  @@index([deletedAt])
+  @@map("place_presets")
+}
+
+model EventLecturer {
+  eventId  String
+  personId String
+
+  event  Event  @relation(fields: [eventId], references: [id])
+  person People @relation(fields: [personId], references: [id])
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@id([eventId, personId])
+  @@index([personId])
+  @@map("event_lecturers")
+}

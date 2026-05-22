@@ -1,0 +1,54 @@
+model EventAttendance {
+  personId String
+  eventId  String
+
+  person People @relation(fields: [personId], references: [id])
+  event  Event  @relation(fields: [eventId], references: [id])
+
+  category AttendanceCategory @default(UNKNOWN)
+
+  attendedAt DateTime @default(now())
+
+  createdAt       DateTime                 @default(now())
+  createdById     String?
+  createdByMethod AttendanceCreationMethod @default(UNKNOWN)
+
+  collectedLatitude       Float?
+  collectedLongitude      Float?
+  collectedAccuracyMeters Float?
+
+  @@id([personId, eventId])
+  @@index([eventId])
+  @@index([personId])
+  @@map("event_attendances")
+}
+
+model EventAttendanceCollector {
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  personId String
+  person   People @relation(fields: [personId], references: [id])
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@id([eventId, personId])
+  @@index([personId])
+  @@map("event_attendance_collectors")
+}
+
+enum AttendanceCreationMethod {
+  CSV_IMPORT
+  MANUAL_INPUT
+  SCANNER
+  ONLINE_CODE
+  UNKNOWN
+}
+
+enum AttendanceCategory {
+  NON_PAYING
+  NON_SUBSCRIBED
+  REGULAR
+  UNKNOWN
+}
