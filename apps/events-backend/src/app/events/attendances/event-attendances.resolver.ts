@@ -16,10 +16,10 @@ import {
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, Prisma, SubscriptionStatus } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
-import { PrismaService } from '../prisma/prisma.service';
-import { AttendanceCategoryService } from './attendance-category.service';
+import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { PrismaService } from '../../prisma/prisma.service';
+import { AttendanceCategoryService } from '../attendance-category.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
