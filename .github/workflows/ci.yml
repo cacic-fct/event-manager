@@ -55,7 +55,7 @@ jobs:
         run: bunx nx affected -t lint --parallel=3
 
       - name: Run unit tests with coverage
-        run: bunx nx affected -t test --parallel=3
+        run: bunx nx run-many --target=test --all --parallel=3
 
       - name: Build deployable apps
         run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=1
