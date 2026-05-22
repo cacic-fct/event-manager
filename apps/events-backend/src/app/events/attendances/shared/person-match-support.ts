@@ -1,4 +1,5 @@
 import { AttendanceImportMatchType } from '@cacic-fct/shared-data-types';
+import { isValidCPF } from '@cacic-fct/shared-utils';
 import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { EventAttendancesCsvSupport } from './csv-support';
@@ -26,7 +27,7 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
 
   protected looksLikeIdentityDocument(value: string): boolean {
     const compactValue = value.trim().replace(/[.\-/\s]/g, '');
-    if (this.isValidCpf(compactValue)) {
+    if (isValidCPF(compactValue)) {
       return true;
     }
 
@@ -139,24 +140,6 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
     }
 
     return Array.from(lookupValues).filter((lookupValue) => lookupValue);
-  }
-
-  protected isValidCpf(value: string): boolean {
-    const cpf = value.replace(/\D/g, '');
-    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) {
-      return false;
-    }
-
-    const firstDigit = this.calculateCpfDigit(cpf.slice(0, 9), 10);
-    const secondDigit = this.calculateCpfDigit(`${cpf.slice(0, 9)}${firstDigit}`, 11);
-
-    return cpf === `${cpf.slice(0, 9)}${firstDigit}${secondDigit}`;
-  }
-
-  protected calculateCpfDigit(base: string, factor: number): number {
-    const total = base.split('').reduce((sum, digit, index) => sum + Number(digit) * (factor - index), 0);
-    const remainder = (total * 10) % 11;
-    return remainder === 10 ? 0 : remainder;
   }
 
   protected chunk<T>(items: T[], size: number): T[][] {

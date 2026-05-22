@@ -1,3 +1,4 @@
+import { isValidCPF } from '@cacic-fct/shared-utils';
 import { CandidateMatch, MatchablePerson, MergeMatchMethod } from './types';
 
 const MATCH_METHOD_PRIORITY: Record<MergeMatchMethod, number> = {
@@ -78,18 +79,7 @@ export function normalizeCpf(rawValue: string | null): string | null {
 }
 
 export function isValidCpf(cpf: string): boolean {
-  if (!/^\d{11}$/.test(cpf)) {
-    return false;
-  }
-
-  if (/^(\d)\1{10}$/.test(cpf)) {
-    return false;
-  }
-
-  const firstVerifier = calculateCpfVerifierDigit(cpf.slice(0, 9), 10);
-  const secondVerifier = calculateCpfVerifierDigit(cpf.slice(0, 10), 11);
-
-  return cpf[9] === String(firstVerifier) && cpf[10] === String(secondVerifier);
+  return isValidCPF(cpf);
 }
 
 export function normalizeEmail(rawValue: string | null): string | null {
@@ -163,14 +153,4 @@ function registerPairs(
       }
     }
   }
-}
-
-function calculateCpfVerifierDigit(base: string, factorStart: number): number {
-  const sum = [...base].reduce((total, value, index) => {
-    const digit = Number(value);
-    return total + digit * (factorStart - index);
-  }, 0);
-
-  const remainder = sum % 11;
-  return remainder < 2 ? 0 : 11 - remainder;
 }

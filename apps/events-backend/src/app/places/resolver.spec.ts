@@ -37,8 +37,8 @@ describe('PlacePresetsResolver', () => {
         where: {
           deletedAt: null,
         },
-        skip: undefined,
-        take: undefined,
+        skip: 0,
+        take: 50,
       }),
     );
   });
