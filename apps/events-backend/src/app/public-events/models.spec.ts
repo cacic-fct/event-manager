@@ -1,0 +1,122 @@
+import { mapPublicMajorEvent, mapPublicPaymentInfo } from './models';
+
+describe('public event models', () => {
+  it('maps major events with optional values converted to undefined and nested price tiers', () => {
+    const majorEvent = majorEventFixture({
+      certificateConfigs: [{ id: 'config-1' }],
+      paymentInfo: paymentInfoFixture(),
+    });
+
+    expect(mapPublicMajorEvent(majorEvent as never)).toEqual({
+      id: 'major-event-1',
+      name: 'Semana da Computacao',
+      emoji: '💻',
+      startDate: new Date('2026-05-21T12:00:00.000Z'),
+      endDate: new Date('2026-05-23T12:00:00.000Z'),
+      description: undefined,
+      subscriptionStartDate: undefined,
+      subscriptionEndDate: undefined,
+      maxCoursesPerAttendee: undefined,
+      maxLecturesPerAttendee: 2,
+      maxUncategorizedPerAttendee: undefined,
+      rankedSubscriptionEnabled: true,
+      buttonText: undefined,
+      buttonLink: undefined,
+      contactInfo: 'contato@example.com',
+      contactType: 'EMAIL',
+      isPaymentRequired: true,
+      additionalPaymentInfo: undefined,
+      shouldIssueCertificate: true,
+      paymentInfo: {
+        id: 'payment-1',
+        bankName: 'Banco',
+        agency: '0001',
+        account: '12345',
+        holder: 'CACIC',
+        document: '123',
+        pixKey: undefined,
+        pixCity: 'Presidente Prudente',
+        majorEventId: 'major-event-1',
+      },
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'student',
+          tiers: [
+            {
+              id: 'tier-1',
+              name: 'Lote 1',
+              value: 2500,
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('maps payment info nullables to undefined', () => {
+    expect(mapPublicPaymentInfo(paymentInfoFixture() as never)).toEqual({
+      id: 'payment-1',
+      bankName: 'Banco',
+      agency: '0001',
+      account: '12345',
+      holder: 'CACIC',
+      document: '123',
+      pixKey: undefined,
+      pixCity: 'Presidente Prudente',
+      majorEventId: 'major-event-1',
+    });
+  });
+
+  it('marks major events without active certificate configs as not issuing certificates', () => {
+    expect(mapPublicMajorEvent(majorEventFixture({ certificateConfigs: [] }) as never).shouldIssueCertificate).toBe(
+      false,
+    );
+  });
+});
+
+function majorEventFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'major-event-1',
+    name: 'Semana da Computacao',
+    emoji: '💻',
+    startDate: new Date('2026-05-21T12:00:00.000Z'),
+    endDate: new Date('2026-05-23T12:00:00.000Z'),
+    description: null,
+    subscriptionStartDate: null,
+    subscriptionEndDate: null,
+    maxCoursesPerAttendee: null,
+    maxLecturesPerAttendee: 2,
+    maxUncategorizedPerAttendee: null,
+    rankedSubscriptionEnabled: true,
+    buttonText: null,
+    buttonLink: null,
+    contactInfo: 'contato@example.com',
+    contactType: 'EMAIL',
+    isPaymentRequired: true,
+    additionalPaymentInfo: null,
+    certificateConfigs: [],
+    majorEventPrices: [
+      {
+        id: 'price-1',
+        type: 'student',
+        tiers: [{ id: 'tier-1', name: 'Lote 1', value: 2500 }],
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function paymentInfoFixture() {
+  return {
+    id: 'payment-1',
+    bankName: 'Banco',
+    agency: '0001',
+    account: '12345',
+    holder: 'CACIC',
+    document: '123',
+    pixKey: null,
+    pixCity: 'Presidente Prudente',
+    majorEventId: 'major-event-1',
+  };
+}
