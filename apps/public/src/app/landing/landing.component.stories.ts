@@ -6,6 +6,9 @@ const meta: Meta<LandingComponent> = {
   component: LandingComponent,
   title: 'Public/Landing/Landing',
   tags: ['autodocs'],
+  argTypes: {
+    defaultLoginRedirectPathOverride: { control: 'text', name: 'events-public-default-login-redirect-path' },
+  },
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -32,7 +35,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const DesktopLight: Story = {
-  args: {},
+  args: {
+    defaultLoginRedirectPathOverride: '/calendar',
+  },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -41,7 +46,9 @@ export const DesktopLight: Story = {
 };
 
 export const MobileLight: Story = {
-  args: {},
+  args: {
+    defaultLoginRedirectPathOverride: '/calendar',
+  },
   parameters: {
     viewport: { defaultViewport: 'mobile' },
   },
@@ -50,7 +57,9 @@ export const MobileLight: Story = {
 };
 
 export const DesktopDark: Story = {
-  args: {},
+  args: {
+    defaultLoginRedirectPathOverride: '/calendar',
+  },
   parameters: {
     backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'desktop' },
@@ -60,7 +69,9 @@ export const DesktopDark: Story = {
 };
 
 export const MobileDark: Story = {
-  args: {},
+  args: {
+    defaultLoginRedirectPathOverride: '/calendar',
+  },
   parameters: {
     backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'mobile' },

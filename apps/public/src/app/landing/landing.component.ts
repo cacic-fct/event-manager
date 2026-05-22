@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, PLATFORM_ID, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, inject, input, PLATFORM_ID, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { DoodlesComponent } from './components/doodles.component';
 import { isPlatformBrowser } from '@angular/common';
 import { Developer } from './components/developer';
+import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 
 @Component({
   selector: 'app-login-page',
@@ -22,20 +23,25 @@ import { Developer } from './components/developer';
   ],
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LandingComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly featureFlags = inject(PublicFeatureFlagService);
 
+  readonly defaultLoginRedirectPathOverride = input<string | null>(null);
   private readonly nextSection = viewChild<ElementRef<HTMLElement>>('nextSection');
 
   async login(): Promise<void> {
+    const returnTo = this.defaultLoginRedirectPathOverride() ?? this.featureFlags.stringValue('defaultLoginRedirectPath');
+
     if (this.authService.isAuthenticated()) {
-      await this.router.navigateByUrl('/calendar');
+      await this.router.navigateByUrl(returnTo);
       return;
     }
-    await this.authService.login();
+    await this.authService.login({ returnTo });
   }
 
   scrollToNextSection(): void {

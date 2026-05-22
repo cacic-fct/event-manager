@@ -50,12 +50,19 @@ export interface OfflineAttendanceDetailRecord {
   detail: OfflineAttendanceDetail;
 }
 
+export interface OfflineFeatureFlagCacheRecord {
+  key: string;
+  updatedAt: number;
+  value: unknown;
+}
+
 export class OfflinePublicDataDatabase extends Dexie {
   calendarEvents!: Table<OfflineCalendarEvent, string>;
   syncMetadata!: Table<OfflinePublicDataSyncMetadata, string>;
   userSnapshots!: Table<OfflineUserSnapshot, string>;
   attendanceFeeds!: Table<OfflineAttendanceFeedRecord, string>;
   attendanceDetails!: Table<OfflineAttendanceDetailRecord, string>;
+  featureFlagCache!: Table<OfflineFeatureFlagCacheRecord, string>;
 
   constructor() {
     super('cacic-public-offline-data');
@@ -71,6 +78,15 @@ export class OfflinePublicDataDatabase extends Dexie {
       userSnapshots: 'userId, updatedAt',
       attendanceFeeds: 'key, userId, updatedAt',
       attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+    });
+
+    this.version(3).stores({
+      calendarEvents: 'id, startDate, cachedAt',
+      syncMetadata: 'key',
+      userSnapshots: 'userId, updatedAt',
+      attendanceFeeds: 'key, userId, updatedAt',
+      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+      featureFlagCache: 'key, updatedAt',
     });
   }
 }
