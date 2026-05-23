@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { Event, MajorEvent, MajorEventInput, PriceType } from '../../graphql/models';
+import { getErrorMessage } from '../error-message';
 
 @Injectable({
   providedIn: 'root',
@@ -108,20 +109,26 @@ export class WorkspaceMajorEventsService {
     const raw = this.majorEventForm.getRawValue();
     const payload = this.buildMajorEventPayload();
 
-    if (raw.id) {
-      const updatedMajorEvent = await firstValueFrom(this.api.updateMajorEvent(raw.id, payload));
-      this.snackbar.open('Grande evento atualizado.', 'Fechar', {
-        duration: 2500,
+    try {
+      if (raw.id) {
+        const updatedMajorEvent = await firstValueFrom(this.api.updateMajorEvent(raw.id, payload));
+        this.snackbar.open('Grande evento atualizado.', 'Fechar', {
+          duration: 2500,
+        });
+        await this.loadMajorEvents();
+        await this.pickMajorEvent(updatedMajorEvent);
+      } else {
+        await firstValueFrom(this.api.createMajorEvent(payload));
+        this.snackbar.open('Grande evento criado.', 'Fechar', {
+          duration: 2500,
+        });
+        this.resetMajorEventForm();
+        await this.loadMajorEvents();
+      }
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grande evento.'), 'Fechar', {
+        duration: 5000,
       });
-      await this.loadMajorEvents();
-      await this.pickMajorEvent(updatedMajorEvent);
-    } else {
-      await firstValueFrom(this.api.createMajorEvent(payload));
-      this.snackbar.open('Grande evento criado.', 'Fechar', {
-        duration: 2500,
-      });
-      this.resetMajorEventForm();
-      await this.loadMajorEvents();
     }
   }
 
@@ -230,14 +237,20 @@ export class WorkspaceMajorEventsService {
   }
 
   async deleteMajorEvent(id: string): Promise<void> {
-    await firstValueFrom(this.api.deleteMajorEvent(id));
-    this.snackbar.open('Grande evento excluído.', 'Fechar', {
-      duration: 2500,
-    });
-    if (this.selectedMajorEvent()?.id === id) {
-      this.resetMajorEventForm();
+    try {
+      await firstValueFrom(this.api.deleteMajorEvent(id));
+      this.snackbar.open('Grande evento excluído.', 'Fechar', {
+        duration: 2500,
+      });
+      if (this.selectedMajorEvent()?.id === id) {
+        this.resetMajorEventForm();
+      }
+      await this.loadMajorEvents();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o grande evento.'), 'Fechar', {
+        duration: 5000,
+      });
     }
-    await this.loadMajorEvents();
   }
 
   async searchEventsForSelectedMajorEvent(): Promise<void> {
