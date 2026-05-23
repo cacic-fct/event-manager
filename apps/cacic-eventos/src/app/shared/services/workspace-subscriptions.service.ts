@@ -19,6 +19,7 @@ import { PeopleApiService } from '../../graphql/people-api.service';
 import { SubscriptionApiService } from '../../graphql/subscription-api.service';
 import { SubscriptionCsvColumnDialogComponent } from '../../workspace/dialogs/subscription-csv-column-dialog.component';
 import { SubscriptionCsvImportResultDialogComponent } from '../../workspace/dialogs/subscription-csv-import-result-dialog.component';
+import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspaceAttendancesService } from './workspace-attendances.service';
@@ -139,11 +140,15 @@ export class WorkspaceSubscriptionsService {
     if (!eventId) {
       return;
     }
-    await firstValueFrom(this.api.createEventSubscription({ eventId, personId: person.id }));
-    await this.loadEventSubscriptions(eventId);
-    await this.refreshMajorEventAttendancesForEvent(eventId);
-    this.eventPersonMatches.set([]);
-    this.snackbar.open('Inscrição criada.', 'Fechar', { duration: 2500 });
+    try {
+      await firstValueFrom(this.api.createEventSubscription({ eventId, personId: person.id }));
+      await this.loadEventSubscriptions(eventId);
+      await this.refreshMajorEventAttendancesForEvent(eventId);
+      this.eventPersonMatches.set([]);
+      this.snackbar.open('Inscrição criada.', 'Fechar', { duration: 2500 });
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível criar a inscrição.'), 'Fechar', { duration: 5000 });
+    }
   }
 
   async selectMajorEventById(majorEventId: string): Promise<void> {
@@ -252,14 +257,18 @@ export class WorkspaceSubscriptionsService {
       selectedEventIds,
     };
 
-    const saved = selected
-      ? await firstValueFrom(this.api.updateMajorEventSubscription(selected.id, input))
-      : await this.createMajorEventSubscription(input);
+    try {
+      const saved = selected
+        ? await firstValueFrom(this.api.updateMajorEventSubscription(selected.id, input))
+        : await this.createMajorEventSubscription(input);
 
-    this.replaceMajorEventSubscription(saved);
-    this.selectMajorEventSubscription(saved);
-    await this.attendancesService.refreshMajorEventUserAttendancesFor(saved.majorEventId);
-    this.snackbar.open('Inscrição salva.', 'Fechar', { duration: 2500 });
+      this.replaceMajorEventSubscription(saved);
+      this.selectMajorEventSubscription(saved);
+      await this.attendancesService.refreshMajorEventUserAttendancesFor(saved.majorEventId);
+      this.snackbar.open('Inscrição salva.', 'Fechar', { duration: 2500 });
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a inscrição.'), 'Fechar', { duration: 5000 });
+    }
   }
 
   private async createMajorEventSubscription(input: {
@@ -366,7 +375,7 @@ export class WorkspaceSubscriptionsService {
         data: result,
       });
     } catch (error) {
-      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível importar o CSV.', 'Fechar', {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível importar o CSV.'), 'Fechar', {
         duration: 5000,
       });
     } finally {

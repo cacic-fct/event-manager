@@ -13,13 +13,9 @@ import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/atte
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
 import { WorkspaceAttendanceInfoDialogComponent } from '../../workspace/dialogs/workspace-attendance-info-dialog.component';
 import { WorkspaceAttendanceScannerDialogComponent } from '../../workspace/dialogs/workspace-attendance-scanner-dialog.component';
+import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
-
-type CsvParseResult = {
-  headers: string[];
-  rows: Record<string, string>[];
-};
 
 type AttendanceListItem = {
   eventId: string;
@@ -250,7 +246,7 @@ export class WorkspaceAttendancesService {
         duration: 2500,
       });
     } catch (error: unknown) {
-      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível registrar a presença.', 'Fechar', {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível registrar a presença.'), 'Fechar', {
         duration: 5000,
       });
     }
@@ -302,7 +298,7 @@ export class WorkspaceAttendancesService {
         data: result,
       });
     } catch (error) {
-      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível importar o CSV.', 'Fechar', {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível importar o CSV.'), 'Fechar', {
         duration: 5000,
       });
     } finally {

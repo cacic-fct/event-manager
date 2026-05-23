@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { Event, EventGroup, EventGroupInput } from '../../graphql/models';
+import { getErrorMessage } from '../error-message';
 import { WorkspaceEventsService } from './workspace-events.service';
 
 const DEFAULT_EVENT_GROUP_EMOJI = '❔';
@@ -87,29 +88,33 @@ export class WorkspaceEventGroupsService {
       shouldIssuePartialCertificate: raw.shouldIssueCertificate && raw.shouldIssuePartialCertificate,
     };
 
-    if (raw.id) {
-      await firstValueFrom(this.api.updateEventGroup(raw.id, payload));
-      this.snackbar.open('Grupo atualizado.', 'Fechar', { duration: 2500 });
-    } else {
-      await firstValueFrom(this.api.createEventGroup(payload));
-      this.snackbar.open('Grupo criado.', 'Fechar', { duration: 2500 });
-    }
+    try {
+      if (raw.id) {
+        await firstValueFrom(this.api.updateEventGroup(raw.id, payload));
+        this.snackbar.open('Grupo atualizado.', 'Fechar', { duration: 2500 });
+      } else {
+        await firstValueFrom(this.api.createEventGroup(payload));
+        this.snackbar.open('Grupo criado.', 'Fechar', { duration: 2500 });
+      }
 
-    this.eventGroupForm.reset({
-      id: '',
-      name: '',
-      emoji: DEFAULT_EVENT_GROUP_EMOJI,
-      shouldIssueCertificate: false,
-      shouldIssueCertificateForNonPayingAttendees: false,
-      shouldIssueCertificateForNonSubscribedAttendees: false,
-      shouldIssueCertificateForEachEvent: false,
-      shouldIssuePartialCertificate: false,
-    });
-    this.syncCertificateRuleControls();
-    await this.loadEventGroups();
-    const selectedGroup = this.selectedEventGroup();
-    if (selectedGroup) {
-      await this.loadEventsForGroup(selectedGroup.id);
+      this.eventGroupForm.reset({
+        id: '',
+        name: '',
+        emoji: DEFAULT_EVENT_GROUP_EMOJI,
+        shouldIssueCertificate: false,
+        shouldIssueCertificateForNonPayingAttendees: false,
+        shouldIssueCertificateForNonSubscribedAttendees: false,
+        shouldIssueCertificateForEachEvent: false,
+        shouldIssuePartialCertificate: false,
+      });
+      this.syncCertificateRuleControls();
+      await this.loadEventGroups();
+      const selectedGroup = this.selectedEventGroup();
+      if (selectedGroup) {
+        await this.loadEventsForGroup(selectedGroup.id);
+      }
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grupo.'), 'Fechar', { duration: 5000 });
     }
   }
 
@@ -172,12 +177,16 @@ export class WorkspaceEventGroupsService {
   }
 
   async deleteEventGroup(id: string): Promise<void> {
-    await firstValueFrom(this.api.deleteEventGroup(id));
-    this.snackbar.open('Grupo excluído.', 'Fechar', { duration: 2500 });
-    if (this.selectedEventGroup()?.id === id) {
-      this.startNewEventGroup();
+    try {
+      await firstValueFrom(this.api.deleteEventGroup(id));
+      this.snackbar.open('Grupo excluído.', 'Fechar', { duration: 2500 });
+      if (this.selectedEventGroup()?.id === id) {
+        this.startNewEventGroup();
+      }
+      await this.loadEventGroups();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o grupo.'), 'Fechar', { duration: 5000 });
     }
-    await this.loadEventGroups();
   }
 
   async searchEventsForSelectedGroup(): Promise<void> {
