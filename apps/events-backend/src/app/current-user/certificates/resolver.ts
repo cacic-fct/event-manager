@@ -4,6 +4,7 @@ import { NotFoundException } from '@nestjs/common';
 import { CERTIFICATE_SELECT, buildConfigTargetWhere, mapCertificate } from '../../certificate/certificate.constants';
 import { CertificateDownloadService } from '../../certificate/certificate-download.service';
 import { CertificateValidationService } from '../../certificate/certificate-validation.service';
+import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
@@ -35,6 +36,7 @@ export class CurrentUserCertificatesResolver {
     this.validation.assertSupportedScope(scope);
     const normalizedTargetId = this.validation.normalizeRequiredId('targetId', targetId);
     const normalizedConfigId = this.validation.normalizeOptionalId(configId);
+    const pagination = resolvePagination(skip, take);
 
     const certificates = await this.prisma.certificate.findMany({
       where: {
@@ -50,8 +52,8 @@ export class CurrentUserCertificatesResolver {
       orderBy: {
         issuedAt: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     return certificates.map(mapCertificate);

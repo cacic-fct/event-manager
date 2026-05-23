@@ -25,7 +25,12 @@ import { CertificatesResolver } from './certificate/certificates.resolver';
 import { PublicCertificateValidationService } from './certificate/public-certificate-validation.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { EventAttendancesController } from './events/attendances.controller';
-import { EventAttendancesResolver } from './events/attendances.resolver';
+import {
+  EventAttendanceCsvImportResolver,
+  EventAttendancesMutationsResolver,
+  EventAttendancesQueriesResolver,
+  MajorEventSubscriptionCsvImportResolver,
+} from './events/attendances';
 import { EventAttendanceCollectorsResolver } from './events/attendance-collectors.resolver';
 import { AttendanceCategoryService } from './events/attendance-category.service';
 import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
@@ -170,7 +175,10 @@ import { WeatherService } from './weather/weather.service';
     DashboardInsightsProcessor,
     AttendanceCategoryService,
     EventAttendanceCollectorsResolver,
-    EventAttendancesResolver,
+    EventAttendanceCsvImportResolver,
+    EventAttendancesMutationsResolver,
+    EventAttendancesQueriesResolver,
+    MajorEventSubscriptionCsvImportResolver,
     EventSubscriptionsResolver,
     EventLecturersResolver,
     MergeCandidatesResolver,

@@ -21,6 +21,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { Public } from '../auth/decorators/public.decorator';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { GqlThrottlerGuard } from '../common/gql-throttler.guard';
+import { resolvePagination } from '../common/pagination';
 import { CertificateConfigsService } from './certificate-configs.service';
 import { CertificateDownloadService } from './certificate-download.service';
 import { CertificateIssuingService } from './certificate-issuing.service';
@@ -53,7 +54,8 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.targetsService.listIssuableEvents(query, skip, take);
+    const pagination = resolvePagination(skip, take);
+    return this.targetsService.listIssuableEvents(query, pagination.skip, pagination.take);
   }
 
   @Query(() => [EventGroup], { name: 'certificateIssuableEventGroups' })
@@ -63,7 +65,8 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.targetsService.listIssuableEventGroups(query, skip, take);
+    const pagination = resolvePagination(skip, take);
+    return this.targetsService.listIssuableEventGroups(query, pagination.skip, pagination.take);
   }
 
   @Query(() => [MajorEvent], { name: 'certificateIssuableMajorEvents' })
@@ -73,7 +76,8 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.targetsService.listIssuableMajorEvents(query, skip, take);
+    const pagination = resolvePagination(skip, take);
+    return this.targetsService.listIssuableMajorEvents(query, pagination.skip, pagination.take);
   }
 
   @Query(() => [CertificateTemplate], { name: 'certificateTemplates' })
@@ -85,7 +89,8 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.configsService.listTemplates(query, includeInactive, skip, take);
+    const pagination = resolvePagination(skip, take);
+    return this.configsService.listTemplates(query, includeInactive, pagination.skip, pagination.take);
   }
 
   @Query(() => [CertificateConfig], { name: 'certificateConfigs' })
@@ -98,7 +103,8 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.configsService.listConfigsByTarget(scope, targetId, includeInactive ?? true, skip, take);
+    const pagination = resolvePagination(skip, take);
+    return this.configsService.listConfigsByTarget(scope, targetId, includeInactive ?? true, pagination.skip, pagination.take);
   }
 
   @Query(() => [Certificate], { name: 'certificates' })
@@ -110,7 +116,8 @@ export class CertificatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.issuingService.listCertificatesByTarget(scope, targetId, configId, skip, take);
+    const pagination = resolvePagination(skip, take);
+    return this.issuingService.listCertificatesByTarget(scope, targetId, configId, pagination.skip, pagination.take);
   }
 
   @Query(() => CertificateDownload, { name: 'downloadCertificate' })

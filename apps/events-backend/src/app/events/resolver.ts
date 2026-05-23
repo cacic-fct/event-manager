@@ -4,6 +4,7 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
@@ -134,6 +135,7 @@ export class EventsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.EventWhereInput = {
       deletedAt: null,
     };
@@ -168,7 +170,7 @@ export class EventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, take ?? 200);
+        prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, pagination.take);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -184,8 +186,8 @@ export class EventsResolver {
       orderBy: {
         startDate: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     if (prioritizedIds.length === 0) {
@@ -228,10 +230,6 @@ export class EventsResolver {
     const attendanceCollectorPersonIds = eventInput.attendanceCollectorPersonIds;
     delete eventInput.lecturerPersonIds;
     delete eventInput.attendanceCollectorPersonIds;
-    delete eventInput.deletedAt;
-    delete eventInput.createdAt;
-    delete eventInput.createdById;
-    delete eventInput.updatedById;
     const actorId = context.req?.user?.sub ?? context.request?.user?.sub;
     const uniqueLecturerPersonIds = [...new Set(lecturerPersonIds ?? [])];
     const uniqueAttendanceCollectorPersonIds = [...new Set(attendanceCollectorPersonIds ?? [])];

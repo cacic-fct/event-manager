@@ -27,7 +27,7 @@ COPY apps/events-backend/prisma ./apps/events-backend/prisma
 WORKDIR /workspace/apps/events-backend
 
 RUN DATABASE_URL="postgresql://user:password@localhost:5432/db?schema=public" \
-    bun x prisma generate --schema prisma/schema.prisma
+    bun x prisma generate --schema prisma/schema
 
 FROM prisma-deps AS builder
 WORKDIR /workspace

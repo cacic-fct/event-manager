@@ -10,6 +10,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   MajorEventSubscriptionNotificationRecord,
@@ -127,6 +128,7 @@ export class EventSubscriptionsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ): Promise<WorkspaceEventSubscription[]> {
+    const pagination = resolvePagination(skip, take);
     const subscriptions = await this.prisma.eventSubscription.findMany({
       where: {
         eventId,
@@ -150,8 +152,8 @@ export class EventSubscriptionsResolver {
       orderBy: {
         createdAt: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     const lecturerPersonIds = await this.getLecturerPersonIds([eventId]);
@@ -219,6 +221,7 @@ export class EventSubscriptionsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ): Promise<WorkspaceMajorEventSubscription[]> {
+    const pagination = resolvePagination(skip, take);
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,
@@ -228,8 +231,8 @@ export class EventSubscriptionsResolver {
       orderBy: {
         createdAt: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     return this.attachMajorEventSubscriptionEvents(majorEventId, subscriptions);

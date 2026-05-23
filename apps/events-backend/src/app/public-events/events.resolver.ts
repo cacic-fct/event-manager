@@ -4,6 +4,7 @@ import { subMonths } from 'date-fns';
 import { Prisma } from '@prisma/client';
 import { EventType } from '@cacic-fct/shared-data-types';
 import { Public } from '../auth/decorators/public.decorator';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
@@ -39,6 +40,7 @@ export class PublicEventsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.EventWhereInput = {
       deletedAt: null,
       publiclyVisible: true,
@@ -66,7 +68,7 @@ export class PublicEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, take ?? 200);
+        prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, pagination.take);
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -82,8 +84,8 @@ export class PublicEventsResolver {
       orderBy: {
         startDate: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
     if (prioritizedIds.length === 0) {
