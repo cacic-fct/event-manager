@@ -62,7 +62,13 @@ export async function buildPendingCertificates(
         events: {
           some: { deletedAt: null, endDate: { lt: now } },
           every: {
-            OR: [{ majorEventId: null }, { deletedAt: { not: null } }],
+            OR: [
+              { deletedAt: { not: null } },
+              {
+                majorEventId: null,
+                endDate: { lt: now },
+              },
+            ],
           },
         },
       },

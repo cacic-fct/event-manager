@@ -103,10 +103,30 @@ export async function moveRelations(
     },
     select: {
       id: true,
+      eventId: true,
     },
   });
 
-  const movedEventSubscriptionIds = sourceEventSubscriptions.map((subscription) => subscription.id);
+  const sourceEventSubscriptionEventIds = sourceEventSubscriptions.map((subscription) => subscription.eventId);
+  const targetEventSubscriptions = sourceEventSubscriptionEventIds.length
+    ? await tx.eventSubscription.findMany({
+        where: {
+          personId: targetPersonId,
+          eventId: {
+            in: sourceEventSubscriptionEventIds,
+          },
+        },
+        select: {
+          eventId: true,
+        },
+      })
+    : [];
+  const targetEventSubscriptionSet = new Set(
+    targetEventSubscriptions.map((subscription) => subscription.eventId),
+  );
+  const movedEventSubscriptionIds = sourceEventSubscriptions
+    .filter((subscription) => !targetEventSubscriptionSet.has(subscription.eventId))
+    .map((subscription) => subscription.id);
   if (movedEventSubscriptionIds.length > 0) {
     await tx.eventSubscription.updateMany({
       where: {
@@ -126,10 +146,32 @@ export async function moveRelations(
     },
     select: {
       id: true,
+      eventGroupId: true,
     },
   });
 
-  const movedEventGroupSubscriptionIds = sourceEventGroupSubscriptions.map((subscription) => subscription.id);
+  const sourceEventGroupSubscriptionGroupIds = sourceEventGroupSubscriptions.map(
+    (subscription) => subscription.eventGroupId,
+  );
+  const targetEventGroupSubscriptions = sourceEventGroupSubscriptionGroupIds.length
+    ? await tx.eventGroupSubscription.findMany({
+        where: {
+          personId: targetPersonId,
+          eventGroupId: {
+            in: sourceEventGroupSubscriptionGroupIds,
+          },
+        },
+        select: {
+          eventGroupId: true,
+        },
+      })
+    : [];
+  const targetEventGroupSubscriptionSet = new Set(
+    targetEventGroupSubscriptions.map((subscription) => subscription.eventGroupId),
+  );
+  const movedEventGroupSubscriptionIds = sourceEventGroupSubscriptions
+    .filter((subscription) => !targetEventGroupSubscriptionSet.has(subscription.eventGroupId))
+    .map((subscription) => subscription.id);
   if (movedEventGroupSubscriptionIds.length > 0) {
     await tx.eventGroupSubscription.updateMany({
       where: {
@@ -149,10 +191,32 @@ export async function moveRelations(
     },
     select: {
       id: true,
+      majorEventId: true,
     },
   });
 
-  const movedMajorEventSubscriptionIds = sourceMajorEventSubscriptions.map((subscription) => subscription.id);
+  const sourceMajorEventSubscriptionMajorEventIds = sourceMajorEventSubscriptions.map(
+    (subscription) => subscription.majorEventId,
+  );
+  const targetMajorEventSubscriptions = sourceMajorEventSubscriptionMajorEventIds.length
+    ? await tx.majorEventSubscription.findMany({
+        where: {
+          personId: targetPersonId,
+          majorEventId: {
+            in: sourceMajorEventSubscriptionMajorEventIds,
+          },
+        },
+        select: {
+          majorEventId: true,
+        },
+      })
+    : [];
+  const targetMajorEventSubscriptionSet = new Set(
+    targetMajorEventSubscriptions.map((subscription) => subscription.majorEventId),
+  );
+  const movedMajorEventSubscriptionIds = sourceMajorEventSubscriptions
+    .filter((subscription) => !targetMajorEventSubscriptionSet.has(subscription.majorEventId))
+    .map((subscription) => subscription.id);
   if (movedMajorEventSubscriptionIds.length > 0) {
     await tx.majorEventSubscription.updateMany({
       where: {

@@ -40,7 +40,6 @@ model MajorEvent {
   updatedById String?
   deletedAt   DateTime?
 
-  @@unique([name, deletedAt])
   @@index([startDate])
   @@index([endDate])
   @@index([deletedAt])

@@ -90,7 +90,6 @@ model PlacePreset {
   updatedAt   DateTime @updatedAt
   updatedById String?
 
-  @@unique([name, deletedAt])
   @@index([name])
   @@index([deletedAt])
   @@map("place_presets")

@@ -41,7 +41,7 @@ describe('EventAttendancesQueriesResolver', () => {
     );
   });
 
-  it('builds major event attendance rows from subscriptions and loose attendances', async () => {
+  it('builds major event attendance rows from paginated subscriptions', async () => {
     prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
     prisma.event.findMany.mockResolvedValue([
       { id: 'event-1', name: 'Opening', startDate: new Date('2026-05-21T12:00:00.000Z') },
@@ -85,15 +85,19 @@ describe('EventAttendancesQueriesResolver', () => {
           expect.objectContaining({ eventId: 'event-2', attended: false, category: AttendanceCategory.UNKNOWN }),
         ],
       }),
-      expect.objectContaining({
-        personId: 'person-2',
-        subscriptionStatus: 'UNKNOWN',
-        attendances: [
-          expect.objectContaining({ eventId: 'event-1', attended: false }),
-          expect.objectContaining({ eventId: 'event-2', attended: true, category: AttendanceCategory.NON_SUBSCRIBED }),
-        ],
-      }),
     ]);
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          eventId: {
+            in: ['event-1', 'event-2'],
+          },
+          personId: {
+            in: ['person-1'],
+          },
+        },
+      }),
+    );
 
     prisma.majorEvent.findFirst.mockResolvedValueOnce(null);
     await expect(resolver.majorEventUserAttendances('missing-major')).rejects.toBeInstanceOf(NotFoundException);

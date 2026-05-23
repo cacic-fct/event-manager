@@ -198,6 +198,8 @@ export class EventLecturersResolver {
     @Args('input', { type: () => EventLecturerUpdateInput })
     input: EventLecturerUpdateInput,
   ) {
+    const nextEventId = input.eventId ?? eventId;
+    const nextPersonId = input.personId ?? personId;
     const { count } = await this.prisma.eventLecturer.updateMany({
       where: {
         eventId,
@@ -213,8 +215,8 @@ export class EventLecturersResolver {
     return this.prisma.eventLecturer.findUnique({
       where: {
         eventId_personId: {
-          eventId,
-          personId,
+          eventId: nextEventId,
+          personId: nextPersonId,
         },
       },
       select: {

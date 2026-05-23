@@ -18,9 +18,15 @@ describe('merge candidate relation movement', () => {
         { eventId: 'lecture-existing', createdAt: secondDate, createdById: null },
       ])
       .mockResolvedValueOnce([{ eventId: 'lecture-existing' }]);
-    tx.eventSubscription.findMany.mockResolvedValue([{ id: 'event-subscription-1' }]);
-    tx.eventGroupSubscription.findMany.mockResolvedValue([{ id: 'group-subscription-1' }]);
-    tx.majorEventSubscription.findMany.mockResolvedValue([{ id: 'major-subscription-1' }]);
+    tx.eventSubscription.findMany
+      .mockResolvedValueOnce([{ id: 'event-subscription-1', eventId: 'event-new' }])
+      .mockResolvedValueOnce([]);
+    tx.eventGroupSubscription.findMany
+      .mockResolvedValueOnce([{ id: 'group-subscription-1', eventGroupId: 'group-new' }])
+      .mockResolvedValueOnce([]);
+    tx.majorEventSubscription.findMany
+      .mockResolvedValueOnce([{ id: 'major-subscription-1', majorEventId: 'major-new' }])
+      .mockResolvedValueOnce([]);
 
     await expect(moveRelations(tx as never, 'target-person', 'source-person')).resolves.toEqual({
       sourceAttendances: [

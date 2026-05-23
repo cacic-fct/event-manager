@@ -23,7 +23,7 @@ model EventGroup {
   updatedById String?
   deletedAt   DateTime?
 
-  @@unique([name, deletedAt])
+  @@index([name])
   @@index([deletedAt])
   @@map("event_groups")
 }

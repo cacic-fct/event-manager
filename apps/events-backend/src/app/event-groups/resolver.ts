@@ -28,7 +28,10 @@ export class EventGroupsResolver {
 
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEventGroups(normalizedQuery, pagination.take);
+        prioritizedIds = await this.typesenseSearch.searchEventGroups(
+          normalizedQuery,
+          pagination.skip + pagination.take,
+        );
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -43,8 +46,8 @@ export class EventGroupsResolver {
       orderBy: {
         name: 'asc',
       },
-      skip: pagination.skip,
-      take: pagination.take,
+      skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
+      take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });
 
     if (prioritizedIds.length === 0) {
@@ -52,9 +55,12 @@ export class EventGroupsResolver {
     }
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
-    return [...groups].sort(
-      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-    );
+    return [...groups]
+      .sort(
+        (left, right) =>
+          (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(pagination.skip, pagination.skip + pagination.take);
   }
 
   @Query(() => EventGroup, { name: 'eventGroup' })

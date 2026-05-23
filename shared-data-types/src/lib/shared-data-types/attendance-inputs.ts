@@ -52,12 +52,6 @@ export class EventAttendanceCsvImportInput {
 
 @InputType()
 export class EventAttendanceUpdateInput {
-  @Field(() => String, { nullable: true })
-  personId?: string;
-
-  @Field(() => String, { nullable: true })
-  eventId?: string;
-
   @Field(() => Date, { nullable: true })
   attendedAt?: Date;
 }

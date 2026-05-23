@@ -153,12 +153,19 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       take: pagination.take,
     });
 
+    const personIds = subscriptions.map((subscription) => subscription.personId);
+    if (personIds.length === 0) {
+      return [];
+    }
+
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
         eventId: {
           in: eventIds,
         },
-        ...(personId ? { personId } : {}),
+        personId: {
+          in: personIds,
+        },
       },
       select: {
         personId: true,
@@ -173,12 +180,6 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       },
     });
 
-    const personIds = Array.from(
-      new Set([
-        ...subscriptions.map((subscription) => subscription.personId),
-        ...attendances.map((attendance) => attendance.personId),
-      ]),
-    );
     const attendanceByKey = new Map(
       attendances.map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
     );

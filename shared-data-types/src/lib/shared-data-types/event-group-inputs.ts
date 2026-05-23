@@ -2,9 +2,6 @@ import { Field, InputType } from '@nestjs/graphql';
 
 @InputType()
 export class EventGroupCreateInput {
-  @Field(() => String, { nullable: true })
-  id?: string;
-
   @Field(() => String)
   name!: string;
 

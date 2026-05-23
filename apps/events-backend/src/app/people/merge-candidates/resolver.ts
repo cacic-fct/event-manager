@@ -156,7 +156,6 @@ export class MergeCandidatesResolver {
   ): Prisma.MergeCandidateUncheckedUpdateManyInput {
     const data: Prisma.MergeCandidateUncheckedUpdateManyInput = {};
 
-    if (input.id !== undefined) data.id = input.id;
     if (input.personAId !== undefined) data.personAId = input.personAId;
     if (input.personBId !== undefined) data.personBId = input.personBId;
     if (input.pairKey !== undefined) data.pairKey = input.pairKey;

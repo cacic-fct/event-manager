@@ -46,6 +46,10 @@ export abstract class EventAttendancesCsvSupport extends EventAttendancesCoreSup
       currentField += char;
     }
 
+    if (inQuotes) {
+      throw new BadRequestException('CSV file has an unclosed quoted field.');
+    }
+
     currentRecord.push(currentField);
     if (currentRecord.some((field) => field.trim().length > 0)) {
       records.push(currentRecord);
@@ -57,14 +61,30 @@ export abstract class EventAttendancesCsvSupport extends EventAttendancesCoreSup
       throw new BadRequestException('CSV file must include a header row.');
     }
 
+    const duplicateHeaders = new Set<string>();
+    const seenHeaders = new Set<string>();
+    for (const header of headers) {
+      if (seenHeaders.has(header)) {
+        duplicateHeaders.add(header);
+      }
+      seenHeaders.add(header);
+    }
+    if (duplicateHeaders.size > 0) {
+      throw new BadRequestException(`CSV file has duplicate headers: ${[...duplicateHeaders].join(', ')}.`);
+    }
+
     return {
       headers,
-      rows: dataRecords.map((record) =>
-        headers.reduce<CsvRow>((row, header, index) => {
-          row[header] = record[index]?.trim() ?? '';
+      rows: dataRecords.map((record, index) => {
+        if (record.length !== headers.length) {
+          throw new BadRequestException(`CSV row ${index + 2} has ${record.length} columns; expected ${headers.length}.`);
+        }
+
+        return headers.reduce<CsvRow>((row, header, headerIndex) => {
+          row[header] = record[headerIndex]?.trim() ?? '';
           return row;
-        }, {}),
-      ),
+        }, {});
+      }),
     };
   }
 

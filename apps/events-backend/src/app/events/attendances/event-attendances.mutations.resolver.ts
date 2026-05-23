@@ -262,8 +262,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   ): Prisma.EventAttendanceUncheckedUpdateManyInput {
     const data: Prisma.EventAttendanceUncheckedUpdateManyInput = {};
 
-    if (input.personId !== undefined) data.personId = input.personId;
-    if (input.eventId !== undefined) data.eventId = input.eventId;
     if (input.attendedAt !== undefined) data.attendedAt = input.attendedAt;
 
     return data;

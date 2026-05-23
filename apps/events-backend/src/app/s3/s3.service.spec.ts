@@ -36,6 +36,7 @@ describe('S3Service', () => {
 
   it('fails storage operations when S3 configuration is incomplete', async () => {
     const service = new S3Service(configServiceMock({ S3_SECRET_KEY: undefined }) as never);
+    jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
 
     await expect(service.downloadFile('missing-key')).rejects.toThrow('S3 configuration is incomplete');
   });
@@ -71,6 +72,7 @@ describe('S3Service', () => {
 
   it('wraps upload failures with a storage-specific message', async () => {
     const service = new S3Service(configServiceMock() as never);
+    jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
     uploadDoneMock.mockRejectedValue(new Error('network down'));
 
     await expect(service.uploadFile('key', Buffer.from('file'))).rejects.toThrow(
@@ -98,6 +100,7 @@ describe('S3Service', () => {
 
   it('rejects empty downloads as missing files', async () => {
     const service = new S3Service(configServiceMock() as never);
+    jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
     sendMock.mockResolvedValue({});
 
     await expect(service.downloadFile('empty')).rejects.toThrow('Failed to download file: File not found or empty');
@@ -118,6 +121,7 @@ describe('S3Service', () => {
     );
 
     sendMock.mockRejectedValueOnce(new Error('access denied'));
+    jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
     await expect(service.deleteFile('files/remove.txt')).rejects.toThrow('Failed to delete file: access denied');
   });
 

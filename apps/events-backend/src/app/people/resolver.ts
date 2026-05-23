@@ -55,7 +55,10 @@ export class PeopleResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchPeople(normalizedQuery, pagination.take);
+        prioritizedIds = await this.typesenseSearch.searchPeople(
+          normalizedQuery,
+          pagination.skip + pagination.take,
+        );
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -79,8 +82,8 @@ export class PeopleResolver {
       orderBy: {
         name: 'asc',
       },
-      skip: pagination.skip,
-      take: pagination.take,
+      skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
+      take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });
 
     if (prioritizedIds.length === 0) {
@@ -88,9 +91,12 @@ export class PeopleResolver {
     }
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
-    return [...people].sort(
-      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-    );
+    return [...people]
+      .sort(
+        (left, right) =>
+          (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(pagination.skip, pagination.skip + pagination.take);
   }
 
   @Query(() => Person, { name: 'person' })

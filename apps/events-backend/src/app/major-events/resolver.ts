@@ -118,7 +118,10 @@ export class MajorEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchMajorEvents(normalizedQuery, pagination.take);
+        prioritizedIds = await this.typesenseSearch.searchMajorEvents(
+          normalizedQuery,
+          pagination.skip + pagination.take,
+        );
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -135,8 +138,8 @@ export class MajorEventsResolver {
       orderBy: {
         startDate: 'desc',
       },
-      skip: pagination.skip,
-      take: pagination.take,
+      skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
+      take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });
 
     if (prioritizedIds.length === 0) {
@@ -144,9 +147,12 @@ export class MajorEventsResolver {
     }
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
-    return [...majorEvents].sort(
-      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-    );
+    return [...majorEvents]
+      .sort(
+        (left, right) =>
+          (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(pagination.skip, pagination.skip + pagination.take);
   }
 
   @Query(() => MajorEvent, { name: 'majorEvent' })
@@ -214,7 +220,12 @@ export class MajorEventsResolver {
     const hasExistingPaymentInfo =
       paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
 
-    const data = this.buildMajorEventUpdateData(input, hasExistingPaymentInfo, paymentInfoTableExists);
+    const data = this.buildMajorEventUpdateData(
+      input,
+      majorEvent.isPaymentRequired,
+      hasExistingPaymentInfo,
+      paymentInfoTableExists,
+    );
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
       await tx.majorEvent.update({
@@ -345,10 +356,12 @@ export class MajorEventsResolver {
 
   private buildMajorEventUpdateData(
     input: MajorEventUpdateInput,
+    currentIsPaymentRequired: boolean,
     hasExistingPaymentInfo: boolean,
     paymentInfoTableExists: boolean,
   ): Prisma.MajorEventUpdateInput {
     const data: Prisma.MajorEventUpdateInput = {};
+    const effectiveIsPaymentRequired = input.isPaymentRequired ?? currentIsPaymentRequired;
 
     if (input.id !== undefined) data.id = input.id;
     if (input.name !== undefined) data.name = input.name;
@@ -380,11 +393,10 @@ export class MajorEventsResolver {
     if (input.contactType !== undefined) data.contactType = input.contactType;
     if (input.isPaymentRequired !== undefined) {
       data.isPaymentRequired = input.isPaymentRequired;
-      if (input.isPaymentRequired) {
-        data.shouldIssueCertificateForNonPayingAttendees = false;
-      }
     }
-    if (input.shouldIssueCertificateForNonPayingAttendees !== undefined && !input.isPaymentRequired) {
+    if (effectiveIsPaymentRequired) {
+      data.shouldIssueCertificateForNonPayingAttendees = false;
+    } else if (input.shouldIssueCertificateForNonPayingAttendees !== undefined) {
       data.shouldIssueCertificateForNonPayingAttendees = input.shouldIssueCertificateForNonPayingAttendees;
     }
     if (input.shouldIssueCertificateForNonSubscribedAttendees !== undefined) {
