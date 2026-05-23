@@ -109,6 +109,66 @@ describe('NovuNotificationsService', () => {
     );
   });
 
+  it.each([
+    [SubscriptionStatus.WAITING_RECEIPT_UPLOAD, 'Aguardando comprovante', false, false],
+    [SubscriptionStatus.RECEIPT_UNDER_REVIEW, 'Comprovante em análise', false, false],
+    [SubscriptionStatus.CONFIRMED, 'Confirmada', true, false],
+    [SubscriptionStatus.CANCELED, 'Cancelada', false, true],
+    [SubscriptionStatus.REJECTED_NO_SLOTS, 'Sem vagas', false, true],
+    [SubscriptionStatus.REJECTED_SCHEDULE_CONFLICT, 'Conflito de horário', false, true],
+    [SubscriptionStatus.REJECTED_GENERIC, 'Inscrição recusada', false, true],
+  ])('sends the expected status metadata for %s', async (nextStatus, statusLabel, isPositive, isNegative) => {
+    await service.notifyMajorEventSubscriptionStatusChanged(
+      notificationFixture({
+        previousStatus:
+          nextStatus === SubscriptionStatus.CONFIRMED
+            ? SubscriptionStatus.WAITING_RECEIPT_UPLOAD
+            : SubscriptionStatus.CONFIRMED,
+        nextStatus,
+      }),
+    );
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.payload).toEqual(
+      expect.objectContaining({
+        statusLabel,
+        isPositive,
+        isNegative,
+      }),
+    );
+    expect(body.payload.body).toContain('Semana da Computacao');
+  });
+
+  it('logs and returns when Novu responds with an HTTP error', async () => {
+    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: jest.fn().mockResolvedValue('server exploded'),
+    });
+
+    await expect(service.notifyMajorEventSubscriptionStatusChanged(notificationFixture())).resolves.toBeUndefined();
+
+    expect(warnSpy).toHaveBeenCalledWith('Novu trigger failed with HTTP 500: server exploded');
+  });
+
+  it('logs unacknowledged Novu responses and thrown fetch errors', async () => {
+    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ acknowledged: false, status: 'failed', error: ['bad payload'] }),
+    });
+
+    await service.notifyMajorEventSubscriptionStatusChanged(notificationFixture());
+
+    expect(warnSpy).toHaveBeenCalledWith('Novu trigger was not acknowledged: failed bad payload');
+
+    fetchMock.mockRejectedValueOnce(new Error('network down'));
+    await service.notifyMajorEventSubscriptionStatusChanged(notificationFixture());
+
+    expect(warnSpy).toHaveBeenCalledWith('Novu trigger failed: network down');
+  });
+
   it('maps subscription records before notifying', async () => {
     const notifySpy = jest.spyOn(service, 'notifyMajorEventSubscriptionStatusChanged').mockResolvedValue();
 

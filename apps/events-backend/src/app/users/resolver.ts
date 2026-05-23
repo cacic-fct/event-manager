@@ -2,6 +2,7 @@ import { User } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Resolver(() => User)
@@ -14,12 +15,13 @@ export class UsersResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     return this.prisma.user.findMany({
       orderBy: {
         createdAt: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
   }
 

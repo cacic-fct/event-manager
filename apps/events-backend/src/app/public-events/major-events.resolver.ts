@@ -2,6 +2,7 @@ import { Args, Int, Query, Resolver } from '@nestjs/graphql';
 import { NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { PUBLIC_MAJOR_EVENT_SELECT, PublicMajorEvent, mapPublicMajorEvent } from './models';
@@ -24,6 +25,7 @@ export class PublicMajorEventsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.MajorEventWhereInput = {
       deletedAt: null,
     };
@@ -42,7 +44,10 @@ export class PublicMajorEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchMajorEvents(normalizedQuery, take ?? 200);
+        prioritizedIds = await this.typesenseSearch.searchMajorEvents(
+          normalizedQuery,
+          pagination.skip + pagination.take,
+        );
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -58,8 +63,8 @@ export class PublicMajorEventsResolver {
       orderBy: {
         startDate: 'desc',
       },
-      skip,
-      take,
+      skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
+      take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });
 
     const mappedMajorEvents = majorEvents.map(mapPublicMajorEvent);
@@ -69,9 +74,12 @@ export class PublicMajorEventsResolver {
     }
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
-    return mappedMajorEvents.sort(
-      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-    );
+    return mappedMajorEvents
+      .sort(
+        (left, right) =>
+          (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(pagination.skip, pagination.skip + pagination.take);
   }
 
   @Query(() => PublicMajorEvent, { name: 'publicMajorEvent' })

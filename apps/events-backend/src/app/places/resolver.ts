@@ -8,6 +8,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 
 const PLACE_PRESET_SELECT = {
@@ -34,6 +35,7 @@ export class PlacePresetsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const normalizedQuery = query?.trim();
     const where: Prisma.PlacePresetWhereInput = {
       deletedAt: null,
@@ -53,8 +55,8 @@ export class PlacePresetsResolver {
       orderBy: {
         name: 'asc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
   }
 

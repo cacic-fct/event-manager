@@ -1,0 +1,133 @@
+enum SubscriptionStatus {
+  // Old 0 status
+  WAITING_RECEIPT_UPLOAD
+  // Old 1 status
+  RECEIPT_UNDER_REVIEW
+  // Old 3 status
+  REJECTED_INVALID_RECEIPT
+  // Old 4 status
+  REJECTED_NO_SLOTS
+  // Old 5 status
+  REJECTED_SCHEDULE_CONFLICT
+  REJECTED_GENERIC
+  // Old 2 status
+  CONFIRMED
+  CANCELED
+}
+
+enum SubscriptionCreationMethod {
+  ADMIN_DASHBOARD
+  SELF_SUBSCRIPTION
+  UNKNOWN
+}
+
+enum MajorEventSubscriptionFlow {
+  REGULAR
+  RANKED_VOTING
+}
+
+model EventSubscription {
+  id String @id @default(uuid(7))
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  person   People @relation(fields: [personId], references: [id])
+  personId String
+
+  eventGroupSubscriptionId String?
+  eventGroupSubscription   EventGroupSubscription? @relation(fields: [eventGroupSubscriptionId], references: [id])
+
+  createdAt       DateTime                   @default(now())
+  createdById     String?
+  createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
+
+  deletedAt DateTime?
+
+  @@unique([eventId, personId, deletedAt])
+  @@index([eventId])
+  @@index([eventGroupSubscriptionId])
+  @@map("event_subscriptions")
+}
+
+model EventGroupSubscription {
+  id String @id @default(uuid(7))
+
+  eventGroupId String
+  eventGroup   EventGroup @relation(fields: [eventGroupId], references: [id])
+
+  person   People @relation(fields: [personId], references: [id])
+  personId String
+
+  eventSubscriptions EventSubscription[]
+
+  createdAt       DateTime                   @default(now())
+  createdById     String?
+  createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
+
+  deletedAt DateTime?
+
+  @@unique([eventGroupId, personId, deletedAt])
+  @@index([eventGroupId])
+  @@index([personId])
+  @@map("event_group_subscriptions")
+}
+
+model MajorEventSubscription {
+  id String @id @default(uuid(7))
+
+  majorEventId String
+  majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id])
+
+  person   People @relation(fields: [personId], references: [id])
+  personId String
+
+  amountPaid  Int?
+  paymentDate DateTime?
+  paymentTier String?
+
+  subscriptionStatus   SubscriptionStatus @default(WAITING_RECEIPT_UPLOAD)
+  subscriptionFlow     MajorEventSubscriptionFlow @default(REGULAR)
+  desiredCourses       Int?
+  desiredLectures      Int?
+  desiredUncategorized Int?
+  selectedEvents       MajorEventSubscriptionEventSelection[]
+  receipts             MajorEventReceipt[]
+
+  receiptRejectionReason String?
+  receiptValidatedAt     DateTime?
+  receiptValidatedBy     String?
+  validationActions      MajorEventReceiptValidationAction[]
+
+  createdAt       DateTime                   @default(now())
+  createdById     String?
+  createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
+  updatedAt       DateTime                   @updatedAt
+
+  deletedAt DateTime?
+
+  @@unique([majorEventId, personId, deletedAt])
+  @@index([majorEventId])
+  @@map("major_event_subscriptions")
+}
+
+model MajorEventSubscriptionEventSelection {
+  id String @id @default(uuid(7))
+
+  subscriptionId String
+  subscription   MajorEventSubscription @relation(fields: [subscriptionId], references: [id])
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  preferenceOrder Int?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  deletedAt   DateTime?
+
+  @@unique([subscriptionId, eventId, deletedAt])
+  @@index([eventId])
+  @@index([subscriptionId])
+  @@map("major_event_subscription_event_selections")
+}

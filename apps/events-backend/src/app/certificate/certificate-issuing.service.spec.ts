@@ -1,4 +1,4 @@
-import { CertificateScope, EventType } from '@cacic-fct/shared-data-types';
+import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
 describe('CertificateIssuingService', () => {
@@ -129,6 +129,205 @@ describe('CertificateIssuingService', () => {
 
     expect(prisma.certificate.create).not.toHaveBeenCalled();
     expect(prisma.certificate.update).not.toHaveBeenCalled();
+  });
+
+  it('lists certificates by target with normalized ids and optional config filtering', async () => {
+    const prisma = {
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([mappedCertificateRecord]),
+      },
+    };
+    const validation = {
+      assertSupportedScope: jest.fn(),
+      normalizeRequiredId: jest.fn().mockReturnValue('event-1'),
+    };
+    const service = new CertificateIssuingService(prisma as never, validation as never, {} as never);
+
+    await expect(service.listCertificatesByTarget(CertificateScope.EVENT, ' event-1 ', ' config-1 ', 5, 20)).resolves
+      .toHaveLength(1);
+
+    expect(validation.assertSupportedScope).toHaveBeenCalledWith(CertificateScope.EVENT);
+    expect(prisma.certificate.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          config: expect.objectContaining({
+            deletedAt: null,
+            id: 'config-1',
+            eventId: 'event-1',
+          }),
+        }),
+        skip: 5,
+        take: 20,
+      }),
+    );
+  });
+
+  it('rejects person issuing when the person is missing or not eligible', async () => {
+    const validation = {
+      normalizeRequiredId: jest.fn((_field: string, value: string) => value),
+    };
+    const missingPersonService = new CertificateIssuingService(
+      {
+        people: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      } as never,
+      validation as never,
+      {} as never,
+    );
+
+    await expect(missingPersonService.issueForPerson('config-1', 'person-1')).rejects.toThrow(
+      'Person person-1 was not found.',
+    );
+
+    const ineligibleService = new CertificateIssuingService(
+      {
+        people: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'person-1' }),
+        },
+      } as never,
+      validation as never,
+      {
+        getConfigById: jest.fn().mockResolvedValue(config),
+        resolveEligibleRecipients: jest.fn().mockResolvedValue([]),
+      } as never,
+    );
+
+    await expect(ineligibleService.issueForPerson('config-1', 'person-1')).rejects.toThrow(
+      'Person person-1 is not eligible for config config-1.',
+    );
+  });
+
+  it('issues a certificate for one eligible person', async () => {
+    const prisma = {
+      people: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'person-valid' }),
+      },
+    };
+    const validation = {
+      normalizeRequiredId: jest.fn((_field: string, value: string) => value),
+    };
+    const recipient = {
+      person: mappedCertificateRecord.person,
+      events: [],
+    };
+    const eligibilityService = {
+      getConfigById: jest.fn().mockResolvedValue(config),
+      resolveEligibleRecipients: jest.fn().mockResolvedValue([recipient]),
+    };
+    const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
+    const upsertSpy = jest
+      .spyOn(service as never, 'upsertCertificateForRecipient')
+      .mockResolvedValue(mappedCertificateRecord as never);
+
+    await expect(service.issueForPerson('config-1', 'person-valid', 'admin-user')).resolves.toMatchObject({
+      id: 'certificate-1',
+      personId: 'person-valid',
+    });
+
+    expect(upsertSpy).toHaveBeenCalledWith(config, recipient, 'admin-user');
+  });
+
+  it('creates certificates when no previous person/config certificate exists', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-23T12:00:00.000Z'));
+    const prisma = {
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(mappedCertificateRecord),
+        update: jest.fn(),
+      },
+    };
+    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never);
+
+    await expect(
+      (
+        service as unknown as {
+          upsertCertificateForRecipient(config: unknown, recipient: unknown, issuedById?: string): Promise<unknown>;
+        }
+      ).upsertCertificateForRecipient(mappedCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] }, 'admin-user'),
+    ).resolves.toBe(mappedCertificateRecord);
+
+    expect(prisma.certificate.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personId: 'person-valid',
+          configId: 'config-1',
+          certificateTemplateId: 'template-1',
+          issuedById: 'admin-user',
+          issuedAt: new Date('2026-05-23T12:00:00.000Z'),
+        }),
+      }),
+    );
+    expect(prisma.certificate.update).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it('updates soft-deleted certificates when rendered data or template changed', async () => {
+    const prisma = {
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue({
+          ...mappedCertificateRecord,
+          certificateTemplateId: 'old-template',
+          deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+        }),
+        create: jest.fn(),
+        update: jest.fn().mockResolvedValue(mappedCertificateRecord),
+      },
+    };
+    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never);
+
+    await (
+      service as unknown as {
+        upsertCertificateForRecipient(config: unknown, recipient: unknown): Promise<unknown>;
+      }
+    ).upsertCertificateForRecipient(mappedCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] });
+
+    expect(prisma.certificate.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'certificate-1' },
+        data: expect.objectContaining({
+          certificateTemplateId: 'template-1',
+          deletedAt: null,
+        }),
+      }),
+    );
+  });
+
+  it('returns an empty result when a person has no issued certificates to refresh', async () => {
+    const service = new CertificateIssuingService(
+      {
+        certificate: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+      } as never,
+      {
+        normalizeRequiredId: jest.fn().mockReturnValue('person-1'),
+      } as never,
+      {} as never,
+    );
+
+    await expect(service.refreshIssuedCertificatesForPerson('person-1')).resolves.toEqual([]);
+  });
+
+  it('deletes existing certificates and rejects missing ones', async () => {
+    const validation = {
+      normalizeRequiredId: jest.fn((_field: string, value: string) => value.trim()),
+    };
+    const prisma = {
+      certificate: {
+        updateMany: jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 }),
+      },
+    };
+    const service = new CertificateIssuingService(prisma as never, validation as never, {} as never);
+
+    await expect(service.deleteCertificate(' certificate-1 ')).resolves.toEqual({
+      deleted: true,
+      id: 'certificate-1',
+    });
+    await expect(service.deleteCertificate('missing-certificate')).rejects.toThrow(
+      'Certificate missing-certificate not found.',
+    );
   });
   const mappedCertificateRecord = {
     id: 'certificate-1',
@@ -597,6 +796,98 @@ describe('CertificateIssuingService', () => {
     expect(renderedData.templateData['majorEvent or event name']).toBe('Palestra Principal');
   });
 
+  it('builds lecturer participation text from event category fields and template fallbacks', () => {
+    const service = new CertificateIssuingService({} as never, {} as never, {} as never);
+    const render = (certificateFields: Record<string, string>) =>
+      (
+        service as unknown as {
+          buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+        }
+      ).buildRenderedData(
+        {
+          ...mappedCertificateRecord.config,
+          scope: CertificateScope.EVENT_GROUP,
+          issuedTo: CertificateIssuedTo.LECTURER,
+          certificateFields,
+          certificateTemplate: {
+            certificateFields: {
+              'top-text': 'Modelo topo',
+              'bottom-text': 'Modelo base',
+            },
+          },
+          eventGroup: {
+            id: 'event-group-1',
+            name: 'Grupo de eventos',
+          },
+        },
+        {
+          person: {
+            id: 'person-valid',
+            name: 'Valid Person',
+            email: null,
+            identityDocument: 'ABC-42',
+            academicId: null,
+          },
+          events: [],
+        },
+        new Date('2026-01-05T00:00:00.000Z'),
+      ).templateData;
+
+    expect(render({ __lecturerEventCategory: 'PALESTRA', 'top-text': 'Topo customizado' })).toMatchObject({
+      participation_type: 'Certificamos a participação como palestrante de:',
+      'top-text': 'Topo customizado',
+      'bottom-text': 'Modelo base',
+      document: 'Documento: ABC-42',
+    });
+    expect(render({ __lecturerEventCategory: 'MINICURSO' }).participation_type).toBe(
+      'Certificamos a participação como ministrante de:',
+    );
+    expect(render({ __lecturerEventCategory: 'OTHER' }).participation_type).toBe(
+      'Certificamos a participação como palestrante/ministrante de:',
+    );
+  });
+
+  it('renders minicourse, lecture, and other event sections together', () => {
+    const service = new CertificateIssuingService({} as never, {} as never, {} as never);
+    const renderedData = (
+      service as unknown as {
+        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+      }
+    ).buildRenderedData(
+      {
+        ...mappedCertificateRecord.config,
+        scope: CertificateScope.MAJOR_EVENT,
+        shouldAutofillSecondPage: true,
+        majorEvent: {
+          id: 'major-event-1',
+          name: 'Semana da Computacao',
+        },
+      },
+      {
+        person: {
+          id: 'person-valid',
+          name: 'Valid Person',
+          email: null,
+          identityDocument: null,
+          academicId: null,
+        },
+        events: [
+          eventRecord('minicurso-1', 'Minicurso solo', EventType.MINICURSO, 90, '2026-01-02T10:00:00.000Z'),
+          eventRecord('palestra-1', 'Palestra principal', EventType.PALESTRA, 60, '2026-01-03T10:00:00.000Z'),
+          eventRecord('other-1', 'Mesa redonda', EventType.OTHER, 45, '2026-01-04T10:00:00.000Z'),
+        ],
+      },
+      new Date('2026-01-05T00:00:00.000Z'),
+    );
+
+    expect(renderedData.templateData.content).toContain('Minicursos:');
+    expect(renderedData.templateData.content).toContain('Palestras:');
+    expect(renderedData.templateData.content).toContain('Mesa redonda');
+    expect(renderedData.templateData.minicursosSection).toContain('1 hora e 30 minutos');
+    expect(renderedData.templateData.palestrasSection).toContain('1 hora');
+    expect(renderedData.templateData.otherEventTypesList).toContain('45 minutos');
+  });
+
   describe('formatCargaHoraria', () => {
     let service: CertificateIssuingService;
 
@@ -685,3 +976,16 @@ describe('CertificateIssuingService', () => {
     });
   });
 });
+
+function eventRecord(id: string, name: string, type: EventType, creditMinutes: number, startDate: string) {
+  return {
+    id,
+    name,
+    creditMinutes,
+    startDate: new Date(startDate),
+    endDate: new Date(new Date(startDate).getTime() + creditMinutes * 60_000),
+    type,
+    eventGroupId: null,
+    eventGroup: null,
+  };
+}
