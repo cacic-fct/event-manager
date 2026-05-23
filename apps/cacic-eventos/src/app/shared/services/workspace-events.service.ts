@@ -9,6 +9,7 @@ import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { Event, EventGroup, EventInput, Person, PlacePresetInput } from '../../graphql/models';
 import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-create-dialog.component';
+import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
@@ -275,6 +276,8 @@ export class WorkspaceEventsService {
       }
       await this.loadEvents();
       this.resetEventForm();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o evento.'), 'Fechar', { duration: 5000 });
     } finally {
       this.ui.loading.set(false);
     }
@@ -459,12 +462,16 @@ export class WorkspaceEventsService {
   }
 
   private async deleteEventById(eventId: string): Promise<void> {
-    await firstValueFrom(this.api.deleteEvent(eventId));
-    this.snackbar.open('Evento excluído.', 'Fechar', { duration: 2500 });
-    if (this.selectedEvent()?.id === eventId) {
-      this.resetEventForm();
+    try {
+      await firstValueFrom(this.api.deleteEvent(eventId));
+      this.snackbar.open('Evento excluído.', 'Fechar', { duration: 2500 });
+      if (this.selectedEvent()?.id === eventId) {
+        this.resetEventForm();
+      }
+      await this.loadEvents();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o evento.'), 'Fechar', { duration: 5000 });
     }
-    await this.loadEvents();
   }
 
   private buildEventPayload(includePeople: boolean): EventInput {

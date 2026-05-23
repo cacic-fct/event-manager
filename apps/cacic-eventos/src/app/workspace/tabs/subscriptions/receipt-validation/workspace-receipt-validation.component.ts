@@ -25,6 +25,7 @@ import {
   ReceiptValidationQueue,
   ReceiptValidationQueueItem,
 } from '../../../../graphql/receipt-validation-api.service';
+import { getErrorMessage } from '../../../../shared/error-message';
 
 interface LastValidationAction {
   id: string;
@@ -306,7 +307,7 @@ export class WorkspaceReceiptValidationComponent {
   }
 
   private showError(error: unknown, fallback: string): void {
-    const message = error instanceof Error ? error.message : fallback;
+    const message = getErrorMessage(error, fallback);
     this.error.set(message);
     this.snackbar.open(message, 'Fechar', { duration: 4500 });
   }

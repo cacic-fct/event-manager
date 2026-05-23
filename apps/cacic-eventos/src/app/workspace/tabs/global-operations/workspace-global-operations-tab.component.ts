@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { CertificateApiService } from '../../../graphql/certificate-api.service';
 import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog.component';
+import { getErrorMessage } from '../../../shared/error-message';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 
 @Component({
@@ -49,6 +50,10 @@ export class WorkspaceGlobalOperationsTabComponent {
         'Fechar',
         { duration: 3500 },
       );
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível reemitir os certificados.'), 'Fechar', {
+        duration: 4500,
+      });
     } finally {
       this.reissuingCertificates.set(false);
     }

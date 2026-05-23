@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { Person, PersonInput } from '../../graphql/models';
+import { getErrorMessage } from '../error-message';
 
 @Injectable({
   providedIn: 'root',
@@ -147,11 +148,15 @@ export class WorkspacePeopleService {
       externalRef: raw.externalRef.trim() || null,
     };
 
-    const savedPerson = await firstValueFrom(
-      selectedPerson ? this.api.updatePerson(selectedPerson.id, payload) : this.api.createPerson(payload),
-    );
-    this.snackbar.open(selectedPerson ? 'Pessoa atualizada.' : 'Pessoa criada.', 'Fechar', { duration: 2500 });
-    await this.selectPerson(savedPerson);
-    await this.searchPeople(this.peopleSearchQuery());
+    try {
+      const savedPerson = await firstValueFrom(
+        selectedPerson ? this.api.updatePerson(selectedPerson.id, payload) : this.api.createPerson(payload),
+      );
+      this.snackbar.open(selectedPerson ? 'Pessoa atualizada.' : 'Pessoa criada.', 'Fechar', { duration: 2500 });
+      await this.selectPerson(savedPerson);
+      await this.searchPeople(this.peopleSearchQuery());
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a pessoa.'), 'Fechar', { duration: 5000 });
+    }
   }
 }

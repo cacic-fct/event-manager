@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { MergeCandidateApiService } from '../../graphql/merge-candidate-api.service';
 import { MergeCandidate, MergeCandidateStatus } from '../../graphql/models';
 import { MergeCandidateDialogComponent } from '../../workspace/dialogs/merge-candidate-dialog.component';
+import { getErrorMessage } from '../error-message';
 import { WorkspacePeopleService } from './workspace-people.service';
 
 @Injectable({
@@ -29,11 +30,17 @@ export class WorkspaceMergeCandidatesService {
   }
 
   async scanMergeCandidates(showNotification = true): Promise<void> {
-    const touchedCandidates = await firstValueFrom(this.api.scanMergeCandidates());
-    await this.refreshMergeCandidates();
-    if (showNotification) {
-      this.snackbar.open(`${touchedCandidates} par(es) de possíveis duplicidades verificados.`, 'Fechar', {
-        duration: 2500,
+    try {
+      const touchedCandidates = await firstValueFrom(this.api.scanMergeCandidates());
+      await this.refreshMergeCandidates();
+      if (showNotification) {
+        this.snackbar.open(`${touchedCandidates} par(es) de possíveis duplicidades verificados.`, 'Fechar', {
+          duration: 2500,
+        });
+      }
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível verificar duplicidades.'), 'Fechar', {
+        duration: 5000,
       });
     }
   }
@@ -62,25 +69,37 @@ export class WorkspaceMergeCandidatesService {
       return;
     }
 
-    await firstValueFrom(
-      this.api.mergeCandidatePeople({
-        candidateId: candidate.id,
-        targetPersonId: mergePlan.targetPersonId,
-        migrateFields: mergePlan.migrateFields,
-      }),
-    );
+    try {
+      await firstValueFrom(
+        this.api.mergeCandidatePeople({
+          candidateId: candidate.id,
+          targetPersonId: mergePlan.targetPersonId,
+          migrateFields: mergePlan.migrateFields,
+        }),
+      );
 
-    this.snackbar.open('Pessoas unificadas com sucesso.', 'Fechar', {
-      duration: 2500,
-    });
-    await this.refreshMergeCandidates();
-    await this.peopleService.searchPeople('');
+      this.snackbar.open('Pessoas unificadas com sucesso.', 'Fechar', {
+        duration: 2500,
+      });
+      await this.refreshMergeCandidates();
+      await this.peopleService.searchPeople('');
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível unificar as pessoas.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
   }
 
   async undoMergeCandidate(candidate: MergeCandidate): Promise<void> {
-    await firstValueFrom(this.api.undoMergeCandidatePeople(candidate.id));
-    this.snackbar.open('Unificação desfeita.', 'Fechar', { duration: 2500 });
-    await this.refreshMergeCandidates();
-    await this.peopleService.searchPeople('');
+    try {
+      await firstValueFrom(this.api.undoMergeCandidatePeople(candidate.id));
+      this.snackbar.open('Unificação desfeita.', 'Fechar', { duration: 2500 });
+      await this.refreshMergeCandidates();
+      await this.peopleService.searchPeople('');
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível desfazer a unificação.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
   }
 }
