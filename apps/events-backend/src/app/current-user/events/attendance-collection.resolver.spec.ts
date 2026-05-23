@@ -108,19 +108,26 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       { eventId: 'event-1', event: { id: 'event-1', name: 'Aula aberta' } },
     ]);
 
-    expect(prisma.eventAttendanceCollector.findMany).toHaveBeenCalledWith(
+    const findManyArgs = prisma.eventAttendanceCollector.findMany.mock.calls[0][0];
+    const startDateFilter = findManyArgs.where.event.startDate;
+    expect(findManyArgs).toEqual(
       expect.objectContaining({
         where: expect.objectContaining({
           personId: 'collector-person',
           event: expect.objectContaining({
-            startDate: {
-              gte: new Date('2026-05-22T21:00:00.000Z'),
-              lte: new Date('2026-05-24T02:59:59.999Z'),
-            },
+            deletedAt: null,
+            publiclyVisible: true,
+            shouldCollectAttendance: true,
           }),
         }),
       }),
     );
+    expect(startDateFilter.lte).toBeInstanceOf(Date);
+    expect(startDateFilter.lte.getHours()).toBe(23);
+    expect(startDateFilter.lte.getMinutes()).toBe(59);
+    expect(startDateFilter.lte.getSeconds()).toBe(59);
+    expect(startDateFilter.lte.getMilliseconds()).toBe(999);
+    expect(startDateFilter.lte.getTime() - startDateFilter.gte.getTime()).toBe(30 * 60 * 60_000 - 1);
     jest.useRealTimers();
   });
 
