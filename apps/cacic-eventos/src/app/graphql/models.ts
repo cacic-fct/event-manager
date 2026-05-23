@@ -423,10 +423,6 @@ export interface MajorEventInput {
   additionalPaymentInfo?: string | null;
   paymentInfo?: PaymentInfoInput | null;
   price?: MajorEventPriceInput | null;
-  deletedAt?: string | null;
-  createdAt?: string;
-  createdById?: string;
-  updatedById?: string;
 }
 
 export interface PaymentInfoInput {
@@ -459,10 +455,6 @@ export interface EventGroupInput {
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
   shouldIssueCertificateForEachEvent?: boolean;
   shouldIssuePartialCertificate?: boolean;
-  deletedAt?: string | null;
-  createdAt?: string;
-  createdById?: string;
-  updatedById?: string;
 }
 
 export interface CertificateConfigInput {
@@ -515,10 +507,6 @@ export interface EventInput {
   buttonLink?: string | null;
   lecturerPersonIds?: string[] | null;
   attendanceCollectorPersonIds?: string[] | null;
-  deletedAt?: string | null;
-  createdAt?: string;
-  createdById?: string;
-  updatedById?: string;
 }
 
 export interface PlacePresetInput {
@@ -539,8 +527,4 @@ export interface PersonInput {
   userId?: string | null;
   mergedIntoId?: string | null;
   externalRef?: string | null;
-  deletedAt?: string | null;
-  createdAt?: string;
-  createdById?: string;
-  updatedById?: string;
 }

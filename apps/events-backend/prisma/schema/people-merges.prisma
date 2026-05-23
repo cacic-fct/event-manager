@@ -1,0 +1,85 @@
+enum MergeCandidateStatus {
+  PENDING
+  MERGED
+  REJECTED
+  STALE
+}
+
+enum MergeMatchMethod {
+  CPF
+  EMAIL
+  NORMALIZED_NAME
+}
+
+enum PeopleMergeOperationStatus {
+  APPLIED
+  ROLLED_BACK
+}
+
+model PeopleMergeOperation {
+  id String @id @default(uuid(7))
+
+  targetPersonId   String
+  sourcePersonId   String
+  mergeCandidateId String?
+
+  targetPerson   People          @relation("MergeTargetOperations", fields: [targetPersonId], references: [id])
+  sourcePerson   People          @relation("MergeSourceOperations", fields: [sourcePersonId], references: [id])
+  mergeCandidate MergeCandidate? @relation(fields: [mergeCandidateId], references: [id])
+  externalAccountMergeOperations ExternalAccountMergeOperation[]
+
+  status PeopleMergeOperationStatus @default(APPLIED)
+
+  migratedFields Json
+  targetSnapshot Json
+  sourceSnapshot Json
+  movedRelations Json
+
+  rolledBackAt   DateTime?
+  rolledBackById String?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@index([targetPersonId])
+  @@index([sourcePersonId])
+  @@index([mergeCandidateId])
+  @@index([status])
+  @@index([rolledBackById])
+  @@index([createdById])
+  @@map("people_merge_operations")
+}
+
+model MergeCandidate {
+  id String @id @default(uuid(7))
+
+  personAId String
+  personBId String
+
+  personA People @relation("MergeCandidateA", fields: [personAId], references: [id])
+  personB People @relation("MergeCandidateB", fields: [personBId], references: [id])
+
+  pairKey String @unique // "minId:maxId"
+
+  score       Float?
+  matchMethod MergeMatchMethod?
+  matchValue  String?
+
+  status MergeCandidateStatus @default(PENDING)
+
+  resolvedById String?
+
+  mergeOperations PeopleMergeOperation[]
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([personAId])
+  @@index([personBId])
+  @@index([status])
+  @@index([matchMethod])
+  @@index([resolvedById])
+  @@map("merge_candidates")
+}

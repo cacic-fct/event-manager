@@ -46,7 +46,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate Prisma client
-        run: bunx prisma generate --schema apps/events-backend/prisma/schema.prisma
+        run: bunx prisma generate --schema apps/events-backend/prisma/schema
 
       - name: Derive Nx SHAs
         uses: nrwl/nx-set-shas@v5
@@ -187,7 +187,7 @@ jobs:
           path: .
 
       - name: Generate Prisma client
-        run: bunx prisma generate --schema apps/events-backend/prisma/schema.prisma
+        run: bunx prisma generate --schema apps/events-backend/prisma/schema
 
       - name: Derive Nx SHAs
         uses: nrwl/nx-set-shas@v5

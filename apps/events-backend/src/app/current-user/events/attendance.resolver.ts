@@ -1,3 +1,4 @@
+import { isValidCPF } from '@cacic-fct/shared-utils';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod } from '@prisma/client';
@@ -462,30 +463,11 @@ export class CurrentUserEventAttendanceResolver {
     }
 
     const cpf = identityDocument.replace(/\D/g, '');
-    if (!this.isValidCpf(cpf)) {
+    if (!isValidCPF(cpf)) {
       return identityDocument;
     }
 
     return `•••.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-••`;
-  }
-
-  private isValidCpf(cpf: string): boolean {
-    if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) {
-      return false;
-    }
-
-    const firstDigit = this.calculateCpfDigit(cpf, 10);
-    const secondDigit = this.calculateCpfDigit(cpf, 11);
-    return firstDigit === Number(cpf[9]) && secondDigit === Number(cpf[10]);
-  }
-
-  private calculateCpfDigit(cpf: string, factor: number): number {
-    let sum = 0;
-    for (let index = 0; index < factor - 1; index++) {
-      sum += Number(cpf[index]) * (factor - index);
-    }
-    const remainder = sum % 11;
-    return remainder < 2 ? 0 : 11 - remainder;
   }
 
   private escapeCsvValue(value: string): string {

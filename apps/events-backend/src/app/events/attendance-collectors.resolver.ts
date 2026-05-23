@@ -7,6 +7,7 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 
 type GraphqlContext = {
@@ -26,6 +27,7 @@ export class EventAttendanceCollectorsResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.EventAttendanceCollectorWhereInput = {};
 
     if (eventId) {
@@ -48,8 +50,8 @@ export class EventAttendanceCollectorsResolver {
       orderBy: {
         createdAt: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
   }
 

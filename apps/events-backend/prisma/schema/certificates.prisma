@@ -1,0 +1,124 @@
+enum CertificateScope {
+  MAJOR_EVENT
+  EVENT_GROUP
+  EVENT
+  OTHER
+}
+
+model CertificateTemplate {
+  id          String  @id @default(uuid(7))
+  name        String
+  description String?
+
+  // Version the template instead of editing old rows in place
+  version  Int  @default(1)
+  template Json
+
+  isActive Boolean @default(true)
+
+  certificateConfigs CertificateConfig[]
+  certificates       Certificate[]
+
+  /**
+   * Format is:
+   * {
+   * "fieldName1": {
+   * "type": "string", "number" or "date"
+   * "required": true or false
+   * "default"?: "Default Value"
+   * }
+   * },
+   */
+  certificateFields Json?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  deletedAt DateTime?
+
+  @@index([name])
+  @@map("certificate_templates")
+}
+
+enum CertificateIssuedTo {
+  ATTENDEE
+  LECTURER
+  OTHER
+}
+
+model CertificateConfig {
+  id   String @id @default(uuid(7))
+  name String
+
+  scope CertificateScope
+
+  majorEventId String?
+  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id])
+
+  eventGroupId String?
+  eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id])
+
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id])
+
+  certificateTemplateId String
+  certificateTemplate   CertificateTemplate @relation(fields: [certificateTemplateId], references: [id])
+
+  certificateText String?
+  shouldAutofillSecondPage Boolean @default(true)
+  secondPageText String?
+  isActive        Boolean @default(true)
+
+  issuedTo CertificateIssuedTo @default(OTHER)
+
+  certificates Certificate[]
+
+  // Additional variable fields, depending on each template's needs
+  certificateFields Json?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  deletedAt DateTime?
+
+  @@unique([eventId, name])
+  @@index([scope])
+  @@index([majorEventId])
+  @@index([eventGroupId])
+  @@index([eventId])
+  @@index([certificateTemplateId])
+  @@map("certificate_configs")
+}
+
+model Certificate {
+  id String @id @default(uuid(7))
+
+  personId String
+  person   People @relation(fields: [personId], references: [id])
+
+  configId String
+  config   CertificateConfig @relation(fields: [configId], references: [id])
+
+  // Snapshot of all variables used to render the PDF
+  renderedData Json
+
+  issuedAt   DateTime @default(now())
+  issuedById String?
+
+  certificateTemplate   CertificateTemplate @relation(fields: [certificateTemplateId], references: [id])
+  certificateTemplateId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+
+  @@unique([personId, configId])
+  @@index([personId])
+  @@index([configId])
+  @@map("certificates")
+}

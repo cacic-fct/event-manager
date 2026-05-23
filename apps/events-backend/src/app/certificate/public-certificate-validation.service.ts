@@ -6,6 +6,7 @@ import {
   PublicCertificateValidationEvent,
   PublicCertificateValidationEventSection,
 } from '@cacic-fct/shared-data-types';
+import { isValidCPF } from '@cacic-fct/shared-utils';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -440,27 +441,10 @@ export class PublicCertificateValidationService {
     }
 
     const digits = identityDocument.replace(/\D/g, '');
-    if (!this.isValidCpf(digits)) {
+    if (!isValidCPF(digits)) {
       return undefined;
     }
 
     return `•••.${digits.slice(3, 6)}.${digits.slice(6, 9)}-••`;
-  }
-
-  private isValidCpf(digits: string): boolean {
-    if (!/^\d{11}$/.test(digits) || /^(\d)\1+$/.test(digits)) {
-      return false;
-    }
-
-    const firstDigit = this.calculateCpfDigit(digits.slice(0, 9), 10);
-    const secondDigit = this.calculateCpfDigit(digits.slice(0, 10), 11);
-
-    return firstDigit === Number(digits[9]) && secondDigit === Number(digits[10]);
-  }
-
-  private calculateCpfDigit(digits: string, firstWeight: number): number {
-    const sum = [...digits].reduce((total, digit, index) => total + Number(digit) * (firstWeight - index), 0);
-    const calculatedDigit = 11 - (sum % 11);
-    return calculatedDigit >= 10 ? 0 : calculatedDigit;
   }
 }

@@ -11,6 +11,7 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { actionablePendingMergeCandidateWhere } from './merge-candidate-filters';
 import { MergeCandidateOperationsService } from './operations.service';
@@ -30,6 +31,7 @@ export class MergeCandidatesResolver {
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    const pagination = resolvePagination(skip, take);
     const where: Prisma.MergeCandidateWhereInput =
       status === 'PENDING' ? actionablePendingMergeCandidateWhere : { ...(status ? { status } : {}) };
 
@@ -42,8 +44,8 @@ export class MergeCandidatesResolver {
       orderBy: {
         updatedAt: 'desc',
       },
-      skip,
-      take,
+      skip: pagination.skip,
+      take: pagination.take,
     });
   }
 
@@ -72,9 +74,16 @@ export class MergeCandidatesResolver {
   createMergeCandidate(
     @Args('input', { type: () => MergeCandidateCreateInput })
     input: MergeCandidateCreateInput,
+    @Context() context: { req?: { user?: AuthenticatedUser } },
   ) {
+    const actorId = this.getActorId(context);
+
     return this.prisma.mergeCandidate.create({
-      data: input,
+      data: {
+        ...this.buildMergeCandidateCreateData(input),
+        createdById: actorId ?? undefined,
+        updatedById: actorId ?? undefined,
+      },
     });
   }
 
@@ -88,8 +97,8 @@ export class MergeCandidatesResolver {
   ) {
     const actorId = this.getActorId(context);
 
-    const data: MergeCandidateUpdateInput = {
-      ...input,
+    const data: Prisma.MergeCandidateUncheckedUpdateManyInput = {
+      ...this.buildMergeCandidateUpdateData(input),
       updatedById: actorId ?? undefined,
     };
     if (input.status === 'PENDING') {
@@ -118,6 +127,45 @@ export class MergeCandidatesResolver {
         personB: true,
       },
     });
+  }
+
+  private buildMergeCandidateCreateData(input: MergeCandidateCreateInput): Prisma.MergeCandidateCreateInput {
+    return {
+      ...(input.id !== undefined ? { id: input.id } : {}),
+      personA: {
+        connect: {
+          id: input.personAId,
+        },
+      },
+      personB: {
+        connect: {
+          id: input.personBId,
+        },
+      },
+      pairKey: input.pairKey,
+      ...(input.score !== undefined ? { score: input.score } : {}),
+      ...(input.matchMethod !== undefined ? { matchMethod: input.matchMethod } : {}),
+      ...(input.matchValue !== undefined ? { matchValue: input.matchValue } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.resolvedById !== undefined ? { resolvedById: input.resolvedById } : {}),
+    };
+  }
+
+  private buildMergeCandidateUpdateData(
+    input: MergeCandidateUpdateInput,
+  ): Prisma.MergeCandidateUncheckedUpdateManyInput {
+    const data: Prisma.MergeCandidateUncheckedUpdateManyInput = {};
+
+    if (input.personAId !== undefined) data.personAId = input.personAId;
+    if (input.personBId !== undefined) data.personBId = input.personBId;
+    if (input.pairKey !== undefined) data.pairKey = input.pairKey;
+    if (input.score !== undefined) data.score = input.score;
+    if (input.matchMethod !== undefined) data.matchMethod = input.matchMethod;
+    if (input.matchValue !== undefined) data.matchValue = input.matchValue;
+    if (input.status !== undefined) data.status = input.status;
+    if (input.resolvedById !== undefined) data.resolvedById = input.resolvedById;
+
+    return data;
   }
 
   @Mutation(() => Int, { name: 'scanMergeCandidates' })
