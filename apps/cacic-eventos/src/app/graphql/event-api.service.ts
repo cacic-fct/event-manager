@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { DeletionResult, Event, EventAttendanceCollector, EventInput, EventLecturer } from './models';
+import { DeletionResult, Event, EventAttendanceCollector, EventInput, EventLecturer, EventSummary } from './models';
 import { EVENT_FIELDS, PERSON_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
@@ -44,6 +44,22 @@ export class EventApiService {
             take: $take
           ) {
             ${EVENT_FIELDS}
+          }
+        }`,
+        filters,
+      )
+      .pipe(map((data) => data.events));
+  }
+
+  listEventsSummary(filters?: { skip?: number; take?: number; isInGroup?: boolean }) {
+    return this.graphqlHttp
+      .request<{ events: EventSummary[] }>(
+        `query ListEventsSummary($skip: Int, $take: Int, $isInGroup: Boolean) {
+          events(skip: $skip, take: $take, isInGroup: $isInGroup) {
+            id
+            eventGroupId
+            startDate
+            name
           }
         }`,
         filters,
