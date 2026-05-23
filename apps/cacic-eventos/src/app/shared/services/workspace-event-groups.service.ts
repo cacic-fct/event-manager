@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
-import { Event, EventGroup, EventGroupInput } from '../../graphql/models';
+import { Event, EventGroup, EventGroupInput, EventSummary } from '../../graphql/models';
 import { getErrorMessage } from '../error-message';
 import { WorkspaceEventsService } from './workspace-events.service';
 
@@ -23,12 +23,42 @@ export class WorkspaceEventGroupsService {
   private readonly router = inject(Router);
 
   readonly eventGroups = signal<EventGroup[]>([]);
+  readonly eventSummaries = signal<EventSummary[]>([]);
   readonly selectedEventGroup = signal<EventGroup | null>(null);
   readonly eventGroupEvents = signal<Event[]>([]);
   readonly eventGroupEventSearchResults = signal<Event[]>([]);
   readonly selectedEventGroupHasMajorEventEvents = computed(() =>
     this.eventGroupEvents().some((eventItem) => eventItem.majorEventId),
   );
+  readonly sortedEventGroups = computed(() => {
+    const groups = this.eventGroups();
+    const firstEventsByGroup = this.firstEventsByGroupId();
+
+    return [...groups].sort((a, b) => {
+      const aFirstEvent = firstEventsByGroup.get(a.id);
+      const bFirstEvent = firstEventsByGroup.get(b.id);
+
+      // Groups without events come first
+      if (!aFirstEvent && !bFirstEvent) return 0;
+      if (!aFirstEvent) return -1;
+      if (!bFirstEvent) return 1;
+
+      // Sort by start date descending
+      const aDate = new Date(aFirstEvent.startDate).getTime();
+      const bDate = new Date(bFirstEvent.startDate).getTime();
+      return bDate - aDate;
+    });
+  });
+
+  private readonly firstEventsByGroupId = computed(() => {
+    const groups = this.eventGroups();
+    const events = this.eventSummaries();
+    const firstEventsByGroup = new Map<string, EventSummary | undefined>();
+    for (const group of groups) {
+      firstEventsByGroup.set(group.id, this.getFirstEventForGroup(group.id, events));
+    }
+    return firstEventsByGroup;
+  });
 
   readonly eventGroupForm = this.formBuilder.nonNullable.group({
     id: [''],
@@ -57,6 +87,7 @@ export class WorkspaceEventGroupsService {
 
   async loadEventGroups(): Promise<void> {
     this.eventGroups.set(await firstValueFrom(this.api.listEventGroups({ take: 200 })));
+    await this.refreshEventSummaries();
     const selectedGroup = this.selectedEventGroup();
     if (selectedGroup) {
       const refreshed = this.eventGroups().find((group) => group.id === selectedGroup.id);
@@ -64,6 +95,10 @@ export class WorkspaceEventGroupsService {
         this.selectedEventGroup.set(refreshed);
       }
     }
+  }
+
+  private async refreshEventSummaries(): Promise<void> {
+    this.eventSummaries.set(await firstValueFrom(this.eventsApi.listEventsSummary({ take: 200, isInGroup: true })));
   }
 
   async saveEventGroup(): Promise<void> {
@@ -225,7 +260,7 @@ export class WorkspaceEventGroupsService {
             : false,
       }),
     );
-    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id)]);
+    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id), this.refreshEventSummaries()]);
   }
 
   async removeEventFromSelectedGroup(eventItem: Event): Promise<void> {
@@ -239,7 +274,7 @@ export class WorkspaceEventGroupsService {
         eventGroupId: null,
       }),
     );
-    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id)]);
+    await Promise.all([this.eventsService.loadEvents(), this.loadEventsForGroup(selectedGroup.id), this.refreshEventSummaries()]);
   }
 
   private async loadEventsForGroup(groupId: string): Promise<void> {
@@ -252,6 +287,17 @@ export class WorkspaceEventGroupsService {
       ),
     );
     this.syncCertificateRuleControls();
+  }
+
+  getFirstEventForGroupDisplay(groupId: string): EventSummary | undefined {
+    return this.firstEventsByGroupId().get(groupId);
+  }
+
+  private getFirstEventForGroup(groupId: string, events: EventSummary[]): EventSummary | undefined {
+    return events
+      .filter((event) => event.eventGroupId === groupId)
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+      .at(0);
   }
 
   private syncCertificateRuleControls(): void {
