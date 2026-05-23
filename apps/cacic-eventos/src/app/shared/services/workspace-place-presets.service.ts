@@ -10,6 +10,7 @@ import {
   PlacePresetMergeDialogComponent,
   PlacePresetMergeDialogResult,
 } from '../../workspace/dialogs/place-preset-merge-dialog.component';
+import { getErrorMessage } from '../error-message';
 
 @Injectable({
   providedIn: 'root',
@@ -81,26 +82,34 @@ export class WorkspacePlacePresetsService {
       return;
     }
 
-    const raw = this.placeForm.getRawValue();
-    const payload = this.buildPlacePresetPayload();
-    if (raw.id) {
-      await firstValueFrom(this.api.updatePlacePreset(raw.id, payload));
-      this.snackbar.open('Local atualizado.', 'Fechar', { duration: 2500 });
-    } else {
-      await firstValueFrom(this.api.createPlacePreset(payload));
-      this.snackbar.open('Local criado.', 'Fechar', { duration: 2500 });
+    try {
+      const raw = this.placeForm.getRawValue();
+      const payload = this.buildPlacePresetPayload();
+      if (raw.id) {
+        await firstValueFrom(this.api.updatePlacePreset(raw.id, payload));
+        this.snackbar.open('Local atualizado.', 'Fechar', { duration: 2500 });
+      } else {
+        await firstValueFrom(this.api.createPlacePreset(payload));
+        this.snackbar.open('Local criado.', 'Fechar', { duration: 2500 });
+      }
+      await this.loadPlacePresets();
+      this.startNewPlacePreset();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o local.'), 'Fechar', { duration: 5000 });
     }
-    await this.loadPlacePresets();
-    this.startNewPlacePreset();
   }
 
   async deletePlacePreset(place: PlacePreset): Promise<void> {
-    await firstValueFrom(this.api.deletePlacePreset(place.id));
-    this.snackbar.open('Local excluído.', 'Fechar', { duration: 2500 });
-    if (this.selectedPlacePreset()?.id === place.id) {
-      this.startNewPlacePreset();
+    try {
+      await firstValueFrom(this.api.deletePlacePreset(place.id));
+      this.snackbar.open('Local excluído.', 'Fechar', { duration: 2500 });
+      if (this.selectedPlacePreset()?.id === place.id) {
+        this.startNewPlacePreset();
+      }
+      await this.loadPlacePresets();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o local.'), 'Fechar', { duration: 5000 });
     }
-    await this.loadPlacePresets();
   }
 
   chooseMergeSource(place: PlacePreset): void {
@@ -131,11 +140,15 @@ export class WorkspacePlacePresetsService {
       return;
     }
 
-    await firstValueFrom(this.api.mergePlacePreset(result.targetId, result.sourceId, result.place));
-    this.snackbar.open('Locais unificados.', 'Fechar', { duration: 2500 });
-    this.mergeSource.set(null);
-    await this.loadPlacePresets();
-    this.startNewPlacePreset();
+    try {
+      await firstValueFrom(this.api.mergePlacePreset(result.targetId, result.sourceId, result.place));
+      this.snackbar.open('Locais unificados.', 'Fechar', { duration: 2500 });
+      this.mergeSource.set(null);
+      await this.loadPlacePresets();
+      this.startNewPlacePreset();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível unificar os locais.'), 'Fechar', { duration: 5000 });
+    }
   }
 
   async ensurePresetForManualLocation(input: PlacePresetInput): Promise<void> {

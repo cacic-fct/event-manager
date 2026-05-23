@@ -23,6 +23,7 @@ import {
   Person,
 } from '../../graphql/models';
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
+import { getErrorMessage } from '../error-message';
 
 type IssuableScope = Exclude<CertificateScope, 'OTHER'>;
 type CertificateTargetType = 'event' | 'event-group' | 'major-event';
@@ -364,11 +365,17 @@ export class WorkspaceCertificatesService {
       return;
     }
 
-    await firstValueFrom(this.api.issueCertificateForPerson(selectedConfig.id, person.id));
-    this.snackbar.open(`Certificado emitido para ${person.name}.`, 'Fechar', {
-      duration: 2500,
-    });
-    await this.loadCertificates();
+    try {
+      await firstValueFrom(this.api.issueCertificateForPerson(selectedConfig.id, person.id));
+      this.snackbar.open(`Certificado emitido para ${person.name}.`, 'Fechar', {
+        duration: 2500,
+      });
+      await this.loadCertificates();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível emitir o certificado.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
   }
 
   async issueMissedCertificates(): Promise<void> {
@@ -379,11 +386,17 @@ export class WorkspaceCertificatesService {
       return;
     }
 
-    const issued = await firstValueFrom(this.api.issueMissedCertificates(selectedConfig.id));
-    this.snackbar.open(`${issued.length} certificado(s) processado(s).`, 'Fechar', {
-      duration: 2500,
-    });
-    await this.loadCertificates();
+    try {
+      const issued = await firstValueFrom(this.api.issueMissedCertificates(selectedConfig.id));
+      this.snackbar.open(`${issued.length} certificado(s) processado(s).`, 'Fechar', {
+        duration: 2500,
+      });
+      await this.loadCertificates();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível emitir os certificados.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
   }
 
   async deleteCertificateConfig(config: CertificateConfig): Promise<void> {
@@ -396,15 +409,21 @@ export class WorkspaceCertificatesService {
       return;
     }
 
-    await firstValueFrom(this.api.deleteCertificateConfig(config.id));
-    this.snackbar.open('Configuração de certificado excluída.', 'Fechar', {
-      duration: 2500,
-    });
+    try {
+      await firstValueFrom(this.api.deleteCertificateConfig(config.id));
+      this.snackbar.open('Configuração de certificado excluída.', 'Fechar', {
+        duration: 2500,
+      });
 
-    if (this.selectedCertificateConfig()?.id === config.id) {
-      this.startNewCertificateConfig();
+      if (this.selectedCertificateConfig()?.id === config.id) {
+        this.startNewCertificateConfig();
+      }
+      await Promise.all([this.loadCertificateConfigs(), this.loadCertificates()]);
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir a configuração de certificado.'), 'Fechar', {
+        duration: 5000,
+      });
     }
-    await Promise.all([this.loadCertificateConfigs(), this.loadCertificates()]);
   }
 
   async deleteCertificate(certificate: Certificate, event?: MouseEvent): Promise<void> {
@@ -419,9 +438,15 @@ export class WorkspaceCertificatesService {
       return;
     }
 
-    await firstValueFrom(this.api.deleteCertificate(certificate.id));
-    this.snackbar.open('Certificado excluído.', 'Fechar', { duration: 2500 });
-    await this.loadCertificates();
+    try {
+      await firstValueFrom(this.api.deleteCertificate(certificate.id));
+      this.snackbar.open('Certificado excluído.', 'Fechar', { duration: 2500 });
+      await this.loadCertificates();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o certificado.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
   }
 
   async downloadCertificate(certificate: Certificate, event?: MouseEvent): Promise<void> {
