@@ -6,8 +6,8 @@ describe('dashboard insights cache helpers', () => {
       get: jest.fn().mockResolvedValue(null),
     };
 
-    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v2:none')).resolves.toBeNull();
-    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v2:none');
+    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v3:none')).resolves.toBeNull();
+    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v3:none');
   });
 
   it('restores cached date strings to Date instances', async () => {
@@ -58,6 +58,16 @@ describe('dashboard insights cache helpers', () => {
             },
           ],
           pendingReceiptValidationsCount: 0,
+          pendingReceiptMajorEvents: [
+            {
+              majorEventId: 'major-1',
+              name: 'Cached major',
+              emoji: '🎓',
+              startDate: '2026-05-24T12:00:00.000Z',
+              endDate: '2026-05-26T12:00:00.000Z',
+              pendingCount: 2,
+            },
+          ],
           inconsistencies: [],
           duplicatePeopleCount: 0,
           permissions: [],
@@ -72,6 +82,8 @@ describe('dashboard insights cache helpers', () => {
     expect(result?.calendarEvents[0].endDate).toEqual(new Date('2026-05-22T13:00:00.000Z'));
     expect(result?.weatherAlerts[0].forecastTime).toEqual(new Date('2026-05-22T12:00:00.000Z'));
     expect(result?.pendingCertificates[0].finishedAt).toEqual(new Date('2026-05-20T12:00:00.000Z'));
+    expect(result?.pendingReceiptMajorEvents[0].startDate).toEqual(new Date('2026-05-24T12:00:00.000Z'));
+    expect(result?.pendingReceiptMajorEvents[0].endDate).toEqual(new Date('2026-05-26T12:00:00.000Z'));
   });
 
   it('returns null for invalid cache payloads', async () => {
@@ -83,12 +95,12 @@ describe('dashboard insights cache helpers', () => {
   });
 
   it('builds permission-aware cache keys', () => {
-    expect(getCacheKey([])).toBe('dashboard:workspace:v2:none');
+    expect(getCacheKey([])).toBe('dashboard:workspace:v3:none');
     expect(getCacheKey(['event#edit', 'certificate#edit', 'event#edit'])).toBe(
-      'dashboard:workspace:v2:certificate#edit,event#edit',
+      'dashboard:workspace:v3:certificate#edit,event#edit',
     );
     expect(getCacheKey(['certificate#edit', 'event#edit'])).toBe(
-      'dashboard:workspace:v2:certificate#edit,event#edit',
+      'dashboard:workspace:v3:certificate#edit,event#edit',
     );
   });
 });

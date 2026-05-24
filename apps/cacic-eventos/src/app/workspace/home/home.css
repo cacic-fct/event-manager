@@ -75,6 +75,24 @@
   overflow: hidden;
 }
 
+.event-list mat-list-item {
+  height: auto;
+  min-height: 96px;
+  padding-block: 10px;
+}
+
+.event-item-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+}
+
+.event-item-main {
+  min-width: 0;
+}
+
 .embedded-list {
   margin-top: 12px;
 }
@@ -87,8 +105,18 @@
 
 .attendance-meta {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+}
+
+.attendance-meta mat-chip-set {
+  display: flex;
+  justify-content: center;
+}
+
+.attendance-meta a {
+  min-width: 188px;
 }
 
 @media (max-width: 720px) {
@@ -98,5 +126,24 @@
   .quick-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .event-item-content {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .attendance-meta {
+    align-items: flex-start;
+  }
+
+  .attendance-meta mat-chip-set {
+    justify-content: flex-start;
+  }
+
+  .attendance-meta a {
+    min-width: 0;
+    width: 100%;
   }
 }

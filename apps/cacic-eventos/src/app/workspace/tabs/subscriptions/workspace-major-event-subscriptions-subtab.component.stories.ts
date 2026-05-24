@@ -1,11 +1,25 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { applicationConfig } from '@storybook/angular';
+import { provideRouter } from '@angular/router';
 import { expect, userEvent, within } from 'storybook/test';
 import { WorkspaceMajorEventSubscriptionsSubtabComponent } from './workspace-major-event-subscriptions-subtab.component';
+import { createWorkspaceSubscriptionsStoryProviders } from './workspace-subscriptions-story-support';
 
 const meta: Meta<WorkspaceMajorEventSubscriptionsSubtabComponent> = {
   component: WorkspaceMajorEventSubscriptionsSubtabComponent,
   title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Workspace Major Event Subscriptions Subtab',
   tags: ['autodocs'],
+  decorators: [
+    applicationConfig({
+      providers: [
+        provideRouter([]),
+        ...createWorkspaceSubscriptionsStoryProviders({
+          majorEventId: 'major-event-1',
+          pendingReceiptsCount: 3,
+        }),
+      ],
+    }),
+  ],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -34,7 +48,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const DataLoaded: Story = {
-  args: {},
+  args: {
+    pendingReceiptsCount: 3,
+  },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -43,7 +59,9 @@ export const DataLoaded: Story = {
 };
 
 export const DenseDesktop: Story = {
-  args: {},
+  args: {
+    pendingReceiptsCount: 8,
+  },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -52,7 +70,9 @@ export const DenseDesktop: Story = {
 };
 
 export const DarkMode: Story = {
-  args: {},
+  args: {
+    pendingReceiptsCount: 3,
+  },
   parameters: {
     backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'desktop' },
@@ -62,10 +82,28 @@ export const DarkMode: Story = {
 };
 
 export const MobileLayout: Story = {
-  args: {},
+  args: {
+    pendingReceiptsCount: 3,
+  },
   parameters: {
     viewport: { defaultViewport: 'mobile' },
   },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const NoReceiptsToValidate: Story = {
+  args: {
+    pendingReceiptsCount: 0,
+  },
+  parameters: {
+    viewport: { defaultViewport: 'desktop' },
+  },
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const link = await canvas.findByRole('link', { name: /validar comprovantes/i });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('aria-disabled', 'true');
+  },
 };

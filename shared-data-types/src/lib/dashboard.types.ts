@@ -70,6 +70,15 @@ export interface DashboardCertificatePendingItem {
   finishedAt: string;
 }
 
+export interface DashboardPendingReceiptMajorEvent {
+  majorEventId: string;
+  name: string;
+  emoji: string;
+  startDate: string;
+  endDate: string;
+  pendingCount: number;
+}
+
 export interface DashboardInconsistency {
   type: DashboardInconsistencyType;
   action?: DashboardInsightAction | null;
@@ -101,6 +110,7 @@ export interface WorkspaceDashboardInsights {
   weatherAlerts: DashboardWeatherAlert[];
   pendingCertificates: DashboardCertificatePendingItem[];
   pendingReceiptValidationsCount: number;
+  pendingReceiptMajorEvents: DashboardPendingReceiptMajorEvent[];
   inconsistencies: DashboardInconsistency[];
   duplicatePeopleCount: number;
   permissions: DashboardPermissionGroup[];

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
+import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscription } from './subscription';
 
 describe('Subscription', () => {
@@ -20,6 +21,12 @@ describe('Subscription', () => {
               paramMap: convertToParamMap({ eventId: 'test-event' }),
               queryParamMap: convertToParamMap({}),
             },
+          },
+        },
+        {
+          provide: AnalyticsService,
+          useValue: {
+            trackMajorEventSubscription: vi.fn(),
           },
         },
       ],

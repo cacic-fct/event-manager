@@ -122,8 +122,13 @@
   margin-bottom: 1rem;
 }
 
-.event-selection mat-list-item {
+.event-selection mat-list-item,
+.event-selection mat-list-option {
   min-height: 4.5rem;
+}
+
+.editable-list-item {
+  cursor: pointer;
 }
 
 @media (max-width: 900px) {

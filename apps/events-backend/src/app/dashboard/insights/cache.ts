@@ -3,6 +3,7 @@ import Redis from 'ioredis';
 import {
   DashboardCalendarEvent,
   DashboardCertificatePendingItem,
+  DashboardPendingReceiptMajorEvent,
   DashboardWeatherAlert,
   WorkspaceDashboardInsights,
 } from '../models';
@@ -21,6 +22,10 @@ type CachedDashboardInsights = Omit<WorkspaceDashboardInsights, 'generatedAt'> &
   })[];
   pendingCertificates: (Omit<DashboardCertificatePendingItem, 'finishedAt'> & {
     finishedAt: string;
+  })[];
+  pendingReceiptMajorEvents: (Omit<DashboardPendingReceiptMajorEvent, 'startDate' | 'endDate'> & {
+    startDate: string;
+    endDate: string;
   })[];
 };
 
@@ -47,6 +52,11 @@ export async function getCachedInsights(redis: Redis, cacheKey: string): Promise
       pendingCertificates: parsed.pendingCertificates.map((item) => ({
         ...item,
         finishedAt: new Date(item.finishedAt),
+      })),
+      pendingReceiptMajorEvents: parsed.pendingReceiptMajorEvents.map((item) => ({
+        ...item,
+        startDate: new Date(item.startDate),
+        endDate: new Date(item.endDate),
       })),
     };
   } catch (error) {

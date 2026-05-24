@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -27,12 +28,14 @@ import { WorkspaceSubscriptionsService } from '../../../shared/services/workspac
     MatInputModule,
     MatListModule,
     MatSelectModule,
+    RouterLink,
     TwemojiComponent,
   ],
   templateUrl: './workspace-major-event-subscriptions-subtab.component.html',
   styleUrls: ['../workspace-tab.shared.scss', './workspace-subscription-subtabs.shared.scss'],
 })
 export class WorkspaceMajorEventSubscriptionsSubtabComponent {
+  readonly pendingReceiptsCount = input.required<number>();
   readonly workspace = inject(WorkspaceSubscriptionsService);
   protected readonly permissions = inject(WorkspacePermissionsService);
 
@@ -53,5 +56,12 @@ export class WorkspaceMajorEventSubscriptionsSubtabComponent {
 
   protected statusLabel(status: string): string {
     return getSubscriptionStatusLabel(status);
+  }
+
+  protected receiptValidationLink(): string[] {
+    const majorEventId = this.workspace.majorEventForm.controls.majorEventId.value;
+    return majorEventId
+      ? ['/subscriptions/major-event', majorEventId, 'validate-receipts']
+      : ['/subscriptions'];
   }
 }

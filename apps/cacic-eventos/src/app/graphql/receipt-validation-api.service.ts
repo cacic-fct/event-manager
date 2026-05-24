@@ -87,21 +87,23 @@ export class ReceiptValidationApiService {
       .pipe(map((data) => data.adminReceiptPendingValidationCount));
   }
 
-  getQueue(): Observable<ReceiptValidationQueue> {
+  getQueue(majorEventId?: string): Observable<ReceiptValidationQueue> {
     return this.graphqlHttp
       .request<{ adminReceiptValidationQueue: ReceiptValidationQueue }>(
-        `query AdminReceiptValidationQueue {
-          adminReceiptValidationQueue {
+        `query AdminReceiptValidationQueue($majorEventId: String) {
+          adminReceiptValidationQueue(majorEventId: $majorEventId) {
             ${RECEIPT_VALIDATION_QUEUE_FIELDS}
           }
         }`,
+        { majorEventId },
       )
       .pipe(map((data) => data.adminReceiptValidationQueue));
   }
 
-  watchQueue(): Observable<ReceiptValidationQueue> {
+  watchQueue(majorEventId?: string): Observable<ReceiptValidationQueue> {
     return new Observable<ReceiptValidationQueue>((subscriber) => {
-      const source = new EventSource('/api/major-event-receipts/admin/queue/events', {
+      const queryString = majorEventId ? `?majorEventId=${encodeURIComponent(majorEventId)}` : '';
+      const source = new EventSource(`/api/major-event-receipts/admin/queue/events${queryString}`, {
         withCredentials: true,
       });
 

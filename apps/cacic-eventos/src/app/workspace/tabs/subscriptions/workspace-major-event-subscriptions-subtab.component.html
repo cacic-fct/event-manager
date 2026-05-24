@@ -36,6 +36,18 @@
         Baixar CSV
       </button>
 
+      <a
+        mat-button
+        [routerLink]="receiptValidationLink()"
+        [disabled]="
+          !permissions.has('validate-receipt:read') ||
+          !workspace.majorEventForm.controls.majorEventId.value ||
+          pendingReceiptsCount() === 0
+        ">
+        <mat-icon>receipt_long</mat-icon>
+        Validar comprovantes ({{ pendingReceiptsCount() }})
+      </a>
+
       <button
         mat-button
         type="button"
@@ -161,7 +173,10 @@
               <button mat-stroked-button type="button" (click)="workspace.selectMajorEventPerson(person)">
                 <span class="person-choice">
                   <span>Usar {{ person.name }}</span>
-                  <small>{{ person.identityDocument || 'Sem documento' }} · {{ person.email || 'Sem e-mail principal' }}</small>
+                  <small
+                    >{{ person.identityDocument || 'Sem documento' }} ·
+                    {{ person.email || 'Sem e-mail principal' }}</small
+                  >
                 </span>
               </button>
             }
@@ -174,7 +189,7 @@
           <mat-label>Status</mat-label>
           <mat-select formControlName="subscriptionStatus" [disabled]="!workspace.editMode()">
             @for (status of statuses; track status) {
-              <mat-option [value]="status">{{ status }}</mat-option>
+              <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -191,7 +206,12 @@
 
         <mat-form-field>
           <mat-label>Faixa de pagamento</mat-label>
-          <input matInput formControlName="paymentTier" [readonly]="!workspace.editMode()" />
+          <mat-select formControlName="paymentTier" [disabled]="!workspace.editMode()">
+            <mat-option [value]="null">Não informado</mat-option>
+            @for (tier of workspace.majorEventPaymentTiers(); track tier.id) {
+              <mat-option [value]="tier.name">{{ tier.name }}</mat-option>
+            }
+          </mat-select>
         </mat-form-field>
       </form>
 
@@ -201,31 +221,33 @@
           <span>{{ workspace.selectedEventIds().size }} selecionados</span>
         </div>
 
-        <mat-list>
+        <mat-selection-list [multiple]="true">
           @for (eventItem of workspace.selectedMajorEventEvents(); track eventItem.eventId) {
-            <mat-list-item [class.warning-item]="eventItem.isLecturerSubscription && eventItem.subscribed">
-              <mat-checkbox
-                [checked]="workspace.selectedEventIds().has(eventItem.eventId)"
-                [disabled]="!workspace.editMode()"
-                (change)="workspace.toggleSelectedEvent(eventItem.eventId)" />
+            <mat-list-option
+              checkboxPosition="before"
+              [selected]="workspace.selectedEventIds().has(eventItem.eventId)"
+              [disabled]="!workspace.editMode()"
+              [class.editable-list-item]="workspace.editMode()"
+              [class.warning-item]="eventItem.isLecturerSubscription && eventItem.subscribed"
+              (selectedChange)="workspace.setSelectedEvent(eventItem.eventId, $event)">
               <span matListItemTitle>{{ eventItem.eventName }}</span>
               <span matListItemLine>
                 {{ eventItem.eventStartDate | date: 'short' }}
                 @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
-                  · palestrante inscrito
+                  · palestrante inscrito no próprio evento
                 }
               </span>
               @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
                 <mat-icon matListItemMeta>warning</mat-icon>
               }
-            </mat-list-item>
+            </mat-list-option>
           } @empty {
             <mat-list-item>
               <span matListItemTitle>Nenhum evento carregado</span>
               <span matListItemLine> Carregue uma inscrição existente para ver os eventos do grande evento. </span>
             </mat-list-item>
           }
-        </mat-list>
+        </mat-selection-list>
       </section>
     } @else {
       <div class="empty-state">

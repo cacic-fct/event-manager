@@ -3,6 +3,7 @@
   padding-bottom: 96px;
 }
 
+.page-nav,
 .validation-header,
 .header-actions,
 .stack-toolbar,
@@ -10,6 +11,11 @@
 .validation-fab {
   display: flex;
   align-items: center;
+}
+
+.page-nav {
+  justify-content: flex-start;
+  margin-bottom: 8px;
 }
 
 .validation-header {
@@ -194,6 +200,7 @@
 }
 
 @media (max-width: 900px) {
+  .page-nav,
   .validation-header,
   .validation-layout {
     grid-template-columns: 1fr;

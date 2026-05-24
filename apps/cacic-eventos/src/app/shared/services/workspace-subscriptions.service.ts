@@ -10,6 +10,7 @@ import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
 import {
   Event,
+  MajorEventPriceTier,
   Person,
   SubscriptionStatus,
   WorkspaceEventSubscription,
@@ -89,6 +90,24 @@ export class WorkspaceSubscriptionsService {
   readonly majorEventSubscriptions = signal<WorkspaceMajorEventSubscription[]>([]);
   readonly majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>([]);
   readonly selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(null);
+  readonly majorEventPaymentTiers = computed<MajorEventPriceTier[]>(() => {
+    const majorEventId = this.majorEventForm.controls.majorEventId.value;
+    const majorEvent = this.majorEvents().find((item) => item.id === majorEventId);
+    const tiers = majorEvent?.majorEventPrices[0]?.tiers ?? [];
+    const selectedTier = this.selectedMajorEventSubscription()?.paymentTier?.trim();
+    if (!selectedTier || tiers.some((tier) => tier.name === selectedTier)) {
+      return tiers;
+    }
+
+    return [
+      {
+        id: `selected-${selectedTier}`,
+        name: selectedTier,
+        value: 0,
+      },
+      ...tiers,
+    ];
+  });
   readonly majorEventPersonMatches = signal<Person[]>([]);
   readonly selectedMajorEventPerson = signal<Person | null>(null);
   readonly editMode = signal(false);
@@ -236,6 +255,20 @@ export class WorkspaceSubscriptionsService {
       selectedEventIds.delete(eventId);
     } else {
       selectedEventIds.add(eventId);
+    }
+    this.selectedEventIds.set(selectedEventIds);
+  }
+
+  setSelectedEvent(eventId: string, selected: boolean): void {
+    if (!this.editMode()) {
+      return;
+    }
+
+    const selectedEventIds = new Set(this.selectedEventIds());
+    if (selected) {
+      selectedEventIds.add(eventId);
+    } else {
+      selectedEventIds.delete(eventId);
     }
     this.selectedEventIds.set(selectedEventIds);
   }

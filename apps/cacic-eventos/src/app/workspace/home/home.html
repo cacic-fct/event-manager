@@ -85,9 +85,9 @@
     </mat-list>
   </section>
   } @if ( dashboard.pendingCertificates.length > 0 || dashboard.duplicatePeopleCount > 0 ||
-  dashboard.pendingReceiptValidationsCount > 0 ) {
+  dashboard.pendingReceiptMajorEvents.length > 0 ) {
   <section class="dashboard-grid">
-    @if (dashboard.pendingReceiptValidationsCount > 0) {
+    @if (dashboard.pendingReceiptMajorEvents.length > 0) {
     <mat-card appearance="outlined">
       <mat-card-header>
         <mat-icon mat-card-avatar>receipt_long</mat-icon>
@@ -96,12 +96,29 @@
           Há {{ dashboard.pendingReceiptValidationsCount }} comprovantes aguardando validação.
         </mat-card-subtitle>
       </mat-card-header>
-      <mat-card-actions align="end">
-        <a matButton="filled" routerLink="/subscriptions/validate-receipts">
-          <mat-icon>receipt_long</mat-icon>
-          Validar
-        </a>
-      </mat-card-actions>
+      <mat-card-content>
+        <mat-list class="compact-list embedded-list">
+          @for (item of dashboard.pendingReceiptMajorEvents; track item.majorEventId) {
+          <mat-list-item>
+            <span matListItemTitle class="list-title">
+              <app-twemoji [emoji]="item.emoji" />
+              <span>{{ item.name }}</span>
+            </span>
+            <span matListItemLine>
+              {{ receiptMajorEventSummary(item.pendingCount) }} · {{ item.startDate | date: 'shortDate' }}
+            </span>
+            <a
+              matIconButton
+              matListItemMeta
+              aria-label="Validar comprovantes"
+              matTooltip="Validar comprovantes"
+              [routerLink]="receiptValidationLink(item)">
+              <mat-icon>arrow_forward</mat-icon>
+            </a>
+          </mat-list-item>
+          }
+        </mat-list>
+      </mat-card-content>
     </mat-card>
     } @if (dashboard.pendingCertificates.length > 0) {
     <mat-card appearance="outlined">
@@ -174,27 +191,32 @@
 
 <ng-template #eventItem let-event="event">
   <mat-list-item>
-    <span matListItemTitle class="list-title">
-      <app-twemoji [emoji]="event.emoji" />
-      <span>{{ event.name }}</span>
-    </span>
-    <span matListItemLine>
-      {{ event.startDate | date: 'short' }} · {{ describeEventType(event.type) }} @if (event.majorEventName) { · {{
-      event.majorEventName }} } @if (event.eventGroupName) { · {{ event.eventGroupName }} }
-    </span>
-    @if (event.locationDescription) {
-    <span matListItemLine>{{ event.locationDescription }}</span>
-    } @if (event.canCollectAttendanceNow) {
-    <div matListItemMeta class="attendance-meta">
-      <mat-chip-set aria-label="Presenças e inscrições">
-        <mat-chip>{{ event.attendancesCount }} presenças</mat-chip>
-        <mat-chip>{{ event.subscriptionsCount }} inscrições</mat-chip>
-      </mat-chip-set>
-      <a matButton="filled" [routerLink]="eventAttendanceLink(event)" aria-label="Coletar presença">
-        <mat-icon>fact_check</mat-icon>
-        Presença
-      </a>
+    <div class="event-item-content">
+      <div class="event-item-main">
+        <span matListItemTitle class="list-title">
+          <app-twemoji [emoji]="event.emoji" />
+          <span>{{ event.name }}</span>
+        </span>
+        <span matListItemLine>
+          {{ event.startDate | date: 'short' }} · {{ describeEventType(event.type) }} @if (event.majorEventName) { · {{
+          event.majorEventName }} } @if (event.eventGroupName) { · {{ event.eventGroupName }} }
+        </span>
+        @if (event.locationDescription) {
+        <span matListItemLine>{{ event.locationDescription }}</span>
+        }
+      </div>
+      @if (event.canCollectAttendanceNow) {
+      <div class="attendance-meta">
+        <mat-chip-set aria-label="Presenças e inscrições">
+          <mat-chip>{{ event.attendancesCount }} presenças</mat-chip>
+          <mat-chip>{{ event.subscriptionsCount }} inscrições</mat-chip>
+        </mat-chip-set>
+        <a matButton="filled" [routerLink]="eventAttendanceLink(event)" aria-label="Coletar presença">
+          <mat-icon>fact_check</mat-icon>
+          Presença
+        </a>
+      </div>
+      }
     </div>
-    }
   </mat-list-item>
 </ng-template>

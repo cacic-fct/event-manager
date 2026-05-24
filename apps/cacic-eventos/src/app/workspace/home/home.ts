@@ -15,6 +15,7 @@ import type {
   DashboardCertificatePendingItem,
   DashboardInconsistency,
   DashboardInsightAction,
+  DashboardPendingReceiptMajorEvent,
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
@@ -154,6 +155,14 @@ export class Home implements OnInit, OnDestroy {
       item.targetType === 'EVENT' ? 'event' : item.targetType === 'EVENT_GROUP' ? 'event-group' : 'major-event';
 
     return [this.navMap()['certificates']?.path ?? 'certificates', targetType, item.targetId];
+  }
+
+  receiptValidationLink(item: DashboardPendingReceiptMajorEvent): string[] {
+    return [this.navMap()['subscriptions']?.path ?? 'subscriptions', 'major-event', item.majorEventId, 'validate-receipts'];
+  }
+
+  receiptMajorEventSummary(count: number): string {
+    return `${count} ${count === 1 ? 'comprovante pendente' : 'comprovantes pendentes'}`;
   }
 
   describeEventType(type: string): string {
