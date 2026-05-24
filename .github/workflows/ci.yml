@@ -58,7 +58,7 @@ jobs:
         run: bunx nx run-many --target=test --all --parallel=3
 
       - name: Build deployable apps
-        run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=1
+        run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=3
 
       - name: Collect coverage reports
         id: coverage
@@ -116,7 +116,7 @@ jobs:
 
           echo "$changed_files"
 
-          if echo "$changed_files" | grep -E '(^\.github/workflows/.*\.ya?ml$|(^|/)(package\.json|bun\.lock|\.npmrc|bunfig\.toml)$)'; then
+          if echo "$changed_files" | grep -E '(^\.github/workflows/.*\.ya?ml$|(^|/)(package\.json|bun\.lock|\.npmrc|bunfig\.toml)$|^apps/events-backend/prisma/|^apps/events-backend/prisma\.config\.ts$)'; then
             echo "::error::Fork PR changed CI/CD, dependency, or auth-related files."
             echo "::error::A maintainer must review this and run full CI from a trusted branch."
             exit 1
