@@ -106,7 +106,7 @@
           "apps/public/.storybook/compodoc"
         ],
         "styles": [
-          "@fontsource/material-icons-outlined",
+          "@fontsource/material-symbols-outlined",
           "@fontsource-variable/inter",
           "apps/cacic-eventos/src/styles.scss"
         ]

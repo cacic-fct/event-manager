@@ -7,7 +7,7 @@
 
 @import '@fontsource-variable/inter/index.css';
 @import '@fontsource-variable/source-code-pro/index.css';
-@import '@fontsource/material-icons-outlined/index.css';
+@import '@fontsource/material-symbols-outlined/index.css';
 
 @import 'node_modules/ol/ol.css';
 
@@ -44,8 +44,8 @@ body {
 }
 /* You can add global styles to this file, and also import other style files */
 
-.material-icons-outlined {
-  font-family: 'Material Icons Outlined';
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
   font-weight: normal;
   font-style: normal;
   font-size: 24px;
@@ -56,4 +56,6 @@ body {
   word-wrap: normal;
   white-space: nowrap;
   direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-feature-settings: 'liga';
 }
