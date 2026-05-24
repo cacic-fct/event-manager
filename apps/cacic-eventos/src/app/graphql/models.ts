@@ -25,6 +25,7 @@ export interface EventSummary {
   eventGroupId: string | null;
   startDate: string;
   name: string;
+  majorEvent?: Pick<MajorEvent, 'id' | 'name'> | null;
 }
 
 export interface MajorEvent {

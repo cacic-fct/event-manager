@@ -23,7 +23,7 @@
             </span>
             <span matListItemLine>
               @if (workspace.getFirstEventForGroupDisplay(group.id); as firstEvent) {
-                {{ firstEvent.startDate | date: 'short' }} · {{ firstEvent.name }}
+                {{ firstEvent.startDate | date: 'short' }} · {{ firstEvent.majorEvent?.name || firstEvent.name }}
               } @else {
                 <span class="empty-note">Nenhum evento vinculado</span>
               }

@@ -60,6 +60,10 @@ export class EventApiService {
             eventGroupId
             startDate
             name
+            majorEvent {
+              id
+              name
+            }
           }
         }`,
         filters,
