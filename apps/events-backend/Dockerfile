@@ -2,11 +2,13 @@
 
 FROM oven/bun:1 AS bun
 
-FROM node:26-trixie-slim AS base
+FROM node:22-trixie-slim AS base
 ENV BUN_INSTALL=/usr/local \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     SHARP_FORCE_GLOBAL_LIBVIPS=1 \
-    npm_config_build_from_source=true
+    npm_config_build_from_source=true \
+    CFLAGS="-O2 -march=x86-64 -mtune=generic" \
+    CXXFLAGS="-O2 -march=x86-64 -mtune=generic"
 
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 
