@@ -25,10 +25,10 @@
         "@aws-sdk/lib-storage": "^3.1052.0",
         "@bwip-js/browser": "^4.10.1",
         "@bwip-js/node": "^4.10.1",
-        "@cacic-fct/ngx-umami": "^1.1.0",
+        "@cacic-fct/ngx-umami": "^1.1.1",
         "@fontsource-variable/inter": "^5.2.8",
         "@fontsource-variable/source-code-pro": "^5.2.7",
-        "@fontsource/material-icons-outlined": "^5.2.6",
+        "@fontsource/material-symbols-outlined": "^5.2.45",
         "@micro-sentry/angular": "^7.2.0",
         "@nestjs/apollo": "^13.4.2",
         "@nestjs/bullmq": "^11.0.4",
@@ -707,7 +707,7 @@
 
     "@fontsource-variable/source-code-pro": ["@fontsource-variable/source-code-pro@5.2.7", "", {}, "sha512-kZ0VNwnhvSA7vu5MaiO52eicQ4zC+k+8HBLZb+1js0MK/RngLy25NEUFB1y/AKd0ZMwru88T433QBcFf9m/huw=="],
 
-    "@fontsource/material-icons-outlined": ["@fontsource/material-icons-outlined@5.2.6", "", {}, "sha512-99XKAkwnCg0s0/ywax+o3m01HSNM5gGzSBw+WnlWG2+WY3wOjcN+wXMfm4zP37Yme7Yze2DvKxF78tHWOrlwFw=="],
+    "@fontsource/material-symbols-outlined": ["@fontsource/material-symbols-outlined@5.2.45", "", {}, "sha512-5h50Z51CF8OqakobEgKOetQWpf+kEjGP9Oz7bunyCwqSq0MbfI7Qg1zTagLVz837rY2JaNxZoJ1d0h93J+nqXA=="],
 
     "@gar/promise-retry": ["@gar/promise-retry@1.0.3", "", {}, "sha512-GmzA9ckNokPypTg10pgpeHNQe7ph+iIKKmhKu3Ob9ANkswreCx7R3cKmY781K8QK3AqVL3xVh9A42JvIAbkkSA=="],
 
