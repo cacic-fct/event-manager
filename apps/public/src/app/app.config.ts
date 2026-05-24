@@ -1,7 +1,6 @@
 import {
   ApplicationConfig,
   LOCALE_ID,
-  importProvidersFrom,
   inject,
   isDevMode,
   provideAppInitializer,
@@ -18,9 +17,8 @@ import {
   AuthOnlineStatusService,
   AuthService,
   authInterceptor,
+  provideCacicObservability,
 } from '@cacic-fct/shared-angular';
-import { MicroSentryModule } from '@micro-sentry/angular';
-import { provideUmami } from '@cacic-fct/ngx-umami';
 import { MatIconRegistry } from '@angular/material/icon';
 import { provideServiceWorker } from '@angular/service-worker';
 import { AnalyticsService } from './analytics/analytics.service';
@@ -29,7 +27,12 @@ import { OfflineUserDataService } from './shared/offline-user-data.service';
 import { NetworkStatusService } from './shared/network-status.service';
 import { NetworkStatusSnackbarService } from './shared/network-status-snackbar.service';
 import { AppRouteReuseStrategy } from './tabs/reuse.strategy';
-import { isUserDiagnosticsEnabled } from './privacy/privacy-attributes';
+import {
+  isUserAnalyticsEnabled,
+  isUserDiagnosticsEnabled,
+  isUserPerformanceMonitoringEnabled,
+  readUserPrivacyFlag,
+} from './privacy/privacy-attributes';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
 import { PUBLIC_FEATURE_FLAG_CONFIG, type PublicFeatureFlagConfig } from './feature-flags/public-feature-flag.config';
 
@@ -81,20 +84,23 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
-    importProvidersFrom(
-      MicroSentryModule.forRoot({
+    provideCacicObservability({
+      analytics: {
+        websiteId: 'df6b1fa8-7566-4cb0-8dff-279d15cc0b5d',
+        domains: ['eventos.cacic.dev.br'],
+        isEnabled: isUserAnalyticsEnabled,
+        buildIdentifyData: (user) => ({
+          authenticated: true,
+          has_email: Boolean(user.email),
+          analytics_enabled: readUserPrivacyFlag(user, 'analytics_enabled') ?? true,
+          diagnostics_enabled: isUserDiagnosticsEnabled(user),
+          performance_monitoring_enabled: isUserPerformanceMonitoringEnabled(user),
+        }),
+      },
+      glitchtip: {
         dsn: 'https://44b2480fd6cd4402b61590135a093fd6@glitchtip.cacic.dev.br/1',
-        beforeSend: (request) => {
-          const authService = inject(AuthService);
-          return !isDevMode() && isUserDiagnosticsEnabled(authService.user()) ? request : null;
-        },
-      }),
-    ),
-    provideUmami({
-      websiteId: 'df6b1fa8-7566-4cb0-8dff-279d15cc0b5d',
-      src: 'https://a.cacic.dev.br/b.js',
-      autoTrack: false,
-      domains: ['eventos.cacic.dev.br'],
+        isEnabled: isUserDiagnosticsEnabled,
+      },
     }),
     provideAppInitializer(() => {
       const registry = inject(MatIconRegistry);
