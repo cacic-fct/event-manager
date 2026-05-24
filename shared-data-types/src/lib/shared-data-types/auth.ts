@@ -46,6 +46,9 @@ export class User {
   @Field(() => String, { nullable: true })
   academicId?: string;
 
+  @Field(() => [String])
+  unespRole!: string[];
+
   @Field(() => UserRole)
   role!: UserRole;
 

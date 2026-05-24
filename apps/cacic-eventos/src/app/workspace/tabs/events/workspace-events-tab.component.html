@@ -371,7 +371,13 @@
               [disabled]="!permissions.canEdit('event-lecturer#edit')"
               (click)="workspace.addLecturer(candidate)">
               <mat-icon>add</mat-icon>
-              Adicionar {{ candidate.name }}
+              <span class="person-choice">
+                <span>Adicionar {{ candidate.name }}</span>
+                <small>
+                  {{ candidate.identityDocument || 'Sem documento' }} ·
+                  {{ candidate.email || 'Sem e-mail principal' }}
+                </small>
+              </span>
             </button>
           } @empty {
             <span class="empty-note">Busque uma pessoa pelo nome.</span>
@@ -423,7 +429,13 @@
               [disabled]="!permissions.canEdit('event#edit')"
               (click)="workspace.addAttendanceCollector(candidate)">
               <mat-icon>add</mat-icon>
-              Adicionar {{ candidate.name }}
+              <span class="person-choice">
+                <span>Adicionar {{ candidate.name }}</span>
+                <small>
+                  {{ candidate.identityDocument || 'Sem documento' }} ·
+                  {{ candidate.email || 'Sem e-mail principal' }}
+                </small>
+              </span>
             </button>
           } @empty {
             <span class="empty-note">Busque uma pessoa pelo nome.</span>

@@ -26,6 +26,15 @@
         <mat-icon>groups</mat-icon>
         Carregar inscrições
       </button>
+
+      <button
+        mat-button
+        type="button"
+        [disabled]="!workspace.majorEventAttendanceForm.controls.majorEventId.value"
+        (click)="workspace.exportMajorEventAttendancesCsv()">
+        <mat-icon>download</mat-icon>
+        Baixar CSV
+      </button>
     </form>
 
     <mat-list class="subscription-list categorized-list">

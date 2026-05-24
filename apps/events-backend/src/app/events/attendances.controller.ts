@@ -50,7 +50,7 @@ export class EventAttendancesController {
             name: true,
             user: {
               select: {
-                role: true,
+                unespRole: true,
               },
             },
           },
@@ -115,7 +115,7 @@ export class EventAttendancesController {
       personId: attendance.personId,
       eventId: attendance.eventId,
       fullName: attendance.person?.name ?? null,
-      unespRole: attendance.person?.user?.role ?? null,
+      unespRole: this.formatUnespRole(attendance.person?.user?.unespRole),
       subscriptionStatus: subscriptionStatusByPersonId.get(attendance.personId) ?? null,
       attendedAt: attendance.attendedAt,
       createdByMethod: attendance.createdByMethod,
@@ -125,5 +125,9 @@ export class EventAttendancesController {
 
   private getFirstName(name: string): string {
     return name.trim().split(/\s+/)[0] || name;
+  }
+
+  private formatUnespRole(role: readonly string[] | null | undefined): string | null {
+    return role?.length ? role.join(', ') : null;
   }
 }

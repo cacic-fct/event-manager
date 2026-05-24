@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AuthSessionStoreService } from './auth-session-store.service';
 import { AuthorizationStateService } from './authorization-state.service';
 import { KeycloakAuthService } from './keycloak-auth.service';
+import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
 
 jest.mock('axios', () => ({
   __esModule: true,
@@ -23,6 +24,7 @@ describe('KeycloakAuthService', () => {
     'build' | 'getAuthorizationRedirectUri' | 'getPostLoginRedirectUri'
   >;
   let service: KeycloakAuthService;
+  let userClaimSync: Pick<jest.Mocked<AuthenticatedUserSyncService>, 'syncLoginClaims'>;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
@@ -40,9 +42,13 @@ describe('KeycloakAuthService', () => {
       getPostLoginRedirectUri: jest.fn().mockReturnValue('/after-login'),
     };
     mockedAxios.isAxiosError.mockReturnValue(false);
+    userClaimSync = {
+      syncLoginClaims: jest.fn().mockResolvedValue(undefined),
+    };
     service = new KeycloakAuthService(
       sessions as unknown as AuthSessionStoreService,
       authorizationState as unknown as AuthorizationStateService,
+      userClaimSync as unknown as AuthenticatedUserSyncService,
     );
   });
 
@@ -121,8 +127,13 @@ describe('KeycloakAuthService', () => {
   });
 
   it('creates, updates, refreshes, clears, and reads logout data for sessions', async () => {
-    const accessToken = jwt({ exp: 1_800_000_000 });
+    const accessToken = jwt({ exp: 1_800_000_000, sub: 'user-1', unesp_role: ['aluno-graduacao'] });
     const refreshToken = jwt({ exp: 1_900_000_000 });
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        active: true,
+      },
+    });
 
     const created = await service.createSession({
       access_token: accessToken,
@@ -140,6 +151,11 @@ describe('KeycloakAuthService', () => {
         accessToken,
         refreshToken,
         idTokenHint: 'id-token',
+      }),
+    );
+    expect(userClaimSync.syncLoginClaims).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: accessToken,
       }),
     );
 

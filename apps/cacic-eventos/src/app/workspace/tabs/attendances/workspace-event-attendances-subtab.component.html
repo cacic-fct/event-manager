@@ -75,6 +75,14 @@
         <button
           mat-flat-button
           type="button"
+          [disabled]="!workspace.selectedAttendanceEvent()"
+          (click)="workspace.exportEventAttendancesCsv()">
+          <mat-icon>download</mat-icon>
+          Baixar CSV
+        </button>
+        <button
+          mat-flat-button
+          type="button"
           [disabled]="
             !workspace.selectedAttendanceEvent() ||
             workspace.isImportingCsv() ||
@@ -102,6 +110,7 @@
           <mat-form-field>
             <mat-label>Identificador</mat-label>
             <mat-select formControlName="identifierType">
+              <mat-option value="query">Nome</mat-option>
               <mat-option value="userId">ID de usuário</mat-option>
               <mat-option value="identityDocument">Documento</mat-option>
               <mat-option value="email">E-mail</mat-option>
@@ -131,7 +140,10 @@
               type="button"
               [disabled]="!permissions.canEdit('event-attendance#edit')"
               (click)="workspace.registerAttendance(person)">
-              Registrar {{ person.name }}
+              <span class="person-choice">
+                <span>Registrar {{ person.name }}</span>
+                <small>{{ person.identityDocument || 'Sem documento' }} · {{ person.email || 'Sem e-mail principal' }}</small>
+              </span>
             </button>
           } @empty {
             <span class="empty-note">Busque uma pessoa para registrar.</span>

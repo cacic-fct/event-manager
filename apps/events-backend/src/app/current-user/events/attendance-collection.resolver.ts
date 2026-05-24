@@ -190,7 +190,7 @@ export class CurrentUserAttendanceCollectionResolver {
             name: true,
             user: {
               select: {
-                role: true,
+                unespRole: true,
               },
             },
           },
@@ -284,7 +284,7 @@ export class CurrentUserAttendanceCollectionResolver {
       personId: attendance.personId,
       eventId: attendance.eventId,
       fullName: attendance.person?.name ?? undefined,
-      unespRole: attendance.person?.user?.role ?? undefined,
+      unespRole: this.formatUnespRole(attendance.person?.user?.unespRole),
       subscriptionStatus:
         majorEventSubscriptionStatusByPersonId.get(attendance.personId) ??
         (standaloneEventSubscriptionKeys.has(`${attendance.personId}:${attendance.eventId}`) ? 'CONFIRMED' : undefined),
@@ -294,6 +294,10 @@ export class CurrentUserAttendanceCollectionResolver {
         ? (collectorFirstNameById.get(attendance.createdById) ?? undefined)
         : undefined,
     }));
+  }
+
+  private formatUnespRole(role: readonly string[] | null | undefined): string | undefined {
+    return role?.length ? role.join(', ') : undefined;
   }
 
   private async createAttendance(input: {

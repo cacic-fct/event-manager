@@ -267,7 +267,10 @@
                 [disabled]="!permissions.canEdit('certificate#edit')"
                 (click)="workspace.issueCertificateForPerson(person)">
                 <mat-icon>workspace_premium</mat-icon>
-                Emitir para {{ person.name }}
+                <span class="person-choice">
+                  <span>Emitir para {{ person.name }}</span>
+                  <small>{{ person.identityDocument || 'Sem documento' }} · {{ person.email || 'Sem e-mail principal' }}</small>
+                </span>
               </button>
             } @empty {
               <span class="empty-note">Busque uma pessoa para emitir.</span>

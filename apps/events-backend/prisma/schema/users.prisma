@@ -4,6 +4,7 @@ model User {
   name             String
   identityDocument String?
   academicId       String?
+  unespRole        String[] @default([])
   role             UserRole @default(USER)
 
   people People[]

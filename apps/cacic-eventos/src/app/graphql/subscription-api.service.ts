@@ -51,15 +51,15 @@ const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
 export class SubscriptionApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 
-  listEventSubscriptions(eventId: string) {
+  listEventSubscriptions(eventId: string, filters?: { skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ workspaceEventSubscriptions: WorkspaceEventSubscription[] }>(
-        `query WorkspaceEventSubscriptions($eventId: String!) {
-          workspaceEventSubscriptions(eventId: $eventId) {
+        `query WorkspaceEventSubscriptions($eventId: String!, $skip: Int, $take: Int) {
+          workspaceEventSubscriptions(eventId: $eventId, skip: $skip, take: $take) {
             ${WORKSPACE_EVENT_SUBSCRIPTION_FIELDS}
           }
         }`,
-        { eventId },
+        { eventId, skip: filters?.skip, take: filters?.take },
       )
       .pipe(map((data) => data.workspaceEventSubscriptions));
   }
@@ -81,17 +81,17 @@ export class SubscriptionApiService {
       .pipe(map((data) => data.createWorkspaceEventSubscription));
   }
 
-  listMajorEventSubscriptions(majorEventId: string) {
+  listMajorEventSubscriptions(majorEventId: string, filters?: { skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{
         workspaceMajorEventSubscriptions: WorkspaceMajorEventSubscription[];
       }>(
-        `query WorkspaceMajorEventSubscriptions($majorEventId: String!) {
-          workspaceMajorEventSubscriptions(majorEventId: $majorEventId) {
+        `query WorkspaceMajorEventSubscriptions($majorEventId: String!, $skip: Int, $take: Int) {
+          workspaceMajorEventSubscriptions(majorEventId: $majorEventId, skip: $skip, take: $take) {
             ${WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_FIELDS}
           }
         }`,
-        { majorEventId },
+        { majorEventId, skip: filters?.skip, take: filters?.take },
       )
       .pipe(map((data) => data.workspaceMajorEventSubscriptions));
   }

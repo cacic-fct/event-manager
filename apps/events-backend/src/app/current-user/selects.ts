@@ -9,6 +9,7 @@ export const USER_SELECT = {
   name: true,
   identityDocument: true,
   academicId: true,
+  unespRole: true,
   role: true,
   createdAt: true,
   createdById: true,

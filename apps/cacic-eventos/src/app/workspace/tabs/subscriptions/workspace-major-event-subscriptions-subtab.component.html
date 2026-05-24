@@ -30,6 +30,15 @@
       <button
         mat-button
         type="button"
+        [disabled]="!workspace.majorEventForm.controls.majorEventId.value"
+        (click)="workspace.exportMajorEventSubscriptionsCsv()">
+        <mat-icon>download</mat-icon>
+        Baixar CSV
+      </button>
+
+      <button
+        mat-button
+        type="button"
         [disabled]="!permissions.canEdit('subscription#edit')"
         (click)="workspace.startNewMajorEventSubscription()">
         <mat-icon>add</mat-icon>
@@ -150,7 +159,10 @@
           <div class="inline-list">
             @for (person of workspace.majorEventPersonMatches(); track person.id) {
               <button mat-stroked-button type="button" (click)="workspace.selectMajorEventPerson(person)">
-                Usar {{ person.name }}
+                <span class="person-choice">
+                  <span>Usar {{ person.name }}</span>
+                  <small>{{ person.identityDocument || 'Sem documento' }} · {{ person.email || 'Sem e-mail principal' }}</small>
+                </span>
               </button>
             }
           </div>
