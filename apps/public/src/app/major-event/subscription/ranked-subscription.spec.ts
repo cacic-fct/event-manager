@@ -8,6 +8,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { PublicEvent } from '@cacic-fct/shared-utils';
 import { NEVER, of } from 'rxjs';
+import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionRealtimeService } from './subscription-realtime.service';
 import { RankedMajorEventSubscription } from './ranked-subscription';
 import { RankedSubscriptionStore } from './ranked-subscription.store';
@@ -51,6 +52,12 @@ describe('RankedMajorEventSubscription', () => {
             watch: () => NEVER,
           },
         },
+        {
+          provide: AnalyticsService,
+          useValue: {
+            trackMajorEventSubscription: vi.fn(),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -61,7 +68,7 @@ describe('RankedMajorEventSubscription', () => {
   });
 
   afterEach(() => {
-    http.verify();
+    http?.verify();
   });
 
   it('creates ranking items from selected event groups', () => {

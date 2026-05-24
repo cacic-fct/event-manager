@@ -124,6 +124,7 @@ export class DashboardInsightsService {
       majorEventsCount,
       duplicatePeopleCount,
       pendingReceiptValidationsCount,
+      pendingReceiptMajorEvents,
       calendarEvents,
       upcomingMajorEventsCount,
       consistencyEvents,
@@ -146,6 +147,37 @@ export class DashboardInsightsService {
             isPaymentRequired: true,
           },
         },
+      }),
+      this.prisma.majorEvent.findMany({
+        where: {
+          deletedAt: null,
+          isPaymentRequired: true,
+          subscriptions: {
+            some: {
+              deletedAt: null,
+              subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          emoji: true,
+          startDate: true,
+          endDate: true,
+          _count: {
+            select: {
+              subscriptions: {
+                where: {
+                  deletedAt: null,
+                  subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
+                },
+              },
+            },
+          },
+        },
+        orderBy: { startDate: 'desc' },
+        take: 10,
       }),
       this.prisma.event.findMany({
         where: {
@@ -302,6 +334,16 @@ export class DashboardInsightsService {
       weatherAlerts: await buildWeatherAlerts(this.weatherService, calendarEvents),
       pendingCertificates: canManageCertificates ? await buildPendingCertificates(this.prisma, now) : [],
       pendingReceiptValidationsCount: canValidateReceipts ? pendingReceiptValidationsCount : 0,
+      pendingReceiptMajorEvents: canValidateReceipts
+        ? pendingReceiptMajorEvents.map((majorEvent) => ({
+            majorEventId: majorEvent.id,
+            name: majorEvent.name,
+            emoji: majorEvent.emoji,
+            startDate: majorEvent.startDate,
+            endDate: majorEvent.endDate,
+            pendingCount: majorEvent._count.subscriptions,
+          }))
+        : [],
       inconsistencies:
         canManageEvents || canManageCertificates
           ? buildInconsistencies({

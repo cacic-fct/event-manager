@@ -1,7 +1,7 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -64,8 +64,10 @@ interface EventDayGroup {
 })
 export class WorkspaceReceiptValidationComponent {
   private readonly api = inject(ReceiptValidationApiService);
+  private readonly route = inject(ActivatedRoute);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly majorEventId = this.route.snapshot.paramMap.get('majorEventId') ?? undefined;
 
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
@@ -82,16 +84,21 @@ export class WorkspaceReceiptValidationComponent {
     reason: ['', Validators.required],
   });
 
-  protected readonly currentItem = computed(() => this.queue().items[this.selectedIndex()] ?? null);
+  protected readonly pendingCount = computed(() => this.queue()?.pendingCount ?? 0);
+  protected readonly totalItems = computed(() => this.queue()?.items.length ?? 0);
+  protected readonly currentItem = computed(() => this.queue()?.items[this.selectedIndex()] ?? null);
   protected readonly currentPosition = computed(() =>
-    this.queue().items.length === 0 ? 0 : Math.min(this.selectedIndex() + 1, this.queue().items.length),
+    this.totalItems() === 0 ? 0 : Math.min(this.selectedIndex() + 1, this.totalItems()),
   );
   protected readonly eventGroups = computed(() => this.groupEventsByDay(this.currentItem()?.events ?? []));
   protected readonly selectedEventCount = computed(() => this.selectedEventIds().size);
+  protected readonly subscriptionsLink = computed(() =>
+    this.majorEventId ? ['/subscriptions/major-event', this.majorEventId] : ['/subscriptions'],
+  );
 
   constructor() {
     this.api
-      .watchQueue()
+      .watchQueue(this.majorEventId)
       .pipe(takeUntilDestroyed())
       .subscribe({
         next: (queue) => {
@@ -265,7 +272,7 @@ export class WorkspaceReceiptValidationComponent {
 
   private async refreshQueue(): Promise<void> {
     try {
-      this.queue.set(await firstValueFrom(this.api.getQueue()));
+      this.queue.set(await firstValueFrom(this.api.getQueue(this.majorEventId)));
       this.clampSelectedIndex(this.queue().items.length);
       this.error.set(null);
     } catch (error) {

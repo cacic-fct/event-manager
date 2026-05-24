@@ -12,6 +12,8 @@ describe('ToolbarLayoutComponent', () => {
   let flags: Record<string, boolean>;
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
+
     authState = signal(true);
     flags = {
       calendarTabEnabled: true,

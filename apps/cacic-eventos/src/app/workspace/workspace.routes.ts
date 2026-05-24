@@ -143,13 +143,8 @@ export const workspaceRoutes: Route[] = [
           (m) => m.WorkspaceSubscriptionsTabComponent,
         ),
       ),
-      ...guardedWorkspaceTabRoute(`${subscriptionsData.path}/major-event/:majorEventId`, subscriptionsData, () =>
-        import('./tabs/subscriptions/workspace-subscriptions-tab.component').then(
-          (m) => m.WorkspaceSubscriptionsTabComponent,
-        ),
-      ),
       {
-        path: `${subscriptionsData.path}/validate-receipts`,
+        path: `${subscriptionsData.path}/major-event/:majorEventId/validate-receipts`,
         data: subscriptionsData,
         canMatch: [canValidateReceiptsGuard],
         loadComponent: () =>
@@ -158,12 +153,16 @@ export const workspaceRoutes: Route[] = [
           ),
       },
       {
-        path: `${subscriptionsData.path}/validate-receipts`,
+        path: `${subscriptionsData.path}/major-event/:majorEventId/validate-receipts`,
         data: subscriptionsData,
         loadComponent: () =>
           import('./workspace-permission-denied.component').then((m) => m.WorkspacePermissionDeniedComponent),
       },
-
+      ...guardedWorkspaceTabRoute(`${subscriptionsData.path}/major-event/:majorEventId`, subscriptionsData, () =>
+        import('./tabs/subscriptions/workspace-subscriptions-tab.component').then(
+          (m) => m.WorkspaceSubscriptionsTabComponent,
+        ),
+      ),
       ...guardedWorkspaceTabRoute(permissionsData.path, permissionsData, () =>
         import('./tabs/permissions/workspace-permissions-tab.component').then(
           (m) => m.WorkspacePermissionsTabComponent,

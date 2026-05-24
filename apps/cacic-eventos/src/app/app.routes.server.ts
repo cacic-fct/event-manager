@@ -42,6 +42,10 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'subscriptions/major-event/:majorEventId/validate-receipts',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'subscriptions/major-event/:majorEventId',
     renderMode: RenderMode.Client,
   },

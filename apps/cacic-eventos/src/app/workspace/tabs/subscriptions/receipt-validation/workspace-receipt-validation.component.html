@@ -1,8 +1,15 @@
 <section class="section receipt-validation-page">
+  <nav class="page-nav" aria-label="Navegação da página">
+    <a mat-button [routerLink]="subscriptionsLink()">
+      <mat-icon>arrow_back</mat-icon>
+      Inscrições
+    </a>
+  </nav>
+
   <header class="validation-header">
     <div>
       <h1>Validação de comprovantes</h1>
-      <p>{{ queue().pendingCount }} pendente{{ queue().pendingCount === 1 ? '' : 's' }}</p>
+      <p>{{ pendingCount() }} pendente{{ pendingCount() === 1 ? '' : 's' }}</p>
     </div>
 
     <div class="header-actions">
@@ -12,10 +19,6 @@
           Desfazer
         </button>
       }
-      <a mat-button routerLink="/subscriptions">
-        <mat-icon>arrow_back</mat-icon>
-        Inscrições
-      </a>
     </div>
   </header>
 
@@ -100,12 +103,8 @@
         <button matIconButton type="button" [disabled]="selectedIndex() === 0" (click)="previousReceipt()">
           <mat-icon>chevron_left</mat-icon>
         </button>
-        <span>{{ currentPosition() }} de {{ queue().items.length }}</span>
-        <button
-          matIconButton
-          type="button"
-          [disabled]="selectedIndex() + 1 >= queue().items.length"
-          (click)="nextReceipt()">
+        <span>{{ currentPosition() }} de {{ totalItems() }}</span>
+        <button matIconButton type="button" [disabled]="selectedIndex() + 1 >= totalItems()" (click)="nextReceipt()">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </section>
@@ -193,19 +192,6 @@
           </mat-card-header>
 
           <mat-card-content>
-            @if (item.receipt && !imageUnavailable()) {
-              <div class="receipt-image-shell">
-                <img [src]="item.receipt.imageUrl" alt="Comprovante enviado" (error)="onImageError()" />
-              </div>
-            } @else if (item.receipt?.ocrText) {
-              <pre class="ocr-fallback">{{ item.receipt?.ocrText }}</pre>
-            } @else {
-              <div class="missing-receipt">
-                <mat-icon>image_not_supported</mat-icon>
-                <span>Comprovante indisponível. A inscrição continua na fila para recusa manual.</span>
-              </div>
-            }
-
             @if (hasOcrMatches(item) && item.receipt) {
               <mat-divider />
               <section class="ocr-matches">
@@ -219,6 +205,19 @@
                   }
                 </mat-chip-set>
               </section>
+            }
+
+            @if (item.receipt && !imageUnavailable()) {
+              <div class="receipt-image-shell">
+                <img [src]="item.receipt.imageUrl" alt="Comprovante enviado" (error)="onImageError()" />
+              </div>
+            } @else if (item.receipt?.ocrText) {
+              <pre class="ocr-fallback">{{ item.receipt?.ocrText }}</pre>
+            } @else {
+              <div class="missing-receipt">
+                <mat-icon>image_not_supported</mat-icon>
+                <span>Comprovante indisponível. A inscrição continua na fila para recusa manual.</span>
+              </div>
             }
           </mat-card-content>
         </mat-card>

@@ -91,6 +91,16 @@ describe('DashboardInsightsService generation', () => {
     prisma.majorEvent.findMany
       .mockResolvedValueOnce([
         {
+          id: 'receipt-major',
+          name: 'Receipt major',
+          emoji: '🎓',
+          startDate: new Date('2026-05-24T10:00:00.000Z'),
+          endDate: new Date('2026-05-26T20:00:00.000Z'),
+          _count: { subscriptions: 5 },
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
           id: 'pending-major',
           name: 'Pending major',
           endDate: new Date('2026-05-18T10:00:00.000Z'),
@@ -142,6 +152,16 @@ describe('DashboardInsightsService generation', () => {
       'pending-major-lecturers',
     ]);
     expect(result.pendingReceiptValidationsCount).toBe(5);
+    expect(result.pendingReceiptMajorEvents).toEqual([
+      {
+        majorEventId: 'receipt-major',
+        name: 'Receipt major',
+        emoji: '🎓',
+        startDate: new Date('2026-05-24T10:00:00.000Z'),
+        endDate: new Date('2026-05-26T20:00:00.000Z'),
+        pendingCount: 5,
+      },
+    ]);
     expect(result.duplicatePeopleCount).toBe(4);
     expect(result.inconsistencies.map((item) => item.type)).toEqual(
       expect.arrayContaining([
@@ -173,7 +193,7 @@ describe('DashboardInsightsService generation', () => {
       ]),
     );
     expect(redis.set).toHaveBeenCalledWith(
-      'dashboard:workspace:v2:certificate#edit,event#edit,major-event#edit,merge-candidate#read,person#manage,validate-receipt:read',
+      'dashboard:workspace:v3:certificate#edit,event#edit,major-event#edit,merge-candidate#read,person#manage,validate-receipt:read',
       expect.stringContaining('"eventsCount":10'),
       'EX',
       300,
@@ -192,6 +212,7 @@ describe('DashboardInsightsService generation', () => {
     prisma.majorEvent.count.mockResolvedValue(0);
     prisma.mergeCandidate.count.mockResolvedValue(9);
     prisma.majorEventSubscription.count.mockResolvedValue(8);
+    prisma.majorEvent.findMany.mockResolvedValue([]);
     prisma.event.findMany.mockResolvedValue([]);
     prisma.eventGroup.findMany.mockResolvedValue([]);
 
@@ -203,6 +224,7 @@ describe('DashboardInsightsService generation', () => {
       'CREATE_MAJOR_EVENT',
     ]);
     expect(result.pendingReceiptValidationsCount).toBe(0);
+    expect(result.pendingReceiptMajorEvents).toEqual([]);
     expect(result.duplicatePeopleCount).toBe(0);
     expect(redis.get).not.toHaveBeenCalled();
     expect(redis.set).not.toHaveBeenCalled();

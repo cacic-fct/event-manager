@@ -161,6 +161,27 @@ export class DashboardCertificatePendingItem {
 }
 
 @ObjectType()
+export class DashboardPendingReceiptMajorEvent {
+  @Field(() => String)
+  majorEventId!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  emoji!: string;
+
+  @Field(() => Date)
+  startDate!: Date;
+
+  @Field(() => Date)
+  endDate!: Date;
+
+  @Field(() => Int)
+  pendingCount!: number;
+}
+
+@ObjectType()
 export class DashboardInconsistency {
   @Field(() => DashboardInconsistencyType)
   type!: DashboardInconsistencyType;
@@ -239,6 +260,9 @@ export class WorkspaceDashboardInsights {
 
   @Field(() => Int)
   pendingReceiptValidationsCount!: number;
+
+  @Field(() => [DashboardPendingReceiptMajorEvent])
+  pendingReceiptMajorEvents!: DashboardPendingReceiptMajorEvent[];
 
   @Field(() => [DashboardInconsistency])
   inconsistencies!: DashboardInconsistency[];

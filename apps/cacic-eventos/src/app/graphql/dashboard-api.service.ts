@@ -56,6 +56,14 @@ export class DashboardApiService {
               finishedAt
             }
             pendingReceiptValidationsCount
+            pendingReceiptMajorEvents {
+              majorEventId
+              name
+              emoji
+              startDate
+              endDate
+              pendingCount
+            }
             inconsistencies {
               type
               action

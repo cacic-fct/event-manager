@@ -90,35 +90,98 @@
             {{ workspace.selectedMajorEventUserAttendance()?.paymentTier ?? '-' }}
           </p>
         </div>
+        <div class="panel-actions">
+          @if (workspace.majorEventAttendanceEditMode()) {
+            <button mat-button type="button" (click)="workspace.cancelMajorEventAttendanceEdit()">
+              Cancelar
+            </button>
+            <button mat-flat-button type="button" (click)="workspace.saveMajorEventAttendanceEdit()">
+              <mat-icon>save</mat-icon>
+              Salvar
+            </button>
+          } @else {
+            <button
+              mat-button
+              type="button"
+              [disabled]="!permissions.canEdit('event-attendance#edit')"
+              (click)="workspace.enableMajorEventAttendanceEdit()">
+              <mat-icon>edit</mat-icon>
+              Editar
+            </button>
+          }
+        </div>
       </div>
 
-      <mat-list class="attendance-list">
+      <form [formGroup]="workspace.majorEventAttendanceEditForm" class="detail-form">
+        <mat-form-field>
+          <mat-label>Status</mat-label>
+          <mat-select formControlName="subscriptionStatus" [disabled]="!workspace.majorEventAttendanceEditMode()">
+            @for (status of statuses; track status) {
+              <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Valor pago</mat-label>
+          <input
+            matInput
+            type="number"
+            formControlName="amountPaid"
+            [readonly]="!workspace.majorEventAttendanceEditMode()" />
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Data do pagamento</mat-label>
+          <input
+            matInput
+            type="date"
+            formControlName="paymentDate"
+            [readonly]="!workspace.majorEventAttendanceEditMode()" />
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Faixa de pagamento</mat-label>
+          <mat-select formControlName="paymentTier" [disabled]="!workspace.majorEventAttendanceEditMode()">
+            <mat-option [value]="null">Não informado</mat-option>
+            @for (tier of workspace.majorEventAttendancePaymentTiers(); track tier.id) {
+              <mat-option [value]="tier.name">{{ tier.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </form>
+
+      <mat-selection-list class="attendance-list" [multiple]="true">
         @for (
           attendanceStatus of workspace.selectedMajorEventUserAttendance()?.attendances ?? [];
           track attendanceStatus.eventId
         ) {
-          <mat-list-item [class.attended]="attendanceStatus.attended" [class.missed]="!attendanceStatus.attended">
+          <mat-list-option
+            checkboxPosition="before"
+            [selected]="workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId)"
+            [disabled]="!workspace.majorEventAttendanceEditMode()"
+            [class.attended]="workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId)"
+            [class.missed]="!workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId)"
+            [class.editable-list-item]="workspace.majorEventAttendanceEditMode()"
+            (selectedChange)="workspace.setMajorEventAttendanceEvent(attendanceStatus.eventId, $event)">
             <span matListItemTitle class="attendance-item-title">
               {{ attendanceStatus.eventName }}
             </span>
             <span matListItemLine class="attendance-item-line">
-              {{ attendanceStatus.attended ? 'Presente' : 'Ausente' }}
+              {{
+                workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId) ? 'Presente' : 'Ausente'
+              }}
               @if (attendanceStatus.attendedAt) {
                 · {{ attendanceStatus.attendedAt | date: 'short' }}
               }
-              @if (attendanceStatus.attended) {
+              @if (workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId)) {
                 ·
                 {{ workspace.getAttendanceCategoryLabel(attendanceStatus.category) }}
               }
             </span>
-            <div matListItemMeta>
-              <mat-icon>
-                {{ attendanceStatus.attended ? 'check_circle' : 'radio_button_unchecked' }}
-              </mat-icon>
-            </div>
-          </mat-list-item>
+          </mat-list-option>
         }
-      </mat-list>
+      </mat-selection-list>
     } @else {
       <div class="empty-state">
         <mat-icon>fact_check</mat-icon>

@@ -1,9 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { firstValueFrom } from 'rxjs';
 import { ReceiptValidationApiService } from '../../../graphql/receipt-validation-api.service';
@@ -16,10 +13,7 @@ import { WorkspaceMajorEventSubscriptionsSubtabComponent } from './workspace-maj
   selector: 'app-workspace-subscriptions-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    MatButtonModule,
-    MatIconModule,
     MatTabsModule,
-    RouterLink,
     WorkspaceEventSubscriptionsSubtabComponent,
     WorkspaceMajorEventSubscriptionsSubtabComponent,
   ],
@@ -34,10 +28,14 @@ export class WorkspaceSubscriptionsTabComponent {
   private readonly receiptValidationApi = inject(ReceiptValidationApiService);
 
   protected readonly selectedTabIndex = signal(0);
-  protected readonly pendingReceiptsCount = signal(0);
+  protected readonly selectedMajorEventPendingReceiptsCount = signal(0);
 
   constructor() {
-    void this.loadPendingReceiptCount();
+    void this.initializeReceiptValidation();
+
+    this.workspace.majorEventForm.controls.majorEventId.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      void this.loadSelectedMajorEventPendingReceiptCount();
+    });
 
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const eventId = params.get('eventId');
@@ -59,15 +57,30 @@ export class WorkspaceSubscriptionsTabComponent {
     });
   }
 
-  private async loadPendingReceiptCount(): Promise<void> {
+  private async initializeReceiptValidation(): Promise<void> {
     await this.permissions.evaluateWorkspacePermissions();
     if (!this.permissions.has('validate-receipt:read')) {
-      this.pendingReceiptsCount.set(0);
+      this.selectedMajorEventPendingReceiptsCount.set(0);
       return;
     }
 
-    const result = await firstValueFrom(this.receiptValidationApi.getPendingCount());
-    this.pendingReceiptsCount.set(result.pendingCount);
+    await this.loadSelectedMajorEventPendingReceiptCount();
+  }
+
+  private async loadSelectedMajorEventPendingReceiptCount(): Promise<void> {
+    if (!this.permissions.has('validate-receipt:read')) {
+      this.selectedMajorEventPendingReceiptsCount.set(0);
+      return;
+    }
+
+    const majorEventId = this.workspace.majorEventForm.controls.majorEventId.value;
+    if (!majorEventId) {
+      this.selectedMajorEventPendingReceiptsCount.set(0);
+      return;
+    }
+
+    const queue = await firstValueFrom(this.receiptValidationApi.getQueue(majorEventId));
+    this.selectedMajorEventPendingReceiptsCount.set(queue.pendingCount);
   }
 
   protected onSelectedTabIndexChange(index: number): void {

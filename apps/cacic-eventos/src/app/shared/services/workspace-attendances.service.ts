@@ -9,7 +9,16 @@ import { parseCsv } from '@cacic-fct/shared-utils';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { AttendanceCategory, Event, EventAttendance, MajorEventUserAttendance, Person } from '../../graphql/models';
+import { SubscriptionApiService } from '../../graphql/subscription-api.service';
+import {
+  AttendanceCategory,
+  Event,
+  EventAttendance,
+  MajorEventPriceTier,
+  MajorEventUserAttendance,
+  Person,
+  SubscriptionStatus,
+} from '../../graphql/models';
 import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/attendance-csv-column-dialog.component';
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
 import { SubscriberCsvExportDialogComponent } from '../../workspace/dialogs/subscriber-csv-export-dialog.component';
@@ -46,6 +55,7 @@ type AttendanceCategoryGroup = {
 
 const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
 const EXPORT_PAGE_SIZE = 1000;
+const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
 
 const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; description: string }> = {
   NON_PAYING: {
@@ -71,6 +81,7 @@ const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; de
 })
 export class WorkspaceAttendancesService {
   private readonly api = inject(AttendanceApiService);
+  private readonly subscriptionApi = inject(SubscriptionApiService);
   private readonly eventApi = inject(EventApiService);
   private readonly peopleApi = inject(PeopleApiService);
   private readonly dialog = inject(MatDialog);
@@ -110,6 +121,33 @@ export class WorkspaceAttendancesService {
     })).filter((group) => group.attendances.length > 0);
   });
   readonly majorEventUserAttendances = signal<MajorEventUserAttendance[]>([]);
+  readonly majorEventAttendanceEditMode = signal(false);
+  readonly majorEventAttendanceEditForm = this.formBuilder.group({
+    subscriptionStatus: this.formBuilder.nonNullable.control<SubscriptionStatus>(DEFAULT_SUBSCRIPTION_STATUS, [
+      Validators.required,
+    ]),
+    amountPaid: this.formBuilder.control<number | null>(null),
+    paymentDate: this.formBuilder.control<string | null>(null),
+    paymentTier: this.formBuilder.control<string | null>(null),
+  });
+  readonly majorEventAttendancePaymentTiers = computed<MajorEventPriceTier[]>(() => {
+    const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
+    const majorEvent = this.majorEvents().find((item) => item.id === majorEventId);
+    const tiers = majorEvent?.majorEventPrices[0]?.tiers ?? [];
+    const selectedTier = this.selectedMajorEventUserAttendance()?.paymentTier?.trim();
+    if (!selectedTier || tiers.some((tier) => tier.name === selectedTier)) {
+      return tiers;
+    }
+
+    return [
+      {
+        id: `selected-${selectedTier}`,
+        name: selectedTier,
+        value: 0,
+      },
+      ...tiers,
+    ];
+  });
   readonly majorEventUserAttendanceGroups = computed<AttendanceCategoryGroup[]>(() => {
     const groups = new Map<AttendanceCategory, MajorEventUserAttendance[]>(
       ATTENDANCE_CATEGORY_ORDER.map((category) => [category, []]),
@@ -126,6 +164,7 @@ export class WorkspaceAttendancesService {
     })).filter((group) => group.attendances.length > 0);
   });
   readonly selectedMajorEventUserAttendance = signal<MajorEventUserAttendance | null>(null);
+  readonly selectedMajorEventAttendanceEventIds = signal<Set<string>>(new Set());
   readonly isImportingCsv = signal(false);
 
   readonly attendanceForm = this.formBuilder.nonNullable.group({
@@ -363,7 +402,7 @@ export class WorkspaceAttendancesService {
     const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
     if (!majorEventId) {
       this.majorEventUserAttendances.set([]);
-      this.selectedMajorEventUserAttendance.set(null);
+      this.selectMajorEventUserAttendance(null);
       return;
     }
     void this.router.navigate(['/attendances/major-event', majorEventId]);
@@ -377,12 +416,12 @@ export class WorkspaceAttendancesService {
         (attendance) => attendance.subscriptionId === selected.subscriptionId,
       );
       if (refreshedSelection) {
-        this.selectedMajorEventUserAttendance.set(refreshedSelection);
+        this.selectMajorEventUserAttendance(refreshedSelection);
         return;
       }
     }
 
-    this.selectedMajorEventUserAttendance.set(attendances[0] ?? null);
+    this.selectMajorEventUserAttendance(attendances[0] ?? null);
   }
 
   async refreshMajorEventUserAttendancesFor(majorEventId: string): Promise<void> {
@@ -399,8 +438,94 @@ export class WorkspaceAttendancesService {
     await this.loadMajorEventUserAttendances();
   }
 
-  selectMajorEventUserAttendance(attendance: MajorEventUserAttendance): void {
+  selectMajorEventUserAttendance(attendance: MajorEventUserAttendance | null): void {
     this.selectedMajorEventUserAttendance.set(attendance);
+    this.majorEventAttendanceEditMode.set(false);
+    this.resetMajorEventAttendanceDraft(attendance);
+  }
+
+  enableMajorEventAttendanceEdit(): void {
+    if (!this.selectedMajorEventUserAttendance()) {
+      return;
+    }
+    this.majorEventAttendanceEditMode.set(true);
+  }
+
+  cancelMajorEventAttendanceEdit(): void {
+    this.resetMajorEventAttendanceDraft(this.selectedMajorEventUserAttendance());
+    this.majorEventAttendanceEditMode.set(false);
+  }
+
+  toggleMajorEventAttendanceEvent(eventId: string): void {
+    if (!this.majorEventAttendanceEditMode()) {
+      return;
+    }
+
+    const selectedEventIds = new Set(this.selectedMajorEventAttendanceEventIds());
+    if (selectedEventIds.has(eventId)) {
+      selectedEventIds.delete(eventId);
+    } else {
+      selectedEventIds.add(eventId);
+    }
+    this.selectedMajorEventAttendanceEventIds.set(selectedEventIds);
+  }
+
+  setMajorEventAttendanceEvent(eventId: string, attended: boolean): void {
+    if (!this.majorEventAttendanceEditMode()) {
+      return;
+    }
+
+    const selectedEventIds = new Set(this.selectedMajorEventAttendanceEventIds());
+    if (attended) {
+      selectedEventIds.add(eventId);
+    } else {
+      selectedEventIds.delete(eventId);
+    }
+    this.selectedMajorEventAttendanceEventIds.set(selectedEventIds);
+  }
+
+  async saveMajorEventAttendanceEdit(): Promise<void> {
+    const selected = this.selectedMajorEventUserAttendance();
+    if (!selected) {
+      return;
+    }
+
+    const selectedEventIds = this.selectedMajorEventAttendanceEventIds();
+    const previousEventIds = new Set(
+      selected.attendances.filter((attendance) => attendance.attended).map((attendance) => attendance.eventId),
+    );
+    const formValue = this.majorEventAttendanceEditForm.getRawValue();
+
+    try {
+      if (selected.subscriptionId) {
+        await firstValueFrom(
+          this.subscriptionApi.updateMajorEventSubscription(selected.subscriptionId, {
+            subscriptionStatus: formValue.subscriptionStatus,
+            amountPaid: formValue.amountPaid,
+            paymentDate: formValue.paymentDate,
+            paymentTier: formValue.paymentTier,
+          }),
+        );
+      }
+
+      for (const eventId of selectedEventIds) {
+        if (!previousEventIds.has(eventId)) {
+          await firstValueFrom(this.api.createEventAttendance({ eventId, personId: selected.personId }));
+        }
+      }
+
+      for (const eventId of previousEventIds) {
+        if (!selectedEventIds.has(eventId)) {
+          await firstValueFrom(this.api.deleteEventAttendance({ eventId, personId: selected.personId }));
+        }
+      }
+
+      this.majorEventAttendanceEditMode.set(false);
+      await this.loadMajorEventUserAttendances();
+      this.snackbar.open('Presença atualizada.', 'Fechar', { duration: 2500 });
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a presença.'), 'Fechar', { duration: 5000 });
+    }
   }
 
   getMajorEventUserAttendanceCategory(attendance: MajorEventUserAttendance): AttendanceCategory {
@@ -415,6 +540,22 @@ export class WorkspaceAttendancesService {
 
   getAttendanceCategoryLabel(category: AttendanceCategory): string {
     return ATTENDANCE_CATEGORY_LABELS[category].label;
+  }
+
+  private resetMajorEventAttendanceDraft(attendance: MajorEventUserAttendance | null): void {
+    this.majorEventAttendanceEditForm.reset({
+      subscriptionStatus: (attendance?.subscriptionStatus as SubscriptionStatus | undefined) ?? DEFAULT_SUBSCRIPTION_STATUS,
+      amountPaid: attendance?.amountPaid ?? null,
+      paymentDate: attendance?.paymentDate?.slice(0, 10) ?? null,
+      paymentTier: attendance?.paymentTier ?? null,
+    });
+    this.selectedMajorEventAttendanceEventIds.set(
+      new Set(
+        attendance?.attendances
+          .filter((attendanceStatus) => attendanceStatus.attended)
+          .map((attendanceStatus) => attendanceStatus.eventId) ?? [],
+      ),
+    );
   }
 
   async exportEventAttendancesCsv(): Promise<void> {
