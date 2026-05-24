@@ -1,13 +1,26 @@
 # syntax=docker/dockerfile:1
+
 FROM oven/bun:1 AS bun
 
-FROM node:22-trixie-slim AS base
+FROM node:26-trixie-slim AS base
 ENV BUN_INSTALL=/usr/local \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    SHARP_FORCE_GLOBAL_LIBVIPS=1 \
+    npm_config_build_from_source=true
 
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 
 WORKDIR /workspace
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      python3 \
+      make \
+      g++ \
+      pkg-config \
+      libvips-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps
 COPY package.json bun.lock ./
@@ -49,8 +62,7 @@ COPY package.json bun.lock ./
 COPY .npmrc ./
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=npm_token \
-    export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
+    --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKEN,required=true \
     bun install --frozen-lockfile --production
 
 COPY --from=prisma-deps /workspace/node_modules/.prisma ./node_modules/.prisma
@@ -62,7 +74,9 @@ COPY apps/events-backend/prisma ./apps/events-backend/prisma
 FROM base AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    # Old DTI server's CPU needs manual sharp build
+    SHARP_FORCE_GLOBAL_LIBVIPS=1
 
 WORKDIR /app
 
