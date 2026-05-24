@@ -120,6 +120,7 @@ export class CurrentUserEventMapperService {
       name: user.name,
       identityDocument: user.identityDocument ?? undefined,
       academicId: user.academicId ?? undefined,
+      unespRole: user.unespRole,
       role: user.role === 'CACIC' ? UserRole.CACIC : user.role,
       createdAt: user.createdAt,
       createdById: user.createdById ?? undefined,

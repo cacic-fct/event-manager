@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -19,12 +20,15 @@ import { PeopleApiService } from '../../graphql/people-api.service';
 import { SubscriptionApiService } from '../../graphql/subscription-api.service';
 import { SubscriptionCsvColumnDialogComponent } from '../../workspace/dialogs/subscription-csv-column-dialog.component';
 import { SubscriptionCsvImportResultDialogComponent } from '../../workspace/dialogs/subscription-csv-import-result-dialog.component';
+import { SubscriberCsvExportDialogComponent } from '../../workspace/dialogs/subscriber-csv-export-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
+import { buildSubscriberCsv } from '../subscriber-csv-export';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspaceAttendancesService } from './workspace-attendances.service';
 
 const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
+const EXPORT_PAGE_SIZE = 1000;
 
 @Injectable({
   providedIn: 'root',
@@ -40,6 +44,7 @@ export class WorkspaceSubscriptionsService {
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
   private readonly attendanceApi = inject(AttendanceApiService);
+  private readonly document = inject(DOCUMENT);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
   readonly eventFiltersForm = this.formBuilder.nonNullable.group({
@@ -123,7 +128,9 @@ export class WorkspaceSubscriptionsService {
       this.eventSubscriptions.set([]);
       return;
     }
-    this.eventSubscriptions.set(await firstValueFrom(this.api.listEventSubscriptions(resolvedEventId)));
+    this.eventSubscriptions.set(
+      await firstValueFrom(this.api.listEventSubscriptions(resolvedEventId, { take: EXPORT_PAGE_SIZE })),
+    );
   }
 
   async findEventPerson(): Promise<void> {
@@ -165,7 +172,9 @@ export class WorkspaceSubscriptionsService {
       return;
     }
     void this.router.navigate(['/subscriptions/major-event', majorEventId]);
-    const subscriptions = await firstValueFrom(this.api.listMajorEventSubscriptions(majorEventId));
+    const subscriptions = await firstValueFrom(
+      this.api.listMajorEventSubscriptions(majorEventId, { take: EXPORT_PAGE_SIZE }),
+    );
     const events =
       subscriptions[0]?.events ??
       (await firstValueFrom(this.eventApi.listEvents({ majorEventId, take: 200 }))).map((eventItem) => ({
@@ -381,5 +390,106 @@ export class WorkspaceSubscriptionsService {
     } finally {
       this.isImportingCsv.set(false);
     }
+  }
+
+  async exportEventSubscriptionsCsv(): Promise<void> {
+    const event = this.selectedEvent();
+    const eventId = this.eventSubscriptionForm.controls.eventId.value;
+    if (!event || !eventId) {
+      this.snackbar.open('Selecione um evento antes de baixar o CSV.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const subscriptions = await this.fetchAllEventSubscriptions(eventId);
+    this.eventSubscriptions.set(subscriptions);
+    const options = await this.openExportDialog('Baixar inscrições do evento', subscriptions.length);
+    if (!options) {
+      return;
+    }
+
+    this.downloadCsv(`inscricoes-${this.slugify(event.name)}.csv`, buildSubscriberCsv(subscriptions, options));
+  }
+
+  async exportMajorEventSubscriptionsCsv(): Promise<void> {
+    const majorEventId = this.majorEventForm.controls.majorEventId.value;
+    if (!majorEventId) {
+      this.majorEventForm.controls.majorEventId.markAsTouched();
+      this.snackbar.open('Selecione um grande evento antes de baixar o CSV.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const subscriptions = await this.fetchAllMajorEventSubscriptions(majorEventId);
+    this.majorEventSubscriptions.set(subscriptions);
+    const options = await this.openExportDialog('Baixar inscrições do grande evento', subscriptions.length);
+    if (!options) {
+      return;
+    }
+
+    const majorEventName =
+      subscriptions[0]?.majorEvent?.name ?? this.majorEvents().find((item) => item.id === majorEventId)?.name ?? majorEventId;
+    this.downloadCsv(`inscricoes-${this.slugify(majorEventName)}.csv`, buildSubscriberCsv(subscriptions, options));
+  }
+
+  private async fetchAllEventSubscriptions(eventId: string): Promise<WorkspaceEventSubscription[]> {
+    const subscriptions: WorkspaceEventSubscription[] = [];
+    for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
+      const page = await firstValueFrom(this.api.listEventSubscriptions(eventId, { skip, take: EXPORT_PAGE_SIZE }));
+      subscriptions.push(...page);
+      if (page.length < EXPORT_PAGE_SIZE) {
+        return subscriptions;
+      }
+    }
+  }
+
+  private async fetchAllMajorEventSubscriptions(majorEventId: string): Promise<WorkspaceMajorEventSubscription[]> {
+    const subscriptions: WorkspaceMajorEventSubscription[] = [];
+    for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
+      const page = await firstValueFrom(
+        this.api.listMajorEventSubscriptions(majorEventId, { skip, take: EXPORT_PAGE_SIZE }),
+      );
+      subscriptions.push(...page);
+      if (page.length < EXPORT_PAGE_SIZE) {
+        return subscriptions;
+      }
+    }
+  }
+
+  private async openExportDialog(title: string, recordCount: number) {
+    const dialogRef = this.dialog.open(SubscriberCsvExportDialogComponent, {
+      width: '32rem',
+      data: {
+        title,
+        recordCount,
+      },
+    });
+
+    return firstValueFrom(dialogRef.afterClosed());
+  }
+
+  private downloadCsv(fileName: string, csvContent: string): void {
+    const windowRef = this.document.defaultView;
+    const body = this.document.body;
+    if (!windowRef || !body) {
+      return;
+    }
+
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8' });
+    const url = windowRef.URL.createObjectURL(blob);
+    const anchor = this.document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    windowRef.URL.revokeObjectURL(url);
+  }
+
+  private slugify(value: string): string {
+    return (
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'dados'
+    );
   }
 }

@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { AccountMergeService } from '../account-merge/account-merge.service';
+import { AuthenticatedUserSyncService, InferredAuthenticatedProfile } from '../auth/authenticated-user-sync.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +14,7 @@ export class CurrentUserContextService {
     private readonly prisma: PrismaService,
     private readonly certificateIssuingService: CertificateIssuingService,
     private readonly accountMergeService: AccountMergeService,
+    private readonly authenticatedUserSync: AuthenticatedUserSyncService,
   ) {}
 
   getAuthenticatedUser(context: GraphqlContext): AuthenticatedUser {
@@ -64,7 +66,7 @@ export class CurrentUserContextService {
 
   async createCurrentPerson(authenticatedUser: AuthenticatedUser): Promise<PersonRecord> {
     const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
-    const profile = this.getInferredProfile(effectiveUser);
+    const profile = this.authenticatedUserSync.getInferredProfile(effectiveUser);
     const name = profile.name;
 
     if (!name) {
@@ -135,7 +137,7 @@ export class CurrentUserContextService {
       return this.backfillMatchedUser(userByEmail, authenticatedUser);
     }
 
-    const profile = this.getInferredProfile(authenticatedUser);
+    const profile = this.authenticatedUserSync.getInferredProfile(authenticatedUser);
     if (!authenticatedUser.sub || !profile.name) {
       return null;
     }
@@ -147,6 +149,7 @@ export class CurrentUserContextService {
         name: profile.name,
         identityDocument: profile.identityDocument ?? null,
         academicId: profile.academicId ?? null,
+        unespRole: profile.unespRole,
       },
       select: USER_SELECT,
     });
@@ -189,7 +192,7 @@ export class CurrentUserContextService {
       }
     }
 
-    const profile = this.getInferredProfile(authenticatedUser);
+    const profile = this.authenticatedUserSync.getInferredProfile(authenticatedUser);
     if (profile.externalRef) {
       const personByExternalRef = await this.prisma.people.findFirst({
         where: {
@@ -264,23 +267,7 @@ export class CurrentUserContextService {
   }
 
   private async backfillMatchedUser(user: UserRecord, authenticatedUser: AuthenticatedUser): Promise<UserRecord> {
-    const profile = this.getInferredProfile(authenticatedUser);
-    const data: {
-      name?: string;
-      identityDocument?: string;
-      academicId?: string;
-    } = {};
-
-    // Treat name from Keycloak as source of truth - always update if available
-    if (profile.fullname) {
-      data.name = profile.fullname;
-    }
-    if (!user.identityDocument && profile.identityDocument) {
-      data.identityDocument = profile.identityDocument;
-    }
-    if (!user.academicId && profile.academicId) {
-      data.academicId = profile.academicId;
-    }
+    const data = this.authenticatedUserSync.buildUserUpdateData(user, authenticatedUser);
 
     if (Object.keys(data).length === 0) {
       return user;
@@ -377,44 +364,6 @@ export class CurrentUserContextService {
     return updatedPerson;
   }
 
-  private getInferredProfile(authenticatedUser: AuthenticatedUser): InferredAuthenticatedProfile {
-    const email = this.normalizeEmail(authenticatedUser.email);
-    const name =
-      this.readStringClaim(authenticatedUser.claims, 'name') ??
-      authenticatedUser.preferredUsername?.trim() ??
-      email ??
-      authenticatedUser.sub?.trim();
-
-    return {
-      name,
-      fullname: this.readStringClaim(authenticatedUser.claims, 'set_fullname'),
-      email,
-      phone: this.readStringClaim(authenticatedUser.claims, 'phone'),
-      identityDocument: this.readStringClaim(authenticatedUser.claims, 'identityDocument'),
-      academicId: this.readStringClaim(authenticatedUser.claims, 'enrollmentNumber'),
-      externalRef: authenticatedUser.sub?.trim() ? `kc:${authenticatedUser.sub.trim()}` : null,
-    };
-  }
-
-  private readStringClaim(claims: Record<string, unknown>, claimName: string): string | undefined {
-    const value = claims[claimName];
-    if (typeof value === 'string') {
-      return this.trimToUndefined(value);
-    }
-
-    if (Array.isArray(value)) {
-      const firstString = value.find((item) => typeof item === 'string');
-      return typeof firstString === 'string' ? this.trimToUndefined(firstString) : undefined;
-    }
-
-    return undefined;
-  }
-
-  private trimToUndefined(value: string): string | undefined {
-    const trimmed = value.trim();
-    return trimmed || undefined;
-  }
-
   private getIdentityDocumentMatches(identityDocument?: string): string[] {
     if (!identityDocument) {
       return [];
@@ -456,13 +405,3 @@ export class CurrentUserContextService {
     return [...secondaryEmails, normalizedNewEmail];
   }
 }
-
-type InferredAuthenticatedProfile = {
-  name?: string;
-  fullname?: string;
-  email?: string;
-  phone?: string;
-  identityDocument?: string;
-  academicId?: string;
-  externalRef: string | null;
-};

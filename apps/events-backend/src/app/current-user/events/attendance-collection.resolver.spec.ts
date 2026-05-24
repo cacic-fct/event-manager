@@ -314,7 +314,7 @@ function scannerAttendance(input: {
     person: {
       name: input.personId,
       user: {
-        role: 'student',
+        unespRole: ['aluno-graduacao'],
       },
     },
     event: {

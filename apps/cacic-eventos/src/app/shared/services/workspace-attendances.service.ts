@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { computed, Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -8,13 +9,15 @@ import { parseCsv } from '@cacic-fct/shared-utils';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { AttendanceCategory, Event, MajorEventUserAttendance, Person } from '../../graphql/models';
+import { AttendanceCategory, Event, EventAttendance, MajorEventUserAttendance, Person } from '../../graphql/models';
 import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/attendance-csv-column-dialog.component';
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
+import { SubscriberCsvExportDialogComponent } from '../../workspace/dialogs/subscriber-csv-export-dialog.component';
 import { WorkspaceAttendanceInfoDialogComponent } from '../../workspace/dialogs/workspace-attendance-info-dialog.component';
 import { WorkspaceAttendanceScannerDialogComponent } from '../../workspace/dialogs/workspace-attendance-scanner-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
+import { buildSubscriberCsv } from '../subscriber-csv-export';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 
 type AttendanceListItem = {
@@ -31,6 +34,7 @@ type AttendanceListItem = {
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
   category: AttendanceCategory;
+  person?: Person | null;
 };
 
 type AttendanceCategoryGroup = {
@@ -41,6 +45,7 @@ type AttendanceCategoryGroup = {
 };
 
 const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
+const EXPORT_PAGE_SIZE = 1000;
 
 const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; description: string }> = {
   NON_PAYING: {
@@ -73,6 +78,7 @@ export class WorkspaceAttendancesService {
   private readonly formBuilder = inject(FormBuilder);
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
   private readonly router = inject(Router);
+  private readonly document = inject(DOCUMENT);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
 
@@ -185,6 +191,7 @@ export class WorkspaceAttendancesService {
 
     const people = await firstValueFrom(
       this.peopleApi.listPeople({
+        ...(identifierType === 'query' ? { query: identifier } : {}),
         ...(identifierType === 'userId' ? { userId: identifier } : {}),
         ...(identifierType === 'identityDocument' ? { identityDocument: identifier } : {}),
         ...(identifierType === 'email' ? { email: identifier } : {}),
@@ -311,7 +318,7 @@ export class WorkspaceAttendancesService {
       this.attendances.set([]);
       return;
     }
-    const data = await firstValueFrom(this.api.listEventAttendances(eventId));
+    const data = await firstValueFrom(this.api.listEventAttendances(eventId, { take: EXPORT_PAGE_SIZE }));
     this.attendances.set(
       data.map((attendance) => ({
         eventId: attendance.eventId,
@@ -327,6 +334,7 @@ export class WorkspaceAttendancesService {
         collectedLongitude: attendance.collectedLongitude,
         collectedAccuracyMeters: attendance.collectedAccuracyMeters,
         category: attendance.category,
+        person: attendance.person,
       })),
     );
   }
@@ -360,7 +368,7 @@ export class WorkspaceAttendancesService {
     }
     void this.router.navigate(['/attendances/major-event', majorEventId]);
 
-    const attendances = await firstValueFrom(this.api.listMajorEventUserAttendances(majorEventId, { take: 200 }));
+    const attendances = await firstValueFrom(this.api.listMajorEventUserAttendances(majorEventId, { take: EXPORT_PAGE_SIZE }));
     this.majorEventUserAttendances.set(attendances);
 
     const selected = this.selectedMajorEventUserAttendance();
@@ -407,5 +415,123 @@ export class WorkspaceAttendancesService {
 
   getAttendanceCategoryLabel(category: AttendanceCategory): string {
     return ATTENDANCE_CATEGORY_LABELS[category].label;
+  }
+
+  async exportEventAttendancesCsv(): Promise<void> {
+    const event = this.selectedAttendanceEvent();
+    const eventId = this.attendanceForm.controls.eventId.value;
+    if (!event || !eventId) {
+      this.snackbar.open('Selecione um evento antes de baixar o CSV.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const attendances = await this.fetchAllEventAttendances(eventId);
+    this.attendances.set(
+      attendances.map((attendance) => ({
+        eventId: attendance.eventId,
+        eventName: attendance.event?.name ?? attendance.eventId,
+        personId: attendance.personId,
+        personName: attendance.person?.name ?? attendance.personId,
+        attendedAt: attendance.attendedAt,
+        createdAt: attendance.createdAt,
+        createdById: attendance.createdById,
+        createdByMethod: attendance.createdByMethod,
+        collectedByFullName: attendance.collectedByFullName,
+        collectedLatitude: attendance.collectedLatitude,
+        collectedLongitude: attendance.collectedLongitude,
+        collectedAccuracyMeters: attendance.collectedAccuracyMeters,
+        category: attendance.category,
+        person: attendance.person,
+      })),
+    );
+
+    const options = await this.openExportDialog('Baixar lista de presença', attendances.length);
+    if (!options) {
+      return;
+    }
+
+    this.downloadCsv(`presencas-${this.slugify(event.name)}.csv`, buildSubscriberCsv(attendances, options));
+  }
+
+  async exportMajorEventAttendancesCsv(): Promise<void> {
+    const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
+    if (!majorEventId) {
+      this.majorEventAttendanceForm.controls.majorEventId.markAsTouched();
+      this.snackbar.open('Selecione um grande evento antes de baixar o CSV.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const attendances = await this.fetchAllMajorEventUserAttendances(majorEventId);
+    this.majorEventUserAttendances.set(attendances);
+    const options = await this.openExportDialog('Baixar lista de presença do grande evento', attendances.length);
+    if (!options) {
+      return;
+    }
+
+    const majorEventName = this.majorEvents().find((item) => item.id === majorEventId)?.name ?? majorEventId;
+    this.downloadCsv(`presencas-${this.slugify(majorEventName)}.csv`, buildSubscriberCsv(attendances, options));
+  }
+
+  private async openExportDialog(title: string, recordCount: number) {
+    const dialogRef = this.dialog.open(SubscriberCsvExportDialogComponent, {
+      width: '32rem',
+      data: {
+        title,
+        recordCount,
+      },
+    });
+
+    return firstValueFrom(dialogRef.afterClosed());
+  }
+
+  private async fetchAllEventAttendances(eventId: string): Promise<EventAttendance[]> {
+    const attendances: EventAttendance[] = [];
+    for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
+      const page = await firstValueFrom(this.api.listEventAttendances(eventId, { skip, take: EXPORT_PAGE_SIZE }));
+      attendances.push(...page);
+      if (page.length < EXPORT_PAGE_SIZE) {
+        return attendances;
+      }
+    }
+  }
+
+  private async fetchAllMajorEventUserAttendances(majorEventId: string): Promise<MajorEventUserAttendance[]> {
+    const attendances: MajorEventUserAttendance[] = [];
+    for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
+      const page = await firstValueFrom(
+        this.api.listMajorEventUserAttendances(majorEventId, { skip, take: EXPORT_PAGE_SIZE }),
+      );
+      attendances.push(...page);
+      if (page.length < EXPORT_PAGE_SIZE) {
+        return attendances;
+      }
+    }
+  }
+
+  private downloadCsv(fileName: string, csvContent: string): void {
+    const windowRef = this.document.defaultView;
+    const body = this.document.body;
+    if (!windowRef || !body) {
+      return;
+    }
+
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8' });
+    const url = windowRef.URL.createObjectURL(blob);
+    const anchor = this.document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    windowRef.URL.revokeObjectURL(url);
+  }
+
+  private slugify(value: string): string {
+    return (
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'dados'
+    );
   }
 }

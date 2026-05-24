@@ -64,6 +64,14 @@
         <mat-icon>refresh</mat-icon>
         Atualizar
       </button>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!workspace.selectedEvent()"
+        (click)="workspace.exportEventSubscriptionsCsv()">
+        <mat-icon>download</mat-icon>
+        Baixar CSV
+      </button>
     </div>
 
     <div class="workbench-grid">
@@ -103,7 +111,10 @@
               type="button"
               [disabled]="!permissions.canEdit('subscription#edit')"
               (click)="workspace.createEventSubscription(person)">
-              Inscrever {{ person.name }}
+              <span class="person-choice">
+                <span>Inscrever {{ person.name }}</span>
+                <small>{{ person.identityDocument || 'Sem documento' }} · {{ person.email || 'Sem e-mail principal' }}</small>
+              </span>
             </button>
           } @empty {
             <span class="empty-note">Busque uma pessoa para inscrever.</span>

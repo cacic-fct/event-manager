@@ -197,6 +197,23 @@
   margin: 0.75rem 0;
 }
 
+.person-choice {
+  display: grid;
+  min-width: 0;
+  text-align: left;
+}
+
+.person-choice span,
+.person-choice small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.person-choice small {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
 .selected-list-item {
   background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
 }

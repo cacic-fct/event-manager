@@ -1,5 +1,6 @@
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AccountMergeService } from '../account-merge/account-merge.service';
+import { AuthenticatedUserSyncService } from '../auth/authenticated-user-sync.service';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUserContextService } from './context.service';
@@ -56,6 +57,7 @@ describe('CurrentUserContextService', () => {
       prisma as unknown as PrismaService,
       certificateIssuingService as unknown as CertificateIssuingService,
       accountMergeService as unknown as AccountMergeService,
+      new AuthenticatedUserSyncService(prisma as unknown as PrismaService),
     );
   });
 
@@ -291,6 +293,7 @@ function createAuthenticatedUser(overrides: Partial<AuthenticatedUser> = {}): Au
       phone: '+5511999999999',
       identityDocument: '123.456.789-00',
       enrollmentNumber: '20240001',
+      unesp_role: ['aluno-graduacao'],
     },
     ...overrides,
   };
@@ -303,6 +306,7 @@ function createUserRecord(overrides: Partial<UserRecord> = {}): UserRecord {
     name: 'Student Name',
     identityDocument: '123.456.789-00',
     academicId: '20240001',
+    unespRole: ['aluno-graduacao'],
     role: 'USER',
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     createdById: null,

@@ -17,6 +17,7 @@ import {
   readStringClaim,
 } from './keycloak-claims.utils';
 import { AuthSession, CachedUser, TokenClaims, TokenResponse } from './keycloak-auth.types';
+import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
 
 @Injectable()
 export class KeycloakAuthService {
@@ -38,6 +39,7 @@ export class KeycloakAuthService {
   constructor(
     private readonly sessions: AuthSessionStoreService,
     private readonly authorizationState: AuthorizationStateService,
+    private readonly userClaimSync?: AuthenticatedUserSyncService,
   ) {}
 
   async authenticateAccessToken(accessToken: string, requiredAuthorities: string[] = []): Promise<AuthenticatedUser> {
@@ -228,6 +230,7 @@ export class KeycloakAuthService {
       accessTokenExpiresAt,
       sessionExpiresAt,
     });
+    await this.syncLoginClaims(tokens.access_token);
 
     return {
       sessionId,
@@ -505,6 +508,11 @@ export class KeycloakAuthService {
     });
 
     return principal;
+  }
+
+  private async syncLoginClaims(accessToken: string): Promise<void> {
+    const principal = await this.getOrCreatePrincipal(accessToken);
+    await this.userClaimSync?.syncLoginClaims(principal);
   }
 
   private async fetchTokenClaims(accessToken: string): Promise<TokenClaims> {
