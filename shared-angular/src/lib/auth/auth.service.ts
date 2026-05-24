@@ -23,16 +23,17 @@ export class AuthService {
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
 
   readonly user = signal<AuthenticatedUser | null>(null);
+  readonly initialized = signal(false);
   readonly roles = computed(() => this.user()?.roles ?? []);
   readonly scopes = computed(() => this.user()?.scopes ?? []);
   readonly isAuthenticated = computed(() => Boolean(this.user()));
 
   async initialize(): Promise<void> {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-
     try {
+      if (!isPlatformBrowser(this.platformId)) {
+        return;
+      }
+
       await this.refreshMe();
 
       if (!this.isAuthenticated() && this.onlineStatus.isOnline() && !isDevMode()) {
@@ -41,6 +42,8 @@ export class AuthService {
     } catch (error) {
       this.logUnexpectedAuthError('Auth initialization failed', error);
       this.clearSession();
+    } finally {
+      this.initialized.set(true);
     }
   }
 

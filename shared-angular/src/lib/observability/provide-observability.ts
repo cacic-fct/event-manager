@@ -1,0 +1,161 @@
+import {
+  EnvironmentProviders,
+  Injectable,
+  Injector,
+  PLATFORM_ID,
+  Provider,
+  effect,
+  importProvidersFrom,
+  inject,
+  isDevMode,
+  makeEnvironmentProviders,
+  provideEnvironmentInitializer,
+} from '@angular/core';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { MicroSentryModule } from '@micro-sentry/angular';
+import { provideUmami } from '@cacic-fct/ngx-umami';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { AuthService } from '../auth/auth.service';
+import { CacicAnalyticsService } from './analytics.service';
+import { CACIC_ANALYTICS_CONFIG } from './observability.config';
+import type { CacicAnalyticsConfig } from './observability.config';
+
+export type CacicObservabilityConfig = {
+  analytics: {
+    websiteId: string;
+    domains: string[];
+    isEnabled: (user: AuthenticatedUser | null) => boolean;
+    buildIdentifyData?: CacicAnalyticsConfig['buildIdentifyData'];
+    src?: string;
+    replay?: {
+      isEnabled: (user: AuthenticatedUser | null) => boolean;
+      src?: string;
+      sampleRate?: number;
+      maskLevel?: 'none' | 'light' | 'moderate' | 'strict';
+      maxDuration?: number;
+    };
+  };
+  glitchtip: {
+    dsn: string;
+    isEnabled: (user: AuthenticatedUser | null) => boolean;
+  };
+};
+
+const UMAMI_REPLAY_SCRIPT_ID = 'cacic-replay-script';
+const DEFAULT_UMAMI_REPLAY_SRC = 'https://a.cacic.dev.br/recorder.js';
+const DEFAULT_UMAMI_REPLAY_SAMPLE_RATE = 1;
+const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'moderate';
+const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 1200000;
+
+@Injectable()
+class CacicUmamiReplayScriptLoader {
+  private readonly auth = inject(AuthService);
+  private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
+  private readonly platformId = inject(PLATFORM_ID);
+
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
+
+  start(config: CacicObservabilityConfig): void {
+    if (!this.isBrowser || isDevMode() || !config.analytics.websiteId) {
+      return;
+    }
+
+    effect(
+      () => {
+        if (!this.auth.initialized()) {
+          return;
+        }
+
+        const user = this.currentUser();
+        const canRecord = config.analytics.replay?.isEnabled(user) ?? config.glitchtip.isEnabled(user);
+
+        if (canRecord) {
+          this.ensureScript(config);
+          return;
+        }
+
+        this.removeScript();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  private ensureScript(config: CacicObservabilityConfig): void {
+    if (this.document.getElementById(UMAMI_REPLAY_SCRIPT_ID)) {
+      return;
+    }
+
+    const replayConfig = config.analytics.replay;
+    const script = this.document.createElement('script');
+    script.id = UMAMI_REPLAY_SCRIPT_ID;
+    script.defer = true;
+    script.src = replayConfig?.src ?? DEFAULT_UMAMI_REPLAY_SRC;
+    script.dataset['websiteId'] = config.analytics.websiteId;
+    script.dataset['sampleRate'] = String(replayConfig?.sampleRate ?? DEFAULT_UMAMI_REPLAY_SAMPLE_RATE);
+    script.dataset['maskLevel'] = replayConfig?.maskLevel ?? DEFAULT_UMAMI_REPLAY_MASK_LEVEL;
+    script.dataset['maxDuration'] = String(replayConfig?.maxDuration ?? DEFAULT_UMAMI_REPLAY_MAX_DURATION);
+
+    this.document.head.append(script);
+  }
+
+  private removeScript(): void {
+    this.document.getElementById(UMAMI_REPLAY_SCRIPT_ID)?.remove();
+  }
+
+  private currentUser(): AuthenticatedUser | null {
+    return typeof this.auth.user === 'function' ? this.auth.user() : null;
+  }
+}
+
+export function provideCacicObservability(config: CacicObservabilityConfig) {
+  const providers: Array<Provider | EnvironmentProviders> = [
+    {
+      provide: CACIC_ANALYTICS_CONFIG,
+      useValue: {
+        isAnalyticsEnabled: (user: AuthenticatedUser | null) =>
+          Boolean(config.analytics.websiteId) && config.analytics.isEnabled(user),
+        buildIdentifyData: config.analytics.buildIdentifyData,
+      } satisfies CacicAnalyticsConfig,
+    },
+  ];
+
+  if (config.glitchtip.dsn) {
+    providers.push(
+      importProvidersFrom(
+        MicroSentryModule.forRoot({
+          dsn: config.glitchtip.dsn,
+          environment: isDevMode() ? 'development' : 'production',
+          beforeSend: (request) => {
+            const authService = inject(AuthService);
+            return !isDevMode() && config.glitchtip.isEnabled(authService.user()) ? request : null;
+          },
+        }),
+      ),
+    );
+  }
+
+  if (config.analytics.websiteId) {
+    providers.push(
+      provideUmami({
+        websiteId: config.analytics.websiteId,
+        src: config.analytics.src ?? 'https://a.cacic.dev.br/b.js',
+        autoTrack: false,
+        domains: config.analytics.domains,
+      }),
+    );
+  }
+
+  providers.push(
+    CacicUmamiReplayScriptLoader,
+    provideEnvironmentInitializer(() => {
+      inject(CacicUmamiReplayScriptLoader).start(config);
+    }),
+  );
+
+  return makeEnvironmentProviders([...providers]);
+}
+
+export function startCacicAnalytics(): void {
+  inject(CacicAnalyticsService).start();
+}
