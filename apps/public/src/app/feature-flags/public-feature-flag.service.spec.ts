@@ -4,6 +4,26 @@ import { PUBLIC_FEATURE_FLAG_CONFIG } from './public-feature-flag.config';
 import { PublicFeatureFlagService } from './public-feature-flag.service';
 import { PUBLIC_FEATURE_FLAGS } from './public-feature-flags';
 
+const unleashClientMock = vi.hoisted(() => ({
+  start: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+  on: vi.fn(),
+  isEnabled: vi.fn(() => true),
+  getVariant: vi.fn(() => ({ name: 'disabled', enabled: false, feature_enabled: false })),
+  constructor: vi.fn(),
+}));
+
+vi.mock('unleash-proxy-client', () => ({
+  UnleashClient: vi.fn(function UnleashClient(config: unknown) {
+    unleashClientMock.constructor(config);
+    return {
+      start: unleashClientMock.start,
+      on: unleashClientMock.on,
+      isEnabled: unleashClientMock.isEnabled,
+      getVariant: unleashClientMock.getVariant,
+    };
+  }),
+}));
+
 class FeatureFlagCacheTableMock {
   private readonly records = new Map<string, OfflineFeatureFlagCacheRecord>();
 
@@ -39,6 +59,7 @@ describe('PublicFeatureFlagService', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
+    vi.clearAllMocks();
     cache = new FeatureFlagCacheTableMock();
 
     TestBed.configureTestingModule({
@@ -131,5 +152,74 @@ describe('PublicFeatureFlagService', () => {
     await service.initialize();
 
     expect(service.booleanValue('calendarTabEnabled')).toBe(true);
+  });
+
+  it('checks Unleash freshness on every startup instead of trusting the SDK storage TTL', async () => {
+    TestBed.overrideProvider(PUBLIC_FEATURE_FLAG_CONFIG, {
+      useValue: {
+        url: 'https://unleash.cacic.dev.br/api/frontend',
+        clientKey: 'default:production.test',
+        appName: 'events-public',
+        environment: 'production',
+        refreshIntervalSeconds: 60,
+        disableMetrics: true,
+      },
+    });
+
+    const service = TestBed.inject(PublicFeatureFlagService);
+
+    await service.initialize();
+
+    expect(unleashClientMock.start).toHaveBeenCalledOnce();
+    expect(unleashClientMock.constructor).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        experimental: expect.objectContaining({
+          togglesStorageTTL: expect.any(Number),
+        }),
+      }),
+    );
+  });
+
+  it('keeps cached flags when Unleash cannot start', async () => {
+    cache.seed({
+      key: 'repo',
+      updatedAt: Date.now(),
+      value: [
+        {
+          name: PUBLIC_FEATURE_FLAGS.calendarTabEnabled,
+          enabled: false,
+          impressionData: false,
+          variant: { name: 'disabled', enabled: false, feature_enabled: false },
+        },
+        {
+          name: PUBLIC_FEATURE_FLAGS.defaultLoginRedirectPath,
+          enabled: true,
+          impressionData: false,
+          variant: {
+            name: 'menu',
+            enabled: true,
+            feature_enabled: true,
+            payload: { type: 'string', value: '/menu' },
+          },
+        },
+      ],
+    });
+    TestBed.overrideProvider(PUBLIC_FEATURE_FLAG_CONFIG, {
+      useValue: {
+        url: 'https://unleash.cacic.dev.br/api/frontend',
+        clientKey: 'default:production.test',
+        appName: 'events-public',
+        environment: 'production',
+        refreshIntervalSeconds: 60,
+        disableMetrics: true,
+      },
+    });
+    unleashClientMock.start.mockRejectedValueOnce(new Error('offline'));
+
+    const service = TestBed.inject(PublicFeatureFlagService);
+
+    await expect(service.initialize()).resolves.toBeUndefined();
+    expect(service.booleanValue('calendarTabEnabled')).toBe(false);
+    expect(service.stringValue('defaultLoginRedirectPath')).toBe('/menu');
   });
 });
