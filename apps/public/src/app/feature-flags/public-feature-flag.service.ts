@@ -47,9 +47,6 @@ export class PublicFeatureFlagService {
       storageProvider: this.createStorageProvider(),
       bootstrap: this.createBootstrapToggles(this.valuesSignal()),
       bootstrapOverride: false,
-      experimental: {
-        togglesStorageTTL: this.config.refreshIntervalSeconds,
-      },
     });
 
     this.client = client;
@@ -58,7 +55,12 @@ export class PublicFeatureFlagService {
     client.on('update', () => this.syncFromClient());
     client.on('error', () => this.syncFromClient());
 
-    await client.start();
+    try {
+      await client.start();
+    } catch {
+      return;
+    }
+
     this.syncFromClient();
   }
 
