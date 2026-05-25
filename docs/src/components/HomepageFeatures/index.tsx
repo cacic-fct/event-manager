@@ -18,7 +18,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Confira a seção{' '}
-        <Link to="https://docs.fctapp.cacic.dev.br/Geral/Antes de colaborar/Suas obrigações">
+        <Link to="/Geral/Antes%20de%20colaborar/Suas%20obriga%C3%A7%C3%B5es">
           <b>Antes de colaborar</b>
         </Link>
         .
