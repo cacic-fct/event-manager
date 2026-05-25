@@ -7,7 +7,6 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ThrottlerModule } from '@nestjs/throttler';
 import Redis from 'ioredis';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { AccountMergeController } from './account-merge/account-merge.controller';
 import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuthModule } from './auth/auth.module';
@@ -145,7 +144,6 @@ import { WeatherService } from './weather/weather.service';
     PrivacyController,
   ],
   providers: [
-    AppService,
     NovuNotificationsService,
     AccountMergeService,
     LgpdService,
