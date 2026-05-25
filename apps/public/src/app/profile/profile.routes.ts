@@ -7,6 +7,7 @@ export const routes: Route[] = [
   },
   {
     path: 'wallet',
+    title: 'Crachá',
     loadComponent: () => import('./wallet/wallet').then((m) => m.Wallet),
   },
 ];
