@@ -3,7 +3,7 @@ import { Route } from '@angular/router';
 export const routes: Route[] = [
   {
     path: '',
-    loadComponent: () => import('./attendances').then((m) => m.Attendances),
+    loadComponent: () => import('./my-attendances/attendances').then((m) => m.Attendances),
   },
   {
     path: ':eventType/:eventId/organizer',
