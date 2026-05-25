@@ -4,6 +4,7 @@ applyTo: '**'
 
 If in doubt, ask user for clarification.
 Make a TODO list if there are multiple steps.
+You must reply in English, but strings in frontend interface will have to be in Brazilian Portuguese.
 
 # NX Monorepo
 
@@ -111,3 +112,8 @@ We use Storybook for developing and testing our UI components in isolation.
 When creating a new component, you should evaluate if it would benefit from having a Storybook story. If the component has multiple states, complex interactions, or is likely to be reused across the application, it is a good candidate for Storybook documentation.
 
 When writing Storybook stories, focus on showcasing the different states and variations of the component. This includes default state, edge cases, and any interactive behavior. Use Storybook's controls to allow users to manipulate props and see how the component responds.
+
+When modifying an existing component, ensure that the story file for that component builds. That is, changes are reflected in the corresponding Storybook stories.
+
+We have faker-js and MSW for mocking data in Storybook, so use them when appropriate to create realistic stories.
+
