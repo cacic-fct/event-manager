@@ -11,7 +11,7 @@ Caso encontre algum problema, [crie uma issue no GitHub](https://github.com/caci
 ## Grande evento
 
 1. Ao criar o evento, confira se todas as informações foram escritas e estão sendo exibidas corretamente.
-1. [Verifique se a aba de eventos está ativa](/Frontend/Interface/Abas/Exibição%20de%20abas);
+1. [Verifique se a aba de eventos está ativa](../08-Interface%20pública/Abas/Exibição%20de%20abas.md);
 1. Faça a sua própria inscrição para verificar se o fluxo está operacional:
    - Edite sua inscrição para verificar se o fluxo de edição está operacional;
    - Verifique o upload e a validação de comprovante, caso o evento seja pago.

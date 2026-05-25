@@ -93,7 +93,7 @@ const FeatureList: FeatureItem[] = [
         .
         <br />
         Saiba como{' '}
-        <Link to="/Geral/Solução de problemas/Problemas do usuário">
+        <Link to="/Manual/Solução de problemas/Problemas do usuário">
           <b>Solucionar problemas</b>
         </Link>
         .
@@ -118,7 +118,7 @@ const FeatureList: FeatureItem[] = [
         .
         <br />
         Saiba como{' '}
-        <Link to="/Geral/Solução de problemas/Problemas do usuário">
+        <Link to="/Manual/Solução de problemas/Problemas do usuário">
           <b>Solucionar problemas do usuário</b>
         </Link>
         .
@@ -131,7 +131,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Se estiver com algum problema, confira a seção de{' '}
-        <Link to="/Geral/Solução de problemas/Problemas do usuário">
+        <Link to="/Manual/Solução de problemas/Problemas do usuário">
           <b>Solução de problemas</b>
         </Link>
         .

@@ -60,6 +60,6 @@ Verifique a disponibilidade com o [CACiC](https://cacic-fct.github.io), o Centro
 Depende.
 
 É necessário entrar em contato com o CACiC.  
-O CA seguirá o que consta na seção de [Procedimentos de solicitação de dados](/Administração/Procedimentos/Dados/Fornecimento/Solicitação%20de%20conjuntos%20dados). Logo, a resposta não dependerá do CA.
+O CA seguirá o que consta na seção de [Procedimentos de solicitação de dados](/Administra%C3%A7%C3%A3o/Procedimentos/Dados/Fornecimento/Solicita%C3%A7%C3%A3o%20de%20conjuntos%20dados). Logo, a resposta não dependerá do CA.
 
 Depois disso, sua pesquisa precisa passar por aprovação do Comitê de Ética em Pesquisa (CEP) da FCT.
