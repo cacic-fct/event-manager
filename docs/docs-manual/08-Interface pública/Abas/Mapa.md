@@ -14,5 +14,5 @@ Usamos o OpenLayers, pois o Leaflet possui bugs, como o não carregamento do map
 
 ## Mapa
 
-Contém botões de zoom-in e zoom-out.  
+Contém botões de zoom-in e zoom-out, para pessoas com mobilidade reduzida.  
 Inicia centralizado na FCT-Unesp.

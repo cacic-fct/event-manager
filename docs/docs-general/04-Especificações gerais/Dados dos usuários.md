@@ -6,7 +6,7 @@ sidebar:
 
 ## Política de armazenamento de dados
 
-Armazenamos o mínimo de dados possível para o funcionamento do FCT App.
+Armazenamos o mínimo de dados possível para o funcionamento do CACiC Event Manager.
 
 Isso inclui:
 
