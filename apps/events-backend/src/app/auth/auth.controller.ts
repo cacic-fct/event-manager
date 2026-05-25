@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Post, Query, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { AUTH_SESSION_COOKIE_NAME } from './auth.constants';
+import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME } from './auth.constants';
 import { Public } from './decorators/public.decorator';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
@@ -24,28 +24,32 @@ export class AuthController {
 
   @Get('login')
   @Public()
-  getLoginUrl(
+  async getLoginUrl(
     @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
     @Query('redirectUri') redirectUri?: string,
     @Query('returnTo') returnTo?: string,
     @Query('state') state?: string,
     @Query('scope') scope?: string,
     @Query('prompt') prompt?: string,
-  ) {
+  ): Promise<{ authorizationUrl: string }> {
+    const authorization = await this.keycloakAuthService.buildAuthorizationUrl({
+      redirectUri: redirectUri ?? this.getCallbackRedirectUri(request),
+      returnTo,
+      state,
+      scope,
+      prompt,
+    });
+    this.setAuthorizationStateCookie(response, request, authorization.state);
+
     return {
-      authorizationUrl: this.keycloakAuthService.buildAuthorizationUrl({
-        redirectUri: redirectUri ?? this.getCallbackRedirectUri(request),
-        returnTo,
-        state,
-        scope,
-        prompt,
-      }),
+      authorizationUrl: authorization.authorizationUrl,
     };
   }
 
   @Get('login/redirect')
   @Public()
-  redirectToLogin(
+  async redirectToLogin(
     @Req() request: Request,
     @Res() response: Response,
     @Query('redirectUri') redirectUri?: string,
@@ -53,16 +57,17 @@ export class AuthController {
     @Query('state') state?: string,
     @Query('scope') scope?: string,
     @Query('prompt') prompt?: string,
-  ): void {
-    const authorizationUrl = this.keycloakAuthService.buildAuthorizationUrl({
+  ): Promise<void> {
+    const authorization = await this.keycloakAuthService.buildAuthorizationUrl({
       redirectUri: redirectUri ?? this.getCallbackRedirectUri(request),
       returnTo,
       state,
       scope,
       prompt,
     });
+    this.setAuthorizationStateCookie(response, request, authorization.state);
 
-    response.redirect(authorizationUrl);
+    response.redirect(authorization.authorizationUrl);
   }
 
   @Get('callback')
@@ -75,8 +80,9 @@ export class AuthController {
     @Query('redirectUri') redirectUri?: string,
     @Query('state') state?: string,
   ): Promise<void> {
+    const authorizationState = await this.consumeAuthorizationState(request, response, state);
     if (error) {
-      response.redirect(this.keycloakAuthService.getPostLoginRedirectUri(state));
+      response.redirect(this.keycloakAuthService.getPostLoginRedirectUri(authorizationState));
       return;
     }
 
@@ -86,7 +92,7 @@ export class AuthController {
 
     const tokenResponse = await this.keycloakAuthService.exchangeCodeForTokens(
       code,
-      state,
+      authorizationState,
       redirectUri ?? this.getCallbackRedirectUri(request),
     );
     const session = await this.keycloakAuthService.createSession(tokenResponse);
@@ -100,7 +106,7 @@ export class AuthController {
       path: '/',
     });
 
-    response.redirect(this.keycloakAuthService.getPostLoginRedirectUri(state));
+    response.redirect(this.keycloakAuthService.getPostLoginRedirectUri(authorizationState));
   }
 
   @Post('logout')
@@ -197,6 +203,45 @@ export class AuthController {
 
   private resolveCookieMaxAge(expiresAt: number): number {
     return Math.max(expiresAt - Date.now(), 0);
+  }
+
+  private async consumeAuthorizationState(
+    request: Request,
+    response: Response,
+    state?: string,
+  ): Promise<Awaited<ReturnType<KeycloakAuthService['consumeAuthorizationState']>>> {
+    const cookieState = this.readCookie(request, AUTH_STATE_COOKIE_NAME);
+    this.clearAuthorizationStateCookie(response, request);
+
+    if (!state || !cookieState || state !== cookieState) {
+      throw new BadRequestException('Invalid authorization state.');
+    }
+
+    const authorizationState = await this.keycloakAuthService.consumeAuthorizationState(state);
+    if (!authorizationState) {
+      throw new BadRequestException('Invalid authorization state.');
+    }
+
+    return authorizationState;
+  }
+
+  private setAuthorizationStateCookie(response: Response, request: Request, state: string): void {
+    response.cookie(AUTH_STATE_COOKIE_NAME, state, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: this.isSecureRequest(request),
+      maxAge: 10 * 60 * 1000,
+      path: '/api/auth/callback',
+    });
+  }
+
+  private clearAuthorizationStateCookie(response: Response, request: Request): void {
+    response.clearCookie(AUTH_STATE_COOKIE_NAME, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: this.isSecureRequest(request),
+      path: '/api/auth/callback',
+    });
   }
 
   private getCallbackRedirectUri(request: Request): string {

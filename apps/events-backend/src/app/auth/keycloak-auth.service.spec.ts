@@ -21,7 +21,7 @@ describe('KeycloakAuthService', () => {
   let sessions: ReturnType<typeof createSessionStoreMock>;
   let authorizationState: Pick<
     jest.Mocked<AuthorizationStateService>,
-    'build' | 'getAuthorizationRedirectUri' | 'getPostLoginRedirectUri'
+    'create' | 'consume' | 'getAuthorizationRedirectUri' | 'getPostLoginRedirectUri'
   >;
   let service: KeycloakAuthService;
   let userClaimSync: Pick<jest.Mocked<AuthenticatedUserSyncService>, 'syncLoginClaims'>;
@@ -37,7 +37,8 @@ describe('KeycloakAuthService', () => {
     process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS = '5000';
     sessions = createSessionStoreMock();
     authorizationState = {
-      build: jest.fn().mockReturnValue('encoded-state'),
+      create: jest.fn().mockResolvedValue('opaque-state'),
+      consume: jest.fn().mockResolvedValue({ redirectUri: 'https://app.example/state-callback' }),
       getAuthorizationRedirectUri: jest.fn().mockReturnValue(undefined),
       getPostLoginRedirectUri: jest.fn().mockReturnValue('/after-login'),
     };
@@ -57,22 +58,22 @@ describe('KeycloakAuthService', () => {
     jest.useRealTimers();
   });
 
-  it('builds authorization URLs with normalized realm URL and state metadata', () => {
-    const url = new URL(
-      service.buildAuthorizationUrl({
-        redirectUri: 'https://app.example/custom-callback',
-        returnTo: '/dashboard',
-        state: 'caller-state',
-        prompt: 'login',
-      }),
-    );
+  it('builds authorization URLs with normalized realm URL and state metadata', async () => {
+    const authorization = await service.buildAuthorizationUrl({
+      redirectUri: 'https://app.example/custom-callback',
+      returnTo: '/dashboard',
+      state: 'caller-state',
+      prompt: 'login',
+    });
+    const url = new URL(authorization.authorizationUrl);
 
     expect(url.origin + url.pathname).toBe('https://keycloak.example/realms/cacic/protocol/openid-connect/auth');
     expect(url.searchParams.get('client_id')).toBe('event-manager');
     expect(url.searchParams.get('redirect_uri')).toBe('https://app.example/custom-callback');
-    expect(url.searchParams.get('state')).toBe('encoded-state');
+    expect(url.searchParams.get('state')).toBe('opaque-state');
     expect(url.searchParams.get('prompt')).toBe('login');
-    expect(authorizationState.build).toHaveBeenCalledWith({
+    expect(authorization.state).toBe('opaque-state');
+    expect(authorizationState.create).toHaveBeenCalledWith({
       redirectUri: 'https://app.example/custom-callback',
       returnTo: '/dashboard',
       state: 'caller-state',
@@ -86,7 +87,9 @@ describe('KeycloakAuthService', () => {
       .mockResolvedValueOnce({ data: {} });
     authorizationState.getAuthorizationRedirectUri.mockReturnValue('https://app.example/state-callback');
 
-    await expect(service.exchangeCodeForTokens('code-1', 'state-1')).resolves.toEqual({
+    await expect(
+      service.exchangeCodeForTokens('code-1', { redirectUri: 'https://app.example/state-callback' }),
+    ).resolves.toEqual({
       access_token: 'access-token',
     });
     await expect(service.refreshAccessToken('refresh-token')).resolves.toEqual({
@@ -379,8 +382,8 @@ describe('KeycloakAuthService', () => {
   });
 
   it('delegates post-login redirect lookup to the authorization state service', () => {
-    expect(service.getPostLoginRedirectUri('state-1')).toBe('/after-login');
-    expect(authorizationState.getPostLoginRedirectUri).toHaveBeenCalledWith('state-1');
+    expect(service.getPostLoginRedirectUri({ returnTo: '/after-login' })).toBe('/after-login');
+    expect(authorizationState.getPostLoginRedirectUri).toHaveBeenCalledWith({ returnTo: '/after-login' });
   });
 });
 

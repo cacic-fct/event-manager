@@ -6,8 +6,8 @@ describe('dashboard insights cache helpers', () => {
       get: jest.fn().mockResolvedValue(null),
     };
 
-    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v3:none')).resolves.toBeNull();
-    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v3:none');
+    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v4:none')).resolves.toBeNull();
+    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v4:none');
   });
 
   it('restores cached date strings to Date instances', async () => {
@@ -95,12 +95,12 @@ describe('dashboard insights cache helpers', () => {
   });
 
   it('builds permission-aware cache keys', () => {
-    expect(getCacheKey([])).toBe('dashboard:workspace:v3:none');
+    expect(getCacheKey([])).toBe('dashboard:workspace:v4:none');
     expect(getCacheKey(['event#edit', 'certificate#edit', 'event#edit'])).toBe(
-      'dashboard:workspace:v3:certificate#edit,event#edit',
+      'dashboard:workspace:v4:certificate#edit,event#edit',
     );
     expect(getCacheKey(['certificate#edit', 'event#edit'])).toBe(
-      'dashboard:workspace:v3:certificate#edit,event#edit',
+      'dashboard:workspace:v4:certificate#edit,event#edit',
     );
   });
 });

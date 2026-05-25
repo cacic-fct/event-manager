@@ -3,7 +3,7 @@ import axios from 'axios';
 import { randomBytes } from 'node:crypto';
 import { AuthSessionStoreService } from './auth-session-store.service';
 import { DEFAULT_KEYCLOAK_CLIENT_ID, DEFAULT_KEYCLOAK_REALM_URL } from './auth.constants';
-import { AuthorizationStateService } from './authorization-state.service';
+import { AuthorizationState, AuthorizationStateService } from './authorization-state.service';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
 import {
@@ -76,15 +76,15 @@ export class KeycloakAuthService {
     return principal;
   }
 
-  buildAuthorizationUrl(options?: {
+  async buildAuthorizationUrl(options?: {
     redirectUri?: string;
     returnTo?: string;
     state?: string;
     scope?: string;
     prompt?: string;
-  }): string {
+  }): Promise<{ authorizationUrl: string; state: string }> {
     const redirectUri = options?.redirectUri ?? this.defaultRedirectUri;
-    const state = this.authorizationState.build({
+    const state = await this.authorizationState.create({
       redirectUri,
       returnTo: options?.returnTo,
       state: options?.state,
@@ -95,16 +95,23 @@ export class KeycloakAuthService {
       response_type: 'code',
       scope: options?.scope ?? 'openid profile email identity-document academic-profile',
       kc_idp_hint: 'google',
-      ...(state ? { state } : {}),
+      state,
       ...(options?.prompt ? { prompt: options.prompt } : {}),
     });
 
     const authorizationUrl = new URL(`${this.realmUrl}/protocol/openid-connect/auth?${params.toString()}`);
 
-    return authorizationUrl.toString();
+    return {
+      authorizationUrl: authorizationUrl.toString(),
+      state,
+    };
   }
 
-  async exchangeCodeForTokens(code: string, state?: string, redirectUri?: string): Promise<Record<string, unknown>> {
+  async exchangeCodeForTokens(
+    code: string,
+    state?: AuthorizationState,
+    redirectUri?: string,
+  ): Promise<Record<string, unknown>> {
     const payload = new URLSearchParams();
     payload.set('grant_type', 'authorization_code');
     payload.set('client_id', this.clientId);
@@ -449,8 +456,12 @@ export class KeycloakAuthService {
     return session;
   }
 
-  getPostLoginRedirectUri(state?: string): string {
+  getPostLoginRedirectUri(state?: AuthorizationState): string {
     return this.authorizationState.getPostLoginRedirectUri(state);
+  }
+
+  consumeAuthorizationState(state?: string): Promise<AuthorizationState | undefined> {
+    return this.authorizationState.consume(state);
   }
 
   private async getOrCreatePrincipal(accessToken: string): Promise<AuthenticatedUser> {

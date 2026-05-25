@@ -45,6 +45,12 @@ export class CurrentUserContextService {
     return { user, person };
   }
 
+  syncProfileUpdate(
+    input: AuthenticatedProfileUpdateInput,
+  ): Promise<{ user: UserRecord | null; person: PersonRecord | null }> {
+    return this.resolveCurrentUserContext(this.toAuthenticatedUser(input), true);
+  }
+
   async requireCurrentPerson(context: GraphqlContext): Promise<PersonRecord> {
     const authenticatedUser = this.getAuthenticatedUser(context);
     const { person } = await this.resolveCurrentUserContext(authenticatedUser);
@@ -404,4 +410,49 @@ export class CurrentUserContextService {
 
     return [...secondaryEmails, normalizedNewEmail];
   }
+
+  private toAuthenticatedUser(input: AuthenticatedProfileUpdateInput): AuthenticatedUser {
+    const claims: Record<string, unknown> = {
+      sub: input.userId,
+      email: input.email,
+      name: input.name ?? input.fullname,
+      set_fullname: input.fullname,
+      phone: input.phone,
+      identityDocument: input.identityDocument,
+      enrollmentNumber: input.academicId,
+      unesp_role: input.unespRole ?? [],
+      is_onboarded: input.isOnboarded,
+    };
+
+    return {
+      realm_access: {
+        roles: [],
+      },
+      sub: input.userId,
+      preferredUsername: input.email,
+      email: input.email,
+      token: '',
+      roles: [],
+      roleSet: new Set(),
+      permissions: [],
+      permissionSet: new Set(),
+      oidcScopes: [],
+      oidcScopeSet: new Set(),
+      scopes: [],
+      scopeSet: new Set(),
+      claims,
+    };
+  }
 }
+
+export type AuthenticatedProfileUpdateInput = {
+  userId: string;
+  email?: string;
+  name?: string;
+  fullname?: string;
+  phone?: string;
+  identityDocument?: string;
+  academicId?: string;
+  unespRole?: string[];
+  isOnboarded?: boolean;
+};

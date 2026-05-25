@@ -193,11 +193,21 @@ describe('DashboardInsightsService generation', () => {
       ]),
     );
     expect(redis.set).toHaveBeenCalledWith(
-      'dashboard:workspace:v3:certificate#edit,event#edit,major-event#edit,merge-candidate#read,person#manage,validate-receipt:read',
+      'dashboard:workspace:v4:certificate#edit,event#edit,major-event#edit,merge-candidate#read,person#manage,validate-receipt:read',
       expect.stringContaining('"eventsCount":10'),
       'EX',
       300,
     );
+  });
+
+  it('rejects dashboard insights for authenticated users without administrative permissions', async () => {
+    const { prisma, service } = createInsightsServiceTestContext();
+
+    await expect(service.getWorkspaceDashboardInsights({} as never)).rejects.toThrow(
+      'Workspace dashboard insights require an administrative permission.',
+    );
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+    expect(prisma.event.count).not.toHaveBeenCalled();
   });
 
   it('serves uncached non-personalized insights when permission evaluation fails', async () => {
