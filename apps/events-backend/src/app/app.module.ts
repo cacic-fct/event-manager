@@ -129,6 +129,8 @@ import { WeatherService } from './weather/weather.service';
       sortSchema: true,
       path: '/graphql',
       useGlobalPrefix: true,
+      introspection: process.env.NODE_ENV !== 'production',
+      playground: process.env.NODE_ENV !== 'production',
       context: ({ req, res }) => ({ req, res }),
     }),
   ],
