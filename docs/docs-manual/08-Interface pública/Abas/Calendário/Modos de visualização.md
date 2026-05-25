@@ -16,4 +16,4 @@ O usuário pode visualizar todos os eventos futuros em uma lista.
 
 ## Funcionalidades em comum
 
-É possível filtrar os eventos por curso.
+É possível filtrar os eventos.
