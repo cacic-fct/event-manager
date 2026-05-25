@@ -17,7 +17,7 @@ import {
 } from '@cacic-fct/shared-utils';
 import { catchError, combineLatest, distinctUntilChanged, finalize, map, of, startWith, switchMap, tap } from 'rxjs';
 import { CertificateFileDownloadService } from '../shared/certificate-file-download.service';
-import { EmojiService } from '../profile/attendances/emoji.service';
+import { EmojiService } from '../shared/emoji.service';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
 
 type ValidationState =

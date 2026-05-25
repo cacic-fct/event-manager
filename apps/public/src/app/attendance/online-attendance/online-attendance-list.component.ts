@@ -8,7 +8,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { catchError, map, of, startWith } from 'rxjs';
-import { EmojiService } from '../profile/attendances/emoji.service';
+import { EmojiService } from '../../shared/emoji.service';
 import { OnlineAttendanceApiService } from './online-attendance-api.service';
 
 @Component({

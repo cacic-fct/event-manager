@@ -8,8 +8,8 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type { Certificate, CertificateTarget } from '@cacic-fct/shared-utils';
 import { catchError, finalize, map, of, startWith } from 'rxjs';
-import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
-import { AttendancesApiService } from '../attendances-api.service';
+import { CertificateFileDownloadService } from '../../../../shared/certificate-file-download.service';
+import { AttendancesApiService } from '../../attendances-api.service';
 import { AuthService, MailtoService } from '@cacic-fct/shared-angular';
 
 export interface CertificateDialogData {

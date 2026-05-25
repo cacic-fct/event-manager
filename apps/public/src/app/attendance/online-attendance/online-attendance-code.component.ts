@@ -11,7 +11,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { AztecScannerDialogComponent, ScannerFeedbackService } from '@cacic-fct/shared-angular';
 import { catchError, combineLatest, finalize, map, of, switchMap } from 'rxjs';
-import { EmojiService } from '../profile/attendances/emoji.service';
+import { EmojiService } from '../../shared/emoji.service';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
 
 type AttendanceCodeState =

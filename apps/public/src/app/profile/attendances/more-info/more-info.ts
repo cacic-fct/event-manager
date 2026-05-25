@@ -14,8 +14,8 @@ import { DetailViewModel, EventTargetType, buildDetailViewModel, parseEventTarge
 import { Observable, catchError, from, map, of, startWith, switchMap } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
-import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
-import { EmojiService } from '../emoji.service';
+import { CertificateDialog, CertificateDialogData } from '../my-attendances/certificate-dialog/certificate-dialog';
+import { EmojiService } from '../../../shared/emoji.service';
 
 type DetailState =
   | { status: 'loading' }

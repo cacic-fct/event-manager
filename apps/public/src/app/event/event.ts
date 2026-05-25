@@ -31,9 +31,9 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Observable, catchError, combineLatest, finalize, map, of, startWith, switchMap } from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
-import { EventLocationMap } from './event-location-map';
+import { EventLocationMap } from './components/event-location-map';
 import { EventSubscriptionRealtimeService } from './event-subscription-realtime.service';
-import { EmojiService } from '../profile/attendances/emoji.service';
+import { EmojiService } from '../shared/emoji.service';
 import { NetworkStatusService } from '../shared/network-status.service';
 
 type EventPageState =

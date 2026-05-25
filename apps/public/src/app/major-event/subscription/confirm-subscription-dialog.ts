@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/shared-utils';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
-import { EmojiService } from '../../profile/attendances/emoji.service';
+import { EmojiService } from '../../shared/emoji.service';
 
 export interface ConfirmSubscriptionDialogData {
   majorEvent: PublicMajorEvent;

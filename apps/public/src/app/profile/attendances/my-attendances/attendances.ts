@@ -19,9 +19,9 @@ import {
 import { AuthService } from '@cacic-fct/shared-angular';
 import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
 import { catchError, from, map, of, startWith, switchMap } from 'rxjs';
-import { NetworkStatusService } from '../../shared/network-status.service';
-import { AttendancesApiService } from './attendances-api.service';
-import { EmojiService } from './emoji.service';
+import { NetworkStatusService } from '../../../shared/network-status.service';
+import { AttendancesApiService } from '../attendances-api.service';
+import { EmojiService } from '../../../shared/emoji.service';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 
@@ -115,12 +115,10 @@ export class Attendances {
       } satisfies SubscriptionsFeed);
     }
 
-    return this.api
-      .getSubscriptionsFeed()
-      .pipe(
-        switchMap((feed) => from(this.offlineData.replaceAttendanceFeed(userId, feed)).pipe(map(() => feed))),
-        catchError(() => from(this.loadOfflineFeed())),
-      );
+    return this.api.getSubscriptionsFeed().pipe(
+      switchMap((feed) => from(this.offlineData.replaceAttendanceFeed(userId, feed)).pipe(map(() => feed))),
+      catchError(() => from(this.loadOfflineFeed())),
+    );
   }
 
   private async loadOfflineFeed(): Promise<SubscriptionsFeed> {

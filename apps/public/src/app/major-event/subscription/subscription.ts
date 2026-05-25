@@ -14,7 +14,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription, PublicEvent } from '@cacic-fct/shared-utils';
 import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { filter, finalize, map } from 'rxjs';
-import { EmojiService } from '../../profile/attendances/emoji.service';
+import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from './subscription-api.service';
@@ -375,11 +375,7 @@ export class MajorEventSubscription {
   private confirmSubscription(data: PublicMajorEventSubscriptionPage, paymentTier: string | null): void {
     this.isSubmitting.set(true);
     this.api
-      .upsertSubscription(
-        data.majorEvent.id,
-        [...this.effectiveSelectedEventIds()],
-        paymentTier,
-      )
+      .upsertSubscription(data.majorEvent.id, [...this.effectiveSelectedEventIds()], paymentTier)
       .pipe(
         finalize(() => this.isSubmitting.set(false)),
         takeUntilDestroyed(this.destroyRef),
