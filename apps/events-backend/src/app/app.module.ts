@@ -88,6 +88,7 @@ import { WeatherProcessor } from './weather/weather.processor';
 import { WeatherResolver } from './weather/weather.resolver';
 import { WeatherSchedulerService } from './weather/weather-scheduler.service';
 import { WeatherService } from './weather/weather.service';
+import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 
 @Module({
   imports: [
@@ -129,8 +130,8 @@ import { WeatherService } from './weather/weather.service';
       sortSchema: true,
       path: '/graphql',
       useGlobalPrefix: true,
-      introspection: process.env.NODE_ENV !== 'production',
-      playground: process.env.NODE_ENV !== 'production',
+      playground: false,
+      plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
       context: ({ req, res }) => ({ req, res }),
     }),
   ],
