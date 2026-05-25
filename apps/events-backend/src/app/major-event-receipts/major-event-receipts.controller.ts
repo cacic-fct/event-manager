@@ -28,6 +28,7 @@ import {
   CurrentUserReceiptResponse,
   UploadedReceiptFile,
 } from './receipt.types';
+import { isAllowedReceiptMimeType } from './utils/receipt-file.utils';
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUser;
@@ -55,8 +56,8 @@ export class MajorEventReceiptsController {
         files: 1,
       },
       fileFilter: (_request, file: UploadedReceiptFile, callback: (error: Error | null, acceptFile: boolean) => void) => {
-        if (!file.mimetype.startsWith('image/')) {
-          callback(new BadRequestException('Receipt must be an image.'), false);
+        if (!isAllowedReceiptMimeType(file.mimetype)) {
+          callback(new BadRequestException('Receipt must be a supported raster image.'), false);
           return;
         }
 
@@ -102,6 +103,7 @@ export class MajorEventReceiptsController {
 
   @Get(':receiptId/image')
   @Header('Cache-Control', 'private, no-store')
+  @Header('X-Content-Type-Options', 'nosniff')
   async getReceiptImage(
     @Param('receiptId') receiptId: string,
     @Req() request: RequestWithUser,

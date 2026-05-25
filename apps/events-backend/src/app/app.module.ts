@@ -37,6 +37,7 @@ import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
 import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
+import { AccountProfileUpdateController } from './current-user/profile-update.controller';
 import { CurrentUserEventSubscriptionService } from './current-user/events/subscription.service';
 import { CurrentUserEventAttendanceResolver } from './current-user/events/attendance.resolver';
 import { CurrentUserAttendanceCollectionController } from './current-user/events/attendance-collection.controller';
@@ -138,6 +139,7 @@ import { WeatherService } from './weather/weather.service';
     LgpdController,
     CurrentUserRealtimeEventsController,
     CurrentUserAttendanceCollectionController,
+    AccountProfileUpdateController,
     EventAttendancesController,
     MajorEventReceiptsController,
     PrivacyController,

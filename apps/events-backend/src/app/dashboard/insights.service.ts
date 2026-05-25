@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { CurrentUserContextService } from '../current-user/context.service';
@@ -115,8 +115,24 @@ export class DashboardInsightsService {
     const today = startOfLocalDay(now);
     const sevenDaysFromToday = new Date(today);
     sevenDaysFromToday.setDate(sevenDaysFromToday.getDate() + 7);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     const inconsistencyWindowStart = new Date(now);
     inconsistencyWindowStart.setDate(inconsistencyWindowStart.getDate() - 14);
+
+    const permissionSet = new Set(permissions);
+    if (permissionSet.size === 0) {
+      throw new ForbiddenException('Workspace dashboard insights require an administrative permission.');
+    }
+
+    const canReadEvents = permissionSet.has('event#read') || permissionSet.has('event#edit');
+    const canManageEvents = permissionSet.has('event#edit');
+    const canReadMajorEvents = permissionSet.has('major-event#read') || permissionSet.has('major-event#edit');
+    const canManageMajorEvents = permissionSet.has('major-event#edit');
+    const canManageCertificates = permissionSet.has('certificate#edit');
+    const canManageMergeCandidates = permissionSet.has('merge-candidate#read');
+    const canValidateReceipts = permissionSet.has('validate-receipt:read') || permissionSet.has('validate-receipt:edit');
+    const shouldBuildInconsistencies = canManageEvents || canManageCertificates;
 
     const [
       eventsCount,
@@ -132,191 +148,200 @@ export class DashboardInsightsService {
       mismatchingCertificateGroupEvents,
       pastCertificateEventsWithoutAttendance,
     ] = await Promise.all([
-      this.prisma.event.count({ where: { deletedAt: null } }),
-      this.prisma.eventGroup.count({ where: { deletedAt: null } }),
-      this.prisma.majorEvent.count({ where: { deletedAt: null } }),
-      this.prisma.mergeCandidate.count({
-        where: actionablePendingMergeCandidateWhere,
-      }),
-      this.prisma.majorEventSubscription.count({
-        where: {
-          deletedAt: null,
-          subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
-          majorEvent: {
-            deletedAt: null,
-            isPaymentRequired: true,
-          },
-        },
-      }),
-      this.prisma.majorEvent.findMany({
-        where: {
-          deletedAt: null,
-          isPaymentRequired: true,
-          subscriptions: {
-            some: {
+      canReadEvents ? this.prisma.event.count({ where: { deletedAt: null } }) : Promise.resolve(0),
+      canReadEvents ? this.prisma.eventGroup.count({ where: { deletedAt: null } }) : Promise.resolve(0),
+      canReadMajorEvents ? this.prisma.majorEvent.count({ where: { deletedAt: null } }) : Promise.resolve(0),
+      canManageMergeCandidates
+        ? this.prisma.mergeCandidate.count({
+            where: actionablePendingMergeCandidateWhere,
+          })
+        : Promise.resolve(0),
+      canValidateReceipts
+        ? this.prisma.majorEventSubscription.count({
+            where: {
               deletedAt: null,
               subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
+              majorEvent: {
+                deletedAt: null,
+                isPaymentRequired: true,
+              },
             },
-          },
-        },
-        select: {
-          id: true,
-          name: true,
-          emoji: true,
-          startDate: true,
-          endDate: true,
-          _count: {
-            select: {
+          })
+        : Promise.resolve(0),
+      canValidateReceipts
+        ? this.prisma.majorEvent.findMany({
+            where: {
+              deletedAt: null,
+              isPaymentRequired: true,
               subscriptions: {
-                where: {
+                some: {
                   deletedAt: null,
                   subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
                 },
               },
             },
-          },
-        },
-        orderBy: { startDate: 'desc' },
-        take: 10,
-      }),
+            select: {
+              id: true,
+              name: true,
+              emoji: true,
+              startDate: true,
+              endDate: true,
+              _count: {
+                select: {
+                  subscriptions: {
+                    where: {
+                      deletedAt: null,
+                      subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: { startDate: 'desc' },
+            take: 10,
+          })
+        : Promise.resolve([]),
       this.prisma.event.findMany({
         where: {
           deletedAt: null,
           startDate: {
             gte: today,
-            lt: sevenDaysFromToday,
+            lt: tomorrow,
           },
         },
         select: EVENT_INSIGHT_SELECT,
         orderBy: { startDate: 'asc' },
       }),
-      this.prisma.majorEvent.count({
-        where: {
-          deletedAt: null,
-          startDate: {
-            gte: today,
-            lt: sevenDaysFromToday,
-          },
-        },
-      }),
-      this.prisma.event.findMany({
-        where: {
-          deletedAt: null,
-          OR: [
-            {
+      canManageMajorEvents
+        ? this.prisma.majorEvent.count({
+            where: {
+              deletedAt: null,
               startDate: {
-                gte: inconsistencyWindowStart,
+                gte: today,
+                lt: sevenDaysFromToday,
               },
             },
-            {
-              endDate: {
-                gte: inconsistencyWindowStart,
+          })
+        : Promise.resolve(0),
+      shouldBuildInconsistencies
+        ? this.prisma.event.findMany({
+            where: {
+              deletedAt: null,
+              OR: [
+                {
+                  startDate: {
+                    gte: inconsistencyWindowStart,
+                  },
+                },
+                {
+                  endDate: {
+                    gte: inconsistencyWindowStart,
+                  },
+                },
+              ],
+            },
+            select: EVENT_INSIGHT_SELECT,
+            orderBy: { startDate: 'asc' },
+          })
+        : Promise.resolve([]),
+      shouldBuildInconsistencies
+        ? this.prisma.eventGroup.findMany({
+            where: {
+              deletedAt: null,
+              events: {
+                some: { deletedAt: null },
               },
             },
-          ],
-        },
-        select: EVENT_INSIGHT_SELECT,
-        orderBy: { startDate: 'asc' },
-      }),
-      this.prisma.eventGroup.findMany({
-        where: {
-          deletedAt: null,
-          events: {
-            some: { deletedAt: null },
-          },
-        },
-        select: {
-          id: true,
-          name: true,
-          events: {
-            where: { deletedAt: null },
-            select: { id: true },
-            take: 2,
-          },
-        },
-        orderBy: { updatedAt: 'desc' },
-        take: 30,
-      }),
-      this.prisma.event.findMany({
-        where: {
-          deletedAt: null,
-          eventGroup: {
-            deletedAt: null,
-          },
-        },
-        select: {
-          id: true,
-          name: true,
-          shouldIssueCertificate: true,
-          eventGroup: {
+            select: {
+              id: true,
+              name: true,
+              events: {
+                where: { deletedAt: null },
+                select: { id: true },
+                take: 2,
+              },
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 30,
+          })
+        : Promise.resolve([]),
+      shouldBuildInconsistencies
+        ? this.prisma.event.findMany({
+            where: {
+              deletedAt: null,
+              eventGroup: {
+                deletedAt: null,
+              },
+            },
             select: {
               id: true,
               name: true,
               shouldIssueCertificate: true,
-            },
-          },
-        },
-        orderBy: { startDate: 'desc' },
-        take: 30,
-      }),
-      this.prisma.event.findMany({
-        where: {
-          deletedAt: null,
-          endDate: { lt: now },
-          shouldIssueCertificate: true,
-          attendances: { none: {} },
-          OR: [
-            { majorEventId: null },
-            {
-              majorEvent: {
-                deletedAt: null,
-                certificateConfigs: {
-                  some: {
-                    deletedAt: null,
-                    isActive: true,
-                    issuedTo: 'ATTENDEE',
-                  },
-                },
-              },
-            },
-            {
               eventGroup: {
-                deletedAt: null,
-                certificateConfigs: {
-                  some: {
+                select: {
+                  id: true,
+                  name: true,
+                  shouldIssueCertificate: true,
+                },
+              },
+            },
+            orderBy: { startDate: 'desc' },
+            take: 30,
+          })
+        : Promise.resolve([]),
+      shouldBuildInconsistencies
+        ? this.prisma.event.findMany({
+            where: {
+              deletedAt: null,
+              endDate: { lt: now },
+              shouldIssueCertificate: true,
+              attendances: { none: {} },
+              OR: [
+                { majorEventId: null },
+                {
+                  majorEvent: {
                     deletedAt: null,
-                    isActive: true,
-                    issuedTo: 'ATTENDEE',
+                    certificateConfigs: {
+                      some: {
+                        deletedAt: null,
+                        isActive: true,
+                        issuedTo: 'ATTENDEE',
+                      },
+                    },
                   },
                 },
-              },
-            },
-            {
-              certificateConfigs: {
-                some: {
-                  deletedAt: null,
-                  isActive: true,
-                  issuedTo: 'ATTENDEE',
+                {
+                  eventGroup: {
+                    deletedAt: null,
+                    certificateConfigs: {
+                      some: {
+                        deletedAt: null,
+                        isActive: true,
+                        issuedTo: 'ATTENDEE',
+                      },
+                    },
+                  },
                 },
-              },
+                {
+                  certificateConfigs: {
+                    some: {
+                      deletedAt: null,
+                      isActive: true,
+                      issuedTo: 'ATTENDEE',
+                    },
+                  },
+                },
+              ],
             },
-          ],
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-        orderBy: { endDate: 'desc' },
-        take: 30,
-      }),
+            select: {
+              id: true,
+              name: true,
+            },
+            orderBy: { endDate: 'desc' },
+            take: 30,
+          })
+        : Promise.resolve([]),
     ]);
-
-    const permissionSet = new Set(permissions);
-    const canManageEvents = permissionSet.has('event#edit');
-    const canManageMajorEvents = permissionSet.has('major-event#edit');
-    const canManageCertificates = permissionSet.has('certificate#edit');
-    const canManageMergeCandidates = permissionSet.has('merge-candidate#read');
-    const canValidateReceipts = permissionSet.has('validate-receipt:read');
 
     return {
       generatedAt: now,

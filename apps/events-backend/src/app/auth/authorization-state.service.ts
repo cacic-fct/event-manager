@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import Redis from 'ioredis';
 
-type AuthorizationState = {
+export type AuthorizationState = {
   redirectUri?: string;
   returnTo?: string;
   state?: string;
@@ -9,57 +11,81 @@ type AuthorizationState = {
 @Injectable()
 export class AuthorizationStateService {
   private readonly logger = new Logger(AuthorizationStateService.name);
+  private readonly keyPrefix = process.env.KEYCLOAK_AUTH_STATE_REDIS_PREFIX ?? 'auth:oauth-state:';
+  private readonly stateTtlSeconds = this.parseDurationSeconds(process.env.KEYCLOAK_AUTH_STATE_TTL_SECONDS, 10 * 60);
   private readonly defaultPostLoginRedirectUri =
     process.env.KEYCLOAK_POST_LOGIN_REDIRECT_URI ?? 'http://localhost:4200';
   private readonly allowedPostLoginRedirectOrigins = this.readAllowedPostLoginRedirectOrigins();
 
-  build(options?: { redirectUri?: string; returnTo?: string; state?: string }): string | undefined {
-    const returnTo = this.normalizePostLoginReturnTo(options?.returnTo);
-    if (!options?.redirectUri && !returnTo && !options?.state) {
-      return undefined;
-    }
+  constructor(private readonly redis: Redis) {}
 
-    return Buffer.from(
+  async create(options?: { redirectUri?: string; returnTo?: string; state?: string }): Promise<string> {
+    const returnTo = this.normalizePostLoginReturnTo(options?.returnTo);
+    const state = randomBytes(32).toString('base64url');
+
+    await this.redis.set(
+      this.getKey(state),
       JSON.stringify({
         ...(options?.redirectUri ? { redirectUri: options.redirectUri } : {}),
         ...(returnTo ? { returnTo } : {}),
         ...(options?.state ? { state: options.state } : {}),
       }),
-      'utf8',
-    ).toString('base64url');
+      'EX',
+      this.stateTtlSeconds,
+      'NX',
+    );
+
+    return state;
   }
 
-  getPostLoginRedirectUri(state?: string): string {
-    const returnTo = this.readReturnToFromState(state);
-    return returnTo ?? this.defaultPostLoginRedirectUri;
-  }
-
-  getAuthorizationRedirectUri(state?: string): string | undefined {
-    const decodedState = this.readAuthorizationState(state);
-    if (!decodedState) {
-      return undefined;
-    }
-
-    return this.readStringClaim(decodedState, 'redirectUri');
-  }
-
-  private readReturnToFromState(state?: string): string | undefined {
-    const decodedState = this.readAuthorizationState(state);
-    if (!decodedState) {
-      return undefined;
-    }
-
-    const returnTo = this.readStringClaim(decodedState, 'returnTo');
-    return this.normalizePostLoginReturnTo(returnTo);
-  }
-
-  private readAuthorizationState(state?: string): AuthorizationState | undefined {
+  async consume(state?: string): Promise<AuthorizationState | undefined> {
     if (!state) {
       return undefined;
     }
 
+    const rawState = await this.redis.eval(
+      `
+local value = redis.call("get", KEYS[1])
+if value then
+  redis.call("del", KEYS[1])
+end
+return value
+`,
+      1,
+      this.getKey(state),
+    );
+    if (typeof rawState !== 'string') {
+      return undefined;
+    }
+
+    return this.parseStoredState(rawState);
+  }
+
+  getPostLoginRedirectUri(state?: AuthorizationState): string {
+    const returnTo = this.readReturnToFromState(state);
+    return returnTo ?? this.defaultPostLoginRedirectUri;
+  }
+
+  getAuthorizationRedirectUri(state?: AuthorizationState): string | undefined {
+    if (!state) {
+      return undefined;
+    }
+
+    return this.readStringClaim(state, 'redirectUri');
+  }
+
+  private readReturnToFromState(state?: AuthorizationState): string | undefined {
+    if (!state) {
+      return undefined;
+    }
+
+    const returnTo = this.readStringClaim(state, 'returnTo');
+    return this.normalizePostLoginReturnTo(returnTo);
+  }
+
+  private parseStoredState(rawState: string): AuthorizationState | undefined {
     try {
-      const decodedState = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
+      const decodedState = JSON.parse(rawState);
 
       if (!this.isRecord(decodedState)) {
         return undefined;
@@ -131,5 +157,18 @@ export class AuthorizationStateService {
 
   private isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
+  }
+
+  private getKey(state: string): string {
+    return `${this.keyPrefix}${state}`;
+  }
+
+  private parseDurationSeconds(rawValue: string | undefined, fallback: number): number {
+    const value = Number.parseInt(rawValue ?? '', 10);
+    if (Number.isNaN(value) || value <= 0) {
+      return fallback;
+    }
+
+    return value;
   }
 }
