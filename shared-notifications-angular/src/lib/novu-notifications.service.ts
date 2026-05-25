@@ -296,7 +296,7 @@ export class NovuNotificationsService {
       apiUrl: 'https://notifications.cacic.dev.br/api',
       socketUrl: 'https://notifications.cacic.dev.br',
       socketOptions: {
-        path: '/ws',
+        path: '/socket.io',
       },
     } satisfies NovuOptions);
 
