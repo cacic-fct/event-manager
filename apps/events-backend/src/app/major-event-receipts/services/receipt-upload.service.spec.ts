@@ -66,7 +66,7 @@ describe('ReceiptUploadService', () => {
     currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
     prisma.majorEventSubscription.findFirst.mockResolvedValue(null);
 
-    await expect(service.uploadReceipt('major-1', createFile(), user)).rejects.toThrow(NotFoundException);
+    await expect(service.uploadReceipt('major-1', createValidFile(), user)).rejects.toThrow(NotFoundException);
 
     prisma.majorEventSubscription.findFirst.mockResolvedValue({
       id: 'subscription-1',
@@ -77,7 +77,7 @@ describe('ReceiptUploadService', () => {
       },
     });
 
-    await expect(service.uploadReceipt('major-1', createFile(), user)).rejects.toThrow(BadRequestException);
+    await expect(service.uploadReceipt('major-1', createInvalidFile(), user)).rejects.toThrow(BadRequestException);
   });
 
   it('uploads, records, queues, and maps a receipt', async () => {
@@ -103,7 +103,7 @@ describe('ReceiptUploadService', () => {
       }),
     );
 
-    await expect(service.uploadReceipt('major-1', createFile(), user)).resolves.toEqual(
+    await expect(service.uploadReceipt('major-1', createValidFile(), user)).resolves.toEqual(
       expect.objectContaining({
         id: 'receipt-1',
       }),
@@ -175,6 +175,19 @@ function createFile() {
     originalname: 'receipt.png',
     size: 123,
   };
+}
+
+function createValidFile() {
+  return {
+    buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]),
+    mimetype: 'image/png',
+    originalname: 'receipt.png',
+    size: 123,
+  };
+}
+
+function createInvalidFile() {
+  return createFile();
 }
 
 function createReceipt() {
