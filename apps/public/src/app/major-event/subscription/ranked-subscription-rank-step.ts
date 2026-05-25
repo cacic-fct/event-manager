@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
 import type { PublicEvent } from '@cacic-fct/shared-utils';
-import { EmojiService } from '../../profile/attendances/emoji.service';
+import { EmojiService } from '../../shared/emoji.service';
 import { RankedSubscriptionStore } from './ranked-subscription.store';
 
 @Component({

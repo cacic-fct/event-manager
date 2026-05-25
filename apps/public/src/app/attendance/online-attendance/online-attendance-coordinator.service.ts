@@ -3,7 +3,7 @@ import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Subscription, catchError, of, take } from 'rxjs';
-import { RealtimeEventsService } from '../shared/realtime-events.service';
+import { RealtimeEventsService } from '../../shared/realtime-events.service';
 import { OnlineAttendanceApiService } from './online-attendance-api.service';
 
 const ONLINE_ATTENDANCE_CHANNEL = 'current-user.online-attendance';

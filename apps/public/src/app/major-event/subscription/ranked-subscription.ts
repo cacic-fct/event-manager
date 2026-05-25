@@ -9,7 +9,7 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
-import { EmojiService } from '../../profile/attendances/emoji.service';
+import { EmojiService } from '../../shared/emoji.service';
 import { RankedSubscriptionRankStep } from './ranked-subscription-rank-step';
 import { RankedSubscriptionSelectStep } from './ranked-subscription-select-step';
 import { RankedSubscriptionStore } from './ranked-subscription.store';

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { MatListModule } from '@angular/material/list';
 import { RouterLink } from '@angular/router';
 import { PublicEvent, getEventTypeLabel } from '@cacic-fct/shared-utils';
-import { EmojiService } from '../../profile/attendances/emoji.service';
+import { EmojiService } from '../../shared/emoji.service';
 
 @Component({
   selector: 'app-calendar-event-list-item',

@@ -13,7 +13,7 @@ import { parseEventTargetType } from '@cacic-fct/shared-utils';
 import { Observable, catchError, map, of, startWith, switchMap } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { AttendancesApiService, OrganizerInfo } from '../attendances-api.service';
-import { EmojiService } from '../emoji.service';
+import { EmojiService } from '../../../shared/emoji.service';
 
 type OrganizerInfoState =
   | { status: 'loading' }

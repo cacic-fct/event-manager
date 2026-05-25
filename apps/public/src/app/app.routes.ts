@@ -35,7 +35,8 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'notifications',
-        loadComponent: () => import('./notifications/notifications-tab.component').then((m) => m.NotificationsTabComponent),
+        loadComponent: () =>
+          import('./tabs/notifications/notifications-tab.component').then((m) => m.NotificationsTabComponent),
         title: 'Notificações',
         data: { reuseTab: true },
       },
@@ -44,7 +45,7 @@ export const appRoutes: Route[] = [
   {
     path: 'dev-tools',
     loadChildren: () => import('./development-tools/development-tools.routes').then((m) => m.routes),
-    title: 'Ferramentas de Desenvolvimento',
+    title: 'Ferramentas de desenvolvimento',
     canActivate: [developmentOnlyGuard],
   },
   {
@@ -60,7 +61,7 @@ export const appRoutes: Route[] = [
       {
         path: 'event/:eventId',
         loadComponent: () => import('./event/event').then((m) => m.Event),
-        title: 'Evento',
+        title: 'Informações do evento',
       },
     ],
   },
@@ -95,13 +96,17 @@ export const appRoutes: Route[] = [
   {
     path: 'attendance/register',
     loadComponent: () =>
-      import('./attendance/online-attendance-list.component').then((m) => m.OnlineAttendanceListComponent),
+      import('./attendance/online-attendance/online-attendance-list.component').then(
+        (m) => m.OnlineAttendanceListComponent,
+      ),
     title: 'Confirmar presença',
   },
   {
     path: 'attendance/register/:eventId',
     loadComponent: () =>
-      import('./attendance/online-attendance-code.component').then((m) => m.OnlineAttendanceCodeComponent),
+      import('./attendance/online-attendance/online-attendance-code.component').then(
+        (m) => m.OnlineAttendanceCodeComponent,
+      ),
     title: 'Confirmar presença',
   },
   {

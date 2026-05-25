@@ -12,7 +12,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription, PublicMajorEvent } from '@cacic-fct/shared-utils';
 import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { forkJoin, of } from 'rxjs';
-import { EmojiService } from '../profile/attendances/emoji.service';
+import { EmojiService } from '../shared/emoji.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from './subscription/subscription-api.service';
 
