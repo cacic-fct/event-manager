@@ -1,3 +1,4 @@
+import { DASHBOARD_PERMISSION_REQUIREMENTS } from './constants';
 import { formatPermissions, resolveDashboardPermissions } from './permissions';
 
 describe('dashboard permission helpers', () => {
@@ -7,20 +8,19 @@ describe('dashboard permission helpers', () => {
     };
 
     await expect(
-      resolveDashboardPermissions(keycloakAuthService as never, {
-        token: 'token',
-        permissionSet: new Set(['person#manage', 'event#edit']),
-      } as never),
+      resolveDashboardPermissions(
+        keycloakAuthService as never,
+        {
+          token: 'token',
+          permissionSet: new Set(['person#manage', 'event#edit']),
+        } as never,
+      ),
     ).resolves.toEqual({
       permissions: ['certificate#edit', 'event#edit', 'person#manage'],
       cacheable: true,
     });
     expect(keycloakAuthService.evaluateAccessTokenPermissions).toHaveBeenCalledWith('token', [
-      'event#edit',
-      'major-event#edit',
-      'certificate#edit',
-      'merge-candidate#read',
-      'validate-receipt:read',
+      ...DASHBOARD_PERMISSION_REQUIREMENTS,
     ]);
   });
 
@@ -30,10 +30,13 @@ describe('dashboard permission helpers', () => {
     };
 
     await expect(
-      resolveDashboardPermissions(keycloakAuthService as never, {
-        token: 'token',
-        permissionSet: new Set(['major-event#edit', 'event#edit']),
-      } as never),
+      resolveDashboardPermissions(
+        keycloakAuthService as never,
+        {
+          token: 'token',
+          permissionSet: new Set(['major-event#edit', 'event#edit']),
+        } as never,
+      ),
     ).resolves.toEqual({
       permissions: ['event#edit', 'major-event#edit'],
       cacheable: false,
