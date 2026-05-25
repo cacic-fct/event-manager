@@ -109,7 +109,10 @@ export class AuthService {
       await firstValueFrom(this.refreshTokenSilently());
       await this.redirectToOnboardingIfNeeded();
     } catch (error) {
-      this.logUnexpectedAuthError('Silent token refresh failed', error);
+      if (!this.isExpectedUnauthenticatedError(error)) {
+        this.logUnexpectedAuthError('Silent token refresh failed', error);
+      }
+
       this.clearSession();
     }
   }
@@ -171,7 +174,10 @@ export class AuthService {
       this.user.set(null);
 
       if (this.isHttpError(error)) {
-        this.logUnexpectedAuthError('Failed to load current user', error);
+        if (!this.isExpectedUnauthenticatedError(error)) {
+          this.logUnexpectedAuthError('Failed to load current user', error);
+        }
+
         return false;
       }
 
@@ -203,7 +209,10 @@ export class AuthService {
       try {
         await firstValueFrom(this.refreshTokenSilently());
       } catch (error) {
-        this.logUnexpectedAuthError('Silent token refresh before onboarding failed', error);
+        if (!this.isExpectedUnauthenticatedError(error)) {
+          this.logUnexpectedAuthError('Silent token refresh before onboarding failed', error);
+        }
+
         this.clearSession();
         return;
       }
@@ -240,7 +249,10 @@ export class AuthService {
     this.refreshTimerId = setTimeout(() => {
       this.refreshTokenSilently().subscribe({
         error: (error) => {
-          this.logUnexpectedAuthError('Scheduled token refresh failed', error);
+          if (!this.isExpectedUnauthenticatedError(error)) {
+            this.logUnexpectedAuthError('Scheduled token refresh failed', error);
+          }
+
           this.clearSession();
         },
       });
@@ -314,6 +326,14 @@ export class AuthService {
 
   private isHttpError(error: unknown): error is HttpErrorResponse {
     return error instanceof HttpErrorResponse;
+  }
+
+  private isExpectedUnauthenticatedError(error: unknown): error is HttpErrorResponse {
+    if (!this.isHttpError(error) || (error.status !== 401 && error.status !== 403)) {
+      return false;
+    }
+
+    return !error.url || error.url.includes('/api/auth/me') || error.url.includes('/api/auth/refresh');
   }
 
   private isRecord(value: unknown): value is Record<string, unknown> {

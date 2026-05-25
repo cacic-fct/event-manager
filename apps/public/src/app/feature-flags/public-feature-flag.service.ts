@@ -47,6 +47,7 @@ export class PublicFeatureFlagService {
       storageProvider: this.createStorageProvider(),
       bootstrap: this.createBootstrapToggles(this.valuesSignal()),
       bootstrapOverride: false,
+      fetch: this.fetchWithoutConsoleNoise,
     });
 
     this.client = client;
@@ -201,5 +202,26 @@ export class PublicFeatureFlagService {
 
   private isExpired(record: OfflineFeatureFlagCacheRecord): boolean {
     return record.key !== 'sessionId' && record.updatedAt < Date.now() - CACHE_TTL_MS;
+  }
+
+  private readonly fetchWithoutConsoleNoise: typeof fetch = async (input, init) => {
+    try {
+      const response = await fetch(input, init);
+
+      if (response.status === 401 || response.status === 403) {
+        return this.createNotModifiedResponse();
+      }
+
+      return response;
+    } catch {
+      return this.createNotModifiedResponse();
+    }
+  };
+
+  private createNotModifiedResponse(): Response {
+    return new Response(null, {
+      status: 304,
+      statusText: 'Not Modified',
+    });
   }
 }
