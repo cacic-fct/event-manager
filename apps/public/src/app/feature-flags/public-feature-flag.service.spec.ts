@@ -89,6 +89,7 @@ describe('PublicFeatureFlagService', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it('uses hardcoded defaults when no cached flags are available', async () => {
@@ -221,5 +222,36 @@ describe('PublicFeatureFlagService', () => {
     await expect(service.initialize()).resolves.toBeUndefined();
     expect(service.booleanValue('calendarTabEnabled')).toBe(false);
     expect(service.stringValue('defaultLoginRedirectPath')).toBe('/menu');
+  });
+
+  it('keeps Unleash fetch failures quiet so cached flags can be used', async () => {
+    TestBed.overrideProvider(PUBLIC_FEATURE_FLAG_CONFIG, {
+      useValue: {
+        url: 'https://unleash.cacic.dev.br/api/frontend',
+        clientKey: 'default:production.test',
+        appName: 'events-public',
+        environment: 'production',
+        refreshIntervalSeconds: 60,
+        disableMetrics: true,
+      },
+    });
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.reject(new TypeError('NetworkError')));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const service = TestBed.inject(PublicFeatureFlagService);
+
+    await service.initialize();
+
+    const config = unleashClientMock.constructor.mock.calls[0]?.[0] as { fetch?: typeof fetch } | undefined;
+    await expect(config?.fetch?.('https://unleash.cacic.dev.br/api/frontend')).resolves.toMatchObject({
+      status: 304,
+      statusText: 'Not Modified',
+    });
+
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
+    await expect(config?.fetch?.('https://unleash.cacic.dev.br/api/frontend')).resolves.toMatchObject({
+      status: 304,
+      statusText: 'Not Modified',
+    });
   });
 });
