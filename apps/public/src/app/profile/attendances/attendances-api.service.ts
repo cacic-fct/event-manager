@@ -306,6 +306,7 @@ export class AttendancesApiService {
     return forkJoin({
       details: this.query<{
         currentUserMajorEventSubscription: CurrentUserMajorEventSubscription | null;
+        currentUserMajorEventEventSubscriptions: CurrentUserEventSubscription[];
         currentUserEventAttendances: CurrentUserEventAttendance[];
         publicEvents: PublicEvent[];
       }>(
@@ -328,6 +329,14 @@ export class AttendancesApiService {
                 ${PUBLIC_EVENT_FIELDS}
               }
             }
+            currentUserMajorEventEventSubscriptions(majorEventId: $majorEventId) {
+              eventId
+              eventGroupSubscriptionId
+              createdAt
+              event {
+                ${PUBLIC_EVENT_FIELDS}
+              }
+            }
             currentUserEventAttendances {
               eventId
               attendedAt
@@ -345,6 +354,7 @@ export class AttendancesApiService {
       map(({ details, feedItem, organizerInfo }) => ({
         subscription: this.withDerivedNotSubscribedEvents(
           details.currentUserMajorEventSubscription,
+          details.currentUserMajorEventEventSubscriptions ?? [],
           details.publicEvents ?? [],
         ),
         majorEvent: feedItem?.majorEvent ?? null,
@@ -555,17 +565,20 @@ export class AttendancesApiService {
 
   private withDerivedNotSubscribedEvents(
     subscription: CurrentUserMajorEventSubscription | null,
+    eventSubscriptions: CurrentUserEventSubscription[],
     publicEvents: PublicEvent[],
   ): CurrentUserMajorEventSubscription | null {
     if (!subscription) {
       return null;
     }
 
-    const selectedEventIds = new Set((subscription.selectedEvents ?? []).map((event) => event.id));
+    const selectedEvents = eventSubscriptions.map((eventSubscription) => eventSubscription.event);
+    const selectedEventIds = new Set(selectedEvents.map((event) => event.id));
     const notSubscribedEvents = publicEvents.filter((event) => !selectedEventIds.has(event.id));
 
     return {
       ...subscription,
+      selectedEvents,
       notSubscribedEvents,
     };
   }
