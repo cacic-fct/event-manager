@@ -11,6 +11,8 @@ import { AccountMergeController } from './account-merge/account-merge.controller
 import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuthModule } from './auth/auth.module';
 import { KeycloakScopeGuard } from './auth/guards/keycloak-scope.guard';
+import { KeycloakAuthService } from './auth/keycloak-auth.service';
+import { createIntrospectionAuthPlugin } from './auth/introspection-auth.plugin';
 import { LgpdController } from './lgpd/lgpd.controller';
 import { LgpdService } from './lgpd/lgpd.service';
 import { GqlThrottlerGuard } from './common/gql-throttler.guard';
@@ -124,16 +126,26 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
         },
       ],
     }),
-    GraphQLModule.forRoot<ApolloDriverConfig>({
-      driver: ApolloDriver,
-      autoSchemaFile: true,
-      sortSchema: true,
-      path: '/graphql',
-      useGlobalPrefix: true,
-      playground: false,
-      introspection: true,
-      plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
-      context: ({ req, res }) => ({ req, res }),
+    GraphQLModule.forRootAsync<ApolloDriverConfig>({
+      imports: [AuthModule],
+      inject: [KeycloakAuthService],
+      useFactory: (keycloakAuthService: KeycloakAuthService) => ({
+        driver: ApolloDriver,
+        autoSchemaFile: true,
+        sortSchema: true,
+        path: '/graphql',
+        useGlobalPrefix: true,
+        playground: false,
+        introspection: true,
+        plugins: [
+          ApolloServerPluginLandingPageLocalDefault({ includeCookies: true }),
+          createIntrospectionAuthPlugin({
+            keycloakAuthService,
+            production: process.env.NODE_ENV === 'production',
+          }),
+        ],
+        context: ({ req, res }) => ({ req, res }),
+      }),
     }),
   ],
   controllers: [
