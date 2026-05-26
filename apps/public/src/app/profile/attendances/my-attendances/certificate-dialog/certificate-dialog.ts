@@ -60,10 +60,6 @@ export class CertificateDialog {
     { initialValue: { status: 'loading' } satisfies CertificateDialogState },
   );
 
-  close(): void {
-    this.dialogRef.close();
-  }
-
   download(certificate: Certificate): void {
     this.downloadError.set(null);
     this.downloadingCertificateId.set(certificate.id);
