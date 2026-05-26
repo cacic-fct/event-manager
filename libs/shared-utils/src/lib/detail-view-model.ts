@@ -121,7 +121,11 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
     location: joinUnique(
       events.map((event) => event.locationDescription).filter((location): location is string => Boolean(location)),
     ),
-    statusLabel: isSubscribed ? getGroupedStatusLine(eventItems) : details.isLecturer ? 'Ministrante' : 'Certificado emitido',
+    statusLabel: isSubscribed
+      ? getGroupedStatusLine(eventItems)
+      : details.isLecturer
+        ? 'Ministrante'
+        : 'Certificado emitido',
     isSubscribed,
     infoRows: eventGroupInfoRows(eventGroup, events),
     events: eventItems,
@@ -316,12 +320,6 @@ function majorEventInfoRows(
       ? {
           label: getContactLabel(majorEvent.contactType),
           value: majorEvent.contactInfo,
-        }
-      : undefined,
-    majorEvent.additionalPaymentInfo
-      ? {
-          label: 'Informações de pagamento',
-          value: majorEvent.additionalPaymentInfo,
         }
       : undefined,
   ]);
