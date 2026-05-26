@@ -1,0 +1,16 @@
+{
+  "name": "shared-environment",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "root": "libs/shared-environment",
+  "sourceRoot": "libs/shared-environment/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/shared-environment/**/*.ts"]
+      }
+    }
+  }
+}

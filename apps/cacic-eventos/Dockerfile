@@ -11,11 +11,11 @@ COPY package.json bun.lock nx.json tsconfig.base.json ./
 COPY .npmrc ./
 COPY eslint.config.mjs jest.config.ts jest.preset.js ./
 COPY apps/cacic-eventos/project.json apps/cacic-eventos/tsconfig*.json ./apps/cacic-eventos/
-COPY shared-angular/project.json shared-angular/tsconfig*.json ./shared-angular/
-COPY shared-data-types/project.json shared-data-types/tsconfig*.json ./shared-data-types/
-COPY shared-utils/project.json shared-utils/tsconfig*.json ./shared-utils/
-COPY shared-notifications-angular/project.json shared-notifications-angular/tsconfig*.json ./shared-notifications-angular/
-COPY shared-environment/project.json shared-environment/tsconfig*.json ./shared-environment/
+COPY libs/shared-angular/project.json libs/shared-angular/tsconfig*.json ./libs/shared-angular/
+COPY libs/shared-data-types/project.json libs/shared-data-types/tsconfig*.json ./libs/shared-data-types/
+COPY libs/shared-utils/project.json libs/shared-utils/tsconfig*.json ./libs/shared-utils/
+COPY libs/shared-notifications-angular/project.json libs/shared-notifications-angular/tsconfig*.json ./libs/shared-notifications-angular/
+COPY libs/shared-environment/project.json libs/shared-environment/tsconfig*.json ./libs/shared-environment/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     --mount=type=secret,id=npm_token \
     export NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" && \
@@ -23,11 +23,11 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 
 FROM deps AS builder
 COPY apps/cacic-eventos ./apps/cacic-eventos
-COPY shared-angular ./shared-angular
-COPY shared-data-types ./shared-data-types
-COPY shared-utils ./shared-utils
-COPY shared-notifications-angular ./shared-notifications-angular
-COPY shared-environment ./shared-environment
+COPY libs/shared-angular ./libs/shared-angular
+COPY libs/shared-data-types ./libs/shared-data-types
+COPY libs/shared-utils ./libs/shared-utils
+COPY libs/shared-notifications-angular ./libs/shared-notifications-angular
+COPY libs/shared-environment ./libs/shared-environment
 RUN bun x nx build cacic-eventos --configuration=production
 
 FROM base AS runtime-deps
