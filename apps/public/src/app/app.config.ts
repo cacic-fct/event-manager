@@ -99,7 +99,8 @@ export const appConfig: ApplicationConfig = {
       },
       glitchtip: {
         dsn: 'https://44b2480fd6cd4402b61590135a093fd6@glitchtip.cacic.dev.br/1',
-        isEnabled: isUserDiagnosticsEnabled,
+        // isEnabled: isUserDiagnosticsEnabled,
+        isEnabled: () => true,
       },
     }),
     provideAppInitializer(() => {
