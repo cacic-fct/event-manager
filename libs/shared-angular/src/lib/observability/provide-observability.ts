@@ -15,7 +15,13 @@ import {
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { provideUmami } from '@cacic-fct/ngx-umami';
-import { browserTracingIntegration, createErrorHandler, init, TraceService } from '@sentry/angular';
+import {
+  browserTracingIntegration as SentryBrowserTracingIntegration,
+  createErrorHandler as SentryCreateErrorHandler,
+  init as SentryInit,
+  TraceService as SentryTraceService,
+} from '@sentry/angular';
+import type { ErrorEvent as SentryErrorEvent } from '@sentry/angular';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AuthService } from '../auth/auth.service';
 import { CacicAnalyticsService } from './analytics.service';
@@ -126,29 +132,29 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
     providers.push(
       {
         provide: ErrorHandler,
-        useValue: createErrorHandler(),
+        useValue: SentryCreateErrorHandler(),
       },
       {
-        provide: TraceService,
+        provide: SentryTraceService,
         deps: [Router],
       },
       provideAppInitializer(() => {
         const authService = inject(AuthService);
 
-        init({
+        SentryInit({
           dsn: config.glitchtip.dsn,
           environment: isDevMode() ? 'development' : 'production',
           sendDefaultPii: true,
-          integrations: [browserTracingIntegration()],
+          integrations: [SentryBrowserTracingIntegration()],
           tracesSampleRate: 1.0,
           tracePropagationTargets: [/^https:\/\/eventos\.cacic\.dev\.br\/api/],
           enableLogs: true,
-          beforeSend: (event) => {
+          beforeSend: (event: SentryErrorEvent) => {
             return !isDevMode() && config.glitchtip.isEnabled(authService.user()) ? event : null;
           },
         });
 
-        inject(TraceService);
+        inject(SentryTraceService);
       }),
     );
   }
