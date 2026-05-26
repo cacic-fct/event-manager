@@ -46,7 +46,8 @@ export const appConfig: ApplicationConfig = {
       },
       glitchtip: {
         dsn: 'https://b787190b5ac546eb867e793b84d2b4b2@glitchtip.cacic.dev.br/2',
-        isEnabled: observabilityEnabled,
+        // isEnabled: observabilityEnabled,
+        isEnabled: () => true,
       },
     }),
     provideAppInitializer(() => {
