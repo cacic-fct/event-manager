@@ -110,6 +110,39 @@ export class CurrentUserEventSubscriptionsResolver {
     return this.mapper.mapCurrentUserEventSubscription(subscription);
   }
 
+  @Query(() => [CurrentUserEventSubscription], {
+    name: 'currentUserMajorEventEventSubscriptions',
+  })
+  async currentUserMajorEventEventSubscriptions(
+    @Args('majorEventId', { type: () => String }) majorEventId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<CurrentUserEventSubscription[]> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    if (!person) {
+      return [];
+    }
+
+    const subscriptions = await this.prisma.eventSubscription.findMany({
+      where: {
+        personId: person.id,
+        deletedAt: null,
+        event: {
+          majorEventId,
+          deletedAt: null,
+        },
+      },
+      select: CURRENT_USER_EVENT_SUBSCRIPTION_SELECT,
+      orderBy: {
+        event: {
+          startDate: 'asc',
+        },
+      },
+    });
+
+    return subscriptions.map((subscription) => this.mapper.mapCurrentUserEventSubscription(subscription));
+  }
+
   @Mutation(() => PublicEvent, { name: 'subscribeCurrentUserStandaloneEvent' })
   async subscribeCurrentUserStandaloneEvent(
     @Args('eventId', { type: () => String }) eventId: string,

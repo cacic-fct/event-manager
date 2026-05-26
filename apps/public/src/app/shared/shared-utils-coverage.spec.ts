@@ -8,6 +8,7 @@ import {
   formatCurrency,
   formatStatusLine,
   getContactLabel,
+  getEventAttendanceStatusLabel,
   getEventGroupCertificateLabel,
   getMajorEventStatusLine,
   getParticipationStatusLabels,
@@ -34,6 +35,10 @@ describe('shared utility coverage from public app', () => {
     expect(formatCreditMinutes(90)).toBe('1,5 h');
     expect(getContactLabel('WHATSAPP')).toBe('WhatsApp');
     expect(getContactLabel(null)).toBe('Contato');
+    expect(getEventAttendanceStatusLabel({ eventId: 'event-1', attendedAt: '2026-05-21T09:30:00' })).toBe(
+      'Presença registrada às 21/05/2026, 09:30',
+    );
+    expect(getEventAttendanceStatusLabel(null)).toBe('Sem presença registrada');
     expect(joinUnique([' Sala 1 ', 'Sala 1', '', ' Auditório '])).toBe('Sala 1\nAuditório');
     expect(joinUnique([' ', ''])).toBeUndefined();
   });
@@ -116,6 +121,8 @@ describe('shared utility coverage from public app', () => {
         shouldIssueCertificate: true,
       }),
     );
+    expect(majorDetail?.events[0].statusLine).toBe('Sem presença registrada, Inscrito');
+    expect(majorDetail?.notSubscribedEvents[0].statusLine).toBe('Sem presença registrada, Não inscrito');
   });
 
   it('formats subscription feed items and statuses', () => {

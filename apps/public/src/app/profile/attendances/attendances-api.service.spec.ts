@@ -22,7 +22,7 @@ describe('AttendancesApiService', () => {
     httpTesting.verify();
   });
 
-  it('derives major-event not subscribed events from the public event list', async () => {
+  it('splits major-event events from current user event subscriptions and public events', async () => {
     const selectedEvent = eventFixture('selected-event', 'Evento inscrito');
     const notSubscribedEvent = eventFixture('not-subscribed-event', 'Evento não inscrito');
 
@@ -55,9 +55,17 @@ describe('AttendancesApiService', () => {
           paymentDate: null,
           paymentTier: null,
           majorEvent: majorEventFixture(),
-          selectedEvents: [selectedEvent],
+          selectedEvents: [],
           notSubscribedEvents: [],
         },
+        currentUserMajorEventEventSubscriptions: [
+          {
+            eventId: 'selected-event',
+            eventGroupSubscriptionId: null,
+            createdAt: '2026-05-01T10:00:00.000Z',
+            event: selectedEvent,
+          },
+        ],
         currentUserEventAttendances: [],
         publicEvents: [selectedEvent, notSubscribedEvent],
       },
