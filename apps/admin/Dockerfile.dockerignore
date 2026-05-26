@@ -20,8 +20,8 @@ certificate-templates
 *.sql
 
 apps/*
-!apps/cacic-eventos
-!apps/cacic-eventos/**
+!apps/admin
+!apps/admin/**
 !libs
 !libs/shared-angular
 !libs/shared-angular/**

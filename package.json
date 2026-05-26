@@ -29,7 +29,6 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/source-code-pro": "^5.2.7",
     "@fontsource/material-symbols-outlined": "^5.2.45",
-    "@micro-sentry/angular": "^7.2.0",
     "@nestjs/apollo": "^13.4.2",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.23",
@@ -43,6 +42,7 @@
     "@novu/js": "^3.16.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@sentry/angular": "^10.54.0",
     "@twemoji/parser": "^17.0.1",
     "@types/passport-http-bearer": "^1.0.42",
     "axios": "^1.16.1",
@@ -135,7 +135,7 @@
   "msw": {
     "workerDirectory": [
       "apps/public/public",
-      "apps/cacic-eventos/public"
+      "apps/admin/public"
     ]
   }
 }

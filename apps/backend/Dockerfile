@@ -21,10 +21,10 @@ FROM deps AS playwright
 RUN bun x playwright install chromium
 
 FROM deps AS prisma-deps
-COPY apps/events-backend/prisma.config.ts ./apps/events-backend/prisma.config.ts
-COPY apps/events-backend/prisma ./apps/events-backend/prisma
+COPY apps/backend/prisma.config.ts ./apps/backend/prisma.config.ts
+COPY apps/backend/prisma ./apps/backend/prisma
 
-WORKDIR /workspace/apps/events-backend
+WORKDIR /workspace/apps/backend
 
 RUN DATABASE_URL="postgresql://user:password@localhost:5432/db?schema=public" \
     bun x prisma generate --schema prisma/schema
@@ -35,12 +35,12 @@ WORKDIR /workspace
 COPY nx.json tsconfig.base.json ./
 COPY eslint.config.mjs jest.config.ts jest.preset.js ./
 
-COPY apps/events-backend ./apps/events-backend
+COPY apps/backend ./apps/backend
 COPY libs/shared-data-types ./libs/shared-data-types
 COPY libs/shared-utils ./libs/shared-utils
 COPY certificate-templates ./certificate-templates
 
-RUN bun x nx run events-backend:build:production
+RUN bun x nx run backend:build:production
 
 FROM base AS production-deps
 ENV NODE_ENV=production
@@ -56,8 +56,8 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 COPY --from=prisma-deps /workspace/node_modules/.prisma ./node_modules/.prisma
 COPY --from=prisma-deps /workspace/node_modules/@prisma ./node_modules/@prisma
 
-COPY apps/events-backend/prisma.config.ts ./apps/events-backend/prisma.config.ts
-COPY apps/events-backend/prisma ./apps/events-backend/prisma
+COPY apps/backend/prisma.config.ts ./apps/backend/prisma.config.ts
+COPY apps/backend/prisma ./apps/backend/prisma
 
 FROM base AS runtime
 ENV NODE_ENV=production \
@@ -76,10 +76,10 @@ RUN --mount=type=bind,from=deps,source=/workspace,target=/workspace-src,readonly
     && useradd --system --gid app --home-dir /app app
 
 COPY --from=production-deps --chown=app:app /workspace/node_modules ./node_modules
-COPY --from=production-deps --chown=app:app /workspace/apps/events-backend/prisma.config.ts ./apps/events-backend/prisma.config.ts
-COPY --from=production-deps --chown=app:app /workspace/apps/events-backend/prisma ./apps/events-backend/prisma
+COPY --from=production-deps --chown=app:app /workspace/apps/backend/prisma.config.ts ./apps/backend/prisma.config.ts
+COPY --from=production-deps --chown=app:app /workspace/apps/backend/prisma ./apps/backend/prisma
 
-COPY --from=builder --chown=app:app /workspace/dist/apps/events-backend ./
+COPY --from=builder --chown=app:app /workspace/dist/apps/backend ./
 COPY --from=playwright --chown=app:app /ms-playwright /ms-playwright
 
 COPY --chown=app:app certificate-templates ./certificate-templates

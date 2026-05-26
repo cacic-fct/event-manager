@@ -7,7 +7,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['lcov', 'text', 'json'],
-      reportsDirectory: '../../coverage/apps/cacic-eventos',
+      reportsDirectory: '../../coverage/apps/admin',
       exclude: ['node_modules/', 'dist/', '**/*.spec.ts', '**/*.stories.ts', '**/main.ts', '**/main.server.ts'],
     },
   },

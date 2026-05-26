@@ -1,13 +1,13 @@
 {
-  "name": "events-backend",
+  "name": "backend",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/events-backend/src",
+  "sourceRoot": "apps/backend/src",
   "projectType": "application",
   "tags": [],
   "targets": {
     "build": {
       "outputs": [
-        "{workspaceRoot}/dist/apps/events-backend"
+        "{workspaceRoot}/dist/apps/backend"
       ],
       "executor": "nx:run-commands",
       "options": {
@@ -15,7 +15,7 @@
         "args": [
           "--node-env=production"
         ],
-        "cwd": "apps/events-backend"
+        "cwd": "apps/backend"
       },
       "configurations": {
         "development": {
@@ -32,10 +32,10 @@
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
       "outputs": [
-        "{workspaceRoot}/dist/apps/events-backend/package.json"
+        "{workspaceRoot}/dist/apps/backend/package.json"
       ],
       "options": {
-        "buildTarget": "events-backend:build"
+        "buildTarget": "backend:build"
       }
     },
     "copy-workspace-modules": {
@@ -44,11 +44,11 @@
       ],
       "cache": true,
       "outputs": [
-        "{workspaceRoot}/dist/apps/events-backend/workspace_modules"
+        "{workspaceRoot}/dist/apps/backend/workspace_modules"
       ],
       "executor": "@nx/js:copy-workspace-modules",
       "options": {
-        "buildTarget": "events-backend:build"
+        "buildTarget": "backend:build"
       }
     },
     "prune": {
@@ -66,25 +66,25 @@
         "build"
       ],
       "options": {
-        "buildTarget": "events-backend:build",
+        "buildTarget": "backend:build",
         "runBuildTargetDependencies": false
       },
       "configurations": {
         "development": {
-          "buildTarget": "events-backend:build:development"
+          "buildTarget": "backend:build:development"
         },
         "production": {
-          "buildTarget": "events-backend:build:production"
+          "buildTarget": "backend:build:production"
         }
       }
     },
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": [
-        "{workspaceRoot}/coverage/apps/events-backend"
+        "{workspaceRoot}/coverage/apps/backend"
       ],
       "options": {
-        "jestConfig": "apps/events-backend/jest.config.cts",
+        "jestConfig": "apps/backend/jest.config.cts",
         "passWithNoTests": true,
         "coverage": true
       }

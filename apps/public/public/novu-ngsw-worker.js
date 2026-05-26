@@ -1,4 +1,4 @@
-const ACTIVE_SUBSCRIBER_CACHE = 'cacic-eventos:notification-session';
+const ACTIVE_SUBSCRIBER_CACHE = 'admin:notification-session';
 const ACTIVE_SUBSCRIBER_REQUEST = '/__cacic_notification_active_subscriber__';
 
 self.addEventListener('push', (event) => {
