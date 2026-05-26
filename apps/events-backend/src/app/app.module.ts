@@ -131,6 +131,7 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
       path: '/graphql',
       useGlobalPrefix: true,
       playground: false,
+      introspection: true,
       plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
       context: ({ req, res }) => ({ req, res }),
     }),
