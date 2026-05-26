@@ -123,13 +123,6 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
   if (config.glitchtip.dsn) {
     console.debug('Glitchtip DSN provided, enabling Glitchtip integration', { dsn: config.glitchtip.dsn });
     console.debug('Glitchtip isEnabled function', { isEnabled: config.glitchtip.isEnabled });
-    console.debug('Glitchtip will be enabled for current user', {
-      enabled: config.glitchtip.isEnabled(inject(AuthService).user()),
-    });
-    console.debug(
-      'Glitchtip:',
-      !isDevMode() && config.glitchtip.isEnabled(inject(AuthService).user()) ? 'enabled' : 'disabled',
-    );
 
     providers.push(
       importProvidersFrom(
