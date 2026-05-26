@@ -71,7 +71,7 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": ["apps/events-backend-e2e/**/*"]
+      "exclude": ["apps/backend-e2e/**/*"]
     }
   ],
   "generators": {

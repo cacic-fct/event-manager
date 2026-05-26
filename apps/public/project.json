@@ -64,7 +64,7 @@
       "continuous": true,
       "executor": "@angular/build:dev-server",
       "options": {
-        "proxyConfig": "apps/cacic-eventos/src/proxy.conf.json"
+        "proxyConfig": "apps/admin/src/proxy.conf.json"
       },
       "configurations": {
         "production": {

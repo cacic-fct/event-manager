@@ -19,8 +19,8 @@ import
 *.sql
 
 apps/*
-!apps/events-backend
-!apps/events-backend/**
+!apps/backend
+!apps/backend/**
 !libs
 !libs/shared-data-types
 !libs/shared-data-types/**

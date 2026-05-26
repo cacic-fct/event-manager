@@ -1,9 +1,9 @@
 {
-  "name": "cacic-eventos",
+  "name": "admin",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "prefix": "app",
-  "sourceRoot": "apps/cacic-eventos/src",
+  "sourceRoot": "apps/admin/src",
   "tags": [],
   "targets": {
     "build": {
@@ -13,22 +13,22 @@
       ],
       "options": {
         "baseHref": "/admin/",
-        "outputPath": "dist/apps/cacic-eventos",
-        "browser": "apps/cacic-eventos/src/main.ts",
-        "tsConfig": "apps/cacic-eventos/tsconfig.app.json",
+        "outputPath": "dist/apps/admin",
+        "browser": "apps/admin/src/main.ts",
+        "tsConfig": "apps/admin/tsconfig.app.json",
         "inlineStyleLanguage": "scss",
         "assets": [
           {
             "glob": "**/*",
-            "input": "apps/cacic-eventos/public"
+            "input": "apps/admin/public"
           }
         ],
         "styles": [
-          "apps/cacic-eventos/src/styles.scss"
+          "apps/admin/src/styles.scss"
         ],
-        "server": "apps/cacic-eventos/src/main.server.ts",
+        "server": "apps/admin/src/main.server.ts",
         "ssr": {
-          "entry": "apps/cacic-eventos/src/server.ts"
+          "entry": "apps/admin/src/server.ts"
         },
         "outputMode": "server"
       },
@@ -60,14 +60,14 @@
       "continuous": true,
       "executor": "@angular/build:dev-server",
       "options": {
-        "proxyConfig": "apps/cacic-eventos/src/proxy.conf.json"
+        "proxyConfig": "apps/admin/src/proxy.conf.json"
       },
       "configurations": {
         "production": {
-          "buildTarget": "cacic-eventos:build:production"
+          "buildTarget": "admin:build:production"
         },
         "development": {
-          "buildTarget": "cacic-eventos:build:development"
+          "buildTarget": "admin:build:development"
         }
       },
       "defaultConfiguration": "development"
@@ -86,9 +86,9 @@
       "continuous": true,
       "executor": "@nx/web:file-server",
       "options": {
-        "buildTarget": "cacic-eventos:build",
+        "buildTarget": "admin:build",
         "port": 4200,
-        "staticFilePath": "dist/apps/cacic-eventos/browser",
+        "staticFilePath": "dist/apps/admin/browser",
         "spa": true
       }
     },
@@ -96,8 +96,8 @@
       "executor": "@storybook/angular:start-storybook",
       "options": {
         "port": 4400,
-        "configDir": "apps/cacic-eventos/.storybook",
-        "browserTarget": "cacic-eventos:build-storybook",
+        "configDir": "apps/admin/.storybook",
+        "browserTarget": "admin:build-storybook",
         "compodoc": true,
         "compodocArgs": [
           "-e",
@@ -108,7 +108,7 @@
         "styles": [
           "@fontsource/material-symbols-outlined",
           "@fontsource-variable/inter",
-          "apps/cacic-eventos/src/styles.scss"
+          "apps/admin/src/styles.scss"
         ]
       },
       "configurations": {
@@ -123,9 +123,9 @@
         "{options.outputDir}"
       ],
       "options": {
-        "outputDir": "dist/storybook/cacic-eventos",
-        "configDir": "apps/cacic-eventos/.storybook",
-        "browserTarget": "cacic-eventos:build-storybook",
+        "outputDir": "dist/storybook/admin",
+        "configDir": "apps/admin/.storybook",
+        "browserTarget": "admin:build-storybook",
         "compodoc": false
       },
       "configurations": {
@@ -137,7 +137,7 @@
     "test-storybook": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "test-storybook -c apps/cacic-eventos/.storybook --url=http://localhost:4400"
+        "command": "test-storybook -c apps/admin/.storybook --url=http://localhost:4400"
       }
     },
     "static-storybook": {
@@ -146,13 +146,13 @@
         "build-storybook"
       ],
       "options": {
-        "buildTarget": "cacic-eventos:build-storybook",
-        "staticFilePath": "dist/storybook/cacic-eventos",
+        "buildTarget": "admin:build-storybook",
+        "staticFilePath": "dist/storybook/admin",
         "spa": true
       },
       "configurations": {
         "ci": {
-          "buildTarget": "cacic-eventos:build-storybook:ci"
+          "buildTarget": "admin:build-storybook:ci"
         }
       }
     }

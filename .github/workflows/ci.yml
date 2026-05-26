@@ -46,7 +46,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate Prisma client
-        run: bunx prisma generate --schema apps/events-backend/prisma/schema
+        run: bunx prisma generate --schema apps/backend/prisma/schema
 
       - name: Derive Nx SHAs
         uses: nrwl/nx-set-shas@v5
@@ -58,7 +58,7 @@ jobs:
         run: bunx nx run-many --target=test --all --parallel=3
 
       - name: Build deployable apps
-        run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=3
+        run: bunx nx run-many -t build -p admin,backend,public --configuration=production --parallel=3
 
       - name: Collect coverage reports
         id: coverage
@@ -116,7 +116,7 @@ jobs:
 
           echo "$changed_files"
 
-          if echo "$changed_files" | grep -E '(^\.github/workflows/.*\.ya?ml$|(^|/)(package\.json|bun\.lock|\.npmrc|bunfig\.toml)$|^apps/events-backend/prisma/|^apps/events-backend/prisma\.config\.ts$)'; then
+          if echo "$changed_files" | grep -E '(^\.github/workflows/.*\.ya?ml$|(^|/)(package\.json|bun\.lock|\.npmrc|bunfig\.toml)$|^apps/backend/prisma/|^apps/backend/prisma\.config\.ts$)'; then
             echo "::error::Fork PR changed CI/CD, dependency, or auth-related files."
             echo "::error::A maintainer must review this and run full CI from a trusted branch."
             exit 1
@@ -187,7 +187,7 @@ jobs:
           path: .
 
       - name: Generate Prisma client
-        run: bunx prisma generate --schema apps/events-backend/prisma/schema
+        run: bunx prisma generate --schema apps/backend/prisma/schema
 
       - name: Derive Nx SHAs
         uses: nrwl/nx-set-shas@v5
@@ -199,4 +199,4 @@ jobs:
         run: bunx nx affected -t test --parallel=3 --coverage
 
       - name: Build deployable apps
-        run: bunx nx run-many -t build -p cacic-eventos,events-backend,public --configuration=production --parallel=3
+        run: bunx nx run-many -t build -p admin,backend,public --configuration=production --parallel=3
