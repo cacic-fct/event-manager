@@ -8,8 +8,8 @@ export class AccountManagerPrivacySyncService {
   private readonly logger = new Logger(AccountManagerPrivacySyncService.name);
   private readonly accountManagerApiUrl: string;
   private readonly audience?: string;
-  private readonly legacyClientId?: string;
-  private readonly legacyClientSecret?: string;
+  private readonly clientId?: string;
+  private readonly clientSecret?: string;
   private readonly scope?: string;
 
   constructor(
@@ -20,8 +20,8 @@ export class AccountManagerPrivacySyncService {
       this.configService.get<string>('ACCOUNT_MANAGER_API_URL') ?? 'https://account.cacic.dev.br/api'
     ).replace(/\/+$/, '');
     this.audience = this.configService.get<string>('ACCOUNT_MANAGER_M2M_AUDIENCE');
-    this.legacyClientId = this.configService.get<string>('ACCOUNT_MANAGER_M2M_CLIENT_ID');
-    this.legacyClientSecret = this.configService.get<string>('ACCOUNT_MANAGER_M2M_CLIENT_SECRET');
+    this.clientId = this.configService.get<string>('KEYCLOAK_M2M_CLIENT_ID');
+    this.clientSecret = this.configService.get<string>('KEYCLOAK_M2M_CLIENT_SECRET');
     this.scope = this.configService.get<string>('ACCOUNT_MANAGER_M2M_SCOPE');
   }
 
@@ -53,8 +53,8 @@ export class AccountManagerPrivacySyncService {
   private async getAccessToken(): Promise<string> {
     return this.m2mTokens.getClientCredentialsToken({
       audience: this.audience,
-      clientId: this.legacyClientId,
-      clientSecret: this.legacyClientSecret,
+      clientId: this.clientId,
+      clientSecret: this.clientSecret,
       scope: this.scope,
     });
   }
