@@ -31,14 +31,31 @@ O aplicativo é construído com Angular e pode ser acessado em [eventos.cacic.de
 
 Antes de começar, instale o [Bun](https://bun.sh/).
 
-Depois, instale as dependências comuns:
+Depois, instale as dependências do monorepo:
 
 ```bash
 bun install
 ```
 
-Para iniciar o servidor de desenvolvimento, execute:
+Este projeto usa o [Nx](https://nx.dev) para gerenciar o monorepo.
+
+Para iniciar um aplicativo em modo de desenvolvimento, use:
 
 ```bash
-bunx nx serve <nome-do-projeto>
+bunx nx serve <projeto>
+```
+
+Projetos disponíveis:
+
+```bash
+bunx nx serve public
+bunx nx serve admin
+bunx nx serve backend
+```
+
+Também é possível executar outros comandos do Nx, como:
+
+```bash
+bunx nx build public
+bunx nx storybook admin
 ```
