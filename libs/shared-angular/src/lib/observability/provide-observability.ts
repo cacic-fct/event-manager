@@ -1,19 +1,21 @@
 import {
+  ErrorHandler,
   EnvironmentProviders,
   Injectable,
   Injector,
   PLATFORM_ID,
   Provider,
   effect,
-  importProvidersFrom,
   inject,
   isDevMode,
   makeEnvironmentProviders,
+  provideAppInitializer,
   provideEnvironmentInitializer,
 } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { MicroSentryModule } from '@micro-sentry/angular';
+import { Router } from '@angular/router';
 import { provideUmami } from '@cacic-fct/ngx-umami';
+import { browserTracingIntegration, createErrorHandler, init, TraceService } from '@sentry/angular';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AuthService } from '../auth/auth.service';
 import { CacicAnalyticsService } from './analytics.service';
@@ -121,21 +123,33 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
   ];
 
   if (config.glitchtip.dsn) {
-    console.debug('Glitchtip DSN provided, enabling Glitchtip integration', { dsn: config.glitchtip.dsn });
-    console.debug('Glitchtip isEnabled function', { isEnabled: config.glitchtip.isEnabled });
-
     providers.push(
-      importProvidersFrom(
-        MicroSentryModule.forRoot({
+      {
+        provide: ErrorHandler,
+        useValue: createErrorHandler(),
+      },
+      {
+        provide: TraceService,
+        deps: [Router],
+      },
+      provideAppInitializer(() => {
+        const authService = inject(AuthService);
+
+        init({
           dsn: config.glitchtip.dsn,
           environment: isDevMode() ? 'development' : 'production',
-          beforeSend: (request) => {
-            const authService = inject(AuthService);
-            console.debug('Glitchtip beforeSend', { request, user: authService.user() });
-            return !isDevMode() && config.glitchtip.isEnabled(authService.user()) ? request : null;
+          sendDefaultPii: true,
+          integrations: [browserTracingIntegration()],
+          tracesSampleRate: 1.0,
+          tracePropagationTargets: [/^https:\/\/eventos\.cacic\.dev\.br\/api/],
+          enableLogs: true,
+          beforeSend: (event) => {
+            return !isDevMode() && config.glitchtip.isEnabled(authService.user()) ? event : null;
           },
-        }),
-      ),
+        });
+
+        inject(TraceService);
+      }),
     );
   }
 
