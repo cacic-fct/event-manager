@@ -21,9 +21,10 @@ import
 apps/*
 !apps/events-backend
 !apps/events-backend/**
-!shared-data-types
-!shared-data-types/**
-!shared-utils
-!shared-utils/**
+!libs
+!libs/shared-data-types
+!libs/shared-data-types/**
+!libs/shared-utils
+!libs/shared-utils/**
 !certificate-templates
 !certificate-templates/**

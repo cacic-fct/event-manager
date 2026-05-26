@@ -1,0 +1,17 @@
+{
+  "name": "shared-angular",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "root": "libs/shared-angular",
+  "sourceRoot": "libs/shared-angular/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/shared-angular"]
+      }
+    }
+  }
+}

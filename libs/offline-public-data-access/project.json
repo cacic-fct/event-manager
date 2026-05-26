@@ -1,0 +1,17 @@
+{
+  "name": "offline-public-data-access",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "root": "libs/offline-public-data-access",
+  "sourceRoot": "libs/offline-public-data-access/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/offline-public-data-access/**/*.ts"]
+      }
+    }
+  }
+}
