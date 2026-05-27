@@ -51,7 +51,7 @@ describe('AuthorizationStateService', () => {
     expect(service.getPostLoginRedirectUri(consumedState)).toBe('/admin/events');
   });
 
-  it('allows absolute return URLs only for configured origins and app or docs paths', async () => {
+  it('allows return URLs only for configured origins and safe same-origin paths', async () => {
     const service = new AuthorizationStateService(redis as never);
 
     await service.create({
@@ -67,6 +67,9 @@ describe('AuthorizationStateService', () => {
       returnTo: 'https://admin.example.com/profile',
     });
     await service.create({
+      returnTo: '/api/auth/callback',
+    });
+    await service.create({
       returnTo: 'https://evil.example.com/admin/events',
     });
 
@@ -75,8 +78,9 @@ describe('AuthorizationStateService', () => {
     });
     expect(JSON.parse(redis.set.mock.calls[1][1])).toEqual({ returnTo: '/api/docs' });
     expect(JSON.parse(redis.set.mock.calls[2][1])).toEqual({ returnTo: '/api/graphql' });
-    expect(JSON.parse(redis.set.mock.calls[3][1])).toEqual({});
+    expect(JSON.parse(redis.set.mock.calls[3][1])).toEqual({ returnTo: 'https://admin.example.com/admin/profile' });
     expect(JSON.parse(redis.set.mock.calls[4][1])).toEqual({});
+    expect(JSON.parse(redis.set.mock.calls[5][1])).toEqual({});
   });
 
   it('rejects protocol-relative, malformed, expired, and unreadable states', async () => {

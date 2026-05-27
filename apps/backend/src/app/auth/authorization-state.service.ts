@@ -122,11 +122,11 @@ return value
   }
 
   private isAllowedAppPath(pathname: string): boolean {
-    if (pathname === '/app' || pathname === '/admin' || pathname === '/api/docs' || pathname === '/api/graphql') {
-      return true;
+    if (pathname === '/api/auth' || pathname.startsWith('/api/auth/')) {
+      return false;
     }
 
-    return pathname.startsWith('/app/') || pathname.startsWith('/admin/') || pathname.startsWith('/api/docs/');
+    return true;
   }
 
   private readAllowedPostLoginRedirectOrigins(): Set<string> {
