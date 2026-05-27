@@ -81,6 +81,7 @@ export class ServiceWorkerService {
       if (this.isRegistrationUninstalledError(error)) {
         this.registration = null;
         this.state.set('idle');
+        void this.registerServiceWorker();
         return false;
       }
 
@@ -99,14 +100,24 @@ export class ServiceWorkerService {
 
     console.info('Updating service worker registrations:', registrations);
 
-    await Promise.all(
-      registrations
-        .filter((registration) => registration.scope === this.serviceWorkerScope())
-        .map(async (registration) => {
-          await registration.update();
-          this.handleCurrentRegistration(registration);
-        }),
-    );
+    try {
+      await Promise.all(
+        registrations
+          .filter((registration) => registration.scope === this.serviceWorkerScope())
+          .map(async (registration) => {
+            await registration.update();
+            this.handleCurrentRegistration(registration);
+          }),
+      );
+    } catch (error: unknown) {
+      if (this.isRegistrationUninstalledError(error)) {
+        this.registration = null;
+        void this.registerServiceWorker();
+        return;
+      }
+
+      throw error;
+    }
   }
 
   async unregisterServiceWorker(): Promise<void> {
@@ -293,7 +304,7 @@ export class ServiceWorkerService {
   }
 
   private serviceWorkerUrl(): string {
-    return new URL('novu-ngsw-worker.js', this.document.baseURI).toString();
+    return new URL('cacic-public-worker.js', this.document.baseURI).toString();
   }
 
   private serviceWorkerScope(): string {
