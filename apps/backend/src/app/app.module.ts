@@ -127,10 +127,10 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
       ],
     }),
     GraphQLModule.forRootAsync<ApolloDriverConfig>({
+      driver: ApolloDriver,
       imports: [AuthModule],
       inject: [KeycloakAuthService],
       useFactory: (keycloakAuthService: KeycloakAuthService) => ({
-        driver: ApolloDriver,
         autoSchemaFile: true,
         sortSchema: true,
         path: '/graphql',
