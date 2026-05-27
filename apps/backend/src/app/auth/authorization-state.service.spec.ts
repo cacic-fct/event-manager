@@ -64,7 +64,7 @@ describe('AuthorizationStateService', () => {
       returnTo: '/api/graphql',
     });
     await service.create({
-      returnTo: 'https://admin.example.com/profile',
+      returnTo: 'https://admin.example.com/admin/profile',
     });
     await service.create({
       returnTo: '/api/auth/callback',
