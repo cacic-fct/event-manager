@@ -154,4 +154,8 @@ export const appRoutes: Route[] = [
     path: 'legal',
     redirectTo: '/about/legal',
   },
+  {
+    path: 'licenses',
+    redirectTo: '/about/legal',
+  },
 ];
