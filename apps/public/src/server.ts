@@ -5,7 +5,7 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appRoutes } from './app/app.routes';
 
@@ -50,6 +50,20 @@ app.use(
     maxAge: '1y',
     index: false,
     redirect: false,
+    setHeaders: (res, path) => {
+      const fileName = basename(path);
+      const extension = extname(path);
+
+      if (fileName === 'novu-ngsw-worker.js') {
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Service-Worker-Allowed', '/app/');
+        return;
+      }
+
+      if (fileName === 'novu-push-handler.js' || fileName === 'manifest.webmanifest' || extension === '.html') {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
   }),
 );
 

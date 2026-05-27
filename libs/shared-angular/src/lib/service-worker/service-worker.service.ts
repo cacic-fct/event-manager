@@ -1,9 +1,8 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { ApplicationRef, DestroyRef, Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { first, merge, timer } from 'rxjs';
+import { first } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import type { Workbox } from 'workbox-window';
 
 import { UpdateModalComponent } from './dialog-components/update.component';
 import { UpdateErrorDialogComponent } from './dialog-components/update-error.component';
@@ -31,7 +30,6 @@ export class ServiceWorkerService {
   });
 
   private updateDialogRef: MatDialogRef<UpdateModalComponent> | null = null;
-  private workbox: Workbox | null = null;
   private registration: ServiceWorkerRegistration | null = null;
   private reloadWhenControlling = false;
   private started = false;
@@ -46,13 +44,18 @@ export class ServiceWorkerService {
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
+      if (!this.reloadWhenControlling) {
+        return;
+      }
+
+      this.reloadWhenControlling = false;
+      this.reload();
     });
 
-    merge(this.appRef.isStable.pipe(first(Boolean)), timer(30000))
-      .pipe(first(), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        void this.registerServiceWorker();
-      });
+    void this.registerServiceWorker();
+    this.appRef.isStable
+      .pipe(first(Boolean), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.checkForUpdate());
   }
 
   async checkForUpdate(): Promise<boolean> {
@@ -132,14 +135,14 @@ export class ServiceWorkerService {
 
   private async registerServiceWorker(): Promise<void> {
     try {
-      const { Workbox } = await import('workbox-window');
-      const worker = new Workbox(this.serviceWorkerUrl(), {
+      const registration = await navigator.serviceWorker.register(this.serviceWorkerUrl(), {
         scope: this.serviceWorkerScope(),
+        updateViaCache: 'none',
       });
 
-      this.workbox = worker;
-      this.listenForServiceWorkerUpdates(worker);
-      this.registration = (await worker.register()) ?? null;
+      this.registration = registration;
+      this.listenForServiceWorkerUpdates(registration);
+      this.activateWaitingUpdate(registration, false);
       this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
     } catch (error: unknown) {
       this.state.set('failed');
@@ -148,63 +151,81 @@ export class ServiceWorkerService {
     }
   }
 
-  private listenForServiceWorkerUpdates(worker: Workbox): void {
-    worker.addEventListener('installing', (event) => {
-      if (!event.isUpdate) {
+  private listenForServiceWorkerUpdates(registration: ServiceWorkerRegistration): void {
+    registration.addEventListener('updatefound', () => {
+      const serviceWorker = registration.installing;
+      if (!serviceWorker) {
         return;
       }
 
-      this.state.set('downloading');
-      this.error.set(null);
+      const isUpdate = Boolean(navigator.serviceWorker.controller);
+      if (isUpdate) {
+        this.handleUpdateDetected();
+      }
 
-      this.updateDialogRef ??= this.dialog.open(UpdateModalComponent, {
-        disableClose: true,
+      serviceWorker.addEventListener('statechange', () => {
+        switch (serviceWorker.state) {
+          case 'installed': {
+            if (isUpdate) {
+              this.activateWaitingUpdate(registration, true);
+            }
+            break;
+          }
+
+          case 'activated': {
+            this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
+            if (!isUpdate) {
+              this.state.set('idle');
+            }
+            break;
+          }
+
+          case 'redundant': {
+            this.handleUpdateFailed();
+            break;
+          }
+        }
       });
     });
+  }
 
-    worker.addEventListener('waiting', (event) => {
-      if (!event.isUpdate) {
-        return;
-      }
+  private handleUpdateDetected(): void {
+    this.state.set('downloading');
+    this.error.set(null);
 
+    this.updateDialogRef ??= this.dialog.open(UpdateModalComponent, {
+      disableClose: true,
+    });
+  }
+
+  private activateWaitingUpdate(registration: ServiceWorkerRegistration, shouldReload: boolean): void {
+    const waitingServiceWorker = registration.waiting;
+    if (!waitingServiceWorker) {
+      return;
+    }
+
+    if (shouldReload) {
       this.state.set('ready');
 
       this.updateDialogRef?.close();
       this.updateDialogRef = null;
 
-      this.reloadWhenControlling = this.shouldReloadForUpdate(event.sw?.scriptURL ?? null);
-      worker.messageSkipWaiting();
-    });
+      this.reloadWhenControlling = this.shouldReloadForUpdate(waitingServiceWorker.scriptURL);
+    }
 
-    worker.addEventListener('controlling', () => {
-      if (!this.reloadWhenControlling) {
-        this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
-        return;
-      }
+    waitingServiceWorker.postMessage({ type: 'SKIP_WAITING' });
+  }
 
-      this.reloadWhenControlling = false;
-      this.reload();
-    });
+  private handleUpdateFailed(): void {
+    const message = 'Falha ao instalar a nova versão do Service Worker.';
 
-    worker.addEventListener('activated', (event) => {
-      this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
+    this.state.set('failed');
+    this.error.set(message);
 
-      if (!event.isUpdate) {
-        this.state.set('idle');
-      }
-    });
+    this.updateDialogRef?.close();
+    this.updateDialogRef = null;
 
-    worker.addEventListener('redundant', () => {
-      const message = 'Falha ao instalar a nova versão do Service Worker.';
-
-      this.state.set('failed');
-      this.error.set(message);
-
-      this.updateDialogRef?.close();
-      this.updateDialogRef = null;
-
-      this.openUpdateErrorDialog(message);
-    });
+    this.openUpdateErrorDialog(message);
   }
 
   private openUpdateErrorDialog(error: string): void {
