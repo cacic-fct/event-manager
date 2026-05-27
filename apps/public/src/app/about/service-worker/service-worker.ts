@@ -1,4 +1,4 @@
-import { Component, computed, inject, isDevMode, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, PLATFORM_ID } from '@angular/core';
 import { ExplanationCard } from '../../shared/components/explanation-card/explanation-card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -15,6 +15,7 @@ import { isPlatformBrowser } from '@angular/common';
   imports: [ExplanationCard, MatIconModule, MatToolbarModule, MatListModule, RouterLink, MatButtonModule],
   templateUrl: './service-worker.html',
   styleUrl: './service-worker.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServiceWorker {
   private readonly platformId = inject(PLATFORM_ID);
@@ -42,10 +43,6 @@ export class ServiceWorker {
 
     return this.serviceWorkerService.error() || this.serviceWorkerService.state();
   });
-
-  protected wtf() {
-    console.log('wtf');
-  }
 
   protected openNgswDialog(): void {
     if (!this.isBrowser) {

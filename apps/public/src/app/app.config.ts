@@ -16,11 +16,11 @@ import {
   AUTH_ONBOARDING_ENFORCEMENT_ENABLED,
   AuthOnlineStatusService,
   AuthService,
+  ServiceWorkerService,
   authInterceptor,
   provideCacicObservability,
 } from '@cacic-fct/shared-angular';
 import { MatIconRegistry } from '@angular/material/icon';
-import { provideServiceWorker } from '@angular/service-worker';
 import { AnalyticsService } from './analytics/analytics.service';
 import { OnlineAttendanceCoordinatorService } from './attendance/online-attendance/online-attendance-coordinator.service';
 import { OfflineUserDataService } from './shared/offline-user-data.service';
@@ -125,6 +125,9 @@ export const appConfig: ApplicationConfig = {
       inject(NetworkStatusSnackbarService).start();
       inject(OfflineUserDataService).start();
     }),
+    provideAppInitializer(() => {
+      inject(ServiceWorkerService).start();
+    }),
     {
       provide: AuthOnlineStatusService,
       useExisting: NetworkStatusService,
@@ -136,10 +139,6 @@ export const appConfig: ApplicationConfig = {
         return () => featureFlags.booleanValue('onboardingEnforcementEnabled');
       },
     },
-    provideServiceWorker('novu-ngsw-worker.js', {
-      enabled: !isDevMode(),
-      registrationStrategy: 'registerWhenStable:30000',
-    }),
     {
       provide: RouteReuseStrategy,
       useClass: AppRouteReuseStrategy,
