@@ -85,7 +85,9 @@
             {{ subscription.createdByMethod }}
           </span>
           @if (hasSubscribedLecturer(subscription)) {
-            <mat-icon matListItemMeta>warning</mat-icon>
+            <div matListItemMeta>
+              <mat-icon class="warning-icon">warning</mat-icon>
+            </div>
           }
         </mat-list-item>
       } @empty {
@@ -234,7 +236,7 @@
               <span matListItemLine>
                 {{ eventItem.eventStartDate | date: 'short' }}
                 @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
-                  · palestrante inscrito no próprio evento
+                  · Palestrante inscrito no próprio evento
                 }
               </span>
               @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
