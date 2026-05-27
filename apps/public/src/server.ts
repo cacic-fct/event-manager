@@ -54,14 +54,16 @@ app.use(
       const fileName = basename(path);
       const extension = extname(path);
 
-      if (fileName === 'novu-ngsw-worker.js') {
-        res.setHeader('Cache-Control', 'no-cache');
+      if (fileName === 'cacic-public-worker.js' || fileName === 'novu-ngsw-worker.js') {
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+        res.setHeader('CDN-Cache-Control', 'no-store');
         res.setHeader('Service-Worker-Allowed', '/app/');
         return;
       }
 
       if (fileName === 'novu-push-handler.js' || fileName === 'manifest.webmanifest' || extension === '.html') {
-        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+        res.setHeader('CDN-Cache-Control', 'no-store');
       }
     },
   }),

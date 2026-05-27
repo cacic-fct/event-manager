@@ -1,5 +1,6 @@
 /* global caches, importScripts, Response, self, workbox */
 
+// Keep Novu push handling in the same registered Service Worker.
 importScripts('./novu-push-handler.js');
 importScripts('./__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js');
 
@@ -16,6 +17,10 @@ workbox.precaching.precacheAndRoute(self.__WB_MANIFEST, {
 });
 workbox.precaching.cleanupOutdatedCaches();
 workbox.core.clientsClaim();
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
@@ -41,6 +46,7 @@ const appScopePath = scopePath.endsWith('/') ? scopePath : `${scopePath}/`;
 const appShellUrl = `${appScopePath}index.csr.html`;
 
 const sameOrigin = (url) => url.origin === self.location.origin;
+const isApiPath = (url) => url.pathname.startsWith('/api/');
 const isAuthPath = (url) =>
   url.pathname.startsWith('/api/auth/') ||
   url.pathname.includes('/login') ||
@@ -88,18 +94,14 @@ for (const method of ['GET', 'POST']) {
 }
 
 workbox.routing.registerRoute(
-  new workbox.routing.NavigationRoute(
-    async (options) => {
-      try {
-        return await ssrNavigationStrategy.handle(options);
-      } catch {
-        return appShellFallback();
-      }
-    },
-    {
-      denylist: [/^\/api\//, /\/(?:login|logout|callback)(?:\/|$)/],
-    },
-  ),
+  ({ request, url }) => request.mode === 'navigate' && sameOrigin(url) && !isApiPath(url) && !isAuthPath(url),
+  async (options) => {
+    try {
+      return await ssrNavigationStrategy.handle(options);
+    } catch {
+      return appShellFallback();
+    }
+  },
 );
 
 workbox.routing.setCatchHandler(({ request }) => {

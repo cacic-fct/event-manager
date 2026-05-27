@@ -6,9 +6,9 @@ import { copyWorkboxLibraries, injectManifest } from 'workbox-build';
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const browserDirectory = join(workspaceRoot, 'dist/apps/public/browser');
-const workerSource = join(workspaceRoot, 'apps/public/workbox/novu-ngsw-worker.js');
-const preparedWorkerSource = join(browserDirectory, 'novu-ngsw-worker.source.js');
-const workerDestination = join(browserDirectory, 'novu-ngsw-worker.js');
+const workerSource = join(workspaceRoot, 'apps/public/workbox/cacic-public-worker.js');
+const preparedWorkerSource = join(browserDirectory, 'cacic-public-worker.source.js');
+const workerDestination = join(browserDirectory, 'cacic-public-worker.js');
 
 const workboxDirectory = await copyWorkboxLibraries(browserDirectory);
 const source = await readFile(workerSource, 'utf8');
@@ -22,13 +22,17 @@ try {
     globPatterns: [
       '*.js',
       '*.css',
+      'index.html',
       'index.csr.html',
       'assets/**/*.{svg,cur,jpg,jpeg,png,apng,webp,avif,gif,otf,ttf,woff,woff2}',
       'icons/**/*.{png,webp}',
+      'media/**/*.{svg,cur,jpg,jpeg,png,apng,webp,avif,gif,otf,ttf,woff,woff2}',
     ],
     globIgnores: [
       '**/*.map',
       'mockServiceWorker.js',
+      'cacic-public-worker.js',
+      'cacic-public-worker.source.js',
       'ngsw-worker.js',
       'ngsw.json',
       'novu-ngsw-worker.js',
