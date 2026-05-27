@@ -33,23 +33,24 @@ export function createIntrospectionAuthPlugin({
           }
 
           const request = getRequest(requestContext);
-          const accessToken = extractBearerToken(request.headers.authorization);
-          if (accessToken) {
-            request.user = await keycloakAuthService.authenticateAccessToken(accessToken);
-            return;
+
+          try {
+            const accessToken = extractBearerToken(request.headers.authorization);
+            if (accessToken) {
+              request.user = await keycloakAuthService.authenticateAccessToken(accessToken);
+              return;
+            }
+
+            const sessionId = extractCookieValue(request, AUTH_SESSION_COOKIE_NAME);
+            if (sessionId) {
+              request.user = await keycloakAuthService.authenticateSession(sessionId);
+              return;
+            }
+          } catch {
+            throwUnauthenticatedIntrospectionError();
           }
 
-          const sessionId = extractCookieValue(request, AUTH_SESSION_COOKIE_NAME);
-          if (sessionId) {
-            request.user = await keycloakAuthService.authenticateSession(sessionId);
-            return;
-          }
-
-          throw new GraphQLError('GraphQL introspection requires authentication.', {
-            extensions: {
-              code: 'UNAUTHENTICATED',
-            },
-          });
+          throwUnauthenticatedIntrospectionError();
         },
       };
     },
@@ -84,6 +85,14 @@ function getRequest(requestContext: GraphQLRequestContextDidResolveOperation<Gra
   }
 
   return request;
+}
+
+function throwUnauthenticatedIntrospectionError(): never {
+  throw new GraphQLError('GraphQL introspection requires authentication.', {
+    extensions: {
+      code: 'UNAUTHENTICATED',
+    },
+  });
 }
 
 function extractBearerToken(authorizationHeader?: string | string[]): string | null {
