@@ -1,20 +1,18 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { ApplicationRef, DestroyRef, Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { SwUpdate, UnrecoverableStateEvent, VersionEvent } from '@angular/service-worker';
+import { ApplicationRef, DestroyRef, Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { first } from 'rxjs';
+import { first, merge, timer } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import type { Workbox } from 'workbox-window';
 
 import { UpdateModalComponent } from './dialog-components/update.component';
 import { UpdateErrorDialogComponent } from './dialog-components/update-error.component';
-import { TooOldDialogComponent } from './dialog-components/too-old.component';
 
 type UpdateState = 'idle' | 'checking' | 'downloading' | 'ready' | 'failed' | 'unrecoverable';
 
 @Injectable({ providedIn: 'root' })
 export class ServiceWorkerService {
   private readonly appRef: ApplicationRef = inject(ApplicationRef);
-  private readonly swUpdate: SwUpdate = inject(SwUpdate);
   private readonly dialog: MatDialog = inject(MatDialog);
   private readonly document: Document = inject(DOCUMENT);
   private readonly platformId: object = inject(PLATFORM_ID);
@@ -22,34 +20,54 @@ export class ServiceWorkerService {
 
   readonly state = signal<UpdateState>('idle');
   readonly error = signal<string | null>(null);
+  private readonly serviceWorkerControlled = signal(false);
 
   readonly isBrowser = computed(() => isPlatformBrowser(this.platformId));
 
   readonly hasServiceWorker = computed(() => {
-    return this.canUseServiceWorker() && Boolean(navigator.serviceWorker.controller);
+    return this.canUseServiceWorker() && this.serviceWorkerControlled();
   });
 
   private updateDialogRef: MatDialogRef<UpdateModalComponent> | null = null;
+  private workbox: Workbox | null = null;
+  private registration: ServiceWorkerRegistration | null = null;
+  private started = false;
 
-  constructor() {
-    if (!this.isBrowser() || !this.swUpdate.isEnabled) {
+  start(): void {
+    if (this.started || !this.canUseServiceWorker() || isDevMode()) {
       return;
     }
 
-    this.appRef.isStable
-      .pipe(first(Boolean), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.listenForServiceWorkerUpdates());
+    this.started = true;
+    this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
+    });
+
+    merge(this.appRef.isStable.pipe(first(Boolean)), timer(30000))
+      .pipe(first(), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.registerServiceWorker();
+      });
   }
 
   async checkForUpdate(): Promise<boolean> {
-    if (!this.swUpdate.isEnabled) {
+    if (!this.canUseServiceWorker() || isDevMode()) {
       return false;
     }
 
     try {
       this.state.set('checking');
 
-      const hasUpdate = await this.swUpdate.checkForUpdate();
+      const registration = this.registration ?? (await navigator.serviceWorker.getRegistration(this.serviceWorkerScope()));
+      if (!registration) {
+        this.state.set('idle');
+        return false;
+      }
+
+      await registration.update();
+      const hasUpdate = Boolean(registration.waiting || registration.installing);
 
       if (!hasUpdate) {
         this.state.set('idle');
@@ -87,67 +105,95 @@ export class ServiceWorkerService {
     this.reload();
   }
 
-  private listenForServiceWorkerUpdates(): void {
-    this.swUpdate.versionUpdates.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event: VersionEvent) => {
-      void this.handleVersionEvent(event);
-    });
+  async getDebugState(): Promise<string> {
+    if (!this.canUseServiceWorker()) {
+      return 'Service Worker indisponível neste navegador.';
+    }
 
-    this.swUpdate.unrecoverable
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((event: UnrecoverableStateEvent) => {
-        this.handleUnrecoverableEvent(event);
-      });
+    const registration = this.registration ?? (await navigator.serviceWorker.getRegistration(this.serviceWorkerScope()));
+    if (!registration) {
+      return 'Service Worker não registrado.';
+    }
+
+    const cacheNames = 'caches' in window ? await caches.keys() : [];
+
+    return [
+      `Escopo: ${registration.scope}`,
+      `Controlando esta página: ${navigator.serviceWorker.controller ? 'sim' : 'não'}`,
+      `Instalando: ${registration.installing?.scriptURL ?? 'não'}`,
+      `Aguardando ativação: ${registration.waiting?.scriptURL ?? 'não'}`,
+      `Ativo: ${registration.active?.scriptURL ?? 'não'}`,
+      `Caches: ${cacheNames.length ? cacheNames.join(', ') : 'nenhum'}`,
+    ].join('\n');
   }
 
-  private async handleVersionEvent(event: VersionEvent): Promise<void> {
-    switch (event.type) {
-      case 'VERSION_DETECTED': {
-        this.state.set('downloading');
+  private async registerServiceWorker(): Promise<void> {
+    try {
+      const { Workbox } = await import('workbox-window');
+      const worker = new Workbox(this.serviceWorkerUrl(), {
+        scope: this.serviceWorkerScope(),
+      });
 
-        this.updateDialogRef ??= this.dialog.open(UpdateModalComponent, {
-          disableClose: true,
-        });
-
-        break;
-      }
-
-      case 'VERSION_READY': {
-        this.state.set('ready');
-
-        this.updateDialogRef?.close();
-        this.updateDialogRef = null;
-
-        await this.swUpdate.activateUpdate();
-        this.reload();
-
-        break;
-      }
-
-      case 'VERSION_INSTALLATION_FAILED': {
-        this.state.set('failed');
-        this.error.set(event.error);
-
-        this.updateDialogRef?.close();
-        this.updateDialogRef = null;
-
-        this.openUpdateErrorDialog(event.error);
-
-        break;
-      }
-
-      case 'NO_NEW_VERSION_DETECTED': {
-        this.state.set('idle');
-        break;
-      }
+      this.workbox = worker;
+      this.listenForServiceWorkerUpdates(worker);
+      this.registration = (await worker.register()) ?? null;
+      this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
+    } catch (error: unknown) {
+      this.state.set('failed');
+      this.error.set(this.stringifyError(error));
+      this.openUpdateErrorDialog(this.stringifyError(error));
     }
   }
 
-  private handleUnrecoverableEvent(event: UnrecoverableStateEvent): void {
-    this.state.set('unrecoverable');
-    this.error.set(event.reason);
+  private listenForServiceWorkerUpdates(worker: Workbox): void {
+    worker.addEventListener('installing', (event) => {
+      if (!event.isUpdate) {
+        return;
+      }
 
-    this.dialog.open(TooOldDialogComponent, {
-      disableClose: true,
+      this.state.set('downloading');
+      this.error.set(null);
+
+      this.updateDialogRef ??= this.dialog.open(UpdateModalComponent, {
+        disableClose: true,
+      });
+    });
+
+    worker.addEventListener('waiting', (event) => {
+      if (!event.isUpdate) {
+        return;
+      }
+
+      this.state.set('ready');
+
+      this.updateDialogRef?.close();
+      this.updateDialogRef = null;
+
+      worker.messageSkipWaiting();
+    });
+
+    worker.addEventListener('controlling', () => {
+      this.reload();
+    });
+
+    worker.addEventListener('activated', (event) => {
+      this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
+
+      if (!event.isUpdate) {
+        this.state.set('idle');
+      }
+    });
+
+    worker.addEventListener('redundant', () => {
+      const message = 'Falha ao instalar a nova versão do Service Worker.';
+
+      this.state.set('failed');
+      this.error.set(message);
+
+      this.updateDialogRef?.close();
+      this.updateDialogRef = null;
+
+      this.openUpdateErrorDialog(message);
     });
   }
 
@@ -171,6 +217,14 @@ export class ServiceWorkerService {
 
   private canUseServiceWorker(): boolean {
     return this.isBrowser() && 'serviceWorker' in navigator;
+  }
+
+  private serviceWorkerUrl(): string {
+    return new URL('novu-ngsw-worker.js', this.document.baseURI).toString();
+  }
+
+  private serviceWorkerScope(): string {
+    return new URL('.', this.document.baseURI).toString();
   }
 
   private reload(): void {

@@ -1,4 +1,4 @@
-const ACTIVE_SUBSCRIBER_CACHE = 'admin:notification-session';
+const ACTIVE_SUBSCRIBER_CACHE = 'cacic-eventos:notification-session';
 const ACTIVE_SUBSCRIBER_REQUEST = '/__cacic_notification_active_subscriber__';
 
 self.addEventListener('push', (event) => {
@@ -60,8 +60,8 @@ async function handleGuardedPush(payload, subscriberId) {
 
   await self.registration.showNotification(title, {
     body,
-    icon: notification.icon ?? data.icon ?? '/app/icons/icon-192x192.png',
-    badge: notification.badge ?? data.badge ?? '/app/icons/icon-192x192.png',
+    icon: notification.icon ?? data.icon ?? '/app/icons/192.webp',
+    badge: notification.badge ?? data.badge ?? '/app/icons/192.webp',
     image: notification.image ?? data.image,
     data: {
       url: data.url ?? data.redirectUrl ?? payload.redirectUrl ?? '/app/notifications',
@@ -92,5 +92,3 @@ function findSubscriberId(payload) {
     null
   );
 }
-
-importScripts('./ngsw-worker.js');

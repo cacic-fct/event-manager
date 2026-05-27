@@ -15,7 +15,6 @@
     "@angular/material": "^21.2.12",
     "@angular/platform-browser": "~21.2.14",
     "@angular/platform-server": "~21.2.14",
-    "@angular/pwa": "^21.2.12",
     "@angular/router": "~21.2.14",
     "@angular/service-worker": "~21.2.14",
     "@angular/ssr": "~21.2.12",
@@ -68,6 +67,7 @@
     "tesseract.js": "^7.0.0",
     "typesense": "^3.0.6",
     "unleash-proxy-client": "^3.8.0",
+    "workbox-window": "^7.4.1",
     "xmlbuilder": "^15.1.1",
     "zod": "^4.4.3",
     "zxing-wasm": "^3.0.3"
@@ -130,7 +130,13 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.59.4",
     "vitest": "^4.1.7",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4",
+    "workbox-build": "^7.4.1",
+    "workbox-cacheable-response": "^7.4.1",
+    "workbox-expiration": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1",
+    "workbox-strategies": "^7.4.1"
   },
   "msw": {
     "workerDirectory": [
