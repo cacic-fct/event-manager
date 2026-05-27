@@ -1,4 +1,4 @@
-/* global importScripts, Response, self, workbox */
+/* global caches, importScripts, Response, self, workbox */
 
 importScripts('./novu-push-handler.js');
 importScripts('./__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js');
@@ -41,7 +41,6 @@ const appScopePath = scopePath.endsWith('/') ? scopePath : `${scopePath}/`;
 const appShellUrl = `${appScopePath}index.csr.html`;
 
 const sameOrigin = (url) => url.origin === self.location.origin;
-const isApiPath = (url) => url.pathname.startsWith('/api/');
 const isAuthPath = (url) =>
   url.pathname.startsWith('/api/auth/') ||
   url.pathname.includes('/login') ||
@@ -67,31 +66,6 @@ const cacheableHtmlPlugin = {
     return contentType.includes('text/html') ? response : null;
   },
 };
-
-for (const method of ['GET', 'POST']) {
-  workbox.routing.registerRoute(
-    ({ url }) => sameOrigin(url) && (isAuthPath(url) || isGraphqlPath(url) || isCertificateDownload(url)),
-    networkOnly,
-    method,
-  );
-}
-
-workbox.routing.registerRoute(
-  ({ request, url }) => request.mode === 'navigate' && sameOrigin(url) && !isApiPath(url) && !isAuthPath(url),
-  async (options) => {
-    try {
-      return await ssrNavigationStrategy.handle(options);
-    } catch {
-      const response = await workbox.precaching.matchPrecache(appShellUrl);
-      if (response) {
-        return response;
-      }
-
-      return Response.error();
-    }
-  },
-);
-
 const ssrNavigationStrategy = new workbox.strategies.NetworkFirst({
   cacheName: 'ssr-html',
   networkTimeoutSeconds: 3,
@@ -103,6 +77,37 @@ const ssrNavigationStrategy = new workbox.strategies.NetworkFirst({
       purgeOnQuotaError: true,
     }),
   ],
+});
+
+for (const method of ['GET', 'POST']) {
+  workbox.routing.registerRoute(
+    ({ url }) => sameOrigin(url) && (isAuthPath(url) || isGraphqlPath(url) || isCertificateDownload(url)),
+    networkOnly,
+    method,
+  );
+}
+
+workbox.routing.registerRoute(
+  new workbox.routing.NavigationRoute(
+    async (options) => {
+      try {
+        return await ssrNavigationStrategy.handle(options);
+      } catch {
+        return appShellFallback();
+      }
+    },
+    {
+      denylist: [/^\/api\//, /\/(?:login|logout|callback)(?:\/|$)/],
+    },
+  ),
+);
+
+workbox.routing.setCatchHandler(({ request }) => {
+  if (request.mode === 'navigate') {
+    return appShellFallback();
+  }
+
+  return Response.error();
 });
 
 workbox.routing.registerRoute(
@@ -139,3 +144,13 @@ workbox.routing.registerRoute(
     ],
   }),
 );
+
+async function appShellFallback() {
+  const precachedResponse = await workbox.precaching.matchPrecache(appShellUrl);
+  if (precachedResponse) {
+    return precachedResponse;
+  }
+
+  const cachedResponse = await caches.match(appShellUrl);
+  return cachedResponse ?? Response.error();
+}

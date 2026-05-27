@@ -1,8 +1,6 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { ApplicationRef, DestroyRef, Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { first } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { UpdateModalComponent } from './dialog-components/update.component';
 import { UpdateErrorDialogComponent } from './dialog-components/update-error.component';
@@ -13,11 +11,9 @@ const SERVICE_WORKER_RELOAD_COOLDOWN_MS = 60000;
 
 @Injectable({ providedIn: 'root' })
 export class ServiceWorkerService {
-  private readonly appRef: ApplicationRef = inject(ApplicationRef);
   private readonly dialog: MatDialog = inject(MatDialog);
   private readonly document: Document = inject(DOCUMENT);
   private readonly platformId: object = inject(PLATFORM_ID);
-  private readonly destroyRef: DestroyRef = inject(DestroyRef);
 
   readonly state = signal<UpdateState>('idle');
   readonly error = signal<string | null>(null);
@@ -31,6 +27,7 @@ export class ServiceWorkerService {
 
   private updateDialogRef: MatDialogRef<UpdateModalComponent> | null = null;
   private registration: ServiceWorkerRegistration | null = null;
+  private readonly trackedServiceWorkers = new WeakSet<ServiceWorker>();
   private reloadWhenControlling = false;
   private started = false;
 
@@ -53,9 +50,6 @@ export class ServiceWorkerService {
     });
 
     void this.registerServiceWorker();
-    this.appRef.isStable
-      .pipe(first(Boolean), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => void this.checkForUpdate());
   }
 
   async checkForUpdate(): Promise<boolean> {
@@ -73,6 +67,9 @@ export class ServiceWorkerService {
       }
 
       await registration.update();
+      this.registration = registration;
+      this.handleCurrentRegistration(registration);
+
       const hasUpdate = Boolean(registration.waiting || registration.installing);
 
       if (!hasUpdate) {
@@ -81,6 +78,12 @@ export class ServiceWorkerService {
 
       return hasUpdate;
     } catch (error: unknown) {
+      if (this.isRegistrationUninstalledError(error)) {
+        this.registration = null;
+        this.state.set('idle');
+        return false;
+      }
+
       this.state.set('failed');
       this.error.set(this.stringifyError(error));
       return false;
@@ -96,7 +99,14 @@ export class ServiceWorkerService {
 
     console.info('Updating service worker registrations:', registrations);
 
-    await Promise.all(registrations.map((registration) => registration.update()));
+    await Promise.all(
+      registrations
+        .filter((registration) => registration.scope === this.serviceWorkerScope())
+        .map(async (registration) => {
+          await registration.update();
+          this.handleCurrentRegistration(registration);
+        }),
+    );
   }
 
   async unregisterServiceWorker(): Promise<void> {
@@ -142,7 +152,7 @@ export class ServiceWorkerService {
 
       this.registration = registration;
       this.listenForServiceWorkerUpdates(registration);
-      this.activateWaitingUpdate(registration, false);
+      this.handleCurrentRegistration(registration);
       this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
     } catch (error: unknown) {
       this.state.set('failed');
@@ -158,35 +168,67 @@ export class ServiceWorkerService {
         return;
       }
 
-      const isUpdate = Boolean(navigator.serviceWorker.controller);
-      if (isUpdate) {
-        this.handleUpdateDetected();
-      }
-
-      serviceWorker.addEventListener('statechange', () => {
-        switch (serviceWorker.state) {
-          case 'installed': {
-            if (isUpdate) {
-              this.activateWaitingUpdate(registration, true);
-            }
-            break;
-          }
-
-          case 'activated': {
-            this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
-            if (!isUpdate) {
-              this.state.set('idle');
-            }
-            break;
-          }
-
-          case 'redundant': {
-            this.handleUpdateFailed();
-            break;
-          }
-        }
-      });
+      this.trackInstallingServiceWorker(registration, serviceWorker, Boolean(navigator.serviceWorker.controller));
     });
+  }
+
+  private handleCurrentRegistration(registration: ServiceWorkerRegistration): void {
+    const isUpdate = Boolean(navigator.serviceWorker.controller);
+
+    if (registration.installing) {
+      this.trackInstallingServiceWorker(registration, registration.installing, isUpdate);
+      return;
+    }
+
+    if (registration.waiting && isUpdate) {
+      this.handleUpdateDetected();
+      this.activateWaitingUpdate(registration, true);
+    }
+  }
+
+  private trackInstallingServiceWorker(
+    registration: ServiceWorkerRegistration,
+    serviceWorker: ServiceWorker,
+    isUpdate: boolean,
+  ): void {
+    if (this.trackedServiceWorkers.has(serviceWorker)) {
+      return;
+    }
+
+    this.trackedServiceWorkers.add(serviceWorker);
+
+    if (isUpdate) {
+      this.handleUpdateDetected();
+    }
+
+    const handleStateChange = () => {
+      switch (serviceWorker.state) {
+        case 'installed': {
+          if (isUpdate) {
+            this.activateWaitingUpdate(registration, true);
+          } else {
+            this.state.set('idle');
+          }
+          break;
+        }
+
+        case 'activated': {
+          this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
+          if (!isUpdate) {
+            this.state.set('idle');
+          }
+          break;
+        }
+
+        case 'redundant': {
+          this.handleUpdateFailed();
+          break;
+        }
+      }
+    };
+
+    serviceWorker.addEventListener('statechange', handleStateChange);
+    handleStateChange();
   }
 
   private handleUpdateDetected(): void {
@@ -302,5 +344,9 @@ export class ServiceWorkerService {
     }
 
     return 'Erro desconhecido ao atualizar o aplicativo.';
+  }
+
+  private isRegistrationUninstalledError(error: unknown): boolean {
+    return this.stringifyError(error).includes('registration has been uninstalled');
   }
 }
