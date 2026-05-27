@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { developmentOnlyGuard } from '@cacic-fct/shared-angular';
+import { developmentOnlyGuard, redirectAuthenticatedGuard } from '@cacic-fct/shared-angular';
 import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,
@@ -9,6 +9,7 @@ export const appRoutes: Route[] = [
   {
     path: '',
     pathMatch: 'full',
+    canActivate: [redirectAuthenticatedGuard(['/calendar'])],
     loadComponent: () => import('./landing/home.component').then((m) => m.HomeComponent),
   },
   {
