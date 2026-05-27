@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { authGuard, requiredPermissionsGuard } from '@cacic-fct/shared-angular';
+import { authGuard, redirectAuthenticatedGuard, requiredPermissionsGuard } from '@cacic-fct/shared-angular';
 
 const workspacePermissions = [
   'certificate#read',
@@ -17,6 +17,7 @@ const workspacePermissions = [
 export const appRoutes: Route[] = [
   {
     path: 'login',
+    canActivate: [redirectAuthenticatedGuard([''])],
     loadComponent: () => import('./auth/login-page.component').then((c) => c.LoginPageComponent),
   },
   {

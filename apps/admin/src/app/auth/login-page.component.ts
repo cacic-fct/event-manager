@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, computed, inject, PLATFORM_ID, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, PLATFORM_ID, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Router } from '@angular/router';
@@ -7,6 +7,7 @@ import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-login-page',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatCardModule, CacicLogoComponent],
   template: `
     <main class="login-page">
@@ -60,6 +61,6 @@ export class LoginPageComponent {
       await this.router.navigateByUrl('/');
       return;
     }
-    await this.authService.login();
+    await this.authService.login({ returnTo: '/' });
   }
 }

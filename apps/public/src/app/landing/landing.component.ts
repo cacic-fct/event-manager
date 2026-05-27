@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, input, PLATFORM_ID, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, inject, PLATFORM_ID, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
@@ -31,11 +31,10 @@ export class LandingComponent {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly featureFlags = inject(PublicFeatureFlagService);
 
-  readonly defaultLoginRedirectPathOverride = input<string | null>(null);
   private readonly nextSection = viewChild<ElementRef<HTMLElement>>('nextSection');
 
   async login(): Promise<void> {
-    const returnTo = this.defaultLoginRedirectPathOverride() ?? this.featureFlags.stringValue('defaultLoginRedirectPath');
+    const returnTo = this.featureFlags.stringValue('defaultLoginRedirectPath') ?? '/calendar';
 
     if (this.authService.isAuthenticated()) {
       await this.router.navigateByUrl(returnTo);
