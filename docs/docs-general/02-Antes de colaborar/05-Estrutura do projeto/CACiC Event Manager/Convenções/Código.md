@@ -21,7 +21,7 @@ Isso inclui qualquer tipo de elemento de "jogo", incluindo:
 - Desafios;
 - Recompensas.
 
-É permitido o uso das APIs para este fim desde que a segurança dos dados seja garantida, exceto nos casos descritos nesta documentação.
+É permitido o uso das APIs para este fim, desde que a segurança dos dados seja garantida, exceto nos casos descritos nesta documentação.
 
 ### Consumo consciente
 
@@ -39,6 +39,6 @@ Só são permitidos se estão integrados à experiência do usuário, mas de for
 
 **Exemplos proibidos:**
 
-- Um texto escondido;
+- Um texto escondido, que tem a mesma cor do fundo, ou que só é revelado com interações específicas;
 - Funções liberadas por uma sequência de cliques ou teclas;
 - Um botão escodindo que libera uma funcionalidade secreta.

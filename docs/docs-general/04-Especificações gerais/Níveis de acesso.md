@@ -34,7 +34,7 @@ Normalmente, pode ser:
 
 O acesso deve ser transferido manualmente após a conclusão do mandato.
 
-:::caution
+:::caution[Cuidado]
 Tenha a autenticação em duas etapas ativada para evitar o comprometimento da conta.
 :::
 

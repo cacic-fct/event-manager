@@ -14,11 +14,11 @@ Arquivo preservado caso seja necessário utilizar o Typesense novamente.
 
 Este diretório contém os arquivos de texto da documentação.
 
-:::note
+:::note[Nota]
 Pode ser necessário editar o arquivo `astro.config.ts` para adicionar novas páginas à documentação.
 :::
 
-:::caution
+:::caution[Cuidado]
 As rotas são geradas automaticamente a partir dos arquivos presentes neste diretório.
 
 Não inclua componentes aqui.

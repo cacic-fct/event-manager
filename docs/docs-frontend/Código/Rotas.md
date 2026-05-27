@@ -2,20 +2,16 @@
 title: Rotas
 ---
 
+O prefixo global (_base href_) é `/app/`.
+
 ## Convenção de nomenclatura
 
-Rotas sempre em português, em minúsculas, sem caracteres especiais e sem acentos.
+Rotas sempre em inglês, em minúsculas, sem caracteres especiais.
 
-Alguns redirecionamentos podem ser feitos para urls comuns, incluindo em inglês, por exemplo:
+Alguns redirecionamentos podem ser feitos para urls comuns, incluindo em português, por exemplo:
 
 - `/docs` → `https://docs.fctapp.cacic.dev.br`
-- `/login` → `/entrar`
-- `/licenses` → `/ajustes/legal/licensas`
+- `/validar` → `/validate`
+- `/licenses` → `/about/legal`
 - Sobre:
-  - `/about` → `/ajustes/geral/sobre`
-  - `/humans.txt` → `/ajustes/geral/sobre`
-- Política de privacidade:
-  - `/privacy` → `/ajustes/legal/politica-de-privacidade`
-  - `/privacy-policy` → `/ajustes/legal/politica-de-privacidade`
-  - `/privacidade` → `/ajustes/legal/politica-de-privacidade`
-  - `/política-de-privacidade` → `/ajustes/legal/politica-de-privacidade`
+  - `/humans.txt` → `/about`

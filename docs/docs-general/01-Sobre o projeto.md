@@ -22,20 +22,16 @@ A documentação do projeto manteve o nome "FCT App Docs" para continuidade do f
 
 1. Simplificar o fluxo de inscrição em eventos:
     - O CACiC Event Manager permite que o usuário faça a inscrição em um evento com poucos cliques, sem precisar preencher formulários extensos;
-    - 
 1. Emitir certificados de participação mais rapidamente:
     - Antes, certificados demoravam vários semestres para serem emitidos ou nem eram emitidos;
 1. Abolir o uso de papel, seja na confecção de crachás, certificados ou na coleta de presença:
     - As presenças eram computadas manualmente;
     - Os papéis das listas de presenças eram perdidos;
     - Crachás comprometiam parte significativa do orçamento de eventos;
-1. Incluir pequenas funcionalidades que melhoram a experiência dos alunos da FCT:
-    - Mapa de fácil acesso;
-    - Links úteis.
 
 ### Alterações com o tempo
 
-Antes, o FCT App possuia o propósito de ser um "hub" completo para os alunos da FCT.
+Antes, o FCT App possuia o propósito de ser um "hub" completo para os alunos da FCT, com tudo em um só lugar.
 
 No entanto, com o objetivo de direcionar o projeto para um caminho mais focalizado e sustentável,  com o tempo, projetos foram desmembrados do FCT App:
 
@@ -45,6 +41,16 @@ No entanto, com o objetivo de direcionar o projeto para um caminho mais focaliza
 - [Conta CACiC](https://account.cacic.dev.br)
 
 O CACiC Event Manager continuou com essa tendência e se concentrou exclusivamente em ser um aplicativo para eventos, com o objetivo de ser mais fácil de manter e de evoluir, além de ser mais fácil para os usuários entenderem o propósito do aplicativo.
+
+O gerenciamento do cadastro e as informações de perfil foram delegadas para o CACiC Account Manager.
+
+### Tecnologias escolhidas
+
+Como relatado anteriormente, o CACiC Event Manager é, no mínimo, a terceira iteração de um sistema de inscrições para a SECOMPP.
+
+O projeto aprendeu com as experiências anteriores e, por isso, as escolhas técnicas foram feitas de forma mais consciente, visando a sustentabilidade do projeto a longo prazo.
+
+Todas as escolhas possuem justificativas técnicas, que estão listadas na página de [Tecnologias](./02-Antes%20de%20colaborar/02-Tecnologias.md), e não devem ser questionadas ou alteradas sem uma justificativa igualmente sólida.
 
 ## Sem fins lucrativos (non-profit)
 

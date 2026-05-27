@@ -21,7 +21,7 @@ O código de presença é gerado automaticamente ao autorizar a coleta de presen
 
 Não há motivação para fazer códigos de uso único, pois a distribuição deles é feita de forma manual, o que é trabalhoso e requer o uso de papel.
 
-:::caution
+:::caution[Cuidado]
 
 A coleta de presença pode ser fraudada neste método.
 

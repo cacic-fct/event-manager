@@ -7,7 +7,7 @@ tags: [self-hosted]
 
 A fim de escolher as melhores tecnologias e os procedimentos para a reescrita do FCT App, a comissão de 2024 analisou projetos de outras universidades. A seguir, estão listados os projetos analisados, os problemas encontrados e as soluções propostas.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Projetos analisados
 
@@ -30,7 +30,7 @@ A fim de escolher as melhores tecnologias e os procedimentos para a reescrita do
 | [DevMobUFRJ/BandejApp](https://github.com/DevMobUFRJ/BandejApp/tree/196f62ae366b1ea2de52aecdfa10e34fe434eb51)         | Site dos Restaurantes Universitários                 | React       | UFRJ              |
 | [caecomp-ufrn](https://github.com/caecomp-ufrn/site-ca)🥇                                                             | Site do Centro Acadêmico de Engenharia de Computação | Vue + JS    | UFRN              |
 
-:::note
+:::note[Nota]
 Nem todos os projetos analisados estão listados, pois foram perdidos. :-(
 :::
 
@@ -100,6 +100,7 @@ Nem todos os projetos analisados estão listados, pois foram perdidos. :-(
 - Links quebrados (404);
 - Branch da produção mais avançada que a de desenvolvimento;
 - Passagens de dados (props) para _child-components_ sem sentido;
+  - Texto passado para componente de uso único.
 
 #### Interface do usuário
 
