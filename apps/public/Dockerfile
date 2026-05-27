@@ -11,7 +11,7 @@ FROM base AS deps
 COPY package.json bun.lock nx.json tsconfig.base.json ./
 COPY .npmrc ./
 COPY eslint.config.mjs jest.config.ts jest.preset.js ./
-COPY apps/public/project.json apps/public/tsconfig*.json apps/public/ngsw-config.json ./apps/public/
+COPY apps/public/project.json apps/public/tsconfig*.json ./apps/public/
 COPY libs/shared-angular/project.json libs/shared-angular/tsconfig*.json ./libs/shared-angular/
 COPY libs/shared-data-types/project.json libs/shared-data-types/tsconfig*.json ./libs/shared-data-types/
 COPY libs/shared-utils/project.json libs/shared-utils/tsconfig*.json ./libs/shared-utils/
