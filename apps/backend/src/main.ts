@@ -13,7 +13,9 @@ import { createDocsAuthGate } from './app/auth/docs-auth.middleware';
 import { KeycloakAuthService } from './app/auth/keycloak-auth.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+  });
   const globalPrefix = 'api';
   const production = process.env.NODE_ENV === 'production';
 

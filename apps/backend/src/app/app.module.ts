@@ -91,6 +91,7 @@ import { WeatherResolver } from './weather/weather.resolver';
 import { WeatherSchedulerService } from './weather/weather-scheduler.service';
 import { WeatherService } from './weather/weather.service';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -147,6 +148,7 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
         context: ({ req, res }) => ({ req, res }),
       }),
     }),
+    AnalyticsModule,
   ],
   controllers: [
     AppController,
