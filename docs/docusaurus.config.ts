@@ -19,7 +19,6 @@ const config: Config = {
   projectName: 'event-manager', // Usually your repo name.
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
   trailingSlash: false,
 
   // Even if you don't use internationalization, you can use this field to set
@@ -32,9 +31,9 @@ const config: Config = {
 
   scripts: [
     {
-      src: 'https://plausible.cacic.dev.br/js/script.js',
+      src: 'https://a.cacic.dev.br/b.js',
       defer: true,
-      'data-domain': 'cacic.dev.br',
+      'data-website-id': '7df7604a-fa18-4305-ac8b-8f3ac89282b8',
     },
   ],
 
@@ -43,10 +42,26 @@ const config: Config = {
       tagName: 'link',
       attributes: {
         rel: 'preconnect',
-        href: 'https://plausible.cacic.dev.br',
+        href: 'https://a.cacic.dev.br',
       },
     },
   ],
+
+  future: {
+    v4: true,
+  },
+
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'throw',
+      onBrokenMarkdownImages: 'throw',
+    },
+    mdx1Compat: {
+      comments: false,
+      admonitions: false,
+      headingIds: false,
+    },
+  },
 
   presets: [
     [

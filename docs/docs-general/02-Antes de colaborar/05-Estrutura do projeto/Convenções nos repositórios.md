@@ -2,14 +2,14 @@
 title: Convenções nos repositórios
 ---
 
-:::tip
+:::tip[Dica]
 Quando em dúvida, tente lembrar:
 
 Indexar código? Sempre inglês.  
 Indexar conteúdo? Português.
 :::
 
-:::note
+:::note[Nota]
 
 Esta página é um adendo às [convenções do CACiC](https://cacic.dev.br/docs/Projetos/Especifica%C3%A7%C3%B5es%20comuns/Conven%C3%A7%C3%B5es%20gerais/C%C3%B3digos)
 
@@ -99,7 +99,7 @@ BREAKING CHANGE: <breaking change summary>
 Fixes #<issue number>
 ```
 
-<!-- Breaking changes não serão frequentes, mas é necessário especificar, para caso haja alguma -->
+{/* Breaking changes não serão frequentes, mas é necessário especificar, para caso haja alguma */}
 
 A seção de Breaking Change deve começar com a frase "BREAKING CHANGE: ", seguida por um resumo da mudança, uma linha em branco e uma descrição detalhada da mudança, além de incluir instruções de migração.
 

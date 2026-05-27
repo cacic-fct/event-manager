@@ -19,7 +19,7 @@ Você pode adicionar novos pacotes desde que eles:
 - Adicionem funcionalidades significativas ao projeto;
 - Sejam open-source e estejam disponíveis no repositório público do npm.
 
-:::note
+:::note[Nota]
 Pacotes com mantenedores únicos são desencorajados.  
 Isso inclui pacotes desenvolvidos pelo próprio contribuidor.
 

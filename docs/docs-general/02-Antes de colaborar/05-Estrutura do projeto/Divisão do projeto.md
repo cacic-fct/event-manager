@@ -17,8 +17,8 @@ O CACiC Event Manager também pode fazer uso de outros projetos ou repositórios
 
 ### Divisão desnecessária de projetos
 
-O CACiC Event Manager é um aplicativo único e deve ser tratado como tal.  
-Não admite-se a modularização das funcionalidades do projeto em repositórios diferentes.
+O CACiC Event Manager é um projeto único e deve ser tratado como tal.  
+Não admite-se a modularização das funcionalidades do projeto em repositórios diferentes, com excessão daquilo que fuja do escopo de "gerenciamento de eventos", como é o caso do CACiC Account Manager.
 
 Admite-se a separação de pacotes genéricos que possam ser reaproveitados em outros projetos.
 

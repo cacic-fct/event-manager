@@ -1,6 +1,6 @@
 # Validação de comprovantes
 
-:::danger
+:::danger[Perigo]
 
 **Os comprovantes não comprovam nada!**  
 Não saia validando comprovantes só porque há uma imagem dele.
