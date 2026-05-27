@@ -20,6 +20,7 @@ import {
   createErrorHandler as SentryCreateErrorHandler,
   init as SentryInit,
   TraceService as SentryTraceService,
+  consoleLoggingIntegration as SentryConsoleLoggingIntegration,
 } from '@sentry/angular';
 import type { ErrorEvent as SentryErrorEvent } from '@sentry/angular';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -46,6 +47,7 @@ export type CacicObservabilityConfig = {
   glitchtip: {
     dsn: string;
     isEnabled: (user: AuthenticatedUser | null) => boolean;
+    project: 'admin' | 'public';
   };
 };
 
@@ -145,10 +147,14 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
           dsn: config.glitchtip.dsn,
           environment: isDevMode() ? 'development' : 'production',
           sendDefaultPii: true,
-          integrations: [SentryBrowserTracingIntegration()],
+          integrations: [
+            SentryBrowserTracingIntegration(),
+            SentryConsoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+          ],
           tracesSampleRate: 1.0,
           tracePropagationTargets: [/^https:\/\/eventos\.cacic\.dev\.br\/api/],
           enableLogs: true,
+          tunnel: config.glitchtip.project === 'admin' ? '/api/a/glitchtip/admin' : '/api/a/glitchtip/public',
           beforeSend: (event: SentryErrorEvent) => {
             return !isDevMode() && config.glitchtip.isEnabled(authService.user()) ? event : null;
           },
