@@ -9,6 +9,8 @@ import { UpdateModalComponent } from './dialog-components/update.component';
 import { UpdateErrorDialogComponent } from './dialog-components/update-error.component';
 
 type UpdateState = 'idle' | 'checking' | 'downloading' | 'ready' | 'failed' | 'unrecoverable';
+const SERVICE_WORKER_RELOAD_KEY = 'cacic-eventos:service-worker-reload';
+const SERVICE_WORKER_RELOAD_COOLDOWN_MS = 60000;
 
 @Injectable({ providedIn: 'root' })
 export class ServiceWorkerService {
@@ -31,6 +33,7 @@ export class ServiceWorkerService {
   private updateDialogRef: MatDialogRef<UpdateModalComponent> | null = null;
   private workbox: Workbox | null = null;
   private registration: ServiceWorkerRegistration | null = null;
+  private reloadWhenControlling = false;
   private started = false;
 
   start(): void {
@@ -169,10 +172,17 @@ export class ServiceWorkerService {
       this.updateDialogRef?.close();
       this.updateDialogRef = null;
 
+      this.reloadWhenControlling = this.shouldReloadForUpdate(event.sw?.scriptURL ?? null);
       worker.messageSkipWaiting();
     });
 
     worker.addEventListener('controlling', () => {
+      if (!this.reloadWhenControlling) {
+        this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
+        return;
+      }
+
+      this.reloadWhenControlling = false;
       this.reload();
     });
 
@@ -225,6 +235,33 @@ export class ServiceWorkerService {
 
   private serviceWorkerScope(): string {
     return new URL('.', this.document.baseURI).toString();
+  }
+
+  private shouldReloadForUpdate(scriptUrl: string | null): boolean {
+    if (!scriptUrl || !this.isBrowser()) {
+      return true;
+    }
+
+    try {
+      const now = Date.now();
+      const lastReload = JSON.parse(sessionStorage.getItem(SERVICE_WORKER_RELOAD_KEY) ?? 'null') as {
+        scriptUrl?: string;
+        timestamp?: number;
+      } | null;
+
+      if (
+        lastReload?.scriptUrl === scriptUrl &&
+        typeof lastReload.timestamp === 'number' &&
+        now - lastReload.timestamp < SERVICE_WORKER_RELOAD_COOLDOWN_MS
+      ) {
+        return false;
+      }
+
+      sessionStorage.setItem(SERVICE_WORKER_RELOAD_KEY, JSON.stringify({ scriptUrl, timestamp: now }));
+      return true;
+    } catch {
+      return true;
+    }
   }
 
   private reload(): void {
