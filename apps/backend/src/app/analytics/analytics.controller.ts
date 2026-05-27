@@ -12,6 +12,7 @@ import type { Request } from 'express';
 
 import { AnalyticsService } from './analytics.service';
 import { SENTRY_TUNNEL_TARGETS } from './analytics.config';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Analytics')
 @Controller('a')
@@ -19,6 +20,7 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Post('glitchtip/:project')
+  @Public()
   @HttpCode(200)
   @ApiOperation({
     summary: 'Forward Sentry envelope events',
