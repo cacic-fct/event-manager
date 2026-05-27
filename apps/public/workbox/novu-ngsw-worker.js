@@ -19,9 +19,22 @@ workbox.core.clientsClaim();
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+    event.waitUntil(skipWaitingForTrustedClient(event));
   }
 });
+
+async function skipWaitingForTrustedClient(event) {
+  if (!event.source?.id) {
+    return;
+  }
+
+  const client = await self.clients.get(event.source.id);
+  if (!client || new URL(client.url).origin !== self.location.origin) {
+    return;
+  }
+
+  await self.skipWaiting();
+}
 
 const scopePath = new URL(self.registration.scope).pathname;
 const appScopePath = scopePath.endsWith('/') ? scopePath : `${scopePath}/`;
