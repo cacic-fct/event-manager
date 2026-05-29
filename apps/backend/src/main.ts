@@ -27,6 +27,10 @@ async function bootstrap() {
       production,
     }),
   );
+  app.enableCors({
+    origins: ['https://eventos.cacic.dev.br', 'https://secompp.cacic.dev.br'],
+    credentials: true,
+  });
 
   const config = new DocumentBuilder()
     .setTitle('CACiC Eventos')
