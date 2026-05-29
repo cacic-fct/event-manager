@@ -11,6 +11,7 @@ import { catchError, finalize, map, of, startWith } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../../shared/certificate-file-download.service';
 import { AttendancesApiService } from '../../attendances-api.service';
 import { AuthService, MailtoService } from '@cacic-fct/shared-angular';
+import { CacicAnalyticsService } from '@cacic-fct/shared-angular';
 
 export interface CertificateDialogData {
   title: string;
@@ -32,7 +33,7 @@ type CertificateDialogState =
 export class CertificateDialog {
   private readonly api = inject(AttendancesApiService);
   private readonly data = inject<CertificateDialogData>(MAT_DIALOG_DATA);
-  private readonly dialogRef = inject(MatDialogRef<CertificateDialog>);
+  private readonly analytics = inject(CacicAnalyticsService);
   private readonly fileDownload = inject(CertificateFileDownloadService);
   private readonly mailtoService = inject(MailtoService);
   private readonly authService = inject(AuthService);
@@ -69,6 +70,7 @@ export class CertificateDialog {
       .pipe(finalize(() => this.downloadingCertificateId.set(null)))
       .subscribe({
         next: (download) => {
+          this.analytics.trackEvent('certificate_self_download');
           this.fileDownload.save(download);
         },
         error: (error: unknown) => {
