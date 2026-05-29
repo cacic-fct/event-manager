@@ -21,7 +21,10 @@ export class MajorEventReceiptsService {
     private readonly validation: ReceiptValidationService,
   ) {}
 
-  getCurrentReceipt(majorEventId: string, authenticatedUser: AuthenticatedUser): Promise<CurrentUserReceiptResponse | null> {
+  getCurrentReceipt(
+    majorEventId: string,
+    authenticatedUser: AuthenticatedUser,
+  ): Promise<CurrentUserReceiptResponse | null> {
     return this.uploads.getCurrentReceipt(majorEventId, authenticatedUser);
   }
 

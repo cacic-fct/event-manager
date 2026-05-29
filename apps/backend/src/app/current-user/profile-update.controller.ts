@@ -1,5 +1,14 @@
 import { Body, Controller, Post, Req } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiForbiddenResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -11,7 +20,7 @@ type RequestWithUser = Request & {
   user?: AuthenticatedUser;
 };
 
-@ApiTags('account-profile')
+@ApiTags('Internal M2M')
 @ApiBearerAuth()
 @Controller('internal/account-profile')
 export class AccountProfileUpdateController {
@@ -22,7 +31,31 @@ export class AccountProfileUpdateController {
 
   @Post('updated')
   @RequireRoles('account-profile:write')
-  @ApiOkResponse({ type: AccountProfileUpdateAcknowledgementDto })
+  @ApiOperation({
+    summary: 'Synchronize an account profile update',
+    description:
+      'Internal machine-to-machine endpoint used by the account/profile system to notify the events backend that a user profile changed. This endpoint is not intended for public frontend use or third-party developer integrations. The caller must have the account-profile:write role.',
+  })
+  @ApiBody({
+    type: AccountProfileUpdateDto,
+    description:
+      'Profile update payload emitted by the account/profile backend. The events backend uses it to synchronize its local user/person projection.',
+  })
+  @ApiOkResponse({
+    type: AccountProfileUpdateAcknowledgementDto,
+    description:
+      'Profile update accepted and the local user/person projection was synchronized when matching records were found or created.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Returned when the request does not include a valid service access token.',
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Returned when the authenticated principal is not a machine-to-machine principal or does not have the required account-profile:write role.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Returned when the profile update payload is invalid or cannot be synchronized.',
+  })
   async updated(
     @Req() request: RequestWithUser,
     @Body() body: AccountProfileUpdateDto,
