@@ -28,7 +28,7 @@ async function bootstrap() {
     }),
   );
   app.enableCors({
-    origins: ['https://eventos.cacic.dev.br', 'https://secompp.cacic.dev.br'],
+    origin: ['https://eventos.cacic.dev.br', 'https://secompp.cacic.dev.br'],
     credentials: true,
   });
 
