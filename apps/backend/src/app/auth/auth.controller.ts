@@ -1,4 +1,17 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiBody,
+  ApiCookieAuth,
+  ApiForbiddenResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiProperty,
+  ApiPropertyOptional,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME } from './auth.constants';
 import { Public } from './decorators/public.decorator';
@@ -18,12 +31,209 @@ type PermissionEvaluationBody = {
   permissions?: unknown;
 };
 
+class LoginUrlResponseDto {
+  @ApiProperty({
+    description:
+      'Keycloak authorization URL generated with the server-side authorization state bound to the auth state cookie.',
+    example:
+      'https://sso.cacic.dev.br/realms/cacic-sso/protocol/openid-connect/auth?client_id=cacic-event-manager&response_type=code&scope=openid%20profile%20email&state=...',
+  })
+  authorizationUrl!: string;
+}
+
+class RefreshSessionResponseDto {
+  @ApiProperty({
+    description: 'Access-token expiration timestamp in milliseconds since epoch.',
+    example: 1767225599000,
+  })
+  expiresAt!: number;
+
+  @ApiProperty({
+    description: 'Server-side session expiration timestamp in milliseconds since epoch.',
+    example: 1767229199000,
+  })
+  sessionExpiresAt!: number;
+}
+
+class PermissionEvaluationRequestDto {
+  @ApiProperty({
+    description:
+      'Permissions to evaluate against the current access token. Empty strings are ignored and duplicate values are removed before evaluation.',
+    example: ['events:create', 'events:update', 'major-events:read'],
+    type: [String],
+  })
+  permissions!: string[];
+}
+
+class PermissionEvaluationResponseDto {
+  @ApiProperty({
+    description: 'Permissions granted by Keycloak after evaluating the current access token.',
+    example: ['events:create', 'major-events:read'],
+    type: [String],
+  })
+  permissions!: string[];
+}
+
+class RealmAccessDto {
+  @ApiProperty({
+    description: 'Realm roles present in the access token.',
+    example: ['offline_access', 'uma_authorization'],
+    type: [String],
+  })
+  roles!: string[];
+}
+
+class AuthenticatedUserResponseDto {
+  @ApiProperty({
+    description: 'Realm-level access information extracted from the token.',
+    type: RealmAccessDto,
+  })
+  realm_access!: RealmAccessDto;
+
+  @ApiPropertyOptional({
+    description: 'Subject identifier from the authenticated identity.',
+    example: '018f47b1-5c4e-7c7b-9e6f-0c8c2f7281ad',
+  })
+  sub?: string;
+
+  @ApiPropertyOptional({
+    description: 'Preferred username claim from the identity provider.',
+    example: 'joao.silva',
+  })
+  preferredUsername?: string;
+
+  @ApiPropertyOptional({
+    description: 'Email claim when provided by the identity provider.',
+    example: 'joao@cacic.dev.br',
+  })
+  email?: string;
+
+  @ApiProperty({
+    description: 'Current access token used by the backend for downstream authorization checks.',
+    example: 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIn0...',
+  })
+  token!: string;
+
+  @ApiProperty({
+    description: 'Normalized role list used by application authorization checks.',
+    example: ['admin', 'event-manager'],
+    type: [String],
+  })
+  roles!: string[];
+
+  @ApiProperty({
+    description:
+      'Set-backed role lookup. If returned over HTTP, ensure it is serialized to an array or omit it from the public response shape.',
+    example: ['admin', 'event-manager'],
+    type: [String],
+  })
+  roleSet!: string[];
+
+  @ApiProperty({
+    description: 'Normalized permission list resolved for the authenticated user.',
+    example: ['events:create', 'events:update', 'major-events:read'],
+    type: [String],
+  })
+  permissions!: string[];
+
+  @ApiProperty({
+    description:
+      'Set-backed permission lookup. If returned over HTTP, ensure it is serialized to an array or omit it from the public response shape.',
+    example: ['events:create', 'events:update', 'major-events:read'],
+    type: [String],
+  })
+  permissionSet!: string[];
+
+  @ApiProperty({
+    description: 'OIDC scopes granted to the authenticated session.',
+    example: ['openid', 'profile', 'email', 'identity-document'],
+    type: [String],
+  })
+  oidcScopes!: string[];
+
+  @ApiProperty({
+    description:
+      'Set-backed OIDC scope lookup. If returned over HTTP, ensure it is serialized to an array or omit it from the public response shape.',
+    example: ['openid', 'profile', 'email', 'identity-document'],
+    type: [String],
+  })
+  oidcScopeSet!: string[];
+
+  @ApiProperty({
+    description: 'Legacy alias for oidcScopes.',
+    example: ['openid', 'profile', 'email'],
+    type: [String],
+  })
+  scopes!: string[];
+
+  @ApiProperty({
+    description:
+      'Legacy alias for oidcScopeSet. If returned over HTTP, ensure it is serialized to an array or omit it from the public response shape.',
+    example: ['openid', 'profile', 'email'],
+    type: [String],
+  })
+  scopeSet!: string[];
+
+  @ApiProperty({
+    description: 'Original token claims retained for callers that need claims not normalized above.',
+    type: 'object',
+    additionalProperties: true,
+    example: {
+      iss: 'https://sso.cacic.dev.br/realms/cacic-sso',
+      aud: 'cacic-event-manager',
+      typ: 'Bearer',
+    },
+  })
+  claims!: Record<string, unknown>;
+}
+
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly keycloakAuthService: KeycloakAuthService) {}
 
   @Get('login')
   @Public()
+  @ApiOperation({
+    summary: 'Create a Keycloak authorization URL',
+    description:
+      'Builds an authorization URL and stores the generated OIDC state in a short-lived HTTP-only cookie. This variant lets the caller decide how and when to redirect the browser.',
+  })
+  @ApiQuery({
+    name: 'redirectUri',
+    required: false,
+    description:
+      'Callback URI used later during the code exchange. Defaults to the backend callback URL derived from forwarded headers.',
+    example: 'https://eventos.cacic.dev.br/api/auth/callback',
+  })
+  @ApiQuery({
+    name: 'returnTo',
+    required: false,
+    description:
+      'Post-login destination stored in the server-side authorization state. Usually a safe same-origin frontend path.',
+    example: '/app/events',
+  })
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    description: 'Optional caller-provided state to associate with the generated authorization state.',
+  })
+  @ApiQuery({
+    name: 'scope',
+    required: false,
+    description: 'Additional OIDC scopes to request from Keycloak.',
+    example: 'openid profile email identity-document',
+  })
+  @ApiQuery({
+    name: 'prompt',
+    required: false,
+    description: 'OIDC prompt value forwarded to Keycloak. Use prompt=none for silent SSO checks.',
+    example: 'none',
+  })
+  @ApiOkResponse({
+    type: LoginUrlResponseDto,
+    description: 'Authorization URL generated and the HTTP-only auth state cookie has been set.',
+  })
   async getLoginUrl(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
@@ -49,6 +259,46 @@ export class AuthController {
 
   @Get('login/redirect')
   @Public()
+  @ApiOperation({
+    summary: 'Redirect the browser to Keycloak',
+    description:
+      'Builds the authorization request, stores the generated state in a short-lived HTTP-only cookie, and redirects directly to Keycloak.',
+  })
+  @ApiQuery({
+    name: 'redirectUri',
+    required: false,
+    description:
+      'Callback URI used later during the code exchange. Defaults to the backend callback URL derived from forwarded headers.',
+    example: 'https://eventos.cacic.dev.br/api/auth/callback',
+  })
+  @ApiQuery({
+    name: 'returnTo',
+    required: false,
+    description:
+      'Post-login destination stored in the server-side authorization state. Usually a safe same-origin frontend path.',
+    example: '/app',
+  })
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    description: 'Optional caller-provided state to associate with the generated authorization state.',
+  })
+  @ApiQuery({
+    name: 'scope',
+    required: false,
+    description: 'Additional OIDC scopes to request from Keycloak.',
+    example: 'openid profile email',
+  })
+  @ApiQuery({
+    name: 'prompt',
+    required: false,
+    description: 'OIDC prompt value forwarded to Keycloak. For silent SSO checks, use prompt=none.',
+    example: 'none',
+  })
+  @ApiResponse({
+    status: 302,
+    description: 'Browser redirected to the generated Keycloak authorization URL.',
+  })
   async redirectToLogin(
     @Req() request: Request,
     @Res() response: Response,
@@ -72,6 +322,43 @@ export class AuthController {
 
   @Get('callback')
   @Public()
+  @ApiOperation({
+    summary: 'Complete the authorization-code callback',
+    description:
+      'Validates the returned state against the HTTP-only state cookie, exchanges the authorization code for tokens, creates the server-side session, sets the session cookie, and redirects to the stored post-login destination.',
+  })
+  @ApiQuery({
+    name: 'code',
+    required: false,
+    description: 'Authorization code returned by Keycloak. Required unless Keycloak returned an error.',
+  })
+  @ApiQuery({
+    name: 'error',
+    required: false,
+    description:
+      'OIDC error returned by Keycloak. When present, the request is redirected to the stored post-login destination without creating a session.',
+  })
+  @ApiQuery({
+    name: 'redirectUri',
+    required: false,
+    description:
+      'Redirect URI used for the token exchange. It must match the URI used to start the authorization request.',
+    example: 'https://eventos.cacic.dev.br/api/auth/callback',
+  })
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    description: 'OIDC state returned by Keycloak. Must match the auth state cookie.',
+  })
+  @ApiResponse({
+    status: 302,
+    description:
+      'Browser redirected to the stored post-login destination. On success, the session cookie has been set first.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Returned when the authorization code is missing, the state cookie is absent, the state query value is absent, or the state cannot be consumed.',
+  })
   async callback(
     @Req() request: Request,
     @Res() response: Response,
@@ -111,6 +398,28 @@ export class AuthController {
 
   @Post('logout')
   @Public()
+  @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
+  @ApiOperation({
+    summary: 'Clear the local session and prepare Keycloak logout',
+    description:
+      'Removes the local session when present, clears the session cookie, and builds the Keycloak logout response using explicit body tokens or the tokens stored for the current session.',
+  })
+  @ApiBody({
+    type: LogoutDto,
+    required: false,
+    description:
+      'Optional logout hints. When omitted, the controller attempts to use tokens associated with the current session cookie.',
+  })
+  @ApiOkResponse({
+    description: 'Local session cleared and Keycloak logout payload generated by the auth service.',
+    schema: {
+      type: 'object',
+      additionalProperties: true,
+      example: {
+        logoutUrl: 'https://sso.cacic.dev.br/realms/cacic-sso/protocol/openid-connect/logout?...',
+      },
+    },
+  })
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response, @Body() body?: LogoutDto) {
     const sessionId = this.readCookie(request, AUTH_SESSION_COOKIE_NAME);
     const sessionLogoutInput = sessionId ? await this.keycloakAuthService.getSessionLogoutInput(sessionId) : null;
@@ -135,6 +444,19 @@ export class AuthController {
 
   @Post('refresh')
   @Public()
+  @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
+  @ApiOperation({
+    summary: 'Refresh the session tokens',
+    description:
+      'Uses the current session cookie to refresh the stored tokens and extends the session cookie to the updated server-side session expiration.',
+  })
+  @ApiOkResponse({
+    type: RefreshSessionResponseDto,
+    description: 'Session refreshed and the session cookie expiration updated.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Returned when the session cookie is missing.',
+  })
   async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const sessionId = this.readCookie(request, AUTH_SESSION_COOKIE_NAME);
     if (!sessionId) {
@@ -156,6 +478,19 @@ export class AuthController {
   }
 
   @Get('me')
+  @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
+  @ApiOperation({
+    summary: 'Read the authenticated identity',
+    description:
+      'Returns the identity resolved by the authentication layer for the current request, including normalized roles, permissions, scopes, and original claims.',
+  })
+  @ApiOkResponse({
+    type: AuthenticatedUserResponseDto,
+    description: 'Authenticated identity resolved for the current request.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Returned when no authenticated identity was attached to the request.',
+  })
   getMe(@Req() request: RequestWithUser) {
     if (!request.user) {
       throw new ForbiddenException('User is not authenticated.');
@@ -165,6 +500,27 @@ export class AuthController {
   }
 
   @Post('permissions/evaluate')
+  @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
+  @ApiOperation({
+    summary: 'Evaluate permissions for the current access token',
+    description:
+      'Normalizes the requested permission list, evaluates it against the current access token through Keycloak, and returns only the permissions granted by the authorization server.',
+  })
+  @ApiBody({
+    type: PermissionEvaluationRequestDto,
+    description:
+      'Permission identifiers to check. Values are trimmed; empty values are ignored; duplicates are removed.',
+  })
+  @ApiOkResponse({
+    type: PermissionEvaluationResponseDto,
+    description: 'Permission identifiers granted for the current access token.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Returned when permissions is not an array or contains non-string values.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Returned when no authenticated identity was attached to the request.',
+  })
   async evaluatePermissions(@Req() request: RequestWithUser, @Body() body: PermissionEvaluationBody) {
     if (!request.user) {
       throw new ForbiddenException('User is not authenticated.');

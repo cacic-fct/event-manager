@@ -31,7 +31,7 @@ export class AccountProfileUpdateDto {
   @IsString()
   identityDocument?: string;
 
-  @ApiPropertyOptional({ example: 'RA123456' })
+  @ApiPropertyOptional({ example: '20123456' })
   @IsOptional()
   @IsString()
   academicId?: string;
