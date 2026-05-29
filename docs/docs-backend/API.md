@@ -9,6 +9,8 @@ Ele é flexível e eficiente, permitindo que os clientes solicitem exatamente os
 
 Acesse o Apollo Sandbox em https://eventos.cacic.dev.br/api/graphql para explorar a API GraphQL, testar consultas e visualizar a documentação automática gerada a partir do esquema GraphQL. 
 
+Se você quer integrar a API pública do CACiC Event Manager em algum projeto, como a homepage da SECOMPP, procure pelas operações com o prefixo "Public".
+
 ## REST
 
 Damos preferência ao REST para comunicações M2M simples e requisições simples, como o login.
