@@ -55,7 +55,7 @@ const UMAMI_REPLAY_SCRIPT_ID = 'cacic-replay-script';
 const DEFAULT_UMAMI_REPLAY_SRC = 'https://a.cacic.dev.br/recorder.js';
 const DEFAULT_UMAMI_REPLAY_SAMPLE_RATE = 1;
 const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'moderate';
-const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 1200000;
+const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 1_200_000;
 
 @Injectable()
 class CacicUmamiReplayScriptLoader {

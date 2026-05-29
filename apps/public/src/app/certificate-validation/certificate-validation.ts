@@ -19,6 +19,7 @@ import { catchError, combineLatest, distinctUntilChanged, finalize, map, of, sta
 import { CertificateFileDownloadService } from '../shared/certificate-file-download.service';
 import { EmojiService } from '../shared/emoji.service';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
+import { AuthService, CacicAnalyticsService } from '@cacic-fct/shared-angular';
 
 type ValidationState =
   | { status: 'idle' }
@@ -48,6 +49,9 @@ export class CertificateValidation {
   public readonly router = inject(Router);
   private readonly api = inject(CertificateValidationApiService);
   private readonly fileDownload = inject(CertificateFileDownloadService);
+  private readonly analytics = inject(CacicAnalyticsService);
+  private readonly auth = inject(AuthService);
+  private readonly isAuthenticated = this.auth.isAuthenticated;
   readonly emoji = inject(EmojiService);
 
   readonly certificateIdControl = new FormControl('', {
@@ -131,7 +135,13 @@ export class CertificateValidation {
       .downloadCertificate(certificate.id)
       .pipe(finalize(() => this.downloading.set(false)))
       .subscribe({
-        next: (download) => this.fileDownload.save(download),
+        next: (download) => {
+          this.analytics.trackEvent('certificate_download', {
+            certificateId: certificate.id,
+            authenticated: this.isAuthenticated(),
+          });
+          this.fileDownload.save(download);
+        },
         error: (error: unknown) => {
           this.downloadError.set(this.getDownloadErrorMessage(error));
         },

@@ -173,7 +173,7 @@ export class CacicAnalyticsService {
   }
 
   private currentUser(): AuthenticatedUser | null {
-    return typeof this.auth.user === 'function' ? this.auth.user() : null;
+    return this.auth.user();
   }
 
   private buildIdentifyData(user: AuthenticatedUser): UmamiIdentifyData {
