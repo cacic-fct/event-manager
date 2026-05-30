@@ -1,4 +1,4 @@
-# FCT App Docs
+# Event Manager Docs
 
 ## Site
 

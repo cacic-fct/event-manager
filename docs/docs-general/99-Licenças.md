@@ -9,51 +9,84 @@ title: Licenças
 O CACiC Event Manager é distribuído sob a licença AGPL-3.0-only.
 
 Todas as modificações feitas no código-fonte do CACiC Event Manager devem ser disponibilizadas publicamente sob a mesma licença.  
-O uso por meio de redes é considerado distribuição, e, portanto, deve seguir as mesmas regras.
 
-### FCT App Docs
+De acordo com a AGPL 3.0, forks que disponibilizem o serviço para o público devem disponibilizar o código-fonte do projeto, incluindo as modificações feitas, para os usuários.
 
-O software do FCT App Docs é distribuído sob a licença AGPL-3.0-only.
+O uso por meio de redes também é considerado como distribuição, e, portanto, deve seguir as mesmas regras.
 
-O conteúdo do FCT App Docs é distribuído sob a licença CC BY-NC-SA 4.0.  
-Deve-se creditar o autor como "FCT App Docs" e fornecer um link para a documentação original.
+### Event Manager Docs
+
+O software do Event Manager Docs é distribuído sob a licença AGPL-3.0-only.
+
+O conteúdo do Event Manager Docs é distribuído sob a licença CC BY-NC-SA 4.0.  
+Deve-se creditar o autor como "CACiC Event Manager Docs" e fornecer um link para a documentação original.
 
 ## Detentor dos direitos autorais e propriedade intelectual
 
-Renan Araujo ([Yudi](https://github.com)) é detentor dos direitos autorais do FCT App e projetos derivados, doravante denominados de forma genérica apenas por "FCT App", exceto quando especificado.
+Renan Araujo ([Yudi](https://github.com)) é detentor dos direitos autorais do FCT App, CACiC Event Manager e projetos derivados, doravante denominados de forma genérica apenas por "CACiC Event Manager", exceto quando especificado.
 
 O detentor dos direitos está isento de assinar e não assinou o contrato de concessão de licença do CACiC.
 
 O CACiC Event Manager é distribuído pelo CACiC (CA ou entidade) sob uma acordo exclusivo concedida pelo detentor dos direitos:
 
-1. O CA deve distribuir o projeto principal do CACiC Event Manager sob a licença AGPL-3.0-only.
-   - Entende-se por "projeto principal" o código-fonte do CACiC Event Manager.
-   - Esta licença pode ser modificada por Yudi mediante notificação prévia.
-1. O CA pode distribuir projetos derivados do CACiC Event Manager sob qualquer outra licença de código aberto.
-   - Entende-se por "projeto derivado" qualquer recurso que utilize o código-fonte do projeto principal do CACiC Event Manager como base ou que complemente o CACiC Event Manager, como documentações, imagens, vídeos, backends, etc.
-1. O CA deve fornecer o código-fonte do CACiC Event Manager publicamente por meio do GitHub.
-1. O CA deve exigir a assinatura do contrato de concessão de licença por todos os contribuidores.
-1. O acordo é renovado automaticamente a cada ano, no último dia do mês de abril, a não ser que seja cancelado por uma das partes.
-   1. Em caso de cancelamento por qualquer uma das partes, o CA transfere automaticamente todos os direitos autorais obtidos por meio do contrato de concessão de licença para Yudi, exceto as partes que infrinjam direitos de terceiros.
-   1. Em caso de cancelamento por Yudi, o CA deve ser notificado com 6 meses de antecedência;
+1. O CA deverá distribuir o projeto principal do CACiC Event Manager sob a licença "AGPL-3.0-only".
+
+   1. Para os fins deste acordo, entende-se por "projeto principal" o código-fonte do CACiC Event Manager.
+   1. A licença aplicável ao projeto principal poderá ser alterada somente por Yudi, mediante notificação prévia ao CA.
+
+1. O CA poderá distribuir projetos derivados ou complementares do CACiC Event Manager sob qualquer outra licença de código _aberto_.
+
+   1. Para os fins deste acordo, entende-se por "projeto derivado ou complementar" qualquer recurso que utilize o código-fonte do projeto principal como base, ou que complemente o CACiC Event Manager, incluindo, mas não se limitando a, documentações, imagens, vídeos, sites, integrações, aplicações que utilizem a API pública e materiais de apoio.
+
+1. O CA deverá disponibilizar publicamente o código-fonte do CACiC Event Manager por meio do GitHub.
+
+1. O CA deverá exigir a assinatura do contrato de concessão de licença por todos os contribuidores que venham a contribuir com o código-fonte, documentação ou demais partes protegidas por direitos autorais do CACiC Event Manager.
+
+1. O presente acordo será renovado automaticamente a cada ano, no último dia do mês de abril, salvo se for cancelado por uma das partes, nos termos abaixo.
+
+   1. Em caso de cancelamento por qualquer uma das partes, o CA transferirá automaticamente a Yudi todos os direitos autorais obtidos por meio dos contratos de concessão de licença firmados com contribuidores, excetuadas as partes que infrinjam direitos de terceiros.
+   1. Em caso de cancelamento por Yudi, o CA deverá ser notificado com antecedência mínima de 6 meses.
    1. Em caso de cancelamento pelo CA:
-      1. Yudi deve ser notificado com 30 dias de antecedência;
-      1. O CA deve justificar o cancelamento;
-      1. O CA deve fornecer uma cópia do código-fonte do CACiC Event Manager até a data de cancelamento;
-      1. O CA deve enviar uma cópia do código-fonte do FCTCACiC Event Manager para Yudi;
-      1. O CA compromete-se a impedir o desenvolvimento e posterior uso de softwares derivados do CACiC Event Manager ou semelhantes a ele por integrantes de cursos atendidos pela entidade por um período de 2 anos após o cancelamento;
-      1. O CA compromete-se a não utilizar o código-fonte do CACiC Event Manager ou partes dele, nem ideias relacionadas ao CACiC Event Manager em projetos futuros.
-1. Em caso de violação dos termos do acordo pelo CACiC, Yudi pode romper o acordo imediatamente e requerer a exclusão permanente de todo o conteúdo relacionado ao CACiC Event Manager;
-1. Em caso de dissolução do CACiC, o acordo é automaticamente transferido para o novo titular do projeto, com preferência para a EJComp;
-1. Em caso de violações de direitos autorais por um dos contribuidores:
-   1. O CA compromete-se a retirar o conteúdo violador em até 30 dias após a notificação;
-   1. O CA deve fornecer os dados do autor da violação;
-   1. O detentor dos direitos autorais que requeriu a retirada do conteúdo pode responsabilizar o contribuidor violador judicialmente.
-1. Estes termos só podem ser modificados por acordo mútuo, exceto onde especificado o contrário.
+      1. Yudi deverá ser notificado com antecedência mínima de 30 dias;
+      1. O CA deverá apresentar justificativa formal para o cancelamento;
+      1. O CA deverá fornecer a Yudi uma cópia integral e atualizada do código-fonte do CACiC Event Manager até a data efetiva do cancelamento;
+      1. O CA deverá preservar o histórico público do projeto e fornecer meios razoáveis para sua continuidade;
+      1. O CA compromete-se a não utilizar o código-fonte do CACiC Event Manager, ou partes substanciais dele, em projetos futuros sem autorização de Yudi;
+      1. O CA compromete-se a não promover, por período de 2 anos após o cancelamento do acordo, o desenvolvimento e o uso de softwares derivados ou substancialmente semelhantes ao CACiC Event Manager por integrantes de cursos atendidos pela entidade, inclusive quando tal desenvolvimento ou uso tiver por finalidade substituir ou fragmentar o projeto principal.
 
-### Justificativa
+1. Em caso de violação dos termos deste acordo pelo CACiC, Yudi poderá romper o acordo imediatamente e requerer a remoção permanente de conteúdos relacionados ao CACiC Event Manager que estejam sob responsabilidade do CA.
 
-A detenção dos direitos autorais do CACiC Event Manager por Yudi é necessária para garantir a continuidade do projeto, de modo a evitar:
+1. Em caso de dissolução do CACiC, o acordo será automaticamente transferido ao novo titular institucional do projeto, observada a preferência pela EJComp.
 
-- Relicenciamentos do projeto principal;
-- Reivindicações de direitos autorais por contribuidores;
+1. Em caso de violação de direitos autorais por um dos contribuidores:
+
+   1. O CA compromete-se a retirar o conteúdo supostamente violador em até 30 dias após o recebimento de notificação fundamentada;
+   1. O CA deverá fornecer, quando cabível, os dados de identificação do contribuidor responsável pela violação;
+   1. O titular dos direitos autorais que requereu a retirada do conteúdo poderá responsabilizar judicialmente o contribuidor violador.
+
+1. Estes termos somente poderão ser modificados por acordo mútuo entre as partes, exceto nos casos expressamente previstos.
+
+## Justificativa
+
+A centralização dos direitos autorais do projeto tem como objetivo garantir a continuidade, a estabilidade jurídica e a sustentabilidade de longo prazo do projeto.
+
+Essa medida busca evitar:
+
+1. **Relicenciamentos incompatíveis com os objetivos do projeto**
+
+   A manutenção do projeto principal sob uma licença de código aberto forte, como a AGPL-3.0-only, impede que o CACiC Event Manager seja convertido em software de código fechado ou distribuído sob termos menos compatíveis com sua finalidade pública e comunitária.
+
+1. **Disputas de titularidade entre contribuidores**
+
+   A ausência de uma política clara de cessão ou concessão de direitos pode gerar reivindicações individuais sobre partes do projeto, dificultando sua manutenção, distribuição, relicenciamento ou continuidade institucional.
+
+1. **Fragmentação do desenvolvimento**
+
+   O uso de partes substanciais do código-fonte em projetos paralelos pode enfraquecer o projeto principal, dispersar esforços de manutenção e criar soluções concorrentes para os mesmos problemas. Ao invés de ser reescrito do zero, o código-fonte do CACiC Event Manager pode ser melhorado e mantido em um projeto já existente, beneficiando a comunidade como um todo. Dessa forma, sempre que possível, melhorias devem ser incorporadas ao CACiC Event Manager, de modo a beneficiar todos os usuários e estudantes.
+
+1. **Risco de descontinuidade institucional**
+
+   Como o CACiC é uma entidade estudantil que renova periodicamente os membros, com chapas que possuem ideias diferentes, a definição de regras claras sobre titularidade, continuidade e transferência do projeto reduz o risco de abandono, perda de acesso ao código-fonte ou interrupção do desenvolvimento.
+
+Dessa forma, os termos acima buscam equilibrar a abertura do projeto à comunidade com a necessidade de preservar sua continuidade, sua governança e sua integridade técnica ao longo do tempo.
+

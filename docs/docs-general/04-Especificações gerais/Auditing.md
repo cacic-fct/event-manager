@@ -22,7 +22,7 @@ Servidores ou alunos que não se encaixam nos critérios acima só podem realiza
 
 Isso se deve ao fato de que a infraestrutura de hospedagem contém informações pessoais dos usuários do CACiC Event Manager e eventuais vulnerabilidades desconhecidas que podem ser exploradas.
 
-Caso solicitado, a configuração do servidor deve ser disponibilizada para a auditoria.
+Caso solicitado, a configuração do servidor pode ser disponibilizada para a auditoria.
 
 ### Lead developers
 
@@ -100,7 +100,7 @@ Um _lead developer_ pode embargar decisões de outro _lead developer_ individual
 
 Para a reversão de um embargo, é necessário a aprovação de metade mais um dos _lead developers_ excluindo o embargado.
 
-_Lead developers_ só podem embargar ou reverter embargos de _founding lead developers_ em unanimidade.
+_Lead developers_ não podem embargar ou reverter embargos de _founding lead developers_ e isso não pode ser alterado.
 
 ### Código
 
