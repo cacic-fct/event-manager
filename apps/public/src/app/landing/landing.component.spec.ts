@@ -19,7 +19,7 @@ describe('LandingComponent', () => {
     authState = signal(false);
     login = vi.fn().mockResolvedValue(undefined);
     navigateByUrl = vi.fn().mockResolvedValue(true);
-    featureFlagValue = '/menu';
+    featureFlagValue = '/app/menu';
 
     await TestBed.configureTestingModule({
       imports: [LandingComponent],
@@ -66,7 +66,7 @@ describe('LandingComponent', () => {
   it('passes the feature-flagged default redirect to login', async () => {
     await fixture.componentInstance.login();
 
-    expect(login).toHaveBeenCalledWith({ returnTo: '/menu' });
+    expect(login).toHaveBeenCalledWith({ returnTo: '/app/menu' });
   });
 
   it('navigates authenticated users to the feature-flagged default redirect', async () => {
@@ -74,25 +74,25 @@ describe('LandingComponent', () => {
 
     await fixture.componentInstance.login();
 
-    expect(navigateByUrl).toHaveBeenCalledWith('/menu');
+    expect(navigateByUrl).toHaveBeenCalledWith('/app/menu');
     expect(login).not.toHaveBeenCalled();
   });
 
-  it('falls back to /calendar when the feature flag returns undefined', async () => {
+  it('falls back to /app/calendar when the feature flag returns undefined', async () => {
     featureFlagValue = undefined;
 
     await fixture.componentInstance.login();
 
-    expect(login).toHaveBeenCalledWith({ returnTo: '/calendar' });
+    expect(login).toHaveBeenCalledWith({ returnTo: '/app/calendar' });
   });
 
-  it('navigates authenticated users to /calendar when the feature flag returns undefined', async () => {
+  it('navigates authenticated users to /app/calendar when the feature flag returns undefined', async () => {
     featureFlagValue = undefined;
     authState.set(true);
 
     await fixture.componentInstance.login();
 
-    expect(navigateByUrl).toHaveBeenCalledWith('/calendar');
+    expect(navigateByUrl).toHaveBeenCalledWith('/app/calendar');
     expect(login).not.toHaveBeenCalled();
   });
 
