@@ -82,7 +82,7 @@ Essa medida busca evitar:
 
 1. **Fragmentação do desenvolvimento**
 
-   O uso de partes substanciais do código-fonte em projetos paralelos pode enfraquecer o projeto principal, dispersar esforços de manutenção e criar soluções concorrentes para os mesmos problemas. Ao invés de ser reescrito do zero, o código-fonte do CACiC Event Manager pode ser melhorado e mantido em um projeto já existente, beneficiando a comunidade como um todo. Dessa forma, sempre que possível, melhorias devem ser incorporadas ao CACiC Event Manager, de modo a beneficiar todos os usuários e estudantes.
+   O uso de partes substanciais do código-fonte em projetos paralelos pode enfraquecer o projeto principal, dispersar esforços de manutenção e criar soluções concorrentes para os mesmos problemas. Ao invés de ser reescrito do zero, o código-fonte do CACiC Event Manager pode ser melhorado e mantido em um projeto já existente, beneficiando a comunidade como um todo e com maior eficiência. Dessa forma, sempre que possível, melhorias devem ser incorporadas ao CACiC Event Manager, não desenvolvidas em projetos paralelos.
 
 1. **Risco de descontinuidade institucional**
 
