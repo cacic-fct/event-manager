@@ -4,7 +4,7 @@ title: Antes de todo evento
 
 Por conta de atualizações nas dependências do sistema, alguns recursos podem parar de funcionar repentinamente.
 
-Dessa forma, é importante conferir os fluxos do sistema antes de divulgar um evento.
+Dessa forma, é importante conferir os fluxos do sistema antes de divulgar um evento, isto é, os organizadores devem fazer a própria inscrição antes da ampla divulgação do evento, para verificar se todos os fluxos estão operacionais.
 
 Caso encontre algum problema, [crie uma issue no GitHub](https://github.com/cacic-fct/event-manager/issues/new), entre em contato com a [equipe de desenvolvimento](mailto:fctapp@googlegroups.com) ou resolva o problema por conta própria.
 
