@@ -467,26 +467,6 @@
                 "name": "DarkMode",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DarkMode",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DarkMode",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/admin/src/app/workspace/tabs/attendances/workspace-attendances-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -517,7 +497,27 @@
                 "name": "DarkMode",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DarkMode",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DarkMode",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -537,7 +537,7 @@
                 "name": "DarkMode",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -557,7 +557,7 @@
                 "name": "DarkMode",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -647,26 +647,6 @@
                 "name": "DataLoaded",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DataLoaded",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DataLoaded",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/admin/src/app/workspace/tabs/attendances/workspace-attendances-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -697,7 +677,27 @@
                 "name": "DataLoaded",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DataLoaded",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DataLoaded",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -717,7 +717,7 @@
                 "name": "DataLoaded",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -737,7 +737,7 @@
                 "name": "DataLoaded",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -907,26 +907,6 @@
                 "name": "DenseDesktop",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DenseDesktop",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "DenseDesktop",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/admin/src/app/workspace/tabs/attendances/workspace-attendances-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -957,7 +937,27 @@
                 "name": "DenseDesktop",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DenseDesktop",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "DenseDesktop",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -977,7 +977,7 @@
                 "name": "DenseDesktop",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -997,7 +997,7 @@
                 "name": "DenseDesktop",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -1041,7 +1041,7 @@
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                "defaultValue": "{\n  args: {},\n  decorators: [\n    applicationConfig({\n      providers: createReceiptValidationStoryProviders(buildQueue(6)),\n    }),\n  ],\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
             },
             {
                 "name": "dialogRefMock",
@@ -1082,6 +1082,16 @@
                 "deprecationMessage": "",
                 "type": "Story",
                 "defaultValue": "{\n  args: { form: createFilterForm('certificados'), applyLabel: 'Aplicar', resetLabel: 'Redefinir' },\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "EmptyQueue",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  decorators: [\n    applicationConfig({\n      providers: createReceiptValidationStoryProviders({ pendingCount: 0, items: [] }),\n    }),\n  ],\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => {\n    const canvas = within(canvasElement);\n    await expect(await canvas.findByText('Nenhum comprovante pendente')).toBeVisible();\n  },\n}"
             },
             {
                 "name": "EmptyValue",
@@ -1257,26 +1267,6 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "unknown",
-                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find(\n    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',\n  );\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-            },
-            {
-                "name": "exerciseStory",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "unknown",
-                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find(\n    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',\n  );\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-            },
-            {
-                "name": "exerciseStory",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/admin/src/app/workspace/tabs/attendances/workspace-attendances-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1307,7 +1297,27 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "unknown",
+                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find(\n    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',\n  );\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+            },
+            {
+                "name": "exerciseStory",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "unknown",
+                "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find(\n    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',\n  );\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+            },
+            {
+                "name": "exerciseStory",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "unknown",
@@ -1327,7 +1337,7 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "unknown",
@@ -1347,7 +1357,7 @@
                 "name": "exerciseStory",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "unknown",
@@ -1637,26 +1647,6 @@
                 "name": "meta",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Meta<WorkspaceEventsTabComponent>",
-                "defaultValue": "{\n  component: WorkspaceEventsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Events/Workspace Events Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-            },
-            {
-                "name": "meta",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Meta<WorkspaceCertificatesTabComponent>",
-                "defaultValue": "{\n  component: WorkspaceCertificatesTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Certificates/Workspace Certificates Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-            },
-            {
-                "name": "meta",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/admin/src/app/workspace/tabs/attendances/workspace-attendances-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1687,11 +1677,31 @@
                 "name": "meta",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
-                "type": "Meta<WorkspaceMergeCandidatesTabComponent>",
-                "defaultValue": "{\n  component: WorkspaceMergeCandidatesTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Merge Candidates/Workspace Merge Candidates Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                "type": "Meta<WorkspaceCertificatesTabComponent>",
+                "defaultValue": "{\n  component: WorkspaceCertificatesTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Certificates/Workspace Certificates Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+            },
+            {
+                "name": "meta",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Meta<WorkspaceEventGroupsTabComponent>",
+                "defaultValue": "{\n  component: WorkspaceEventGroupsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Event Groups/Workspace Event Groups Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+            },
+            {
+                "name": "meta",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Meta<WorkspaceEventsTabComponent>",
+                "defaultValue": "{\n  component: WorkspaceEventsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Events/Workspace Events Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "meta",
@@ -1707,11 +1717,11 @@
                 "name": "meta",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
-                "type": "Meta<WorkspacePermissionsTabComponent>",
-                "defaultValue": "{\n  component: WorkspacePermissionsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Permissions/Workspace Permissions Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                "type": "Meta<WorkspaceMergeCandidatesTabComponent>",
+                "defaultValue": "{\n  component: WorkspaceMergeCandidatesTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Merge Candidates/Workspace Merge Candidates Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "meta",
@@ -1727,11 +1737,11 @@
                 "name": "meta",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
-                "type": "Meta<WorkspaceEventGroupsTabComponent>",
-                "defaultValue": "{\n  component: WorkspaceEventGroupsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Event Groups/Workspace Event Groups Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                "type": "Meta<WorkspacePermissionsTabComponent>",
+                "defaultValue": "{\n  component: WorkspacePermissionsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Permissions/Workspace Permissions Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "meta",
@@ -1781,7 +1791,7 @@
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Meta<WorkspaceReceiptValidationComponent>",
-                "defaultValue": "{\n  component: WorkspaceReceiptValidationComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Receipt Validation/Workspace Receipt Validation',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                "defaultValue": "{\n  component: WorkspaceReceiptValidationComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Receipt Validation/Workspace Receipt Validation',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: createReceiptValidationStoryProviders(buildQueue(2)),\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
             },
             {
                 "name": "Mobile",
@@ -1927,26 +1937,6 @@
                 "name": "MobileLayout",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "MobileLayout",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "type": "Story",
-                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-            },
-            {
-                "name": "MobileLayout",
-                "ctype": "miscellaneous",
-                "subtype": "variable",
                 "file": "apps/admin/src/app/workspace/tabs/attendances/workspace-attendances-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
@@ -1977,7 +1967,27 @@
                 "name": "MobileLayout",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "MobileLayout",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "type": "Story",
+                "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+            },
+            {
+                "name": "MobileLayout",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -1997,7 +2007,7 @@
                 "name": "MobileLayout",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -2017,7 +2027,7 @@
                 "name": "MobileLayout",
                 "ctype": "miscellaneous",
                 "subtype": "variable",
-                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "type": "Story",
@@ -2469,6 +2479,35 @@
                 ]
             },
             {
+                "name": "buildQueue",
+                "file": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
+                "ctype": "miscellaneous",
+                "subtype": "function",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "description": "",
+                "args": [
+                    {
+                        "name": "count",
+                        "type": "number",
+                        "deprecated": false,
+                        "deprecationMessage": ""
+                    }
+                ],
+                "returnType": "ReceiptValidationQueue",
+                "jsdoctags": [
+                    {
+                        "name": "count",
+                        "type": "number",
+                        "deprecated": false,
+                        "deprecationMessage": "",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    }
+                ]
+            },
+            {
                 "name": "buildSuggestions",
                 "file": "apps/admin/src/app/workspace/home/home.stories.ts",
                 "ctype": "miscellaneous",
@@ -2516,6 +2555,34 @@
                     {
                         "name": "index",
                         "type": "number",
+                        "deprecated": false,
+                        "deprecationMessage": "",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "createReceiptValidationStoryProviders",
+                "file": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
+                "ctype": "miscellaneous",
+                "subtype": "function",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "description": "",
+                "args": [
+                    {
+                        "name": "queue",
+                        "type": "ReceiptValidationQueue",
+                        "deprecated": false,
+                        "deprecationMessage": ""
+                    }
+                ],
+                "jsdoctags": [
+                    {
+                        "name": "queue",
+                        "type": "ReceiptValidationQueue",
                         "deprecated": false,
                         "deprecationMessage": "",
                         "tagName": {
@@ -3136,28 +3203,6 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
-                "rawtype": "StoryObj<WorkspaceEventsTabComponent>",
-                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "description": "",
-                "kind": 184
-            },
-            {
-                "name": "Story",
-                "ctype": "miscellaneous",
-                "subtype": "typealias",
-                "rawtype": "StoryObj<WorkspaceCertificatesTabComponent>",
-                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                "deprecated": false,
-                "deprecationMessage": "",
-                "description": "",
-                "kind": 184
-            },
-            {
-                "name": "Story",
-                "ctype": "miscellaneous",
-                "subtype": "typealias",
                 "rawtype": "StoryObj<WorkspaceAttendancesTabComponent>",
                 "file": "apps/admin/src/app/workspace/tabs/attendances/workspace-attendances-tab.component.stories.ts",
                 "deprecated": false,
@@ -3191,8 +3236,30 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
-                "rawtype": "StoryObj<WorkspaceMergeCandidatesTabComponent>",
-                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                "rawtype": "StoryObj<WorkspaceCertificatesTabComponent>",
+                "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "description": "",
+                "kind": 184
+            },
+            {
+                "name": "Story",
+                "ctype": "miscellaneous",
+                "subtype": "typealias",
+                "rawtype": "StoryObj<WorkspaceEventGroupsTabComponent>",
+                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "deprecated": false,
+                "deprecationMessage": "",
+                "description": "",
+                "kind": 184
+            },
+            {
+                "name": "Story",
+                "ctype": "miscellaneous",
+                "subtype": "typealias",
+                "rawtype": "StoryObj<WorkspaceEventsTabComponent>",
+                "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "description": "",
@@ -3213,8 +3280,8 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
-                "rawtype": "StoryObj<WorkspacePermissionsTabComponent>",
-                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                "rawtype": "StoryObj<WorkspaceMergeCandidatesTabComponent>",
+                "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "description": "",
@@ -3235,8 +3302,8 @@
                 "name": "Story",
                 "ctype": "miscellaneous",
                 "subtype": "typealias",
-                "rawtype": "StoryObj<WorkspaceEventGroupsTabComponent>",
-                "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                "rawtype": "StoryObj<WorkspacePermissionsTabComponent>",
+                "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                 "deprecated": false,
                 "deprecationMessage": "",
                 "description": "",
@@ -4372,130 +4439,6 @@
                     "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
                 }
             ],
-            "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts": [
-                {
-                    "name": "DarkMode",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "DataLoaded",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "DenseDesktop",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "exerciseStory",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "unknown",
-                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find(\n    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',\n  );\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-                },
-                {
-                    "name": "meta",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Meta<WorkspaceEventsTabComponent>",
-                    "defaultValue": "{\n  component: WorkspaceEventsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Events/Workspace Events Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-                },
-                {
-                    "name": "MobileLayout",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                }
-            ],
-            "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts": [
-                {
-                    "name": "DarkMode",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "DataLoaded",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "DenseDesktop",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                },
-                {
-                    "name": "exerciseStory",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "unknown",
-                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find(\n    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',\n  );\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
-                },
-                {
-                    "name": "meta",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Meta<WorkspaceCertificatesTabComponent>",
-                    "defaultValue": "{\n  component: WorkspaceCertificatesTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Certificates/Workspace Certificates Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
-                },
-                {
-                    "name": "MobileLayout",
-                    "ctype": "miscellaneous",
-                    "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
-                }
-            ],
             "apps/admin/src/app/workspace/tabs/attendances/workspace-attendances-tab.component.stories.ts": [
                 {
                     "name": "DarkMode",
@@ -4682,12 +4625,12 @@
                     "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
                 }
             ],
-            "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts": [
+            "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts": [
                 {
                     "name": "DarkMode",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4697,7 +4640,7 @@
                     "name": "DataLoaded",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4707,7 +4650,7 @@
                     "name": "DenseDesktop",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4717,7 +4660,7 @@
                     "name": "exerciseStory",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "unknown",
@@ -4727,17 +4670,141 @@
                     "name": "meta",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "Meta<WorkspaceMergeCandidatesTabComponent>",
-                    "defaultValue": "{\n  component: WorkspaceMergeCandidatesTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Merge Candidates/Workspace Merge Candidates Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                    "type": "Meta<WorkspaceCertificatesTabComponent>",
+                    "defaultValue": "{\n  component: WorkspaceCertificatesTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Certificates/Workspace Certificates Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
                 },
                 {
                     "name": "MobileLayout",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                }
+            ],
+            "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts": [
+                {
+                    "name": "DarkMode",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "DataLoaded",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "DenseDesktop",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "exerciseStory",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "unknown",
+                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find(\n    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',\n  );\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+                },
+                {
+                    "name": "meta",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Meta<WorkspaceEventGroupsTabComponent>",
+                    "defaultValue": "{\n  component: WorkspaceEventGroupsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Event Groups/Workspace Event Groups Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                },
+                {
+                    "name": "MobileLayout",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                }
+            ],
+            "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts": [
+                {
+                    "name": "DarkMode",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    backgrounds: { default: 'dark' },\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'dark' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "DataLoaded",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "DenseDesktop",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "exerciseStory",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "unknown",
+                    "defaultValue": "async (canvasElement: HTMLElement) => {\n  const canvas = within(canvasElement);\n  await userEvent.tab();\n  const buttons = canvas.queryAllByRole('button');\n  const enabledButton = buttons.find(\n    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',\n  );\n  if (enabledButton) {\n    await userEvent.hover(enabledButton);\n    await expect(enabledButton).toBeVisible();\n  }\n  const links = canvas.queryAllByRole('link');\n  if (links[0]) {\n    await expect(links[0]).toBeVisible();\n  }\n}"
+                },
+                {
+                    "name": "meta",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Meta<WorkspaceEventsTabComponent>",
+                    "defaultValue": "{\n  component: WorkspaceEventsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Events/Workspace Events Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                },
+                {
+                    "name": "MobileLayout",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4806,12 +4873,12 @@
                     "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
                 }
             ],
-            "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts": [
+            "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts": [
                 {
                     "name": "DarkMode",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4821,7 +4888,7 @@
                     "name": "DataLoaded",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4831,7 +4898,7 @@
                     "name": "DenseDesktop",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4841,7 +4908,7 @@
                     "name": "exerciseStory",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "unknown",
@@ -4851,17 +4918,17 @@
                     "name": "meta",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "Meta<WorkspacePermissionsTabComponent>",
-                    "defaultValue": "{\n  component: WorkspacePermissionsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Permissions/Workspace Permissions Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                    "type": "Meta<WorkspaceMergeCandidatesTabComponent>",
+                    "defaultValue": "{\n  component: WorkspaceMergeCandidatesTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Merge Candidates/Workspace Merge Candidates Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
                 },
                 {
                     "name": "MobileLayout",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4930,12 +4997,12 @@
                     "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'mobile' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
                 }
             ],
-            "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts": [
+            "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts": [
                 {
                     "name": "DarkMode",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4945,7 +5012,7 @@
                     "name": "DataLoaded",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4955,7 +5022,7 @@
                     "name": "DenseDesktop",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -4965,7 +5032,7 @@
                     "name": "exerciseStory",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "unknown",
@@ -4975,17 +5042,17 @@
                     "name": "meta",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
-                    "type": "Meta<WorkspaceEventGroupsTabComponent>",
-                    "defaultValue": "{\n  component: WorkspaceEventGroupsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Event Groups/Workspace Event Groups Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                    "type": "Meta<WorkspacePermissionsTabComponent>",
+                    "defaultValue": "{\n  component: WorkspacePermissionsTabComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Permissions/Workspace Permissions Tab',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
                 },
                 {
                     "name": "MobileLayout",
                     "ctype": "miscellaneous",
                     "subtype": "variable",
-                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
@@ -5227,7 +5294,17 @@
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Story",
-                    "defaultValue": "{\n  args: {},\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                    "defaultValue": "{\n  args: {},\n  decorators: [\n    applicationConfig({\n      providers: createReceiptValidationStoryProviders(buildQueue(6)),\n    }),\n  ],\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => exerciseStory(canvasElement),\n}"
+                },
+                {
+                    "name": "EmptyQueue",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "type": "Story",
+                    "defaultValue": "{\n  args: {},\n  decorators: [\n    applicationConfig({\n      providers: createReceiptValidationStoryProviders({ pendingCount: 0, items: [] }),\n    }),\n  ],\n  parameters: {\n    viewport: { defaultViewport: 'desktop' },\n  },\n  globals: { theme: 'light' },\n  play: async ({ canvasElement }) => {\n    const canvas = within(canvasElement);\n    await expect(await canvas.findByText('Nenhum comprovante pendente')).toBeVisible();\n  },\n}"
                 },
                 {
                     "name": "exerciseStory",
@@ -5247,7 +5324,7 @@
                     "deprecated": false,
                     "deprecationMessage": "",
                     "type": "Meta<WorkspaceReceiptValidationComponent>",
-                    "defaultValue": "{\n  component: WorkspaceReceiptValidationComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Receipt Validation/Workspace Receipt Validation',\n  tags: ['autodocs'],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
+                    "defaultValue": "{\n  component: WorkspaceReceiptValidationComponent,\n  title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Receipt Validation/Workspace Receipt Validation',\n  tags: ['autodocs'],\n  decorators: [\n    applicationConfig({\n      providers: createReceiptValidationStoryProviders(buildQueue(2)),\n    }),\n  ],\n  parameters: {\n    layout: 'fullscreen',\n    a11y: { test: 'todo' },\n  },\n}"
                 },
                 {
                     "name": "MobileLayout",
@@ -5700,6 +5777,65 @@
                     "description": "",
                     "args": [],
                     "returnType": "void"
+                }
+            ],
+            "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts": [
+                {
+                    "name": "buildQueue",
+                    "file": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
+                    "ctype": "miscellaneous",
+                    "subtype": "function",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "args": [
+                        {
+                            "name": "count",
+                            "type": "number",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "returnType": "ReceiptValidationQueue",
+                    "jsdoctags": [
+                        {
+                            "name": "count",
+                            "type": "number",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "createReceiptValidationStoryProviders",
+                    "file": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
+                    "ctype": "miscellaneous",
+                    "subtype": "function",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "args": [
+                        {
+                            "name": "queue",
+                            "type": "ReceiptValidationQueue",
+                            "deprecated": false,
+                            "deprecationMessage": ""
+                        }
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "queue",
+                            "type": "ReceiptValidationQueue",
+                            "deprecated": false,
+                            "deprecationMessage": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
                 }
             ],
             "apps/admin/src/app/workspace/tabs/subscriptions/workspace-subscriptions-tab.component.stories.ts": [
@@ -6297,32 +6433,6 @@
                     "kind": 184
                 }
             ],
-            "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts": [
-                {
-                    "name": "Story",
-                    "ctype": "miscellaneous",
-                    "subtype": "typealias",
-                    "rawtype": "StoryObj<WorkspaceEventsTabComponent>",
-                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "description": "",
-                    "kind": 184
-                }
-            ],
-            "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts": [
-                {
-                    "name": "Story",
-                    "ctype": "miscellaneous",
-                    "subtype": "typealias",
-                    "rawtype": "StoryObj<WorkspaceCertificatesTabComponent>",
-                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
-                    "deprecated": false,
-                    "deprecationMessage": "",
-                    "description": "",
-                    "kind": 184
-                }
-            ],
             "apps/admin/src/app/workspace/tabs/attendances/workspace-attendances-tab.component.stories.ts": [
                 {
                     "name": "Story",
@@ -6362,13 +6472,39 @@
                     "kind": 184
                 }
             ],
-            "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts": [
+            "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts": [
                 {
                     "name": "Story",
                     "ctype": "miscellaneous",
                     "subtype": "typealias",
-                    "rawtype": "StoryObj<WorkspaceMergeCandidatesTabComponent>",
-                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
+                    "rawtype": "StoryObj<WorkspaceCertificatesTabComponent>",
+                    "file": "apps/admin/src/app/workspace/tabs/certificates/workspace-certificates-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "kind": 184
+                }
+            ],
+            "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts": [
+                {
+                    "name": "Story",
+                    "ctype": "miscellaneous",
+                    "subtype": "typealias",
+                    "rawtype": "StoryObj<WorkspaceEventGroupsTabComponent>",
+                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "deprecated": false,
+                    "deprecationMessage": "",
+                    "description": "",
+                    "kind": 184
+                }
+            ],
+            "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts": [
+                {
+                    "name": "Story",
+                    "ctype": "miscellaneous",
+                    "subtype": "typealias",
+                    "rawtype": "StoryObj<WorkspaceEventsTabComponent>",
+                    "file": "apps/admin/src/app/workspace/tabs/events/workspace-events-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "description": "",
@@ -6388,13 +6524,13 @@
                     "kind": 184
                 }
             ],
-            "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts": [
+            "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts": [
                 {
                     "name": "Story",
                     "ctype": "miscellaneous",
                     "subtype": "typealias",
-                    "rawtype": "StoryObj<WorkspacePermissionsTabComponent>",
-                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
+                    "rawtype": "StoryObj<WorkspaceMergeCandidatesTabComponent>",
+                    "file": "apps/admin/src/app/workspace/tabs/merge-candidates/workspace-merge-candidates-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "description": "",
@@ -6414,13 +6550,13 @@
                     "kind": 184
                 }
             ],
-            "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts": [
+            "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts": [
                 {
                     "name": "Story",
                     "ctype": "miscellaneous",
                     "subtype": "typealias",
-                    "rawtype": "StoryObj<WorkspaceEventGroupsTabComponent>",
-                    "file": "apps/admin/src/app/workspace/tabs/event-groups/workspace-event-groups-tab.component.stories.ts",
+                    "rawtype": "StoryObj<WorkspacePermissionsTabComponent>",
+                    "file": "apps/admin/src/app/workspace/tabs/permissions/workspace-permissions-tab.component.stories.ts",
                     "deprecated": false,
                     "deprecationMessage": "",
                     "description": "",
@@ -8563,6 +8699,26 @@
             },
             {
                 "filePath": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
+                "type": "function",
+                "linktype": "miscellaneous",
+                "linksubtype": "function",
+                "name": "buildQueue",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
+                "type": "function",
+                "linktype": "miscellaneous",
+                "linksubtype": "function",
+                "name": "createReceiptValidationStoryProviders",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
                 "type": "variable",
                 "linktype": "miscellaneous",
                 "linksubtype": "variable",
@@ -8587,6 +8743,16 @@
                 "linktype": "miscellaneous",
                 "linksubtype": "variable",
                 "name": "DenseDesktop",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "apps/admin/src/app/workspace/tabs/subscriptions/receipt-validation/workspace-receipt-validation.component.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "EmptyQueue",
                 "coveragePercent": 0,
                 "coverageCount": "0/1",
                 "status": "low"
