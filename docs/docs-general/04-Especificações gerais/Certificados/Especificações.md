@@ -26,4 +26,4 @@ O verso contém todas as informações essenciais do certificado, como:
 Com a necessidade imposta pela coordenação do curso de imprimir todos os certificados para a validação de ACCs, o layout do verso foi pensado para ser impresso em papel A4.
 
 Dessa forma, torna-se dispensável a impressão da frente.  
-O verso pode ser impresso em preto e branco e não contém grandes imagens ou detalhes para poupar tinta.
+O verso pode ser impresso em preto e branco e não contém grandes imagens ou detalhes, para poupar tinta.

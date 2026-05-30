@@ -12,16 +12,14 @@ Ele é um sistema que facilita e automatiza etapas do gerenciamento de eventos, 
 Em sua forma antiga, com o nome de FCT App, ele foi adotado pelos alunos e pelos professores na SECOMPP, em substituição ao antigo [SYSCOMPP](https://github.com/cacic-fct/syscompp), que era um sistema feito com tecnologias mais antigas e que era hospedado em um servidor obsoleto.  
 O FCT App era mais rápido, mais seguro, mais fácil de usar e de manter, já que está próximo das tecnologias mais utilizadas atualmente.
 
-O FCT App foi descontinuado, pois a escolha do Firebase como provedor de backend e hospedagem não foi adequada: os limites do plano gratuito eram rapidamente atingidos, o que resultava em custos que alunos precisavam arcar com.
+O FCT App foi descontinuado, pois a escolha do Firebase como provedor de backend e de hospedagem não foi adequada: os limites do plano gratuito eram rapidamente atingidos, o que resultava em custos que alunos precisavam arcar com, sem repasse de valores da SECOMPP.
 
-O CACiC Event Manager é a evolução do FCT App, com um backend próprio e hospedagem em um servidor dedicado, o que permite que o projeto seja mantido de forma sustentável, com código mais robusto e sem custos para os alunos.
-
-A documentação do projeto manteve o nome "FCT App Docs" para continuidade do funcionamento do Algolia DocSearch.
+O CACiC Event Manager é a evolução do FCT App, com um backend próprio e hospedagem em um servidor dedicado próprio, o que permite que o projeto seja mantido de forma sustentável, com código mais robusto e sem custos para os alunos.
 
 ### Motivações
 
 1. Simplificar o fluxo de inscrição em eventos:
-    - O CACiC Event Manager permite que o usuário faça a inscrição em um evento com poucos cliques, sem precisar preencher formulários extensos;
+    - O CACiC Event Manager permite que o usuário faça a inscrição em um evento com poucos cliques, sem precisar preencher formulários extensos e repetitivos;
 1. Emitir certificados de participação mais rapidamente:
     - Antes, certificados demoravam vários semestres para serem emitidos ou nem eram emitidos;
 1. Abolir o uso de papel, seja na confecção de crachás, certificados ou na coleta de presença:
@@ -38,11 +36,10 @@ No entanto, com o objetivo de direcionar o projeto para um caminho mais focaliza
 - [Manual do calouro](https://cacic-fct.github.io/manual-do-calouro):
   - [Página do calouro](https://cacic-fct.github.io/manual-do-calouro/pagina-do-calouro/);
   - [Página de contatos das entidades](https://cacic-fct.github.io/manual-do-calouro/contatos/).
-- [Conta CACiC](https://account.cacic.dev.br)
 
 O CACiC Event Manager continuou com essa tendência e se concentrou exclusivamente em ser um aplicativo para eventos, com o objetivo de ser mais fácil de manter e de evoluir, além de ser mais fácil para os usuários entenderem o propósito do aplicativo.
 
-O gerenciamento do cadastro e as informações de perfil foram delegadas para o CACiC Account Manager.
+Por exemplo, o gerenciamento do cadastro e as informações de perfil foram delegadas ao [CACiC Account Manager](https://github.com/cacic-fct/account-manager).
 
 ### Tecnologias escolhidas
 
