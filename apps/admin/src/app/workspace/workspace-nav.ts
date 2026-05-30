@@ -39,6 +39,15 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    id: 'divider',
+    path: '',
+    label: '',
+    description: '',
+    icon: '',
+    permissionTab: WorkspacePermissionTab.Events,
+    helpLink: '',
+  },
+  {
     id: 'subscriptions',
     path: 'subscriptions',
     label: 'Inscrições',
@@ -66,6 +75,15 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    id: 'divider',
+    path: '',
+    label: '',
+    description: '',
+    icon: '',
+    permissionTab: WorkspacePermissionTab.Events,
+    helpLink: '',
+  },
+  {
     id: 'people',
     path: 'people',
     label: 'Pessoas',
@@ -82,6 +100,15 @@ export const workspaceNavItems = [
     icon: 'merge_type',
     permissionTab: WorkspacePermissionTab.MergeCandidates,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
+  },
+  {
+    id: 'divider',
+    path: '',
+    label: '',
+    description: '',
+    icon: '',
+    permissionTab: WorkspacePermissionTab.Events,
+    helpLink: '',
   },
   {
     id: 'notifications',
