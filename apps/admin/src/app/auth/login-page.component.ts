@@ -61,6 +61,6 @@ export class LoginPageComponent {
       await this.router.navigateByUrl('/');
       return;
     }
-    await this.authService.login({ returnTo: '/' });
+    await this.authService.login({ returnTo: '/admin/' });
   }
 }

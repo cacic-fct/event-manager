@@ -34,7 +34,7 @@ export class LandingComponent {
   private readonly nextSection = viewChild<ElementRef<HTMLElement>>('nextSection');
 
   async login(): Promise<void> {
-    const returnTo = this.featureFlags.stringValue('defaultLoginRedirectPath') ?? '/calendar';
+    const returnTo = this.featureFlags.stringValue('defaultLoginRedirectPath') ?? '/app/calendar';
 
     if (this.authService.isAuthenticated()) {
       await this.router.navigateByUrl(returnTo);
