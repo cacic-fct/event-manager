@@ -17,6 +17,7 @@ import { WorkspacePermissionsService } from '../shared/services/workspace-permis
 import { WorkspaceShellService } from '../shared/services/workspace-shell.service';
 import { workspaceNavItems } from './workspace-nav';
 import { isPlatformBrowser } from '@angular/common';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-workspace-layout',
@@ -32,7 +33,7 @@ import { isPlatformBrowser } from '@angular/common';
     MatProgressBarModule,
     MatSidenavModule,
     MatTooltipModule,
-
+    MatDividerModule,
     CacicLogoComponent,
     NovuNotificationBadgeComponent,
   ],
