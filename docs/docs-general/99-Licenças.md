@@ -74,7 +74,7 @@ Essa medida busca evitar:
 
 1. **Relicenciamentos incompatíveis com os objetivos do projeto**
 
-   A manutenção do projeto principal sob uma licença de código aberto forte, como a AGPL-3.0-only, impede que o CACiC Event Manager seja convertido em software de código fechado ou distribuído sob termos menos compatíveis com sua finalidade pública e comunitária.
+   A manutenção do projeto principal sob uma licença de código aberto forte, como a AGPL-3.0-only, impede que o CACiC Event Manager seja convertido em software de código fechado ou distribuído sob termos menos compatíveis com a finalidade pública e comunitária e que prejudiquem a viabilidade da manutenção e evolução a longo prazo.
 
 1. **Disputas de titularidade entre contribuidores**
 
@@ -82,11 +82,16 @@ Essa medida busca evitar:
 
 1. **Fragmentação do desenvolvimento**
 
-   O uso de partes substanciais do código-fonte em projetos paralelos pode enfraquecer o projeto principal, dispersar esforços de manutenção e criar soluções concorrentes para os mesmos problemas. Ao invés de ser reescrito do zero, o código-fonte do CACiC Event Manager pode ser melhorado e mantido em um projeto já existente, beneficiando a comunidade como um todo e com maior eficiência. Dessa forma, sempre que possível, melhorias devem ser incorporadas ao CACiC Event Manager, não desenvolvidas em projetos paralelos.
+   Projetos paralelos enfraquecem o desenvolvimento do projeto principal, pois dispersam esforços de manutenção, fragmentam o conhecimento acumulado e podem resultam na criação de soluções que concorrem para resolver os mesmos problemas! Ao invés de ser promovida a reescrita integral do sistema, o código-fonte do CACiC Event Manager deve ser continuamente aprimorado e mantido em uma base de código já consolidada, de modo a beneficiar a comunidade acadêmica de forma mais eficiente e sustentável.
+
+   O tempo e os recursos que seriam empregados na reconstrução completa do sistema podem ser direcionados à implementação de melhorias, correção de defeitos, aprimoramento da documentação e desenvolvimento de novas funcionalidades. Além disso, ao concentrar seus esforços na evolução do projeto existente, o desenvolvedor reduz a carga e duplicidade de trabalho e pode dedicar maior atenção a outras atividades acadêmicas, como pesquisa, ensino e extensão.
+
+   Dessa forma, visando a otimização dos recursos disponíveis, a preservação do conhecimento institucional e o fortalecimento da colaboração entre estudantes, as contribuições devem sempre serem incorporadas ao CACiC Event Manager, em vez de serem desenvolvidas em projetos paralelos com objetivos equivalentes.
+
+   Leia também: [Justificativa de escolha das tecnologias](./02-Antes%20de%20colaborar/02-Tecnologias.md).
 
 1. **Risco de descontinuidade institucional**
 
-   Como o CACiC é uma entidade estudantil que renova periodicamente os membros, com chapas que possuem ideias diferentes, a definição de regras claras sobre titularidade, continuidade e transferência do projeto reduz o risco de abandono, perda de acesso ao código-fonte ou interrupção do desenvolvimento.
+   Como o CACiC é uma entidade estudantil que renova periodicamente os membros, com chapas que possuem ideias diferentes, a definição de regras claras sobre titularidade, continuidade e transferência do projeto reduz o risco de abandono, de perda de acesso ao código-fonte ou de interrupção do desenvolvimento.
 
 Dessa forma, os termos acima buscam equilibrar a abertura do projeto à comunidade com a necessidade de preservar sua continuidade, sua governança e sua integridade técnica ao longo do tempo.
-
