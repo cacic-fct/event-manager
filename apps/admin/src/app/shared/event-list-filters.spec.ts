@@ -8,7 +8,7 @@ describe('event list filters', () => {
         {
           query: '  oficina angular  ',
           startDateFrom: '2026-05-20',
-          startDateTo: '2026-05-21',
+          startDateUntil: '2026-05-21',
           isInGroup: 'YES',
           isInMajorEvent: 'NO',
         },
@@ -17,7 +17,7 @@ describe('event list filters', () => {
     ).toEqual({
       query: 'oficina angular',
       startDateFrom: '2026-05-20T00:00:00.000Z',
-      startDateTo: '2026-05-21T23:59:59.999Z',
+      startDateUntil: '2026-05-21T23:59:59.999Z',
       isInGroup: true,
       isInMajorEvent: false,
       take: 50,
@@ -29,14 +29,14 @@ describe('event list filters', () => {
       buildEventListFilters({
         query: '   ',
         startDateFrom: '',
-        startDateTo: '',
+        startDateUntil: '',
         isInGroup: 'ALL',
         isInMajorEvent: 'ALL',
       }),
     ).toEqual({
       query: undefined,
       startDateFrom: undefined,
-      startDateTo: undefined,
+      startDateUntil: undefined,
       isInGroup: undefined,
       isInMajorEvent: undefined,
       take: 200,
@@ -46,7 +46,7 @@ describe('event list filters', () => {
   it('resets a filters form to the default query state', () => {
     const form: EventFiltersForm = new FormGroup({
       startDateFrom: new FormControl('2026-05-20', { nonNullable: true }),
-      startDateTo: new FormControl('2026-05-21', { nonNullable: true }),
+      startDateUntil: new FormControl('2026-05-21', { nonNullable: true }),
       isInGroup: new FormControl('YES', { nonNullable: true }),
       isInMajorEvent: new FormControl('NO', { nonNullable: true }),
       query: new FormControl('Angular', { nonNullable: true }),
@@ -56,7 +56,7 @@ describe('event list filters', () => {
 
     expect(form.getRawValue()).toEqual({
       startDateFrom: '',
-      startDateTo: '',
+      startDateUntil: '',
       isInGroup: 'ALL',
       isInMajorEvent: 'ALL',
       query: '',

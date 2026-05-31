@@ -20,7 +20,7 @@ type Story = StoryObj<EventFilterPanelComponent>;
 const createFilterForm = (query = '') =>
   new FormGroup({
     startDateFrom: new FormControl('2026-05-01', { nonNullable: true }),
-    startDateTo: new FormControl('2026-05-31', { nonNullable: true }),
+    startDateUntil: new FormControl('2026-05-31', { nonNullable: true }),
     isInGroup: new FormControl('ALL', { nonNullable: true }),
     isInMajorEvent: new FormControl('ALL', { nonNullable: true }),
     query: new FormControl(query, { nonNullable: true }),
