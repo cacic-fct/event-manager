@@ -46,7 +46,7 @@ O acesso deve ser garantido pelo CACiC e pela EJComp e decisões tomadas pelos _
 Os _founding lead developers_ são um _superset_ ("superconjunto") dos _lead developers_.
 
 Estes não podem ser depostos e não entram na contagem de metade mais um dos _lead developers_ para tomada de decisões.  
-Podem renunciar voluntariamente, mas o nome permanecerá na lista com uma averbação. Não haverá renúncia automática.
+Podem renunciar voluntariamente, mas o nome permanecerá na lista com uma averbação, pois, por terem estado presentes no início do desenvolvimento do projeto, são capazes de dar mais detalhes sobre determinadas escolhas do projeto. Não haverá renúncia automática.
 
 Possuirão acesso irrestrito e vitalício de leitura e escrita a todos códigos-fonte, ao servidor e ao banco de dados os _founding lead developers_ a seguir:
 
@@ -58,11 +58,11 @@ Possuirão acesso irrestrito e vitalício de leitura e escrita a todos códigos-
 
 > \*[Detém a propriedade do CACiC Event Manager](/Geral/Licenças).
 
-Estas pessoas foram escolhidas por serem ex-alunos do curso de Ciência da Computação da FCT e por terem contribuído significativamente para o projeto.
+Essas pessoas foram escolhidas por serem ex-alunos do curso de Ciência da Computação da FCT e por terem contribuído significativamente para o projeto.
 
 _Founding lead developers_ podem embargar decisões ou reverter embargos de forma individual, mas preferencialmente tomam decisões em conjunto.
 
-_Founding lead developers_ podem incluir ou remover pessoas no grupo de _lead developers_ sem restrições, mesmo que haja unanimidade contrária do grupo.
+_Founding lead developers_ podem incluir ou remover pessoas no grupo de _lead developers_ sem restrições, mesmo que haja unanimidade contrária do grupo de _lead developers_.
 
 _Founding lead developers_ podem alterar estes termos sem restrições.
 
@@ -89,10 +89,11 @@ Os _lead developers_ possuem poderes irrestritos. Por exemplo, eles podem:
 
 Não compete aos _lead developers_:
 
-- A responsabilidade de manter a infraestrutura de hospedagem do CACiC Event Manager;
-- A responsabilidade de manter o código do CACiC Event Manager;
-- A responsabilidade da segurança dos dados;
-- Alterar as características dos _founding lead developers_.
+- A responsabilidade automática de manter a infraestrutura de hospedagem do CACiC Event Manager;
+- A responsabilidade de manter o código do CACiC Event Manager, que é do CACiC;
+- A responsabilidade legal da segurança dos dados, que é dos encarregados de dados;
+  - Isso não implica que os _lead developers_ não possam aplicar ou exigir correções de segurança, ou notificar entidades sobre problemas de segurança.
+- Alterar as características dos _founding lead developers_, que só podem ser alteradas por eles mesmos.
 
 Para alterar estas especificações de _lead developers_, é necessário a aprovação unânime dos _lead developers_.
 

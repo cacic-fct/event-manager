@@ -2,7 +2,7 @@
 title: Licenças
 ---
 
-## Licenças de software e conteúdo
+## Licenças de software e de conteúdo
 
 ### CACiC Event Manager
 
@@ -17,7 +17,7 @@ O software do Event Manager Docs é distribuído sob a licença AGPL-3.0-only.
 O conteúdo do Event Manager Docs é distribuído sob a licença CC BY-NC-SA 4.0.  
 Deve-se creditar o autor como "CACiC Event Manager Docs" e fornecer um link para a documentação original.
 
-## Detentor dos direitos autorais e propriedade intelectual
+## Detentor dos direitos autorais e da propriedade intelectual
 
 Renan Araujo ([Yudi](https://github.com/Yudi)) é detentor dos direitos autorais do FCT App, CACiC Event Manager e projetos derivados, doravante denominados de forma genérica apenas por "CACiC Event Manager", exceto quando especificado.
 
@@ -46,7 +46,7 @@ O CACiC Event Manager é distribuído pelo CACiC (CA ou entidade) sob um acordo 
       1. Yudi deverá ser notificado com antecedência mínima de 30 dias;
       1. O CA deverá apresentar justificativa formal para o cancelamento;
       1. O CA deverá fornecer a Yudi uma cópia integral e atualizada do código-fonte do CACiC Event Manager até a data efetiva do cancelamento;
-      1. O CA deverá preservar o histórico público do projeto e fornecer meios razoáveis para sua continuidade;
+      1. O CA deverá preservar o histórico público do projeto e fornecer meios razoáveis para a continuidade dele;
       1. O CA compromete-se a não utilizar o código-fonte do CACiC Event Manager, ou partes substanciais dele, em projetos futuros sem autorização de Yudi;
       1. O CA compromete-se a não promover, enquanto os termos estiverem vigentes e por até um período de 2 anos após o cancelamento do acordo, o desenvolvimento e o uso de softwares derivados ou substancialmente semelhantes ao CACiC Event Manager por integrantes de cursos atendidos pela entidade, inclusive quando tal desenvolvimento ou uso tiver por finalidade substituir ou fragmentar o projeto principal.
 
@@ -70,11 +70,11 @@ Essa medida busca evitar:
 
 1. **Relicenciamentos incompatíveis com os objetivos do projeto**
 
-   A obrigação do projeto principal ser mantido sob uma licença de código aberto forte, como a AGPL-3.0-only, impede que o CACiC Event Manager seja convertido em software de código fechado ou distribuído sob termos menos compatíveis com a finalidade pública e comunitária e que prejudiquem a viabilidade da manutenção e da evolução a longo prazo.
+   A obrigação do projeto principal ser mantido sob uma licença de código livre forte, como a AGPL-3.0-only, impede que o CACiC Event Manager seja convertido em software de código fechado ou distribuído sob termos menos compatíveis com a finalidade pública e comunitária e que prejudiquem a viabilidade da manutenção e da evolução a longo prazo.
 
 1. **Disputas de titularidade entre contribuidores**
 
-   A ausência de uma política clara de cessão ou concessão de direitos pode gerar reivindicações individuais sobre partes do projeto, dificultando sua manutenção, distribuição, relicenciamento ou continuidade institucional.
+   A ausência de uma política clara de cessão ou concessão de direitos pode gerar reivindicações individuais sobre partes do projeto, dificultando a manutenção, distribuição, relicenciamento ou continuidade institucional.
 
 1. **Fragmentação do desenvolvimento**
 
@@ -90,4 +90,6 @@ Essa medida busca evitar:
 
    Como o CACiC é uma entidade estudantil que renova periodicamente os membros, com chapas que possuem ideias diferentes, a definição de regras claras sobre titularidade, continuidade e transferência do projeto reduz o risco de abandono, de perda de acesso ao código-fonte ou de interrupção do desenvolvimento.
 
-Dessa forma, os termos acima buscam equilibrar a abertura do projeto à comunidade com a necessidade de preservar sua continuidade, sua governança e sua integridade técnica ao longo do tempo.
+Dessa forma, os termos acima buscam equilibrar a abertura do projeto à comunidade com a necessidade de preservar a continuidade, a governança e a integridade técnica ao longo do tempo.
+
+Dúvidas podem ser encaminhadas para o e-mail do projeto: `fctapp@googlegroups.com`.
