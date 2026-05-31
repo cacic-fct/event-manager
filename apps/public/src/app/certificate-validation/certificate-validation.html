@@ -16,20 +16,25 @@
   </header>
 
   <form class="lookup-form" [formGroup]="validationForm" (ngSubmit)="submit()">
-    <mat-form-field class="id-field">
-      <mat-label>ID do certificado</mat-label>
-      <input matInput autocomplete="off" [formControl]="certificateIdControl" />
-      @if (certificateIdControl.hasError('required')) {
-      <mat-error>Informe o ID do certificado.</mat-error>
-      } @if (certificateIdControl.hasError('notFound')) {
-      <mat-error>Certificado não encontrado.</mat-error>
-      }
-    </mat-form-field>
+    <div class="button-container">
+      <mat-form-field class="id-field">
+        <mat-label>Código do certificado</mat-label>
+        <input matInput autocomplete="off" [formControl]="certificateIdControl" />
+        @if (certificateIdControl.hasError('required')) {
+        <mat-error>Informe o código do certificado.</mat-error>
+        } @if (certificateIdControl.hasError('notFound')) {
+        <mat-error>Certificado não encontrado.</mat-error>
+        }
+      </mat-form-field>
 
-    <button mat-flat-button type="submit">
-      <mat-icon>search</mat-icon>
-      Validar
-    </button>
+      <button mat-flat-button type="submit">
+        <mat-icon>search</mat-icon>
+        Validar
+      </button>
+      <button matIconButton (click)="scanCode()">
+        <mat-icon>qr_code_scanner</mat-icon>
+      </button>
+    </div>
   </form>
 
   @let currentState = state(); @if (currentState.status === 'loading') {
@@ -74,7 +79,7 @@
       <mat-list-item>
         <mat-icon matListItemIcon>workspace_premium</mat-icon>
         <div matListItemTitle>{{ certificate.id }}</div>
-        <div matListItemLine>ID do certificado</div>
+        <div matListItemLine>Código do certificado</div>
       </mat-list-item>
     </mat-list>
 
