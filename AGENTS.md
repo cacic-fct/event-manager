@@ -117,3 +117,10 @@ When modifying an existing component, ensure that the story file for that compon
 
 We have faker-js and MSW for mocking data in Storybook, so use them when appropriate to create realistic stories.
 
+# Nomenclature
+
+Standalone events are events that are not part of a event group, nor are they part of a major event. They are events that exist independently. In Portuguese, they are called "eventos".
+
+Standalone event groups are groups of events that are not part of a major event. They are groups that exist independently. In Portuguese, they are called "grupos de eventos".
+
+Major events have event groups and/or events associated with them. They are the main events that encompass other events. In Portuguese, they are called "grandes eventos".

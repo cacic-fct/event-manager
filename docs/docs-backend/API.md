@@ -11,6 +11,12 @@ Acesse o Apollo Sandbox em https://eventos.cacic.dev.br/api/graphql para explora
 
 Se você quer integrar a API pública do CACiC Event Manager em algum projeto, como a homepage da SECOMPP, procure pelas operações com o prefixo "Public".
 
+:::tip[Dica]
+
+Caso haja algum problema em requisitar o `introspection` do GraphQL, limpe os dados armazenados no navegador ou utilize o uma guia anônima para acessar o Apollo Sandbox.
+
+:::
+
 ### Code first
 
 Utilizamos a abordagem code first para o desenvolvimento da API GraphQL, o que significa que o esquema GraphQL é gerado automaticamente a partir do código-fonte. Isso nos permite manter o esquema e a implementação sincronizados, além de facilitar a adição de novas funcionalidades sem a necessidade de atualizar manualmente o esquema.
