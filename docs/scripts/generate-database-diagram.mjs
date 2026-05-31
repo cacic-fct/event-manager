@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const docsRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const docsPage = resolve(docsRoot, 'docs-backend', 'Banco de dados', 'Esquema.md');
+const docsPage = resolve(docsRoot, 'docs-backend', 'Banco de dados', 'Esquema.mdx');
 const schemaRelativePath = 'apps/backend/prisma/schema';
 
 const appRootCandidates = [
@@ -47,15 +47,20 @@ if (!diagram.startsWith('erDiagram')) {
 }
 
 const pageMarkdown = readFileSync(docsPage, 'utf8');
-const docsMermaidBlock = /```mermaid\s*[\s\S]*?\s*```/;
+const diagramBlockPattern =
+  /\{\/\* DATABASE_DIAGRAM_START \*\/\}[\s\S]*?\{\/\* DATABASE_DIAGRAM_END \*\/\}/;
 
-if (!docsMermaidBlock.test(pageMarkdown)) {
-  throw new Error(`Could not find a Mermaid code block in ${docsPage}`);
+if (!diagramBlockPattern.test(pageMarkdown)) {
+  throw new Error(`Could not find DATABASE_DIAGRAM placeholder block in ${docsPage}`);
 }
 
-const updatedMarkdown = pageMarkdown.replace(
-  docsMermaidBlock,
-  `\`\`\`mermaid\n\n${diagram}\n\n\`\`\``,
-);
+const escapedDiagram = diagram.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+const diagramBlock = `{/* DATABASE_DIAGRAM_START */}
+<MermaidWithActions
+  value={\`
+${escapedDiagram}
+\`}
+/>
+{/* DATABASE_DIAGRAM_END */}`;
 
-writeFileSync(docsPage, updatedMarkdown);
+writeFileSync(docsPage, pageMarkdown.replace(diagramBlockPattern, diagramBlock));

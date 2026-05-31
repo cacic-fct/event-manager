@@ -194,7 +194,7 @@ const config: Config = {
       searchPagePath: 'busca',
     },
     mermaid: {
-      theme: { light: 'neutral', dark: 'forest' },
+      theme: { light: 'default', dark: 'dark' },
     },
   } satisfies Preset.ThemeConfig,
 
