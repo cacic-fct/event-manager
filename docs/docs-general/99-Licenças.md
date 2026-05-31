@@ -6,15 +6,15 @@ title: Licenças
 
 ### CACiC Event Manager
 
-O CACiC Event Manager é distribuído sob a licença AGPL-3.0-only.
+O CACiC Event Manager é distribuído sob a licença `AGPL-3.0-only`.
 
-Nos termos da AGPL 3.0, versões modificadas ou obras derivadas que sejam distribuídas a terceiros ou hospedadas para uso por meio de uma rede devem ser licenciadas sob a AGPL e o código-fonte correspondente deve ser disponibilizado, incluindo as modificações realizadas.
+Nos termos da GNU Affero General Public License v3 (AGPL 3.0), versões modificadas ou obras derivadas que sejam distribuídas a terceiros ou hospedadas para uso por meio de uma rede devem ser licenciadas sob a AGPL e o código-fonte correspondente deve ser disponibilizado, incluindo as modificações realizadas.
 
 ### Event Manager Docs
 
-O software do Event Manager Docs é distribuído sob a licença AGPL-3.0-only.
+O software do Event Manager Docs é distribuído sob a licença `AGPL-3.0-only`.
 
-O conteúdo do Event Manager Docs é distribuído sob a licença CC BY-NC-SA 4.0.  
+O conteúdo do Event Manager Docs é distribuído sob a licença `CC BY-NC-SA 4.0`.  
 Deve-se creditar o autor como "CACiC Event Manager Docs" e fornecer um link para a documentação original.
 
 ## Detentor dos direitos autorais e da propriedade intelectual
