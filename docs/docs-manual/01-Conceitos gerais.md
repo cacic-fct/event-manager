@@ -22,4 +22,6 @@ Também pode acontecer de itens já deletados aparecerem na interface administra
 
 O aplicativo público é a interface voltada para os participantes do evento, onde eles podem se inscrever, acessar informações sobre o evento e coletar suas presenças. Ele é acessível para todos os usuários, incluindo aqueles sem permissões administrativas.
 
+Também possui funcionalidades específicas para professores e para organizadores, para não ser necessário a liberação do painel de administração para estes grupos.
+
 Está disponível em https://eventos.cacic.dev.br/app/

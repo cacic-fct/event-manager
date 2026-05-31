@@ -1,4 +1,4 @@
-# Coleta de presenças
+# Boas práticas
 
 
 Colete a presença oportunamente, como no início ou no final do evento, para evitar esquecimentos e para garantir a precisão dos dados.
@@ -10,7 +10,7 @@ Se um participante alegar que esteve presente, mas não tiver a presença regist
 
 Não colete a presença de palestrantes ou ministrantes.
 
-Também colete a presença de pessoas que aleguem não ter se inscrevido ou não ter pagado, desde que elas possuam cadastro no sistema.
+Sim, colete a presença de pessoas que aleguem não ter se inscrevido ou não ter pagado, desde que elas possuam cadastro no sistema.
 
 :::
 

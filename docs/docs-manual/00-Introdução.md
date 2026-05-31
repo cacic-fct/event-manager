@@ -8,7 +8,7 @@ Ao realizar operações no CACiC Event Manager sem seguir as orientações do ma
 
 Se, ao final da leitura, o administrador ainda tiver dúvidas, ele pode entrar em contato com a equipe de desenvolvimento do CACiC Event Manager, que está disponível para ajudar e esclarecer quaisquer questões.
 
-Para ser direcionado rapidamente a este manual, procure pelos botões "(?)" espalhados pelo sistema, que redirecionam para informações relevantes para o uso do recurso em questão.
+Para ser direcionado rapidamente a este manual, procure pelos botões "(?)" espalhados pelo sistema, que redirecionam para informações relevantes para o recurso em questão.
 
 ## Sou coletor de presença
 
