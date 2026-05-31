@@ -8,7 +8,7 @@ title: Licenças
 
 O CACiC Event Manager é distribuído sob a licença AGPL-3.0-only.
 
-Nos termos da AGPL 3.0, versões modificadas ou obras derivadas que sejam distribuídas a terceiros ou disponibilizadas para uso por meio de uma rede devem ser licenciadas sob a AGPL e o código-fonte correspondente deve ser disponibilizado, incluindo as modificações realizadas.
+Nos termos da AGPL 3.0, versões modificadas ou obras derivadas que sejam distribuídas a terceiros ou hospedadas para uso por meio de uma rede devem ser licenciadas sob a AGPL e o código-fonte correspondente deve ser disponibilizado, incluindo as modificações realizadas.
 
 ### Event Manager Docs
 
