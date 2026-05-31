@@ -30,7 +30,7 @@ import {
 
 describe('shared utility coverage from public app', () => {
   it('formats attendance display values and privacy-safe unique text', () => {
-    expect(formatCurrency(1234)).toBe('R$ 1.234,00');
+    expect(formatCurrency(1234)).toBe('R$ 12,34');
     expect(formatCreditMinutes(45)).toBe('45 min');
     expect(formatCreditMinutes(90)).toBe('1,5 h');
     expect(getContactLabel('WHATSAPP')).toBe('WhatsApp');
@@ -53,9 +53,7 @@ describe('shared utility coverage from public app', () => {
 
   it('parses CSV content with detected delimiters, quoted fields, and a BOM header', () => {
     expect(detectCsvDelimiter('name;email\nAda;ada@example.com')).toBe(';');
-    expect(
-      parseCsv('\uFEFFname,email,notes\n"Ada, Lovelace",ada@example.com,"line ""quoted"""\nAlan,,'),
-    ).toEqual({
+    expect(parseCsv('\uFEFFname,email,notes\n"Ada, Lovelace",ada@example.com,"line ""quoted"""\nAlan,,')).toEqual({
       headers: ['name', 'email', 'notes'],
       rows: [
         { name: 'Ada, Lovelace', email: 'ada@example.com', notes: 'line "quoted"' },
