@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { JSX } from 'react';
 import clsx from 'clsx';
 import Heading from '@theme/Heading';
 import styles from './styles.module.css';
@@ -87,7 +87,7 @@ const FeatureList: FeatureItem[] = [
         .
         <br />
         Entenda os{' '}
-        <Link to="/Administração/Introdução">
+        <Link to="/Manual/Introdução">
           <b>Procedimentos</b>
         </Link>
         .
@@ -112,7 +112,7 @@ const FeatureList: FeatureItem[] = [
         .
         <br />
         Entenda os{' '}
-        <Link to="/Administração/Introdução">
+        <Link to="/Manual/Introdução">
           <b>Procedimentos</b>
         </Link>
         .
