@@ -48,7 +48,7 @@ export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(value);
+  }).format(value / 100);
 }
 
 export function formatCreditMinutes(minutes: number): string {
@@ -152,9 +152,7 @@ export function getAttendanceByEventId(
   return new Map(attendances.map((attendance) => [attendance.eventId, attendance]));
 }
 
-export function getEventAttendanceStatusLabel(
-  attendance: CurrentUserEventAttendance | null | undefined,
-): string {
+export function getEventAttendanceStatusLabel(attendance: CurrentUserEventAttendance | null | undefined): string {
   return attendance ? `Presença registrada às ${formatDateTime(attendance.attendedAt)}` : 'Sem presença registrada';
 }
 

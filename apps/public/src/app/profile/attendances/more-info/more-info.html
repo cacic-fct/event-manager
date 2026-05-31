@@ -130,7 +130,9 @@
         </div>
         <div matListItemTitle>{{ item.event.name }}</div>
         <div matListItemLine>{{ item.dateLine }}</div>
+        @if (item.statusLine !== "Sem presença registrada, Não inscrito") {
         <div matListItemLine>{{ item.statusLine }}</div>
+        }
       </a>
       }
     </mat-action-list>
