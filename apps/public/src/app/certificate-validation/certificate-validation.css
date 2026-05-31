@@ -152,3 +152,16 @@ mat-list {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 }
+
+lib-cacic-logo {
+  height: 50px;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
+
+.button-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}

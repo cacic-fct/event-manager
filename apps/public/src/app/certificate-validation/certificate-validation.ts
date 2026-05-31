@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, PLATFORM_ID, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,7 +19,16 @@ import { catchError, combineLatest, distinctUntilChanged, finalize, map, of, sta
 import { CertificateFileDownloadService } from '../shared/certificate-file-download.service';
 import { EmojiService } from '../shared/emoji.service';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
-import { AuthService, CacicAnalyticsService } from '@cacic-fct/shared-angular';
+import {
+  AuthService,
+  AztecScannerDialogComponent,
+  CacicAnalyticsService,
+  CacicLogoComponent,
+} from '@cacic-fct/shared-angular';
+import { isPlatformBrowser } from '@angular/common';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 
 type ValidationState =
   | { status: 'idle' }
@@ -42,6 +51,9 @@ type ValidationState =
     MatProgressBarModule,
     ReactiveFormsModule,
     RouterLink,
+    MatToolbarModule,
+    CacicLogoComponent,
+    MatTooltipModule,
   ],
 })
 export class CertificateValidation {
@@ -53,6 +65,9 @@ export class CertificateValidation {
   private readonly auth = inject(AuthService);
   private readonly isAuthenticated = this.auth.isAuthenticated;
   readonly emoji = inject(EmojiService);
+  private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
+
   private platformId = inject(PLATFORM_ID);
   private isDarkSignal = signal(false);
   fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
@@ -159,6 +174,36 @@ export class CertificateValidation {
         error: (error: unknown) => {
           this.downloadError.set(this.getDownloadErrorMessage(error));
         },
+      });
+  }
+
+  public scanCode(): void {
+    const dialogRef = this.dialog.open(AztecScannerDialogComponent, {
+      width: 'min(560px, 96vw)',
+      maxWidth: '96vw',
+      data: {
+        acceptedPrefixes: ['eventos.cacic.dev.br/validar/'],
+        title: 'Escanear código de certificado',
+        mode: ['QRCode'],
+      },
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((code) => {
+        if (!code) {
+          return;
+        }
+
+        console.log('Scanned code:', code);
+        // strip "eventos.cacic.dev.br/validar/" prefix if present
+        const prefix = 'eventos.cacic.dev.br/validar/';
+        const certificateId = code.startsWith(prefix) ? code.substring(prefix.length) : code;
+
+        this.certificateIdControl.setValue(certificateId);
+
+        this.submit();
       });
   }
 
