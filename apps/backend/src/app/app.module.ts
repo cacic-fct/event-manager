@@ -139,7 +139,9 @@ import { AnalyticsModule } from './analytics/analytics.module';
         playground: false,
         introspection: true,
         plugins: [
-          ApolloServerPluginLandingPageLocalDefault({ includeCookies: true }),
+          ApolloServerPluginLandingPageLocalDefault({
+            includeCookies: true,
+          }),
           createIntrospectionAuthPlugin({
             keycloakAuthService,
             production: process.env.NODE_ENV === 'production',
