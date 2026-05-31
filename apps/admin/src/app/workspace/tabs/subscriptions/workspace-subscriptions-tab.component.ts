@@ -12,11 +12,7 @@ import { WorkspaceMajorEventSubscriptionsSubtabComponent } from './workspace-maj
 @Component({
   selector: 'app-workspace-subscriptions-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    MatTabsModule,
-    WorkspaceEventSubscriptionsSubtabComponent,
-    WorkspaceMajorEventSubscriptionsSubtabComponent,
-  ],
+  imports: [MatTabsModule, WorkspaceEventSubscriptionsSubtabComponent, WorkspaceMajorEventSubscriptionsSubtabComponent],
   templateUrl: './workspace-subscriptions-tab.component.html',
   styleUrls: ['../workspace-tab.shared.scss', './workspace-subscription-subtabs.shared.scss'],
 })
@@ -59,7 +55,7 @@ export class WorkspaceSubscriptionsTabComponent {
 
   private async initializeReceiptValidation(): Promise<void> {
     await this.permissions.evaluateWorkspacePermissions();
-    if (!this.permissions.has('validate-receipt:read')) {
+    if (!this.permissions.has('validate-receipt#read')) {
       this.selectedMajorEventPendingReceiptsCount.set(0);
       return;
     }
@@ -68,7 +64,7 @@ export class WorkspaceSubscriptionsTabComponent {
   }
 
   private async loadSelectedMajorEventPendingReceiptCount(): Promise<void> {
-    if (!this.permissions.has('validate-receipt:read')) {
+    if (!this.permissions.has('validate-receipt#read')) {
       this.selectedMajorEventPendingReceiptsCount.set(0);
       return;
     }

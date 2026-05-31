@@ -201,7 +201,7 @@ function defaultPermissions(): WorkspacePermissionScope[] {
     'person#read',
     'subscription#read',
     'subscription#edit',
-    'validate-receipt:read',
+    'validate-receipt#read',
   ];
 }
 

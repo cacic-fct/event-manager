@@ -27,7 +27,7 @@ describe('WorkspacePermissionsService', () => {
           ],
         },
       },
-      permissions: ['certificate#read', 'validate-receipt:read'],
+      permissions: ['certificate#read', 'validate-receipt#read'],
     });
 
     TestBed.configureTestingModule({
@@ -65,9 +65,7 @@ describe('WorkspacePermissionsService', () => {
     ]);
     expect(service.canReadTab(WorkspacePermissionTab.Events)).toBe(true);
     expect(service.canReadTab(WorkspacePermissionTab.Attendances)).toBe(false);
-    expect(service.missingReadForTab(WorkspacePermissionTab.Attendances)).toEqual([
-      'event-attendance#read',
-    ]);
+    expect(service.missingReadForTab(WorkspacePermissionTab.Attendances)).toEqual(['event-attendance#read']);
   });
 
   it('evaluates workspace permissions once and merges server-granted permissions', async () => {

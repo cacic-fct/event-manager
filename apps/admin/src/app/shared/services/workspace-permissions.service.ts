@@ -28,8 +28,8 @@ export type WorkspacePermissionScope =
   | 'subscription#read'
   | 'subscription#edit'
   | 'subscription#delete'
-  | 'validate-receipt:read'
-  | 'validate-receipt:edit';
+  | 'validate-receipt#read'
+  | 'validate-receipt#edit';
 
 export type WorkspaceTabPermission = {
   label: string;
@@ -106,7 +106,7 @@ const TAB_PERMISSIONS = [
   {
     label: 'Inscrições',
     read: ['subscription#read', 'event#read', 'major-event#read', 'person#read'],
-    edit: ['subscription#edit', 'validate-receipt:edit'],
+    edit: ['subscription#edit', 'validate-receipt#edit'],
     delete: ['subscription#delete'],
   },
   {
@@ -200,8 +200,12 @@ export class WorkspacePermissionsService {
   }
 
   private async fetchWorkspacePermissions(): Promise<void> {
-    const permissions: WorkspacePermissionScope[] = this.tabs.flatMap((tab) => [...tab.read, ...tab.edit, ...tab.delete]);
-    permissions.push('validate-receipt:read');
+    const permissions: WorkspacePermissionScope[] = this.tabs.flatMap((tab) => [
+      ...tab.read,
+      ...tab.edit,
+      ...tab.delete,
+    ]);
+    permissions.push('validate-receipt#read');
     const uniquePermissions = [...new Set(permissions)];
     const result = await firstValueFrom(
       this.http.post<{ permissions: string[] }>('/api/auth/permissions/evaluate', {
