@@ -99,7 +99,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     majorEvents,
     eventFiltersForm: new FormGroup({
       startDateFrom: new FormControl('', { nonNullable: true }),
-      startDateTo: new FormControl('', { nonNullable: true }),
+      startDateUntil: new FormControl('', { nonNullable: true }),
       isInGroup: new FormControl('ALL', { nonNullable: true }),
       isInMajorEvent: new FormControl('ALL', { nonNullable: true }),
       query: new FormControl('', { nonNullable: true }),

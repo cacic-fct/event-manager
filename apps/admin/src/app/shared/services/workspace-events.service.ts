@@ -81,7 +81,7 @@ export class WorkspaceEventsService {
 
   readonly eventFiltersForm = this.formBuilder.nonNullable.group({
     startDateFrom: [''],
-    startDateTo: [''],
+    startDateUntil: [''],
     isInGroup: ['ALL'],
     isInMajorEvent: ['ALL'],
     query: [''],

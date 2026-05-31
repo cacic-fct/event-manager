@@ -10,7 +10,7 @@ export interface CalendarEventFilters {
   query: string;
   eventType: CalendarEventTypeFilter;
   startDateFrom: string;
-  startDateTo?: string;
+  startDateUntil?: string;
 }
 
 type GraphqlVariable = string | number | boolean | null | undefined;
@@ -97,13 +97,13 @@ export class CalendarApiService {
           $query: String
           $eventType: EventType
           $startDateFrom: DateTime
-          $startDateTo: DateTime
+          $startDateUntil: DateTime
         ) {
           publicCalendarEvents(
             query: $query
             eventType: $eventType
             startDateFrom: $startDateFrom
-            startDateTo: $startDateTo
+            startDateUntil: $startDateUntil
           ) {
             ${PUBLIC_EVENT_FIELDS}
           }
@@ -113,7 +113,7 @@ export class CalendarApiService {
         query: filters.query || null,
         eventType: filters.eventType === 'ALL' ? null : filters.eventType,
         startDateFrom: filters.startDateFrom,
-        startDateTo: filters.startDateTo ?? null,
+        startDateUntil: filters.startDateUntil ?? null,
       },
     ).pipe(map((data) => data.publicCalendarEvents));
   }

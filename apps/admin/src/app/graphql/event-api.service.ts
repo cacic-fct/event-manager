@@ -11,7 +11,7 @@ export class EventApiService {
   listEvents(filters?: {
     query?: string;
     startDateFrom?: string;
-    startDateTo?: string;
+    startDateUntil?: string;
     majorEventId?: string;
     eventGroupId?: string;
     isInGroup?: boolean;
@@ -24,7 +24,7 @@ export class EventApiService {
         `query ListEvents(
           $query: String
           $startDateFrom: DateTime
-          $startDateTo: DateTime
+          $startDateUntil: DateTime
           $majorEventId: String
           $eventGroupId: String
           $isInGroup: Boolean
@@ -35,7 +35,7 @@ export class EventApiService {
           events(
             query: $query
             startDateFrom: $startDateFrom
-            startDateTo: $startDateTo
+            startDateUntil: $startDateUntil
             majorEventId: $majorEventId
             eventGroupId: $eventGroupId
             isInGroup: $isInGroup

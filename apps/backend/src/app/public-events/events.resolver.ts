@@ -31,8 +31,8 @@ export class PublicEventsResolver {
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('startDateFrom', { type: () => Date, nullable: true })
     startDateFrom?: Date,
-    @Args('startDateTo', { type: () => Date, nullable: true })
-    startDateTo?: Date,
+    @Args('startDateUntil', { type: () => Date, nullable: true })
+    startDateUntil?: Date,
     @Args('majorEventId', { type: () => String, nullable: true })
     majorEventId?: string,
     @Args('eventGroupId', { type: () => String, nullable: true })
@@ -47,13 +47,13 @@ export class PublicEventsResolver {
     };
     const normalizedQuery = query?.trim();
 
-    if (startDateFrom || startDateTo) {
+    if (startDateFrom || startDateUntil) {
       where.startDate = {};
       if (startDateFrom) {
         where.startDate.gte = startDateFrom;
       }
-      if (startDateTo) {
-        where.startDate.lte = startDateTo;
+      if (startDateUntil) {
+        where.startDate.lte = startDateUntil;
       }
     }
 
@@ -107,10 +107,10 @@ export class PublicEventsResolver {
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('eventType', { type: () => EventType, nullable: true })
     eventType?: EventType,
-    @Args('startDateFrom', { type: () => Date, nullable: true })
+    @Args('startDateFrom', { type: () => Date, nullable: true, description: 'Minimum: Today - 1 month' })
     startDateFrom?: Date,
-    @Args('startDateTo', { type: () => Date, nullable: true })
-    startDateTo?: Date,
+    @Args('startDateUntil', { type: () => Date, nullable: true })
+    startDateUntil?: Date,
   ) {
     const minimumStartDate = subMonths(new Date(), PublicEventsResolver.calendarPastLimitMonths);
     const normalizedQuery = query?.trim();
@@ -119,8 +119,8 @@ export class PublicEventsResolver {
     const startDateFilter: Prisma.DateTimeFilter = {
       gte: effectiveStartDate,
     };
-    if (startDateTo) {
-      startDateFilter.lte = startDateTo;
+    if (startDateUntil) {
+      startDateFilter.lte = startDateUntil;
     }
 
     const where: Prisma.EventWhereInput = {

@@ -94,8 +94,8 @@ export class MajorEventsResolver {
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('startDateFrom', { type: () => Date, nullable: true })
     startDateFrom?: Date,
-    @Args('startDateTo', { type: () => Date, nullable: true })
-    startDateTo?: Date,
+    @Args('startDateUntil', { type: () => Date, nullable: true })
+    startDateUntil?: Date,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
@@ -105,13 +105,13 @@ export class MajorEventsResolver {
     };
     const normalizedQuery = query?.trim();
 
-    if (startDateFrom || startDateTo) {
+    if (startDateFrom || startDateUntil) {
       where.startDate = {};
       if (startDateFrom) {
         where.startDate.gte = startDateFrom;
       }
-      if (startDateTo) {
-        where.startDate.lte = startDateTo;
+      if (startDateUntil) {
+        where.startDate.lte = startDateUntil;
       }
     }
 
@@ -500,7 +500,9 @@ export class MajorEventsResolver {
     return normalized;
   }
 
-  private buildPricePayload(input: MajorEventPriceInput | null | undefined): Prisma.MajorEventPriceCreateWithoutMajorEventInput | undefined {
+  private buildPricePayload(
+    input: MajorEventPriceInput | null | undefined,
+  ): Prisma.MajorEventPriceCreateWithoutMajorEventInput | undefined {
     if (!input) {
       return undefined;
     }

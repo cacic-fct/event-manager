@@ -95,7 +95,7 @@ export class WorkspaceAttendancesService {
 
   readonly attendanceEventFiltersForm = this.formBuilder.nonNullable.group({
     startDateFrom: [''],
-    startDateTo: [''],
+    startDateUntil: [''],
     isInGroup: ['ALL'],
     isInMajorEvent: ['ALL'],
     query: [''],
@@ -407,7 +407,9 @@ export class WorkspaceAttendancesService {
     }
     void this.router.navigate(['/attendances/major-event', majorEventId]);
 
-    const attendances = await firstValueFrom(this.api.listMajorEventUserAttendances(majorEventId, { take: EXPORT_PAGE_SIZE }));
+    const attendances = await firstValueFrom(
+      this.api.listMajorEventUserAttendances(majorEventId, { take: EXPORT_PAGE_SIZE }),
+    );
     this.majorEventUserAttendances.set(attendances);
 
     const selected = this.selectedMajorEventUserAttendance();
@@ -544,7 +546,8 @@ export class WorkspaceAttendancesService {
 
   private resetMajorEventAttendanceDraft(attendance: MajorEventUserAttendance | null): void {
     this.majorEventAttendanceEditForm.reset({
-      subscriptionStatus: (attendance?.subscriptionStatus as SubscriptionStatus | undefined) ?? DEFAULT_SUBSCRIPTION_STATUS,
+      subscriptionStatus:
+        (attendance?.subscriptionStatus as SubscriptionStatus | undefined) ?? DEFAULT_SUBSCRIPTION_STATUS,
       amountPaid: attendance?.amountPaid ?? null,
       paymentDate: attendance?.paymentDate?.slice(0, 10) ?? null,
       paymentTier: attendance?.paymentTier ?? null,

@@ -50,7 +50,7 @@ export class WorkspaceSubscriptionsService {
   readonly majorEvents = this.majorEventsService.majorEvents;
   readonly eventFiltersForm = this.formBuilder.nonNullable.group({
     startDateFrom: [''],
-    startDateTo: [''],
+    startDateUntil: [''],
     isInGroup: ['ALL'],
     isInMajorEvent: ['ALL'],
     query: [''],
@@ -459,7 +459,9 @@ export class WorkspaceSubscriptionsService {
     }
 
     const majorEventName =
-      subscriptions[0]?.majorEvent?.name ?? this.majorEvents().find((item) => item.id === majorEventId)?.name ?? majorEventId;
+      subscriptions[0]?.majorEvent?.name ??
+      this.majorEvents().find((item) => item.id === majorEventId)?.name ??
+      majorEventId;
     this.downloadCsv(`inscricoes-${this.slugify(majorEventName)}.csv`, buildSubscriberCsv(subscriptions, options));
   }
 

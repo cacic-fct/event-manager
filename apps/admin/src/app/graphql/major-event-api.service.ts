@@ -11,7 +11,7 @@ export class MajorEventApiService {
   listMajorEvents(filters?: {
     query?: string;
     startDateFrom?: string;
-    startDateTo?: string;
+    startDateUntil?: string;
     skip?: number;
     take?: number;
   }) {
@@ -20,14 +20,14 @@ export class MajorEventApiService {
         `query ListMajorEvents(
           $query: String
           $startDateFrom: DateTime
-          $startDateTo: DateTime
+          $startDateUntil: DateTime
           $skip: Int
           $take: Int
         ) {
           majorEvents(
             query: $query
             startDateFrom: $startDateFrom
-            startDateTo: $startDateTo
+            startDateUntil: $startDateUntil
             skip: $skip
             take: $take
           ) {
