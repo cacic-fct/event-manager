@@ -23,7 +23,7 @@ Deve-se creditar o autor como "CACiC Event Manager Docs" e fornecer um link para
 
 ## Detentor dos direitos autorais e propriedade intelectual
 
-Renan Araujo ([Yudi](https://github.com)) é detentor dos direitos autorais do FCT App, CACiC Event Manager e projetos derivados, doravante denominados de forma genérica apenas por "CACiC Event Manager", exceto quando especificado.
+Renan Araujo ([Yudi](https://github.com/Yudi)) é detentor dos direitos autorais do FCT App, CACiC Event Manager e projetos derivados, doravante denominados de forma genérica apenas por "CACiC Event Manager", exceto quando especificado.
 
 O detentor dos direitos está isento de assinar e não assinou o contrato de concessão de licença do CACiC.
 
