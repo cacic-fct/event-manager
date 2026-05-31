@@ -27,7 +27,7 @@ Renan Araujo ([Yudi](https://github.com)) é detentor dos direitos autorais do F
 
 O detentor dos direitos está isento de assinar e não assinou o contrato de concessão de licença do CACiC.
 
-O CACiC Event Manager é distribuído pelo CACiC (CA ou entidade) sob uma acordo exclusivo concedida pelo detentor dos direitos:
+O CACiC Event Manager é distribuído pelo CACiC (CA ou entidade) sob um acordo exclusivo concedido pelo detentor dos direitos:
 
 1. O CA deverá distribuir o projeto principal do CACiC Event Manager sob a licença "AGPL-3.0-only".
 
