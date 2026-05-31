@@ -136,6 +136,7 @@ export class OnlineAttendanceCodeComponent {
       data: {
         acceptedPrefixes: [`online-attendance:${state.item.eventId}:`],
         title: 'Escanear presença on-line',
+        mode: ['Aztec'],
       },
     });
 

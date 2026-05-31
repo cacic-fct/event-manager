@@ -25,6 +25,7 @@ export class ScannerDebug {
       maxWidth: '96vw',
       data: {
         title: 'Debug Scanner',
+        mode: ['Aztec', 'QRCode'],
       },
     });
 

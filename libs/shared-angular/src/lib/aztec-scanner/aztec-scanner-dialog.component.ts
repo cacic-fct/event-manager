@@ -2,12 +2,14 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { AztecScannerComponent } from './aztec-scanner.component';
+import { ReadInputBarcodeFormat } from 'zxing-wasm';
 
 export type AztecScannerDialogData = {
   title?: string;
   acceptedPrefixes?: readonly string[];
   pauseAfterScanMs?: number;
   continuousMode?: boolean;
+  mode: ReadInputBarcodeFormat[];
 };
 
 @Component({
@@ -20,7 +22,8 @@ export type AztecScannerDialogData = {
         [title]="data.title ?? 'Escanear código'"
         [acceptedPrefixes]="data.acceptedPrefixes ?? []"
         [pauseAfterScanMs]="data.pauseAfterScanMs ?? 1800"
-        (scan)="handleScan($event)" />
+        (scan)="handleScan($event)"
+        [formats]="data.mode" />
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>Cancelar</button>
@@ -29,7 +32,7 @@ export type AztecScannerDialogData = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AztecScannerDialogComponent {
-  readonly data: AztecScannerDialogData = inject(MAT_DIALOG_DATA);
+  readonly data: AztecScannerDialogData = inject<AztecScannerDialogData>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject<MatDialogRef<AztecScannerDialogComponent, string>>(MatDialogRef);
 
   readonly lastScannedCode = signal<string | null>(null);

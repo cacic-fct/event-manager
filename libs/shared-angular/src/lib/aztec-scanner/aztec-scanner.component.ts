@@ -4,6 +4,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  InputSignal,
   PLATFORM_ID,
   computed,
   inject,
@@ -16,7 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { readBarcodes } from 'zxing-wasm';
+import { readBarcodes, ReadInputBarcodeFormat } from 'zxing-wasm';
 import { ScannerSoundsService } from './scanner-sounds.service';
 
 type ScannerState =
@@ -139,12 +140,14 @@ export class AztecScannerComponent {
 
   readonly isBusy = computed(() => ['idle', 'requesting-permission'].includes(this.state()));
 
+  readonly formats = input<ReadInputBarcodeFormat[]>(['Aztec']);
+
   readonly statusText = computed(() => {
     switch (this.state()) {
       case 'requesting-permission':
         return 'Solicitando permissão para usar a câmera.';
       case 'scanning':
-        return 'Aponte a câmera para o código Aztec.';
+        return `Aponte a câmera para o código ${[this.formats()].join(', ')}.`;
       case 'paused':
         return 'Código incompatível. Aponte para outro código.';
       case 'permission-denied':
@@ -366,7 +369,7 @@ export class AztecScannerComponent {
 
     const imageData = this.context.getImageData(0, 0, this.scannerCanvas.width, this.scannerCanvas.height);
     const results = await readBarcodes(imageData, {
-      formats: ['Aztec'],
+      formats: this.formats(),
       tryHarder: true,
       tryDownscale: true,
     });
