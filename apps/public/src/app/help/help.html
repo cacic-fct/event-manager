@@ -1,0 +1,37 @@
+<mat-toolbar>
+  <a matIconButton routerLink="/menu" aria-label="Voltar para o menu">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+</mat-toolbar>
+
+<div class="global-container">
+  <header class="page-header">
+    <h1>Ajuda</h1>
+  </header>
+
+  <main>
+    <mat-nav-list>
+      <a mat-list-item href="https://docs.fctapp.cacic.dev.br">
+        <mat-icon matListItemIcon>article</mat-icon>
+        <span matListItemTitle>Documentação e manual de uso</span>
+        <div matListItemMeta>
+          <mat-icon>arrow_outward</mat-icon>
+        </div>
+      </a>
+      <a mat-list-item (click)="mailto()" tabindex="0" (keypress)="mailto()">
+        <mat-icon matListItemIcon>mail</mat-icon>
+        <span matListItemTitle>Suporte ao usuário</span>
+        <div matListItemMeta>
+          <mat-icon>arrow_outward</mat-icon>
+        </div>
+      </a>
+      <a mat-list-item href="https://github.com/cacic-fct/event-manager/issues/new/choose">
+        <mat-icon matListItemIcon>bug_report</mat-icon>
+        <span matListItemTitle>Reportar um bug</span>
+        <div matListItemMeta>
+          <mat-icon>arrow_outward</mat-icon>
+        </div>
+      </a>
+    </mat-nav-list>
+  </main>
+</div>
