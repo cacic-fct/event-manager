@@ -66,7 +66,7 @@ O CACiC Event Manager é distribuído pelo CACiC (CA ou entidade) sob um acordo 
 
 1. Estes termos somente poderão ser modificados por acordo mútuo entre as partes, exceto nos casos expressamente previstos.
 
-## Justificativa
+### Justificativa
 
 A centralização dos direitos autorais do projeto tem como objetivo garantir a continuidade, a estabilidade jurídica e a sustentabilidade de longo prazo do projeto.
 
@@ -74,7 +74,7 @@ Essa medida busca evitar:
 
 1. **Relicenciamentos incompatíveis com os objetivos do projeto**
 
-   A manutenção do projeto principal sob uma licença de código aberto forte, como a AGPL-3.0-only, impede que o CACiC Event Manager seja convertido em software de código fechado ou distribuído sob termos menos compatíveis com a finalidade pública e comunitária e que prejudiquem a viabilidade da manutenção e evolução a longo prazo.
+   A obrigação do projeto principal ser mantido sob uma licença de código aberto forte, como a AGPL-3.0-only, impede que o CACiC Event Manager seja convertido em software de código fechado ou distribuído sob termos menos compatíveis com a finalidade pública e comunitária e que prejudiquem a viabilidade da manutenção e da evolução a longo prazo.
 
 1. **Disputas de titularidade entre contribuidores**
 
@@ -88,7 +88,7 @@ Essa medida busca evitar:
 
    Dessa forma, visando a otimização dos recursos disponíveis, a preservação do conhecimento institucional e o fortalecimento da colaboração entre estudantes, as contribuições devem sempre serem incorporadas ao CACiC Event Manager, em vez de serem desenvolvidas em projetos paralelos com objetivos equivalentes.
 
-   Leia também: [Justificativa de escolha das tecnologias](./02-Antes%20de%20colaborar/02-Tecnologias.md).
+   Leia também: [justificativa de escolha das tecnologias](./02-Antes%20de%20colaborar/02-Tecnologias.md).
 
 1. **Risco de descontinuidade institucional**
 
