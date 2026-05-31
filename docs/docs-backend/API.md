@@ -13,7 +13,7 @@ Se você quer integrar a API pública do CACiC Event Manager em algum projeto, c
 
 :::tip[Dica]
 
-Caso haja algum problema em requisitar o `introspection` do GraphQL, limpe os dados armazenados no navegador ou utilize o uma guia anônima para acessar o Apollo Sandbox.
+Caso haja algum problema em requisitar o `introspection` do GraphQL, limpe os dados do site armazenados no navegador ou utilize o uma guia anônima para acessar o Apollo Sandbox.
 
 :::
 
