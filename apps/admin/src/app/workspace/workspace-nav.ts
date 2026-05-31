@@ -18,7 +18,7 @@ export const workspaceNavItems = [
     description: 'Gerencie eventos individuais, datas, locais e inscrições.',
     icon: 'event',
     permissionTab: WorkspacePermissionTab.Events,
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20evento',
   },
   {
     id: 'groups',
@@ -27,7 +27,7 @@ export const workspaceNavItems = [
     description: 'Gerencie agrupamentos de eventos e suas relações.',
     icon: 'folder',
     permissionTab: WorkspacePermissionTab.Groups,
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grupo%20de%20eventos',
   },
   {
     id: 'major-events',
@@ -36,7 +36,7 @@ export const workspaceNavItems = [
     description: 'Organize eventos maiores compostos por várias atividades.',
     icon: 'festival',
     permissionTab: WorkspacePermissionTab.MajorEvents,
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grande%20evento',
   },
   {
     id: 'divider',
