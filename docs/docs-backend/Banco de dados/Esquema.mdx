@@ -2,9 +2,19 @@ import MermaidWithActions from '@site/src/components/MermaidWithActions';
 
 # Esquema
 
-{/* Diagrama gerado automaticamente com base nos arquivos Prisma em apps/backend/prisma/schema durante builds confiáveis. Não altere manualmente o bloco entre DATABASE_DIAGRAM_START e DATABASE_DIAGRAM_END. */}
+O esquema é definido pelo Prisma, que é a ferramenta de ORM (Object-Relational Mapping) utilizada no backend.
+
+Ele é responsável por mapear as tabelas do banco de dados para objetos no código, facilitando a manipulação dos dados e garantindo a integridade do banco.
+
+Por conta disso, alterações no esquema do banco de dados não podem ser feitas manualmente, mas sim através da modificação dos arquivos de esquema do Prisma localizados em `apps/backend/prisma/schema` e por meio de migrações.
+
+O diagrama a seguir é apenas para referência visual.
+
+{/* Diagrama gerado automaticamente com base nos arquivos Prisma em apps/backend/prisma/schema em builds da main. */}
+{/* Não altere manualmente o bloco entre DATABASE_DIAGRAM_START e DATABASE_DIAGRAM_END. */}
 
 {/* DATABASE_DIAGRAM_START */}
+
 <MermaidWithActions
   value={`
 erDiagram
@@ -13,4 +23,5 @@ erDiagram
   }
 `}
 />
+
 {/* DATABASE_DIAGRAM_END */}
