@@ -1,3 +1,15 @@
+<mat-toolbar>
+  <a matIconButton routerLink="/menu" aria-label="Voltar ao menu" matTooltip="Voltar ao menu">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <lib-cacic-logo
+    routerLink="/"
+    [fillColor]="fillColor()"
+    aria-label="Voltar ao início"
+    matTooltip="Voltar ao início"
+    role="link" />
+</mat-toolbar>
+
 <main class="validation-page">
   <header class="page-header">
     <h1>Validar certificado</h1>
