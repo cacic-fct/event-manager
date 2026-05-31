@@ -51,7 +51,11 @@ export interface WorkspaceAttendanceScannerDialogData {
 
     <mat-dialog-content>
       <section class="scanner-layout">
-        <lib-aztec-scanner title="Escanear presença" [acceptedPrefixes]="['user:']" (scan)="handleScan($event)" />
+        <lib-aztec-scanner
+          title="Escanear presença"
+          [acceptedPrefixes]="['user:']"
+          (scan)="handleScan($event)"
+          [formats]="['Aztec']" />
 
         <form class="manual-form" [formGroup]="manualForm" (ngSubmit)="registerManualAttendance()">
           <mat-form-field>
