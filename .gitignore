@@ -1,75 +1,71 @@
-*~
-*.sw[mnpcod]
-.tmp
-*.tmp
-*.tmp.*
-*.sublime-project
-*.sublime-workspace
-.DS_Store
-Thumbs.db
-UserInterfaceState.xcuserstate
-$RECYCLE.BIN/
+# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-*.log
-log.txt
-npm-debug.log*
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+.env
 
-.ionic
-.sass-cache
-.sourcemaps
-.versions
-coverage
-dist
-platforms
-plugins
-
-dist/
-bazel-out
-integration/bazel/bazel-*
-*.log
-
-# Ignore npm/yarn debug log
+# Node
+node_modules/
 npm-debug.log
 yarn-error.log
 
-# build-analytics
-.build-analytics
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
 
-# User specific bazel settings
-.bazelrc.user
-
-# User specific ng-dev settings
-.ng-dev.user*
-
-.notes.md
-baseline.json
-
-.angular
-
-# Firebase
-.firebase
-.runtimeconfig.json
-firestore.rules
-emulator-data
-firebase-export-*
-storage.rules
-
-# VSCode
-.vscode/**/*
-
-# Allow shared settings
+# Visual Studio Code
+.vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+.history/*
 
-# Ignore .history for the xyz.local-history VSCode extension
-**/.history
+# Miscellaneous
+/.angular/cache
+.sass-cache/
+/connect.lock
+/coverage
+/libpeerconnection.log
+testem.log
+/typings
 
-.env
+# System files
+.DS_Store
+Thumbs.db
 
-.nx
+
+
 .nx/cache
 .nx/workspace-data
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
 
-node_modules/
+# Rust
+debug/
+target/
+*.pdb
+**/*.rs.bk
+Cargo.lock
+
+tmp/
+.angular
+
+
+storybook-static
+documentation.json
+temp/
+.claude/worktrees
+.claude/settings.local.json
+/generated/prisma
+apps/backend/prisma/schema/database-erd.md
+
+__screenshots__/
