@@ -61,7 +61,10 @@ const config: Config = {
       admonitions: false,
       headingIds: false,
     },
+    mermaid: true,
   },
+
+  themes: ['@docusaurus/theme-mermaid'],
 
   presets: [
     [
@@ -190,6 +193,9 @@ const config: Config = {
 
       searchPagePath: 'busca',
     },
+    mermaid: {
+      theme: { light: 'neutral', dark: 'forest' },
+    },
   } satisfies Preset.ThemeConfig,
 
   plugins: [
@@ -200,7 +206,7 @@ const config: Config = {
         path: 'docs-manual',
         routeBasePath: 'Manual',
         sidebarPath: './sidebars/manual.ts',
-        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-backend/',
+        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-manual/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,
       },
