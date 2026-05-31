@@ -84,7 +84,7 @@ Essa medida busca evitar:
 
    Projetos paralelos enfraquecem o desenvolvimento do projeto principal, pois dispersam esforços de manutenção, fragmentam o conhecimento acumulado e podem resultam na criação de soluções que concorrem para resolver os mesmos problemas! Ao invés de ser promovida a reescrita integral do sistema, o código-fonte do CACiC Event Manager deve ser continuamente aprimorado e mantido em uma base de código já consolidada, de modo a beneficiar a comunidade acadêmica de forma mais eficiente e sustentável.
 
-   O tempo e os recursos que seriam empregados na reconstrução completa do sistema podem ser direcionados à implementação de melhorias, correção de defeitos, aprimoramento da documentação e desenvolvimento de novas funcionalidades. Além disso, ao concentrar seus esforços na evolução do projeto existente, o desenvolvedor reduz a carga e duplicidade de trabalho e pode dedicar maior atenção a outras atividades acadêmicas, como pesquisa, ensino e extensão.
+   O tempo e os recursos que seriam empregados na reconstrução completa do sistema podem ser direcionados à implementação de melhorias, correção de defeitos, aprimoramento da documentação e desenvolvimento de novas funcionalidades. Além disso, ao concentrar seus esforços na evolução do projeto existente, o desenvolvedor reduz a carga e a duplicidade de trabalho e pode dedicar maior atenção a outras atividades acadêmicas, como pesquisa, ensino e extensão.
 
    Dessa forma, visando a otimização dos recursos disponíveis, a preservação do conhecimento institucional e o fortalecimento da colaboração entre estudantes, as contribuições devem sempre serem incorporadas ao CACiC Event Manager, em vez de serem desenvolvidas em projetos paralelos com objetivos equivalentes.
 
