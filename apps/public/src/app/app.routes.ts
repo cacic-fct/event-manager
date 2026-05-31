@@ -135,6 +135,10 @@ export const appRoutes: Route[] = [
     redirectTo: 'about',
   },
   {
+    path: 'help',
+    loadComponent: () => import('./help/help').then((m) => m.Help),
+  },
+  {
     path: 'validate',
     loadComponent: () => import('./certificate-validation/certificate-validation').then((m) => m.CertificateValidation),
   },
