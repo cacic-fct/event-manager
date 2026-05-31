@@ -1,6 +1,6 @@
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
 import { NotFoundException } from '@nestjs/common';
-import { subMonths } from 'date-fns';
+import { startOfDay, subMonths } from 'date-fns';
 import { Prisma } from '@prisma/client';
 import { EventType } from '@cacic-fct/shared-data-types';
 import { Public } from '../auth/decorators/public.decorator';
@@ -112,8 +112,15 @@ export class PublicEventsResolver {
     @Args('startDateUntil', { type: () => Date, nullable: true })
     startDateUntil?: Date,
   ) {
-    const minimumStartDate = subMonths(new Date(), PublicEventsResolver.calendarPastLimitMonths);
+    const minimumStartDate = startOfDay(subMonths(new Date(), PublicEventsResolver.calendarPastLimitMonths));
     const normalizedQuery = query?.trim();
+
+    if (startDateFrom && startDateFrom < minimumStartDate) {
+      throw new NotFoundException(
+        'Event is out of bounds for calendar listing. Minimum start date is ' + minimumStartDate.toISOString(),
+      );
+    }
+
     const effectiveStartDate = startDateFrom && startDateFrom > minimumStartDate ? startDateFrom : minimumStartDate;
 
     const startDateFilter: Prisma.DateTimeFilter = {
