@@ -34,3 +34,26 @@
   --ifm-color-primary-lightest: #7bd9ff;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+.mermaidWithActions {
+  margin: 1.5rem 0;
+}
+
+.mermaidWithActions__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.mermaidWithActions__diagram {
+  overflow-x: auto;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.mermaidWithActions__diagram svg {
+  max-width: none;
+}
