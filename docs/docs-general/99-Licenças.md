@@ -48,7 +48,7 @@ O CACiC Event Manager é distribuído pelo CACiC (CA ou entidade) sob um acordo 
       1. O CA deverá fornecer a Yudi uma cópia integral e atualizada do código-fonte do CACiC Event Manager até a data efetiva do cancelamento;
       1. O CA deverá preservar o histórico público do projeto e fornecer meios razoáveis para sua continuidade;
       1. O CA compromete-se a não utilizar o código-fonte do CACiC Event Manager, ou partes substanciais dele, em projetos futuros sem autorização de Yudi;
-      1. O CA compromete-se a não promover, por período de 2 anos após o cancelamento do acordo, o desenvolvimento e o uso de softwares derivados ou substancialmente semelhantes ao CACiC Event Manager por integrantes de cursos atendidos pela entidade, inclusive quando tal desenvolvimento ou uso tiver por finalidade substituir ou fragmentar o projeto principal.
+      1. O CA compromete-se a não promover, enquanto os termos estiverem vigentes e por até um período de 2 anos após o cancelamento do acordo, o desenvolvimento e o uso de softwares derivados ou substancialmente semelhantes ao CACiC Event Manager por integrantes de cursos atendidos pela entidade, inclusive quando tal desenvolvimento ou uso tiver por finalidade substituir ou fragmentar o projeto principal.
 
 1. Em caso de violação dos termos deste acordo pelo CACiC, Yudi poderá romper o acordo imediatamente e requerer a remoção permanente de conteúdos relacionados ao CACiC Event Manager.
 
