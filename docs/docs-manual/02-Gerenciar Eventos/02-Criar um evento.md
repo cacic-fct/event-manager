@@ -94,7 +94,7 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
 
 - **Disponibilizar lista de inscritos aos ministrantes**
 
-  - Se na página de "informações do organizador" será exibido um botão para download da lista de inscritos do evento em cSV. O arquivo baixado conterá o nome, email e CPF mascarado de cada inscrito.
+  - Se na página de "informações do organizador" será exibido um botão para download da lista de inscritos do evento em CSV. O arquivo baixado conterá o nome, email e CPF mascarado de cada inscrito.
 
 - **Visível para usuários**
 
