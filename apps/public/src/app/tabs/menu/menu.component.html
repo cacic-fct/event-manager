@@ -20,10 +20,14 @@
             <span matListItemTitle>{{ user.name }}</span>
             @if (authService.isAuthenticated()) {
               <ng-container matListItemMeta>
-                <a matIconButton aria-label="Editar conta" href="https://account.cacic.dev.br/app/">
+                <a
+                  matIconButton
+                  aria-label="Editar informações da conta"
+                  href="https://account.cacic.dev.br/app/"
+                  matTooltip="Editar informações da conta">
                   <mat-icon>person_edit</mat-icon>
                 </a>
-                <button matIconButton aria-label="Sair da conta" (click)="authService.logout()">
+                <button matIconButton aria-label="Sair da conta" (click)="authService.logout()" matTooltip="Sair">
                   <mat-icon>logout</mat-icon>
                 </button>
               </ng-container>

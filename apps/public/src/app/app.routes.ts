@@ -141,10 +141,12 @@ export const appRoutes: Route[] = [
   {
     path: 'validate',
     loadComponent: () => import('./certificate-validation/certificate-validation').then((m) => m.CertificateValidation),
+    title: 'Validar certificado',
   },
   {
     path: 'validate/:certificateId',
     loadComponent: () => import('./certificate-validation/certificate-validation').then((m) => m.CertificateValidation),
+    title: 'Validar certificado',
   },
   {
     path: 'validar',
