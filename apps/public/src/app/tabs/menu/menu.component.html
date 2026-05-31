@@ -1,4 +1,8 @@
-<div class="global-container">
+<mat-toolbar>
+  <lib-cacic-logo [fillColor]="fillColor()" />
+</mat-toolbar>
+
+<main class="global-container">
   <section>
     <div>
       @if (displayUser(); as user) {
@@ -60,7 +64,6 @@
     }
 
     @if (canCollectAttendances()) {
-      <mat-divider />
       <mat-nav-list>
         <h3 matSubheader>Colaboração</h3>
         <a mat-list-item routerLink="/attendance/collect">
@@ -68,7 +71,6 @@
           <span matListItemTitle>Coletar presenças</span>
         </a>
       </mat-nav-list>
-      <mat-divider />
     }
 
     <mat-nav-list>
@@ -90,4 +92,4 @@
       </mat-nav-list>
     }
   </section>
-</div>
+</main>
