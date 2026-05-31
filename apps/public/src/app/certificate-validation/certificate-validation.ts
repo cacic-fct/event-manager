@@ -53,6 +53,9 @@ export class CertificateValidation {
   private readonly auth = inject(AuthService);
   private readonly isAuthenticated = this.auth.isAuthenticated;
   readonly emoji = inject(EmojiService);
+  private platformId = inject(PLATFORM_ID);
+  private isDarkSignal = signal(false);
+  fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
 
   readonly certificateIdControl = new FormControl('', {
     nonNullable: true,
@@ -110,6 +113,17 @@ export class CertificateValidation {
         takeUntilDestroyed(),
       )
       .subscribe((state) => this.state.set(state));
+
+    if (isPlatformBrowser(this.platformId)) {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+      this.isDarkSignal.set(media.matches);
+
+      media.addEventListener('change', (e) => {
+        this.isDarkSignal.set(e.matches);
+        console.log('Dark mode changed:', e.matches);
+      });
+    }
   }
 
   submit(): void {

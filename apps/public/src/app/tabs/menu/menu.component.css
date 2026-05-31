@@ -17,5 +17,9 @@
   height: 32px !important;
   font-size: 32px !important;
   border-radius: 50%;
-  /* background-color: #ccc; */
+}
+
+lib-cacic-logo {
+  height: 50px;
+  margin-top: 0.5rem;
 }
