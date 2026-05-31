@@ -30,7 +30,7 @@
           referrerpolicy="no-referrer" />
       </div>
       <h1>{{ user?.name || 'Desconhecido' }}</h1>
-      <h2>{{ roleLine(user?.unespRole) }}</h2>
+      <h2>{{ formatRole() }}</h2>
     </mat-card-header>
 
     <!-- eslint-disable-next-line @angular-eslint/template/alt-text -->

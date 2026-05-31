@@ -36,6 +36,33 @@ export class Wallet {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly offlineSnapshot = signal<OfflineUserSnapshot | null>(null);
 
+  // TODO: Move this to a shared lib
+  private readonly roleLabels: Record<string, string> = {
+    'aluno-pos-graduacao': 'Aluno da pós-graduação',
+    egresso: 'Egresso',
+    professor: 'Professor',
+    'professor-substituto': 'Professor substituto',
+    'servidor-tecnico-administrativo': 'Servidor técnico-administrativo',
+    external: 'Externo',
+  };
+
+  private readonly graduationCourses: Record<string, string> = {
+    '12': 'Aluno de Ciência da Computação',
+  };
+
+  readonly formatRole = computed(() => {
+    const user = this.cardUser();
+
+    const role = Array.isArray(user?.unespRole) ? user.unespRole[0] : user?.unespRole;
+
+    if (role === 'aluno-graduacao') {
+      const courseCode = user?.enrollmentNumber?.substring(2, 4);
+
+      return this.graduationCourses[courseCode ?? ''] ?? 'Aluno da Graduação';
+    }
+
+    return this.roleLabels[role ?? ''] ?? role?.toString() ?? '';
+  });
   private get isBrowser(): boolean {
     return isPlatformBrowser(this.platformId);
   }
@@ -69,6 +96,7 @@ export class Wallet {
         picture: typeof user.claims?.['picture'] === 'string' ? user.claims['picture'] : null,
         unespRole: user.claims?.['unesp_role'] ?? null,
         identityDocument: typeof user.claims?.identity_document === 'string' ? user.claims.identity_document : null,
+        enrollmentNumber: user.claims?.enrollment_number ?? null,
       };
     }
 
