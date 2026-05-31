@@ -16,7 +16,7 @@ describe('DashboardInsightsService generation', () => {
       'major-event#edit',
       'certificate#edit',
       'merge-candidate#read',
-      'validate-receipt:read',
+      'validate-receipt#read',
       'person#manage',
     ]);
     prisma.event.count.mockResolvedValue(10);
@@ -193,7 +193,7 @@ describe('DashboardInsightsService generation', () => {
       ]),
     );
     expect(redis.set).toHaveBeenCalledWith(
-      'dashboard:workspace:v4:certificate#edit,event#edit,major-event#edit,merge-candidate#read,person#manage,validate-receipt:read',
+      'dashboard:workspace:v4:certificate#edit,event#edit,major-event#edit,merge-candidate#read,person#manage,validate-receipt#read',
       expect.stringContaining('"eventsCount":10'),
       'EX',
       300,

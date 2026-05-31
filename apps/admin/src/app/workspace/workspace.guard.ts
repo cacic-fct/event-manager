@@ -32,5 +32,5 @@ export const canValidateReceiptsGuard: CanMatchFn = async () => {
   }
 
   await permissions.evaluateWorkspacePermissions();
-  return permissions.has('validate-receipt:read');
+  return permissions.has('validate-receipt#read');
 };

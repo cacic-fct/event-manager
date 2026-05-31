@@ -131,7 +131,8 @@ export class DashboardInsightsService {
     const canManageMajorEvents = permissionSet.has('major-event#edit');
     const canManageCertificates = permissionSet.has('certificate#edit');
     const canManageMergeCandidates = permissionSet.has('merge-candidate#read');
-    const canValidateReceipts = permissionSet.has('validate-receipt:read') || permissionSet.has('validate-receipt:edit');
+    const canValidateReceipts =
+      permissionSet.has('validate-receipt#read') || permissionSet.has('validate-receipt#edit');
     const shouldBuildInconsistencies = canManageEvents || canManageCertificates;
 
     const [

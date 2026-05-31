@@ -11,7 +11,7 @@ const workspacePermissions = [
   'person#read',
   'subscription#read',
   'user#read',
-  'validate-receipt:read',
+  'validate-receipt#read',
 ] as const;
 
 export const appRoutes: Route[] = [

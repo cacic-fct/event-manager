@@ -12,6 +12,6 @@ export const DASHBOARD_PERMISSION_REQUIREMENTS = [
   'major-event#edit',
   'certificate#edit',
   'merge-candidate#read',
-  'validate-receipt:read',
-  'validate-receipt:edit',
+  'validate-receipt#read',
+  'validate-receipt#edit',
 ] as const;

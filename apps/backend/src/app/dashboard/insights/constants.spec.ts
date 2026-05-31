@@ -25,8 +25,8 @@ describe('dashboard insights constants', () => {
       'major-event#edit',
       'certificate#edit',
       'merge-candidate#read',
-      'validate-receipt:read',
-      'validate-receipt:edit',
+      'validate-receipt#read',
+      'validate-receipt#edit',
     ]);
   });
 });

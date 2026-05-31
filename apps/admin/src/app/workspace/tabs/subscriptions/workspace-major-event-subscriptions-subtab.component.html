@@ -40,7 +40,7 @@
         mat-button
         [routerLink]="receiptValidationLink()"
         [disabled]="
-          !permissions.has('validate-receipt:read') ||
+          !permissions.has('validate-receipt#read') ||
           !workspace.majorEventForm.controls.majorEventId.value ||
           pendingReceiptsCount() === 0
         ">

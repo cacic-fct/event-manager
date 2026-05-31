@@ -2,8 +2,8 @@ import { Buffer } from 'buffer';
 
 export const MAJOR_EVENT_RECEIPTS_QUEUE = 'major-event-receipts';
 export const MAX_RECEIPT_FILE_SIZE_BYTES = 15 * 1024 * 1024;
-export const RECEIPT_ADMIN_PERMISSION = 'validate-receipt:read';
-export const RECEIPT_ADMIN_EDIT_PERMISSION = 'validate-receipt:edit';
+export const RECEIPT_ADMIN_PERMISSION = 'validate-receipt#read';
+export const RECEIPT_ADMIN_EDIT_PERMISSION = 'validate-receipt#edit';
 
 export interface UploadedReceiptFile {
   buffer: Buffer;
