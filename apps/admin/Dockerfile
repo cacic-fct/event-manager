@@ -2,7 +2,9 @@
 FROM oven/bun:1-alpine AS bun
 
 FROM node:22-alpine AS base
-ENV BUN_INSTALL=/usr/local
+ENV BUN_INSTALL=/usr/local \
+    PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_SKIP_CHROME_DOWNLOAD=true
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /workspace
 
@@ -36,7 +38,7 @@ COPY package.json bun.lock ./
 COPY .npmrc ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKEN,required=true \
-    bun install --frozen-lockfile
+    bun install --frozen-lockfile --production
 
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production \

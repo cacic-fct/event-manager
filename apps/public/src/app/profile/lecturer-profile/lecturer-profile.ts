@@ -44,6 +44,7 @@ export class LecturerProfileComponent {
   private readonly snackBar = inject(MatSnackBar);
   readonly isEditing = signal(false);
   readonly isSaving = signal(false);
+  private readonly savedProfile = signal<LecturerProfile | null | undefined>(undefined);
   readonly userPicture = computed(() => this.stringClaim('picture'));
   readonly fallbackName = computed(() => this.stringClaim('name') ?? this.auth.user()?.preferredUsername ?? '');
 
@@ -71,6 +72,16 @@ export class LecturerProfileComponent {
     ),
     { initialValue: { status: 'loading' } satisfies LecturerProfileState },
   );
+
+  readonly profilePreview = computed(() => {
+    const currentState = this.state();
+    if (currentState.status !== 'ready') {
+      return null;
+    }
+
+    const savedProfile = this.savedProfile();
+    return savedProfile === undefined ? currentState.profile : savedProfile;
+  });
 
   edit(): void {
     if (!this.form.controls.displayName.value.trim()) {
@@ -102,6 +113,7 @@ export class LecturerProfileComponent {
     this.isSaving.set(true);
     this.api.upsertCurrentUserLecturerProfile(input).subscribe({
       next: (profile) => {
+        this.savedProfile.set(profile);
         this.populateForm(profile);
         this.isEditing.set(false);
         this.isSaving.set(false);

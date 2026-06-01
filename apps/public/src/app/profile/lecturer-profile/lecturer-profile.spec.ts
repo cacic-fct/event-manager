@@ -18,13 +18,21 @@ const profile: LecturerProfile = {
   whatsapp: '+5518999999999',
 };
 
+const updatedProfile: LecturerProfile = {
+  ...profile,
+  displayName: 'Grace Brewster Hopper',
+  biography: 'Criadora de linguagens e educadora.',
+  email: 'hopper@example.com',
+  whatsapp: '+5511888888888',
+};
+
 describe('LecturerProfileComponent', () => {
   let fixture: ComponentFixture<LecturerProfileComponent>;
   let component: LecturerProfileComponent;
   const upsertCurrentUserLecturerProfile = vi.fn();
 
   beforeEach(async () => {
-    upsertCurrentUserLecturerProfile.mockReturnValue(of(profile));
+    upsertCurrentUserLecturerProfile.mockReturnValue(of(updatedProfile));
 
     await TestBed.configureTestingModule({
       imports: [LecturerProfileComponent],
@@ -85,5 +93,28 @@ describe('LecturerProfileComponent', () => {
         whatsapp: '+5518999999999',
       }),
     );
+  });
+
+  it('updates the read-only preview after saving edited data', async () => {
+    component.edit();
+    component.form.setValue({
+      displayName: 'Grace Brewster Hopper',
+      biography: 'Criadora de linguagens e educadora.',
+      publishGoogleUserPicture: true,
+      email: 'hopper@example.com',
+      whatsapp: '+55 11 88888-8888',
+    });
+
+    component.save();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(component.isEditing()).toBe(false);
+    expect(component.profilePreview()).toEqual(updatedProfile);
+    expect(compiled.textContent).toContain('Grace Brewster Hopper');
+    expect(compiled.textContent).toContain('Criadora de linguagens e educadora.');
+    expect(compiled.textContent).toContain('hopper@example.com');
   });
 });

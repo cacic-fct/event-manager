@@ -631,9 +631,8 @@ export class WorkspaceCertificatesService {
 
     for (const definition of this.certificateFieldDefinitions()) {
       const value = this.normalizeCertificateFieldValue(values[definition.key]);
-      const defaultValue = this.normalizeCertificateFieldValue(definition.defaultValue);
 
-      if (value && value !== defaultValue) {
+      if (value) {
         certificateFields[definition.key] = value;
       }
     }
