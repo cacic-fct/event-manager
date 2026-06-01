@@ -1,9 +1,11 @@
 # syntax=docker/dockerfile:1
 FROM oven/bun:1 AS bun
 
-FROM node:22-trixie-slim AS base
+FROM node:26-trixie-slim AS base
 ENV BUN_INSTALL=/usr/local \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_SKIP_CHROME_DOWNLOAD=true
 
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 
