@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
-import { AttendancesApiService, LecturerProfile } from '../attendances-api.service';
+import { AttendancesApiService, LecturerProfile } from '../attendances/attendances-api.service';
 import { LecturerProfileComponent } from './lecturer-profile';
 
 const profile: LecturerProfile = {
