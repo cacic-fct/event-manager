@@ -11,4 +11,9 @@ export const routes: Route[] = [
     title: 'Crachá',
     loadComponent: () => import('./wallet/wallet').then((m) => m.Wallet),
   },
+  {
+    path: 'lecturer-profile',
+    title: 'Perfil de palestrante',
+    loadComponent: () => import('./lecturer-profile/lecturer-profile').then((m) => m.LecturerProfileComponent),
+  },
 ];
