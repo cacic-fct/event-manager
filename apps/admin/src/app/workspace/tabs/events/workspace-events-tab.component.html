@@ -30,23 +30,26 @@
               {{ eventItem.startDate | date: 'short' }} · {{ describeEventType(eventItem.type) }} ·
               {{ eventItem.majorEvent?.name }}
             </span>
-            <button
-              matIconButton
-              type="button"
-              aria-label="Editar evento"
-              matTooltip="Editar"
-              (click)="$event.stopPropagation(); workspace.selectEvent(eventItem)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button
-              matIconButton
-              type="button"
-              aria-label="Excluir evento"
-              matTooltip="Excluir"
-              [disabled]="!permissions.canDelete('event#delete')"
-              (click)="$event.stopPropagation(); workspace.deleteEventFromList(eventItem)">
-              <mat-icon>delete</mat-icon>
-            </button>
+            @if (canEditEvent(eventItem)) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Editar evento"
+                matTooltip="Editar"
+                (click)="$event.stopPropagation(); workspace.selectEvent(eventItem)">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+            @if (canDeleteEvent(eventItem)) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Excluir evento"
+                matTooltip="Excluir"
+                (click)="$event.stopPropagation(); workspace.deleteEventFromList(eventItem)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            }
           </mat-list-item>
         } @empty {
           <mat-list-item>
@@ -81,14 +84,12 @@
             <mat-icon>restart_alt</mat-icon>
             Limpar
           </button>
-          <button
-            mat-flat-button
-            type="button"
-            (click)="workspace.saveEvent()"
-            [disabled]="workspace.loading() || !permissions.canEdit('event#edit')">
-            <mat-icon>save</mat-icon>
-            Salvar
-          </button>
+          @if (canEditEvent(workspace.selectedEvent())) {
+            <button mat-flat-button type="button" (click)="workspace.saveEvent()" [disabled]="workspace.loading()">
+              <mat-icon>save</mat-icon>
+              Salvar
+            </button>
+          }
         </div>
       </div>
 
@@ -143,14 +144,12 @@
         <section class="surface field-group" [formGroup]="workspace.eventGroupLookupForm">
           <div class="surface-heading">
             <h4>Grupo do evento</h4>
-            <button
-              mat-button
-              type="button"
-              [disabled]="!permissions.canEdit('event#edit')"
-              (click)="workspace.clearEventGroupFromEvent()">
-              <mat-icon>link_off</mat-icon>
-              Remover vínculo
-            </button>
+            @if (canEditEvent(workspace.selectedEvent())) {
+              <button mat-button type="button" (click)="workspace.clearEventGroupFromEvent()">
+                <mat-icon>link_off</mat-icon>
+                Remover vínculo
+              </button>
+            }
           </div>
 
           <div class="compact-form">
@@ -166,14 +165,12 @@
 
           <div class="inline-list">
             @for (eventGroup of workspace.eventGroupSearchResults(); track eventGroup.id) {
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="!permissions.canEdit('event#edit')"
-                (click)="workspace.assignEventGroupToEvent(eventGroup)">
-                <mat-icon>add_link</mat-icon>
-                Usar {{ eventGroup.name }} {{ eventGroup.createdAt }}
-              </button>
+              @if (canEditEvent(workspace.selectedEvent())) {
+                <button mat-stroked-button type="button" (click)="workspace.assignEventGroupToEvent(eventGroup)">
+                  <mat-icon>add_link</mat-icon>
+                  Usar {{ eventGroup.name }} {{ eventGroup.createdAt }}
+                </button>
+              }
             } @empty {
               <span class="empty-note">Nenhum grupo listado.</span>
             }
@@ -311,18 +308,18 @@
             <mat-form-field>
               <mat-label>Código da presença on-line</mat-label>
               <input matInput formControlName="onlineAttendanceCode" />
-              <button
-                matIconButton
-                matSuffix
-                type="button"
-                aria-label="Gerar código aleatório"
-                matTooltip="Aleatorizar"
-                [disabled]="
-                  !workspace.eventForm.controls.isOnlineAttendanceAllowed.value || !permissions.canEdit('event#edit')
-                "
-                (click)="workspace.randomizeOnlineAttendanceCode()">
-                <mat-icon>casino</mat-icon>
-              </button>
+              @if (canEditEvent(workspace.selectedEvent())) {
+                <button
+                  matIconButton
+                  matSuffix
+                  type="button"
+                  aria-label="Gerar código aleatório"
+                  matTooltip="Aleatorizar"
+                  [disabled]="!workspace.eventForm.controls.isOnlineAttendanceAllowed.value"
+                  (click)="workspace.randomizeOnlineAttendanceCode()">
+                  <mat-icon>casino</mat-icon>
+                </button>
+              }
             </mat-form-field>
 
             <mat-form-field>
@@ -353,51 +350,57 @@
             <mat-icon>person_search</mat-icon>
             Buscar
           </button>
-          <button
-            mat-button
-            type="button"
-            [disabled]="!permissions.canEdit('event-lecturer#edit', 'person#edit')"
-            (click)="workspace.createAndAddLecturer()">
-            <mat-icon>person_add</mat-icon>
-            Criar pessoa
-          </button>
+          @if (canEditSelectedEventRelation('event-lecturer#edit') && permissions.canEdit('person#edit')) {
+            <button mat-button type="button" (click)="workspace.createAndAddLecturer()">
+              <mat-icon>person_add</mat-icon>
+              Criar pessoa
+            </button>
+          }
         </form>
 
         <div class="inline-list">
           @for (candidate of workspace.lecturerSearchResults(); track candidate.id) {
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="!permissions.canEdit('event-lecturer#edit')"
-              (click)="workspace.addLecturer(candidate)">
-              <mat-icon>add</mat-icon>
-              <span class="person-choice">
-                <span>Adicionar {{ candidate.name }}</span>
-                <small>
-                  {{ candidate.identityDocument || 'Sem documento' }} ·
-                  {{ candidate.email || 'Sem e-mail principal' }}
-                </small>
-              </span>
-            </button>
+            @if (canEditSelectedEventRelation('event-lecturer#edit')) {
+              <button mat-stroked-button type="button" (click)="workspace.addLecturer(candidate)">
+                <mat-icon>add</mat-icon>
+                <span class="person-choice">
+                  <span>Adicionar {{ candidate.name }}</span>
+                  <small>
+                    {{ candidate.identityDocument || 'Sem documento' }} ·
+                    {{ candidate.email || 'Sem e-mail principal' }}
+                  </small>
+                </span>
+              </button>
+            }
           } @empty {
-            <span class="empty-note">Busque uma pessoa pelo nome.</span>
+            <span class="empty-note">Busque uma pessoa pelo nome, e-mail ou CPF.</span>
           }
         </div>
 
+        @if (workspace.eventForm.controls.eventGroupId.value && workspace.suggestedGroupLecturers().length > 0) {
+          <div class="inline-list">
+            @for (candidate of workspace.suggestedGroupLecturers(); track candidate.id) {
+              @if (canEditSelectedEventRelation('event-lecturer#edit')) {
+                <button mat-stroked-button type="button" (click)="workspace.addLecturer(candidate)">
+                  <mat-icon>group_add</mat-icon>
+                  <span class="person-choice">
+                    <span>Sugerir {{ candidate.name }}</span>
+                    <small>Ministrante em outro evento do grupo</small>
+                  </span>
+                </button>
+              }
+            }
+          </div>
+        }
+
         <div class="inline-list">
           @for (lecturer of workspace.eventLecturers(); track lecturer.personId) {
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="
-                workspace.selectedEvent()
-                  ? !permissions.canDelete('event-lecturer#delete')
-                  : !permissions.canEdit('event-lecturer#edit')
-              "
-              (click)="workspace.removeLecturer(lecturer.personId)">
-              <mat-icon>close</mat-icon>
-              {{ lecturer.name }}
-            </button>
+            @if (canRemoveSelectedEventRelation('event-lecturer#delete')) {
+              <button mat-stroked-button type="button" (click)="workspace.removeLecturer(lecturer.personId)">
+                <mat-icon>close</mat-icon>
+                {{ lecturer.name }}
+              </button>
+            }
           } @empty {
             <span class="empty-note">Nenhum ministrante vinculado.</span>
           }
@@ -423,35 +426,31 @@
 
         <div class="inline-list">
           @for (candidate of workspace.attendanceCollectorSearchResults(); track candidate.id) {
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="!permissions.canEdit('event#edit')"
-              (click)="workspace.addAttendanceCollector(candidate)">
-              <mat-icon>add</mat-icon>
-              <span class="person-choice">
-                <span>Adicionar {{ candidate.name }}</span>
-                <small>
-                  {{ candidate.identityDocument || 'Sem documento' }} ·
-                  {{ candidate.email || 'Sem e-mail principal' }}
-                </small>
-              </span>
-            </button>
+            @if (canEditSelectedEventRelation('event#edit')) {
+              <button mat-stroked-button type="button" (click)="workspace.addAttendanceCollector(candidate)">
+                <mat-icon>add</mat-icon>
+                <span class="person-choice">
+                  <span>Adicionar {{ candidate.name }}</span>
+                  <small>
+                    {{ candidate.identityDocument || 'Sem documento' }} ·
+                    {{ candidate.email || 'Sem e-mail principal' }}
+                  </small>
+                </span>
+              </button>
+            }
           } @empty {
-            <span class="empty-note">Busque uma pessoa pelo nome.</span>
+            <span class="empty-note">Busque uma pessoa pelo nome, e-mail ou CPF.</span>
           }
         </div>
 
         <div class="inline-list">
           @for (collector of workspace.eventAttendanceCollectors(); track collector.personId) {
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="!permissions.canEdit('event#edit')"
-              (click)="workspace.removeAttendanceCollector(collector.personId)">
-              <mat-icon>close</mat-icon>
-              {{ collector.name }}
-            </button>
+            @if (canRemoveSelectedEventRelation('event#edit')) {
+              <button mat-stroked-button type="button" (click)="workspace.removeAttendanceCollector(collector.personId)">
+                <mat-icon>close</mat-icon>
+                {{ collector.name }}
+              </button>
+            }
           } @empty {
             <span class="empty-note">Nenhum coletor vinculado.</span>
           }

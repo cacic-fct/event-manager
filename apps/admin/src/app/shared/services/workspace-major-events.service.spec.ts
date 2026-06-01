@@ -12,6 +12,7 @@ describe('WorkspaceMajorEventsService', () => {
   let lastPayload: MajorEventInput | null;
   let api: {
     createMajorEvent: ReturnType<typeof vi.fn>;
+    getMajorEvent: ReturnType<typeof vi.fn>;
     updateMajorEvent: ReturnType<typeof vi.fn>;
     listMajorEvents: ReturnType<typeof vi.fn>;
   };
@@ -23,6 +24,7 @@ describe('WorkspaceMajorEventsService', () => {
         lastPayload = payload;
         return of(createMajorEvent(payload));
       }),
+      getMajorEvent: vi.fn(),
       updateMajorEvent: vi.fn((id: string, payload: MajorEventInput) => {
         lastPayload = payload;
         return of(createMajorEvent({ ...payload, id }));
@@ -34,7 +36,7 @@ describe('WorkspaceMajorEventsService', () => {
       providers: [
         WorkspaceMajorEventsService,
         { provide: MajorEventApiService, useValue: api },
-        { provide: EventApiService, useValue: {} },
+        { provide: EventApiService, useValue: { listEvents: vi.fn(() => of([])) } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
       ],
@@ -77,6 +79,61 @@ describe('WorkspaceMajorEventsService', () => {
       ],
     });
   });
+
+  it('loads the stored single price into the edit form', async () => {
+    api.getMajorEvent.mockReturnValue(
+      of(
+        createMajorEvent({
+          id: 'major-event-1',
+          name: 'SECOMPP26',
+          emoji: '😀',
+          startDate: '2026-05-15T03:00:00.000Z',
+          endDate: '2026-05-20T03:00:00.000Z',
+          isPaymentRequired: true,
+          price: {
+            type: 'SINGLE',
+            tiers: [{ name: 'Preço único', value: 3000 }],
+          },
+        }),
+      ),
+    );
+
+    await service.pickMajorEventById('major-event-1');
+
+    expect(service.majorEventForm.controls.priceType.value).toBe('SINGLE');
+    expect(service.priceTiers.length).toBe(1);
+    expect(service.priceTiers.at(0).getRawValue()).toEqual({ name: 'Preço único', value: '30.00' });
+  });
+
+  it('loads the stored tiered prices into the edit form', async () => {
+    api.getMajorEvent.mockReturnValue(
+      of(
+        createMajorEvent({
+          id: 'major-event-1',
+          name: 'SECOMPP26',
+          emoji: '😀',
+          startDate: '2026-05-15T03:00:00.000Z',
+          endDate: '2026-05-20T03:00:00.000Z',
+          isPaymentRequired: true,
+          price: {
+            type: 'TIERED',
+            tiers: [
+              { name: 'Aluno', value: 3000 },
+              { name: 'Professor', value: 6050 },
+            ],
+          },
+        }),
+      ),
+    );
+
+    await service.pickMajorEventById('major-event-1');
+
+    expect(service.majorEventForm.controls.priceType.value).toBe('TIERED');
+    expect(service.priceTiers.getRawValue()).toEqual([
+      { name: 'Aluno', value: '30.00' },
+      { name: 'Professor', value: '60.50' },
+    ]);
+  });
 });
 
 function createMajorEvent(input: MajorEventInput): MajorEvent {
@@ -100,7 +157,19 @@ function createMajorEvent(input: MajorEventInput): MajorEvent {
     shouldIssueCertificateForNonSubscribedAttendees: input.shouldIssueCertificateForNonSubscribedAttendees ?? false,
     additionalPaymentInfo: input.additionalPaymentInfo,
     paymentInfo: null,
-    majorEventPrices: [],
+    majorEventPrices: input.price
+      ? [
+          {
+            id: 'major-event-price-1',
+            type: input.price.type,
+            tiers: input.price.tiers.map((tier, index) => ({
+              id: `price-tier-${index + 1}`,
+              name: tier.name,
+              value: tier.value,
+            })),
+          },
+        ]
+      : [],
     createdAt: '2026-05-15T03:00:00.000Z',
     updatedAt: '2026-05-15T03:00:00.000Z',
   };

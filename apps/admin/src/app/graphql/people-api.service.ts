@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { Person, PersonInput } from './models';
+import { LecturerProfile, LecturerProfileInput, Person, PersonInput } from './models';
 import { PERSON_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
@@ -83,4 +83,45 @@ export class PeopleApiService {
       )
       .pipe(map((data) => data.updatePerson));
   }
+
+  getLecturerProfile(personId: string) {
+    return this.graphqlHttp
+      .request<{ lecturerProfile: LecturerProfile | null }>(
+        `query GetLecturerProfile($personId: String!) {
+          lecturerProfile(personId: $personId) {
+            ${LECTURER_PROFILE_FIELDS}
+          }
+        }`,
+        { personId },
+      )
+      .pipe(map((data) => data.lecturerProfile));
+  }
+
+  upsertLecturerProfile(personId: string, input: LecturerProfileInput) {
+    return this.graphqlHttp
+      .request<{ upsertLecturerProfile: LecturerProfile }>(
+        `mutation UpsertLecturerProfile($personId: String!, $input: LecturerProfileUpsertInput!) {
+          upsertLecturerProfile(personId: $personId, input: $input) {
+            ${LECTURER_PROFILE_FIELDS}
+          }
+        }`,
+        { personId, input },
+      )
+      .pipe(map((data) => data.upsertLecturerProfile));
+  }
 }
+
+const LECTURER_PROFILE_FIELDS = `
+  id
+  personId
+  displayName
+  biography
+  publishGoogleUserPicture
+  googleUserPicture
+  email
+  whatsapp
+  createdAt
+  createdById
+  updatedAt
+  updatedById
+`;

@@ -847,6 +847,64 @@ describe('CertificateIssuingService', () => {
     );
   });
 
+  it('uses current template field definition defaults when config fields are unchanged', () => {
+    const service = new CertificateIssuingService({} as never, {} as never, {} as never);
+    const renderedData = (
+      service as unknown as {
+        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+      }
+    ).buildRenderedData(
+      {
+        ...mappedCertificateRecord.config,
+        scope: CertificateScope.EVENT,
+        issuedTo: CertificateIssuedTo.ATTENDEE,
+        certificateFields: null,
+        certificateTemplate: {
+          certificateFields: {
+            'top-text': {
+              label: 'Texto em cima do nome',
+              type: 'string',
+              required: true,
+              default: 'Certificamos a organização de',
+            },
+            'bottom-text': {
+              label: 'Texto embaixo do nome',
+              type: 'string',
+              required: true,
+              default: 'como organizador do evento',
+            },
+          },
+        },
+        event: {
+          id: 'event-1',
+          name: 'Evento de teste',
+          creditMinutes: 60,
+          startDate: new Date('2026-01-02T10:00:00.000Z'),
+          endDate: new Date('2026-01-02T11:00:00.000Z'),
+          type: EventType.OTHER,
+          eventGroupId: null,
+          eventGroup: null,
+        },
+      },
+      {
+        person: {
+          id: 'person-valid',
+          name: 'Valid Person',
+          email: null,
+          identityDocument: null,
+          academicId: null,
+        },
+        events: [],
+      },
+      new Date('2026-01-05T00:00:00.000Z'),
+    );
+
+    expect(renderedData.templateData).toMatchObject({
+      'top-text': 'Certificamos a organização de',
+      'bottom-text': 'como organizador do evento',
+    });
+  });
+
   it('renders minicourse, lecture, and other event sections together', () => {
     const service = new CertificateIssuingService({} as never, {} as never, {} as never);
     const renderedData = (

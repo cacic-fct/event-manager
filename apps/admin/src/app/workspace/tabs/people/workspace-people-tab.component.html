@@ -83,6 +83,11 @@
 
         <form [formGroup]="workspace.personForm" class="surface field-group">
           <h4>Dados cadastrais</h4>
+          @if (workspace.hasExternallyManagedProfile()) {
+            <p class="empty-note">
+              Nome, e-mail principal, telefone, documento e matrícula são gerenciados pelo backend externo.
+            </p>
+          }
           <div class="field-grid">
             <mat-form-field>
               <mat-label>ID</mat-label>
@@ -90,15 +95,15 @@
             </mat-form-field>
             <mat-form-field>
               <mat-label>Nome</mat-label>
-              <input matInput formControlName="name" />
+              <input matInput formControlName="name" [readonly]="workspace.hasExternallyManagedProfile()" />
             </mat-form-field>
             <mat-form-field>
               <mat-label>E-mail principal</mat-label>
-              <input matInput formControlName="email" />
+              <input matInput formControlName="email" [readonly]="workspace.hasExternallyManagedProfile()" />
             </mat-form-field>
             <mat-form-field>
               <mat-label>Telefone</mat-label>
-              <input matInput formControlName="phone" />
+              <input matInput formControlName="phone" [readonly]="workspace.hasExternallyManagedProfile()" />
             </mat-form-field>
             <mat-form-field class="span-2">
               <mat-label>E-mails secundários (separados por vírgula)</mat-label>
@@ -106,11 +111,11 @@
             </mat-form-field>
             <mat-form-field>
               <mat-label>Documento</mat-label>
-              <input matInput formControlName="identityDocument" />
+              <input matInput formControlName="identityDocument" [readonly]="workspace.hasExternallyManagedProfile()" />
             </mat-form-field>
             <mat-form-field>
               <mat-label>Matrícula (RA)</mat-label>
-              <input matInput formControlName="academicId" />
+              <input matInput formControlName="academicId" [readonly]="workspace.hasExternallyManagedProfile()" />
             </mat-form-field>
             <mat-form-field>
               <mat-label>Unificada no ID</mat-label>
@@ -124,6 +129,51 @@
         </form>
 
         @if (workspace.selectedPerson()) {
+          <form [formGroup]="workspace.lecturerProfileForm" class="surface field-group">
+            <div class="surface-heading">
+              <div>
+                <h4>Perfil de ministrante</h4>
+                <span>Dados públicos e globais para todos os eventos dessa pessoa.</span>
+              </div>
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!permissions.canEdit('person#edit')"
+                (click)="workspace.saveLecturerProfile()">
+                <mat-icon>{{ workspace.hasLecturerProfile() ? 'save' : 'badge' }}</mat-icon>
+                {{ workspace.hasLecturerProfile() ? 'Salvar perfil' : 'Criar perfil' }}
+              </button>
+            </div>
+
+            @if (!workspace.hasLecturerProfile()) {
+              <p class="empty-note">
+                Essa pessoa ainda não tem perfil de ministrante. Use o botão acima para criar explicitamente.
+              </p>
+            }
+
+            <div class="field-grid">
+              <mat-form-field>
+                <mat-label>Nome de exibição</mat-label>
+                <input matInput formControlName="displayName" />
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>E-mail público</mat-label>
+                <input matInput type="email" formControlName="email" />
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>WhatsApp público</mat-label>
+                <input matInput formControlName="whatsapp" placeholder="+5518999999999" />
+              </mat-form-field>
+              <mat-slide-toggle formControlName="publishGoogleUserPicture">
+                Publicar foto do usuário Google
+              </mat-slide-toggle>
+              <mat-form-field class="span-2">
+                <mat-label>Biografia</mat-label>
+                <textarea matInput formControlName="biography" rows="5"></textarea>
+              </mat-form-field>
+            </div>
+          </form>
+
           <section class="surface field-group">
             <div class="surface-heading">
               <h4>Usuário vinculado</h4>

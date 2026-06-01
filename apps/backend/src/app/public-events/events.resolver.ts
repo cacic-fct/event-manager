@@ -1,4 +1,4 @@
-import { Args, Int, Query, Resolver } from '@nestjs/graphql';
+import { Args, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { NotFoundException } from '@nestjs/common';
 import { startOfDay, subMonths } from 'date-fns';
 import { Prisma } from '@prisma/client';
@@ -11,6 +11,7 @@ import {
   PUBLIC_MAJOR_EVENT_SELECT,
   PUBLIC_EVENT_SELECT,
   PublicEvent,
+  PublicLecturerProfile,
   PublicMajorEventSubscriptionPage,
   PublicEventSubscriptionSummary,
   mapPublicMajorEvent,
@@ -26,19 +27,47 @@ export class PublicEventsResolver {
     private readonly typesenseSearch: TypesenseSearchService,
   ) {}
 
-  @Query(() => [PublicEvent], { name: 'publicEvents' })
+  @Query(() => [PublicEvent], {
+    name: 'publicEvents',
+    description:
+      'Lists public, non-deleted events for catalog and search surfaces. Supports optional date, major-event, event-group, text-search, and pagination filters; results are ordered by newest start date unless search relevance is available.',
+  })
   async publicEvents(
-    @Args('query', { type: () => String, nullable: true }) query?: string,
+    @Args('query', {
+      type: () => String,
+      nullable: true,
+      description:
+        'Optional participant-facing search text. Uses Typesense relevance when configured; otherwise falls back to a case-insensitive event-name match.',
+    })
+    query?: string,
     @Args('startDateFrom', { type: () => Date, nullable: true })
     startDateFrom?: Date,
     @Args('startDateUntil', { type: () => Date, nullable: true })
     startDateUntil?: Date,
-    @Args('majorEventId', { type: () => String, nullable: true })
+    @Args('majorEventId', {
+      type: () => String,
+      nullable: true,
+      description: 'Restricts results to events attached to the given major event.',
+    })
     majorEventId?: string,
-    @Args('eventGroupId', { type: () => String, nullable: true })
+    @Args('eventGroupId', {
+      type: () => String,
+      nullable: true,
+      description: 'Restricts results to events attached to the given event group.',
+    })
     eventGroupId?: string,
-    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
-    @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('skip', {
+      type: () => Int,
+      nullable: true,
+      description: 'Number of rows to skip. Negative values are treated as zero.',
+    })
+    skip?: number,
+    @Args('take', {
+      type: () => Int,
+      nullable: true,
+      description: 'Maximum number of rows to return. Defaults to 50 and is capped at 1000.',
+    })
+    take?: number,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.EventWhereInput = {
@@ -101,15 +130,34 @@ export class PublicEventsResolver {
   @Query(() => [PublicEvent], {
     name: 'publicCalendarEvents',
     description:
-      'Public event list for the calendar. Results are limited to events starting no earlier than one month ago.',
+      'Calendar-optimized public event list. Only public, non-deleted events are returned, ordered from oldest to newest, and the effective start date cannot be earlier than the beginning of the day one month ago.',
   })
   async publicCalendarEvents(
-    @Args('query', { type: () => String, nullable: true }) query?: string,
-    @Args('eventType', { type: () => EventType, nullable: true })
+    @Args('query', {
+      type: () => String,
+      nullable: true,
+      description:
+        'Optional participant-facing search text. Uses Typesense relevance when configured; otherwise falls back to a case-insensitive event-name match.',
+    })
+    query?: string,
+    @Args('eventType', {
+      type: () => EventType,
+      nullable: true,
+      description: 'Optional event category filter used by the public calendar tabs and chips.',
+    })
     eventType?: EventType,
-    @Args('startDateFrom', { type: () => Date, nullable: true, description: 'Minimum: Today - 1 month' })
+    @Args('startDateFrom', {
+      type: () => Date,
+      nullable: true,
+      description:
+        'Inclusive lower schedule boundary. Values before the calendar retention window, one month ago at start of day, are rejected.',
+    })
     startDateFrom?: Date,
-    @Args('startDateUntil', { type: () => Date, nullable: true })
+    @Args('startDateUntil', {
+      type: () => Date,
+      nullable: true,
+      description: 'Inclusive upper schedule boundary for calendar range loading.',
+    })
     startDateUntil?: Date,
   ) {
     const minimumStartDate = startOfDay(subMonths(new Date(), PublicEventsResolver.calendarPastLimitMonths));
@@ -178,8 +226,18 @@ export class PublicEventsResolver {
     });
   }
 
-  @Query(() => PublicEvent, { name: 'publicEvent' })
-  async publicEvent(@Args('id', { type: () => String }) id: string) {
+  @Query(() => PublicEvent, {
+    name: 'publicEvent',
+    description:
+      'Returns a single public, non-deleted event for the detail page. Hidden, deleted, or unknown events resolve as not found.',
+  })
+  async publicEvent(
+    @Args('id', {
+      type: () => String,
+      description: 'Public event identifier.',
+    })
+    id: string,
+  ) {
     const event = await this.prisma.event.findFirst({
       where: {
         id,
@@ -198,9 +256,15 @@ export class PublicEventsResolver {
 
   @Query(() => PublicEventSubscriptionSummary, {
     name: 'publicEventSubscriptionSummary',
+    description:
+      'Returns the current public slot availability snapshot for one visible event. Unlimited-capacity events are considered available.',
   })
   async publicEventSubscriptionSummary(
-    @Args('eventId', { type: () => String }) eventId: string,
+    @Args('eventId', {
+      type: () => String,
+      description: 'Public event whose direct subscription availability should be checked.',
+    })
+    eventId: string,
   ): Promise<PublicEventSubscriptionSummary> {
     const event = await this.prisma.event.findFirst({
       where: {
@@ -225,9 +289,16 @@ export class PublicEventsResolver {
 
   @Query(() => PublicMajorEventSubscriptionPage, {
     name: 'publicMajorEventSubscriptionPage',
+    description:
+      'Builds the public subscription page model for a major event: major-event details, visible child events still eligible for subscription, and per-event availability snapshots.',
   })
   async publicMajorEventSubscriptionPage(
-    @Args('majorEventId', { type: () => String }) majorEventId: string,
+    @Args('majorEventId', {
+      type: () => String,
+      description:
+        'Major event identifier. The major event itself must exist and not be deleted; returned child events must also be public, subscription-enabled, and not past their subscription end date.',
+    })
+    majorEventId: string,
   ): Promise<PublicMajorEventSubscriptionPage> {
     const now = new Date();
     const [majorEvent, events] = await Promise.all([
@@ -263,6 +334,57 @@ export class PublicEventsResolver {
         this.mapPublicEventSubscriptionSummary(event, subscribedPeopleCount.get(event.id) ?? 0),
       ),
     };
+  }
+
+  @ResolveField(() => [PublicLecturerProfile], {
+    name: 'lecturers',
+    description: 'Public lecturer profiles associated with this event.',
+  })
+  async lecturers(@Parent() event: PublicEvent): Promise<PublicLecturerProfile[]> {
+    const lecturers = await this.prisma.eventLecturer.findMany({
+      where: {
+        eventId: event.id,
+        person: {
+          deletedAt: null,
+          lecturerProfile: {
+            isNot: null,
+          },
+        },
+      },
+      select: {
+        person: {
+          select: {
+            lecturerProfile: {
+              select: {
+                id: true,
+                displayName: true,
+                biography: true,
+                publishGoogleUserPicture: true,
+                googleUserPicture: true,
+                email: true,
+                whatsapp: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return lecturers
+      .map((lecturer) => lecturer.person.lecturerProfile)
+      .filter((profile): profile is NonNullable<typeof profile> => Boolean(profile))
+      .map((profile) => ({
+        id: profile.id,
+        displayName: profile.displayName,
+        biography: profile.biography,
+        publishGoogleUserPicture: profile.publishGoogleUserPicture,
+        googleUserPicture: profile.publishGoogleUserPicture ? profile.googleUserPicture : null,
+        email: profile.email,
+        whatsapp: profile.whatsapp,
+      }));
   }
 
   async getPublicEventSubscriptionPagePayload(majorEventId: string): Promise<PublicMajorEventSubscriptionPage> {

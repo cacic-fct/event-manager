@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 import {
   CurrentUserMajorEventFeedItem,
@@ -24,6 +25,7 @@ import { AttendancesApiService } from '../attendances-api.service';
 import { EmojiService } from '../../../shared/emoji.service';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
+import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 
 type FeedState =
   | { status: 'loading' }
@@ -35,14 +37,25 @@ type FeedState =
   templateUrl: './attendances.html',
   styleUrl: './attendances.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatListModule, MatProgressBarModule, RouterLink, MatToolbarModule, MatButtonModule],
+  imports: [
+    MatIconModule,
+    MatListModule,
+    MatProgressBarModule,
+    RouterLink,
+    MatToolbarModule,
+    MatButtonModule,
+    MatSnackBarModule,
+  ],
 })
 export class Attendances {
   private readonly api = inject(AttendancesApiService);
   private readonly auth = inject(AuthService);
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineData = inject(OfflinePublicDataAccessService);
+  private readonly certificateFileDownload = inject(CertificateFileDownloadService);
+  private readonly snackBar = inject(MatSnackBar);
   readonly emoji = inject(EmojiService);
+  readonly isDownloadingCertificates = signal(false);
 
   readonly feedState = toSignal(
     this.loadFeed().pipe(
@@ -97,6 +110,29 @@ export class Attendances {
 
   majorEventStatusLine(subscription: CurrentUserMajorEventFeedItem): string {
     return getMajorEventStatusLine(subscription);
+  }
+
+  downloadCertificatesArchive(): void {
+    if (this.isDownloadingCertificates()) {
+      return;
+    }
+
+    this.isDownloadingCertificates.set(true);
+    this.api.downloadCurrentUserCertificatesArchive().subscribe({
+      next: (download) => {
+        this.certificateFileDownload.save(download);
+        this.snackBar.open('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
+        this.isDownloadingCertificates.set(false);
+      },
+      error: (error: unknown) => {
+        const message =
+          error instanceof Error && error.message.includes('No certificates')
+            ? 'Nenhum certificado disponível para download.'
+            : 'Não foi possível baixar seus certificados.';
+        this.snackBar.open(message, 'Fechar', { duration: 5000 });
+        this.isDownloadingCertificates.set(false);
+      },
+    });
   }
 
   private loadFeed() {

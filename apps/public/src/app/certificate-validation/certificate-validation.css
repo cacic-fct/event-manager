@@ -157,6 +157,7 @@ lib-cacic-logo {
   height: 50px;
   margin-top: 0.5rem;
   cursor: pointer;
+  aspect-ratio: 427.97 / 248.98;
 }
 
 .button-container {
@@ -164,4 +165,5 @@ lib-cacic-logo {
   justify-content: center;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }

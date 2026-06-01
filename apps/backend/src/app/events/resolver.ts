@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { resolvePagination } from '../common/pagination';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
@@ -114,6 +115,7 @@ export class EventsResolver {
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
+    private readonly frozenResources: FrozenResourceService,
   ) {}
 
   @Query(() => [Event], { name: 'events' })
@@ -224,6 +226,7 @@ export class EventsResolver {
     @Args('input', { type: () => EventCreateInput }) input: EventCreateInput,
     @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventCreateTargetsMutable(input, this.getUser(context));
     const normalizedInput = await this.normalizeEventCertificateInput(input);
     const eventInput = { ...normalizedInput };
     const lecturerPersonIds = eventInput.lecturerPersonIds;
@@ -287,7 +290,9 @@ export class EventsResolver {
   async updateEvent(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => EventUpdateInput }) input: EventUpdateInput,
+    @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventUpdateMutable(id, input, this.getUser(context));
     const normalizedInput = await this.normalizeEventCertificateInput(input, id);
     const { count } = await this.prisma.event.updateMany({
       where: {
@@ -331,7 +336,8 @@ export class EventsResolver {
 
   @Mutation(() => DeletionResult, { name: 'deleteEvent' })
   @RequireScopes('event#delete')
-  async deleteEvent(@Args('id', { type: () => String }) id: string) {
+  async deleteEvent(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.frozenResources.assertEventMutable(id, this.getUser(context), 'delete');
     const { count } = await this.prisma.event.updateMany({
       where: {
         id,
@@ -452,5 +458,9 @@ export class EventsResolver {
       input.onlineAttendanceStartDate !== undefined ||
       input.onlineAttendanceEndDate !== undefined
     );
+  }
+
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
   }
 }

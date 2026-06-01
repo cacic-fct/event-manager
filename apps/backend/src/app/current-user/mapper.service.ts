@@ -140,6 +140,14 @@ export class CurrentUserEventMapperService {
       academicId: person.academicId ?? undefined,
       userId: person.userId ?? undefined,
       user: person.user ? this.mapUser(person.user) : undefined,
+      lecturerProfile: person.lecturerProfile
+        ? {
+            ...person.lecturerProfile,
+            googleUserPicture: person.lecturerProfile.publishGoogleUserPicture
+              ? person.lecturerProfile.googleUserPicture
+              : null,
+          }
+        : undefined,
       mergedIntoId: person.mergedIntoId ?? undefined,
       externalRef: person.externalRef ?? undefined,
       deletedAt: person.deletedAt ?? undefined,

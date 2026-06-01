@@ -95,19 +95,19 @@
             <button mat-button type="button" (click)="workspace.cancelMajorEventAttendanceEdit()">
               Cancelar
             </button>
-            <button mat-flat-button type="button" (click)="workspace.saveMajorEventAttendanceEdit()">
-              <mat-icon>save</mat-icon>
-              Salvar
-            </button>
+            @if (canEditSelectedMajorEventAttendances()) {
+              <button mat-flat-button type="button" (click)="workspace.saveMajorEventAttendanceEdit()">
+                <mat-icon>save</mat-icon>
+                Salvar
+              </button>
+            }
           } @else {
-            <button
-              mat-button
-              type="button"
-              [disabled]="!permissions.canEdit('event-attendance#edit')"
-              (click)="workspace.enableMajorEventAttendanceEdit()">
-              <mat-icon>edit</mat-icon>
-              Editar
-            </button>
+            @if (canEditSelectedMajorEventAttendances()) {
+              <button mat-button type="button" (click)="workspace.enableMajorEventAttendanceEdit()">
+                <mat-icon>edit</mat-icon>
+                Editar
+              </button>
+            }
           }
         </div>
       </div>

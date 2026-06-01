@@ -10,6 +10,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
+import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
 import { WorkspaceAttendancesService } from '../../../shared/services/workspace-attendances.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 
@@ -48,5 +49,16 @@ export class WorkspaceMajorEventAttendancesSubtabComponent {
 
   protected statusLabel(status: string | null | undefined): string {
     return status ? getSubscriptionStatusLabel(status) : '-';
+  }
+
+  protected canEditSelectedMajorEventAttendances(): boolean {
+    const majorEvent = this.workspace
+      .majorEvents()
+      .find((item) => item.id === this.workspace.majorEventAttendanceForm.controls.majorEventId.value);
+    return (
+      this.permissions.canEdit('event-attendance#edit') &&
+      Boolean(majorEvent) &&
+      (!isFrozenMajorEvent(majorEvent) || this.permissions.has('frozen#edit'))
+    );
   }
 }

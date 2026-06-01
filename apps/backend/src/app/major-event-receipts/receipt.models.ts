@@ -138,6 +138,12 @@ export class AdminReceiptQueueItemModel {
   @Field(() => String)
   majorEventName!: string;
 
+  @Field(() => Date)
+  majorEventCreatedAt!: Date;
+
+  @Field(() => Date)
+  majorEventEndDate!: Date;
+
   @Field(() => String)
   personId!: string;
 

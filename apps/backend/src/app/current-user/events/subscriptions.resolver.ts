@@ -17,6 +17,7 @@ import {
 } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublicEvent } from '../../public-events/models';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
 
 export const SubscribedItemUnion = createUnionType({
   name: 'SubscribedItem',
@@ -41,6 +42,10 @@ export class CurrentUserEventSubscriptionsResolver {
     private readonly currentUserContext: CurrentUserContextService,
     private readonly mapper: CurrentUserEventMapperService,
     private readonly eventSubscriptions: CurrentUserEventSubscriptionService,
+    private readonly frozenResources: FrozenResourceService = {
+      assertEventMutable: async () => undefined,
+      assertEventGroupMutable: async () => undefined,
+    } as unknown as FrozenResourceService,
   ) {}
 
   @Query(() => [PublicEvent], {
@@ -148,6 +153,8 @@ export class CurrentUserEventSubscriptionsResolver {
     @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,
   ): Promise<PublicEvent> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId);
   }
@@ -157,6 +164,8 @@ export class CurrentUserEventSubscriptionsResolver {
     @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,
   ): Promise<PublicEvent> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'delete');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     return this.eventSubscriptions.unsubscribeCurrentUserEvent(person.id, eventId);
   }
@@ -274,6 +283,8 @@ export class CurrentUserEventSubscriptionsResolver {
     @Args('eventGroupId', { type: () => String }) eventGroupId: string,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventGroupSubscription> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.frozenResources.assertEventGroupMutable(eventGroupId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     return this.eventSubscriptions.subscribeCurrentUserEventGroup(person.id, eventGroupId);
   }

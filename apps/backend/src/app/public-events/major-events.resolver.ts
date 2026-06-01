@@ -15,15 +15,43 @@ export class PublicMajorEventsResolver {
     private readonly typesenseSearch: TypesenseSearchService,
   ) {}
 
-  @Query(() => [PublicMajorEvent], { name: 'publicMajorEvents' })
+  @Query(() => [PublicMajorEvent], {
+    name: 'publicMajorEvents',
+    description:
+      'Lists non-deleted public-facing major events for landing, search, and subscription entry points. Supports optional date range, text search, and pagination; results are ordered by newest start date unless search relevance is available.',
+  })
   async publicMajorEvents(
-    @Args('query', { type: () => String, nullable: true }) query?: string,
-    @Args('startDateFrom', { type: () => Date, nullable: true })
+    @Args('query', {
+      type: () => String,
+      nullable: true,
+      description:
+        'Optional participant-facing search text. Uses Typesense relevance when configured; otherwise falls back to a case-insensitive major-event-name match.',
+    })
+    query?: string,
+    @Args('startDateFrom', {
+      type: () => Date,
+      nullable: true,
+      description: 'Inclusive lower boundary for the major-event start date.',
+    })
     startDateFrom?: Date,
-    @Args('startDateUntil', { type: () => Date, nullable: true })
+    @Args('startDateUntil', {
+      type: () => Date,
+      nullable: true,
+      description: 'Inclusive upper boundary for the major-event start date.',
+    })
     startDateUntil?: Date,
-    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
-    @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('skip', {
+      type: () => Int,
+      nullable: true,
+      description: 'Number of rows to skip. Negative values are treated as zero.',
+    })
+    skip?: number,
+    @Args('take', {
+      type: () => Int,
+      nullable: true,
+      description: 'Maximum number of rows to return. Defaults to 50 and is capped at 1000.',
+    })
+    take?: number,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.MajorEventWhereInput = {
@@ -82,8 +110,18 @@ export class PublicMajorEventsResolver {
       .slice(pagination.skip, pagination.skip + pagination.take);
   }
 
-  @Query(() => PublicMajorEvent, { name: 'publicMajorEvent' })
-  async publicMajorEvent(@Args('id', { type: () => String }) id: string) {
+  @Query(() => PublicMajorEvent, {
+    name: 'publicMajorEvent',
+    description:
+      'Returns one non-deleted public-facing major event with subscription, payment, price, contact, and certificate capability metadata.',
+  })
+  async publicMajorEvent(
+    @Args('id', {
+      type: () => String,
+      description: 'Major event identifier.',
+    })
+    id: string,
+  ) {
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
         id,

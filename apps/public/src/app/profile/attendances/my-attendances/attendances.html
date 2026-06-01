@@ -69,5 +69,16 @@
     </mat-action-list>
     }
   </section>
+
+  <section class="certificate-download-section">
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="isDownloadingCertificates()"
+      (click)="downloadCertificatesArchive()">
+      <mat-icon aria-hidden="true">download</mat-icon>
+      {{ isDownloadingCertificates() ? 'Preparando certificados' : 'Baixar todos os certificados' }}
+    </button>
+  </section>
   }
 </main>

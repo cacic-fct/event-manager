@@ -106,6 +106,18 @@ function publicEvent(index = 0) {
       shouldIssueCertificateForNonPayingAttendees: false,
       shouldIssueCertificateForNonSubscribedAttendees: false,
     },
+    lecturers: [
+      {
+        id: `lecturer-profile-${index + 1}`,
+        displayName: faker.person.fullName(),
+        biography:
+          'Pesquisa e desenvolve projetos de tecnologia educacional, com foco em experiências acessíveis para eventos acadêmicos.',
+        publishGoogleUserPicture: index % 2 === 0,
+        googleUserPicture: index % 2 === 0 ? 'https://lh3.googleusercontent.com/a/storybook-lecturer' : null,
+        email: faker.internet.email(),
+        whatsapp: '+5518999999999',
+      },
+    ],
   };
 }
 
@@ -361,6 +373,38 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
 
   if (query.includes('CurrentUserCertificates')) {
     return { currentUserCertificates };
+  }
+
+  if (query.includes('UpsertCurrentUserLecturerProfile')) {
+    const input = (variables['input'] ?? {}) as Record<string, unknown>;
+    return {
+      upsertCurrentUserLecturerProfile: {
+        id: 'lecturer-profile-current',
+        personId: 'person-current',
+        displayName: String(input['displayName'] ?? 'Storybook User'),
+        biography: String(input['biography'] ?? ''),
+        publishGoogleUserPicture: Boolean(input['publishGoogleUserPicture']),
+        googleUserPicture: input['publishGoogleUserPicture'] ? 'https://lh3.googleusercontent.com/a/storybook-user' : null,
+        email: input['email'] ?? null,
+        whatsapp: input['whatsapp'] ?? null,
+      },
+    };
+  }
+
+  if (query.includes('CurrentUserLecturerProfile')) {
+    return {
+      currentUserLecturerProfile: {
+        id: 'lecturer-profile-current',
+        personId: 'person-current',
+        displayName: 'Storybook User',
+        biography:
+          'Ministrante com experiência em desenvolvimento web, comunidade acadêmica e organização de atividades práticas.',
+        publishGoogleUserPicture: true,
+        googleUserPicture: 'https://lh3.googleusercontent.com/a/storybook-user',
+        email: 'storybook@example.com',
+        whatsapp: '+5518999999999',
+      },
+    };
   }
 
   if (query.includes('DownloadCurrentUserCertificate')) {

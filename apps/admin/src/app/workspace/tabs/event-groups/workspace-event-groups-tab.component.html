@@ -41,23 +41,26 @@
                 Sem emissão de certificado
               }
             </span>
-            <button
-              matIconButton
-              type="button"
-              aria-label="Editar grupo"
-              matTooltip="Editar"
-              (click)="$event.stopPropagation(); workspace.pickEventGroup(group)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button
-              matIconButton
-              type="button"
-              aria-label="Excluir grupo"
-              matTooltip="Excluir"
-              [disabled]="!permissions.canDelete('event#delete')"
-              (click)="$event.stopPropagation(); workspace.deleteEventGroup(group.id)">
-              <mat-icon>delete</mat-icon>
-            </button>
+            @if (canEditGroup(group)) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Editar grupo"
+                matTooltip="Editar"
+                (click)="$event.stopPropagation(); workspace.pickEventGroup(group)">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+            @if (canDeleteGroup(group)) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Excluir grupo"
+                matTooltip="Excluir"
+                (click)="$event.stopPropagation(); workspace.deleteEventGroup(group.id)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            }
           </mat-list-item>
         } @empty {
           <mat-list-item>
@@ -92,14 +95,12 @@
             <mat-icon>restart_alt</mat-icon>
             Limpar
           </button>
-          <button
-            mat-flat-button
-            type="button"
-            [disabled]="!permissions.canEdit('event#edit')"
-            (click)="workspace.saveEventGroup()">
-            <mat-icon>save</mat-icon>
-            Salvar
-          </button>
+          @if (canEditGroup(workspace.selectedEventGroup())) {
+            <button mat-flat-button type="button" (click)="workspace.saveEventGroup()">
+              <mat-icon>save</mat-icon>
+              Salvar
+            </button>
+          }
         </div>
       </div>
 
@@ -152,15 +153,16 @@
                   {{ eventItem.startDate | date: 'short' }} -
                   {{ eventItem.endDate | date: 'short' }}
                 </span>
-                <button
-                  matIconButton
-                  type="button"
-                  aria-label="Remover evento do grupo"
-                  matTooltip="Remover"
-                  [disabled]="!permissions.canEdit('event#edit')"
-                  (click)="workspace.removeEventFromSelectedGroup(eventItem)">
-                  <mat-icon>link_off</mat-icon>
-                </button>
+                @if (canEditSelectedGroupEvents()) {
+                  <button
+                    matIconButton
+                    type="button"
+                    aria-label="Remover evento do grupo"
+                    matTooltip="Remover"
+                    (click)="workspace.removeEventFromSelectedGroup(eventItem)">
+                    <mat-icon>link_off</mat-icon>
+                  </button>
+                }
               </mat-list-item>
             } @empty {
               <mat-list-item>
@@ -186,15 +188,13 @@
 
           <div class="inline-list">
             @for (eventItem of workspace.eventGroupEventSearchResults(); track eventItem.id) {
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="!permissions.canEdit('event#edit')"
-                (click)="workspace.addEventToSelectedGroup(eventItem)">
-                <app-twemoji [emoji]="eventItem.emoji" />
-                {{ eventItem.name }}
-                {{ eventItem.startDate | date: 'shortDate' }}
-              </button>
+              @if (canEditSelectedGroupEvents()) {
+                <button mat-stroked-button type="button" (click)="workspace.addEventToSelectedGroup(eventItem)">
+                  <app-twemoji [emoji]="eventItem.emoji" />
+                  {{ eventItem.name }}
+                  {{ eventItem.startDate | date: 'shortDate' }}
+                </button>
+              }
             } @empty {
               <span class="empty-note">Nenhum resultado para adicionar.</span>
             }

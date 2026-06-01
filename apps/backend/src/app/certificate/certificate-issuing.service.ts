@@ -659,13 +659,41 @@ export class CertificateIssuingService {
     // Fall back to template fields
     if (templateFields && typeof templateFields === 'object' && !Array.isArray(templateFields)) {
       const value = templateFields[key];
-      if (typeof value === 'string' && value.trim()) {
-        return value;
+      const normalizedValue = this.normalizeCertificateFieldValue(value);
+      if (normalizedValue) {
+        return normalizedValue;
       }
     }
 
     // Fall back to hardcoded default
     return fallback;
+  }
+
+  private normalizeCertificateFieldValue(value: Prisma.JsonValue | undefined): string | null {
+    if (typeof value === 'string') {
+      const normalized = value.trim();
+      return normalized || null;
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+
+    const defaultValue = value.default;
+    if (typeof defaultValue === 'string') {
+      const normalized = defaultValue.trim();
+      return normalized || null;
+    }
+
+    if (typeof defaultValue === 'number' || typeof defaultValue === 'boolean') {
+      return String(defaultValue);
+    }
+
+    return null;
   }
 
   private buildParticipationType(config: CertificateConfigRecord): string {

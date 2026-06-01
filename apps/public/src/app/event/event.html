@@ -116,11 +116,11 @@
           <div matListItemLine>{{ event.endDate | date: 'fullDate' }}</div>
           <div matListItemLine>{{ event.endDate | date: 'HH:mm' }}</div>
         </mat-list-item>
-        @if (event.creditMinutes) {
+        @if (creditLine(event); as credit) {
         <mat-list-item>
           <mat-icon matListItemIcon>schedule</mat-icon>
           <div matListItemTitle>Carga-horária</div>
-          <div matListItemLine>{{ creditLine(event) || 'Não informada' }}</div>
+          <div matListItemLine>{{ credit }}</div>
         </mat-list-item>
         }
       </mat-list>
@@ -145,6 +145,40 @@
   <section class="detail-section">
     <h2>Sobre</h2>
     <p class="description">{{ event.description }}</p>
+  </section>
+  } @if (event.lecturers?.length) {
+  <section class="detail-section">
+    <h2>Ministrantes</h2>
+    <div class="lecturer-grid">
+      @for (lecturer of event.lecturers; track lecturer.id) {
+      <article class="lecturer-card">
+        @if (lecturer.publishGoogleUserPicture && lecturer.googleUserPicture) {
+        <img class="lecturer-avatar" [src]="lecturer.googleUserPicture" alt="" />
+        } @else {
+        <div class="lecturer-avatar lecturer-avatar-placeholder">
+          <mat-icon aria-hidden="true">person</mat-icon>
+        </div>
+        }
+        <div class="lecturer-copy">
+          <h3>{{ lecturer.displayName }}</h3>
+          <p>{{ lecturer.biography }}</p>
+          <div class="lecturer-actions">
+            @if (lecturer.email) {
+            <a mat-stroked-button [href]="lecturerMailto(lecturer.email)">
+              <mat-icon>mail</mat-icon>
+              {{ lecturer.email }}
+            </a>
+            } @if (lecturerWhatsappUrl(lecturer); as whatsappUrl) {
+            <a mat-stroked-button [href]="whatsappUrl" target="_blank" rel="noopener noreferrer">
+              <mat-icon>chat</mat-icon>
+              WhatsApp
+            </a>
+            }
+          </div>
+        </div>
+      </article>
+      }
+    </div>
   </section>
   } @if (event.youtubeCode) {
   <section class="detail-section">

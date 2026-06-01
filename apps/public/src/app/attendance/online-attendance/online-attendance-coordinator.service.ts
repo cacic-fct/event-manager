@@ -15,9 +15,9 @@ export class OnlineAttendanceCoordinatorService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly realtime = inject(RealtimeEventsService);
   private readonly router = inject(Router);
-  private readonly interruptedStorageKey = 'cacic-eventos:online-attendance-interrupted';
 
   private realtimeSubscription: Subscription | null = null;
+  private interruptedCurrentPageLoad = false;
 
   constructor() {
     effect(() => {
@@ -50,8 +50,8 @@ export class OnlineAttendanceCoordinatorService {
           return;
         }
 
-        if (interrupt && isPlatformBrowser(this.platformId)) {
-          window.sessionStorage.setItem(this.interruptedStorageKey, 'true');
+        if (interrupt) {
+          this.interruptedCurrentPageLoad = true;
         }
 
         const target = items.length === 1 ? ['/attendance/register', items[0].eventId] : ['/attendance/register'];
@@ -69,7 +69,7 @@ export class OnlineAttendanceCoordinatorService {
       return;
     }
 
-    if (window.sessionStorage.getItem(this.interruptedStorageKey)) {
+    if (this.interruptedCurrentPageLoad) {
       return;
     }
 

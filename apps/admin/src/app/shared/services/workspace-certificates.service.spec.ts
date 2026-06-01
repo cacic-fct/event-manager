@@ -28,7 +28,7 @@ describe('WorkspaceCertificatesService', () => {
         label: 'Texto embaixo do nome',
         type: 'string',
         required: true,
-        default: 'no evento',
+        default: 'como organizador do evento',
       },
     }),
     createdAt: '2026-05-05T00:00:00.000Z',
@@ -125,12 +125,30 @@ describe('WorkspaceCertificatesService', () => {
     expect(lastPayload?.certificateFieldsJson).toBeNull();
   });
 
+  it('uses template defaults in the form while still omitting unchanged defaults from the payload', async () => {
+    expect(service.certificateField('bottom-text')().value()).toBe('como organizador do evento');
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload?.certificateFieldsJson).toBeNull();
+  });
+
   it('posts edited custom fields as stored overrides', async () => {
     service.certificateField('top-text')().value.set('Certificamos a presença de');
 
     await service.saveCertificateConfig();
 
     expect(lastPayload?.certificateFieldsJson).toBe(JSON.stringify({ 'top-text': 'Certificamos a presença de' }));
+  });
+
+  it('posts edited text when it differs by one character from the template default', async () => {
+    service.certificateField('bottom-text')().value.set('como organizador do event');
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload?.certificateFieldsJson).toBe(
+      JSON.stringify({ 'bottom-text': 'como organizador do event' }),
+    );
   });
 
   it('persists current recipient type before issuing pending certificates', async () => {

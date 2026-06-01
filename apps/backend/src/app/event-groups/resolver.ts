@@ -1,17 +1,25 @@
 import { DeletionResult, EventGroup, EventGroupCreateInput, EventGroupUpdateInput } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+
+type GraphqlContext = {
+  req?: { user?: AuthenticatedUser };
+  request?: { user?: AuthenticatedUser };
+};
 
 @Resolver(() => EventGroup)
 export class EventGroupsResolver {
   constructor(
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
+    private readonly frozenResources: FrozenResourceService,
   ) {}
 
   @Query(() => [EventGroup], { name: 'eventGroups' })
@@ -106,7 +114,9 @@ export class EventGroupsResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => EventGroupUpdateInput })
     input: EventGroupUpdateInput,
+    @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventGroupMutable(id, this.getUser(context), 'edit');
     const normalizedInput = this.normalizeEventGroupCertificateInput(input, await this.hasMajorEventEvents(id));
     const { count } = await this.prisma.eventGroup.updateMany({
       where: {
@@ -170,7 +180,8 @@ export class EventGroupsResolver {
 
   @Mutation(() => DeletionResult, { name: 'deleteEventGroup' })
   @RequireScopes('event#delete')
-  async deleteEventGroup(@Args('id', { type: () => String }) id: string) {
+  async deleteEventGroup(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.frozenResources.assertEventGroupMutable(id, this.getUser(context), 'delete');
     const { count } = await this.prisma.eventGroup.updateMany({
       where: {
         id,
@@ -228,5 +239,9 @@ export class EventGroupsResolver {
     });
 
     return count > 0;
+  }
+
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
   }
 }

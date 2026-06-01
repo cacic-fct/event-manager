@@ -97,6 +97,15 @@ const PUBLIC_EVENT_FIELDS = `
   eventGroup {
     ${PUBLIC_EVENT_GROUP_FIELDS}
   }
+  lecturers {
+    id
+    displayName
+    biography
+    publishGoogleUserPicture
+    googleUserPicture
+    email
+    whatsapp
+  }
 `;
 
 @Injectable({ providedIn: 'root' })

@@ -10,6 +10,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
+import { EventGroup } from '../../../graphql/models';
+import { isFrozenEventGroup } from '../../../shared/frozen-resource';
 import { WorkspaceEventGroupsService } from '../../../shared/services/workspace-event-groups.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { DatePipe } from '@angular/common';
@@ -49,5 +51,25 @@ export class WorkspaceEventGroupsTabComponent {
         this.workspace.startNewEventGroup();
       }
     });
+  }
+
+  protected canEditGroup(group: EventGroup | null | undefined): boolean {
+    return (
+      this.permissions.canEdit('event#edit') &&
+      (!group || !this.isGroupFrozen(group) || this.permissions.has('frozen#edit'))
+    );
+  }
+
+  protected canDeleteGroup(group: EventGroup): boolean {
+    return this.permissions.canDelete('event#delete') && (!this.isGroupFrozen(group) || this.permissions.has('frozen#delete'));
+  }
+
+  protected canEditSelectedGroupEvents(): boolean {
+    return this.canEditGroup(this.workspace.selectedEventGroup());
+  }
+
+  private isGroupFrozen(group: EventGroup): boolean {
+    const events = this.workspace.eventSummaries().filter((eventItem) => eventItem.eventGroupId === group.id);
+    return isFrozenEventGroup(group, events);
   }
 }

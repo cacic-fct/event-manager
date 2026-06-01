@@ -13,6 +13,8 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
+import { MajorEvent } from '../../../graphql/models';
+import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
 import { WorkspaceMajorEventsService } from '../../../shared/services/workspace-major-events.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 
@@ -53,5 +55,27 @@ export class WorkspaceMajorEventsTabComponent {
         this.workspace.resetMajorEventForm();
       }
     });
+  }
+
+  protected canEditMajorEvent(majorEvent: MajorEvent | null | undefined): boolean {
+    return (
+      this.permissions.canEdit('major-event#edit') &&
+      (!majorEvent || !isFrozenMajorEvent(majorEvent) || this.permissions.has('frozen#edit'))
+    );
+  }
+
+  protected canDeleteMajorEvent(majorEvent: MajorEvent): boolean {
+    return (
+      this.permissions.canDelete('major-event#delete') &&
+      (!isFrozenMajorEvent(majorEvent) || this.permissions.has('frozen#delete'))
+    );
+  }
+
+  protected canEditSelectedMajorEventEvents(): boolean {
+    const selectedMajorEvent = this.workspace.selectedMajorEvent();
+    return (
+      this.permissions.canEdit('event#edit') &&
+      (!selectedMajorEvent || !isFrozenMajorEvent(selectedMajorEvent) || this.permissions.has('frozen#edit'))
+    );
   }
 }

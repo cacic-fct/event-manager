@@ -7,6 +7,7 @@ export * from './shared-data-types/people';
 export * from './shared-data-types/attendance';
 export * from './shared-data-types/subscriptions';
 export * from './shared-data-types/lecturers';
+export * from './shared-data-types/lecturer-profiles';
 export * from './shared-data-types/certificates';
 export * from './shared-data-types/common';
 export * from './shared-data-types/inputs';

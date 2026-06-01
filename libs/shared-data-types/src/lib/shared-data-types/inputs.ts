@@ -7,4 +7,5 @@ export * from './person-inputs';
 export * from './attendance-inputs';
 export * from './subscription-inputs';
 export * from './lecturer-inputs';
+export * from './lecturer-profile-inputs';
 export * from './merge-candidate-inputs';

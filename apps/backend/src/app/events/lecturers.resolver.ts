@@ -9,6 +9,7 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -101,7 +102,10 @@ const EVENT_RELATION_SELECT = {
 
 @Resolver(() => EventLecturer)
 export class EventLecturersResolver {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly frozenResources: FrozenResourceService,
+  ) {}
 
   @Query(() => [EventLecturer], { name: 'eventLecturers' })
   @RequireScopes('event-lecturer#read')
@@ -176,11 +180,12 @@ export class EventLecturersResolver {
 
   @Mutation(() => EventLecturer, { name: 'createEventLecturer' })
   @RequireScopes('event-lecturer#edit')
-  createEventLecturer(
+  async createEventLecturer(
     @Args('input', { type: () => EventLecturerCreateInput })
     input: EventLecturerCreateInput,
     @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     return this.prisma.eventLecturer.create({
       data: {
         eventId: input.eventId,
@@ -197,7 +202,12 @@ export class EventLecturersResolver {
     @Args('personId', { type: () => String }) personId: string,
     @Args('input', { type: () => EventLecturerUpdateInput })
     input: EventLecturerUpdateInput,
+    @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
+    if (input.eventId && input.eventId !== eventId) {
+      await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
+    }
     const nextEventId = input.eventId ?? eventId;
     const nextPersonId = input.personId ?? personId;
     const { count } = await this.prisma.eventLecturer.updateMany({
@@ -237,7 +247,9 @@ export class EventLecturersResolver {
   async deleteEventLecturer(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('personId', { type: () => String }) personId: string,
+    @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'delete');
     const { count } = await this.prisma.eventLecturer.deleteMany({
       where: {
         eventId,
@@ -267,5 +279,9 @@ export class EventLecturersResolver {
 
   private getActorId(context: GraphqlContext): string | undefined {
     return context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+  }
+
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
   }
 }

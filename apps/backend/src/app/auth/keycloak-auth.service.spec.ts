@@ -77,6 +77,7 @@ describe('KeycloakAuthService', () => {
       redirectUri: 'https://app.example/custom-callback',
       returnTo: '/dashboard',
       state: 'caller-state',
+      prompt: 'login',
     });
   });
 

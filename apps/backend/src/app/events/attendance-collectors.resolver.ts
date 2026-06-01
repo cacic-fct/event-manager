@@ -7,6 +7,7 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -17,7 +18,10 @@ type GraphqlContext = {
 
 @Resolver(() => EventAttendanceCollector)
 export class EventAttendanceCollectorsResolver {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly frozenResources: FrozenResourceService,
+  ) {}
 
   @Query(() => [EventAttendanceCollector], { name: 'eventAttendanceCollectors' })
   @RequireScopes('event#read')
@@ -57,11 +61,12 @@ export class EventAttendanceCollectorsResolver {
 
   @Mutation(() => EventAttendanceCollector, { name: 'createEventAttendanceCollector' })
   @RequireScopes('event#edit')
-  createEventAttendanceCollector(
+  async createEventAttendanceCollector(
     @Args('input', { type: () => EventAttendanceCollectorCreateInput })
     input: EventAttendanceCollectorCreateInput,
     @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     return this.prisma.eventAttendanceCollector.create({
       data: {
         ...input,
@@ -75,7 +80,9 @@ export class EventAttendanceCollectorsResolver {
   async deleteEventAttendanceCollector(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('personId', { type: () => String }) personId: string,
+    @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'delete');
     await this.prisma.eventAttendanceCollector.delete({
       where: {
         eventId_personId: {
@@ -90,5 +97,9 @@ export class EventAttendanceCollectorsResolver {
       eventId,
       personId,
     };
+  }
+
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
   }
 }

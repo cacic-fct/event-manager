@@ -9,6 +9,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { EventType } from '../../../graphql/models';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
+import { isFrozenEvent } from '../../../shared/frozen-resource';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { WorkspaceSubscriptionsService } from '../../../shared/services/workspace-subscriptions.service';
 import { EventFilterPanelComponent } from '../shared/event-filter-panel.component';
@@ -51,5 +52,14 @@ export class WorkspaceEventSubscriptionsSubtabComponent implements OnInit {
     }
 
     return 'Outro';
+  }
+
+  protected canEditSelectedEventSubscriptions(): boolean {
+    const event = this.workspace.selectedEvent();
+    return (
+      this.permissions.canEdit('subscription#edit') &&
+      Boolean(event) &&
+      (!isFrozenEvent(event) || this.permissions.has('frozen#edit'))
+    );
   }
 }

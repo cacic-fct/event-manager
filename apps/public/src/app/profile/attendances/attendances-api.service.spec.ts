@@ -100,6 +100,72 @@ describe('AttendancesApiService', () => {
     expect(details.subscription?.selectedEvents?.map((event) => event.id)).toEqual(['selected-event']);
     expect(details.subscription?.notSubscribedEvents?.map((event) => event.id)).toEqual(['not-subscribed-event']);
   });
+
+  it('loads subscribed standalone event details when public event lookup is unavailable', async () => {
+    const subscribedEvent = eventFixture('standalone-event', 'Evento avulso');
+
+    const detailsPromise = firstValueFrom(service.getEventDetails('standalone-event'));
+
+    const requests = httpTesting.match('/api/graphql');
+    expect(requests.length).toBe(4);
+
+    const detailsRequest = requests.find((request) =>
+      String(request.request.body.query).includes('CurrentUserEventDetails'),
+    );
+    const certificatesRequest = requests.find((request) =>
+      String(request.request.body.query).includes('CurrentUserCertificates'),
+    );
+    const organizerRequest = requests.find((request) =>
+      String(request.request.body.query).includes('CurrentUserOrganizerInfo'),
+    );
+    const publicEventRequest = requests.find((request) =>
+      String(request.request.body.query).includes('PublicEventForAttendanceDetails'),
+    );
+
+    expect(detailsRequest).toBeTruthy();
+    expect(certificatesRequest).toBeTruthy();
+    expect(organizerRequest).toBeTruthy();
+    expect(publicEventRequest).toBeTruthy();
+
+    detailsRequest?.flush({
+      data: {
+        currentUserEventSubscription: {
+          eventId: 'standalone-event',
+          eventGroupSubscriptionId: null,
+          createdAt: '2026-05-01T10:00:00.000Z',
+          event: subscribedEvent,
+        },
+        currentUserEventAttendance: null,
+      },
+    });
+    certificatesRequest?.flush({
+      data: {
+        currentUserCertificates: [],
+      },
+    });
+    organizerRequest?.flush({
+      data: {
+        currentUserOrganizerInfo: null,
+      },
+    });
+    publicEventRequest?.flush({
+      data: null,
+      errors: [{ message: 'Event standalone-event was not found.' }],
+    });
+
+    await expect(detailsPromise).resolves.toEqual({
+      subscription: {
+        eventId: 'standalone-event',
+        eventGroupSubscriptionId: null,
+        createdAt: '2026-05-01T10:00:00.000Z',
+        event: subscribedEvent,
+      },
+      event: null,
+      hasIssuedCertificate: false,
+      isLecturer: false,
+      attendance: null,
+    });
+  });
 });
 
 function majorEventFixture() {

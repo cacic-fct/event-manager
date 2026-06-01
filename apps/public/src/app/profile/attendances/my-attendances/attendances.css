@@ -33,6 +33,16 @@ h2 {
   margin-top: 28px;
 }
 
+.certificate-download-section {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 32px;
+}
+
+.certificate-download-section button {
+  width: min(100%, 320px);
+}
+
 .section-heading {
   align-items: center;
   display: flex;

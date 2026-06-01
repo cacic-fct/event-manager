@@ -80,26 +80,20 @@
           <mat-icon>download</mat-icon>
           Baixar CSV
         </button>
-        <button
-          mat-flat-button
-          type="button"
-          [disabled]="
-            !workspace.selectedAttendanceEvent() ||
-            workspace.isImportingCsv() ||
-            !permissions.canEdit('event-attendance#edit')
-          "
-          (click)="csvInput.click()">
-          <mat-icon>upload_file</mat-icon>
-          Importar CSV
-        </button>
-        <button
-          mat-flat-button
-          type="button"
-          [disabled]="!workspace.selectedAttendanceEvent() || !permissions.canEdit('event-attendance#edit')"
-          (click)="workspace.scanAttendance()">
-          <mat-icon>qr_code_scanner</mat-icon>
-          Escanear presenças
-        </button>
+        @if (canEditSelectedEventAttendances()) {
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="workspace.isImportingCsv()"
+            (click)="csvInput.click()">
+            <mat-icon>upload_file</mat-icon>
+            Importar CSV
+          </button>
+          <button mat-flat-button type="button" (click)="workspace.scanAttendance()">
+            <mat-icon>qr_code_scanner</mat-icon>
+            Escanear presenças
+          </button>
+        }
       </div>
     </div>
 
@@ -135,16 +129,14 @@
 
         <div class="inline-list">
           @for (person of workspace.attendancePersonMatches(); track person.id) {
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="!permissions.canEdit('event-attendance#edit')"
-              (click)="workspace.registerAttendance(person)">
-              <span class="person-choice">
-                <span>Registrar {{ person.name }}</span>
-                <small>{{ person.identityDocument || 'Sem documento' }} · {{ person.email || 'Sem e-mail principal' }}</small>
-              </span>
-            </button>
+            @if (canEditSelectedEventAttendances()) {
+              <button mat-stroked-button type="button" (click)="workspace.registerAttendance(person)">
+                <span class="person-choice">
+                  <span>Registrar {{ person.name }}</span>
+                  <small>{{ person.identityDocument || 'Sem documento' }} · {{ person.email || 'Sem e-mail principal' }}</small>
+                </span>
+              </button>
+            }
           } @empty {
             <span class="empty-note">Busque uma pessoa para registrar.</span>
           }
@@ -190,7 +182,7 @@
                     (click)="workspace.showAttendanceInfo(attendance)">
                     <mat-icon>info</mat-icon>
                   </button>
-                  @if (permissions.canDelete('event-attendance#delete')) {
+                  @if (canDeleteSelectedEventAttendances()) {
                     <button
                       mat-icon-button
                       type="button"

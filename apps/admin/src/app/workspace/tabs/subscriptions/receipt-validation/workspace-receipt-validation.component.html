@@ -139,7 +139,7 @@
                           <mat-checkbox
                             matListItemIcon
                             [checked]="selectedEventIds().has(event.id)"
-                            [disabled]="event.autoSubscribe || saving()"
+                            [disabled]="event.autoSubscribe || saving() || !canEditReceiptValidation(item)"
                             [attr.aria-label]="'Confirmar ' + event.name"
                             (change)="toggleEvent(event, $event.checked)" />
                         }
@@ -223,7 +223,7 @@
         </mat-card>
       </section>
 
-      @if (rejectPanelOpen()) {
+      @if (rejectPanelOpen() && canEditReceiptValidation(item)) {
         <mat-card appearance="outlined" class="reject-panel">
           <mat-card-header>
             <mat-icon mat-card-avatar>cancel</mat-icon>
@@ -258,29 +258,31 @@
         </mat-card>
       }
 
-      <div class="validation-fab">
-        <button
-          mat-fab
-          color="warn"
-          type="button"
-          [disabled]="saving()"
-          aria-label="Recusar comprovante"
-          matTooltip="Recusar"
-          (click)="openRejectPanel()">
-          <mat-icon>close</mat-icon>
-        </button>
-        <button
-          mat-fab
-          color="primary"
-          type="button"
-          [disabled]="saving() || !item.receipt || !canApprove(item)"
-          [class.validation-disabled]="!canApprove(item)"
-          aria-label="Aprovar comprovante"
-          matTooltip="Aprovar"
-          (click)="approve(item)">
-          <mat-icon>check</mat-icon>
-        </button>
-      </div>
+      @if (canEditReceiptValidation(item)) {
+        <div class="validation-fab">
+          <button
+            mat-fab
+            color="warn"
+            type="button"
+            [disabled]="saving()"
+            aria-label="Recusar comprovante"
+            matTooltip="Recusar"
+            (click)="openRejectPanel()">
+            <mat-icon>close</mat-icon>
+          </button>
+          <button
+            mat-fab
+            color="primary"
+            type="button"
+            [disabled]="saving() || !item.receipt || !canApprove(item)"
+            [class.validation-disabled]="!canApprove(item)"
+            aria-label="Aprovar comprovante"
+            matTooltip="Aprovar"
+            (click)="approve(item)">
+            <mat-icon>check</mat-icon>
+          </button>
+        </div>
+      }
     </section>
   }
 </section>

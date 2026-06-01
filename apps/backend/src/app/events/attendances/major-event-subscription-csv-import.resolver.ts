@@ -6,13 +6,20 @@ import {
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, GraphqlContext, PersonMatch } from './event-attendances.shared';
 
 @Resolver(() => EventAttendance)
 export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesResolverBase {
-  constructor(prisma: PrismaService, attendanceCategories: AttendanceCategoryService) {
+  constructor(
+    prisma: PrismaService,
+    attendanceCategories: AttendanceCategoryService,
+    private readonly frozenResources: FrozenResourceService = {
+      assertMajorEventMutable: async () => undefined,
+    } as unknown as FrozenResourceService,
+  ) {
     super(prisma, attendanceCategories);
   }
 
@@ -25,6 +32,11 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
     input: MajorEventSubscriptionCsvImportInput,
     @Context() context: GraphqlContext,
   ): Promise<MajorEventSubscriptionCsvImportResult> {
+    await this.frozenResources.assertMajorEventMutable(
+      input.majorEventId,
+      context.req?.user ?? context.request?.user,
+      'edit',
+    );
     const importStatus = this.parseSubscriptionStatus(input.subscriptionStatus);
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {

@@ -3,6 +3,7 @@ import { Field, Float, ObjectType } from '@nestjs/graphql';
 import { MergeCandidateStatus, MergeMatchMethod } from './enums';
 import { EventAttendance } from './attendance';
 import { EventLecturer } from './lecturers';
+import { LecturerProfile } from './lecturer-profiles';
 import { User } from './auth';
 
 @ObjectType('Person')
@@ -39,6 +40,9 @@ export class Person {
 
   @Field(() => [EventLecturer], { nullable: true })
   lectures?: EventLecturer[];
+
+  @Field(() => LecturerProfile, { nullable: true })
+  lecturerProfile?: LecturerProfile | null;
 
   @Field(() => String, { nullable: true })
   mergedIntoId?: string;

@@ -7,9 +7,11 @@ import {
   PaymentInfoInput,
 } from '@cacic-fct/shared-data-types';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
@@ -79,6 +81,11 @@ const MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT = {
   },
 } satisfies Prisma.MajorEventSelect;
 
+type GraphqlContext = {
+  req?: { user?: AuthenticatedUser };
+  request?: { user?: AuthenticatedUser };
+};
+
 @Resolver(() => MajorEvent)
 export class MajorEventsResolver {
   private paymentInfoTableExistsPromise?: Promise<boolean>;
@@ -86,6 +93,7 @@ export class MajorEventsResolver {
   constructor(
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
+    private readonly frozenResources: FrozenResourceService,
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
@@ -203,7 +211,9 @@ export class MajorEventsResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => MajorEventUpdateInput })
     input: MajorEventUpdateInput,
+    @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertMajorEventMutable(id, this.getUser(context), 'edit');
     const paymentInfoTableExists = await this.hasPaymentInfoTable();
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
@@ -258,7 +268,8 @@ export class MajorEventsResolver {
 
   @Mutation(() => DeletionResult, { name: 'deleteMajorEvent' })
   @RequireScopes('major-event#delete')
-  async deleteMajorEvent(@Args('id', { type: () => String }) id: string) {
+  async deleteMajorEvent(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.frozenResources.assertMajorEventMutable(id, this.getUser(context), 'delete');
     const { count } = await this.prisma.majorEvent.updateMany({
       where: {
         id,
@@ -597,5 +608,9 @@ export class MajorEventsResolver {
         value: Math.round(tier.value),
       }))
       .filter((tier) => tier.name.length > 0);
+  }
+
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
   }
 }

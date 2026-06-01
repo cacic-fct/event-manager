@@ -6,6 +6,7 @@ import {
   formatCPF,
   formatCreditMinutes,
   formatCurrency,
+  formatUnespRole,
   formatStatusLine,
   getContactLabel,
   getEventAttendanceStatusLabel,
@@ -41,6 +42,14 @@ describe('shared utility coverage from public app', () => {
     expect(getEventAttendanceStatusLabel(null)).toBe('Sem presença registrada');
     expect(joinUnique([' Sala 1 ', 'Sala 1', '', ' Auditório '])).toBe('Sala 1\nAuditório');
     expect(joinUnique([' ', ''])).toBeUndefined();
+  });
+
+  it('formats Unesp roles and graduation course labels', () => {
+    expect(formatUnespRole('professor-substituto')).toBe('Professor substituto');
+    expect(formatUnespRole(['aluno-graduacao'], '001200000')).toBe('Aluno de Ciência da Computação');
+    expect(formatUnespRole('aluno-graduacao')).toBe('Aluno da Graduação');
+    expect(formatUnespRole('unknown-role')).toBe('unknown-role');
+    expect(formatUnespRole(null)).toBe('');
   });
 
   it('validates and formats CPF values', () => {

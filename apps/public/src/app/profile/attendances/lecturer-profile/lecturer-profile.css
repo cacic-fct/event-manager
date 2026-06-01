@@ -1,0 +1,90 @@
+:host {
+  display: block;
+  min-height: 100%;
+}
+
+.lecturer-profile-page {
+  margin: 0 auto;
+  max-width: 760px;
+  padding: 24px 16px 40px;
+}
+
+.profile-header {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.profile-header h1,
+.profile-card h2 {
+  margin: 0;
+}
+
+.profile-header p,
+.biography {
+  color: var(--mat-sys-on-surface-variant);
+  white-space: pre-line;
+}
+
+.profile-card,
+.profile-form {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.profile-card {
+  grid-template-columns: auto 1fr;
+}
+
+.profile-avatar {
+  border-radius: 50%;
+  height: 88px;
+  object-fit: cover;
+  width: 88px;
+}
+
+.profile-avatar-placeholder {
+  align-items: center;
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+  display: flex;
+  justify-content: center;
+}
+
+.contact-actions,
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.form-actions {
+  justify-content: flex-end;
+}
+
+.empty-section {
+  align-content: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 220px;
+  text-align: center;
+}
+
+.empty-section mat-icon {
+  font-size: 48px;
+  height: 48px;
+  width: 48px;
+}
+
+@media (max-width: 599px) {
+  .profile-card {
+    grid-template-columns: 1fr;
+  }
+}

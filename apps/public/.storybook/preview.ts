@@ -73,6 +73,7 @@ class StorybookAuthService {
       name: 'Storybook User',
       preferred_username: 'storybook',
       email: 'storybook@example.com',
+      picture: 'https://lh3.googleusercontent.com/a/storybook-user',
       is_onboarded: true,
     },
   });

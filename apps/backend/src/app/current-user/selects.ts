@@ -29,6 +29,7 @@ export const PERSON_SELECT = {
   user: {
     select: USER_SELECT,
   },
+  lecturerProfile: true,
   mergedIntoId: true,
   externalRef: true,
   deletedAt: true,

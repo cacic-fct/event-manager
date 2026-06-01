@@ -2,6 +2,7 @@ import {
   PublicEvent,
   PublicEventGroup,
   PublicEventSubscriptionSummary,
+  PublicLecturerProfile,
   PublicMajorEvent,
   PublicMajorEventPrice,
   PublicMajorEventPriceTier,
@@ -108,6 +109,14 @@ describe('public event models', () => {
     expect(Object.assign(new PublicEventGroup(), { id: 'group-1', name: 'Grupo', emoji: '📚' })).toMatchObject({
       id: 'group-1',
     });
+    expect(
+      Object.assign(new PublicLecturerProfile(), {
+        id: 'lecturer-profile-1',
+        displayName: 'Ada',
+        biography: 'Bio',
+        publishGoogleUserPicture: true,
+      }),
+    ).toMatchObject({ id: 'lecturer-profile-1', displayName: 'Ada' });
     expect(
       Object.assign(new PublicEvent(), {
         id: 'event-1',

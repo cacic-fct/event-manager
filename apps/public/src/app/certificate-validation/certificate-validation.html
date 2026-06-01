@@ -16,17 +16,17 @@
   </header>
 
   <form class="lookup-form" [formGroup]="validationForm" (ngSubmit)="submit()">
-    <div class="button-container">
-      <mat-form-field class="id-field">
-        <mat-label>Código do certificado</mat-label>
-        <input matInput autocomplete="off" [formControl]="certificateIdControl" />
-        @if (certificateIdControl.hasError('required')) {
-        <mat-error>Informe o código do certificado.</mat-error>
-        } @if (certificateIdControl.hasError('notFound')) {
-        <mat-error>Certificado não encontrado.</mat-error>
-        }
-      </mat-form-field>
+    <mat-form-field class="id-field">
+      <mat-label>Código do certificado</mat-label>
+      <input matInput autocomplete="off" [formControl]="certificateIdControl" />
+      @if (certificateIdControl.hasError('required')) {
+      <mat-error>Informe o código do certificado.</mat-error>
+      } @if (certificateIdControl.hasError('notFound')) {
+      <mat-error>Certificado não encontrado.</mat-error>
+      }
+    </mat-form-field>
 
+    <div class="button-container">
       <button mat-flat-button type="submit">
         <mat-icon>search</mat-icon>
         Validar

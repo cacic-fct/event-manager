@@ -1,10 +1,10 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { computed, Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { Person, PersonInput } from '../../graphql/models';
+import { LecturerProfileInput, Person, PersonInput } from '../../graphql/models';
 import { getErrorMessage } from '../error-message';
 
 @Injectable({
@@ -20,6 +20,11 @@ export class WorkspacePeopleService {
   readonly selectedPerson = signal<Person | null>(null);
   readonly isCreatingPerson = signal(false);
   readonly peopleSearchQuery = signal('');
+  readonly hasExternallyManagedProfile = computed(() => {
+    const person = this.selectedPerson();
+    return Boolean(person?.userId || person?.user);
+  });
+  readonly hasLecturerProfile = computed(() => Boolean(this.selectedPerson()?.lecturerProfile));
 
   readonly personForm = this.formBuilder.nonNullable.group({
     id: [''],
@@ -31,6 +36,14 @@ export class WorkspacePeopleService {
     academicId: [''],
     mergedIntoId: [''],
     externalRef: [''],
+  });
+
+  readonly lecturerProfileForm = this.formBuilder.nonNullable.group({
+    displayName: ['', [Validators.required]],
+    biography: ['', [Validators.required]],
+    publishGoogleUserPicture: [false],
+    email: [''],
+    whatsapp: [''],
   });
 
   async searchPeople(query: string): Promise<void> {
@@ -86,6 +99,8 @@ export class WorkspacePeopleService {
       mergedIntoId: person.mergedIntoId ?? '',
       externalRef: person.externalRef ?? '',
     });
+    this.populateLecturerProfileForm(person);
+    this.updateExternallyManagedControls();
   }
 
   resetPersonForm(): void {
@@ -103,6 +118,8 @@ export class WorkspacePeopleService {
       mergedIntoId: '',
       externalRef: '',
     });
+    this.resetLecturerProfileForm();
+    this.updateExternallyManagedControls();
   }
 
   startNewPerson(): void {
@@ -120,6 +137,8 @@ export class WorkspacePeopleService {
       mergedIntoId: '',
       externalRef: '',
     });
+    this.resetLecturerProfileForm();
+    this.updateExternallyManagedControls();
   }
 
   async savePerson(): Promise<void> {
@@ -158,5 +177,97 @@ export class WorkspacePeopleService {
     } catch (error) {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a pessoa.'), 'Fechar', { duration: 5000 });
     }
+  }
+
+  async saveLecturerProfile(): Promise<void> {
+    const selectedPerson = this.selectedPerson();
+    if (!selectedPerson) {
+      return;
+    }
+
+    if (this.lecturerProfileForm.invalid) {
+      this.lecturerProfileForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.lecturerProfileForm.getRawValue();
+    const wasExistingProfile = this.hasLecturerProfile();
+    const payload: LecturerProfileInput = {
+      displayName: raw.displayName.trim(),
+      biography: raw.biography.trim(),
+      publishGoogleUserPicture: raw.publishGoogleUserPicture,
+      email: raw.email.trim() || null,
+      whatsapp: this.normalizeWhatsapp(raw.whatsapp.trim()),
+    };
+
+    try {
+      const lecturerProfile = await firstValueFrom(this.api.upsertLecturerProfile(selectedPerson.id, payload));
+      this.selectedPerson.set({
+        ...selectedPerson,
+        lecturerProfile,
+      });
+      this.snackbar.open(
+        wasExistingProfile ? 'Perfil de ministrante atualizado.' : 'Perfil de ministrante criado.',
+        'Fechar',
+        {
+          duration: 2500,
+        },
+      );
+      await this.searchPeople(this.peopleSearchQuery());
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o perfil de ministrante.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
+  }
+
+  private updateExternallyManagedControls(): void {
+    const controls = [
+      this.personForm.controls.name,
+      this.personForm.controls.email,
+      this.personForm.controls.phone,
+      this.personForm.controls.identityDocument,
+      this.personForm.controls.academicId,
+    ];
+
+    for (const control of controls) {
+      if (this.hasExternallyManagedProfile()) {
+        control.disable({ emitEvent: false });
+      } else {
+        control.enable({ emitEvent: false });
+      }
+    }
+  }
+
+  private populateLecturerProfileForm(person: Person): void {
+    this.lecturerProfileForm.reset({
+      displayName: person.lecturerProfile?.displayName ?? '',
+      biography: person.lecturerProfile?.biography ?? '',
+      publishGoogleUserPicture: person.lecturerProfile?.publishGoogleUserPicture ?? false,
+      email: person.lecturerProfile?.email ?? '',
+      whatsapp: person.lecturerProfile?.whatsapp ?? '',
+    });
+  }
+
+  private resetLecturerProfileForm(): void {
+    this.lecturerProfileForm.reset({
+      displayName: '',
+      biography: '',
+      publishGoogleUserPicture: false,
+      email: '',
+      whatsapp: '',
+    });
+  }
+
+  private normalizeWhatsapp(value: string): string | null {
+    if (!value) {
+      return null;
+    }
+
+    const hasPlus = value.startsWith('+');
+    const digits = value.replace(/\D/g, '');
+    const normalized = hasPlus ? `+${digits}` : digits.length === 10 || digits.length === 11 ? `+55${digits}` : `+${digits}`;
+
+    return /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : value;
   }
 }

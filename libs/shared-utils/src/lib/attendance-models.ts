@@ -64,6 +64,16 @@ export interface PublicEventGroup {
   shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
 }
 
+export interface PublicLecturerProfile {
+  id: string;
+  displayName: string;
+  biography: string;
+  publishGoogleUserPicture: boolean;
+  googleUserPicture?: string | null;
+  email?: string | null;
+  whatsapp?: string | null;
+}
+
 export interface PublicEvent {
   id: string;
   name: string;
@@ -99,6 +109,7 @@ export interface PublicEvent {
   youtubeCode?: string | null;
   buttonText?: string | null;
   buttonLink?: string | null;
+  lecturers?: PublicLecturerProfile[];
 }
 
 export interface CurrentUserEventAttendance {

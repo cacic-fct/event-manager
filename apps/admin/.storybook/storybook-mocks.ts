@@ -35,6 +35,23 @@ function person(index = 0) {
       email: faker.internet.email(),
       role: index === 0 ? 'ADMIN' : 'USER',
     },
+    lecturerProfile:
+      index === 0
+        ? {
+            id: 'lecturer-profile-1',
+            personId: 'person-1',
+            displayName: 'Dra. Ana Clara Silva',
+            biography: 'Atua em desenvolvimento web, acessibilidade e formação de comunidades técnicas.',
+            publishGoogleUserPicture: false,
+            googleUserPicture: null,
+            email: 'ana.lecturer@example.com',
+            whatsapp: '+5518999999999',
+            createdAt: isoDaysFromNow(-10),
+            createdById: 'storybook-admin',
+            updatedAt: isoDaysFromNow(-1),
+            updatedById: 'storybook-admin',
+          }
+        : null,
   };
 }
 
@@ -360,6 +377,32 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
 
   if (query.includes('UpdatePerson')) {
     return { updatePerson: people[0] };
+  }
+
+  if (query.includes('GetLecturerProfile')) {
+    return {
+      lecturerProfile: people.find((item) => item.id === variables['personId'])?.lecturerProfile ?? null,
+    };
+  }
+
+  if (query.includes('UpsertLecturerProfile')) {
+    const input = (variables['input'] ?? {}) as Record<string, unknown>;
+    return {
+      upsertLecturerProfile: {
+        id: 'lecturer-profile-1',
+        personId: String(variables['personId'] ?? 'person-1'),
+        displayName: String(input['displayName'] ?? 'Ministrante'),
+        biography: String(input['biography'] ?? ''),
+        publishGoogleUserPicture: Boolean(input['publishGoogleUserPicture']),
+        googleUserPicture: null,
+        email: input['email'] ?? null,
+        whatsapp: input['whatsapp'] ?? null,
+        createdAt: isoDaysFromNow(-10),
+        createdById: 'storybook-admin',
+        updatedAt: now.toISOString(),
+        updatedById: 'storybook-admin',
+      },
+    };
   }
 
   if (query.includes('ListEventGroups') || query.includes('GetEventGroup')) {
