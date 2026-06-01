@@ -12,7 +12,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { AttendancesApiService, LecturerProfile, LecturerProfileInput } from '../attendances-api.service';
+import { AttendancesApiService, LecturerProfile, LecturerProfileInput } from '../attendances/attendances-api.service';
 
 type LecturerProfileState =
   | { status: 'loading' }
@@ -141,7 +141,11 @@ export class LecturerProfileComponent {
 
     const hasPlus = value.startsWith('+');
     const digits = value.replace(/\D/g, '');
-    const normalized = hasPlus ? `+${digits}` : digits.length === 10 || digits.length === 11 ? `+55${digits}` : `+${digits}`;
+    const normalized = hasPlus
+      ? `+${digits}`
+      : digits.length === 10 || digits.length === 11
+        ? `+55${digits}`
+        : `+${digits}`;
 
     return /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : value;
   }
