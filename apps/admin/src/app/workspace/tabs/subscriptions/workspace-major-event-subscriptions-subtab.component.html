@@ -48,16 +48,14 @@
         Validar comprovantes ({{ pendingReceiptsCount() }})
       </a>
 
-      <button
-        mat-button
-        type="button"
-        [disabled]="!permissions.canEdit('subscription#edit')"
-        (click)="workspace.startNewMajorEventSubscription()">
-        <mat-icon>add</mat-icon>
-        Nova inscrição
-      </button>
+      @if (canEditSelectedMajorEventSubscriptions()) {
+        <button mat-button type="button" (click)="workspace.startNewMajorEventSubscription()">
+          <mat-icon>add</mat-icon>
+          Nova inscrição
+        </button>
+      }
 
-      @if (permissions.canEdit('subscription#edit')) {
+      @if (canEditSelectedMajorEventSubscriptions()) {
         <input
           #subscriptionCsvInput
           type="file"
@@ -123,23 +121,18 @@
 
         <div class="panel-actions">
           @if (!workspace.editMode()) {
-            <button
-              matIconButton
-              type="button"
-              [disabled]="!permissions.canEdit('subscription#edit')"
-              (click)="workspace.enableMajorEventEdit()"
-              aria-label="Editar inscrição">
-              <mat-icon>edit</mat-icon>
-            </button>
+            @if (canEditSelectedMajorEventSubscriptions()) {
+              <button matIconButton type="button" (click)="workspace.enableMajorEventEdit()" aria-label="Editar inscrição">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
           } @else {
-            <button
-              mat-flat-button
-              type="button"
-              [disabled]="!permissions.canEdit('subscription#edit')"
-              (click)="workspace.saveMajorEventSubscription()">
-              <mat-icon>save</mat-icon>
-              Salvar
-            </button>
+            @if (canEditSelectedMajorEventSubscriptions()) {
+              <button mat-flat-button type="button" (click)="workspace.saveMajorEventSubscription()">
+                <mat-icon>save</mat-icon>
+                Salvar
+              </button>
+            }
           }
         </div>
       </div>

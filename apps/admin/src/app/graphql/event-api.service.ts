@@ -59,6 +59,8 @@ export class EventApiService {
             id
             eventGroupId
             startDate
+            endDate
+            createdAt
             name
             majorEvent {
               id

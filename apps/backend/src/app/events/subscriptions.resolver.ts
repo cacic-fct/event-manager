@@ -10,6 +10,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -117,6 +118,7 @@ export class EventSubscriptionsResolver {
     private readonly prisma: PrismaService,
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly notifications: NovuNotificationsService,
+    private readonly frozenResources: FrozenResourceService,
   ) {}
 
   @Query(() => [WorkspaceEventSubscription], {
@@ -172,6 +174,7 @@ export class EventSubscriptionsResolver {
     input: WorkspaceEventSubscriptionCreateInput,
     @Context() context: GraphqlContext,
   ): Promise<WorkspaceEventSubscription> {
+    await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     const createdById = this.getActorId(context);
     await this.ensurePersonExists(input.personId);
     await this.ensureEventExists(input.eventId);
@@ -247,6 +250,7 @@ export class EventSubscriptionsResolver {
     input: WorkspaceMajorEventSubscriptionCreateInput,
     @Context() context: GraphqlContext,
   ): Promise<WorkspaceMajorEventSubscription> {
+    await this.frozenResources.assertMajorEventMutable(input.majorEventId, this.getUser(context), 'edit');
     const createdById = this.getActorId(context);
     const selectedEventIds = this.normalizeEventIds(input.selectedEventIds);
     const status = this.normalizeStatus(input.subscriptionStatus);
@@ -309,6 +313,7 @@ export class EventSubscriptionsResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => WorkspaceMajorEventSubscriptionUpdateInput })
     input: WorkspaceMajorEventSubscriptionUpdateInput,
+    @Context() context: GraphqlContext,
   ): Promise<WorkspaceMajorEventSubscription> {
     const existing = await this.prisma.majorEventSubscription.findFirst({
       where: {
@@ -325,6 +330,7 @@ export class EventSubscriptionsResolver {
     if (!existing) {
       throw new NotFoundException(`Subscription ${id} was not found.`);
     }
+    await this.frozenResources.assertMajorEventMutable(existing.majorEventId, this.getUser(context), 'edit');
 
     const selectedEventIds =
       input.selectedEventIds == null ? undefined : this.normalizeEventIds(input.selectedEventIds);
@@ -786,11 +792,15 @@ export class EventSubscriptionsResolver {
   }
 
   private getActorId(context: GraphqlContext): string {
-    const user = context.req?.user ?? context.request?.user;
+    const user = this.getUser(context);
     const actorId = user?.sub ?? user?.email;
     if (!actorId) {
       throw new UnauthorizedException('Missing authenticated user context.');
     }
     return actorId;
+  }
+
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
   }
 }

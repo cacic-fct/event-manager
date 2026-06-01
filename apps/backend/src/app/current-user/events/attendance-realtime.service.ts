@@ -155,57 +155,40 @@ export class CurrentUserOnlineAttendanceRealtimeService {
 
   async listPendingOnlineAttendanceEvents(personId: string): Promise<CurrentUserPendingOnlineAttendanceEvent[]> {
     const now = new Date();
-
     const events = await this.prisma.event.findMany({
       where: {
         deletedAt: null,
         shouldCollectAttendance: true,
         isOnlineAttendanceAllowed: true,
+
+        onlineAttendanceStartDate: {
+          lte: now,
+        },
+        onlineAttendanceEndDate: {
+          gte: now,
+        },
+
+        attendances: {
+          none: {
+            personId,
+          },
+        },
+
         OR: [
           {
-            onlineAttendanceStartDate: null,
+            allowSubscription: false,
           },
           {
-            onlineAttendanceStartDate: {
-              lte: now,
+            subscriptions: {
+              some: {
+                personId,
+                deletedAt: null,
+              },
             },
           },
         ],
+
         AND: [
-          {
-            OR: [
-              {
-                onlineAttendanceEndDate: null,
-              },
-              {
-                onlineAttendanceEndDate: {
-                  gte: now,
-                },
-              },
-            ],
-          },
-          {
-            attendances: {
-              none: {
-                personId,
-              },
-            },
-          },
-          {
-            OR: [
-              {
-                allowSubscription: false,
-              },
-              {
-                subscriptions: {
-                  some: {
-                    personId,
-                    deletedAt: null,
-                  },
-                },
-              },
-            ],
-          },
           {
             OR: [
               {

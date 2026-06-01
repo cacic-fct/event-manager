@@ -19,6 +19,7 @@ import { CurrentUserContextService } from '../../current-user/context.service';
 import { GraphqlContext } from '../../current-user/selects';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { S3Service } from '../../s3/s3.service';
 import { mapReceipt } from '../mappers/receipt-queue.mapper';
@@ -44,6 +45,9 @@ export class ReceiptUploadService {
     private readonly keycloakAuthService: KeycloakAuthService,
     @InjectQueue(MAJOR_EVENT_RECEIPTS_QUEUE)
     private readonly receiptQueue: Queue<ReceiptProcessingJob>,
+    private readonly frozenResources: FrozenResourceService = {
+      assertMajorEventMutable: async () => undefined,
+    } as unknown as FrozenResourceService,
   ) {}
 
   async getCurrentReceipt(majorEventId: string, authenticatedUser: AuthenticatedUser): Promise<CurrentUserReceiptResponse | null> {
@@ -67,6 +71,7 @@ export class ReceiptUploadService {
     authenticatedUser: AuthenticatedUser,
   ): Promise<CurrentUserReceiptResponse> {
     assertValidReceiptUpload(file);
+    await this.frozenResources.assertMajorEventMutable(majorEventId, authenticatedUser, 'edit');
 
     const person = await this.currentUserContext.requireCurrentPerson(this.buildUserContext(authenticatedUser));
     const subscription = await this.prisma.majorEventSubscription.findFirst({

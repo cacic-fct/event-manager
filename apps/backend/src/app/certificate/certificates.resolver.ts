@@ -21,6 +21,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { Public } from '../auth/decorators/public.decorator';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { GqlThrottlerGuard } from '../common/gql-throttler.guard';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { CertificateConfigsService } from './certificate-configs.service';
 import { CertificateDownloadService } from './certificate-download.service';
@@ -45,6 +46,7 @@ export class CertificatesResolver {
     private readonly issuingService: CertificateIssuingService,
     private readonly downloadService: CertificateDownloadService,
     private readonly publicValidationService: PublicCertificateValidationService,
+    private readonly frozenResources: FrozenResourceService,
   ) {}
 
   @Query(() => [Event], { name: 'certificateIssuableEvents' })
@@ -138,8 +140,16 @@ export class CertificatesResolver {
   @Query(() => PublicCertificateValidation, {
     name: 'publicCertificateValidation',
     nullable: true,
+    description:
+      'Public certificate authenticity lookup. Returns participant-safe certificate metadata, masked identity information, grouped credited events, and total workload; returns null when the certificate cannot be publicly validated. Rate limited to 20 lookups per minute.',
   })
-  publicCertificateValidation(@Args('certificateId', { type: () => String }) certificateId: string) {
+  publicCertificateValidation(
+    @Args('certificateId', {
+      type: () => String,
+      description: 'Certificate identifier printed in certificate verification links and QR codes.',
+    })
+    certificateId: string,
+  ) {
     return this.publicValidationService.validateCertificate(certificateId);
   }
 
@@ -152,70 +162,117 @@ export class CertificatesResolver {
       blockDuration: 60_000,
     },
   })
-  @Query(() => CertificateDownload, { name: 'downloadPublicCertificate' })
-  downloadPublicCertificate(@Args('certificateId', { type: () => String }) certificateId: string) {
+  @Query(() => CertificateDownload, {
+    name: 'downloadPublicCertificate',
+    description:
+      'Downloads a publicly accessible rendered certificate as base64 content. Intended for certificate links and QR-code flows; rate limited to 10 downloads per minute.',
+  })
+  downloadPublicCertificate(
+    @Args('certificateId', {
+      type: () => String,
+      description: 'Certificate identifier printed in certificate verification links and QR codes.',
+    })
+    certificateId: string,
+  ) {
     return this.downloadService.downloadCertificate(certificateId);
   }
 
   @Mutation(() => CertificateConfig, { name: 'createCertificateConfig' })
   @RequireScopes('certificate#edit')
-  createCertificateConfig(
+  async createCertificateConfig(
     @Args('input', { type: () => CertificateConfigCreateInput })
     input: CertificateConfigCreateInput,
+    @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertCertificateTargetMutable(
+      input.scope,
+      this.getCertificateTargetId(input.scope, input),
+      this.getUser(context),
+      'edit',
+    );
     return this.configsService.createConfig(input);
   }
 
   @Mutation(() => CertificateConfig, { name: 'updateCertificateConfig' })
   @RequireScopes('certificate#edit')
-  updateCertificateConfig(
+  async updateCertificateConfig(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => CertificateConfigUpdateInput })
     input: CertificateConfigUpdateInput,
+    @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertCertificateConfigMutable(id, this.getUser(context), 'edit');
     return this.configsService.updateConfig(id, input);
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteCertificateConfig' })
   @RequireScopes('certificate#edit')
-  deleteCertificateConfig(@Args('id', { type: () => String }) id: string) {
+  async deleteCertificateConfig(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.frozenResources.assertCertificateConfigMutable(id, this.getUser(context), 'delete');
     return this.configsService.deleteConfig(id);
   }
 
   @Mutation(() => Certificate, { name: 'issueCertificateForPerson' })
   @RequireScopes('certificate#edit')
-  issueCertificateForPerson(
+  async issueCertificateForPerson(
     @Args('configId', { type: () => String }) configId: string,
     @Args('personId', { type: () => String }) personId: string,
     @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertCertificateConfigMutable(configId, this.getUser(context), 'edit');
     return this.issuingService.issueForPerson(configId, personId, this.getIssuedById(context));
   }
 
   @Mutation(() => [Certificate], { name: 'issueMissedCertificates' })
   @RequireScopes('certificate#edit')
-  issueMissedCertificates(
+  async issueMissedCertificates(
     @Args('configId', { type: () => String }) configId: string,
     @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertCertificateConfigMutable(configId, this.getUser(context), 'edit');
     return this.issuingService.issueMissedCertificates(configId, this.getIssuedById(context));
   }
 
   @Mutation(() => CertificateReissueResult, { name: 'reissueAllCertificates' })
   @RequireScopes('certificate#edit')
-  reissueAllCertificates(@Context() context: GraphqlContext) {
+  async reissueAllCertificates(@Context() context: GraphqlContext) {
+    await this.frozenResources.assertNoFrozenCertificateTargets(this.getUser(context), 'edit');
     return this.issuingService.reissueAllCertificates(this.getIssuedById(context));
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteCertificate' })
   @RequireScopes('certificate#edit')
-  deleteCertificate(@Args('id', { type: () => String }) id: string) {
+  async deleteCertificate(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.frozenResources.assertCertificateMutable(id, this.getUser(context), 'delete');
     return this.issuingService.deleteCertificate(id);
   }
 
   private getIssuedById(context: GraphqlContext): string | undefined {
-    const user = context.req?.user ?? context.request?.user;
+    const user = this.getUser(context);
     const subject = user?.sub?.trim();
     return subject || undefined;
+  }
+
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
+  }
+
+  private getCertificateTargetId(
+    scope: CertificateScope,
+    input: CertificateConfigCreateInput,
+  ): string {
+    if (scope === CertificateScope.EVENT && input.eventId) {
+      return input.eventId;
+    }
+
+    if (scope === CertificateScope.EVENT_GROUP && input.eventGroupId) {
+      return input.eventGroupId;
+    }
+
+    if (scope === CertificateScope.MAJOR_EVENT && input.majorEventId) {
+      return input.majorEventId;
+    }
+
+    return '';
   }
 }

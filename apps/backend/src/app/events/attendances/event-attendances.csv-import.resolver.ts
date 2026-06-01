@@ -3,13 +3,20 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod } from '@prisma/client';
 import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, GraphqlContext } from './event-attendances.shared';
 
 @Resolver(() => EventAttendance)
 export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBase {
-  constructor(prisma: PrismaService, attendanceCategories: AttendanceCategoryService) {
+  constructor(
+    prisma: PrismaService,
+    attendanceCategories: AttendanceCategoryService,
+    private readonly frozenResources: FrozenResourceService = {
+      assertEventMutable: async () => undefined,
+    } as unknown as FrozenResourceService,
+  ) {
     super(prisma, attendanceCategories);
   }
 
@@ -22,6 +29,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
     input: EventAttendanceCsvImportInput,
     @Context() context: GraphqlContext,
   ): Promise<EventAttendanceCsvImportResult> {
+    await this.frozenResources.assertEventMutable(input.eventId, context.req?.user ?? context.request?.user, 'edit');
     const event = await this.prisma.event.findFirst({
       where: {
         id: input.eventId,

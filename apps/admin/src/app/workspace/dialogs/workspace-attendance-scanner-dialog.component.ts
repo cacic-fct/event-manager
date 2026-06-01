@@ -17,7 +17,7 @@ import {
   ScannerFeedbackKind,
   ScannerFeedbackService,
 } from '@cacic-fct/shared-angular';
-import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import { formatUnespRole, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import {
@@ -86,7 +86,7 @@ export interface WorkspaceAttendanceScannerDialogData {
                   {{ attendance.fullName || attendance.personId }}
                 </span>
                 <span matListItemLine class="attendance-line">
-                  {{ attendance.unespRole || '-' }} · {{ statusLabel(attendance.subscriptionStatus) }}
+                  {{ roleLabel(attendance.unespRole) }} · {{ statusLabel(attendance.subscriptionStatus) }}
                 </span>
                 <span matListItemLine class="attendance-line">
                   @if (attendance.attendedAt) {
@@ -254,6 +254,10 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
 
   protected statusLabel(status: SubscriptionStatus | null | undefined): string {
     return status ? getSubscriptionStatusLabel(status) : 'Não inscrito';
+  }
+
+  protected roleLabel(role: string | null | undefined): string {
+    return formatUnespRole(role) || '-';
   }
 
   protected methodLabel(method: AttendanceCreationMethod | null | undefined): string {

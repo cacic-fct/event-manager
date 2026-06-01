@@ -1,7 +1,7 @@
 import '../testing/observer-mocks';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Event } from './event';
 import { ActivatedRoute, convertToParamMap, Router, Params } from '@angular/router';
 import { signal } from '@angular/core';
@@ -44,6 +44,17 @@ async function createEventComponentFixture(queryParamMap: Params = {}): Promise<
                 emoji: '🎓',
                 type: 'OTHER',
                 allowSubscription: false,
+                lecturers: [
+                  {
+                    id: 'lecturer-profile-1',
+                    displayName: 'Ada Lovelace',
+                    biography: 'Pioneira em computação.',
+                    publishGoogleUserPicture: false,
+                    googleUserPicture: null,
+                    email: 'ada@example.com',
+                    whatsapp: '+5518999999999',
+                  },
+                ],
               },
               subscriptionSummary: {
                 eventId: 'event-1',
@@ -74,8 +85,6 @@ async function createEventComponentFixture(queryParamMap: Params = {}): Promise<
 describe('Event', () => {
   let component: Event;
   let fixture: ComponentFixture<Event>;
-  let httpTesting: HttpTestingController;
-
   beforeEach(async () => {
     fixture = await createEventComponentFixture({});
     await fixture.whenStable();
@@ -119,5 +128,17 @@ describe('Event', () => {
 
   it('should default to /menu if neither back nor returnUrl is provided', async () => {
     expect(component.backUrl()).toBe('/menu');
+  });
+
+  it('renders lecturer profiles with contact links', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.textContent).toContain('Ada Lovelace');
+    expect(compiled.textContent).toContain('Pioneira em computação.');
+    expect(compiled.querySelector('a[href="mailto:ada@example.com"]')).toBeTruthy();
+    expect(compiled.querySelector('a[href="https://wa.me/5518999999999"]')).toBeTruthy();
   });
 });

@@ -90,4 +90,84 @@ export class CurrentUserCertificatesResolver {
 
     return this.downloadService.downloadCertificate(normalizedCertificateId);
   }
+
+  @Query(() => CertificateDownload, {
+    name: 'downloadCurrentUserCertificatesArchive',
+    description:
+      'Downloads every certificate owned by the authenticated person as a ZIP with a minimal events.json manifest for future validation imports.',
+  })
+  async downloadCurrentUserCertificatesArchive(@Context() context: GraphqlContext): Promise<CertificateDownload> {
+    const person = await this.currentUserContext.requireCurrentPerson(context);
+    const certificates = await this.prisma.certificate.findMany({
+      where: {
+        personId: person.id,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        issuedAt: true,
+        configId: true,
+        renderedData: true,
+        config: {
+          select: {
+            scope: true,
+            majorEventId: true,
+            eventGroupId: true,
+            eventId: true,
+          },
+        },
+      },
+      orderBy: {
+        issuedAt: 'asc',
+      },
+    });
+
+    if (certificates.length === 0) {
+      throw new NotFoundException('No certificates were found for the current user.');
+    }
+
+    return this.downloadService.downloadCertificatesArchive(
+      person.name,
+      certificates.map((certificate) => certificate.id),
+      {
+        schemaVersion: 1,
+        generatedAt: new Date().toISOString(),
+        certificates: certificates.map((certificate) => ({
+          certificateId: certificate.id,
+          issuedAt: certificate.issuedAt.toISOString(),
+          configId: certificate.configId,
+          scope: certificate.config.scope,
+          targetId:
+            certificate.config.scope === CertificateScope.MAJOR_EVENT
+              ? certificate.config.majorEventId
+              : certificate.config.scope === CertificateScope.EVENT_GROUP
+                ? certificate.config.eventGroupId
+                : certificate.config.eventId,
+          eventIds: this.readRenderedEventIds(certificate.renderedData),
+        })),
+      },
+    );
+  }
+
+  private readRenderedEventIds(renderedData: unknown): string[] {
+    if (!renderedData || typeof renderedData !== 'object' || Array.isArray(renderedData)) {
+      return [];
+    }
+
+    const events = (renderedData as { events?: unknown }).events;
+    if (!Array.isArray(events)) {
+      return [];
+    }
+
+    return events
+      .map((event) => {
+        if (!event || typeof event !== 'object' || Array.isArray(event)) {
+          return null;
+        }
+
+        const id = (event as { id?: unknown }).id;
+        return typeof id === 'string' && id.trim() ? id : null;
+      })
+      .filter((id): id is string => id !== null);
+  }
 }

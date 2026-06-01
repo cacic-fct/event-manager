@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -78,6 +78,11 @@ export class WorkspaceEventsService {
   readonly eventGroupSearchResults = signal<EventGroup[]>([]);
   readonly lecturerSearchResults = signal<Person[]>([]);
   readonly attendanceCollectorSearchResults = signal<Person[]>([]);
+  readonly groupLecturerSuggestions = signal<Person[]>([]);
+  readonly suggestedGroupLecturers = computed(() => {
+    const linkedPersonIds = new Set(this.eventLecturers().map((lecturer) => lecturer.personId));
+    return this.groupLecturerSuggestions().filter((person) => !linkedPersonIds.has(person.id));
+  });
 
   readonly eventFiltersForm = this.formBuilder.nonNullable.group({
     startDateFrom: [''],
@@ -179,6 +184,7 @@ export class WorkspaceEventsService {
     this.eventGroupLookupForm.controls.query.setValue(eventDetails.eventGroup?.name ?? '');
     this.eventGroupSearchResults.set([]);
     await Promise.all([this.loadEventLecturers(eventId), this.loadEventAttendanceCollectors(eventId)]);
+    await this.loadGroupLecturerSuggestions();
   }
 
   resetEventForm(): void {
@@ -187,6 +193,7 @@ export class WorkspaceEventsService {
     this.eventLecturers.set([]);
     this.eventAttendanceCollectors.set([]);
     this.eventGroupSearchResults.set([]);
+    this.groupLecturerSuggestions.set([]);
     this.attendanceCollectorSearchResults.set([]);
     this.eventGroupLookupForm.reset({
       query: '',
@@ -305,6 +312,7 @@ export class WorkspaceEventsService {
     this.selectedEventGroupAllowsNonSubscribedCertificates.set(group.shouldIssueCertificateForNonSubscribedAttendees);
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
+    void this.loadGroupLecturerSuggestions();
   }
 
   clearEventGroupFromEvent(): void {
@@ -315,6 +323,7 @@ export class WorkspaceEventsService {
     this.selectedEventGroupAllowsNonSubscribedCertificates.set(true);
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
+    this.groupLecturerSuggestions.set([]);
   }
 
   applyPlacePreset(placeId: string): void {
@@ -351,7 +360,7 @@ export class WorkspaceEventsService {
       this.lecturerSearchResults.set([]);
       return;
     }
-    this.lecturerSearchResults.set(await firstValueFrom(this.peopleApi.listPeople({ query, take: 10 })));
+    this.lecturerSearchResults.set(await this.searchPeopleCandidates(query, 10));
   }
 
   async createAndAddLecturer(): Promise<void> {
@@ -411,7 +420,7 @@ export class WorkspaceEventsService {
       this.attendanceCollectorSearchResults.set([]);
       return;
     }
-    this.attendanceCollectorSearchResults.set(await firstValueFrom(this.peopleApi.listPeople({ query, take: 10 })));
+    this.attendanceCollectorSearchResults.set(await this.searchPeopleCandidates(query, 10));
   }
 
   async addAttendanceCollector(person: Person): Promise<void> {
@@ -459,6 +468,66 @@ export class WorkspaceEventsService {
         name: collector.person?.name ?? collector.personId,
       })),
     );
+  }
+
+  private async loadGroupLecturerSuggestions(): Promise<void> {
+    const eventGroupId = this.eventForm.controls.eventGroupId.value;
+    if (!eventGroupId) {
+      this.groupLecturerSuggestions.set([]);
+      return;
+    }
+
+    const currentEventId = this.eventForm.controls.id.value;
+    const groupEvents = await firstValueFrom(this.api.listEvents({ eventGroupId, take: 100 }));
+    const sourceEventIds = groupEvents
+      .map((eventItem) => eventItem.id)
+      .filter((eventId) => eventId !== currentEventId);
+
+    if (sourceEventIds.length === 0) {
+      this.groupLecturerSuggestions.set([]);
+      return;
+    }
+
+    const lecturerGroups = await Promise.all(
+      sourceEventIds.map((eventId) => firstValueFrom(this.api.listEventLecturers(eventId))),
+    );
+    const suggestions = new Map<string, Person>();
+    for (const lecturer of lecturerGroups.flat()) {
+      if (lecturer.person) {
+        suggestions.set(lecturer.person.id, lecturer.person);
+      }
+    }
+
+    if (this.eventForm.controls.eventGroupId.value !== eventGroupId) {
+      return;
+    }
+
+    this.groupLecturerSuggestions.set(
+      [...suggestions.values()].sort((left, right) => left.name.localeCompare(right.name)),
+    );
+  }
+
+  private async searchPeopleCandidates(query: string, take: number): Promise<Person[]> {
+    const searches = [firstValueFrom(this.peopleApi.listPeople({ query, take }))];
+    const identityDocumentDigits = query.replace(/\D/g, '');
+
+    if (query.includes('@')) {
+      searches.unshift(firstValueFrom(this.peopleApi.listPeople({ email: query, take })));
+    }
+
+    if (identityDocumentDigits.length >= 8) {
+      searches.unshift(firstValueFrom(this.peopleApi.listPeople({ identityDocument: query, take })));
+      if (identityDocumentDigits !== query) {
+        searches.unshift(firstValueFrom(this.peopleApi.listPeople({ identityDocument: identityDocumentDigits, take })));
+      }
+    }
+
+    const peopleById = new Map<string, Person>();
+    for (const person of (await Promise.all(searches)).flat()) {
+      peopleById.set(person.id, person);
+    }
+
+    return [...peopleById.values()].slice(0, take);
   }
 
   private async deleteEventById(eventId: string): Promise<void> {

@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthOnlineStatusService } from './auth-online-status.service';
 import { AuthenticatedUser, AuthRefreshResult } from './auth.types';
@@ -34,9 +34,12 @@ export class AuthService {
         return;
       }
 
-      await this.refreshMe();
+      if (await this.loadCurrentUser()) {
+        await this.redirectToOnboardingIfNeeded();
+        return;
+      }
 
-      if (!this.isAuthenticated() && this.onlineStatus.isOnline() && !isDevMode()) {
+      if (this.onlineStatus.isOnline()) {
         this.loginWithExistingSsoSession();
       }
     } catch (error) {
@@ -57,6 +60,10 @@ export class AuthService {
 
   loginWithExistingSsoSession(): void {
     if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    if (this.hasSilentSsoFailureMarker()) {
       return;
     }
 
@@ -309,6 +316,18 @@ export class AuthService {
   private getCurrentAbsoluteUrl(): string {
     const { href } = window.location;
     return href;
+  }
+
+  private hasSilentSsoFailureMarker(): boolean {
+    if (!isPlatformBrowser(this.platformId)) {
+      return false;
+    }
+
+    try {
+      return new URL(window.location.href).searchParams.get('sso') === 'none';
+    } catch {
+      return false;
+    }
   }
 
   private buildAccountOnboardingRedirectUrl(returnTo: string): string {

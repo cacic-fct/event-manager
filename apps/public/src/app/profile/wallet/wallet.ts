@@ -13,7 +13,7 @@ import { toSVG } from '@bwip-js/browser';
 
 import { AuthService, SafePipe, ServiceWorkerService } from '@cacic-fct/shared-angular';
 import { OfflineUserSnapshot } from '@cacic-fct/offline-public-data-access';
-import { formatCPF, isValidCPF } from '@cacic-fct/shared-utils';
+import { formatCPF, formatUnespRole, isValidCPF } from '@cacic-fct/shared-utils';
 
 import { PrintDialog } from './print-dialog';
 import { NetworkStatusService } from '../../shared/network-status.service';
@@ -36,32 +36,10 @@ export class Wallet {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly offlineSnapshot = signal<OfflineUserSnapshot | null>(null);
 
-  // TODO: Move this to a shared lib
-  private readonly roleLabels: Record<string, string> = {
-    'aluno-pos-graduacao': 'Aluno da pós-graduação',
-    egresso: 'Egresso',
-    professor: 'Professor',
-    'professor-substituto': 'Professor substituto',
-    'servidor-tecnico-administrativo': 'Servidor técnico-administrativo',
-    external: 'Externo',
-  };
-
-  private readonly graduationCourses: Record<string, string> = {
-    '12': 'Aluno de Ciência da Computação',
-  };
-
   readonly formatRole = computed(() => {
     const user = this.cardUser();
 
-    const role = Array.isArray(user?.unespRole) ? user.unespRole[0] : user?.unespRole;
-
-    if (role === 'aluno-graduacao') {
-      const courseCode = user?.enrollmentNumber?.substring(2, 4);
-
-      return this.graduationCourses[courseCode ?? ''] ?? 'Aluno da Graduação';
-    }
-
-    return this.roleLabels[role ?? ''] ?? role?.toString() ?? '';
+    return formatUnespRole(user?.unespRole, user?.enrollmentNumber?.toString());
   });
   private get isBrowser(): boolean {
     return isPlatformBrowser(this.platformId);

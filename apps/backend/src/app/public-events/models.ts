@@ -98,6 +98,10 @@ export type PublicMajorEventRecord = Prisma.MajorEventGetPayload<{
   select: typeof PUBLIC_MAJOR_EVENT_SELECT;
 }>;
 
+export type PublicEventRecord = Prisma.EventGetPayload<{
+  select: typeof PUBLIC_EVENT_SELECT;
+}>;
+
 export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
   select: {
     id: true;
@@ -431,6 +435,50 @@ export class PublicEventGroup {
 
 @ObjectType({
   description:
+    'Public lecturer profile attached to an event. This profile is global for the person and may appear in multiple events.',
+})
+export class PublicLecturerProfile {
+  @Field(() => String, {
+    description: 'Lecturer profile identifier.',
+  })
+  id!: string;
+
+  @Field(() => String, {
+    description: 'Public display name chosen for event pages.',
+  })
+  displayName!: string;
+
+  @Field(() => String, {
+    description: 'Public biography shown on event pages.',
+  })
+  biography!: string;
+
+  @Field(() => Boolean, {
+    description: 'Whether the lecturer opted into publishing the Google account picture.',
+  })
+  publishGoogleUserPicture!: boolean;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Published Google account picture URL, when opted in and available.',
+  })
+  googleUserPicture?: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Optional public contact e-mail.',
+  })
+  email?: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Optional public WhatsApp number in E.164 format.',
+  })
+  whatsapp?: string | null;
+}
+
+@ObjectType({
+  description:
     'Public event data used by the Angular event catalog, subscription flow, attendance prompts, and certificate-related UI.',
 })
 export class PublicEvent {
@@ -623,6 +671,11 @@ export class PublicEvent {
     description: 'Optional call-to-action target configured for the public event page.',
   })
   buttonLink?: string | null;
+
+  @Field(() => [PublicLecturerProfile], {
+    description: 'Public lecturer profiles associated with this event.',
+  })
+  lecturers?: PublicLecturerProfile[];
 }
 
 @ObjectType({

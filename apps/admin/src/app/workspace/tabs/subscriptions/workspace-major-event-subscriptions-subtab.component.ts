@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { WorkspaceMajorEventSubscription } from '../../../graphql/models';
+import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { WorkspaceSubscriptionsService } from '../../../shared/services/workspace-subscriptions.service';
 
@@ -63,5 +64,27 @@ export class WorkspaceMajorEventSubscriptionsSubtabComponent {
     return majorEventId
       ? ['/subscriptions/major-event', majorEventId, 'validate-receipts']
       : ['/subscriptions'];
+  }
+
+  protected canEditSelectedMajorEventSubscriptions(): boolean {
+    const majorEvent = this.workspace
+      .majorEvents()
+      .find((item) => item.id === this.workspace.majorEventForm.controls.majorEventId.value);
+    return (
+      this.permissions.canEdit('subscription#edit') &&
+      Boolean(majorEvent) &&
+      (!isFrozenMajorEvent(majorEvent) || this.permissions.has('frozen#edit'))
+    );
+  }
+
+  protected canValidateSelectedMajorEventReceipts(): boolean {
+    const majorEvent = this.workspace
+      .majorEvents()
+      .find((item) => item.id === this.workspace.majorEventForm.controls.majorEventId.value);
+    return (
+      this.permissions.canEdit('validate-receipt#edit') &&
+      Boolean(majorEvent) &&
+      (!isFrozenMajorEvent(majorEvent) || this.permissions.has('frozen#edit'))
+    );
   }
 }

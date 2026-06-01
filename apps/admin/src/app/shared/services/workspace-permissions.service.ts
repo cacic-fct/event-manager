@@ -16,6 +16,8 @@ export type WorkspacePermissionScope =
   | 'event-lecturer#read'
   | 'event-lecturer#edit'
   | 'event-lecturer#delete'
+  | 'frozen#edit'
+  | 'frozen#delete'
   | 'major-event#read'
   | 'major-event#edit'
   | 'major-event#delete'
@@ -206,6 +208,7 @@ export class WorkspacePermissionsService {
       ...tab.delete,
     ]);
     permissions.push('validate-receipt#read');
+    permissions.push('frozen#edit', 'frozen#delete');
     const uniquePermissions = [...new Set(permissions)];
     const result = await firstValueFrom(
       this.http.post<{ permissions: string[] }>('/api/auth/permissions/evaluate', {

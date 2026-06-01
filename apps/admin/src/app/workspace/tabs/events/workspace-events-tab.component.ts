@@ -12,9 +12,10 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
-import { EventType } from '../../../graphql/models';
+import { Event, EventType } from '../../../graphql/models';
 import { WorkspaceEventsService } from '../../../shared/services/workspace-events.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
+import { isFrozenEvent } from '../../../shared/frozen-resource';
 import { EventFilterPanelComponent } from '../shared/event-filter-panel.component';
 
 @Component({
@@ -72,5 +73,31 @@ export class WorkspaceEventsTabComponent {
     }
 
     return 'Outro';
+  }
+
+  protected canEditEvent(eventItem: Event | null | undefined): boolean {
+    return (
+      this.permissions.canEdit('event#edit') &&
+      (!eventItem || !isFrozenEvent(eventItem) || this.permissions.has('frozen#edit'))
+    );
+  }
+
+  protected canDeleteEvent(eventItem: Event): boolean {
+    return this.permissions.canDelete('event#delete') && (!isFrozenEvent(eventItem) || this.permissions.has('frozen#delete'));
+  }
+
+  protected canEditSelectedEventRelation(scope: 'event#edit' | 'event-lecturer#edit' | 'person#edit'): boolean {
+    return this.permissions.canEdit(scope) && (!this.workspace.selectedEvent() || this.canEditEvent(this.workspace.selectedEvent()));
+  }
+
+  protected canRemoveSelectedEventRelation(scope: 'event#edit' | 'event-lecturer#delete'): boolean {
+    const selectedEvent = this.workspace.selectedEvent();
+    if (!selectedEvent) {
+      return this.permissions.canEdit(scope === 'event#edit' ? 'event#edit' : 'event-lecturer#edit');
+    }
+
+    const hasResourcePermission =
+      scope === 'event#edit' ? this.permissions.canEdit('event#edit') : this.permissions.canDelete('event-lecturer#delete');
+    return hasResourcePermission && (!isFrozenEvent(selectedEvent) || this.permissions.has('frozen#delete'));
   }
 }

@@ -42,7 +42,7 @@
       <mat-list-item>
         <span matListItemTitle>{{ attendance.fullName || attendance.personId }}</span>
         <span matListItemLine>
-          {{ attendance.unespRole || '-' }} · {{ statusLabel(attendance.subscriptionStatus) }}
+          {{ roleLabel(attendance.unespRole) }} · {{ statusLabel(attendance.subscriptionStatus) }}
         </span>
         <span matListItemLine>
           @if (attendance.attendedAt) { {{ attendance.attendedAt | date: 'shortTime' }} } @else { - } · {{

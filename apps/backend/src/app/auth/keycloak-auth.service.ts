@@ -88,6 +88,7 @@ export class KeycloakAuthService {
       redirectUri,
       returnTo: options?.returnTo,
       state: options?.state,
+      prompt: options?.prompt,
     });
     const params = new URLSearchParams({
       client_id: this.clientId,

@@ -26,23 +26,26 @@
               {{ majorEvent.startDate | date: 'shortDate' }} -
               {{ majorEvent.endDate | date: 'shortDate' }}
             </span>
-            <button
-              matIconButton
-              type="button"
-              aria-label="Editar grande evento"
-              matTooltip="Editar"
-              (click)="$event.stopPropagation(); workspace.pickMajorEvent(majorEvent)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button
-              matIconButton
-              type="button"
-              aria-label="Excluir grande evento"
-              matTooltip="Excluir"
-              [disabled]="!permissions.canDelete('major-event#delete')"
-              (click)="$event.stopPropagation(); workspace.deleteMajorEvent(majorEvent.id)">
-              <mat-icon>delete</mat-icon>
-            </button>
+            @if (canEditMajorEvent(majorEvent)) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Editar grande evento"
+                matTooltip="Editar"
+                (click)="$event.stopPropagation(); workspace.pickMajorEvent(majorEvent)">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+            @if (canDeleteMajorEvent(majorEvent)) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Excluir grande evento"
+                matTooltip="Excluir"
+                (click)="$event.stopPropagation(); workspace.deleteMajorEvent(majorEvent.id)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            }
           </mat-list-item>
         } @empty {
           <mat-list-item>
@@ -71,14 +74,12 @@
             <mat-icon>restart_alt</mat-icon>
             Limpar
           </button>
-          <button
-            mat-flat-button
-            type="button"
-            [disabled]="!permissions.canEdit('major-event#edit')"
-            (click)="workspace.saveMajorEvent()">
-            <mat-icon>save</mat-icon>
-            Salvar
-          </button>
+          @if (canEditMajorEvent(workspace.selectedMajorEvent())) {
+            <button mat-flat-button type="button" (click)="workspace.saveMajorEvent()">
+              <mat-icon>save</mat-icon>
+              Salvar
+            </button>
+          }
         </div>
       </div>
 
@@ -301,15 +302,16 @@
                   {{ eventItem.startDate | date: 'short' }} -
                   {{ eventItem.endDate | date: 'short' }}
                 </span>
-                <button
-                  matIconButton
-                  type="button"
-                  aria-label="Remover atividade do grande evento"
-                  matTooltip="Remover"
-                  [disabled]="!permissions.canEdit('event#edit')"
-                  (click)="workspace.removeEventFromSelectedMajorEvent(eventItem)">
-                  <mat-icon>link_off</mat-icon>
-                </button>
+                @if (canEditSelectedMajorEventEvents()) {
+                  <button
+                    matIconButton
+                    type="button"
+                    aria-label="Remover atividade do grande evento"
+                    matTooltip="Remover"
+                    (click)="workspace.removeEventFromSelectedMajorEvent(eventItem)">
+                    <mat-icon>link_off</mat-icon>
+                  </button>
+                }
               </mat-list-item>
             } @empty {
               <mat-list-item>
@@ -335,15 +337,13 @@
 
           <div class="inline-list">
             @for (eventItem of workspace.majorEventEventSearchResults(); track eventItem.id) {
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="!permissions.canEdit('event#edit')"
-                (click)="workspace.addEventToSelectedMajorEvent(eventItem)">
-                <app-twemoji [emoji]="eventItem.emoji" />
-                {{ eventItem.name }}
-                {{ eventItem.startDate | date: 'shortDate' }}
-              </button>
+              @if (canEditSelectedMajorEventEvents()) {
+                <button mat-stroked-button type="button" (click)="workspace.addEventToSelectedMajorEvent(eventItem)">
+                  <app-twemoji [emoji]="eventItem.emoji" />
+                  {{ eventItem.name }}
+                  {{ eventItem.startDate | date: 'shortDate' }}
+                </button>
+              }
             } @empty {
               <span class="empty-note">Nenhum resultado para adicionar.</span>
             }

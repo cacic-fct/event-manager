@@ -7,14 +7,12 @@
       </div>
 
       <div class="panel-actions">
-        <button
-          mat-flat-button
-          type="button"
-          [disabled]="reissuingCertificates() || !permissions.canEdit('certificate#edit')"
-          (click)="reissueAllCertificates()">
-          <mat-icon>workspace_premium</mat-icon>
-          Reemitir certificados
-        </button>
+        @if (permissions.canEdit('certificate#edit') && permissions.has('frozen#edit')) {
+          <button mat-flat-button type="button" [disabled]="reissuingCertificates()" (click)="reissueAllCertificates()">
+            <mat-icon>workspace_premium</mat-icon>
+            Reemitir certificados
+          </button>
+        }
       </div>
     </div>
 

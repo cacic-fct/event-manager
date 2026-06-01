@@ -7,6 +7,7 @@ import {
   ReceiptValidationApiService,
   ReceiptValidationQueue,
 } from '../../../../graphql/receipt-validation-api.service';
+import { WorkspacePermissionsService } from '../../../../shared/services/workspace-permissions.service';
 import { WorkspaceReceiptValidationComponent } from './workspace-receipt-validation.component';
 
 const meta: Meta<WorkspaceReceiptValidationComponent> = {
@@ -104,6 +105,23 @@ export const EmptyQueue: Story = {
   },
 };
 
+export const FrozenQueue: Story = {
+  args: {},
+  decorators: [
+    applicationConfig({
+      providers: createReceiptValidationStoryProviders(buildQueue(1, true)),
+    }),
+  ],
+  parameters: {
+    viewport: { defaultViewport: 'desktop' },
+  },
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole('button', { name: 'Aprovar comprovante' })).toBeNull();
+  },
+};
+
 function createReceiptValidationStoryProviders(queue: ReceiptValidationQueue) {
   const api = {
     watchQueue: () => of(queue),
@@ -124,16 +142,25 @@ function createReceiptValidationStoryProviders(queue: ReceiptValidationQueue) {
       },
     },
     { provide: ReceiptValidationApiService, useValue: api },
+    {
+      provide: WorkspacePermissionsService,
+      useValue: {
+        has: () => false,
+        canEdit: () => true,
+      },
+    },
   ];
 }
 
-function buildQueue(count: number): ReceiptValidationQueue {
+function buildQueue(count: number, frozen = false): ReceiptValidationQueue {
   return {
     pendingCount: count,
     items: Array.from({ length: count }, (_, index) => ({
       subscriptionId: `subscription-${index + 1}`,
       majorEventId: 'major-event-1',
       majorEventName: 'Semana da Computação',
+      majorEventCreatedAt: frozen ? '2025-01-01T12:00:00.000Z' : '2026-05-01T12:00:00.000Z',
+      majorEventEndDate: frozen ? '2025-02-01T12:00:00.000Z' : '2026-06-05T21:00:00.000Z',
       personId: `person-${index + 1}`,
       personName: index === 0 ? 'Ada Lovelace' : `Participante ${index + 1}`,
       personEmail: `participante-${index + 1}@cacic.dev.br`,

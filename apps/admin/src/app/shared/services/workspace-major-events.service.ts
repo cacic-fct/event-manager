@@ -194,6 +194,9 @@ export class WorkspaceMajorEventsService {
       query: '',
     });
     this.majorEventEventSearchResults.set([]);
+    const price = majorEvent.majorEventPrices.find((priceOption) => priceOption.tiers.length > 0);
+    const priceType = price?.type ?? 'SINGLE';
+
     this.majorEventForm.reset({
       id: majorEvent.id,
       name: majorEvent.name,
@@ -224,12 +227,11 @@ export class WorkspaceMajorEventsService {
       paymentDocument: majorEvent.paymentInfo?.document ?? '',
       pixKey: majorEvent.paymentInfo?.pixKey ?? '',
       pixCity: majorEvent.paymentInfo?.pixCity ?? '',
-      priceType: majorEvent.majorEventPrices[0]?.type ?? 'SINGLE',
+      priceType,
     });
-    const price = majorEvent.majorEventPrices[0];
     this.resetPriceTiers(
       price?.tiers.length
-        ? price.tiers.map((tier) => this.createPriceTierGroup(tier.name, (tier.value / 100).toFixed(2)))
+        ? price.tiers.map((tier) => this.createPriceTierGroup(tier.name, this.fromCentsToCurrencyInput(tier.value)))
         : [this.createPriceTierGroup('Preço único', '')],
     );
     this.syncCertificateExceptionControls();
@@ -353,13 +355,15 @@ export class WorkspaceMajorEventsService {
   }
 
   private async loadEventsForMajorEvent(majorEventId: string): Promise<void> {
+    const events = await firstValueFrom(
+      this.eventsApi.listEvents({
+        majorEventId,
+        take: 200,
+      }),
+    );
+
     this.majorEventEvents.set(
-      await firstValueFrom(
-        this.eventsApi.listEvents({
-          majorEventId,
-          take: 200,
-        }),
-      ),
+      [...events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate)),
     );
   }
 
@@ -383,7 +387,11 @@ export class WorkspaceMajorEventsService {
     }
 
     const parsed = typeof rawValue === 'number' ? rawValue : Number(rawValue.replace(',', '.'));
-    return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
+    return Number.isFinite(parsed) ? Math.trunc(Math.round(parsed * 100)) : null;
+  }
+
+  private fromCentsToCurrencyInput(value: number): string {
+    return (value / 100).toFixed(2);
   }
 
   private createPriceTierGroup(name: string, value: string) {

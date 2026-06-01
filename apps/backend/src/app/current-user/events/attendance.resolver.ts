@@ -16,6 +16,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from './attendance-realtime.service';
 import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
 
 @Resolver()
 export class CurrentUserEventAttendanceResolver {
@@ -25,6 +26,7 @@ export class CurrentUserEventAttendanceResolver {
     private readonly mapper: CurrentUserEventMapperService,
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
+    private readonly frozenResources: FrozenResourceService,
   ) {}
 
   @Query(() => [CurrentUserEventAttendance], {
@@ -93,6 +95,8 @@ export class CurrentUserEventAttendanceResolver {
     input: ConfirmCurrentUserOnlineAttendanceInput,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventAttendance> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const normalizedCode = input.code.trim();
     if (!normalizedCode) {

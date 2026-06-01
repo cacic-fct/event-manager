@@ -174,71 +174,125 @@ export class CertificateReissueResult {
   certificateCount!: number;
 }
 
-@ObjectType()
+@ObjectType({
+  description:
+    'Participant-safe event row shown inside public certificate validation, without attendance or administrative data.',
+})
 export class PublicCertificateValidationEvent {
-  @Field(() => String)
+  @Field(() => String, {
+    description: 'Participant-facing event name credited by the certificate.',
+  })
   name!: string;
 
-  @Field(() => String)
+  @Field(() => String, {
+    description: 'Public event identifier credited by the certificate.',
+  })
   id!: string;
 
-  @Field(() => String)
+  @Field(() => String, {
+    description: 'Visual marker used by public certificate validation UI.',
+  })
   emoji!: string;
 
-  @Field(() => Date)
+  @Field(() => Date, {
+    description: 'Start date of the credited event.',
+  })
   startDate!: Date;
 
-  @Field(() => Date)
+  @Field(() => Date, {
+    description: 'End date of the credited event.',
+  })
   endDate!: Date;
 
-  @Field(() => Int, { nullable: true })
+  @Field(() => Int, {
+    nullable: true,
+    description: 'Credit workload for this event in minutes. Null means this event does not expose an individual workload.',
+  })
   creditMinutes?: number;
 }
 
-@ObjectType()
+@ObjectType({
+  description:
+    'Grouped event credit section for public certificate validation. Sections mirror project certificate rules such as courses, lectures, groups, or major-event totals.',
+})
 export class PublicCertificateValidationEventSection {
-  @Field(() => String)
+  @Field(() => String, {
+    description: 'Display title for this validation section.',
+  })
   title!: string;
 
-  @Field(() => EventType, { nullable: true })
+  @Field(() => EventType, {
+    nullable: true,
+    description: 'Event category represented by this section when the section maps to one event type.',
+  })
   type?: EventType;
 
-  @Field(() => Int)
+  @Field(() => Int, {
+    description: 'Total credit workload represented by this section in minutes.',
+  })
   creditMinutes!: number;
 
-  @Field(() => [PublicCertificateValidationEvent])
+  @Field(() => [PublicCertificateValidationEvent], {
+    description: 'Credited events included in this section.',
+  })
   events!: PublicCertificateValidationEvent[];
 }
 
-@ObjectType()
+@ObjectType({
+  description:
+    'Public certificate validation payload used by QR-code and verification pages. It exposes authenticity, participant-safe identity, target, credited events, and workload totals.',
+})
 export class PublicCertificateValidation {
-  @Field(() => String)
+  @Field(() => String, {
+    description: 'Certificate identifier being validated.',
+  })
   id!: string;
 
-  @Field(() => Date)
+  @Field(() => Date, {
+    description: 'Date and time when the certificate was issued.',
+  })
   issuedAt!: Date;
 
-  @Field(() => String)
+  @Field(() => String, {
+    description: 'Name printed on the certificate.',
+  })
   personName!: string;
 
-  @Field(() => String, { nullable: true })
+  @Field(() => String, {
+    nullable: true,
+    description: 'Masked identity document, when available, for participant-side authenticity checks.',
+  })
   maskedIdentityDocument?: string;
 
-  @Field(() => CertificateScope)
+  @Field(() => CertificateScope, {
+    description: 'Certificate scope: major event, event group, or individual event.',
+  })
   scope!: CertificateScope;
 
-  @Field(() => String)
+  @Field(() => String, {
+    description: 'Configured certificate name shown to users during validation.',
+  })
   certificateName!: string;
 
-  @Field(() => String, { nullable: true })
+  @Field(() => String, {
+    nullable: true,
+    description: 'Name of the event, event group, or major event that the certificate targets.',
+  })
   targetName?: string;
 
-  @Field(() => String, { nullable: true })
+  @Field(() => String, {
+    nullable: true,
+    description: 'Visual marker for the event, event group, or major event that the certificate targets.',
+  })
   targetEmoji?: string;
 
-  @Field(() => [PublicCertificateValidationEventSection])
+  @Field(() => [PublicCertificateValidationEventSection], {
+    description: 'Credited workload grouped according to the certificate scope and project certificate rules.',
+  })
   sections!: PublicCertificateValidationEventSection[];
 
-  @Field(() => Int)
+  @Field(() => Int, {
+    description: 'Total credited workload for the certificate in minutes.',
+  })
   totalCreditMinutes!: number;
 }

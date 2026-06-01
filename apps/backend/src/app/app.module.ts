@@ -16,6 +16,7 @@ import { createIntrospectionAuthPlugin } from './auth/introspection-auth.plugin'
 import { LgpdController } from './lgpd/lgpd.controller';
 import { LgpdService } from './lgpd/lgpd.service';
 import { GqlThrottlerGuard } from './common/gql-throttler.guard';
+import { FrozenResourceService } from './common/frozen-resource.service';
 import { CertificateConfigsService } from './certificate/certificate-configs.service';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
@@ -68,6 +69,7 @@ import { PlacePresetsResolver } from './places/resolver';
 import { MergeCandidateOperationsService } from './people/merge-candidates/operations.service';
 import { MergeCandidatesResolver } from './people/merge-candidates/resolver';
 import { PeopleResolver } from './people/resolver';
+import { LecturerProfilesResolver } from './people/lecturer-profiles.resolver';
 import { UsersResolver } from './users/resolver';
 import { TypesenseSearchService } from './search/typesense-search.service';
 import { S3Service } from './s3/s3.service';
@@ -140,6 +142,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
         introspection: true,
         plugins: [
           ApolloServerPluginLandingPageLocalDefault({
+            embed: false,
             includeCookies: true,
           }),
           createIntrospectionAuthPlugin({
@@ -175,6 +178,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     PublicEventsResolver,
     UsersResolver,
     PeopleResolver,
+    LecturerProfilesResolver,
     CurrentUserContextService,
     CurrentUserEventMapperService,
     CurrentUserPublicEventService,
@@ -227,6 +231,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     WeatherService,
     WeatherSchedulerService,
     WeatherProcessor,
+    FrozenResourceService,
     {
       provide: Redis,
       useFactory: () => new Redis(getRedisConnectionOptions()),

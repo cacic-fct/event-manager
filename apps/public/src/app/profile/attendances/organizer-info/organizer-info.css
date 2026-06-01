@@ -78,3 +78,9 @@
     min-height: 152px;
   }
 }
+
+.button-container {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24rem;
+}

@@ -13,6 +13,8 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
+import { Certificate, CertificateConfig } from '../../../graphql/models';
+import { isFrozenEvent, isFrozenEventGroup, isFrozenMajorEvent } from '../../../shared/frozen-resource';
 import { WorkspaceCertificatesService } from '../../../shared/services/workspace-certificates.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 
@@ -45,5 +47,55 @@ export class WorkspaceCertificatesTabComponent {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       void this.workspace.selectTargetByRoute(params.get('targetType'), params.get('targetId'), params.get('configId'));
     });
+  }
+
+  protected canEditSelectedTarget(): boolean {
+    return this.permissions.canEdit('certificate#edit') && (!this.selectedTargetFrozen() || this.permissions.has('frozen#edit'));
+  }
+
+  protected canDeleteConfig(config: CertificateConfig): boolean {
+    return this.permissions.canEdit('certificate#edit') && (!this.configTargetFrozen(config) || this.permissions.has('frozen#delete'));
+  }
+
+  protected canDeleteCertificate(certificate: Certificate): boolean {
+    return (
+      this.permissions.canEdit('certificate#edit') &&
+      (!this.configTargetFrozen(certificate.config) || this.permissions.has('frozen#delete'))
+    );
+  }
+
+  private selectedTargetFrozen(): boolean {
+    const target = this.workspace.selectedTarget();
+    if (!target) {
+      return false;
+    }
+
+    const scope = this.workspace.targetFiltersForm.controls.scope.value;
+    if (scope === 'EVENT') {
+      return isFrozenEvent(this.workspace.issuableEvents().find((eventItem) => eventItem.id === target.id));
+    }
+
+    if (scope === 'EVENT_GROUP') {
+      const group = this.workspace.issuableEventGroups().find((eventGroup) => eventGroup.id === target.id);
+      return isFrozenEventGroup(group, []);
+    }
+
+    return isFrozenMajorEvent(this.workspace.issuableMajorEvents().find((majorEvent) => majorEvent.id === target.id));
+  }
+
+  private configTargetFrozen(config: CertificateConfig): boolean {
+    if (config.event) {
+      return isFrozenEvent(config.event);
+    }
+
+    if (config.eventGroup) {
+      return isFrozenEventGroup(config.eventGroup, []);
+    }
+
+    if (config.majorEvent) {
+      return isFrozenMajorEvent(config.majorEvent);
+    }
+
+    return this.selectedTargetFrozen();
   }
 }

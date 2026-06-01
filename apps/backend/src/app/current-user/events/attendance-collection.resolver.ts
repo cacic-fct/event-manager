@@ -13,6 +13,8 @@ import { GraphqlContext } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 const MAX_LOCATION_ACCURACY_METERS = 200;
 
@@ -22,6 +24,9 @@ export class CurrentUserAttendanceCollectionResolver {
     private readonly prisma: PrismaService,
     private readonly currentUserContext: CurrentUserContextService,
     private readonly attendanceCategories: AttendanceCategoryService,
+    private readonly frozenResources: FrozenResourceService = {
+      assertEventMutable: async () => undefined,
+    } as unknown as FrozenResourceService,
   ) {}
 
   @Query(() => [CurrentUserAttendanceCollectionEvent], {
@@ -85,6 +90,8 @@ export class CurrentUserAttendanceCollectionResolver {
     input: EventAttendanceScannerCodeInput,
     @Context() context: GraphqlContext,
   ) {
+    const authenticatedUser = this.getAuthenticatedUser(context);
+    await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
     const collector = await this.requireCollector(input.eventId, context, true);
     const userId = this.parseUserAztecCode(input.code);
     if (!userId) {
@@ -120,6 +127,8 @@ export class CurrentUserAttendanceCollectionResolver {
     input: EventAttendanceManualInput,
     @Context() context: GraphqlContext,
   ) {
+    const authenticatedUser = this.getAuthenticatedUser(context);
+    await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
     const collector = await this.requireCollector(input.eventId, context, true);
     const person = await this.findSinglePersonForManualInput(input.value);
     return this.createAttendance({
@@ -167,6 +176,14 @@ export class CurrentUserAttendanceCollectionResolver {
     }
 
     return collectorPerson;
+  }
+
+  private getAuthenticatedUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return (
+      this.currentUserContext.getAuthenticatedUser?.(context) ??
+      context.req?.user ??
+      context.request?.user
+    );
   }
 
   private isCollectionOpen(startDate: Date, endDate: Date): boolean {

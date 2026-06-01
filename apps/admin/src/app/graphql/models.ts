@@ -24,6 +24,8 @@ export interface EventSummary {
   id: string;
   eventGroupId: string | null;
   startDate: string;
+  endDate: string;
+  createdAt: string;
   name: string;
   majorEvent?: Pick<MajorEvent, 'id' | 'name'> | null;
 }
@@ -245,6 +247,30 @@ export interface Person {
   createdById?: string | null;
   updatedAt: string;
   updatedById?: string | null;
+  lecturerProfile?: LecturerProfile | null;
+}
+
+export interface LecturerProfile {
+  id: string;
+  personId: string;
+  displayName: string;
+  biography: string;
+  publishGoogleUserPicture: boolean;
+  googleUserPicture?: string | null;
+  email?: string | null;
+  whatsapp?: string | null;
+  createdAt: string;
+  createdById?: string | null;
+  updatedAt: string;
+  updatedById?: string | null;
+}
+
+export interface LecturerProfileInput {
+  displayName: string;
+  biography: string;
+  publishGoogleUserPicture?: boolean;
+  email?: string | null;
+  whatsapp?: string | null;
 }
 
 export interface EventAttendance {

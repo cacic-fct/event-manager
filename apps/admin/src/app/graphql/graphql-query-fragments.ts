@@ -158,6 +158,20 @@ export const PERSON_FIELDS = `
     email
     role
   }
+  lecturerProfile {
+    id
+    personId
+    displayName
+    biography
+    publishGoogleUserPicture
+    googleUserPicture
+    email
+    whatsapp
+    createdAt
+    createdById
+    updatedAt
+    updatedById
+  }
 `;
 
 export const CERTIFICATE_TEMPLATE_FIELDS = `

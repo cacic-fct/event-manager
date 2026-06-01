@@ -17,7 +17,7 @@ import {
   ScannerFeedbackKind,
   ScannerFeedbackService,
 } from '@cacic-fct/shared-angular';
-import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import { formatUnespRole, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import {
   AttendanceCollectionApiService,
@@ -139,6 +139,10 @@ export class AttendanceScanner implements OnInit {
 
   protected statusLabel(status: string | null | undefined): string {
     return status ? getSubscriptionStatusLabel(status) : 'Não inscrito';
+  }
+
+  protected roleLabel(role: string | null | undefined): string {
+    return formatUnespRole(role) || '-';
   }
 
   protected methodLabel(method: AttendanceCreationMethod | null | undefined): string {

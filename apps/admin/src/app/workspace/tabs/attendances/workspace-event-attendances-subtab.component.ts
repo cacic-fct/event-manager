@@ -9,6 +9,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { EventType } from '../../../graphql/models';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
+import { isFrozenEvent } from '../../../shared/frozen-resource';
 import { WorkspaceAttendancesService } from '../../../shared/services/workspace-attendances.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { EventFilterPanelComponent } from '../shared/event-filter-panel.component';
@@ -51,5 +52,23 @@ export class WorkspaceEventAttendancesSubtabComponent implements OnInit {
     }
 
     return 'Outro';
+  }
+
+  protected canEditSelectedEventAttendances(): boolean {
+    const event = this.workspace.selectedAttendanceEvent();
+    return (
+      this.permissions.canEdit('event-attendance#edit') &&
+      Boolean(event) &&
+      (!isFrozenEvent(event) || this.permissions.has('frozen#edit'))
+    );
+  }
+
+  protected canDeleteSelectedEventAttendances(): boolean {
+    const event = this.workspace.selectedAttendanceEvent();
+    return (
+      this.permissions.canDelete('event-attendance#delete') &&
+      Boolean(event) &&
+      (!isFrozenEvent(event) || this.permissions.has('frozen#delete'))
+    );
   }
 }

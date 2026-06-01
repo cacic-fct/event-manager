@@ -1,0 +1,19 @@
+model LecturerProfile {
+  id                       String  @id @default(uuid(7))
+  person                   People  @relation(fields: [personId], references: [id])
+  personId                 String  @unique
+  displayName              String
+  biography                String
+  publishGoogleUserPicture Boolean @default(false)
+  googleUserPicture        String?
+  email                    String?
+  whatsapp                 String?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([displayName])
+  @@map("lecturer_profiles")
+}

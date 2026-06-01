@@ -28,6 +28,8 @@ export interface ReceiptValidationQueueItem {
   subscriptionId: string;
   majorEventId: string;
   majorEventName: string;
+  majorEventCreatedAt: string;
+  majorEventEndDate: string;
   personId: string;
   personName: string;
   personEmail?: string | null;
@@ -202,6 +204,8 @@ const RECEIPT_VALIDATION_QUEUE_ITEM_FIELDS = `
   subscriptionId
   majorEventId
   majorEventName
+  majorEventCreatedAt
+  majorEventEndDate
   personId
   personName
   personEmail

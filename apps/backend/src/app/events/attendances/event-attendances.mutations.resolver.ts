@@ -10,13 +10,20 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT, GraphqlContext } from './event-attendances.shared';
 
 @Resolver(() => EventAttendance)
 export class EventAttendancesMutationsResolver extends EventAttendancesResolverBase {
-  constructor(prisma: PrismaService, attendanceCategories: AttendanceCategoryService) {
+  constructor(
+    prisma: PrismaService,
+    attendanceCategories: AttendanceCategoryService,
+    private readonly frozenResources: FrozenResourceService = {
+      assertEventMutable: async () => undefined,
+    } as unknown as FrozenResourceService,
+  ) {
     super(prisma, attendanceCategories);
   }
 
@@ -27,6 +34,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     input: EventAttendanceCreateInput,
     @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
 
     try {
@@ -77,6 +85,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     @Args('code', { type: () => String }) code: string,
     @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
     const userId = this.parseUserAztecCode(code);
     if (!userId) {
       throw new BadRequestException('Código Aztec incompatível.');
@@ -158,6 +167,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     input: EventAttendanceScannerCodeInput,
     @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     const userId = this.parseUserAztecCode(input.code);
     if (!userId) {
       throw new BadRequestException('Código Aztec incompatível.');
@@ -195,6 +205,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     input: EventAttendanceManualInput,
     @Context() context: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     const person = await this.findSinglePersonForManualInput(input.value);
     return this.createAttendanceWithMetadata({
       eventId: input.eventId,
@@ -213,7 +224,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('input', { type: () => EventAttendanceUpdateInput })
     input: EventAttendanceUpdateInput,
+    @Context() context?: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
     const { count } = await this.prisma.$transaction(async (tx) => {
       const result = await tx.eventAttendance.updateMany({
         where: {
@@ -272,7 +285,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   async deleteEventAttendance(
     @Args('personId', { type: () => String }) personId: string,
     @Args('eventId', { type: () => String }) eventId: string,
+    @Context() context?: GraphqlContext,
   ) {
+    await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'delete');
     const { count } = await this.prisma.eventAttendance.deleteMany({
       where: {
         personId,
@@ -289,5 +304,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       personId,
       eventId,
     };
+  }
+
+  private getUser(context: GraphqlContext | undefined) {
+    return context?.req?.user ?? context?.request?.user;
   }
 }

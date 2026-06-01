@@ -369,7 +369,7 @@ export class AuthController {
   ): Promise<void> {
     const authorizationState = await this.consumeAuthorizationState(request, response, state);
     if (error) {
-      response.redirect(this.keycloakAuthService.getPostLoginRedirectUri(authorizationState));
+      response.redirect(this.getFailedAuthorizationRedirectUri(authorizationState));
       return;
     }
 
@@ -631,6 +631,34 @@ export class AuthController {
     }
 
     return [...permissions];
+  }
+
+  private getFailedAuthorizationRedirectUri(
+    authorizationState: Awaited<ReturnType<KeycloakAuthService['consumeAuthorizationState']>>,
+  ): string {
+    const redirectUri = this.keycloakAuthService.getPostLoginRedirectUri(authorizationState);
+
+    if (authorizationState?.prompt !== 'none') {
+      return redirectUri;
+    }
+
+    return this.withQueryParam(redirectUri, 'sso', 'none');
+  }
+
+  private withQueryParam(uri: string, key: string, value: string): string {
+    try {
+      const isRelativePath = uri.startsWith('/') && !uri.startsWith('//');
+      const url = new URL(uri, 'https://eventos.cacic.local');
+      url.searchParams.set(key, value);
+
+      if (isRelativePath) {
+        return `${url.pathname}${url.search}${url.hash}`;
+      }
+
+      return url.toString();
+    } catch {
+      return uri;
+    }
   }
 
   private isSecureRequest(request: Request): boolean {

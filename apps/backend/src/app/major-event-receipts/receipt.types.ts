@@ -54,6 +54,8 @@ export interface AdminReceiptQueueItem {
   subscriptionId: string;
   majorEventId: string;
   majorEventName: string;
+  majorEventCreatedAt: Date;
+  majorEventEndDate: Date;
   personId: string;
   personName: string;
   personEmail?: string | null;

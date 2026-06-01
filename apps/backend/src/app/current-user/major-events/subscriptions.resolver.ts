@@ -8,6 +8,7 @@ import { EventRecord, EVENT_SELECT, GraphqlContext } from '../selects';
 import { CurrentUserMajorEventSubscriptionService } from './subscription.service';
 import { CurrentUserPublicEventService } from '../public-event.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
 import {
   CurrentUserMajorEventFeedItem,
   CurrentUserMajorEventSubscription,
@@ -23,6 +24,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     private readonly publicEvents: CurrentUserPublicEventService,
     private readonly majorEventSubscriptions: CurrentUserMajorEventSubscriptionService,
     private readonly attendanceCategories: AttendanceCategoryService,
+    private readonly frozenResources: FrozenResourceService = {
+      assertMajorEventMutable: async () => undefined,
+    } as unknown as FrozenResourceService,
   ) {}
 
   @Query(() => [CurrentUserMajorEventSubscription], {
@@ -147,6 +151,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     input: UpsertCurrentUserMajorEventSubscriptionInput,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserMajorEventSubscription> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.frozenResources.assertMajorEventMutable(input.majorEventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     let selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(input.selectedEventIds);
     if (selectedEventIds.length === 0) {
@@ -504,6 +510,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     @Args('majorEventId', { type: () => String }) majorEventId: string,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserMajorEventSubscription> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.frozenResources.assertMajorEventMutable(majorEventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
 

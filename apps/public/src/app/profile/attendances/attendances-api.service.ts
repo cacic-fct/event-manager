@@ -37,7 +37,7 @@ export type {
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
 
-type GraphqlVariable = string | number | boolean | null | undefined | readonly string[];
+type GraphqlVariable = string | number | boolean | null | undefined | readonly string[] | object;
 type GraphqlVariables = Record<string, GraphqlVariable>;
 
 interface GraphqlResponse<TData> {
@@ -92,6 +92,25 @@ export interface OrganizerInfo {
   targetId: string;
   title: string;
   events: OrganizerEventInfo[];
+}
+
+export interface LecturerProfile {
+  id: string;
+  personId: string;
+  displayName: string;
+  biography: string;
+  publishGoogleUserPicture: boolean;
+  googleUserPicture?: string | null;
+  email?: string | null;
+  whatsapp?: string | null;
+}
+
+export interface LecturerProfileInput {
+  displayName: string;
+  biography: string;
+  publishGoogleUserPicture?: boolean;
+  email?: string | null;
+  whatsapp?: string | null;
 }
 
 const PUBLIC_MAJOR_EVENT_FIELDS = `
@@ -168,6 +187,15 @@ const PUBLIC_EVENT_FIELDS = `
   eventGroup {
     ${PUBLIC_EVENT_GROUP_FIELDS}
   }
+  lecturers {
+    id
+    displayName
+    biography
+    publishGoogleUserPicture
+    googleUserPicture
+    email
+    whatsapp
+  }
 `;
 
 const CERTIFICATE_FIELDS = `
@@ -190,6 +218,17 @@ const CERTIFICATE_FIELDS = `
     name
     version
   }
+`;
+
+const LECTURER_PROFILE_FIELDS = `
+  id
+  personId
+  displayName
+  biography
+  publishGoogleUserPicture
+  googleUserPicture
+  email
+  whatsapp
 `;
 
 @Injectable({ providedIn: 'root' })
@@ -370,7 +409,6 @@ export class AttendancesApiService {
       details: this.query<{
         currentUserEventSubscription: CurrentUserEventSubscription | null;
         currentUserEventAttendance: CurrentUserEventAttendance | null;
-        publicEvent: PublicEvent;
       }>(
         `
           query CurrentUserEventDetails($eventId: String!) {
@@ -386,19 +424,17 @@ export class AttendancesApiService {
               eventId
               attendedAt
             }
-            publicEvent(id: $eventId) {
-              ${PUBLIC_EVENT_FIELDS}
-            }
           }
         `,
         { eventId },
       ),
       certificates: this.getCurrentUserCertificates('EVENT', eventId),
       organizerInfo: this.getOrganizerInfo('event', eventId),
+      publicEvent: this.getPublicEvent(eventId).pipe(catchError(() => of(null))),
     }).pipe(
-      map(({ details, certificates, organizerInfo }) => ({
+      map(({ details, certificates, organizerInfo, publicEvent }) => ({
         subscription: details.currentUserEventSubscription,
-        event: details.currentUserEventSubscription ? null : details.publicEvent,
+        event: details.currentUserEventSubscription ? null : (publicEvent ?? organizerInfo?.events[0]?.event ?? null),
         hasIssuedCertificate: certificates.length > 0,
         isLecturer: Boolean(organizerInfo),
         attendance: details.currentUserEventAttendance,
@@ -483,6 +519,31 @@ export class AttendancesApiService {
     );
   }
 
+  getCurrentUserLecturerProfile(): Observable<LecturerProfile | null> {
+    return this.query<{ currentUserLecturerProfile: LecturerProfile | null }>(
+      `
+        query CurrentUserLecturerProfile {
+          currentUserLecturerProfile {
+            ${LECTURER_PROFILE_FIELDS}
+          }
+        }
+      `,
+    ).pipe(map((data) => data.currentUserLecturerProfile));
+  }
+
+  upsertCurrentUserLecturerProfile(input: LecturerProfileInput): Observable<LecturerProfile> {
+    return this.query<{ upsertCurrentUserLecturerProfile: LecturerProfile }>(
+      `
+        mutation UpsertCurrentUserLecturerProfile($input: LecturerProfileUpsertInput!) {
+          upsertCurrentUserLecturerProfile(input: $input) {
+            ${LECTURER_PROFILE_FIELDS}
+          }
+        }
+      `,
+      { input },
+    ).pipe(map((data) => data.upsertCurrentUserLecturerProfile));
+  }
+
   downloadEventSubscriberList(eventId: string): Observable<CertificateDownload> {
     return this.query<{ downloadCurrentUserEventSubscriberList: CertificateDownload }>(
       `
@@ -523,6 +584,20 @@ export class AttendancesApiService {
     ).pipe(map((data) => data.downloadCurrentUserCertificate));
   }
 
+  downloadCurrentUserCertificatesArchive(): Observable<CertificateDownload> {
+    return this.query<{ downloadCurrentUserCertificatesArchive: CertificateDownload }>(
+      `
+        query DownloadCurrentUserCertificatesArchive {
+          downloadCurrentUserCertificatesArchive {
+            fileName
+            mimeType
+            contentBase64
+          }
+        }
+      `,
+    ).pipe(map((data) => data.downloadCurrentUserCertificatesArchive));
+  }
+
   private getCurrentUserCertificates(scope: CertificateScope, targetId: string): Observable<Certificate[]> {
     return this.query<{ currentUserCertificates: Certificate[] }>(
       `
@@ -534,6 +609,19 @@ export class AttendancesApiService {
       `,
       { scope, targetId },
     ).pipe(map((data) => data.currentUserCertificates));
+  }
+
+  private getPublicEvent(eventId: string): Observable<PublicEvent | null> {
+    return this.query<{ publicEvent: PublicEvent }>(
+      `
+        query PublicEventForAttendanceDetails($eventId: String!) {
+          publicEvent(id: $eventId) {
+            ${PUBLIC_EVENT_FIELDS}
+          }
+        }
+      `,
+      { eventId },
+    ).pipe(map((data) => data.publicEvent));
   }
 
   private getMajorEventFeedItem(majorEventId: string): Observable<CurrentUserMajorEventFeedItem | null> {

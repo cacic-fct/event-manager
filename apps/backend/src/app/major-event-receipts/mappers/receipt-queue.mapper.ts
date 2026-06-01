@@ -15,6 +15,8 @@ export class ReceiptQueueMapper {
       majorEvent: {
         select: {
           name: true,
+          createdAt: true,
+          endDate: true,
         },
       },
       personId: true,
@@ -122,6 +124,8 @@ export class ReceiptQueueMapper {
       subscriptionId: subscription.id,
       majorEventId: subscription.majorEventId,
       majorEventName: subscription.majorEvent.name,
+      majorEventCreatedAt: subscription.majorEvent.createdAt,
+      majorEventEndDate: subscription.majorEvent.endDate,
       personId: subscription.personId,
       personName: subscription.person.name,
       personEmail: subscription.person.email,

@@ -12,10 +12,10 @@ import {
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, MailtoService } from '@cacic-fct/shared-angular';
 import {
   PublicEvent,
-  formatCreditMinutes,
+  PublicLecturerProfile,
   formatDateRange,
   getEventTypeLabel,
   isOnlineAttendanceRegistrationOpen,
@@ -71,6 +71,7 @@ export class Event {
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly realtime = inject(EventSubscriptionRealtimeService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly mailto = inject(MailtoService);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
@@ -265,7 +266,24 @@ export class Event {
   }
 
   creditLine(event: PublicEvent): string | null {
-    return event.creditMinutes ? formatCreditMinutes(event.creditMinutes) : null;
+    if (!event.shouldIssueCertificate || !event.creditMinutes) {
+      return null;
+    }
+
+    const hours = Math.floor(event.creditMinutes / 60);
+    const minutes = event.creditMinutes % 60;
+
+    if (minutes === 0) {
+      return `${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    }
+
+    if (hours === 0) {
+      return `${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+    }
+
+    const hourLabel = hours === 1 ? 'hora' : 'horas';
+    const minuteLabel = minutes === 1 ? 'minuto' : 'minutos';
+    return `${hours} ${hourLabel} e ${minutes} ${minuteLabel}`;
   }
 
   subscriptionStatusLine(data: EventPageData): string {
@@ -314,6 +332,18 @@ export class Event {
     return this.sanitizer.bypassSecurityTrustResourceUrl(
       `https://www.youtube-nocookie.com/embed/${encodeURIComponent(code)}`,
     );
+  }
+
+  lecturerMailto(email: string): string {
+    return this.mailto.compose({ to: email });
+  }
+
+  lecturerWhatsappUrl(lecturer: PublicLecturerProfile): string | null {
+    if (!lecturer.whatsapp) {
+      return null;
+    }
+
+    return `https://wa.me/${lecturer.whatsapp.replace(/\D/g, '')}`;
   }
 
   private createEventState(): Observable<EventPageState> {

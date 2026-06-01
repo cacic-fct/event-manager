@@ -6,6 +6,7 @@ export type AuthorizationState = {
   redirectUri?: string;
   returnTo?: string;
   state?: string;
+  prompt?: string;
 };
 
 @Injectable()
@@ -19,7 +20,7 @@ export class AuthorizationStateService {
 
   constructor(private readonly redis: Redis) {}
 
-  async create(options?: { redirectUri?: string; returnTo?: string; state?: string }): Promise<string> {
+  async create(options?: { redirectUri?: string; returnTo?: string; state?: string; prompt?: string }): Promise<string> {
     const returnTo = this.normalizePostLoginReturnTo(options?.returnTo);
     const state = randomBytes(32).toString('base64url');
 
@@ -29,6 +30,7 @@ export class AuthorizationStateService {
         ...(options?.redirectUri ? { redirectUri: options.redirectUri } : {}),
         ...(returnTo ? { returnTo } : {}),
         ...(options?.state ? { state: options.state } : {}),
+        ...(options?.prompt ? { prompt: options.prompt } : {}),
       }),
       'EX',
       this.stateTtlSeconds,

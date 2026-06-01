@@ -26,6 +26,8 @@ import {
   ReceiptValidationQueueItem,
 } from '../../../../graphql/receipt-validation-api.service';
 import { getErrorMessage } from '../../../../shared/error-message';
+import { isFrozenMajorEvent } from '../../../../shared/frozen-resource';
+import { WorkspacePermissionsService } from '../../../../shared/services/workspace-permissions.service';
 
 interface LastValidationAction {
   id: string;
@@ -67,6 +69,7 @@ export class WorkspaceReceiptValidationComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
+  protected readonly permissions = inject(WorkspacePermissionsService);
   private readonly majorEventId = this.route.snapshot.paramMap.get('majorEventId') ?? undefined;
 
   protected readonly loading = signal(true);
@@ -249,6 +252,17 @@ export class WorkspaceReceiptValidationComponent {
       this.countEventsByType(selectedEvents, 'MINICURSO') === this.countEventsByType(recommendedEvents, 'MINICURSO') &&
       this.countEventsByType(selectedEvents, 'PALESTRA') === this.countEventsByType(recommendedEvents, 'PALESTRA') &&
       this.countEventsByType(selectedEvents, 'OTHER') === this.countEventsByType(recommendedEvents, 'OTHER')
+    );
+  }
+
+  protected canEditReceiptValidation(item: ReceiptValidationQueueItem): boolean {
+    return (
+      this.permissions.canEdit('validate-receipt#edit') &&
+      (!isFrozenMajorEvent({
+        createdAt: item.majorEventCreatedAt,
+        endDate: item.majorEventEndDate,
+      }) ||
+        this.permissions.has('frozen#edit'))
     );
   }
 

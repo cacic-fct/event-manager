@@ -17,6 +17,7 @@ model People {
   eventSubscriptions      EventSubscription[]
   eventGroupSubscriptions EventGroupSubscription[]
   majorEventSubscriptions MajorEventSubscription[]
+  lecturerProfile         LecturerProfile?
 
   // Merge tracking
   mergedIntoId String?

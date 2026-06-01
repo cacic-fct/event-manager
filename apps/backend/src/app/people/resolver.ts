@@ -1,5 +1,10 @@
 import { DeletionResult, Person, PersonCreateInput, PersonUpdateInput } from '@cacic-fct/shared-data-types';
-import { ConflictException, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  ConflictException,
+  Logger,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
@@ -78,6 +83,7 @@ export class PeopleResolver {
       where,
       include: {
         user: true,
+        lecturerProfile: true,
       },
       orderBy: {
         name: 'asc',
@@ -111,6 +117,7 @@ export class PeopleResolver {
         user: true,
         attendances: true,
         lectures: true,
+        lecturerProfile: true,
       },
     });
 
@@ -130,6 +137,7 @@ export class PeopleResolver {
       data: this.buildPersonCreateData(input),
       include: {
         user: true,
+        lecturerProfile: true,
       },
     });
     await this.typesenseSearch.upsertPerson({
@@ -151,8 +159,6 @@ export class PeopleResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => PersonUpdateInput }) input: PersonUpdateInput,
   ) {
-    await this.ensureNoDuplicateIdentity(input, id);
-
     const existingPerson = await this.prisma.people.findFirst({
       where: {
         id,
@@ -160,13 +166,20 @@ export class PeopleResolver {
       },
       select: {
         name: true,
+        email: true,
+        phone: true,
         identityDocument: true,
+        academicId: true,
+        userId: true,
       },
     });
 
     if (!existingPerson) {
       throw new NotFoundException(`Person ${id} was not found.`);
     }
+
+    this.ensureExternallyManagedFieldsAreUnchanged(input, existingPerson);
+    await this.ensureNoDuplicateIdentity(input, id);
 
     const { count } = await this.prisma.people.updateMany({
       where: {
@@ -186,6 +199,7 @@ export class PeopleResolver {
       },
       include: {
         user: true,
+        lecturerProfile: true,
       },
     });
     if (person) {
@@ -296,6 +310,40 @@ export class PeopleResolver {
     after: Pick<Person, 'name' | 'identityDocument'>,
   ): boolean {
     return before.name !== after.name || before.identityDocument !== after.identityDocument;
+  }
+
+  private ensureExternallyManagedFieldsAreUnchanged(
+    input: PersonUpdateInput,
+    existingPerson: {
+      name: string;
+      email: string | null;
+      phone: string | null;
+      identityDocument: string | null;
+      academicId: string | null;
+      userId: string | null;
+    },
+  ): void {
+    if (!existingPerson.userId) {
+      return;
+    }
+
+    const lockedFields = [
+      ['name', input.name, existingPerson.name],
+      ['email', input.email, existingPerson.email],
+      ['phone', input.phone, existingPerson.phone],
+      ['identityDocument', input.identityDocument, existingPerson.identityDocument],
+      ['academicId', input.academicId, existingPerson.academicId],
+    ] as const;
+
+    const changedFields = lockedFields
+      .filter(([, nextValue, currentValue]) => nextValue !== undefined && nextValue !== currentValue)
+      .map(([field]) => field);
+
+    if (changedFields.length > 0) {
+      throw new UnprocessableEntityException(
+        `Person is linked to a Keycloak account. Externally managed fields cannot be edited: ${changedFields.join(', ')}.`,
+      );
+    }
   }
 
   private buildPersonCreateData(input: PersonCreateInput): Prisma.PeopleUncheckedCreateInput {
