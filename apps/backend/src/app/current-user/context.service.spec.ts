@@ -327,6 +327,7 @@ function createPersonRecord(overrides: Partial<PersonRecord> = {}): PersonRecord
     academicId: null,
     userId: null,
     user: null,
+    lecturerProfile: null,
     mergedIntoId: null,
     externalRef: null,
     deletedAt: null,
