@@ -119,18 +119,28 @@ describe('WorkspaceCertificatesService', () => {
     service.certificateConfigForm.certificateTemplateId().value.set(certificateTemplate.id);
   });
 
-  it('does not post template defaults as stored custom fields', async () => {
+  it('posts template defaults as stored certificate fields', async () => {
     await service.saveCertificateConfig();
 
-    expect(lastPayload?.certificateFieldsJson).toBeNull();
+    expect(lastPayload?.certificateFieldsJson).toBe(
+      JSON.stringify({
+        'top-text': 'Certificamos a participação de',
+        'bottom-text': 'como organizador do evento',
+      }),
+    );
   });
 
-  it('uses template defaults in the form while still omitting unchanged defaults from the payload', async () => {
+  it('uses template defaults in the form and sends them in the payload', async () => {
     expect(service.certificateField('bottom-text')().value()).toBe('como organizador do evento');
 
     await service.saveCertificateConfig();
 
-    expect(lastPayload?.certificateFieldsJson).toBeNull();
+    expect(lastPayload?.certificateFieldsJson).toBe(
+      JSON.stringify({
+        'top-text': 'Certificamos a participação de',
+        'bottom-text': 'como organizador do evento',
+      }),
+    );
   });
 
   it('posts edited custom fields as stored overrides', async () => {
@@ -138,7 +148,12 @@ describe('WorkspaceCertificatesService', () => {
 
     await service.saveCertificateConfig();
 
-    expect(lastPayload?.certificateFieldsJson).toBe(JSON.stringify({ 'top-text': 'Certificamos a presença de' }));
+    expect(lastPayload?.certificateFieldsJson).toBe(
+      JSON.stringify({
+        'top-text': 'Certificamos a presença de',
+        'bottom-text': 'como organizador do evento',
+      }),
+    );
   });
 
   it('posts edited text when it differs by one character from the template default', async () => {
@@ -147,7 +162,10 @@ describe('WorkspaceCertificatesService', () => {
     await service.saveCertificateConfig();
 
     expect(lastPayload?.certificateFieldsJson).toBe(
-      JSON.stringify({ 'bottom-text': 'como organizador do event' }),
+      JSON.stringify({
+        'top-text': 'Certificamos a participação de',
+        'bottom-text': 'como organizador do event',
+      }),
     );
   });
 

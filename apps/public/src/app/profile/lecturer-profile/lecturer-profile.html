@@ -31,7 +31,7 @@
     }
   </section>
 
-  @if (!isEditing()) { @if (currentState.profile; as profile) {
+  @if (!isEditing()) { @if (profilePreview(); as profile) {
   <h1>Pré-visualização</h1>
   <section class="profile-card">
     @if (profile.publishGoogleUserPicture && profile.googleUserPicture) {
@@ -91,7 +91,7 @@
       <input matInput formControlName="whatsapp" placeholder="+5518999999999" />
     </mat-form-field>
     <div class="form-actions">
-      <button mat-button type="button" (click)="cancel(currentState.profile)" [disabled]="isSaving()">Cancelar</button>
+      <button mat-button type="button" (click)="cancel(profilePreview())" [disabled]="isSaving()">Cancelar</button>
       <button mat-flat-button type="button" (click)="save()" [disabled]="isSaving()">
         <mat-icon>save</mat-icon>
         Salvar
