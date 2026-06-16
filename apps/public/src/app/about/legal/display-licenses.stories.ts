@@ -29,23 +29,10 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   if (links[0]) {
     await expect(links[0]).toBeVisible();
   }
+  await expect(await canvas.findByText(/Mock gerado pelo Storybook/)).toBeVisible();
 };
 
-export const DesktopLight: Story = {
+export const Playground: Story = {
   args: {},
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
-
-export const MobileLight: Story = {
-  args: {},
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-

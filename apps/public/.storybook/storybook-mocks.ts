@@ -152,6 +152,15 @@ const currentUserCertificates = events.slice(0, 2).map((event, index) => ({
   },
 }));
 
+const thirdPartyLicensesText = [
+  `${faker.company.name()} UI Toolkit`,
+  'MIT License',
+  '',
+  `Copyright (c) 2026 ${faker.company.name()}`,
+  '',
+  'Mock gerado pelo Storybook para validar a tela de licenças sem depender do arquivo compilado.',
+].join('\n');
+
 function currentUserMajorEventSubscription(majorEventId = 'major-1') {
   const majorEvent = majorEvents.find((item) => item.id === majorEventId) ?? majorEvents[0];
   return {
@@ -449,6 +458,7 @@ Driver state: NORMAL
 Latest manifest hash: storybook
 Last update check: ${now.toISOString()}`),
   ),
+  http.get('/app/3rdpartylicenses.txt', () => HttpResponse.text(thirdPartyLicensesText)),
   http.get('/api/major-event-receipts/major-events/:majorEventId/current', () =>
     HttpResponse.json({
       id: 'receipt-1',

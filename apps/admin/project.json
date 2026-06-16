@@ -125,6 +125,7 @@
       "options": {
         "outputDir": "dist/storybook/admin",
         "configDir": "apps/admin/.storybook",
+        "tsConfig": "apps/admin/.storybook/tsconfig.json",
         "browserTarget": "admin:build-storybook",
         "compodoc": false
       },

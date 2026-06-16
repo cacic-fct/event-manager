@@ -6,6 +6,9 @@ const meta: Meta<BottomToolbarComponent> = {
   component: BottomToolbarComponent,
   title: 'Public/Tabs/Bottom Toolbar/Bottom Toolbar',
   tags: ['autodocs'],
+  argTypes: {
+    items: { control: 'object', name: 'Itens de navegação' },
+  },
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -33,33 +36,21 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const DesktopLight: Story = {
-  args: {
-    items: [
-      { label: 'Calendário', shortLabel: 'Calendário', icon: 'calendar_month', route: '/calendar', hidden: false },
-      { label: 'Eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event', hidden: false },
-      { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
-    ],
-  },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileLight: Story = {
+export const Playground: Story = {
   args: {
     items: [
       { label: 'Calendário', shortLabel: 'Agenda', icon: 'calendar_month', route: '/calendar', hidden: false },
       { label: 'Eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event', hidden: false },
+      {
+        label: 'Notificações',
+        shortLabel: 'Avisos',
+        icon: 'notifications',
+        route: '/notifications',
+        badge: 'notifications',
+        hidden: false,
+      },
       { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
     ],
   },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
-

@@ -7,9 +7,9 @@ const meta: Meta<ToolbarLayoutComponent> = {
   title: 'Public/Tabs/Bottom Toolbar/Bottom Toolbar/Layout',
   tags: ['autodocs'],
   argTypes: {
-    calendarTabEnabledOverride: { control: 'boolean', name: 'events-public-calendar-tab-enabled' },
-    majorEventTabEnabledOverride: { control: 'boolean', name: 'events-public-major-event-tab-enabled' },
-    notificationsTabEnabledOverride: { control: 'boolean', name: 'events-public-notifications-tab-enabled' },
+    calendarTabEnabledOverride: { control: 'boolean', name: 'Aba de calendário habilitada' },
+    majorEventTabEnabledOverride: { control: 'boolean', name: 'Aba de eventos habilitada' },
+    notificationsTabEnabledOverride: { control: 'boolean', name: 'Aba de notificações habilitada' },
   },
   parameters: {
     layout: 'fullscreen',
@@ -36,29 +36,11 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const DesktopLight: Story = {
+export const Playground: Story = {
   args: {
     calendarTabEnabledOverride: true,
     majorEventTabEnabledOverride: true,
     notificationsTabEnabledOverride: true,
   },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
-
-export const MobileLight: Story = {
-  args: {
-    calendarTabEnabledOverride: true,
-    majorEventTabEnabledOverride: true,
-    notificationsTabEnabledOverride: true,
-  },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-

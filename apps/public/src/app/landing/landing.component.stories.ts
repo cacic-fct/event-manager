@@ -82,19 +82,8 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const DesktopLight: Story = {
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileLight: Story = {
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'light' },
+export const Playground: Story = {
+  args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
