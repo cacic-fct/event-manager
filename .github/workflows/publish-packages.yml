@@ -10,17 +10,13 @@ on:
         type: choice
         options:
           - all
-          - m2m-contracts
-          - account-privacy
-          - cookie-banner
+          - event-manager-m2m-contracts
 
   push:
     branches:
       - main
     paths:
-      - libs/m2m-contracts/**
-      - libs/account-privacy/**
-      - libs/cookie-banner/**
+      - libs/event-manager-m2m-contracts/**
 
 permissions:
   contents: read
@@ -58,25 +54,15 @@ jobs:
         id: changes
         shell: bash
         run: |
-          m2m_contracts=false
-          account_privacy=false
-          cookie_banner=false
+          event_manager_m2m_contracts=false
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             case "${{ inputs.package }}" in
               all)
-                m2m_contracts=true
-                account_privacy=true
-                cookie_banner=true
+                event_manager_m2m_contracts=true
                 ;;
-              m2m-contracts)
-                m2m_contracts=true
-                ;;
-              account-privacy)
-                account_privacy=true
-                ;;
-              cookie-banner)
-                cookie_banner=true
+              event-manager-m2m-contracts)
+                event_manager_m2m_contracts=true
                 ;;
             esac
           else
@@ -88,28 +74,18 @@ jobs:
 
             changed_files="$(git diff --name-only "${base}" "${{ github.sha }}")"
 
-            if grep -q '^libs/m2m-contracts/' <<< "${changed_files}"; then
-              m2m_contracts=true
-            fi
-
-            if grep -q '^libs/account-privacy/' <<< "${changed_files}"; then
-              account_privacy=true
-            fi
-
-            if grep -q '^libs/cookie-banner/' <<< "${changed_files}"; then
-              cookie_banner=true
+            if grep -q '^libs/event-manager-m2m-contracts/' <<< "${changed_files}"; then
+              event_manager_m2m_contracts=true
             fi
           fi
 
           any_changed=false
-          if [[ "${m2m_contracts}" == "true" || "${account_privacy}" == "true" || "${cookie_banner}" == "true" ]]; then
+          if [[ "${event_manager_m2m_contracts}" == "true" ]]; then
             any_changed=true
           fi
 
           {
-            echo "m2m_contracts=${m2m_contracts}"
-            echo "account_privacy=${account_privacy}"
-            echo "cookie_banner=${cookie_banner}"
+            echo "event_manager_m2m_contracts=${event_manager_m2m_contracts}"
             echo "any_changed=${any_changed}"
           } >> "${GITHUB_OUTPUT}"
 
@@ -119,21 +95,22 @@ jobs:
         with:
           registries: |
             https://registry.npmjs.org/
-            @cacic-fct:https://npm.pkg.github.com/|$GITHUB_TOKEN
+            @cacic-fct:https://npm.pkg.github.com/|$NPM_CONFIG_TOKEN
 
       - name: Install dependencies
         if: steps.changes.outputs.any_changed == 'true'
         run: bun install --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
 
-      - name: Build M2M contracts
-        if: steps.changes.outputs.m2m_contracts == 'true'
-        run: bunx nx build m2m-contracts
+      - name: Build Event Manager M2M contracts
+        if: steps.changes.outputs.event_manager_m2m_contracts == 'true'
+        run: bunx nx build event-manager-m2m-contracts
 
-      - name: Publish M2M contracts
-        if: steps.changes.outputs.m2m_contracts == 'true'
-        working-directory: dist/libs/m2m-contracts
+      - name: Publish Event Manager M2M contracts
+        if: steps.changes.outputs.event_manager_m2m_contracts == 'true'
+        working-directory: dist/libs/event-manager-m2m-contracts
         shell: bash
         run: |
           node - <<'NODE'
@@ -148,50 +125,4 @@ jobs:
 
           bun publish --registry https://npm.pkg.github.com --tolerate-republish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build account privacy
-        if: steps.changes.outputs.account_privacy == 'true'
-        run: bunx nx build account-privacy
-
-      - name: Publish account privacy
-        if: steps.changes.outputs.account_privacy == 'true'
-        working-directory: dist/libs/account-privacy
-        shell: bash
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-
-          if (!pkg.name || !pkg.name.startsWith('@cacic-fct/')) {
-            throw new Error(`Package name must be scoped for GitHub Packages. Found: ${pkg.name}`);
-          }
-          NODE
-
-          bun publish --registry https://npm.pkg.github.com --tolerate-republish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build cookie banner
-        if: steps.changes.outputs.cookie_banner == 'true'
-        run: bunx nx build cookie-banner
-
-      - name: Publish cookie banner
-        if: steps.changes.outputs.cookie_banner == 'true'
-        working-directory: dist/libs/cookie-banner
-        shell: bash
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-
-          if (!pkg.name || !pkg.name.startsWith('@cacic-fct/')) {
-            throw new Error(`Package name must be scoped for GitHub Packages. Found: ${pkg.name}`);
-          }
-          NODE
-
-          bun publish --registry https://npm.pkg.github.com --tolerate-republish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
