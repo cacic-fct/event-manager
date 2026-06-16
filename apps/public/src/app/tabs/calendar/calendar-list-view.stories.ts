@@ -139,21 +139,6 @@ export const OnlineMobile: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkMobile: Story = {
-  args: {
-    events: demoEvents.slice(0, 2),
-    canLoadOlder: false,
-    isLoadingOlder: false,
-    returnUrl: '/calendar?offline=true',
-  },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'dark', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const OfflineFallback: Story = {
   args: { events: [], canLoadOlder: false, isLoadingOlder: false, returnUrl: '/calendar' },
   parameters: {

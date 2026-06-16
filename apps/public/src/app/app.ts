@@ -1,14 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { CookieBannerComponent, CookieBannerOptions } from '@cacic-fct/cookie-banner/angular';
-import { CacicAccountPrivacyService } from '@cacic/account-privacy';
+import { type CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner';
+import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import { firstValueFrom } from 'rxjs';
 import { CookieBannerSyncService } from './privacy/cookie-banner-sync.service';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
+import { PackageCookieBannerComponent } from './privacy/package-cookie-banner.component';
 
 @Component({
-  imports: [RouterModule, CookieBannerComponent],
+  imports: [RouterModule, PackageCookieBannerComponent],
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.scss',

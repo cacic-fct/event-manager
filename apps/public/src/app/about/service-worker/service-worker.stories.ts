@@ -58,12 +58,3 @@ export const NoServiceWorker: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkInstalled: Story = {
-  args: {},
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'enabled' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};

@@ -176,7 +176,8 @@ export class WorkspaceMajorEventsService {
 
   async pickMajorEvent(majorEvent: MajorEvent): Promise<void> {
     void this.router.navigate(['/major-events', majorEvent.id]);
-    this.populateMajorEventSelection(majorEvent);
+    const details = await firstValueFrom(this.api.getMajorEvent(majorEvent.id));
+    this.populateMajorEventSelection(details);
   }
 
   async pickMajorEventById(majorEventId: string): Promise<void> {

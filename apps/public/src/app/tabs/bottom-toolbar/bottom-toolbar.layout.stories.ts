@@ -62,30 +62,3 @@ export const MobileLight: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DesktopDark: Story = {
-  args: {
-    calendarTabEnabledOverride: true,
-    majorEventTabEnabledOverride: true,
-    notificationsTabEnabledOverride: true,
-  },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileDark: Story = {
-  args: {
-    calendarTabEnabledOverride: true,
-    majorEventTabEnabledOverride: true,
-    notificationsTabEnabledOverride: true,
-  },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};

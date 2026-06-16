@@ -2,7 +2,11 @@
   "name": "@cacic-fct/source",
   "version": "0.0.0",
   "license": "AGPL-3.0-only",
-  "scripts": {},
+  "scripts": {
+    "build:packages": "bunx nx run-many --target=build --projects=event-manager-m2m-contracts",
+    "publish:event-manager-m2m-contracts": "bunx nx build event-manager-m2m-contracts && cd dist/libs/event-manager-m2m-contracts && bun publish",
+    "publish:packages": "bun run publish:event-manager-m2m-contracts"
+  },
   "private": true,
   "dependencies": {
     "@angular/animations": "~21.2.14",
@@ -23,6 +27,9 @@
     "@aws-sdk/lib-storage": "^3.1052.0",
     "@bwip-js/browser": "^4.10.1",
     "@bwip-js/node": "^4.10.1",
+    "@cacic-fct/account-manager-privacy": "0.0.1",
+    "@cacic-fct/account-manager-cookie-banner": "0.0.1",
+    "@cacic-fct/account-manager-m2m-contracts": "0.0.1",
     "@cacic-fct/ngx-umami": "^1.1.1",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/source-code-pro": "^5.2.7",

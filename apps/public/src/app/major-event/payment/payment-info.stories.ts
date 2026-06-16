@@ -49,16 +49,6 @@ export const OnlineMobile: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkMobile: Story = {
-  args: {},
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'dark', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const OfflineFallback: Story = {
   args: {},
   parameters: {

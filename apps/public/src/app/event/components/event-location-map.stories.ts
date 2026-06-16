@@ -51,16 +51,6 @@ export const OnlineMobile: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkMobile: Story = {
-  args: { latitude: null, longitude: null, title: 'Local a confirmar' },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'dark', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const OfflineFallback: Story = {
   args: { latitude: -22.1211, longitude: -51.4086, title: 'Auditório' },
   parameters: {

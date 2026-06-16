@@ -229,7 +229,7 @@ export class WorkspaceAttendancesService {
     const identifier = this.attendanceForm.controls.identifier.value.trim();
 
     const people = await firstValueFrom(
-      this.peopleApi.listPeople({
+      this.peopleApi.listPeopleSummaries({
         ...(identifierType === 'query' ? { query: identifier } : {}),
         ...(identifierType === 'userId' ? { userId: identifier } : {}),
         ...(identifierType === 'identityDocument' ? { identityDocument: identifier } : {}),

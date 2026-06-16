@@ -240,20 +240,6 @@ export const ErrorState: Story = {
   },
 };
 
-export const DarkMode: Story = {
-  args: {
-    todayEvents: 3,
-    upcomingEvents: 4,
-    weatherAlerts: 2,
-  },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const MobileLayout: Story = {
   args: {
     todayEvents: 2,

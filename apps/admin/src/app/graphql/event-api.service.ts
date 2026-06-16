@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import { DeletionResult, Event, EventAttendanceCollector, EventInput, EventLecturer, EventSummary } from './models';
-import { EVENT_FIELDS, PERSON_FIELDS } from './graphql-query-fragments';
+import { EVENT_DETAIL_FIELDS, EVENT_LIST_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
 export class EventApiService {
@@ -43,7 +43,7 @@ export class EventApiService {
             skip: $skip
             take: $take
           ) {
-            ${EVENT_FIELDS}
+            ${EVENT_LIST_FIELDS}
           }
         }`,
         filters,
@@ -78,7 +78,7 @@ export class EventApiService {
       .request<{ event: Event }>(
         `query GetEvent($id: String!) {
           event(id: $id) {
-            ${EVENT_FIELDS}
+            ${EVENT_DETAIL_FIELDS}
           }
         }`,
         { id },
@@ -88,10 +88,10 @@ export class EventApiService {
 
   createEvent(input: EventInput) {
     return this.graphqlHttp
-      .request<{ createEvent: Event }>(
+      .request<{ createEvent: Pick<Event, 'id'> }>(
         `mutation CreateEvent($input: EventCreateInput!) {
           createEvent(input: $input) {
-            ${EVENT_FIELDS}
+            id
           }
         }`,
         { input },
@@ -101,10 +101,10 @@ export class EventApiService {
 
   updateEvent(id: string, input: EventInput) {
     return this.graphqlHttp
-      .request<{ updateEvent: Event }>(
+      .request<{ updateEvent: Pick<Event, 'id'> }>(
         `mutation UpdateEvent($id: String!, $input: EventUpdateInput!) {
           updateEvent(id: $id, input: $input) {
-            ${EVENT_FIELDS}
+            id
           }
         }`,
         { id, input },
@@ -135,7 +135,7 @@ export class EventApiService {
             personId
             createdAt
             person {
-              ${PERSON_FIELDS}
+              ${PERSON_SEARCH_FIELDS}
             }
           }
         }`,
@@ -183,7 +183,7 @@ export class EventApiService {
             personId
             createdAt
             person {
-              ${PERSON_FIELDS}
+              ${PERSON_SEARCH_FIELDS}
             }
           }
         }`,

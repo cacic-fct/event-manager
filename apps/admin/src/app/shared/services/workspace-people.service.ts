@@ -50,7 +50,7 @@ export class WorkspacePeopleService {
     const normalizedQuery = query.trim();
     this.peopleSearchQuery.set(normalizedQuery);
     const people = await firstValueFrom(
-      this.api.listPeople({
+      this.api.listPeopleSummaries({
         query: normalizedQuery || undefined,
         take: 50,
       }),
@@ -64,7 +64,6 @@ export class WorkspacePeopleService {
 
     const refreshedPerson = people.find((person) => person.id === selectedPerson.id);
     if (refreshedPerson) {
-      void this.selectPerson(refreshedPerson);
       return;
     }
 
@@ -73,7 +72,12 @@ export class WorkspacePeopleService {
 
   async selectPerson(person: Person): Promise<void> {
     void this.router.navigate(['/people', person.id]);
-    this.populatePersonSelection(person);
+    if (this.hasPersonDetails(person)) {
+      this.populatePersonSelection(person);
+      return;
+    }
+
+    await this.selectPersonById(person.id);
   }
 
   async selectPersonById(personId: string): Promise<void> {
@@ -101,6 +105,15 @@ export class WorkspacePeopleService {
     });
     this.populateLecturerProfileForm(person);
     this.updateExternallyManagedControls();
+  }
+
+  private hasPersonDetails(person: Person): boolean {
+    return (
+      'secondaryEmails' in person ||
+      'mergedIntoId' in person ||
+      'externalRef' in person ||
+      'lecturerProfile' in person
+    );
   }
 
   resetPersonForm(): void {

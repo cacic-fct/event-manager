@@ -10,7 +10,7 @@
     "../src/**/*.stories.jsx",
     "../src/**/*.stories.tsx",
     "../src/**/*.stories.mdx",
-    "../../../shared-notifications-angular/src/**/*.stories.ts",
+    "../../../libs/shared-notifications-angular/src/**/*.stories.ts",
     "*.js",
     "*.ts"
   ]

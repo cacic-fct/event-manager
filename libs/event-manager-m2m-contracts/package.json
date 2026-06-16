@@ -1,0 +1,25 @@
+{
+  "name": "@cacic-fct/event-manager-m2m-contracts",
+  "version": "0.0.1",
+  "description": "Framework-agnostic CACiC Event Manager M2M API contracts.",
+  "license": "AGPL-3.0-only",
+  "type": "commonjs",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cacic-fct/event-manager.git",
+    "directory": "libs/event-manager-m2m-contracts"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "sideEffects": false
+}

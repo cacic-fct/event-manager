@@ -20,7 +20,7 @@ import {
   authInterceptor,
   provideCacicObservability,
 } from '@cacic-fct/shared-angular';
-import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic/account-privacy';
+import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
 import { AnalyticsService } from './analytics/analytics.service';
 import { OnlineAttendanceCoordinatorService } from './attendance/online-attendance/online-attendance-coordinator.service';

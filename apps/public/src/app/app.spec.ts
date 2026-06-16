@@ -47,6 +47,6 @@ describe('App', () => {
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('lib-cookie-banner')).toBeNull();
+    expect(compiled.querySelector('app-cookie-banner')).toBeNull();
   });
 });

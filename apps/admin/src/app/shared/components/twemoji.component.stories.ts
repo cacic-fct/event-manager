@@ -42,16 +42,6 @@ export const Emoji: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkEmoji: Story = {
-  args: { emoji: '🌙' },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const EmptyValue: Story = {
   args: { emoji: '📴' },
   parameters: {

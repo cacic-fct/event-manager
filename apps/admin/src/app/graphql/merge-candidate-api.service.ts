@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import { DeletionResult, MergeCandidate, MergeCandidateStatus, PersonMergeField } from './models';
-import { PERSON_FIELDS } from './graphql-query-fragments';
+import { PERSON_MERGE_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
 export class MergeCandidateApiService {
@@ -29,10 +29,10 @@ export class MergeCandidateApiService {
             createdAt
             updatedAt
             personA {
-              ${PERSON_FIELDS}
+              ${PERSON_MERGE_FIELDS}
             }
             personB {
-              ${PERSON_FIELDS}
+              ${PERSON_MERGE_FIELDS}
             }
           }
         }`,

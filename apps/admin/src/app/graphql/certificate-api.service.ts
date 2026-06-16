@@ -19,9 +19,9 @@ import {
   CERTIFICATE_DOWNLOAD_FIELDS,
   CERTIFICATE_FIELDS,
   CERTIFICATE_TEMPLATE_FIELDS,
-  EVENT_FIELDS,
-  EVENT_GROUP_FIELDS,
-  MAJOR_EVENT_FIELDS,
+  EVENT_CERTIFICATE_TARGET_FIELDS,
+  EVENT_GROUP_CERTIFICATE_TARGET_FIELDS,
+  MAJOR_EVENT_CERTIFICATE_TARGET_FIELDS,
 } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
@@ -37,7 +37,7 @@ export class CertificateApiService {
           $take: Int
         ) {
           certificateIssuableEvents(query: $query, skip: $skip, take: $take) {
-            ${EVENT_FIELDS}
+            ${EVENT_CERTIFICATE_TARGET_FIELDS}
           }
         }`,
         filters,
@@ -54,7 +54,7 @@ export class CertificateApiService {
           $take: Int
         ) {
           certificateIssuableEventGroups(query: $query, skip: $skip, take: $take) {
-            ${EVENT_GROUP_FIELDS}
+            ${EVENT_GROUP_CERTIFICATE_TARGET_FIELDS}
           }
         }`,
         filters,
@@ -71,7 +71,7 @@ export class CertificateApiService {
           $take: Int
         ) {
           certificateIssuableMajorEvents(query: $query, skip: $skip, take: $take) {
-            ${MAJOR_EVENT_FIELDS}
+            ${MAJOR_EVENT_CERTIFICATE_TARGET_FIELDS}
           }
         }`,
         filters,

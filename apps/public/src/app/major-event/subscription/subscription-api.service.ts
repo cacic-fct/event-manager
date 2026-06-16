@@ -22,7 +22,22 @@ interface GraphqlResponse<TData> {
   errors?: Array<{ message: string }>;
 }
 
-const PUBLIC_MAJOR_EVENT_FIELDS = `
+const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
+  id
+  name
+  emoji
+  startDate
+  endDate
+  description
+  subscriptionStartDate
+  subscriptionEndDate
+  rankedSubscriptionEnabled
+  buttonText
+  buttonLink
+  isPaymentRequired
+`;
+
+const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
   id
   name
   emoji
@@ -35,13 +50,8 @@ const PUBLIC_MAJOR_EVENT_FIELDS = `
   maxLecturesPerAttendee
   maxUncategorizedPerAttendee
   rankedSubscriptionEnabled
-  buttonText
-  buttonLink
-  contactInfo
-  contactType
   isPaymentRequired
   additionalPaymentInfo
-  shouldIssueCertificate
   paymentInfo {
     id
     bankName
@@ -64,48 +74,20 @@ const PUBLIC_MAJOR_EVENT_FIELDS = `
   }
 `;
 
-const PUBLIC_EVENT_GROUP_FIELDS = `
+const PUBLIC_SUBSCRIPTION_EVENT_FIELDS = `
   id
   name
-  emoji
-  shouldIssueCertificateForEachEvent
-  shouldIssuePartialCertificate
-  shouldIssueCertificate
-`;
-
-const PUBLIC_EVENT_FIELDS = `
-  id
-  name
-  creditMinutes
   startDate
   endDate
   emoji
   type
-  description
   shortDescription
-  latitude
-  longitude
   locationDescription
-  majorEventId
   eventGroupId
-  allowSubscription
-  subscriptionStartDate
-  subscriptionEndDate
   autoSubscribe
-  shouldIssueCertificate
-  shouldCollectAttendance
-  isOnlineAttendanceAllowed
-  onlineAttendanceStartDate
-  onlineAttendanceEndDate
-  publiclyVisible
-  youtubeCode
-  buttonText
-  buttonLink
-  majorEvent {
-    ${PUBLIC_MAJOR_EVENT_FIELDS}
-  }
   eventGroup {
-    ${PUBLIC_EVENT_GROUP_FIELDS}
+    id
+    name
   }
 `;
 
@@ -125,7 +107,7 @@ export class MajorEventSubscriptionApiService {
       `
         query PublicMajorEvents($startDateFrom: DateTime) {
           publicMajorEvents(startDateFrom: $startDateFrom) {
-            ${PUBLIC_MAJOR_EVENT_FIELDS}
+            ${PUBLIC_MAJOR_EVENT_CARD_FIELDS}
           }
         }
       `,
@@ -147,13 +129,8 @@ export class MajorEventSubscriptionApiService {
             paymentDate
             paymentTier
             majorEvent {
-              ${PUBLIC_MAJOR_EVENT_FIELDS}
-            }
-            selectedEvents {
-              ${PUBLIC_EVENT_FIELDS}
-            }
-            notSubscribedEvents {
-              ${PUBLIC_EVENT_FIELDS}
+              id
+              isPaymentRequired
             }
           }
         }
@@ -169,10 +146,10 @@ export class MajorEventSubscriptionApiService {
         query PublicMajorEventSubscriptionPage($majorEventId: String!) {
           publicMajorEventSubscriptionPage(majorEventId: $majorEventId) {
             majorEvent {
-              ${PUBLIC_MAJOR_EVENT_FIELDS}
+              ${PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS}
             }
             events {
-              ${PUBLIC_EVENT_FIELDS}
+              ${PUBLIC_SUBSCRIPTION_EVENT_FIELDS}
             }
             subscriptionSummaries {
               ${SUBSCRIPTION_SUMMARY_FIELDS}
@@ -198,13 +175,10 @@ export class MajorEventSubscriptionApiService {
             paymentDate
             paymentTier
             majorEvent {
-              ${PUBLIC_MAJOR_EVENT_FIELDS}
+              ${PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS}
             }
             selectedEvents {
-              ${PUBLIC_EVENT_FIELDS}
-            }
-            notSubscribedEvents {
-              ${PUBLIC_EVENT_FIELDS}
+              ${PUBLIC_SUBSCRIPTION_EVENT_FIELDS}
             }
           }
         }
@@ -241,13 +215,10 @@ export class MajorEventSubscriptionApiService {
             paymentDate
             paymentTier
             majorEvent {
-              ${PUBLIC_MAJOR_EVENT_FIELDS}
+              ${PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS}
             }
             selectedEvents {
-              ${PUBLIC_EVENT_FIELDS}
-            }
-            notSubscribedEvents {
-              ${PUBLIC_EVENT_FIELDS}
+              ${PUBLIC_SUBSCRIPTION_EVENT_FIELDS}
             }
           }
         }
@@ -295,13 +266,10 @@ export class MajorEventSubscriptionApiService {
             paymentDate
             paymentTier
             majorEvent {
-              ${PUBLIC_MAJOR_EVENT_FIELDS}
+              ${PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS}
             }
             selectedEvents {
-              ${PUBLIC_EVENT_FIELDS}
-            }
-            notSubscribedEvents {
-              ${PUBLIC_EVENT_FIELDS}
+              ${PUBLIC_SUBSCRIPTION_EVENT_FIELDS}
             }
           }
         }

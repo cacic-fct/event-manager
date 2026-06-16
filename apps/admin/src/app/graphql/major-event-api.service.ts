@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import { DeletionResult, MajorEvent, MajorEventInput, MajorEventUserAttendance } from './models';
-import { MAJOR_EVENT_FIELDS, PERSON_FIELDS } from './graphql-query-fragments';
+import { MAJOR_EVENT_DETAIL_FIELDS, MAJOR_EVENT_LIST_FIELDS, PERSON_EXPORT_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
 export class MajorEventApiService {
@@ -31,7 +31,7 @@ export class MajorEventApiService {
             skip: $skip
             take: $take
           ) {
-            ${MAJOR_EVENT_FIELDS}
+            ${MAJOR_EVENT_LIST_FIELDS}
           }
         }`,
         filters,
@@ -44,7 +44,7 @@ export class MajorEventApiService {
       .request<{ majorEvent: MajorEvent }>(
         `query GetMajorEvent($id: String!) {
           majorEvent(id: $id) {
-            ${MAJOR_EVENT_FIELDS}
+            ${MAJOR_EVENT_DETAIL_FIELDS}
           }
         }`,
         { id },
@@ -57,7 +57,7 @@ export class MajorEventApiService {
       .request<{ createMajorEvent: MajorEvent }>(
         `mutation CreateMajorEvent($input: MajorEventCreateInput!) {
           createMajorEvent(input: $input) {
-            ${MAJOR_EVENT_FIELDS}
+            ${MAJOR_EVENT_DETAIL_FIELDS}
           }
         }`,
         { input },
@@ -70,7 +70,7 @@ export class MajorEventApiService {
       .request<{ updateMajorEvent: MajorEvent }>(
         `mutation UpdateMajorEvent($id: String!, $input: MajorEventUpdateInput!) {
           updateMajorEvent(id: $id, input: $input) {
-            ${MAJOR_EVENT_FIELDS}
+            ${MAJOR_EVENT_DETAIL_FIELDS}
           }
         }`,
         { id, input },
@@ -122,7 +122,7 @@ export class MajorEventApiService {
             paymentDate
             paymentTier
             person {
-              ${PERSON_FIELDS}
+              ${PERSON_EXPORT_FIELDS}
             }
             attendances {
               eventId
