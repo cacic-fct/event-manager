@@ -22,6 +22,8 @@ apps/*
 !apps/backend
 !apps/backend/**
 !libs
+!libs/event-manager-m2m-contracts
+!libs/event-manager-m2m-contracts/**
 !libs/shared-data-types
 !libs/shared-data-types/**
 !libs/shared-utils
