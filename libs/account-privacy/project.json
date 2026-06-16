@@ -1,0 +1,15 @@
+{
+  "name": "account-privacy",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "root": "libs/account-privacy",
+  "projectType": "library",
+  "sourceRoot": "libs/account-privacy/src",
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/account-privacy"]
+      }
+    }
+  }
+}

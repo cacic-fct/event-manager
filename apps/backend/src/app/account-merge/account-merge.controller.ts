@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Post, Req, UsePipes } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -13,6 +13,7 @@ import { Request } from 'express';
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
+import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
 import { AccountMergeService } from './account-merge.service';
 import {
   AccountMergeAcknowledgementDto,
@@ -27,6 +28,7 @@ type RequestWithUser = Request & {
 
 @ApiTags('Internal M2M')
 @ApiBearerAuth()
+@UsePipes(REST_VALIDATION_PIPE)
 @Controller('account-merge')
 export class AccountMergeController {
   constructor(

@@ -35,6 +35,8 @@ import {
 } from './events/attendances';
 import { EventAttendanceCollectorsResolver } from './events/attendance-collectors.resolver';
 import { AttendanceCategoryService } from './events/attendance-category.service';
+import { EventSubscriptionSyncService } from './events/event-subscription-sync.service';
+import { EventSubscriptionCountersService } from './events/subscription-counters.service';
 import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
 import { CurrentUserContextService } from './current-user/context.service';
@@ -198,6 +200,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
     DashboardInsightsSchedulerService,
     DashboardInsightsProcessor,
     AttendanceCategoryService,
+    EventSubscriptionSyncService,
+    EventSubscriptionCountersService,
     EventAttendanceCollectorsResolver,
     EventAttendanceCsvImportResolver,
     EventAttendancesMutationsResolver,

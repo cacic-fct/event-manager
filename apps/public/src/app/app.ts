@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { RouterModule } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { CookieBannerComponent, CookieBannerOptions } from '@cacic-fct/cookie-banner/angular';
+import { CacicAccountPrivacyService } from '@cacic/account-privacy';
 import { firstValueFrom } from 'rxjs';
 import { CookieBannerSyncService } from './privacy/cookie-banner-sync.service';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
@@ -15,6 +16,7 @@ import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.se
 })
 export class App {
   private readonly auth = inject(AuthService);
+  private readonly accountPrivacy = inject(CacicAccountPrivacyService);
   private readonly cookieBannerSync = inject(CookieBannerSyncService);
   private readonly featureFlags = inject(PublicFeatureFlagService);
 
@@ -32,7 +34,13 @@ export class App {
         return;
       }
 
-      return (await firstValueFrom(this.cookieBannerSync.acceptCookieBanner())) ? undefined : false;
+      const synced = await firstValueFrom(this.cookieBannerSync.acceptCookieBanner());
+      if (!synced) {
+        return false;
+      }
+
+      await firstValueFrom(this.accountPrivacy.refresh());
+      return;
     },
   };
 }

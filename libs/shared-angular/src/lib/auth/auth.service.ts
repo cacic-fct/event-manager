@@ -267,30 +267,16 @@ export class AuthService {
   }
 
   private scheduleRefreshFromUser(user: AuthenticatedUser | null): void {
-    if (!user?.token || !isPlatformBrowser(this.platformId)) {
+    if (!isPlatformBrowser(this.platformId)) {
       return;
     }
 
-    const [, payload] = user.token.split('.');
-
-    if (!payload) {
+    const expiresAtSeconds = user?.claims?.exp;
+    if (typeof expiresAtSeconds !== 'number' || !Number.isFinite(expiresAtSeconds)) {
       return;
     }
 
-    try {
-      const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
-      const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=');
-
-      const claims: unknown = JSON.parse(atob(paddedPayload));
-
-      if (!this.isRecord(claims) || typeof claims['exp'] !== 'number') {
-        return;
-      }
-
-      this.scheduleRefresh(claims['exp'] * 1000);
-    } catch {
-      return;
-    }
+    this.scheduleRefresh(expiresAtSeconds * 1000);
   }
 
   private buildLoginRedirectUrl(options?: LoginOptions): string {
@@ -353,10 +339,6 @@ export class AuthService {
     }
 
     return !error.url || error.url.includes('/api/auth/me') || error.url.includes('/api/auth/refresh');
-  }
-
-  private isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
   }
 
   private getSessionStorageItem(key: string): string | null {

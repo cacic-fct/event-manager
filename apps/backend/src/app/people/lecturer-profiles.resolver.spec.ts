@@ -54,6 +54,27 @@ describe('LecturerProfilesResolver', () => {
     );
   });
 
+  it('allows profiles without biographies', async () => {
+    const resolver = new LecturerProfilesResolver(prisma as never, currentUserContext as never);
+
+    await resolver.upsertLecturerProfile(
+      'person-1',
+      {
+        displayName: 'Ada',
+        biography: '',
+      },
+      { req: { user: { sub: 'admin-1' } } } as never,
+    );
+
+    expect(prisma.lecturerProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          biography: null,
+        }),
+      }),
+    );
+  });
+
   it('rejects invalid WhatsApp numbers', async () => {
     const resolver = new LecturerProfilesResolver(prisma as never, currentUserContext as never);
 

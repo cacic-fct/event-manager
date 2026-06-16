@@ -30,7 +30,7 @@ const LECTURER_PROFILE_SELECT = {
 
 interface LecturerProfileData {
   displayName: string;
-  biography: string;
+  biography: string | null;
   publishGoogleUserPicture: boolean;
   email: string | null;
   whatsapp: string | null;
@@ -140,10 +140,10 @@ export class LecturerProfilesResolver {
     actorId: string | undefined,
   ): LecturerProfileData {
     const displayName = input.displayName.trim();
-    const biography = input.biography.trim();
+    const biography = input.biography?.trim() || null;
 
-    if (!displayName || !biography) {
-      throw new BadRequestException('Display name and biography are required.');
+    if (!displayName) {
+      throw new BadRequestException('Display name is required.');
     }
 
     return {

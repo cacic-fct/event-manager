@@ -13,7 +13,7 @@ const profile: LecturerProfile = {
   displayName: 'Grace Hopper',
   biography: 'Pesquisadora e educadora.',
   publishGoogleUserPicture: true,
-  googleUserPicture: 'https://example.com/grace.png',
+  googleUserPicture: 'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c',
   email: 'grace@example.com',
   whatsapp: '+5518999999999',
 };
@@ -92,6 +92,34 @@ describe('LecturerProfileComponent', () => {
       expect.objectContaining({
         whatsapp: '+5518999999999',
       }),
+    );
+  });
+
+  it('saves an empty biography as null', () => {
+    component.edit();
+    component.form.setValue({
+      displayName: 'Grace Hopper',
+      biography: '   ',
+      publishGoogleUserPicture: true,
+      email: 'grace@example.com',
+      whatsapp: '',
+    });
+
+    component.save();
+
+    expect(upsertCurrentUserLecturerProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        biography: null,
+      }),
+    );
+  });
+
+  it('requests higher quality Google profile pictures for preview display', () => {
+    expect(component.googlePictureUrl('https://lh3.googleusercontent.com/a/ACg8ocK=s96-c')).toBe(
+      'https://lh3.googleusercontent.com/a/ACg8ocK=s512-c',
+    );
+    expect(component.googlePictureUrl('https://lh3.googleusercontent.com/a-/ALV-UjV/s256/photo.jpg')).toBe(
+      'https://lh3.googleusercontent.com/a-/ALV-UjV/s512/photo.jpg',
     );
   });
 

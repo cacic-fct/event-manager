@@ -35,7 +35,7 @@
   <h1>Pré-visualização</h1>
   <section class="profile-card">
     @if (profile.publishGoogleUserPicture && profile.googleUserPicture) {
-    <img class="profile-avatar" [src]="profile.googleUserPicture" alt="" />
+    <img class="profile-avatar" [src]="googlePictureUrl(profile.googleUserPicture)" alt="" />
     } @else {
     <div class="profile-avatar profile-avatar-placeholder">
       <mat-icon aria-hidden="true">person</mat-icon>
@@ -43,7 +43,9 @@
     }
     <div>
       <h2>{{ profile.displayName }}</h2>
+      @if (profile.biography) {
       <p class="biography">{{ profile.biography }}</p>
+      }
       <div class="contact-actions">
         @if (profile.email) {
         <a mat-stroked-button [href]="'mailto:' + profile.email">
@@ -71,7 +73,7 @@
   } } @else {
   <form [formGroup]="form" class="profile-form">
     @if (form.controls.publishGoogleUserPicture.value && userPicture()) {
-    <img class="profile-avatar" [src]="userPicture()" alt="" />
+    <img class="profile-avatar" [src]="googlePictureUrl(userPicture())" alt="" />
     }
     <mat-form-field>
       <mat-label>Nome de exibição</mat-label>

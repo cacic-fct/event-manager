@@ -5,8 +5,8 @@ export class LecturerProfileUpsertInput {
   @Field(() => String)
   displayName!: string;
 
-  @Field(() => String)
-  biography!: string;
+  @Field(() => String, { nullable: true })
+  biography?: string | null;
 
   @Field(() => Boolean, { nullable: true })
   publishGoogleUserPicture?: boolean;

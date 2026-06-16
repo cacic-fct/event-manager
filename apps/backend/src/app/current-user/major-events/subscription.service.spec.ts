@@ -59,6 +59,45 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
     expect(() => service.normalizeDesiredCount(-1, 2)).toThrow(BadRequestException);
   });
 
+  it('derives self-service payment amount from configured price tiers', () => {
+    expect(
+      service.resolveSelfServicePayment(
+        majorEventWithPrices([
+          { name: 'Aluno', value: 2500 },
+          { name: 'Comunidade externa', value: 5000 },
+        ]),
+        ' aluno ',
+      ),
+    ).toEqual({
+      amountPaid: 2500,
+      paymentTier: 'Aluno',
+    });
+
+    expect(
+      service.resolveSelfServicePayment(
+        majorEventWithPrices([
+          { name: 'Lote unico', value: 3000 },
+        ]),
+        undefined,
+      ),
+    ).toEqual({
+      amountPaid: 3000,
+      paymentTier: 'Lote unico',
+    });
+
+    expect(() => service.resolveSelfServicePayment(majorEventWithPrices([{ name: 'Aluno', value: 2500 }], true), 'VIP'))
+      .not.toThrow();
+    expect(() =>
+      service.resolveSelfServicePayment(
+        majorEventWithPrices([
+          { name: 'Aluno', value: 2500 },
+          { name: 'Comunidade externa', value: 5000 },
+        ]),
+        'VIP',
+      ),
+    ).toThrow(BadRequestException);
+  });
+
   it('rejects desired counts above ranked event capacity', () => {
     const majorEvent = {
       maxCoursesPerAttendee: 1,
@@ -259,4 +298,18 @@ function publicEvent(id: string, majorEventId: string | null) {
     majorEventId,
     startDate: new Date('2026-06-01T12:00:00.000Z'),
   };
+}
+
+function majorEventWithPrices(
+  tiers: Array<{ name: string; value: number }>,
+  isPaymentRequired = true,
+) {
+  return {
+    isPaymentRequired,
+    majorEventPrices: [
+      {
+        tiers,
+      },
+    ],
+  } as never;
 }

@@ -1,11 +1,13 @@
+import { BadRequestException } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
+import { EventSubscriptionSyncService } from '../../events/event-subscription-sync.service';
 import { ReceiptSubscriptionSyncService } from './receipt-subscription-sync.service';
 
-describe('ReceiptSubscriptionSyncService', () => {
-  let service: ReceiptSubscriptionSyncService;
+describe('EventSubscriptionSyncService', () => {
+  let service: EventSubscriptionSyncService;
 
   beforeEach(() => {
-    service = new ReceiptSubscriptionSyncService();
+    service = new EventSubscriptionSyncService();
   });
 
   it('archives unselected active event subscriptions and creates missing confirmed ones', async () => {
@@ -14,10 +16,14 @@ describe('ReceiptSubscriptionSyncService', () => {
         findMany: jest.fn().mockResolvedValue([{ eventId: 'event-1' }, { eventId: 'event-2' }]),
         updateMany: jest.fn(),
         createMany: jest.fn(),
+        count: jest.fn(),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'event-3', slots: null }]),
       },
     };
 
-    await service.syncConfirmedEventSubscriptions(
+    await service.syncMajorEventConfirmedSubscriptions(
       tx as never,
       'major-1',
       'person-1',
@@ -56,7 +62,7 @@ describe('ReceiptSubscriptionSyncService', () => {
       },
     };
 
-    await service.syncConfirmedEventSubscriptions(
+    await service.syncMajorEventConfirmedSubscriptions(
       tx as never,
       'major-1',
       'person-1',
@@ -69,23 +75,76 @@ describe('ReceiptSubscriptionSyncService', () => {
     expect(tx.eventSubscription.createMany).not.toHaveBeenCalled();
   });
 
-  it('does not refresh counters when there are no event ids', async () => {
+  it('blocks creation when a target event has no available slots', async () => {
     const tx = {
-      $executeRaw: jest.fn(),
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: jest.fn(),
+        createMany: jest.fn(),
+        count: jest.fn().mockResolvedValue(1),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'event-1', slots: 1 }]),
+      },
     };
 
-    await service.refreshEventSubscriptionCounters(tx as never, []);
+    await expect(
+      service.syncMajorEventConfirmedSubscriptions(
+        tx as never,
+        'major-1',
+        'person-1',
+        ['event-1'],
+        SubscriptionStatus.CONFIRMED,
+        'admin-1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
 
-    expect(tx.$executeRaw).not.toHaveBeenCalled();
+    expect(tx.eventSubscription.createMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('ReceiptSubscriptionSyncService', () => {
+  it('delegates confirmed subscription sync to the shared event subscription service', async () => {
+    const counters = {
+      refresh: jest.fn(),
+    };
+    const eventSubscriptions = {
+      syncMajorEventConfirmedSubscriptions: jest.fn(),
+    };
+    const service = new ReceiptSubscriptionSyncService(counters as never, eventSubscriptions as never);
+    const tx = {};
+
+    await service.syncConfirmedEventSubscriptions(
+      tx as never,
+      'major-1',
+      'person-1',
+      ['event-1'],
+      SubscriptionStatus.CONFIRMED,
+      'admin-1',
+    );
+
+    expect(eventSubscriptions.syncMajorEventConfirmedSubscriptions).toHaveBeenCalledWith(
+      tx,
+      'major-1',
+      'person-1',
+      ['event-1'],
+      SubscriptionStatus.CONFIRMED,
+      'admin-1',
+    );
   });
 
-  it('refreshes counters once per unique event id', async () => {
-    const tx = {
-      $executeRaw: jest.fn().mockResolvedValue(1),
+  it('delegates counter refresh to the shared counter service', async () => {
+    const counters = {
+      refresh: jest.fn(),
     };
+    const eventSubscriptions = {
+      syncMajorEventConfirmedSubscriptions: jest.fn(),
+    };
+    const service = new ReceiptSubscriptionSyncService(counters as never, eventSubscriptions as never);
+    const tx = {};
 
     await service.refreshEventSubscriptionCounters(tx as never, ['event-1', 'event-1', 'event-2']);
 
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
+    expect(counters.refresh).toHaveBeenCalledWith(tx, ['event-1', 'event-1', 'event-2']);
   });
 });

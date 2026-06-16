@@ -11,6 +11,7 @@ import {
   makeEnvironmentProviders,
   provideAppInitializer,
   provideEnvironmentInitializer,
+  runInInjectionContext,
 } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
@@ -20,24 +21,23 @@ import {
   createErrorHandler as SentryCreateErrorHandler,
   init as SentryInit,
   TraceService as SentryTraceService,
-  consoleLoggingIntegration as SentryConsoleLoggingIntegration,
 } from '@sentry/angular';
 import type { ErrorEvent as SentryErrorEvent } from '@sentry/angular';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AuthService } from '../auth/auth.service';
-import { CacicAnalyticsService } from './analytics.service';
+import { CacicAnalyticsService, type AnalyticsEventData } from './analytics.service';
 import { CACIC_ANALYTICS_CONFIG } from './observability.config';
-import type { CacicAnalyticsConfig } from './observability.config';
+import type { CacicAnalyticsConfig, CacicObservabilityToggle } from './observability.config';
 
 export type CacicObservabilityConfig = {
   analytics: {
     websiteId: string;
     domains: string[];
-    isEnabled: (user: AuthenticatedUser | null) => boolean;
+    isEnabled: CacicObservabilityToggle;
     buildIdentifyData?: CacicAnalyticsConfig['buildIdentifyData'];
     src?: string;
     replay?: {
-      isEnabled: (user: AuthenticatedUser | null) => boolean;
+      isEnabled: CacicObservabilityToggle;
       src?: string;
       sampleRate?: number;
       maskLevel?: 'none' | 'light' | 'moderate' | 'strict';
@@ -46,7 +46,8 @@ export type CacicObservabilityConfig = {
   };
   glitchtip: {
     dsn: string;
-    isEnabled: (user: AuthenticatedUser | null) => boolean;
+    isEnabled: CacicObservabilityToggle;
+    isPerformanceEnabled?: CacicObservabilityToggle;
     project: 'admin' | 'public';
   };
 };
@@ -58,8 +59,38 @@ const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'moderate';
 const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 1_200_000;
 
 @Injectable()
+class CacicObservabilityConsentService {
+  private readonly injector = inject(Injector);
+
+  isAnalyticsEnabled(config: CacicObservabilityConfig, user: AuthenticatedUser | null): boolean {
+    return Boolean(config.analytics.websiteId) && this.evaluate(() => config.analytics.isEnabled(user));
+  }
+
+  isReplayEnabled(config: CacicObservabilityConfig, user: AuthenticatedUser | null): boolean {
+    return this.evaluate(() => config.analytics.replay?.isEnabled(user) ?? this.isPerformanceEnabled(config, user));
+  }
+
+  isGlitchtipEnabled(config: CacicObservabilityConfig, user: AuthenticatedUser | null): boolean {
+    return this.evaluate(() => config.glitchtip.isEnabled(user));
+  }
+
+  isPerformanceEnabled(config: CacicObservabilityConfig, user: AuthenticatedUser | null): boolean {
+    return this.evaluate(() => config.glitchtip.isPerformanceEnabled?.(user) ?? config.glitchtip.isEnabled(user));
+  }
+
+  buildIdentifyData(config: CacicObservabilityConfig, user: AuthenticatedUser): AnalyticsEventData {
+    return this.evaluate(() => config.analytics.buildIdentifyData?.(user) ?? {});
+  }
+
+  private evaluate<T>(callback: () => T): T {
+    return runInInjectionContext(this.injector, callback);
+  }
+}
+
+@Injectable()
 class CacicUmamiReplayScriptLoader {
   private readonly auth = inject(AuthService);
+  private readonly consent = inject(CacicObservabilityConsentService);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly platformId = inject(PLATFORM_ID);
@@ -78,7 +109,7 @@ class CacicUmamiReplayScriptLoader {
         }
 
         const user = this.currentUser();
-        const canRecord = config.analytics.replay?.isEnabled(user) ?? config.glitchtip.isEnabled(user);
+        const canRecord = this.consent.isReplayEnabled(config, user);
 
         if (canRecord) {
           this.ensureScript(config);
@@ -120,13 +151,18 @@ class CacicUmamiReplayScriptLoader {
 
 export function provideCacicObservability(config: CacicObservabilityConfig) {
   const providers: Array<Provider | EnvironmentProviders> = [
+    CacicObservabilityConsentService,
     {
       provide: CACIC_ANALYTICS_CONFIG,
-      useValue: {
-        isAnalyticsEnabled: (user: AuthenticatedUser | null) =>
-          Boolean(config.analytics.websiteId) && config.analytics.isEnabled(user),
-        buildIdentifyData: config.analytics.buildIdentifyData,
-      } satisfies CacicAnalyticsConfig,
+      useFactory: () => {
+        const consent = inject(CacicObservabilityConsentService);
+        return {
+          isAnalyticsEnabled: (user: AuthenticatedUser | null) => consent.isAnalyticsEnabled(config, user),
+          buildIdentifyData: config.analytics.buildIdentifyData
+            ? (user: AuthenticatedUser) => consent.buildIdentifyData(config, user)
+            : undefined,
+        } satisfies CacicAnalyticsConfig;
+      },
     },
   ];
 
@@ -142,6 +178,7 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
       },
       provideAppInitializer(() => {
         const authService = inject(AuthService);
+        const consent = inject(CacicObservabilityConsentService);
 
         SentryInit({
           dsn: config.glitchtip.dsn,
@@ -152,11 +189,12 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
             SentryConsoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
           ],
           tracesSampleRate: 1.0,
+          tracesSampler: () => (consent.isPerformanceEnabled(config, authService.user()) ? 1.0 : 0),
           tracePropagationTargets: [/^https:\/\/eventos\.cacic\.dev\.br\/api/],
           enableLogs: true,
           tunnel: config.glitchtip.project === 'admin' ? '/api/a/glitchtip/admin' : '/api/a/glitchtip/public',
           beforeSend: (event: SentryErrorEvent) => {
-            return !isDevMode() && config.glitchtip.isEnabled(authService.user()) ? event : null;
+            return !isDevMode() && consent.isGlitchtipEnabled(config, authService.user()) ? event : null;
           },
         });
 

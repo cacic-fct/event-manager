@@ -20,6 +20,7 @@ import {
   authInterceptor,
   provideCacicObservability,
 } from '@cacic-fct/shared-angular';
+import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic/account-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
 import { AnalyticsService } from './analytics/analytics.service';
 import { OnlineAttendanceCoordinatorService } from './attendance/online-attendance/online-attendance-coordinator.service';
@@ -27,12 +28,6 @@ import { OfflineUserDataService } from './shared/offline-user-data.service';
 import { NetworkStatusService } from './shared/network-status.service';
 import { NetworkStatusSnackbarService } from './shared/network-status-snackbar.service';
 import { AppRouteReuseStrategy } from './tabs/reuse.strategy';
-import {
-  isUserAnalyticsEnabled,
-  isUserDiagnosticsEnabled,
-  isUserPerformanceMonitoringEnabled,
-  readUserPrivacyFlag,
-} from './privacy/privacy-attributes';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
 import { PUBLIC_FEATURE_FLAG_CONFIG, type PublicFeatureFlagConfig } from './feature-flags/public-feature-flag.config';
 
@@ -57,6 +52,13 @@ const publicFeatureFlagConfig: PublicFeatureFlagConfig = {
   refreshIntervalSeconds: 60,
   disableMetrics: true,
 };
+
+const accountPrivacyApiBaseUrl = 'https://account.cacic.dev.br/api';
+
+const accountPrivacy = () => inject(CacicAccountPrivacyService);
+const isAccountAnalyticsEnabled = () => accountPrivacy().isAnalyticsEnabled();
+const isAccountDiagnosticsEnabled = () => accountPrivacy().isErrorDebuggingEnabled();
+const isAccountPerformanceMonitoringEnabled = () => accountPrivacy().isPerformanceMonitoringEnabled();
 
 function readRuntimeConfigValue(
   metaName: string,
@@ -84,24 +86,32 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideCacicAccountPrivacy({
+      apiBaseUrl: accountPrivacyApiBaseUrl,
+    }),
     provideCacicObservability({
       analytics: {
         websiteId: 'df6b1fa8-7566-4cb0-8dff-279d15cc0b5d',
         domains: ['eventos.cacic.dev.br'],
-        isEnabled: isUserAnalyticsEnabled,
+        isEnabled: isAccountAnalyticsEnabled,
         buildIdentifyData: (user) => ({
           authenticated: true,
           has_email: Boolean(user.email),
-          analytics_enabled: readUserPrivacyFlag(user, 'analytics_enabled') ?? true,
-          diagnostics_enabled: isUserDiagnosticsEnabled(user),
-          performance_monitoring_enabled: isUserPerformanceMonitoringEnabled(user),
+          analytics_enabled: accountPrivacy().preferences().analytics_tracking,
+          diagnostics_enabled: accountPrivacy().preferences().error_debugging,
+          performance_monitoring_enabled: accountPrivacy().preferences().performance_monitoring,
+          cookie_banner_accepted: accountPrivacy().preferences().cookie_banner_accepted,
         }),
       },
       glitchtip: {
         dsn: 'https://44b2480fd6cd4402b61590135a093fd6@glitchtip.cacic.dev.br/1',
         project: 'public',
-        isEnabled: isUserDiagnosticsEnabled,
+        isEnabled: isAccountDiagnosticsEnabled,
+        isPerformanceEnabled: isAccountPerformanceMonitoringEnabled,
       },
+    }),
+    provideAppInitializer(() => {
+      return inject(CacicAccountPrivacyService).initialize();
     }),
     provideAppInitializer(() => {
       const registry = inject(MatIconRegistry);

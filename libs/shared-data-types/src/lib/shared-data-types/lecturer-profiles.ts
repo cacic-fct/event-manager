@@ -16,8 +16,8 @@ export class LecturerProfile {
   @Field(() => String)
   displayName!: string;
 
-  @Field(() => String)
-  biography!: string;
+  @Field(() => String, { nullable: true })
+  biography?: string | null;
 
   @Field(() => Boolean)
   publishGoogleUserPicture!: boolean;

@@ -126,8 +126,8 @@ model MajorEventSubscriptionEventSelection {
   createdById String?
   deletedAt   DateTime?
 
-  @@unique([subscriptionId, eventId, deletedAt])
   @@index([eventId])
   @@index([subscriptionId])
+  @@index([subscriptionId, eventId])
   @@map("major_event_subscription_event_selections")
 }

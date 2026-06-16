@@ -239,11 +239,10 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       );
     }
 
-    const normalizedAmountPaid = this.majorEventSubscriptions.normalizeAmountPaid(input.amountPaid);
-    const normalizedPaymentTier = this.majorEventSubscriptions.normalizePaymentTier(input.paymentTier);
+    const selfServicePayment = this.majorEventSubscriptions.resolveSelfServicePayment(majorEvent, input.paymentTier);
 
     const now = new Date();
-    const subscription = await this.prisma.$transaction(async (tx) => {
+    const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const existingSubscription = await tx.majorEventSubscription.findFirst({
         where: {
           majorEventId: input.majorEventId,
@@ -269,12 +268,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
       if (existingSubscription) {
         const updateData: Prisma.MajorEventSubscriptionUpdateInput = {};
-        if ('amountPaid' in input) {
-          updateData.amountPaid = normalizedAmountPaid;
-        }
-        if ('paymentTier' in input) {
-          updateData.paymentTier = normalizedPaymentTier;
-        }
+        updateData.amountPaid = selfServicePayment.amountPaid;
+        updateData.paymentTier = selfServicePayment.paymentTier;
         updateData.subscriptionFlow = isRankedSubscription
           ? MajorEventSubscriptionFlow.RANKED_VOTING
           : MajorEventSubscriptionFlow.REGULAR;
@@ -298,8 +293,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           data: {
             majorEventId: input.majorEventId,
             personId: person.id,
-            amountPaid: normalizedAmountPaid ?? undefined,
-            paymentTier: normalizedPaymentTier ?? undefined,
+            amountPaid: selfServicePayment.amountPaid ?? undefined,
+            paymentTier: selfServicePayment.paymentTier ?? undefined,
             createdByMethod: 'SELF_SUBSCRIPTION',
             subscriptionFlow: isRankedSubscription
               ? MajorEventSubscriptionFlow.RANKED_VOTING
@@ -629,5 +624,26 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     const allocatedEventIds = this.majorEventSubscriptions.allocateRankedEventIds(rankedEvents, desiredCounts);
     const allocatedEventIdSet = new Set(allocatedEventIds);
     return selectedEventIds.filter((eventId) => allocatedEventIdSet.has(eventId));
+  }
+
+  private async runSerializableSubscriptionTransaction<T>(
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(operation, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        });
+      } catch (error) {
+        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw new BadRequestException('Could not complete subscription.');
   }
 }

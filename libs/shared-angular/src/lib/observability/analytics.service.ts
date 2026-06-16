@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, Injector, PLATFORM_ID, effect, inject, isDevMode } from '@angular/core';
+import { Injectable, Injector, PLATFORM_ID, effect, inject, isDevMode, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { UmamiService } from '@cacic-fct/ngx-umami';
 import type { UmamiEventData, UmamiIdentifyData } from '@cacic-fct/ngx-umami';
@@ -28,22 +28,32 @@ export class CacicAnalyticsService {
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private flushAttempts = 0;
   private identifiedUserId: string | null = null;
-  private started = false;
+  private readonly started = signal(false);
   private lastTrackedUrl: string | null = null;
 
   constructor() {
     effect(() => {
       const user = this.currentUser();
+
+      if (!this.canTrackCurrentUser()) {
+        this.suspendTracking();
+        return;
+      }
+
+      if (this.started()) {
+        this.trackPageView(this.router.url);
+      }
+
       this.syncIdentifiedUser(user);
     });
   }
 
   start(): void {
-    if (!this.isBrowser || this.started || isDevMode()) {
+    if (!this.isBrowser || this.started() || isDevMode()) {
       return;
     }
 
-    this.started = true;
+    this.started.set(true);
     this.trackPageView(this.router.url);
 
     this.router.events
@@ -62,8 +72,9 @@ export class CacicAnalyticsService {
       return;
     }
 
-    this.lastTrackedUrl = url;
-    this.enqueue((umami) => umami.trackPageView({ url }));
+    if (this.enqueue((umami) => umami.trackPageView({ url }))) {
+      this.lastTrackedUrl = url;
+    }
   }
 
   private syncIdentifiedUser(user: AuthenticatedUser | null): void {
@@ -85,19 +96,19 @@ export class CacicAnalyticsService {
     this.enqueue((umami) => umami.identify(userId, this.buildIdentifyData(user)));
   }
 
-  private enqueue(action: (umami: UmamiService) => void): void {
+  private enqueue(action: (umami: UmamiService) => void): boolean {
     if (!this.canTrackCurrentUser()) {
-      return;
+      return false;
     }
 
     const umami = this.getUmami();
     if (!umami) {
-      return;
+      return false;
     }
 
     if (umami.isAvailable()) {
       action(umami);
-      return;
+      return true;
     }
 
     if (this.pendingActions.length >= MAX_PENDING_ACTIONS) {
@@ -105,6 +116,7 @@ export class CacicAnalyticsService {
     }
     this.pendingActions.push(action);
     this.ensureFlushTimer();
+    return true;
   }
 
   private ensureFlushTimer(): void {
@@ -148,6 +160,13 @@ export class CacicAnalyticsService {
 
     clearInterval(this.flushTimer);
     this.flushTimer = null;
+  }
+
+  private suspendTracking(): void {
+    this.pendingActions = [];
+    this.identifiedUserId = null;
+    this.lastTrackedUrl = null;
+    this.clearFlushTimer();
   }
 
   private getUmami(): UmamiService | null {

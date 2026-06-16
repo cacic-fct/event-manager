@@ -153,7 +153,7 @@
       @for (lecturer of event.lecturers; track lecturer.id) {
       <article class="lecturer-card">
         @if (lecturer.publishGoogleUserPicture && lecturer.googleUserPicture) {
-        <img class="lecturer-avatar" [src]="lecturer.googleUserPicture" alt="" />
+        <img class="lecturer-avatar" [src]="googlePictureUrl(lecturer.googleUserPicture)" alt="" />
         } @else {
         <div class="lecturer-avatar lecturer-avatar-placeholder">
           <mat-icon aria-hidden="true">person</mat-icon>
@@ -161,7 +161,9 @@
         }
         <div class="lecturer-copy">
           <h3>{{ lecturer.displayName }}</h3>
+          @if (lecturer.biography) {
           <p>{{ lecturer.biography }}</p>
+          }
           <div class="lecturer-actions">
             @if (lecturer.email) {
             <a mat-stroked-button [href]="lecturerMailto(lecturer.email)">

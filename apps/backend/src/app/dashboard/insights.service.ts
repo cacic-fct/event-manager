@@ -202,17 +202,19 @@ export class DashboardInsightsService {
             take: 10,
           })
         : Promise.resolve([]),
-      this.prisma.event.findMany({
-        where: {
-          deletedAt: null,
-          startDate: {
-            gte: today,
-            lt: tomorrow,
-          },
-        },
-        select: EVENT_INSIGHT_SELECT,
-        orderBy: { startDate: 'asc' },
-      }),
+      canReadEvents
+        ? this.prisma.event.findMany({
+            where: {
+              deletedAt: null,
+              startDate: {
+                gte: today,
+                lt: tomorrow,
+              },
+            },
+            select: EVENT_INSIGHT_SELECT,
+            orderBy: { startDate: 'asc' },
+          })
+        : Promise.resolve([]),
       canManageMajorEvents
         ? this.prisma.majorEvent.count({
             where: {

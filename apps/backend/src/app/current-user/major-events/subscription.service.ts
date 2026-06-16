@@ -6,6 +6,7 @@ import { MAJOR_EVENT_BASE_SELECT, EventRecord } from '../selects';
 import { PUBLIC_EVENT_SELECT, PublicEvent } from '../../public-events/models';
 import { CurrentUserMajorEventFeedItem } from '../models';
 import { CurrentUserEventMapperService } from '../mapper.service';
+import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
 
 type RankedCategory = 'course' | 'lecture' | 'uncategorized';
 
@@ -31,6 +32,7 @@ export class CurrentUserMajorEventSubscriptionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mapper: CurrentUserEventMapperService,
+    private readonly counters: EventSubscriptionCountersService = new EventSubscriptionCountersService(),
   ) {}
 
   normalizeSelectedEventIds(eventIds: string[]): string[] {
@@ -69,6 +71,52 @@ export class CurrentUserMajorEventSubscriptionService {
     }
 
     return normalizedPaymentTier;
+  }
+
+  resolveSelfServicePayment(
+    majorEvent: MajorEventBaseRecord,
+    paymentTierInput?: string | null,
+  ): {
+    amountPaid: number | null;
+    paymentTier: string | null;
+  } {
+    if (!majorEvent.isPaymentRequired) {
+      return {
+        amountPaid: null,
+        paymentTier: null,
+      };
+    }
+
+    const tiers = majorEvent.majorEventPrices.flatMap((price) => price.tiers);
+    if (tiers.length === 0) {
+      return {
+        amountPaid: null,
+        paymentTier: null,
+      };
+    }
+
+    if (tiers.length === 1) {
+      const [tier] = tiers;
+      return {
+        amountPaid: tier.value,
+        paymentTier: tier.name,
+      };
+    }
+
+    const normalizedPaymentTier = this.normalizePaymentTier(paymentTierInput);
+    if (!normalizedPaymentTier) {
+      throw new BadRequestException('paymentTier is required for this major event.');
+    }
+
+    const selectedTier = tiers.find((tier) => tier.name.trim().toLowerCase() === normalizedPaymentTier.toLowerCase());
+    if (!selectedTier) {
+      throw new BadRequestException('paymentTier is not valid for this major event.');
+    }
+
+    return {
+      amountPaid: selectedTier.value,
+      paymentTier: selectedTier.name,
+    };
   }
 
   normalizeDesiredCount(value: number | null | undefined, fallback: number): number {
@@ -243,40 +291,7 @@ export class CurrentUserMajorEventSubscriptionService {
   }
 
   async refreshEventSubscriptionCounters(tx: Prisma.TransactionClient, eventIds: string[]): Promise<void> {
-    const uniqueEventIds = [...new Set(eventIds)];
-    if (uniqueEventIds.length === 0) {
-      return;
-    }
-
-    await Promise.all(
-      uniqueEventIds.map(
-        (eventId) =>
-          tx.$executeRaw`
-          UPDATE "events" event
-          SET
-            "queueCount" = (
-              SELECT COUNT(*)::INTEGER
-              FROM "major_event_subscription_event_selections" selection
-              JOIN "major_event_subscriptions" subscription
-                ON subscription."id" = selection."subscriptionId"
-              WHERE selection."eventId" = ${eventId}
-                AND selection."deletedAt" IS NULL
-                AND subscription."deletedAt" IS NULL
-                AND subscription."subscriptionStatus" NOT IN ('CONFIRMED', 'CANCELED')
-            ),
-            "slotsAvailable" = CASE
-              WHEN event."slots" IS NULL THEN NULL
-              ELSE event."slots" - (
-                SELECT COUNT(*)::INTEGER
-                FROM "event_subscriptions" event_subscription
-                WHERE event_subscription."eventId" = ${eventId}
-                  AND event_subscription."deletedAt" IS NULL
-              )
-            END
-          WHERE event."id" = ${eventId}
-        `,
-      ),
-    );
+    await this.counters.refresh(tx, eventIds);
   }
 
   resolveNextSubscriptionStatus(

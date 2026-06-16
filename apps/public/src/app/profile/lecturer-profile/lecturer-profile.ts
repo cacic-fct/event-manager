@@ -50,7 +50,7 @@ export class LecturerProfileComponent {
 
   readonly form = this.formBuilder.nonNullable.group({
     displayName: ['', [Validators.required]],
-    biography: ['', [Validators.required]],
+    biography: [''],
     publishGoogleUserPicture: [false],
     email: [''],
     whatsapp: [''],
@@ -104,7 +104,7 @@ export class LecturerProfileComponent {
     const raw = this.form.getRawValue();
     const input: LecturerProfileInput = {
       displayName: raw.displayName.trim(),
-      biography: raw.biography.trim(),
+      biography: raw.biography.trim() || null,
       publishGoogleUserPicture: raw.publishGoogleUserPicture,
       email: raw.email.trim() || null,
       whatsapp: this.normalizeWhatsapp(raw.whatsapp.trim()),
@@ -134,6 +134,10 @@ export class LecturerProfileComponent {
     }
 
     return `https://wa.me/${value.replace(/\D/g, '')}`;
+  }
+
+  googlePictureUrl(url: string | null | undefined): string {
+    return (url ?? '').replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
   }
 
   private populateForm(profile: LecturerProfile | null): void {

@@ -449,9 +449,10 @@ export class PublicLecturerProfile {
   displayName!: string;
 
   @Field(() => String, {
+    nullable: true,
     description: 'Public biography shown on event pages.',
   })
-  biography!: string;
+  biography?: string | null;
 
   @Field(() => Boolean, {
     description: 'Whether the lecturer opted into publishing the Google account picture.',

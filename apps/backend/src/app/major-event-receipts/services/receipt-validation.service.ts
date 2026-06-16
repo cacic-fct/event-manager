@@ -62,7 +62,7 @@ export class ReceiptValidationService {
     authenticatedUser: AuthenticatedUser,
   ): Promise<AdminReceiptValidationResult> {
     const actorId = getActorId(authenticatedUser);
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const subscription = await this.findActionableSubscription(tx, subscriptionId, receiptId);
       const eventIdsToConfirm = await this.resolveAdminSelectedEventIds(tx, subscription, selectedEventIds);
       const now = new Date();
@@ -135,7 +135,7 @@ export class ReceiptValidationService {
       throw new BadRequestException('A rejection reason is required for invalid receipts.');
     }
 
-    const action = await this.prisma.$transaction(async (tx) => {
+    const action = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const subscription = await this.findActionableSubscription(tx, subscriptionId, receiptId);
       const now = new Date();
 
@@ -183,7 +183,7 @@ export class ReceiptValidationService {
   async undoValidationAction(actionId: string, authenticatedUser: AuthenticatedUser): Promise<AdminReceiptQueueItem> {
     const actorId = getActorId(authenticatedUser);
 
-    const action = await this.prisma.$transaction(async (tx) => {
+    const action = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const existingAction = await tx.majorEventReceiptValidationAction.findUnique({
         where: {
           id: actionId,
@@ -333,6 +333,27 @@ export class ReceiptValidationService {
     }
 
     return normalizedRequestedEventIds;
+  }
+
+  private async runSerializableSubscriptionTransaction<T>(
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(operation, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        });
+      } catch (error) {
+        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw new BadRequestException('Could not complete receipt validation.');
   }
 
   private async buildRankedEventsWithAvailability(

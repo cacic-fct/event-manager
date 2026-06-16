@@ -18,11 +18,6 @@ export type AuthenticatedUser = {
   email?: string;
 
   /**
-   * Raw access token (JWT).
-   */
-  token?: string;
-
-  /**
    * Keycloak realm or client roles assigned to the user.
    */
   roles?: string[];
@@ -43,13 +38,12 @@ export type AuthenticatedUser = {
   oidcScopes?: string[];
 
   /**
-   * Full set of decoded token claims.
+   * Public allowlist of decoded token claims returned by the backend.
    */
   claims?: {
     exp?: number;
     iat?: number;
     auth_time?: number;
-    jti?: string;
     iss?: string;
     aud?: string | string[];
     sub?: string;
@@ -57,16 +51,6 @@ export type AuthenticatedUser = {
     azp?: string;
     sid?: string;
     acr?: string;
-    'allowed-origins'?: string[];
-    realm_access?: {
-      roles: string[];
-    };
-    resource_access?: Record<
-      string,
-      {
-        roles: string[];
-      }
-    >;
     scope?: string;
     email_verified?: boolean;
     name?: string;
@@ -76,14 +60,21 @@ export type AuthenticatedUser = {
     picture?: string;
     email?: string;
     client_id?: string;
-    username?: string;
-    token_type?: string;
     active?: boolean;
     identity_document?: string;
     is_onboarded?: boolean | string;
     is_foreign?: boolean;
     unesp_role?: string[];
     enrollment_number?: string;
+    analytics_enabled?: boolean | string | string[];
+    diagnostics_enabled?: boolean | string | string[];
+    performance_monitoring_enabled?: boolean | string | string[];
+    attributes?: {
+      analytics_enabled?: boolean | string | string[];
+      diagnostics_enabled?: boolean | string | string[];
+      performance_monitoring_enabled?: boolean | string | string[];
+      [key: string]: unknown;
+    };
     [key: string]: unknown;
   };
 };
