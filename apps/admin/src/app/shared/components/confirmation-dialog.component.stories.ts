@@ -51,16 +51,6 @@ export const LongContent: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkDialog: Story = {
-  args: {},
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const MobileDialog: Story = {
   args: {},
   parameters: {

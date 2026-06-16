@@ -49,22 +49,3 @@ export const MobileLight: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DesktopDark: Story = {
-  args: {},
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileDark: Story = {
-  args: {},
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};

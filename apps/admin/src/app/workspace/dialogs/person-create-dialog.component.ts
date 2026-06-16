@@ -103,7 +103,7 @@ export class PersonCreateDialogComponent {
     try {
       const rawValue = this.form.getRawValue();
       const duplicateCandidates = await firstValueFrom(
-        this.api.listPeople({
+        this.api.listPeopleSummaries({
           query: rawValue.name,
           email: rawValue.email || undefined,
           identityDocument: rawValue.identityDocument || undefined,

@@ -508,17 +508,19 @@ export class WorkspaceEventsService {
   }
 
   private async searchPeopleCandidates(query: string, take: number): Promise<Person[]> {
-    const searches = [firstValueFrom(this.peopleApi.listPeople({ query, take }))];
+    const searches = [firstValueFrom(this.peopleApi.listPeopleSummaries({ query, take }))];
     const identityDocumentDigits = query.replace(/\D/g, '');
 
     if (query.includes('@')) {
-      searches.unshift(firstValueFrom(this.peopleApi.listPeople({ email: query, take })));
+      searches.unshift(firstValueFrom(this.peopleApi.listPeopleSummaries({ email: query, take })));
     }
 
     if (identityDocumentDigits.length >= 8) {
-      searches.unshift(firstValueFrom(this.peopleApi.listPeople({ identityDocument: query, take })));
+      searches.unshift(firstValueFrom(this.peopleApi.listPeopleSummaries({ identityDocument: query, take })));
       if (identityDocumentDigits !== query) {
-        searches.unshift(firstValueFrom(this.peopleApi.listPeople({ identityDocument: identityDocumentDigits, take })));
+        searches.unshift(
+          firstValueFrom(this.peopleApi.listPeopleSummaries({ identityDocument: identityDocumentDigits, take })),
+        );
       }
     }
 

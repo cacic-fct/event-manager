@@ -53,23 +53,16 @@ interface GraphqlResponse<TData> {
 const PUBLIC_EVENT_FIELDS = `
   id
   name
-  creditMinutes
   startDate
   endDate
   emoji
   type
-  shortDescription
   locationDescription
   majorEventId
   eventGroupId
-  shouldCollectAttendance
-  publiclyVisible
   majorEvent {
     id
     name
-    emoji
-    startDate
-    endDate
   }
   eventGroup {
     id

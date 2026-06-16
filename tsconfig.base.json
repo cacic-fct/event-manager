@@ -19,10 +19,10 @@
       "@cacic-fct/shared-utils": ["libs/shared-utils/src/index.ts"],
       "@cacic-fct/shared-frontend-types": ["libs/shared-data-types/src/lib/frontend-types.ts"],
       "@cacic-fct/shared-angular": ["libs/shared-angular/src/index.ts"],
-      "@cacic-fct/cookie-banner/angular": ["libs/shared-angular/src/lib/cookie-banner/index.ts"],
       "@cacic-fct/shared-environment": ["libs/shared-environment/src/index.ts"],
       "@cacic-fct/shared-notifications-angular": ["libs/shared-notifications-angular/src/index.ts"],
-      "@cacic-fct/offline-public-data-access": ["libs/offline-public-data-access/src/index.ts"]
+      "@cacic-fct/offline-public-data-access": ["libs/offline-public-data-access/src/index.ts"],
+      "@cacic-fct/event-manager-m2m-contracts": ["libs/event-manager-m2m-contracts/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

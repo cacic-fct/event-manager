@@ -177,10 +177,35 @@ function event(index = 0) {
   };
 }
 
+function placePreset(index = 0) {
+  const names = ['Auditório Discente', 'Laboratório de Software', 'Anfiteatro Central', 'Sala B12'];
+  const baseLatitude = -22.1211;
+  const baseLongitude = -51.4086;
+
+  return {
+    id: `place-${index + 1}`,
+    name: names[index % names.length],
+    latitude: Number((baseLatitude + index * 0.0011).toFixed(6)),
+    longitude: Number((baseLongitude - index * 0.0012).toFixed(6)),
+    locationDescription: faker.helpers.arrayElement([
+      'FCT-Unesp, Presidente Prudente',
+      'Bloco de laboratórios, piso térreo',
+      'Próximo à entrada principal',
+      null,
+    ]),
+    deletedAt: null,
+    createdAt: isoDaysFromNow(-30 + index),
+    createdById: 'storybook-admin',
+    updatedAt: isoDaysFromNow(-1),
+    updatedById: 'storybook-admin',
+  };
+}
+
 const people = Array.from({ length: 8 }, (_, index) => person(index));
 const eventGroups = Array.from({ length: 3 }, (_, index) => eventGroup(index));
 const majorEvents = Array.from({ length: 3 }, (_, index) => majorEvent(index));
 const events = Array.from({ length: 8 }, (_, index) => event(index));
+const placePresets = Array.from({ length: 4 }, (_, index) => placePreset(index));
 
 const certificateTemplate = {
   id: 'template-1',
@@ -249,6 +274,22 @@ function eventAttendance(index = 0) {
     createdByMethod: index % 2 === 0 ? 'SCANNER' : 'MANUAL_INPUT',
     person: selectedPerson,
     event: selectedEvent,
+  };
+}
+
+function eventAttendanceScannerFeedItem(index = 0) {
+  const selectedEvent = events[index % events.length];
+  const selectedPerson = people[index % people.length];
+
+  return {
+    eventId: selectedEvent.id,
+    personId: selectedPerson.id,
+    fullName: selectedPerson.name,
+    unespRole: faker.helpers.arrayElement(['GRADUATION_STUDENT', 'GRADUATE_STUDENT', 'EXTERNAL_COMMUNITY']),
+    subscriptionStatus: faker.helpers.arrayElement(['CONFIRMED', 'WAITING_RECEIPT_UPLOAD', null]),
+    attendedAt: isoDaysFromNow(-index, 16),
+    createdByMethod: index % 2 === 0 ? 'SCANNER' : 'MANUAL_INPUT',
+    collectedByFirstName: index % 2 === 0 ? 'Ana' : 'Bruno',
   };
 }
 
@@ -464,8 +505,20 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     return { eventAttendances: Array.from({ length: 6 }, (_, index) => eventAttendance(index)) };
   }
 
+  if (query.includes('EventAttendanceScannerFeed')) {
+    return { eventAttendanceScannerFeed: Array.from({ length: 5 }, (_, index) => eventAttendanceScannerFeedItem(index)) };
+  }
+
   if (query.includes('CreateEventAttendanceFromAztecCode')) {
     return { createEventAttendanceFromAztecCode: eventAttendance(0) };
+  }
+
+  if (query.includes('CreateEventAttendanceFromScannerCode')) {
+    return { createEventAttendanceFromScannerCode: eventAttendance(0) };
+  }
+
+  if (query.includes('CreateEventAttendanceFromManualInput')) {
+    return { createEventAttendanceFromManualInput: eventAttendance(1) };
   }
 
   if (query.includes('CreateEventAttendance')) {
@@ -548,6 +601,15 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     return { certificates };
   }
 
+  if (query.includes('ReissueAllCertificates')) {
+    return {
+      reissueAllCertificates: {
+        configCount: 4,
+        certificateCount: 138,
+      },
+    };
+  }
+
   if (query.includes('CreateCertificateConfig') || query.includes('UpdateCertificateConfig')) {
     return { createCertificateConfig: certificateConfig, updateCertificateConfig: certificateConfig };
   }
@@ -625,20 +687,71 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     };
   }
 
+  if (query.includes('ListPlacePresets')) {
+    const search = typeof variables['query'] === 'string' ? variables['query'].toLocaleLowerCase('pt-BR') : '';
+    return {
+      placePresets: search
+        ? placePresets.filter((place) => place.name.toLocaleLowerCase('pt-BR').includes(search))
+        : placePresets,
+    };
+  }
+
+  if (query.includes('GetPlacePreset')) {
+    return { placePreset: placePresets.find((place) => place.id === variables['id']) ?? placePresets[0] };
+  }
+
+  if (query.includes('CreatePlacePreset')) {
+    return { createPlacePreset: { ...placePreset(4), ...(variables['input'] as Record<string, unknown>) } };
+  }
+
+  if (query.includes('UpdatePlacePreset')) {
+    return {
+      updatePlacePreset: {
+        ...(placePresets.find((place) => place.id === variables['id']) ?? placePresets[0]),
+        ...(variables['input'] as Record<string, unknown>),
+      },
+    };
+  }
+
+  if (query.includes('DeletePlacePreset')) {
+    return { deletePlacePreset: deletionResult(String(variables['id'] ?? 'place-1')) };
+  }
+
+  if (query.includes('MergePlacePreset')) {
+    return { mergePlacePreset: deletionResult(String(variables['sourceId'] ?? 'place-2')) };
+  }
+
   return {};
 }
 
 const workspacePermissions = [
-  'events:read',
-  'events:write',
-  'people:read',
-  'people:write',
-  'certificates:read',
-  'certificates:write',
-  'subscriptions:read',
-  'subscriptions:write',
-  'attendances:read',
-  'attendances:write',
+  'event#read',
+  'event#edit',
+  'event#delete',
+  'event-attendance#read',
+  'event-attendance#edit',
+  'event-attendance#delete',
+  'event-lecturer#read',
+  'event-lecturer#edit',
+  'event-lecturer#delete',
+  'major-event#read',
+  'major-event#edit',
+  'major-event#delete',
+  'person#read',
+  'person#edit',
+  'person#delete',
+  'certificate#read',
+  'certificate#edit',
+  'subscription#read',
+  'subscription#edit',
+  'subscription#delete',
+  'merge-candidate#read',
+  'merge-candidate#edit',
+  'merge-candidate#delete',
+  'validate-receipt#read',
+  'validate-receipt#edit',
+  'frozen#edit',
+  'frozen#delete',
 ];
 
 export const cacicEventosHandlers = [

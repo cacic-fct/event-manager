@@ -191,6 +191,12 @@ function applyBrowserGlobals(network: string, serviceWorker: string): void {
   }
 }
 
+function applyColorScheme(theme: string): void {
+  const colorScheme = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.style.colorScheme = colorScheme;
+  document.body.style.colorScheme = colorScheme;
+}
+
 if (originalNavigatorOnline) {
   Object.defineProperty(Navigator.prototype, 'onLine', originalNavigatorOnline);
 }
@@ -218,7 +224,7 @@ const preview: Preview = {
       const serviceWorker = context.globals['serviceWorker'] === 'enabled' ? 'enabled' : 'disabled';
       ensureStorybookGlobalStyles();
       applyBrowserGlobals(network, serviceWorker);
-      document.documentElement.classList.toggle('dark', theme === 'dark');
+      applyColorScheme(theme);
       document.documentElement.dataset['storybookTheme'] = theme;
       document.documentElement.dataset['storybookNetwork'] = network;
       document.documentElement.dataset['storybookServiceWorker'] = serviceWorker;

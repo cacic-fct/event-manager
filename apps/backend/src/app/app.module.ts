@@ -96,6 +96,8 @@ import { WeatherSchedulerService } from './weather/weather-scheduler.service';
 import { WeatherService } from './weather/weather.service';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { VotingIntegrationController } from './voting-integration/controller';
+import { VotingIntegrationService } from './voting-integration/service';
 
 @Module({
   imports: [
@@ -167,6 +169,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     EventAttendancesController,
     MajorEventReceiptsController,
     PrivacyController,
+    VotingIntegrationController,
   ],
   providers: [
     NovuNotificationsService,
@@ -236,6 +239,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     WeatherSchedulerService,
     WeatherProcessor,
     FrozenResourceService,
+    VotingIntegrationService,
     {
       provide: Redis,
       useFactory: () => new Redis(getRedisConnectionOptions()),

@@ -1,11 +1,25 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { fakerPT_BR as faker } from '@faker-js/faker';
 import { expect, userEvent, within } from 'storybook/test';
 import { ExplanationCard } from './explanation-card';
+
+faker.seed(20260616);
 
 const meta: Meta<ExplanationCard> = {
   component: ExplanationCard,
   title: 'Public/Shared/Components/Explanation Card/Explanation Card',
   tags: ['autodocs'],
+  args: {
+    title: 'Funciona offline',
+    icon: 'cloud_off',
+  },
+  argTypes: {
+    title: { control: 'text' },
+    icon: {
+      control: 'select',
+      options: ['cloud_off', 'database', 'system_update', 'verified', 'event_available', 'notifications_active'],
+    },
+  },
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -31,8 +45,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const DesktopLight: Story = {
-  args: { title: 'Funciona offline', icon: 'cloud_off' },
+export const Playground: Story = {
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -40,31 +53,14 @@ export const DesktopLight: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const MobileLight: Story = {
-  args: { title: 'Modo escuro', icon: 'dark_mode' },
+export const MobileSync: Story = {
+  args: {
+    title: faker.helpers.arrayElement(['Dados salvos no dispositivo', 'Atualização manual necessária']),
+    icon: 'system_update',
+  },
   parameters: {
     viewport: { defaultViewport: 'mobile' },
   },
   globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const DesktopDark: Story = {
-  args: { title: 'Dados salvos no dispositivo', icon: 'database' },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileDark: Story = {
-  args: { title: 'Atualização manual necessária', icon: 'system_update' },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'dark' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

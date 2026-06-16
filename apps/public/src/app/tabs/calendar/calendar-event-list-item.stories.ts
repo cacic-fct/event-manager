@@ -1,12 +1,46 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { fakerPT_BR as faker } from '@faker-js/faker';
 import { expect, userEvent, within } from 'storybook/test';
-import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/shared-utils';
+import type { EventType, PublicEvent, PublicMajorEvent } from '@cacic-fct/shared-utils';
 import { CalendarEventListItem } from './calendar-event-list-item';
 
-const meta: Meta<CalendarEventListItem> = {
+faker.seed(20260616);
+
+type CalendarEventListItemStoryArgs = {
+  name: string;
+  type: EventType;
+  context: 'major-event' | 'event-group' | 'short-description';
+  slotsAvailable: number;
+  queueCount: number;
+  returnUrl: string;
+};
+
+const meta: Meta<CalendarEventListItemStoryArgs> = {
   component: CalendarEventListItem,
   title: 'Public/Tabs/Calendar/Calendar Event List Item',
   tags: ['autodocs'],
+  args: {
+    name: 'Arquitetura Angular com Signals',
+    type: 'MINICURSO',
+    context: 'major-event',
+    slotsAvailable: 12,
+    queueCount: 3,
+    returnUrl: '/calendar',
+  },
+  argTypes: {
+    name: { control: 'text' },
+    type: { control: 'select', options: ['MINICURSO', 'PALESTRA', 'OTHER'] },
+    context: { control: 'select', options: ['major-event', 'event-group', 'short-description'] },
+    slotsAvailable: { control: { type: 'range', min: 0, max: 80, step: 1 } },
+    queueCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
+    returnUrl: { control: 'text' },
+  },
+  render: (args) => ({
+    props: {
+      event: createDemoEvent(args),
+      returnUrl: args.returnUrl,
+    },
+  }),
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -15,7 +49,7 @@ const meta: Meta<CalendarEventListItem> = {
 
 export default meta;
 
-type Story = StoryObj<CalendarEventListItem>;
+type Story = StoryObj<CalendarEventListItemStoryArgs>;
 
 const demoMajorEvent: PublicMajorEvent = {
   id: 'major-story',
@@ -79,6 +113,31 @@ const demoEvent: PublicEvent = {
   buttonLink: null,
 };
 
+function createDemoEvent(args: CalendarEventListItemStoryArgs): PublicEvent {
+  faker.seed(20260616 + args.slotsAvailable + args.queueCount);
+  return {
+    ...demoEvent,
+    name: args.name,
+    type: args.type,
+    shortDescription:
+      args.context === 'short-description' ? faker.helpers.arrayElement(['Signals na prática', 'Sessão aberta']) : null,
+    majorEvent: args.context === 'major-event' ? demoMajorEvent : null,
+    eventGroup:
+      args.context === 'event-group'
+        ? {
+            id: 'group-story',
+            name: 'Trilha Frontend',
+            emoji: '✨',
+            shouldIssueCertificateForEachEvent: true,
+            shouldIssuePartialCertificate: true,
+            shouldIssueCertificate: true,
+          }
+        : null,
+    slotsAvailable: args.slotsAvailable,
+    queueCount: args.queueCount,
+  };
+}
+
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
@@ -97,7 +156,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const OnlineDesktop: Story = {
-  args: { event: demoEvent, returnUrl: '/calendar' },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -107,7 +165,9 @@ export const OnlineDesktop: Story = {
 
 export const OnlineMobile: Story = {
   args: {
-    event: { ...demoEvent, name: 'Palestra noturna com descrição longa para responsividade' },
+    name: 'Palestra noturna com descrição longa para responsividade',
+    type: 'PALESTRA',
+    context: 'event-group',
     returnUrl: '/calendar?view=week',
   },
   parameters: {
@@ -117,18 +177,12 @@ export const OnlineMobile: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkMobile: Story = {
-  args: { event: { ...demoEvent, id: 'cached-event', majorEvent: null }, returnUrl: '/offline' },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'dark', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const OfflineFallback: Story = {
-  args: { event: demoEvent, returnUrl: '/calendar' },
+  args: {
+    context: 'short-description',
+    slotsAvailable: 0,
+    queueCount: 8,
+  },
   parameters: {
     viewport: { defaultViewport: 'tablet' },
   },

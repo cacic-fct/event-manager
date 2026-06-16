@@ -351,7 +351,7 @@ export class WorkspaceSubscriptionsService {
       return [];
     }
     return firstValueFrom(
-      this.peopleApi.listPeople({
+      this.peopleApi.listPeopleSummaries({
         ...(identifierType === 'userId' ? { userId: identifier } : {}),
         ...(identifierType === 'identityDocument' ? { identityDocument: identifier } : {}),
         ...(identifierType === 'email' ? { email: identifier } : {}),

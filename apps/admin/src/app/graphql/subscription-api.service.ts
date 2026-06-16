@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import { SubscriptionStatus, WorkspaceEventSubscription, WorkspaceMajorEventSubscription } from './models';
-import { EVENT_FIELDS, MAJOR_EVENT_FIELDS, PERSON_FIELDS } from './graphql-query-fragments';
+import { PERSON_EXPORT_FIELDS } from './graphql-query-fragments';
 
 const WORKSPACE_EVENT_SUBSCRIPTION_FIELDS = `
   id
@@ -13,11 +13,8 @@ const WORKSPACE_EVENT_SUBSCRIPTION_FIELDS = `
   createdById
   createdByMethod
   isLecturerSubscription
-  event {
-    ${EVENT_FIELDS}
-  }
   person {
-    ${PERSON_FIELDS}
+    ${PERSON_EXPORT_FIELDS}
   }
 `;
 
@@ -33,10 +30,11 @@ const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
   createdById
   createdByMethod
   majorEvent {
-    ${MAJOR_EVENT_FIELDS}
+    id
+    name
   }
   person {
-    ${PERSON_FIELDS}
+    ${PERSON_EXPORT_FIELDS}
   }
   events {
     eventId

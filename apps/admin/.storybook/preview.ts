@@ -123,16 +123,32 @@ class StorybookAuthService {
     roles: ['admin'],
     scopes: ['profile', 'email'],
     permissions: [
-      'events:read',
-      'events:write',
-      'people:read',
-      'people:write',
-      'certificates:read',
-      'certificates:write',
-      'subscriptions:read',
-      'subscriptions:write',
-      'attendances:read',
-      'attendances:write',
+      'event#read',
+      'event#edit',
+      'event#delete',
+      'event-attendance#read',
+      'event-attendance#edit',
+      'event-attendance#delete',
+      'event-lecturer#read',
+      'event-lecturer#edit',
+      'event-lecturer#delete',
+      'major-event#read',
+      'major-event#edit',
+      'major-event#delete',
+      'person#read',
+      'person#edit',
+      'person#delete',
+      'certificate#read',
+      'certificate#edit',
+      'subscription#read',
+      'subscription#edit',
+      'subscription#delete',
+      'merge-candidate#read',
+      'merge-candidate#edit',
+      'merge-candidate#delete',
+      'validate-receipt#read',
+      'validate-receipt#edit',
+      'frozen#edit',
     ],
     claims: {
       name: 'Storybook Admin',
@@ -154,6 +170,12 @@ function applyBrowserGlobals(network: string): void {
     configurable: true,
     get: () => network !== 'offline',
   });
+}
+
+function applyColorScheme(theme: string): void {
+  const colorScheme = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.style.colorScheme = colorScheme;
+  document.body.style.colorScheme = colorScheme;
 }
 
 if (originalNavigatorOnline) {
@@ -180,7 +202,7 @@ const preview: Preview = {
       const network = context.globals['network'] === 'offline' ? 'offline' : 'online';
       ensureStorybookGlobalStyles();
       applyBrowserGlobals(network);
-      document.documentElement.classList.toggle('dark', theme === 'dark');
+      applyColorScheme(theme);
       document.documentElement.dataset['storybookTheme'] = theme;
       document.documentElement.dataset['storybookNetwork'] = network;
       return story();

@@ -1,12 +1,48 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { FormControl, FormGroup } from '@angular/forms';
+import type { EventMembershipFilter } from '../../../shared/event-list-filters';
 import { EventFilterPanelComponent } from './event-filter-panel.component';
 
-const meta: Meta<EventFilterPanelComponent> = {
+type EventFilterPanelStoryArgs = {
+  query: string;
+  startDateFrom: string;
+  startDateUntil: string;
+  isInGroup: EventMembershipFilter;
+  isInMajorEvent: EventMembershipFilter;
+  applyLabel: string;
+  resetLabel: string;
+};
+
+const meta: Meta<EventFilterPanelStoryArgs> = {
   component: EventFilterPanelComponent,
   title: 'CACiC Eventos/Workspace/Tabs/Shared/Event Filter Panel',
   tags: ['autodocs'],
+  args: {
+    query: 'angular',
+    startDateFrom: '2026-05-01',
+    startDateUntil: '2026-05-31',
+    isInGroup: 'ALL',
+    isInMajorEvent: 'ALL',
+    applyLabel: 'Buscar eventos',
+    resetLabel: 'Limpar filtros',
+  },
+  argTypes: {
+    query: { control: 'text' },
+    startDateFrom: { control: 'date' },
+    startDateUntil: { control: 'date' },
+    isInGroup: { control: 'select', options: ['ALL', 'YES', 'NO'] },
+    isInMajorEvent: { control: 'select', options: ['ALL', 'YES', 'NO'] },
+    applyLabel: { control: 'text' },
+    resetLabel: { control: 'text' },
+  },
+  render: (args) => ({
+    props: {
+      form: createFilterForm(args),
+      applyLabel: args.applyLabel,
+      resetLabel: args.resetLabel,
+    },
+  }),
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -15,15 +51,22 @@ const meta: Meta<EventFilterPanelComponent> = {
 
 export default meta;
 
-type Story = StoryObj<EventFilterPanelComponent>;
+type Story = StoryObj<EventFilterPanelStoryArgs>;
 
-const createFilterForm = (query = '') =>
+const normalizeDateControlValue = (value: string | number): string => {
+  if (typeof value === 'number') {
+    return new Date(value).toISOString().slice(0, 10);
+  }
+  return value;
+};
+
+const createFilterForm = (args: EventFilterPanelStoryArgs) =>
   new FormGroup({
-    startDateFrom: new FormControl('2026-05-01', { nonNullable: true }),
-    startDateUntil: new FormControl('2026-05-31', { nonNullable: true }),
-    isInGroup: new FormControl('ALL', { nonNullable: true }),
-    isInMajorEvent: new FormControl('ALL', { nonNullable: true }),
-    query: new FormControl(query, { nonNullable: true }),
+    startDateFrom: new FormControl(normalizeDateControlValue(args.startDateFrom), { nonNullable: true }),
+    startDateUntil: new FormControl(normalizeDateControlValue(args.startDateUntil), { nonNullable: true }),
+    isInGroup: new FormControl(args.isInGroup, { nonNullable: true }),
+    isInMajorEvent: new FormControl(args.isInMajorEvent, { nonNullable: true }),
+    query: new FormControl(args.query, { nonNullable: true }),
   });
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
@@ -44,7 +87,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const FilledFilters: Story = {
-  args: { form: createFilterForm('angular'), applyLabel: 'Buscar eventos', resetLabel: 'Limpar filtros' },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -53,7 +95,15 @@ export const FilledFilters: Story = {
 };
 
 export const EmptyFilters: Story = {
-  args: { form: createFilterForm('certificados'), applyLabel: 'Aplicar', resetLabel: 'Redefinir' },
+  args: {
+    query: '',
+    startDateFrom: '',
+    startDateUntil: '',
+    isInGroup: 'ALL',
+    isInMajorEvent: 'ALL',
+    applyLabel: 'Aplicar',
+    resetLabel: 'Redefinir',
+  },
   parameters: {
     viewport: { defaultViewport: 'desktop' },
   },
@@ -61,18 +111,14 @@ export const EmptyFilters: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkFilters: Story = {
-  args: { form: createFilterForm('offline'), applyLabel: 'Buscar no cache', resetLabel: 'Limpar' },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const MobileFilters: Story = {
-  args: { form: createFilterForm(), applyLabel: 'Buscar', resetLabel: 'Limpar' },
+  args: {
+    query: 'certificados',
+    isInGroup: 'YES',
+    isInMajorEvent: 'NO',
+    applyLabel: 'Buscar',
+    resetLabel: 'Limpar',
+  },
   parameters: {
     viewport: { defaultViewport: 'mobile' },
   },

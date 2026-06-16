@@ -313,11 +313,10 @@ export const RankingDesktop: Story = {
 
 export const PaymentRankingMobile: Story = {
   parameters: {
-    backgrounds: { default: 'dark' },
     viewport: { defaultViewport: 'mobile' },
     msw: { handlers: rankedHandlers('payment') },
   },
-  globals: { theme: 'dark', network: 'online' },
+  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     await goToRankingStep(canvasElement);
     const canvas = within(canvasElement);

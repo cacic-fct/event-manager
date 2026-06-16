@@ -349,7 +349,7 @@ export class WorkspaceCertificatesService {
 
     this.personSearchResults.set(
       await firstValueFrom(
-        this.peopleApi.listPeople({
+        this.peopleApi.listPeopleSummaries({
           query,
           take: 20,
         }),

@@ -63,34 +63,3 @@ export const MobileLight: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DesktopDark: Story = {
-  args: {
-    items: [
-      { label: 'Calendário offline', shortLabel: 'Agenda', icon: 'cloud_off', route: '/calendar', hidden: false },
-      { label: 'Carteira', shortLabel: 'Carteira', icon: 'badge', route: '/wallet', hidden: false },
-      { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
-    ],
-  },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileDark: Story = {
-  args: {
-    items: [
-      { label: 'Calendário', shortLabel: 'Agenda', icon: 'calendar_month', route: '/calendar', hidden: false },
-      { label: 'Eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event', hidden: false },
-      { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
-    ],
-  },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'dark' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};

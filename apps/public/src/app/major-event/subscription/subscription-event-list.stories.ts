@@ -155,22 +155,6 @@ export const OnlineMobile: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkMobile: Story = {
-  args: {
-    events: demoEvents,
-    summariesByEventId,
-    selectedEventIds: new Set(),
-    autoSelectedEventIds: new Set(),
-    disabledReasons: new Map([[demoEvents[1].id, 'Sem vagas disponíveis']]),
-  },
-  parameters: {
-    backgrounds: { default: 'dark' },
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'dark', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const OfflineFallback: Story = {
   args: {
     events: demoEvents.slice(0, 1),

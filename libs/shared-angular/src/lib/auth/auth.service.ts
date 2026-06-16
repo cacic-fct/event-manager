@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError } from 'rxjs';
@@ -15,6 +15,7 @@ export class AuthService {
   private readonly silentSsoAttemptStorageKey = 'cacic-eventos:silent-sso-attempted';
 
   private readonly http = inject(HttpClient);
+  private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly onlineStatus = inject(AuthOnlineStatusService);
   private readonly isOnboardingEnforcementEnabled = inject(AUTH_ONBOARDING_ENFORCEMENT_ENABLED);
@@ -281,7 +282,7 @@ export class AuthService {
 
   private buildLoginRedirectUrl(options?: LoginOptions): string {
     const url = new URL('/api/auth/login/redirect', window.location.origin);
-    const returnTo = options?.returnTo ?? this.getCurrentReturnPath();
+    const returnTo = this.resolveReturnTo(options?.returnTo ?? this.getCurrentReturnPath());
 
     if (returnTo) {
       url.searchParams.set('returnTo', returnTo);
@@ -297,6 +298,31 @@ export class AuthService {
   private getCurrentReturnPath(): string {
     const { pathname, search, hash } = window.location;
     return `${pathname}${search}${hash}`;
+  }
+
+  private resolveReturnTo(returnTo: string): string {
+    if (!returnTo.startsWith('/') || returnTo.startsWith('//')) {
+      return returnTo;
+    }
+
+    const basePath = this.getBasePath();
+    const baseRoot = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+    if (basePath === '/' || returnTo === baseRoot || returnTo === basePath || returnTo.startsWith(basePath)) {
+      return returnTo;
+    }
+
+    const pathWithoutLeadingSlash = returnTo.slice(1);
+    return `${basePath}${pathWithoutLeadingSlash}`;
+  }
+
+  private getBasePath(): string {
+    try {
+      const baseHref = this.document.querySelector('base')?.getAttribute('href') ?? '/';
+      const basePath = new URL(baseHref, window.location.origin).pathname;
+      return basePath.endsWith('/') ? basePath : `${basePath}/`;
+    } catch {
+      return '/';
+    }
   }
 
   private getCurrentAbsoluteUrl(): string {

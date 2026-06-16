@@ -38,29 +38,8 @@ interface GraphqlResponse<TData> {
 const PUBLIC_MAJOR_EVENT_FIELDS = `
   id
   name
-  emoji
-  startDate
-  endDate
-  description
   subscriptionStartDate
   subscriptionEndDate
-  maxCoursesPerAttendee
-  maxLecturesPerAttendee
-  buttonText
-  buttonLink
-  contactInfo
-  contactType
-  isPaymentRequired
-  additionalPaymentInfo
-  shouldIssueCertificate
-`;
-
-const PUBLIC_EVENT_GROUP_FIELDS = `
-  id
-  name
-  shouldIssueCertificateForEachEvent
-  shouldIssuePartialCertificate
-  shouldIssueCertificate
 `;
 
 const PUBLIC_EVENT_FIELDS = `
@@ -81,7 +60,6 @@ const PUBLIC_EVENT_FIELDS = `
   allowSubscription
   subscriptionStartDate
   subscriptionEndDate
-  autoSubscribe
   shouldIssueCertificate
   shouldCollectAttendance
   isOnlineAttendanceAllowed
@@ -95,7 +73,8 @@ const PUBLIC_EVENT_FIELDS = `
     ${PUBLIC_MAJOR_EVENT_FIELDS}
   }
   eventGroup {
-    ${PUBLIC_EVENT_GROUP_FIELDS}
+    id
+    name
   }
   lecturers {
     id
@@ -176,7 +155,7 @@ export class EventApiService {
       `
         mutation SubscribeCurrentUserStandaloneEvent($eventId: String!) {
           subscribeCurrentUserStandaloneEvent(eventId: $eventId) {
-            ${PUBLIC_EVENT_FIELDS}
+            id
           }
         }
       `,
@@ -189,7 +168,7 @@ export class EventApiService {
       `
         mutation UnsubscribeCurrentUserStandaloneEvent($eventId: String!) {
           unsubscribeCurrentUserStandaloneEvent(eventId: $eventId) {
-            ${PUBLIC_EVENT_FIELDS}
+            id
           }
         }
       `,

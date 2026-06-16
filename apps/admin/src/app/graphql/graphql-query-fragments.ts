@@ -1,4 +1,23 @@
-export const EVENT_FIELDS = `
+export const EVENT_LIST_FIELDS = `
+  id
+  name
+  startDate
+  endDate
+  emoji
+  type
+  majorEventId
+  eventGroupId
+  shouldIssueCertificate
+  shouldIssueCertificateForNonPayingAttendees
+  shouldIssueCertificateForNonSubscribedAttendees
+  createdAt
+  majorEvent {
+    id
+    name
+  }
+`;
+
+export const EVENT_DETAIL_FIELDS = `
   id
   name
   creditMinutes
@@ -59,7 +78,36 @@ export const EVENT_FIELDS = `
   }
 `;
 
-export const MAJOR_EVENT_FIELDS = `
+export const EVENT_CERTIFICATE_TARGET_FIELDS = `
+  id
+  name
+  startDate
+  endDate
+  emoji
+  type
+  createdAt
+`;
+
+export const MAJOR_EVENT_LIST_FIELDS = `
+  id
+  name
+  emoji
+  startDate
+  endDate
+  isPaymentRequired
+  createdAt
+  majorEventPrices {
+    id
+    type
+    tiers {
+      id
+      name
+      value
+    }
+  }
+`;
+
+export const MAJOR_EVENT_DETAIL_FIELDS = `
   id
   name
   emoji
@@ -107,6 +155,15 @@ export const MAJOR_EVENT_FIELDS = `
   updatedById
 `;
 
+export const MAJOR_EVENT_CERTIFICATE_TARGET_FIELDS = `
+  id
+  name
+  emoji
+  startDate
+  endDate
+  createdAt
+`;
+
 export const EVENT_GROUP_FIELDS = `
   id
   name
@@ -123,20 +180,57 @@ export const EVENT_GROUP_FIELDS = `
   updatedById
 `;
 
+export const EVENT_GROUP_CERTIFICATE_TARGET_FIELDS = `
+  id
+  name
+  emoji
+  shouldIssueCertificate
+  shouldIssueCertificateForEachEvent
+  shouldIssuePartialCertificate
+  createdAt
+`;
+
 export const PLACE_PRESET_FIELDS = `
   id
   name
   latitude
   longitude
   locationDescription
-  deletedAt
-  createdAt
-  createdById
-  updatedAt
-  updatedById
 `;
 
-export const PERSON_FIELDS = `
+export const PERSON_SEARCH_FIELDS = `
+  id
+  name
+  email
+  phone
+  identityDocument
+  academicId
+  userId
+`;
+
+export const PERSON_EXPORT_FIELDS = `
+  id
+  name
+  email
+  phone
+  identityDocument
+  academicId
+  user {
+    role
+  }
+`;
+
+export const PERSON_MERGE_FIELDS = `
+  id
+  name
+  email
+  identityDocument
+  academicId
+  userId
+  externalRef
+`;
+
+export const PERSON_DETAIL_FIELDS = `
   id
   name
   email
@@ -203,29 +297,29 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   issuedTo
   certificateFieldsJson
   createdAt
-  createdById
-  updatedAt
-  updatedById
   deletedAt
   majorEvent {
     id
     name
-    startDate
     endDate
+    createdAt
   }
   eventGroup {
-    ${EVENT_GROUP_FIELDS}
+    id
+    name
+    createdAt
   }
   event {
     id
     name
     emoji
-    creditMinutes
-    startDate
     endDate
+    createdAt
   }
   certificateTemplate {
-    ${CERTIFICATE_TEMPLATE_FIELDS}
+    id
+    name
+    version
   }
 `;
 
@@ -233,21 +327,35 @@ export const CERTIFICATE_FIELDS = `
   id
   personId
   configId
-  renderedDataJson
   issuedAt
-  issuedById
   certificateTemplateId
-  createdAt
-  updatedAt
-  deletedAt
   person {
-    ${PERSON_FIELDS}
+    id
+    name
   }
   config {
-    ${CERTIFICATE_CONFIG_FIELDS}
+    id
+    name
+    scope
+    majorEvent {
+      id
+      endDate
+      createdAt
+    }
+    eventGroup {
+      id
+      createdAt
+    }
+    event {
+      id
+      endDate
+      createdAt
+    }
   }
   certificateTemplate {
-    ${CERTIFICATE_TEMPLATE_FIELDS}
+    id
+    name
+    version
   }
 `;
 

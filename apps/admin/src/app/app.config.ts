@@ -18,7 +18,7 @@ import {
   provideCacicObservability,
   startCacicAnalytics,
 } from '@cacic-fct/shared-angular';
-import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic/account-privacy';
+import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
 
 registerLocaleData(localePt);

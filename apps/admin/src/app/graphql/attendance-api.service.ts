@@ -11,7 +11,7 @@ import {
   MajorEventUserAttendance,
   SubscriptionStatus,
 } from './models';
-import { PERSON_FIELDS } from './graphql-query-fragments';
+import { PERSON_EXPORT_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
 export class AttendanceApiService {
@@ -101,7 +101,7 @@ export class AttendanceApiService {
             failedCount
             failedRows
             createdPeople {
-              ${PERSON_FIELDS}
+              ${PERSON_SEARCH_FIELDS}
             }
           }
         }`,
@@ -127,7 +127,7 @@ export class AttendanceApiService {
             collectedLongitude
             collectedAccuracyMeters
             person {
-              ${PERSON_FIELDS}
+              ${PERSON_EXPORT_FIELDS}
             }
             event {
               id
@@ -270,7 +270,7 @@ export class AttendanceApiService {
             paymentDate
             paymentTier
             person {
-              ${PERSON_FIELDS}
+              ${PERSON_EXPORT_FIELDS}
             }
             attendances {
               eventId
