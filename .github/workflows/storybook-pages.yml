@@ -1,0 +1,91 @@
+name: Build and Publish Storybook to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy Storybook
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 26
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Storybooks
+        run: bunx nx run-many --target=build-storybook --projects=admin,public --configuration=ci --parallel=2
+
+      - name: Prepare GitHub Pages artifact
+        shell: bash
+        run: |
+          rm -rf dist/storybook-pages
+          mkdir -p dist/storybook-pages/admin dist/storybook-pages/public
+          cp -R dist/storybook/admin/. dist/storybook-pages/admin/
+          cp -R dist/storybook/public/. dist/storybook-pages/public/
+          touch dist/storybook-pages/.nojekyll
+          cat > dist/storybook-pages/index.html <<'HTML'
+          <!doctype html>
+          <html lang="pt-BR">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Storybooks</title>
+            </head>
+            <body>
+              <main>
+                <h1>Storybooks</h1>
+                <nav aria-label="Storybooks disponíveis">
+                  <ul>
+                    <li><a href="./admin/">Administração</a></li>
+                    <li><a href="./public/">Público</a></li>
+                  </ul>
+                </nav>
+              </main>
+            </body>
+          </html>
+          HTML
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist/storybook-pages
+
+      - id: deploy
+        name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v5
+        with:
+          token: ${{ github.token }}
