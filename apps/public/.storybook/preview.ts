@@ -35,17 +35,17 @@ function ensureStorybookGlobalStyles(): void {
     }
 
     @font-face {
-      font-family: 'Material Icons Outlined';
+      font-family: 'Material Symbols Outlined';
       font-style: normal;
       font-display: swap;
       font-weight: 400;
       src:
-        url('/material-icons-outlined-files/material-icons-outlined-latin-400-normal.woff2') format('woff2'),
-        url('/material-icons-outlined-files/material-icons-outlined-latin-400-normal.woff') format('woff');
+        url('/material-symbols-outlined-files/material-symbols-outlined-latin-400-normal.woff2') format('woff2'),
+        url('/material-symbols-outlined-files/material-symbols-outlined-latin-400-normal.woff') format('woff');
     }
 
-    .material-icons-outlined {
-      font-family: 'Material Icons Outlined';
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
       font-weight: normal;
       font-style: normal;
       font-size: 24px;
@@ -209,7 +209,7 @@ const preview: Preview = {
         provideNoopAnimations(),
         provideRouter([], withDisabledInitialNavigation()),
         provideAppInitializer(() => {
-          inject(MatIconRegistry).setDefaultFontSetClass('material-icons-outlined');
+          inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
         }),
         { provide: ActivatedRoute, useValue: activatedRouteMock },
         { provide: MAT_DIALOG_DATA, useValue: publicDialogData },

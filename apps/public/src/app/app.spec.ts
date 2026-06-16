@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { signal } from '@angular/core';
+import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
+import { of } from 'rxjs';
 import { App } from './app';
 import { CookieBannerSyncService } from './privacy/cookie-banner-sync.service';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
@@ -19,7 +21,13 @@ describe('App', () => {
         {
           provide: CookieBannerSyncService,
           useValue: {
-            acceptCookieBanner: vi.fn(),
+            acceptCookieBanner: () => of(true),
+          },
+        },
+        {
+          provide: CacicAccountPrivacyService,
+          useValue: {
+            refresh: () => of(undefined),
           },
         },
         {
