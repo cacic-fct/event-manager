@@ -45,12 +45,12 @@ jobs:
         with:
           registries: |
             https://registry.npmjs.org/
-            @cacic-fct:https://npm.pkg.github.com/|$GITHUB_TOKEN
+            @cacic-fct:https://npm.pkg.github.com/|$npm_token
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npm_token: ${{ secrets.GITHUB_TOKEN }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Generate Prisma client
@@ -140,12 +140,12 @@ jobs:
         with:
           registries: |
             https://registry.npmjs.org/
-            @cacic-fct:https://npm.pkg.github.com/|$GITHUB_TOKEN
+            @cacic-fct:https://npm.pkg.github.com/|$npm_token
 
       - name: Install dependencies without lifecycle scripts
         run: bun install --frozen-lockfile --ignore-scripts
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npm_token: ${{ secrets.GITHUB_TOKEN }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Remove package registry auth material
@@ -154,7 +154,7 @@ jobs:
           rm -f ~/.npmrc
           rm -f bunfig.toml
           rm -f .npmrc
-          unset GITHUB_TOKEN
+          unset npm_token
 
       - name: Upload prepared dependencies
         uses: actions/upload-artifact@v6
