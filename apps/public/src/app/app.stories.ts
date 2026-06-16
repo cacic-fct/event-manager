@@ -7,7 +7,7 @@ const meta: Meta<App> = {
   title: 'Public/App',
   tags: ['autodocs'],
   argTypes: {
-    cookieBannerEnabledOverride: { control: 'boolean', name: 'events-public-cookie-banner-enabled' },
+    cookieBannerEnabledOverride: { control: 'boolean', name: 'Banner de cookies habilitado' },
   },
   parameters: {
     layout: 'fullscreen',
@@ -34,25 +34,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const DesktopLight: Story = {
+export const Playground: Story = {
   args: {
     cookieBannerEnabledOverride: true,
   },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
-
-export const MobileLight: Story = {
-  args: {
-    cookieBannerEnabledOverride: true,
-  },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-

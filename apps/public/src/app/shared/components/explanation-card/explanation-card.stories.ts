@@ -46,21 +46,14 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const MobileSync: Story = {
+export const SyncStatus: Story = {
+  name: 'Sincronização',
   args: {
     title: faker.helpers.arrayElement(['Dados salvos no dispositivo', 'Atualização manual necessária']),
     icon: 'system_update',
   },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

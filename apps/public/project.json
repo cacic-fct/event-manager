@@ -157,6 +157,7 @@
       "options": {
         "outputDir": "dist/storybook/public",
         "configDir": "apps/public/.storybook",
+        "tsConfig": "apps/public/.storybook/tsconfig.json",
         "browserTarget": "public:build-storybook",
         "compodoc": false
       },
