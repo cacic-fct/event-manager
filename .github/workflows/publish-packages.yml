@@ -95,13 +95,15 @@ jobs:
         with:
           registries: |
             https://registry.npmjs.org/
-            @cacic-fct:https://npm.pkg.github.com/|$NPM_CONFIG_TOKEN
+            @cacic-fct:https://npm.pkg.github.com/|$NODE_AUTH_TOKEN
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         if: steps.changes.outputs.any_changed == 'true'
         run: bun install --frozen-lockfile
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Build Event Manager M2M contracts
@@ -125,4 +127,4 @@ jobs:
 
           bun publish --registry https://npm.pkg.github.com --tolerate-republish
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
