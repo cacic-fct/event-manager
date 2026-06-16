@@ -141,4 +141,13 @@ describe('Event', () => {
     expect(compiled.querySelector('a[href="mailto:ada@example.com"]')).toBeTruthy();
     expect(compiled.querySelector('a[href="https://wa.me/5518999999999"]')).toBeTruthy();
   });
+
+  it('requests higher quality Google lecturer pictures', () => {
+    expect(component.googlePictureUrl('https://lh3.googleusercontent.com/a/ACg8ocK=s96-c')).toBe(
+      'https://lh3.googleusercontent.com/a/ACg8ocK=s512-c',
+    );
+    expect(component.googlePictureUrl('https://lh3.googleusercontent.com/a-/ALV-UjV/s128/photo.jpg')).toBe(
+      'https://lh3.googleusercontent.com/a-/ALV-UjV/s512/photo.jpg',
+    );
+  });
 });

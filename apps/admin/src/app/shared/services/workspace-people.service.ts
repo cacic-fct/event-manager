@@ -40,7 +40,7 @@ export class WorkspacePeopleService {
 
   readonly lecturerProfileForm = this.formBuilder.nonNullable.group({
     displayName: ['', [Validators.required]],
-    biography: ['', [Validators.required]],
+    biography: [''],
     publishGoogleUserPicture: [false],
     email: [''],
     whatsapp: [''],
@@ -194,7 +194,7 @@ export class WorkspacePeopleService {
     const wasExistingProfile = this.hasLecturerProfile();
     const payload: LecturerProfileInput = {
       displayName: raw.displayName.trim(),
-      biography: raw.biography.trim(),
+      biography: raw.biography.trim() || null,
       publishGoogleUserPicture: raw.publishGoogleUserPicture,
       email: raw.email.trim() || null,
       whatsapp: this.normalizeWhatsapp(raw.whatsapp.trim()),

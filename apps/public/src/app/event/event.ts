@@ -346,6 +346,10 @@ export class Event {
     return `https://wa.me/${lecturer.whatsapp.replace(/\D/g, '')}`;
   }
 
+  googlePictureUrl(url: string | null | undefined): string {
+    return (url ?? '').replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
+  }
+
   private createEventState(): Observable<EventPageState> {
     return combineLatest([
       this.route.paramMap.pipe(map((params) => params.get('eventId') ?? params.get('eventID') ?? '')),

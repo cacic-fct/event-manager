@@ -239,4 +239,19 @@ describe('DashboardInsightsService generation', () => {
     expect(redis.get).not.toHaveBeenCalled();
     expect(redis.set).not.toHaveBeenCalled();
   });
+
+  it('does not query or return event calendar data without event read permission', async () => {
+    const { keycloakAuthService, prisma, service, weatherService } = createInsightsServiceTestContext();
+    keycloakAuthService.evaluateAccessTokenPermissions.mockResolvedValue(['validate-receipt#read']);
+    prisma.majorEventSubscription.count.mockResolvedValue(2);
+    prisma.majorEvent.findMany.mockResolvedValue([]);
+
+    const result = await service.getWorkspaceDashboardInsights({} as never);
+
+    expect(result.calendarEvents).toEqual([]);
+    expect(result.weatherAlerts).toEqual([]);
+    expect(result.pendingReceiptValidationsCount).toBe(2);
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+    expect(weatherService.getPublicEventWeather).not.toHaveBeenCalled();
+  });
 });

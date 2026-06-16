@@ -18,6 +18,8 @@ import {
   NovuNotificationsService,
 } from '../notifications/novu-notifications.service';
 import { AttendanceCategoryService } from './attendance-category.service';
+import { EventSubscriptionSyncService } from './event-subscription-sync.service';
+import { EventSubscriptionCountersService } from './subscription-counters.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -119,6 +121,8 @@ export class EventSubscriptionsResolver {
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly notifications: NovuNotificationsService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly counters: EventSubscriptionCountersService = new EventSubscriptionCountersService(),
+    private readonly eventSubscriptionSync: EventSubscriptionSyncService = new EventSubscriptionSyncService(),
   ) {}
 
   @Query(() => [WorkspaceEventSubscription], {
@@ -180,7 +184,8 @@ export class EventSubscriptionsResolver {
     await this.ensureEventExists(input.eventId);
     await this.ensurePersonIsNotLecturer(input.personId, [input.eventId]);
 
-    const subscription = await this.prisma.$transaction(async (tx) => {
+    const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      await this.eventSubscriptionSync.ensureEventIdsHaveAvailableSlots(tx, [input.eventId]);
       const created = await tx.eventSubscription.create({
         data: {
           eventId: input.eventId,
@@ -259,7 +264,7 @@ export class EventSubscriptionsResolver {
     await this.ensureSelectedEventsBelongToMajorEvent(input.majorEventId, selectedEventIds);
     await this.ensurePersonIsNotLecturer(input.personId, selectedEventIds);
 
-    const subscription = await this.prisma.$transaction(async (tx) => {
+    const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const majorEventSubscription = await tx.majorEventSubscription.create({
         data: {
           majorEventId: input.majorEventId,
@@ -284,19 +289,25 @@ export class EventSubscriptionsResolver {
         });
       }
 
-      if (status === SubscriptionStatus.CONFIRMED && selectedEventIds.length > 0) {
-        await tx.eventSubscription.createMany({
-          data: selectedEventIds.map((eventId) => ({
-            eventId,
-            personId: input.personId,
-            createdById,
-            createdByMethod: 'ADMIN_DASHBOARD',
-          })),
-        });
-      }
+      const subscriptionSyncResult =
+        status === SubscriptionStatus.CONFIRMED && selectedEventIds.length > 0
+          ? await this.eventSubscriptionSync.syncMajorEventConfirmedSubscriptions(
+              tx,
+              input.majorEventId,
+              input.personId,
+              selectedEventIds,
+              status,
+              createdById,
+            )
+          : null;
 
       await this.attendanceCategories.refreshForMajorEventPerson(input.majorEventId, input.personId, tx);
-      await this.refreshEventSubscriptionCounters(tx, selectedEventIds);
+      await this.refreshEventSubscriptionCounters(tx, [
+        ...selectedEventIds,
+        ...(subscriptionSyncResult?.activeEventIds ?? []),
+        ...(subscriptionSyncResult?.archivedEventIds ?? []),
+        ...(subscriptionSyncResult?.createdEventIds ?? []),
+      ]);
 
       return majorEventSubscription;
     });
@@ -340,7 +351,7 @@ export class EventSubscriptionsResolver {
       await this.ensurePersonIsNotLecturer(existing.personId, selectedEventIds);
     }
 
-    const subscription = await this.prisma.$transaction(async (tx) => {
+    const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const updateData: Prisma.MajorEventSubscriptionUpdateInput = {};
       if (input.subscriptionStatus !== undefined) {
         updateData.subscriptionStatus = this.normalizeStatus(input.subscriptionStatus);
@@ -578,94 +589,46 @@ export class EventSubscriptionsResolver {
       });
     }
 
-    const activeSubscriptions = await tx.eventSubscription.findMany({
-      where: {
-        personId,
-        deletedAt: null,
-        event: {
-          majorEventId,
-          deletedAt: null,
-        },
-      },
-      select: {
-        eventId: true,
-      },
-    });
-    const activeEventIdSet = new Set(activeSubscriptions.map((subscription) => subscription.eventId));
-    const eventIdsToArchive = [...activeEventIdSet].filter(
-      (eventId) => status !== SubscriptionStatus.CONFIRMED || !selectedEventIdSet.has(eventId),
+    const subscriptionSyncResult = await this.eventSubscriptionSync.syncMajorEventConfirmedSubscriptions(
+      tx,
+      majorEventId,
+      personId,
+      selectedEventIds,
+      status,
     );
-    if (eventIdsToArchive.length > 0) {
-      await tx.eventSubscription.updateMany({
-        where: {
-          personId,
-          eventId: {
-            in: eventIdsToArchive,
-          },
-          deletedAt: null,
-        },
-        data: {
-          deletedAt: now,
-        },
-      });
-    }
-
-    const eventIdsToCreate =
-      status === SubscriptionStatus.CONFIRMED
-        ? selectedEventIds.filter((eventId) => !activeEventIdSet.has(eventId))
-        : [];
-    if (eventIdsToCreate.length > 0) {
-      await tx.eventSubscription.createMany({
-        data: eventIdsToCreate.map((eventId) => ({
-          eventId,
-          personId,
-          createdByMethod: 'ADMIN_DASHBOARD',
-        })),
-      });
-    }
 
     await this.refreshEventSubscriptionCounters(tx, [
-      ...activeEventIdSet,
       ...activeSelectionIdSet,
       ...selectedEventIds,
+      ...subscriptionSyncResult.activeEventIds,
+      ...subscriptionSyncResult.archivedEventIds,
+      ...subscriptionSyncResult.createdEventIds,
     ]);
   }
 
   private async refreshEventSubscriptionCounters(tx: Prisma.TransactionClient, eventIds: string[]): Promise<void> {
-    const uniqueEventIds = [...new Set(eventIds)];
-    if (uniqueEventIds.length === 0) {
-      return;
+    await this.counters.refresh(tx, eventIds);
+  }
+
+  private async runSerializableSubscriptionTransaction<T>(
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(operation, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        });
+      } catch (error) {
+        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+          continue;
+        }
+
+        throw error;
+      }
     }
 
-    await Promise.all(
-      uniqueEventIds.map(
-        (eventId) =>
-          tx.$executeRaw`
-          UPDATE "events" event
-          SET
-            "queueCount" = (
-              SELECT COUNT(*)::INTEGER
-              FROM "major_event_subscription_event_selections" selection
-              JOIN "major_event_subscriptions" subscription
-                ON subscription."id" = selection."subscriptionId"
-              WHERE selection."eventId" = ${eventId}
-                AND selection."deletedAt" IS NULL
-                AND subscription."deletedAt" IS NULL
-                AND subscription."subscriptionStatus" NOT IN ('CONFIRMED', 'CANCELED')
-            ),
-            "slotsAvailable" = CASE
-              WHEN event."slots" IS NULL THEN NULL
-              ELSE event."slots" - (
-                SELECT COUNT(*)::INTEGER
-                FROM "event_subscriptions" event_subscription
-                WHERE event_subscription."eventId" = ${eventId}
-                  AND event_subscription."deletedAt" IS NULL
-              )
-            END
-          WHERE event."id" = ${eventId}
-        `,
-      ),
-    );
+    throw new BadRequestException('Could not complete subscription.');
   }
 
   private async ensurePersonExists(personId: string): Promise<void> {

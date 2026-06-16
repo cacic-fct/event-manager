@@ -177,6 +177,7 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
     subscription: {
       amountPaid: number | null;
       paymentTier: string | null;
+      createdByMethod: string;
       majorEvent: {
         majorEventPrices: Array<{
           tiers: Array<{
@@ -187,10 +188,28 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
       };
     },
   ): number | undefined {
+    if (subscription.createdByMethod === 'SELF_SUBSCRIPTION') {
+      return this.resolvePriceTierAmountCents(subscription) ?? subscription.amountPaid ?? undefined;
+    }
+
     if (subscription.amountPaid != null) {
       return subscription.amountPaid;
     }
 
+    return this.resolvePriceTierAmountCents(subscription);
+  }
+
+  private resolvePriceTierAmountCents(subscription: {
+    paymentTier: string | null;
+    majorEvent: {
+      majorEventPrices: Array<{
+        tiers: Array<{
+          name: string;
+          value: number;
+        }>;
+      }>;
+    };
+  }): number | undefined {
     const paymentTier = subscription.paymentTier?.trim().toLowerCase();
     const tiers = subscription.majorEvent.majorEventPrices.flatMap((price) => price.tiers);
     if (paymentTier) {

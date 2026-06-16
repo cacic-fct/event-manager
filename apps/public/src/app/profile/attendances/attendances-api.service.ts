@@ -98,7 +98,7 @@ export interface LecturerProfile {
   id: string;
   personId: string;
   displayName: string;
-  biography: string;
+  biography?: string | null;
   publishGoogleUserPicture: boolean;
   googleUserPicture?: string | null;
   email?: string | null;
@@ -107,7 +107,7 @@ export interface LecturerProfile {
 
 export interface LecturerProfileInput {
   displayName: string;
-  biography: string;
+  biography?: string | null;
   publishGoogleUserPicture?: boolean;
   email?: string | null;
   whatsapp?: string | null;

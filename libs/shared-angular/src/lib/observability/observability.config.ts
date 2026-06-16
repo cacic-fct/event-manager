@@ -7,4 +7,6 @@ export type CacicAnalyticsConfig = {
   buildIdentifyData?: (user: AuthenticatedUser) => AnalyticsEventData;
 };
 
+export type CacicObservabilityToggle = (user: AuthenticatedUser | null) => boolean;
+
 export const CACIC_ANALYTICS_CONFIG = new InjectionToken<CacicAnalyticsConfig>('CACIC_ANALYTICS_CONFIG');

@@ -13,6 +13,7 @@ import {
 import { CurrentUserEventGroupSubscription } from '../models';
 import { PUBLIC_EVENT_SELECT, PublicEvent } from '../../public-events/models';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
+import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
 
 export type CurrentUserSubscribedItem =
   | {
@@ -35,6 +36,7 @@ export class CurrentUserEventSubscriptionService {
     private readonly prisma: PrismaService,
     private readonly mapper: CurrentUserEventMapperService,
     private readonly attendanceCategories: AttendanceCategoryService,
+    private readonly counters: EventSubscriptionCountersService = new EventSubscriptionCountersService(),
   ) {}
 
   getEventSubscriptionError(
@@ -473,40 +475,7 @@ export class CurrentUserEventSubscriptionService {
   }
 
   private async refreshEventSubscriptionCounters(tx: TransactionClient, eventIds: string[]): Promise<void> {
-    const uniqueEventIds = [...new Set(eventIds)];
-    if (uniqueEventIds.length === 0) {
-      return;
-    }
-
-    await Promise.all(
-      uniqueEventIds.map(
-        (eventId) =>
-          tx.$executeRaw`
-          UPDATE "events" event
-          SET
-            "queueCount" = (
-              SELECT COUNT(*)::INTEGER
-              FROM "major_event_subscription_event_selections" selection
-              JOIN "major_event_subscriptions" subscription
-                ON subscription."id" = selection."subscriptionId"
-              WHERE selection."eventId" = ${eventId}
-                AND selection."deletedAt" IS NULL
-                AND subscription."deletedAt" IS NULL
-                AND subscription."subscriptionStatus" NOT IN ('CONFIRMED', 'CANCELED')
-            ),
-            "slotsAvailable" = CASE
-              WHEN event."slots" IS NULL THEN NULL
-              ELSE event."slots" - (
-                SELECT COUNT(*)::INTEGER
-                FROM "event_subscriptions" event_subscription
-                WHERE event_subscription."eventId" = ${eventId}
-                  AND event_subscription."deletedAt" IS NULL
-              )
-            END
-          WHERE event."id" = ${eventId}
-        `,
-      ),
-    );
+    await this.counters.refresh(tx, eventIds);
   }
 
   private groupEventsBySubscriptionId(

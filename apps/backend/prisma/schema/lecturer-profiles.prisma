@@ -3,7 +3,7 @@ model LecturerProfile {
   person                   People  @relation(fields: [personId], references: [id])
   personId                 String  @unique
   displayName              String
-  biography                String
+  biography                String?
   publishGoogleUserPicture Boolean @default(false)
   googleUserPicture        String?
   email                    String?

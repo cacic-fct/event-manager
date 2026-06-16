@@ -1,4 +1,16 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Logger,
+  Post,
+  Query,
+  Req,
+  Res,
+  UsePipes,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -14,10 +26,12 @@ import {
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME } from './auth.constants';
+import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
 import { Public } from './decorators/public.decorator';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from './keycloak-auth.service';
+import { PublicAuthenticatedUser, toPublicAuthenticatedUser } from './public-authenticated-user';
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUser;
@@ -109,25 +123,11 @@ class AuthenticatedUserResponseDto {
   email?: string;
 
   @ApiProperty({
-    description: 'Current access token used by the backend for downstream authorization checks.',
-    example: 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIn0...',
-  })
-  token!: string;
-
-  @ApiProperty({
     description: 'Normalized role list used by application authorization checks.',
     example: ['admin', 'event-manager'],
     type: [String],
   })
   roles!: string[];
-
-  @ApiProperty({
-    description:
-      'Set-backed role lookup. If returned over HTTP, ensure it is serialized to an array or omit it from the public response shape.',
-    example: ['admin', 'event-manager'],
-    type: [String],
-  })
-  roleSet!: string[];
 
   @ApiProperty({
     description: 'Normalized permission list resolved for the authenticated user.',
@@ -137,27 +137,11 @@ class AuthenticatedUserResponseDto {
   permissions!: string[];
 
   @ApiProperty({
-    description:
-      'Set-backed permission lookup. If returned over HTTP, ensure it is serialized to an array or omit it from the public response shape.',
-    example: ['events:create', 'events:update', 'major-events:read'],
-    type: [String],
-  })
-  permissionSet!: string[];
-
-  @ApiProperty({
     description: 'OIDC scopes granted to the authenticated session.',
     example: ['openid', 'profile', 'email', 'identity-document'],
     type: [String],
   })
   oidcScopes!: string[];
-
-  @ApiProperty({
-    description:
-      'Set-backed OIDC scope lookup. If returned over HTTP, ensure it is serialized to an array or omit it from the public response shape.',
-    example: ['openid', 'profile', 'email', 'identity-document'],
-    type: [String],
-  })
-  oidcScopeSet!: string[];
 
   @ApiProperty({
     description: 'Legacy alias for oidcScopes.',
@@ -167,29 +151,27 @@ class AuthenticatedUserResponseDto {
   scopes!: string[];
 
   @ApiProperty({
-    description:
-      'Legacy alias for oidcScopeSet. If returned over HTTP, ensure it is serialized to an array or omit it from the public response shape.',
-    example: ['openid', 'profile', 'email'],
-    type: [String],
-  })
-  scopeSet!: string[];
-
-  @ApiProperty({
-    description: 'Original token claims retained for callers that need claims not normalized above.',
+    description: 'Public allowlist of token claims needed by client applications.',
     type: 'object',
     additionalProperties: true,
     example: {
       iss: 'https://sso.cacic.dev.br/realms/cacic-sso',
       aud: 'cacic-event-manager',
       typ: 'Bearer',
+      is_onboarded: true,
     },
   })
   claims!: Record<string, unknown>;
 }
 
 @ApiTags('Authentication')
+@UsePipes(REST_VALIDATION_PIPE)
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+  private readonly allowedCallbackRedirectOrigins = this.readAllowedCallbackRedirectOrigins();
+  private readonly allowedPostLogoutRedirectOrigins = this.readAllowedPostLogoutRedirectOrigins();
+
   constructor(private readonly keycloakAuthService: KeycloakAuthService) {}
 
   @Get('login')
@@ -243,8 +225,9 @@ export class AuthController {
     @Query('scope') scope?: string,
     @Query('prompt') prompt?: string,
   ): Promise<{ authorizationUrl: string }> {
+    const callbackRedirectUri = this.resolveCallbackRedirectUri(request, redirectUri);
     const authorization = await this.keycloakAuthService.buildAuthorizationUrl({
-      redirectUri: redirectUri ?? this.getCallbackRedirectUri(request),
+      redirectUri: callbackRedirectUri,
       returnTo,
       state,
       scope,
@@ -308,8 +291,9 @@ export class AuthController {
     @Query('scope') scope?: string,
     @Query('prompt') prompt?: string,
   ): Promise<void> {
+    const callbackRedirectUri = this.resolveCallbackRedirectUri(request, redirectUri);
     const authorization = await this.keycloakAuthService.buildAuthorizationUrl({
-      redirectUri: redirectUri ?? this.getCallbackRedirectUri(request),
+      redirectUri: callbackRedirectUri,
       returnTo,
       state,
       scope,
@@ -380,7 +364,7 @@ export class AuthController {
     const tokenResponse = await this.keycloakAuthService.exchangeCodeForTokens(
       code,
       authorizationState,
-      redirectUri ?? this.getCallbackRedirectUri(request),
+      this.resolveCallbackRedirectUri(request, redirectUri),
     );
     const session = await this.keycloakAuthService.createSession(tokenResponse);
 
@@ -438,7 +422,7 @@ export class AuthController {
     return this.keycloakAuthService.logout({
       refreshToken: body?.refreshToken ?? sessionLogoutInput?.refreshToken,
       idTokenHint: body?.idTokenHint ?? sessionLogoutInput?.idTokenHint,
-      postLogoutRedirectUri: body?.postLogoutRedirectUri,
+      postLogoutRedirectUri: this.resolvePostLogoutRedirectUri(body?.postLogoutRedirectUri),
     });
   }
 
@@ -482,7 +466,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Read the authenticated identity',
     description:
-      'Returns the identity resolved by the authentication layer for the current request, including normalized roles, permissions, scopes, and original claims.',
+      'Returns the identity resolved by the authentication layer for the current request, including normalized roles, permissions, scopes, and public allowlisted claims.',
   })
   @ApiOkResponse({
     type: AuthenticatedUserResponseDto,
@@ -491,12 +475,12 @@ export class AuthController {
   @ApiForbiddenResponse({
     description: 'Returned when no authenticated identity was attached to the request.',
   })
-  getMe(@Req() request: RequestWithUser) {
+  getMe(@Req() request: RequestWithUser): PublicAuthenticatedUser {
     if (!request.user) {
       throw new ForbiddenException('User is not authenticated.');
     }
 
-    return request.user;
+    return toPublicAuthenticatedUser(request.user);
   }
 
   @Post('permissions/evaluate')
@@ -606,6 +590,111 @@ export class AuthController {
 
     const origin = `${protocol || request.protocol}://${host || request.get('host')}`;
     return new URL('/api/auth/callback', origin).toString();
+  }
+
+  private resolveCallbackRedirectUri(request: Request, requestedRedirectUri?: string): string {
+    const redirectUri = requestedRedirectUri?.trim() || this.getCallbackRedirectUri(request);
+
+    let url: URL;
+    try {
+      url = new URL(redirectUri);
+    } catch {
+      throw new BadRequestException('Invalid callback redirect URI.');
+    }
+
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      throw new BadRequestException('Callback redirect URI must use HTTP or HTTPS.');
+    }
+
+    if (url.pathname !== '/api/auth/callback') {
+      throw new BadRequestException('Callback redirect URI path is not allowed.');
+    }
+
+    if (!this.allowedCallbackRedirectOrigins.has(url.origin)) {
+      throw new BadRequestException('Callback redirect URI origin is not allowed.');
+    }
+
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  }
+
+  private readAllowedCallbackRedirectOrigins(): Set<string> {
+    const origins = new Set<string>([
+      'http://localhost:3000',
+      'https://eventos.cacic.dev.br',
+      'https://secompp.cacic.dev.br',
+    ]);
+
+    this.addAllowedOrigin(origins, process.env.KEYCLOAK_REDIRECT_URI, 'allowed callback redirect origin');
+
+    for (const rawOrigin of (process.env.KEYCLOAK_ALLOWED_CALLBACK_REDIRECT_ORIGINS ?? '').split(',')) {
+      this.addAllowedOrigin(origins, rawOrigin.trim(), 'allowed callback redirect origin');
+    }
+
+    return origins;
+  }
+
+  private resolvePostLogoutRedirectUri(requestedRedirectUri?: string): string | undefined {
+    const redirectUri = requestedRedirectUri?.trim();
+    if (!redirectUri) {
+      return undefined;
+    }
+
+    let url: URL;
+    try {
+      url = new URL(redirectUri);
+    } catch {
+      throw new BadRequestException('Invalid post-logout redirect URI.');
+    }
+
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      throw new BadRequestException('Post-logout redirect URI must use HTTP or HTTPS.');
+    }
+
+    if (!this.allowedPostLogoutRedirectOrigins.has(url.origin)) {
+      throw new BadRequestException('Post-logout redirect URI origin is not allowed.');
+    }
+
+    url.username = '';
+    url.password = '';
+    url.hash = '';
+    return url.toString();
+  }
+
+  private readAllowedPostLogoutRedirectOrigins(): Set<string> {
+    const origins = new Set<string>([
+      'http://localhost:4200',
+      'https://eventos.cacic.dev.br',
+      'https://secompp.cacic.dev.br',
+    ]);
+
+    this.addAllowedOrigin(origins, process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI, 'allowed post-logout redirect origin');
+    this.addAllowedOrigin(origins, process.env.KEYCLOAK_POST_LOGIN_REDIRECT_URI, 'allowed post-logout redirect origin');
+
+    for (const rawOrigin of (process.env.KEYCLOAK_ALLOWED_POST_LOGOUT_REDIRECT_ORIGINS ?? '').split(',')) {
+      this.addAllowedOrigin(origins, rawOrigin.trim(), 'allowed post-logout redirect origin');
+    }
+
+    for (const rawOrigin of (process.env.KEYCLOAK_ALLOWED_POST_LOGIN_REDIRECT_ORIGINS ?? '').split(',')) {
+      this.addAllowedOrigin(origins, rawOrigin.trim(), 'allowed post-logout redirect origin');
+    }
+
+    return origins;
+  }
+
+  private addAllowedOrigin(origins: Set<string>, rawUrl?: string, description = 'allowed redirect origin'): void {
+    if (!rawUrl) {
+      return;
+    }
+
+    try {
+      origins.add(new URL(rawUrl).origin);
+    } catch {
+      this.logger.warn(`Ignoring invalid ${description}: ${rawUrl}`);
+    }
   }
 
   private readForwardedHeader(request: Request, headerName: string): string | undefined {

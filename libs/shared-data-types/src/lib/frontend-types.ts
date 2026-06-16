@@ -238,7 +238,7 @@ export interface PublicEventGroup {
 export interface PublicLecturerProfile {
   id: string;
   displayName: string;
-  biography: string;
+  biography?: string | null;
   publishGoogleUserPicture: boolean;
   googleUserPicture?: string | null;
   email?: string | null;
@@ -372,7 +372,6 @@ export interface AuthenticatedUser {
   sub?: string;
   preferredUsername?: string;
   email?: string;
-  token: string;
   roles: string[];
   permissions: string[];
   oidcScopes: string[];

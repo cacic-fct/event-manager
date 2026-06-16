@@ -13,9 +13,6 @@ export class AuthenticatedUser {
   @Field(() => String, { nullable: true })
   email?: string;
 
-  @Field(() => String)
-  token!: string;
-
   @Field(() => [String])
   roles!: string[];
 

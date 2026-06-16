@@ -67,7 +67,7 @@ export interface PublicEventGroup {
 export interface PublicLecturerProfile {
   id: string;
   displayName: string;
-  biography: string;
+  biography?: string | null;
   publishGoogleUserPicture: boolean;
   googleUserPicture?: string | null;
   email?: string | null;
