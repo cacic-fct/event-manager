@@ -42,11 +42,16 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+        with:
+          registries: |
+            https://registry.npmjs.org/
+            @cacic-fct:https://npm.pkg.github.com/|$GITHUB_TOKEN
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Generate Prisma client
         run: bunx prisma generate --schema apps/backend/prisma/schema
@@ -132,17 +137,24 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+        with:
+          registries: |
+            https://registry.npmjs.org/
+            @cacic-fct:https://npm.pkg.github.com/|$GITHUB_TOKEN
 
       - name: Install dependencies without lifecycle scripts
         run: bun install --frozen-lockfile --ignore-scripts
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
 
-      - name: Remove npm auth material
+      - name: Remove package registry auth material
         run: |
+          rm -f ~/.bunfig.toml
           rm -f ~/.npmrc
+          rm -f bunfig.toml
           rm -f .npmrc
-          unset NODE_AUTH_TOKEN
+          unset GITHUB_TOKEN
 
       - name: Upload prepared dependencies
         uses: actions/upload-artifact@v6
