@@ -95,12 +95,13 @@ jobs:
         with:
           registries: |
             https://registry.npmjs.org/
-            @cacic-fct:https://npm.pkg.github.com/|$NPM_CONFIG_TOKEN
+            @cacic-fct:https://npm.pkg.github.com/|$npm_token
 
       - name: Install dependencies
         if: steps.changes.outputs.any_changed == 'true'
         run: bun install --frozen-lockfile
         env:
+          npm_token: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
@@ -125,4 +126,5 @@ jobs:
 
           bun publish --registry https://npm.pkg.github.com --tolerate-republish
         env:
+          npm_token: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
