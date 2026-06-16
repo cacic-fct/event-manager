@@ -22,6 +22,7 @@ import {
   init as SentryInit,
   TraceService as SentryTraceService,
 } from '@sentry/angular';
+import { consoleLoggingIntegration as SentryConsoleLoggingIntegration } from '@sentry/browser';
 import type { ErrorEvent as SentryErrorEvent } from '@sentry/angular';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AuthService } from '../auth/auth.service';
@@ -188,7 +189,6 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
             SentryBrowserTracingIntegration(),
             SentryConsoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
           ],
-          tracesSampleRate: 1.0,
           tracesSampler: () => (consent.isPerformanceEnabled(config, authService.user()) ? 1.0 : 0),
           tracePropagationTargets: [/^https:\/\/eventos\.cacic\.dev\.br\/api/],
           enableLogs: true,
