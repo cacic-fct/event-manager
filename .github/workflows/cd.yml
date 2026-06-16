@@ -95,7 +95,7 @@ jobs:
 
             CHANGED_FILES="$(git diff --name-only "$BASE" "$HEAD")"
             DEPLOYABLE_APPS_PATTERN='^(admin|backend|public)$'
-            GLOBAL_CHANGE_PATTERN='(^package\.json$|^bun\.lock$|^nx\.json$|^tsconfig\.base\.json$|^\.npmrc$|^bunfig\.toml$|^\.github/workflows/.*\.ya?ml$|^Dockerfile$|^apps/[^/]+/Dockerfile$)'
+            GLOBAL_CHANGE_PATTERN='(^package\.json$|^bun\.lock$|^nx\.json$|^tsconfig\.base\.json$|^\.npmrc$|^bunfig\.toml$|^\.github/workflows/.*\.ya?ml$|^Dockerfile$|^apps/[^/]+/Dockerfile(\.dockerignore)?$)'
 
             if printf '%s\n' "$CHANGED_FILES" | grep -E "$GLOBAL_CHANGE_PATTERN"; then
               DEPLOYABLE="$(printf '%s\n' \
