@@ -2,7 +2,7 @@ import { provideHttpClient, withFetch } from '@angular/common/http';
 import { inject, provideAppInitializer } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconRegistry } from '@angular/material/icon';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { Preview } from '@storybook/angular';
@@ -196,7 +196,7 @@ const preview: Preview = {
       providers: [
         provideHttpClient(withFetch()),
         provideNoopAnimations(),
-        provideRouter([]),
+        provideRouter([], withDisabledInitialNavigation()),
         provideAppInitializer(() => {
           inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
         }),
