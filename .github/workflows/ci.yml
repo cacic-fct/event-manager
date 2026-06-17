@@ -39,8 +39,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 26
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@cacic-fct'
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -50,7 +48,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || github.token }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Remove package registry auth material
@@ -140,8 +138,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 26
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@cacic-fct'
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -151,7 +147,7 @@ jobs:
       - name: Install dependencies without lifecycle scripts
         run: bun install --frozen-lockfile --ignore-scripts
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ github.token }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Remove package registry auth material
@@ -161,7 +157,7 @@ jobs:
           rm -f ~/.bunfig.toml
           rm -f bunfig.toml
           rm -f .npmrc
-          unset NODE_AUTH_TOKEN
+          unset NPM_CONFIG_TOKEN
 
       - name: Upload prepared dependencies
         uses: actions/upload-artifact@v6
