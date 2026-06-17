@@ -115,7 +115,4 @@ export const MissingTargetCoordinates: Story = {
     sourceName: 'Laboratório de Software',
     targetHasCoordinates: false,
   },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-};
+  };

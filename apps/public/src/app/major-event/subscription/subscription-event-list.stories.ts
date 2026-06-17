@@ -125,31 +125,13 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const OnlineDesktop: Story = {
+export const Online: Story = {
   args: {
     events: demoEvents,
     summariesByEventId,
     selectedEventIds: new Set([demoEvents[0].id]),
     autoSelectedEventIds: new Set(),
     disabledReasons: new Map(),
-  },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const OnlineMobile: Story = {
-  args: {
-    events: demoEvents,
-    summariesByEventId,
-    selectedEventIds: new Set([demoEvents[0].id]),
-    autoSelectedEventIds: new Set([demoEvents[2].id]),
-    disabledReasons: new Map(),
-  },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
   },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -162,9 +144,6 @@ export const OfflineFallback: Story = {
     selectedEventIds: new Set(),
     autoSelectedEventIds: new Set(),
     disabledReasons: new Map(),
-  },
-  parameters: {
-    viewport: { defaultViewport: 'tablet' },
   },
   globals: { theme: 'light', network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),

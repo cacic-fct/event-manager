@@ -91,8 +91,5 @@ export const GuestUser: Story = {
     storageKey: 'storybook-cookie-banner-guest',
     buttonText: 'Continuar',
   },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

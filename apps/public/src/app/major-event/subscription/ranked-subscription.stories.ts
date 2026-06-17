@@ -293,27 +293,24 @@ const goToRankingStep = async (canvasElement: HTMLElement) => {
   await expect(await canvas.findByText('Não quero')).toBeVisible();
 };
 
-export const SelectionDesktop: Story = {
+export const Selection: Story = {
   parameters: {
-    viewport: { defaultViewport: 'desktop' },
     msw: { handlers: rankedHandlers('default') },
   },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => expectSelectionStep(canvasElement),
 };
 
-export const RankingDesktop: Story = {
+export const Ranking: Story = {
   parameters: {
-    viewport: { defaultViewport: 'desktop' },
     msw: { handlers: rankedHandlers('default') },
   },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => goToRankingStep(canvasElement),
 };
 
-export const PaymentRankingMobile: Story = {
+export const PaymentRanking: Story = {
   parameters: {
-    viewport: { defaultViewport: 'mobile' },
     msw: { handlers: rankedHandlers('payment') },
   },
   globals: { theme: 'light', network: 'online' },
@@ -327,7 +324,6 @@ export const PaymentRankingMobile: Story = {
 
 export const AutomaticOnly: Story = {
   parameters: {
-    viewport: { defaultViewport: 'tablet' },
     msw: { handlers: rankedHandlers('auto-only') },
   },
   globals: { theme: 'light', network: 'online' },
@@ -342,7 +338,6 @@ export const AutomaticOnly: Story = {
 
 export const ExistingSubscription: Story = {
   parameters: {
-    viewport: { defaultViewport: 'desktop' },
     msw: { handlers: rankedHandlers('existing') },
   },
   globals: { theme: 'light', network: 'online' },

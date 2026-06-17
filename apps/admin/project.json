@@ -127,7 +127,12 @@
         "configDir": "apps/admin/.storybook",
         "tsConfig": "apps/admin/.storybook/tsconfig.json",
         "browserTarget": "admin:build-storybook",
-        "compodoc": false
+        "compodoc": false,
+        "styles": [
+          "@fontsource/material-symbols-outlined",
+          "@fontsource-variable/inter",
+          "apps/admin/src/styles.scss"
+        ]
       },
       "configurations": {
         "ci": {

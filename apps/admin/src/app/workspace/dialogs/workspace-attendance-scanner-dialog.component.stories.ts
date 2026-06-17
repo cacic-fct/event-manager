@@ -157,7 +157,4 @@ export const EmptyFeed: Story = {
   args: {
     feedCount: 0,
   },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-};
+  };

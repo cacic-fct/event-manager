@@ -51,31 +51,6 @@ export const DataLoaded: Story = {
   args: {
     pendingReceiptsCount: 3,
   },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const DenseDesktop: Story = {
-  args: {
-    pendingReceiptsCount: 8,
-  },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileLayout: Story = {
-  args: {
-    pendingReceiptsCount: 3,
-  },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -83,9 +58,6 @@ export const MobileLayout: Story = {
 export const NoReceiptsToValidate: Story = {
   args: {
     pendingReceiptsCount: 0,
-  },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
   },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
