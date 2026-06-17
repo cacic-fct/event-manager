@@ -50,8 +50,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 26
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@cacic-fct'
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -59,7 +57,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ github.token }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Detect affected apps
@@ -221,7 +219,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
           secrets: |
-            "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}"
+            "NPM_CONFIG_TOKEN=${{ github.token }}"
 
   publish:
     name: Publish app images
@@ -274,7 +272,7 @@ jobs:
           file: apps/${{ matrix.app }}/Dockerfile
           push: true
           secrets: |
-            "NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}"
+            "NPM_CONFIG_TOKEN=${{ github.token }}"
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
