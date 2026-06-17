@@ -56,6 +56,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 26
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@cacic-fct'
 
       - name: Detect changed packages
         id: changes
@@ -105,26 +107,11 @@ jobs:
         with:
           bun-version: 1.3.14
 
-      - name: Configure GitHub Packages auth for install
-        if: steps.changes.outputs.any_changed == 'true'
-        shell: bash
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          umask 077
-
-          cat > ~/.npmrc <<EOF
-          @cacic-fct:registry=https://npm.pkg.github.com
-          //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-          always-auth=true
-          EOF
-
       - name: Install dependencies
         if: steps.changes.outputs.any_changed == 'true'
         run: bun install --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
-          npm_token: ${{ secrets.GH_PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Build Event Manager M2M contracts
@@ -137,17 +124,8 @@ jobs:
         shell: bash
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-
-          umask 077
-
-          cat > ~/.npmrc <<EOF
-          @cacic-fct:registry=https://npm.pkg.github.com
-          //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-          always-auth=true
-          EOF
 
           PKG_NAME="$(
             node -p "const pkg = require('./package.json'); pkg.name"
