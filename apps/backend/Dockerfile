@@ -13,12 +13,12 @@ WORKDIR /workspace
 
 FROM base AS deps
 COPY package.json bun.lock ./
-COPY .npmrc bunfig.toml ./
+COPY .npmrc ./
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=npm_token,required=true \
-    TOKEN="$(cat /run/secrets/npm_token)" && \
-    export NODE_AUTH_TOKEN="$TOKEN" npm_token="$TOKEN" && \
+    --mount=type=secret,id=NPM_CONFIG_TOKEN,required=true \
+    set -eu; \
+    export NPM_CONFIG_TOKEN="$(cat /run/secrets/NPM_CONFIG_TOKEN)"; \
     bun install --frozen-lockfile
 
 FROM deps AS playwright
@@ -51,12 +51,12 @@ FROM base AS production-deps
 ENV NODE_ENV=production
 
 COPY package.json bun.lock ./
-COPY .npmrc bunfig.toml ./
+COPY .npmrc ./
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=npm_token,required=true \
-    TOKEN="$(cat /run/secrets/npm_token)" && \
-    export NODE_AUTH_TOKEN="$TOKEN" npm_token="$TOKEN" && \
+    --mount=type=secret,id=NPM_CONFIG_TOKEN,required=true \
+    set -eu; \
+    export NPM_CONFIG_TOKEN="$(cat /run/secrets/NPM_CONFIG_TOKEN)"; \
     bun install --frozen-lockfile --production
 
 COPY --from=prisma-deps /workspace/node_modules/.prisma ./node_modules/.prisma
