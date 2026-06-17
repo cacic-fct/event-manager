@@ -10,7 +10,15 @@ import { applicationConfig } from '@storybook/angular';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { cacicEventosHandlers } from './storybook-mocks';
 
-initialize({ onUnhandledRequest: 'bypass' });
+initialize({
+  onUnhandledRequest: 'bypass',
+  serviceWorker: {
+    url: './mockServiceWorker.js',
+    options: {
+      scope: './',
+    },
+  },
+});
 
 const originalNavigatorOnline = Object.getOwnPropertyDescriptor(Navigator.prototype, 'onLine');
 
@@ -37,8 +45,8 @@ function ensureStorybookGlobalStyles(): void {
       font-display: swap;
       font-weight: 400;
       src:
-        url('/material-symbols-outlined-files/material-symbols-outlined-latin-400-normal.woff2') format('woff2'),
-        url('/material-symbols-outlined-files/material-symbols-outlined-latin-400-normal.woff') format('woff');
+        url('./material-symbols-outlined-files/material-symbols-outlined-latin-400-normal.woff2') format('woff2'),
+        url('./material-symbols-outlined-files/material-symbols-outlined-latin-400-normal.woff') format('woff');
     }
 
     .material-symbols-outlined {

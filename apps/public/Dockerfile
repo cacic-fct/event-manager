@@ -11,7 +11,7 @@ WORKDIR /workspace
 
 FROM base AS deps
 COPY package.json bun.lock nx.json tsconfig.base.json ./
-COPY .npmrc bunfig.toml ./
+COPY .npmrc ./
 COPY eslint.config.mjs jest.config.ts jest.preset.js ./
 COPY apps/public/project.json apps/public/tsconfig*.json ./apps/public/
 COPY libs/shared-angular/project.json libs/shared-angular/tsconfig*.json ./libs/shared-angular/
@@ -21,9 +21,9 @@ COPY libs/offline-public-data-access/project.json libs/offline-public-data-acces
 COPY libs/shared-notifications-angular/project.json libs/shared-notifications-angular/tsconfig*.json ./libs/shared-notifications-angular/
 COPY libs/shared-environment/project.json libs/shared-environment/tsconfig*.json ./libs/shared-environment/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=npm_token,required=true \
-    TOKEN="$(cat /run/secrets/npm_token)" && \
-    export NODE_AUTH_TOKEN="$TOKEN" npm_token="$TOKEN" && \
+    --mount=type=secret,id=NPM_CONFIG_TOKEN,required=true \
+    set -eu; \
+    export NPM_CONFIG_TOKEN="$(cat /run/secrets/NPM_CONFIG_TOKEN)"; \
     bun install --frozen-lockfile
 
 FROM deps AS builder
