@@ -159,7 +159,12 @@
         "configDir": "apps/public/.storybook",
         "tsConfig": "apps/public/.storybook/tsconfig.json",
         "browserTarget": "public:build-storybook",
-        "compodoc": false
+        "compodoc": false,
+        "styles": [
+          "@fontsource/material-symbols-outlined",
+          "@fontsource-variable/inter",
+          "apps/public/src/styles.scss"
+        ]
       },
       "configurations": {
         "ci": {

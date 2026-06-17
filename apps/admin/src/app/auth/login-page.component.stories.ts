@@ -35,27 +35,12 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const SignedOut: Story = {
   args: {},
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const Mobile: Story = {
-  args: {},
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const PermissionContext: Story = {
   args: {},
-  parameters: {
-    viewport: { defaultViewport: 'tablet' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

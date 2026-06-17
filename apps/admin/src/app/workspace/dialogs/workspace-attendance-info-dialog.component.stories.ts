@@ -106,7 +106,4 @@ export const WithoutLocation: Story = {
     createdByMethod: 'MANUAL_INPUT',
     collectedAccuracyMeters: 0,
   },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-};
+  };

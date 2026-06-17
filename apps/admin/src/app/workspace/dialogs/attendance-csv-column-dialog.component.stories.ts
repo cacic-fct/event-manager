@@ -35,27 +35,12 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const DefaultDialog: Story = {
   args: {},
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const LongContent: Story = {
   args: {},
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileDialog: Story = {
-  args: {},
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

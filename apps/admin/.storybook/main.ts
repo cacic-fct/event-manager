@@ -14,11 +14,11 @@ const config: StorybookConfig = {
     name: '@storybook/angular',
     options: {},
   },
-  webpackFinal: async (webpackConfig) => ({
+  webpackFinal: async (webpackConfig, { configType }) => ({
     ...webpackConfig,
     output: {
       ...webpackConfig.output,
-      publicPath: './',
+      publicPath: configType === 'PRODUCTION' ? '/event-manager/admin/' : './',
     },
   }),
 };

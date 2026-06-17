@@ -81,7 +81,4 @@ export const EmptySelection: Story = {
     title: 'Exportar lista filtrada',
     recordCount: 0,
   },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-};
+  };

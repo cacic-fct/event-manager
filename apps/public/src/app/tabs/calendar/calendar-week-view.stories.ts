@@ -127,29 +127,14 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const OnlineDesktop: Story = {
+export const Online: Story = {
   args: { weekDays, selectedDate, events: demoEvents, canGoPrevious: true, returnUrl: '/calendar' },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const OnlineMobile: Story = {
-  args: { weekDays, selectedDate, events: demoEvents, canGoPrevious: true, returnUrl: '/calendar' },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const OfflineFallback: Story = {
   args: { weekDays, selectedDate, events: [], canGoPrevious: true, returnUrl: '/calendar' },
-  parameters: {
-    viewport: { defaultViewport: 'tablet' },
-  },
   globals: { theme: 'light', network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

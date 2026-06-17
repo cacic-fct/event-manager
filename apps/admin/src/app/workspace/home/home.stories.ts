@@ -173,9 +173,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -192,26 +189,6 @@ export const EmptyDashboard: Story = {
     duplicatePeopleCount: 0,
     inconsistencies: 0,
   },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const DenseDesktop: Story = {
-  args: {
-    todayEvents: 5,
-    upcomingEvents: 8,
-    weatherAlerts: 3,
-    pendingCertificates: 5,
-    pendingReceiptValidationsCount: 12,
-    duplicatePeopleCount: 9,
-    inconsistencies: 7,
-  },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -220,9 +197,6 @@ export const Loading: Story = {
   args: {
     state: 'loading',
   },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light' },
 };
 
@@ -230,28 +204,11 @@ export const ErrorState: Story = {
   args: {
     state: 'error',
   },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Não foi possível carregar o painel')).toBeVisible();
   },
-};
-
-export const MobileLayout: Story = {
-  args: {
-    todayEvents: 2,
-    upcomingEvents: 2,
-    pendingCertificates: 1,
-    inconsistencies: 2,
-  },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsights {

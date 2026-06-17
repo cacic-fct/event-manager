@@ -87,9 +87,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const FilledFilters: Story = {
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -104,23 +101,17 @@ export const EmptyFilters: Story = {
     applyLabel: 'Aplicar',
     resetLabel: 'Redefinir',
   },
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const MobileFilters: Story = {
+export const Filters: Story = {
   args: {
     query: 'certificados',
     isInGroup: 'YES',
     isInMajorEvent: 'NO',
     applyLabel: 'Buscar',
     resetLabel: 'Limpar',
-  },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
   },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),

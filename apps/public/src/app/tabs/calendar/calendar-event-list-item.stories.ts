@@ -155,24 +155,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const OnlineDesktop: Story = {
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const OnlineMobile: Story = {
-  args: {
-    name: 'Palestra noturna com descrição longa para responsividade',
-    type: 'PALESTRA',
-    context: 'event-group',
-    returnUrl: '/calendar?view=week',
-  },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
+export const Online: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -182,9 +165,6 @@ export const OfflineFallback: Story = {
     context: 'short-description',
     slotsAvailable: 0,
     queueCount: 8,
-  },
-  parameters: {
-    viewport: { defaultViewport: 'tablet' },
   },
   globals: { theme: 'light', network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),

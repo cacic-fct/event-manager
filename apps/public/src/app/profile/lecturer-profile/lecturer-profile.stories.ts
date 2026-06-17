@@ -26,19 +26,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Ready: Story = {
   args: {},
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
-
-export const Mobile: Story = {
-  args: {},
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-  globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-

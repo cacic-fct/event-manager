@@ -48,32 +48,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const DataLoaded: Story = {
   args: {},
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const DenseDesktop: Story = {
-  args: {},
-  decorators: [
-    applicationConfig({
-      providers: createReceiptValidationStoryProviders(buildQueue(6)),
-    }),
-  ],
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileLayout: Story = {
-  args: {},
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -85,9 +59,6 @@ export const EmptyQueue: Story = {
       providers: createReceiptValidationStoryProviders({ pendingCount: 0, items: [] }),
     }),
   ],
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -102,9 +73,6 @@ export const FrozenQueue: Story = {
       providers: createReceiptValidationStoryProviders(buildQueue(1, true)),
     }),
   ],
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
