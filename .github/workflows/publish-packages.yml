@@ -103,13 +103,15 @@ jobs:
         uses: oven-sh/setup-bun@v2
         if: steps.changes.outputs.any_changed == 'true'
         with:
-          bun-version: 1.3.14
+          registries: |
+            https://registry.npmjs.org/
+            @cacic-fct:https://npm.pkg.github.com/|$NPM_CONFIG_TOKEN
 
       - name: Install dependencies
         if: steps.changes.outputs.any_changed == 'true'
         run: bun install --frozen-lockfile
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || github.token }}
+          NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Build Event Manager M2M contracts
@@ -120,18 +122,8 @@ jobs:
         if: steps.changes.outputs.event_manager_m2m_contracts == 'true'
         working-directory: dist/libs/event-manager-m2m-contracts
         shell: bash
-        env:
-          NPM_CONFIG_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-
-          PKG_NAME="$(
-            node -p "const pkg = require('./package.json'); pkg.name"
-          )"
-
-          PKG_VERSION="$(
-            node -p "const pkg = require('./package.json'); pkg.version"
-          )"
 
           node - <<'NODE'
           const fs = require('node:fs');
@@ -147,9 +139,6 @@ jobs:
           }
           NODE
 
-          if npm view "${PKG_NAME}@${PKG_VERSION}" version --registry https://npm.pkg.github.com >/dev/null 2>&1; then
-            echo "${PKG_NAME}@${PKG_VERSION} is already published. Skipping."
-            exit 0
-          fi
-
-          npm publish --registry https://npm.pkg.github.com
+          bun publish --registry https://npm.pkg.github.com --tolerate-republish
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
