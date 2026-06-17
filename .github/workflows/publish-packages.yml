@@ -56,8 +56,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 26
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@cacic-fct'
 
       - name: Detect changed packages
         id: changes
@@ -111,7 +109,7 @@ jobs:
         if: steps.changes.outputs.any_changed == 'true'
         run: bun install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || github.token }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Build Event Manager M2M contracts
@@ -123,7 +121,7 @@ jobs:
         working-directory: dist/libs/event-manager-m2m-contracts
         shell: bash
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 

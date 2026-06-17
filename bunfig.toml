@@ -1,2 +1,0 @@
-[install.scopes]
-"@cacic-fct" = { token = "$npm_token", url = "https://npm.pkg.github.com/" }
