@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { SubscriptionStatus } from '@prisma/client';
+import { createHmac } from 'node:crypto';
 import { NovuNotificationsService } from './novu-notifications.service';
 
 describe('NovuNotificationsService', () => {
@@ -19,8 +20,29 @@ describe('NovuNotificationsService', () => {
         if (key === 'NOVU_SECRET_KEY') {
           return 'secret';
         }
+        if (key === 'NOVU_SECURE_MODE_ENABLED') {
+          return 'true';
+        }
+        if (key === 'NOVU_APPLICATION_IDENTIFIER') {
+          return 'app-1';
+        }
         if (key === 'NOVU_API_URL') {
           return 'https://novu.example.com/';
+        }
+        if (key === 'NOVU_CLIENT_API_URL') {
+          return 'https://novu-browser.example.com/api/';
+        }
+        if (key === 'NOVU_CLIENT_SOCKET_URL') {
+          return 'https://novu-browser.example.com/';
+        }
+        if (key === 'NOVU_CLIENT_SOCKET_PATH') {
+          return '/socket.io';
+        }
+        if (key === 'NOVU_PUSH_INTEGRATION_IDENTIFIER') {
+          return 'firebase-cloud-messaging';
+        }
+        if (key === 'NOVU_VAPID_PUBLIC_KEY') {
+          return 'vapid-public-key';
         }
         return fallback;
       }),
@@ -52,16 +74,111 @@ describe('NovuNotificationsService', () => {
     });
   });
 
+  it('creates signed subscriber sessions for the browser SDK', () => {
+    const session = service.createSubscriberSession({
+      subscriberId: 'user-1',
+      email: 'ada@example.com',
+    });
+
+    expect(session).toEqual({
+      applicationIdentifier: 'app-1',
+      subscriberId: 'user-1',
+      subscriberHash: createHmac('sha256', 'secret').update('user-1').digest('hex'),
+      apiUrl: 'https://novu-browser.example.com/api',
+      socketUrl: 'https://novu-browser.example.com',
+      socketPath: '/socket.io',
+      pushIntegrationIdentifier: 'firebase-cloud-messaging',
+      vapidPublicKey: 'vapid-public-key',
+    });
+  });
+
+  it('does not create subscriber sessions when Novu secure signing is unavailable', () => {
+    config.get.mockImplementation((key: string, fallback?: string) => (key === 'NOVU_SECRET_KEY' ? undefined : fallback));
+
+    expect(service.createSubscriberSession({ subscriberId: 'user-1' })).toBeNull();
+
+    config.get.mockImplementation((key: string, fallback?: string) => {
+      if (key === 'NOVU_SECURE_MODE_ENABLED') {
+        return 'true';
+      }
+      if (key === 'NOVU_SECRET_KEY') {
+        return 'secret';
+      }
+      return fallback;
+    });
+
+    expect(service.createSubscriberSession({ subscriberId: 'user-1' })).toBeNull();
+
+    config.get.mockImplementation((key: string, fallback?: string) => {
+      if (key === 'NOVU_SECRET_KEY') {
+        return 'secret';
+      }
+      if (key === 'NOVU_APPLICATION_IDENTIFIER') {
+        return 'app-1';
+      }
+      return fallback;
+    });
+
+    expect(service.createSubscriberSession({ subscriberId: 'user-1' })).toBeNull();
+  });
+
+  it('maps authenticated users to fallback notification recipients', () => {
+    expect(
+      service.mapAuthenticatedUserToRecipient({
+        sub: 'user-1',
+        preferredUsername: 'ada',
+        email: 'ada@example.com',
+        claims: {
+          given_name: 'Ada',
+          family_name: 'Lovelace',
+        },
+      } as never),
+    ).toEqual({
+      subscriberId: 'user-1',
+      email: 'ada@example.com',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      data: {
+        preferredUsername: 'ada',
+      },
+    });
+  });
+
   it('does not notify when Novu is disabled or the status is unchanged', async () => {
     config.get.mockImplementation((key: string, fallback?: string) => (key === 'NOVU_SECRET_KEY' ? undefined : fallback));
     await service.notifyMajorEventSubscriptionStatusChanged(notificationFixture());
 
-    config.get.mockImplementation((key: string, fallback?: string) =>
-      key === 'NOVU_SECRET_KEY' ? 'secret' : key === 'NOVU_API_URL' ? 'https://novu.example.com' : fallback,
-    );
+    config.get.mockImplementation((key: string, fallback?: string) => {
+      if (key === 'NOVU_SECRET_KEY') {
+        return 'secret';
+      }
+      if (key === 'NOVU_SECURE_MODE_ENABLED') {
+        return 'true';
+      }
+      if (key === 'NOVU_API_URL') {
+        return 'https://novu.example.com';
+      }
+      return fallback;
+    });
     await service.notifyMajorEventSubscriptionStatusChanged(
       notificationFixture({ previousStatus: SubscriptionStatus.CONFIRMED, nextStatus: SubscriptionStatus.CONFIRMED }),
     );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not notify unless Novu secure mode is explicitly enabled', async () => {
+    config.get.mockImplementation((key: string, fallback?: string) => {
+      if (key === 'NOVU_SECRET_KEY') {
+        return 'secret';
+      }
+      if (key === 'NOVU_API_URL') {
+        return 'https://novu.example.com';
+      }
+      return fallback;
+    });
+
+    await service.notifyMajorEventSubscriptionStatusChanged(notificationFixture());
 
     expect(fetchMock).not.toHaveBeenCalled();
   });

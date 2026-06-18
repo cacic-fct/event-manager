@@ -1,7 +1,11 @@
 import { BadRequestException, ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
+import sharp from 'sharp';
 import { Readable } from 'stream';
+import { RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';
 import { ReceiptUploadService } from './receipt-upload.service';
+
+let validPngBuffer: Buffer;
 
 describe('ReceiptUploadService', () => {
   const user = { sub: 'user-1', token: 'token', permissionSet: new Set<string>() } as never;
@@ -36,6 +40,19 @@ describe('ReceiptUploadService', () => {
     add: jest.fn(),
   };
   let service: ReceiptUploadService;
+
+  beforeAll(async () => {
+    validPngBuffer = await sharp({
+      create: {
+        width: 1,
+        height: 1,
+        channels: 3,
+        background: '#ffffff',
+      },
+    })
+      .png()
+      .toBuffer();
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -118,7 +135,13 @@ describe('ReceiptUploadService', () => {
       }),
       expect.any(Date),
     );
-    expect(receiptQueue.add).toHaveBeenCalledWith('process', { receiptId: 'receipt-1' }, expect.any(Object));
+    expect(receiptQueue.add).toHaveBeenCalledWith(
+      'process',
+      { receiptId: 'receipt-1' },
+      expect.objectContaining({
+        attempts: RECEIPT_PROCESSING_ATTEMPTS,
+      }),
+    );
     expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalled();
   });
 
@@ -179,10 +202,10 @@ function createFile() {
 
 function createValidFile() {
   return {
-    buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]),
+    buffer: validPngBuffer,
     mimetype: 'image/png',
     originalname: 'receipt.png',
-    size: 123,
+    size: validPngBuffer.length,
   };
 }
 

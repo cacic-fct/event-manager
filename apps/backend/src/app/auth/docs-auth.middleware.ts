@@ -34,16 +34,22 @@ export function createDocsAuthGate({ keycloakAuthService, production }: DocsAuth
 }
 
 function shouldGateRequest(request: Request): boolean {
-  if (request.path === '/api/graphql') {
+  const path = stripTrailingSlashes(request.path);
+
+  if (path === '/api/graphql') {
     return request.method === 'GET' && request.accepts('html') === 'html';
   }
 
   return (
-    request.path === '/api/docs' ||
-    request.path.startsWith('/api/docs/') ||
-    request.path === '/api/docs-json' ||
-    request.path === '/api/docs-yaml'
+    path === '/api/docs' ||
+    path.startsWith('/api/docs/') ||
+    path === '/api/docs-json' ||
+    path === '/api/docs-yaml'
   );
+}
+
+function stripTrailingSlashes(path: string): string {
+  return path.length > 1 ? path.replace(/\/+$/, '') : path;
 }
 
 function redirectToLogin(request: Request, response: Response): void {

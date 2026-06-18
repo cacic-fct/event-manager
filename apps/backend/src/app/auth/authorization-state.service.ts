@@ -11,6 +11,7 @@ export type AuthorizationState = {
 
 @Injectable()
 export class AuthorizationStateService {
+  private static readonly relativeReturnToBaseUrl = new URL('https://event-manager.invalid');
   private readonly logger = new Logger(AuthorizationStateService.name);
   private readonly keyPrefix = process.env.KEYCLOAK_AUTH_STATE_REDIS_PREFIX ?? 'auth:oauth-state:';
   private readonly stateTtlSeconds = this.parseDurationSeconds(process.env.KEYCLOAK_AUTH_STATE_TTL_SECONDS, 10 * 60);
@@ -105,12 +106,8 @@ return value
       return undefined;
     }
 
-    if (normalizedReturnTo.startsWith('//')) {
-      return undefined;
-    }
-
     if (normalizedReturnTo.startsWith('/')) {
-      return this.isAllowedAppPath(normalizedReturnTo) ? normalizedReturnTo : undefined;
+      return this.normalizeRelativePostLoginReturnTo(normalizedReturnTo);
     }
 
     try {
@@ -121,6 +118,25 @@ return value
     } catch {
       return undefined;
     }
+  }
+
+  private normalizeRelativePostLoginReturnTo(returnTo: string): string | undefined {
+    let returnToUrl: URL;
+    try {
+      returnToUrl = new URL(returnTo, AuthorizationStateService.relativeReturnToBaseUrl);
+    } catch {
+      return undefined;
+    }
+
+    if (returnToUrl.origin !== AuthorizationStateService.relativeReturnToBaseUrl.origin) {
+      return undefined;
+    }
+
+    return this.isAllowedAppPath(returnToUrl.pathname) ? this.toRelativeRedirectUri(returnToUrl) : undefined;
+  }
+
+  private toRelativeRedirectUri(url: URL): string {
+    return `${url.pathname}${url.search}${url.hash}`;
   }
 
   private isAllowedAppPath(pathname: string): boolean {

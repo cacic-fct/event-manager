@@ -83,6 +83,36 @@ describe('AuthorizationStateService', () => {
     expect(JSON.parse(redis.set.mock.calls[5][1])).toEqual({});
   });
 
+  it('canonicalizes safe relative return paths before storing or reading them', async () => {
+    const service = new AuthorizationStateService(redis as never);
+
+    await service.create({
+      returnTo: '/admin\\events?tab=pending#details',
+    });
+
+    expect(JSON.parse(redis.set.mock.calls[0][1])).toEqual({
+      returnTo: '/admin/events?tab=pending#details',
+    });
+    expect(service.getPostLoginRedirectUri({ returnTo: '/admin\\events?tab=pending#details' })).toBe(
+      '/admin/events?tab=pending#details',
+    );
+  });
+
+  it('rejects relative paths that canonicalize to external origins or auth endpoints', async () => {
+    const service = new AuthorizationStateService(redis as never);
+
+    await service.create({ returnTo: '/\\attacker.example' });
+    await service.create({ returnTo: '/\\\\attacker.example/path' });
+    await service.create({ returnTo: '/api\\auth/callback' });
+
+    expect(JSON.parse(redis.set.mock.calls[0][1])).toEqual({});
+    expect(JSON.parse(redis.set.mock.calls[1][1])).toEqual({});
+    expect(JSON.parse(redis.set.mock.calls[2][1])).toEqual({});
+    expect(service.getPostLoginRedirectUri({ returnTo: '/\\attacker.example' })).toBe(
+      'https://events.example.com/app',
+    );
+  });
+
   it('rejects protocol-relative, malformed, expired, and unreadable states', async () => {
     const service = new AuthorizationStateService(redis as never);
 

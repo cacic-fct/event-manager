@@ -35,6 +35,9 @@ describe('KeycloakAuthService', () => {
     process.env.KEYCLOAK_REDIRECT_URI = 'https://app.example/api/auth/callback';
     process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI = 'https://app.example/logout';
     process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS = '5000';
+    delete process.env.KEYCLOAK_M2M_AUDIENCE;
+    delete process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS;
+    delete process.env.KEYCLOAK_M2M_REQUIRE_SERVICE_ACCOUNT;
     sessions = createSessionStoreMock();
     authorizationState = {
       create: jest.fn().mockResolvedValue('opaque-state'),
@@ -348,6 +351,11 @@ describe('KeycloakAuthService', () => {
       claims: {
         aud: ['event-manager'],
         azp: 'worker-client',
+        resource_access: {
+          'event-manager': {
+            roles: ['sync'],
+          },
+        },
       },
     });
 
@@ -380,6 +388,55 @@ describe('KeycloakAuthService', () => {
     expect(() => service.assertMachineToMachinePrincipal(principal, { requiredRoles: ['missing'] })).toThrow(
       ForbiddenException,
     );
+  });
+
+  it('rejects machine-to-machine tokens when audience or allowed clients are not configured', () => {
+    const principal = principalFixture({
+      preferredUsername: 'service-account-worker-client',
+      roles: ['sync'],
+      claims: {
+        aud: ['event-manager'],
+        azp: 'worker-client',
+        resource_access: {
+          'event-manager': {
+            roles: ['sync'],
+          },
+        },
+      },
+    });
+
+    expect(() => service.assertMachineToMachinePrincipal(principal, { requiredRoles: ['sync'] })).toThrow(
+      ForbiddenException,
+    );
+
+    process.env.KEYCLOAK_M2M_AUDIENCE = 'event-manager';
+
+    expect(() => service.assertMachineToMachinePrincipal(principal, { requiredRoles: ['sync'] })).toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('rejects machine-to-machine role name collisions from unrelated resource clients', () => {
+    process.env.KEYCLOAK_M2M_AUDIENCE = 'event-manager';
+    process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS = 'worker-client';
+
+    const principal = principalFixture({
+      preferredUsername: 'service-account-worker-client',
+      roles: ['account-merge:write'],
+      claims: {
+        aud: ['event-manager'],
+        azp: 'worker-client',
+        resource_access: {
+          unrelatedClient: {
+            roles: ['account-merge:write'],
+          },
+        },
+      },
+    });
+
+    expect(() =>
+      service.assertMachineToMachinePrincipal(principal, { requiredRoles: ['account-merge:write'] }),
+    ).toThrow(ForbiddenException);
   });
 
   it('delegates post-login redirect lookup to the authorization state service', () => {

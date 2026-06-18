@@ -13,11 +13,19 @@ import {
   extractRealmRoles,
   extractRoles,
   extractOidcScopes,
+  isRecord,
   readNumberClaim,
   readStringClaim,
 } from './keycloak-claims.utils';
 import { AuthSession, CachedUser, TokenClaims, TokenResponse } from './keycloak-auth.types';
 import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
+
+type MachineToMachinePrincipalOptions = {
+  requiredRoles?: string[];
+  audience?: string;
+  allowedClients?: string[];
+  resourceClientId?: string;
+};
 
 @Injectable()
 export class KeycloakAuthService {
@@ -346,7 +354,7 @@ export class KeycloakAuthService {
 
   assertMachineToMachinePrincipal(
     principal: AuthenticatedUser | undefined,
-    options: { requiredRoles?: string[] } = {},
+    options: MachineToMachinePrincipalOptions = {},
   ): AuthenticatedUser {
     if (!principal) {
       throw new UnauthorizedException('Missing authenticated M2M principal.');
@@ -357,19 +365,22 @@ export class KeycloakAuthService {
       throw new ForbiddenException('A Keycloak service-account token is required.');
     }
 
-    const audience = process.env.KEYCLOAK_M2M_AUDIENCE?.trim();
-    if (audience && !this.hasAudience(principal.claims['aud'], audience)) {
+    const audience = this.readRequiredM2mAudience(options.audience);
+    if (!this.hasAudience(principal.claims['aud'], audience)) {
       throw new ForbiddenException(`Token audience must include ${audience}.`);
     }
 
-    const allowedClients = this.readAllowedM2mClients();
+    const allowedClients = this.readRequiredAllowedM2mClients(options.allowedClients);
     const clientId = this.readClientId(principal);
-    if (allowedClients.size > 0 && (!clientId || !allowedClients.has(clientId))) {
+    if (!clientId || !allowedClients.has(clientId)) {
       throw new ForbiddenException('M2M client is not allowed.');
     }
 
     const requiredRoles = options.requiredRoles ?? [];
-    const missingRoles = requiredRoles.filter((role) => !principal.roleSet.has(role));
+    const resourceClientId = options.resourceClientId?.trim() || audience;
+    const missingRoles = requiredRoles.filter(
+      (role) => !this.hasResourceClientRole(principal, resourceClientId, role),
+    );
     if (missingRoles.length > 0) {
       throw new ForbiddenException(`Missing required M2M roles: ${missingRoles.join(', ')}.`);
     }
@@ -675,13 +686,47 @@ export class KeycloakAuthService {
     return parsedTtl;
   }
 
-  private readAllowedM2mClients(): Set<string> {
-    return new Set(
+  private readRequiredM2mAudience(configuredAudience?: string): string {
+    const audience = (configuredAudience ?? process.env.KEYCLOAK_M2M_AUDIENCE ?? '').trim();
+    if (!audience) {
+      throw new ForbiddenException('M2M audience is not configured.');
+    }
+
+    return audience;
+  }
+
+  private readRequiredAllowedM2mClients(configuredClients?: string[]): Set<string> {
+    const clients =
+      configuredClients ??
       (process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS ?? '')
         .split(',')
-        .map((client) => client.trim())
-        .filter((client) => client.length > 0),
-    );
+        .map((client) => client.trim());
+    const allowedClients = new Set(clients.map((client) => client.trim()).filter((client) => client.length > 0));
+
+    if (allowedClients.size === 0) {
+      throw new ForbiddenException('M2M allowed clients are not configured.');
+    }
+
+    return allowedClients;
+  }
+
+  private hasResourceClientRole(principal: AuthenticatedUser, resourceClientId: string, role: string): boolean {
+    const resourceAccess = principal.claims['resource_access'];
+    if (!isRecord(resourceAccess)) {
+      return false;
+    }
+
+    const clientAccess = resourceAccess[resourceClientId];
+    if (!isRecord(clientAccess)) {
+      return false;
+    }
+
+    const clientRoles = clientAccess['roles'];
+    if (!Array.isArray(clientRoles)) {
+      return false;
+    }
+
+    return clientRoles.some((clientRole) => typeof clientRole === 'string' && clientRole.trim() === role);
   }
 
   private isPermissionRequirement(value: string): boolean {

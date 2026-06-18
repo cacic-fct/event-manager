@@ -2,7 +2,9 @@ import { ExecutionContext, Injectable } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
-type RequestLike = Record<string, any>;
+type RequestLike = Record<string, unknown> & {
+  res?: RequestLike;
+};
 
 type GraphqlContext = {
   req?: RequestLike;
