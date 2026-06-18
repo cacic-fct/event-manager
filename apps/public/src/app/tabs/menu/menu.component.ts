@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, isDevMode, PLATFORM_ID, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, isDevMode, PLATFORM_ID, signal } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -38,6 +38,7 @@ export class MenuComponent {
   public isDevMode = isDevMode();
 
   private platformId = inject(PLATFORM_ID);
+  private readonly destroyRef = inject(DestroyRef);
   private isDarkSignal = signal(false);
   fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
 
@@ -88,9 +89,14 @@ export class MenuComponent {
 
       this.isDarkSignal.set(media.matches);
 
-      media.addEventListener('change', (e) => {
-        this.isDarkSignal.set(e.matches);
-        console.log('Dark mode changed:', e.matches);
+      const listener = (event: MediaQueryListEvent) => {
+        this.isDarkSignal.set(event.matches);
+      };
+
+      media.addEventListener('change', listener);
+
+      this.destroyRef.onDestroy(() => {
+        media.removeEventListener('change', listener);
       });
     }
   }

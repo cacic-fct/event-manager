@@ -43,11 +43,21 @@ RUN find . -type f \
     -exec sed -i "s/APP_VERSION_PLACEHOLDER/${APP_VERSION}/g" {} +
 RUN bun x nx build public --configuration=production
 
+FROM base AS production-deps
+COPY package.json bun.lock ./
+COPY .npmrc ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    --mount=type=secret,id=NPM_CONFIG_TOKEN,required=true \
+    set -eu; \
+    export NPM_CONFIG_TOKEN="$(cat /run/secrets/NPM_CONFIG_TOKEN)"; \
+    bun install --frozen-lockfile --production
+
 FROM node:26-alpine AS runtime
 ENV NODE_ENV=production \
   PORT=4000
 WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
+COPY --from=production-deps --chown=app:app /workspace/node_modules ./node_modules
 COPY --from=builder --chown=app:app /workspace/dist/apps/public ./
 COPY --from=builder --chown=app:app /workspace/dist/apps/public/3rdpartylicenses.txt ./browser/3rdpartylicenses.txt
 

@@ -26,11 +26,16 @@ import { mapReceipt } from '../mappers/receipt-queue.mapper';
 import {
   CurrentUserReceiptResponse,
   MAJOR_EVENT_RECEIPTS_QUEUE,
+  RECEIPT_PROCESSING_ATTEMPTS,
   RECEIPT_ADMIN_PERMISSION,
   ReceiptProcessingJob,
   UploadedReceiptFile,
 } from '../receipt.types';
 import { assertValidReceiptUpload, buildReceiptObjectKey } from '../utils/receipt-file.utils';
+import {
+  assertReceiptBufferWithinProcessingLimits,
+  isReceiptImageProcessingError,
+} from '../utils/receipt-image-processing.utils';
 
 const RECEIPT_UPLOAD_INTERVAL_MS = 60_000;
 
@@ -71,6 +76,7 @@ export class ReceiptUploadService {
     authenticatedUser: AuthenticatedUser,
   ): Promise<CurrentUserReceiptResponse> {
     assertValidReceiptUpload(file);
+    await this.assertReceiptImageCanBeProcessed(file.buffer);
     await this.frozenResources.assertMajorEventMutable(majorEventId, authenticatedUser, 'edit');
 
     const person = await this.currentUserContext.requireCurrentPerson(this.buildUserContext(authenticatedUser));
@@ -178,7 +184,7 @@ export class ReceiptUploadService {
       { receiptId: receipt.id },
       {
         jobId: receipt.id,
-        attempts: 5,
+        attempts: RECEIPT_PROCESSING_ATTEMPTS,
         backoff: {
           type: 'exponential',
           delay: 30_000,
@@ -248,6 +254,18 @@ export class ReceiptUploadService {
 
     if (latestReceipt && latestReceipt.uploadedAt.getTime() > Date.now() - RECEIPT_UPLOAD_INTERVAL_MS) {
       throw new HttpException('Wait a moment before sending another receipt.', HttpStatus.TOO_MANY_REQUESTS);
+    }
+  }
+
+  private async assertReceiptImageCanBeProcessed(buffer: Buffer): Promise<void> {
+    try {
+      await assertReceiptBufferWithinProcessingLimits(buffer);
+    } catch (error: unknown) {
+      if (isReceiptImageProcessingError(error)) {
+        throw new BadRequestException(error.message);
+      }
+
+      throw error;
     }
   }
 

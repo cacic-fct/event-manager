@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
 import { Prisma, SubscriptionStatus } from '@prisma/client';
+import { createHmac } from 'node:crypto';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 
 type NotificationRecipient = {
   subscriberId: string;
@@ -38,7 +41,74 @@ export class NovuNotificationsService {
 
   constructor(private readonly config: ConfigService) {}
 
+  createSubscriberSession(recipient: NotificationRecipient): NovuSubscriberSession | null {
+    if (!this.isSecureModeEnabled()) {
+      return null;
+    }
+
+    const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
+    const applicationIdentifier = this.getOptionalConfig('NOVU_APPLICATION_IDENTIFIER');
+
+    if (!secretKey || !applicationIdentifier) {
+      return null;
+    }
+
+    const session: NovuSubscriberSession = {
+      applicationIdentifier,
+      subscriberId: recipient.subscriberId,
+      subscriberHash: this.signSubscriberId(recipient.subscriberId, secretKey),
+    };
+
+    const apiUrl = this.getOptionalConfig('NOVU_CLIENT_API_URL') ?? this.getOptionalConfig('NOVU_API_URL');
+    if (apiUrl) {
+      session.apiUrl = apiUrl.replace(/\/$/, '');
+    }
+
+    const socketUrl = this.getOptionalConfig('NOVU_CLIENT_SOCKET_URL');
+    if (socketUrl) {
+      session.socketUrl = socketUrl.replace(/\/$/, '');
+    }
+
+    const socketPath = this.getOptionalConfig('NOVU_CLIENT_SOCKET_PATH');
+    if (socketPath) {
+      session.socketPath = socketPath;
+    }
+
+    const pushIntegrationIdentifier = this.getOptionalConfig('NOVU_PUSH_INTEGRATION_IDENTIFIER');
+    if (pushIntegrationIdentifier) {
+      session.pushIntegrationIdentifier = pushIntegrationIdentifier;
+    }
+
+    const vapidPublicKey = this.getOptionalConfig('NOVU_VAPID_PUBLIC_KEY');
+    if (vapidPublicKey) {
+      session.vapidPublicKey = vapidPublicKey;
+    }
+
+    return session;
+  }
+
+  mapAuthenticatedUserToRecipient(user: AuthenticatedUser): NotificationRecipient {
+    const subscriberId = user.sub ?? user.email ?? user.preferredUsername;
+    if (!subscriberId) {
+      throw new Error('Authenticated user does not have a stable subscriber identifier.');
+    }
+
+    return {
+      subscriberId,
+      email: user.email,
+      firstName: typeof user.claims.given_name === 'string' ? user.claims.given_name : undefined,
+      lastName: typeof user.claims.family_name === 'string' ? user.claims.family_name : undefined,
+      data: {
+        preferredUsername: user.preferredUsername,
+      },
+    };
+  }
+
   async notifyMajorEventSubscriptionStatusChanged(input: SubscriptionStatusNotification): Promise<void> {
+    if (!this.isSecureModeEnabled()) {
+      return;
+    }
+
     const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
 
     if (!secretKey) {
@@ -157,6 +227,19 @@ export class NovuNotificationsService {
 
   private apiUrl(): string {
     return this.config.get<string>('NOVU_API_URL', 'https://api.novu.co').replace(/\/$/, '');
+  }
+
+  private getOptionalConfig(key: string): string | undefined {
+    const value = this.config.get<string>(key)?.trim();
+    return value || undefined;
+  }
+
+  private isSecureModeEnabled(): boolean {
+    return this.config.get<string>('NOVU_SECURE_MODE_ENABLED')?.trim().toLowerCase() === 'true';
+  }
+
+  private signSubscriberId(subscriberId: string, secretKey: string): string {
+    return createHmac('sha256', secretKey).update(subscriberId).digest('hex');
   }
 
   private statusLabel(status: SubscriptionStatus): string {

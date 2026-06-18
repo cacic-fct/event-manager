@@ -399,19 +399,8 @@ async function exerciseStory(canvasElement: HTMLElement): Promise<void> {
   await expect(await canvas.findByText('Arquivadas')).toBeVisible();
 }
 
-export const Desktop: Story = {
+export const Default: Story = {
   args: defaultArgs,
-  parameters: {
-    viewport: { defaultViewport: 'desktop' },
-  },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const Mobile: Story = {
-  args: defaultArgs,
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
