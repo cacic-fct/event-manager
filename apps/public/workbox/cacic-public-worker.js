@@ -55,6 +55,10 @@ const isAuthPath = (url) =>
 const isGraphqlPath = (url) => url.pathname === '/api/graphql';
 const isCertificateDownload = (url) =>
   url.pathname.toLowerCase().includes('certificate') || url.pathname.toLowerCase().endsWith('.pdf');
+const hasPrivateCacheControl = (response) => {
+  const cacheControl = response.headers.get('Cache-Control')?.toLowerCase() ?? '';
+  return cacheControl.includes('no-store') || cacheControl.includes('private');
+};
 
 const networkOnly = new workbox.strategies.NetworkOnly();
 const cacheableHtmlPlugin = {
@@ -63,13 +67,21 @@ const cacheableHtmlPlugin = {
       return null;
     }
 
-    const cacheControl = response.headers.get('Cache-Control')?.toLowerCase() ?? '';
-    if (cacheControl.includes('no-store') || cacheControl.includes('private')) {
+    if (hasPrivateCacheControl(response)) {
       return null;
     }
 
     const contentType = response.headers.get('Content-Type')?.toLowerCase() ?? '';
     return contentType.includes('text/html') ? response : null;
+  },
+};
+const cacheableStaticMediaPlugin = {
+  cacheWillUpdate: async ({ response }) => {
+    if (![0, 200].includes(response.status) || hasPrivateCacheControl(response)) {
+      return null;
+    }
+
+    return response;
   },
 };
 const ssrNavigationStrategy = new workbox.strategies.NetworkFirst({
@@ -131,13 +143,11 @@ workbox.routing.registerRoute(
 
 workbox.routing.registerRoute(
   ({ request, url }) =>
-    sameOrigin(url) && (request.destination === 'image' || request.destination === 'font'),
+    sameOrigin(url) && !isApiPath(url) && (request.destination === 'image' || request.destination === 'font'),
   new workbox.strategies.CacheFirst({
     cacheName: 'static-media',
     plugins: [
-      new workbox.cacheableResponse.CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
+      cacheableStaticMediaPlugin,
       new workbox.expiration.ExpirationPlugin({
         maxEntries: 120,
         maxAgeSeconds: 60 * 60 * 24 * 30,

@@ -1,4 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import type {
   ChannelPreference,
@@ -8,23 +9,19 @@ import type {
   Novu,
   NovuOptions,
   Preference,
-  Subscriber,
   TopicSubscription,
 } from '@novu/js';
 import { AuthenticatedUser, AuthService } from '@cacic-fct/shared-angular';
-import { novuClientEnvironment } from '@cacic-fct/shared-environment';
-
-export type NovuPublicConfig = {
-  applicationIdentifier: string | null;
-  pushIntegrationIdentifier?: string | null;
-  vapidPublicKey?: string | null;
-};
+import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
+import { firstValueFrom, retry, throwError, timer } from 'rxjs';
 
 export type NotificationPermissionState = 'unsupported' | 'default' | 'granted' | 'denied';
 
 const PUSH_PERMISSION_DISMISSED_KEY = 'cacic-eventos:novu-push-permission-dismissed';
 const ACTIVE_SUBSCRIBER_CACHE = 'cacic-eventos:notification-session';
 const ACTIVE_SUBSCRIBER_REQUEST = '/__cacic_notification_active_subscriber__';
+const NOVU_SESSION_RETRY_ATTEMPTS = 2;
+const NOVU_SESSION_RETRY_DELAY_MS = 2_000;
 
 export type NovuListNotificationsArgs = {
   tags?: string[];
@@ -49,12 +46,19 @@ type NovuFilterCountResponse = {
 export class NovuNotificationsService {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
 
-  private readonly config = signal<NovuPublicConfig | null>(novuClientEnvironment);
+  private readonly session = signal<NovuSubscriberSession | null>(null);
+  private readonly readyRequests = signal(0);
   private readonly novuClient = signal<Novu | null>(null);
   private realtimeCleanup: (() => void) | null = null;
   private activeSubscriberId: string | null = null;
+  private activeUserKey: string | null = null;
+  private sessionRequest: Promise<NovuSubscriberSession | null> | null = null;
+  private sessionRequestUserKey: string | null = null;
+  private connectionRequest: Promise<void> | null = null;
+  private connectionUserKey: string | null = null;
 
   readonly loadingConfig = signal(false);
   readonly unreadCount = signal(0);
@@ -62,28 +66,34 @@ export class NovuNotificationsService {
   readonly pushPermissionDismissed = signal(this.readPushPermissionDismissed());
   readonly lastError = signal<string | null>(null);
 
-  readonly isConfigured = computed(() => Boolean(this.config()?.applicationIdentifier));
+  readonly isConfigured = computed(() => Boolean(this.session()?.applicationIdentifier));
   readonly client = computed(() => this.novuClient());
 
   constructor() {
     effect(() => {
+      const readyRequests = this.readyRequests();
       const user = this.auth.user();
-      const applicationIdentifier = this.config()?.applicationIdentifier;
+      const nextUserKey = user ? this.resolveLocalUserKey(user) : null;
 
-      const nextSubscriberId = user ? this.resolveSubscriberId(user) : null;
-      if (this.activeSubscriberId && this.activeSubscriberId !== nextSubscriberId) {
+      if (this.activeUserKey === nextUserKey && this.novuClient()) {
+        return;
+      }
+
+      if (this.activeSubscriberId && this.activeUserKey !== nextUserKey) {
         void this.unregisterWebPushEndpoint();
         void this.persistActiveSubscriberId(null);
       }
       this.disconnectRealtime();
+      this.novuClient.set(null);
+      this.session.set(null);
+      this.unreadCount.set(0);
 
-      if (!isPlatformBrowser(this.platformId) || !user || !applicationIdentifier) {
-        this.novuClient.set(null);
-        this.unreadCount.set(0);
+      if (!readyRequests || !isPlatformBrowser(this.platformId) || !user || !nextUserKey) {
+        this.activeUserKey = nextUserKey;
         return;
       }
 
-      void this.connectClient(user, applicationIdentifier);
+      void this.connectClientOnce(user, nextUserKey);
     });
 
     this.destroyRef.onDestroy(() => this.disconnectRealtime());
@@ -91,11 +101,12 @@ export class NovuNotificationsService {
 
   ensureReady(): void {
     if (!isPlatformBrowser(this.platformId)) {
-      this.config.set({ applicationIdentifier: null });
+      this.session.set(null);
+      this.novuClient.set(null);
       return;
     }
 
-    this.config.set(novuClientEnvironment);
+    this.readyRequests.update((value) => value + 1);
   }
 
   async listNotifications(args: NovuListNotificationsArgs = {}): Promise<NovuNotification[]> {
@@ -286,27 +297,32 @@ export class NovuNotificationsService {
     return client;
   }
 
-  private async connectClient(user: AuthenticatedUser, applicationIdentifier: string): Promise<void> {
-    const subscriber = this.buildSubscriber(user);
-    const { Novu } = await import('@novu/js');
-    const client = new Novu({
-      applicationIdentifier,
-      subscriber,
-      useCache: true,
-      apiUrl: 'https://notifications.cacic.dev.br/api',
-      socketUrl: 'https://notifications.cacic.dev.br',
-      socketOptions: {
-        path: '/socket.io',
-      },
-    } satisfies NovuOptions);
-
-    if (this.auth.user() !== user || this.config()?.applicationIdentifier !== applicationIdentifier) {
+  private async connectClient(user: AuthenticatedUser, userKey: string): Promise<void> {
+    const session = await this.fetchSubscriberSession(userKey);
+    if (!session) {
       return;
     }
 
+    const { Novu } = await import('@novu/js');
+    const client = new Novu({
+      applicationIdentifier: session.applicationIdentifier,
+      subscriberId: session.subscriberId,
+      subscriberHash: session.subscriberHash,
+      useCache: true,
+      ...(session.apiUrl ? { apiUrl: session.apiUrl } : {}),
+      ...(session.socketUrl ? { socketUrl: session.socketUrl } : {}),
+      ...(session.socketPath ? { socketOptions: { path: session.socketPath } } : {}),
+    } satisfies NovuOptions);
+
+    if (this.auth.user() !== user) {
+      return;
+    }
+
+    this.session.set(session);
     this.novuClient.set(client);
-    this.activeSubscriberId = subscriber.subscriberId;
-    await this.persistActiveSubscriberId(subscriber.subscriberId);
+    this.activeSubscriberId = session.subscriberId;
+    this.activeUserKey = userKey;
+    await this.persistActiveSubscriberId(session.subscriberId);
     await this.refreshUnreadCount();
     if (this.notificationPermission() === 'granted') {
       await this.registerWebPushEndpoint();
@@ -317,14 +333,28 @@ export class NovuNotificationsService {
     });
   }
 
+  private async connectClientOnce(user: AuthenticatedUser, userKey: string): Promise<void> {
+    if (this.connectionRequest && this.connectionUserKey === userKey) {
+      return this.connectionRequest;
+    }
+
+    this.connectionUserKey = userKey;
+    this.connectionRequest = this.connectClient(user, userKey).finally(() => {
+      if (this.connectionUserKey === userKey) {
+        this.connectionRequest = null;
+        this.connectionUserKey = null;
+      }
+    });
+
+    return this.connectionRequest;
+  }
+
   private async registerWebPushEndpoint(): Promise<void> {
-    const config = this.config();
-    const user = this.auth.user();
+    const session = this.session();
     const client = this.client();
     if (
-      !config?.pushIntegrationIdentifier ||
-      !config.vapidPublicKey ||
-      !user ||
+      !session?.pushIntegrationIdentifier ||
+      !session.vapidPublicKey ||
       !client ||
       !('serviceWorker' in navigator) ||
       !('PushManager' in window)
@@ -337,7 +367,7 @@ export class NovuNotificationsService {
       (await registration.pushManager.getSubscription()) ??
       (await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(config.vapidPublicKey),
+        applicationServerKey: this.urlBase64ToUint8Array(session.vapidPublicKey),
       }));
 
     const key = subscription.getKey('p256dh');
@@ -346,12 +376,11 @@ export class NovuNotificationsService {
       return;
     }
 
-    const subscriber = this.buildSubscriber(user);
     const endpointHash = btoa(subscription.endpoint).replace(/=+$/, '');
     const { error } = await client.channelEndpoints.create({
       identifier: `web-push:${endpointHash}`,
-      integrationIdentifier: config.pushIntegrationIdentifier,
-      subscriberId: subscriber.subscriberId,
+      integrationIdentifier: session.pushIntegrationIdentifier,
+      subscriberId: session.subscriberId,
       type: 'push',
       endpoint: {
         endpoint: subscription.endpoint,
@@ -423,6 +452,48 @@ export class NovuNotificationsService {
     return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
+  private async fetchSubscriberSession(userKey: string): Promise<NovuSubscriberSession | null> {
+    if (this.sessionRequest && this.sessionRequestUserKey === userKey) {
+      return this.sessionRequest;
+    }
+
+    this.loadingConfig.set(true);
+    this.lastError.set(null);
+    this.sessionRequestUserKey = userKey;
+    this.sessionRequest = firstValueFrom(
+      this.http.get<NovuSubscriberSession>('/api/notifications/novu-session').pipe(
+        retry({
+          count: NOVU_SESSION_RETRY_ATTEMPTS,
+          delay: (error: unknown, retryCount) =>
+            this.isTransientSessionFetchError(error)
+              ? timer(NOVU_SESSION_RETRY_DELAY_MS * retryCount)
+              : throwError(() => error),
+        }),
+      ),
+    ).catch(() => {
+      this.lastError.set('Não foi possível iniciar as notificações com segurança.');
+      return null;
+    });
+
+    try {
+      return await this.sessionRequest;
+    } finally {
+      if (this.sessionRequestUserKey === userKey) {
+        this.sessionRequest = null;
+        this.sessionRequestUserKey = null;
+      }
+      this.loadingConfig.set(false);
+    }
+  }
+
+  private isTransientSessionFetchError(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)) {
+      return true;
+    }
+
+    return error.status === 0 || error.status >= 500;
+  }
+
   private async runNotificationMutation(mutation: () => ReturnType<NovuNotification['read']>): Promise<void> {
     const { error } = await mutation();
     if (error) {
@@ -431,29 +502,13 @@ export class NovuNotificationsService {
     await this.refreshUnreadCount();
   }
 
-  private buildSubscriber(user: AuthenticatedUser): Subscriber {
-    const subscriberId = this.resolveSubscriberId(user);
-
-    return {
-      subscriberId,
-      email: user.email,
-      firstName: typeof user.claims?.given_name === 'string' ? user.claims.given_name : undefined,
-      lastName: typeof user.claims?.family_name === 'string' ? user.claims.family_name : undefined,
-      avatar: typeof user.claims?.picture === 'string' ? user.claims.picture : undefined,
-      data: {
-        personName: user.claims?.name,
-        preferredUsername: user.preferredUsername,
-      },
-    };
-  }
-
-  private resolveSubscriberId(user: AuthenticatedUser): string {
-    const subscriberId = user.sub ?? user.email ?? user.preferredUsername;
-    if (!subscriberId) {
+  private resolveLocalUserKey(user: AuthenticatedUser): string {
+    const userKey = user.sub ?? user.email ?? user.preferredUsername;
+    if (!userKey) {
       throw new Error('Authenticated user does not have a stable subscriber identifier.');
     }
 
-    return subscriberId;
+    return userKey;
   }
 
   private isFilterCountResponse(data: unknown): data is NovuFilterCountResponse {

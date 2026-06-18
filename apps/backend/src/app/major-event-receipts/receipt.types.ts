@@ -2,6 +2,13 @@ import { Buffer } from 'buffer';
 
 export const MAJOR_EVENT_RECEIPTS_QUEUE = 'major-event-receipts';
 export const MAX_RECEIPT_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+export const MAX_RECEIPT_DECODED_IMAGE_PIXELS = 12_000_000;
+export const MAX_RECEIPT_IMAGE_DIMENSION_PIXELS = 6_000;
+export const MAX_RECEIPT_OCR_IMAGE_DIMENSION_PIXELS = 2_400;
+export const RECEIPT_IMAGE_METADATA_TIMEOUT_SECONDS = 5;
+export const RECEIPT_IMAGE_CONVERSION_TIMEOUT_SECONDS = 15;
+export const RECEIPT_OCR_TIMEOUT_MS = 45_000;
+export const RECEIPT_PROCESSING_ATTEMPTS = 2;
 export const RECEIPT_ADMIN_PERMISSION = 'validate-receipt#read';
 export const RECEIPT_ADMIN_EDIT_PERMISSION = 'validate-receipt#edit';
 

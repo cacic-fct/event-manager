@@ -87,6 +87,7 @@ import { ReceiptSubscriptionSyncService } from './major-event-receipts/services/
 import { ReceiptUploadService } from './major-event-receipts/services/receipt-upload.service';
 import { ReceiptValidationService } from './major-event-receipts/services/receipt-validation.service';
 import { NovuNotificationsService } from './notifications/novu-notifications.service';
+import { NovuNotificationsController } from './notifications/novu-notifications.controller';
 import { AccountManagerPrivacySyncService } from './privacy/account-manager-privacy-sync.service';
 import { PrivacyController } from './privacy/privacy.controller';
 import { getRedisConnectionOptions } from './weather/redis-connection';
@@ -131,6 +132,12 @@ import { VotingIntegrationService } from './voting-integration/service';
           ttl: 60_000,
           blockDuration: 60_000,
         },
+        {
+          name: 'publicEvents',
+          limit: 60,
+          ttl: 60_000,
+          blockDuration: 60_000,
+        },
       ],
     }),
     GraphQLModule.forRootAsync<ApolloDriverConfig>({
@@ -168,6 +175,7 @@ import { VotingIntegrationService } from './voting-integration/service';
     AccountProfileUpdateController,
     EventAttendancesController,
     MajorEventReceiptsController,
+    NovuNotificationsController,
     PrivacyController,
     VotingIntegrationController,
   ],

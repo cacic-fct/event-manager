@@ -26,7 +26,7 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
   @Mutation(() => MajorEventSubscriptionCsvImportResult, {
     name: 'importMajorEventSubscriptionsFromCsv',
   })
-  @RequireScopes('event-attendance#edit')
+  @RequireScopes('subscription#edit')
   async importMajorEventSubscriptionsFromCsv(
     @Args('input', { type: () => MajorEventSubscriptionCsvImportInput })
     input: MajorEventSubscriptionCsvImportInput,

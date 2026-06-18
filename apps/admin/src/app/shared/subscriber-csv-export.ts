@@ -22,6 +22,8 @@ const SUBSCRIBER_FIELD_HEADERS: Record<SubscriberCsvField, string> = {
   phone: 'Telefone',
 };
 
+const CSV_FORMULA_PREFIX_PATTERN = /^[=+\-@\t\r\n]/;
+
 export const DEFAULT_SUBSCRIBER_CSV_EXPORT_OPTIONS: SubscriberCsvExportOptions = {
   fields: ['fullName', 'identityDocument'],
   identityDocumentMode: 'masked',
@@ -105,9 +107,10 @@ function onlyDigits(value: string): string {
 }
 
 function escapeCsvValue(value: string): string {
-  if (!/[;\r\n"]/.test(value)) {
-    return value;
+  const safeValue = CSV_FORMULA_PREFIX_PATTERN.test(value) ? `'${value}` : value;
+  if (!/[;\r\n"]/.test(safeValue)) {
+    return safeValue;
   }
 
-  return `"${value.replace(/"/g, '""')}"`;
+  return `"${safeValue.replace(/"/g, '""')}"`;
 }

@@ -1,10 +1,12 @@
-import { Args, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
-import { NotFoundException } from '@nestjs/common';
+import { Args, Context, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import { NotFoundException, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { startOfDay, subMonths } from 'date-fns';
 import { Prisma } from '@prisma/client';
 import { EventType } from '@cacic-fct/shared-data-types';
 import { Public } from '../auth/decorators/public.decorator';
 import { resolvePagination } from '../common/pagination';
+import { GqlThrottlerGuard } from '../common/gql-throttler.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
@@ -16,6 +18,157 @@ import {
   PublicEventSubscriptionSummary,
   mapPublicMajorEvent,
 } from './models';
+
+const PUBLIC_EVENTS_MAX_TAKE = 100;
+
+const PUBLIC_EVENT_LECTURER_PROFILE_SELECT = {
+  eventId: true,
+  person: {
+    select: {
+      lecturerProfile: {
+        select: {
+          id: true,
+          displayName: true,
+          biography: true,
+          publishGoogleUserPicture: true,
+          googleUserPicture: true,
+          email: true,
+          whatsapp: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.EventLecturerSelect;
+
+type PublicEventLecturerProfileRecord = Prisma.EventLecturerGetPayload<{
+  select: typeof PUBLIC_EVENT_LECTURER_PROFILE_SELECT;
+}>;
+
+type PublicLecturerProfileRecord = NonNullable<PublicEventLecturerProfileRecord['person']['lecturerProfile']>;
+
+type PendingPublicEventLecturerProfileLoad = {
+  resolve: (profiles: PublicLecturerProfile[]) => void;
+  reject: (error: unknown) => void;
+};
+
+type PublicEventsGraphqlContext = {
+  publicEventLecturerProfileLoader?: PublicEventLecturerProfileLoader;
+};
+
+class PublicEventLecturerProfileLoader {
+  private readonly cache = new Map<string, Promise<PublicLecturerProfile[]>>();
+  private readonly pendingLoads = new Map<string, PendingPublicEventLecturerProfileLoad>();
+  private scheduled = false;
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  load(eventId: string): Promise<PublicLecturerProfile[]> {
+    const cached = this.cache.get(eventId);
+    if (cached) {
+      return cached;
+    }
+
+    const pending = new Promise<PublicLecturerProfile[]>((resolve, reject) => {
+      this.pendingLoads.set(eventId, { resolve, reject });
+    });
+    this.cache.set(eventId, pending);
+    this.schedule();
+
+    return pending;
+  }
+
+  private schedule(): void {
+    if (this.scheduled) {
+      return;
+    }
+
+    this.scheduled = true;
+    void Promise.resolve().then(() => this.flush());
+  }
+
+  private async flush(): Promise<void> {
+    const eventIds = [...this.pendingLoads.keys()];
+    const pendingLoads = new Map(this.pendingLoads);
+    this.pendingLoads.clear();
+    this.scheduled = false;
+
+    if (eventIds.length === 0) {
+      return;
+    }
+
+    try {
+      const profilesByEventId = await this.loadMany(eventIds);
+      for (const eventId of eventIds) {
+        pendingLoads.get(eventId)?.resolve(profilesByEventId.get(eventId) ?? []);
+      }
+    } catch (error) {
+      for (const eventId of eventIds) {
+        this.cache.delete(eventId);
+        pendingLoads.get(eventId)?.reject(error);
+      }
+    }
+  }
+
+  private async loadMany(eventIds: string[]): Promise<Map<string, PublicLecturerProfile[]>> {
+    const lecturers = await this.prisma.eventLecturer.findMany({
+      where: {
+        eventId: {
+          in: eventIds,
+        },
+        person: {
+          deletedAt: null,
+          lecturerProfile: {
+            isNot: null,
+          },
+        },
+      },
+      select: PUBLIC_EVENT_LECTURER_PROFILE_SELECT,
+      orderBy: [
+        {
+          eventId: 'asc',
+        },
+        {
+          createdAt: 'asc',
+        },
+      ],
+    });
+    const profilesByEventId = new Map<string, PublicEventLecturerProfileRecord[]>();
+
+    for (const lecturer of lecturers) {
+      const profiles = profilesByEventId.get(lecturer.eventId) ?? [];
+      profiles.push(lecturer);
+      profilesByEventId.set(lecturer.eventId, profiles);
+    }
+
+    return new Map(
+      eventIds.map((eventId) => [eventId, mapPublicLecturerProfiles(profilesByEventId.get(eventId) ?? [])]),
+    );
+  }
+}
+
+function mapPublicLecturerProfiles(lecturers: PublicEventLecturerProfileRecord[]): PublicLecturerProfile[] {
+  return lecturers
+    .map((lecturer) => lecturer.person.lecturerProfile)
+    .filter((profile): profile is PublicLecturerProfileRecord => Boolean(profile))
+    .map((profile) => ({
+      id: profile.id,
+      displayName: profile.displayName,
+      biography: profile.biography,
+      publishGoogleUserPicture: profile.publishGoogleUserPicture,
+      googleUserPicture: profile.publishGoogleUserPicture ? profile.googleUserPicture : null,
+      email: profile.email,
+      whatsapp: profile.whatsapp,
+    }));
+}
+
+function resolvePublicEventsPagination(skip?: number, take?: number): { skip: number; take: number } {
+  const pagination = resolvePagination(skip, take);
+
+  return {
+    skip: pagination.skip,
+    take: Math.min(pagination.take, PUBLIC_EVENTS_MAX_TAKE),
+  };
+}
 
 @Public()
 @Resolver(() => PublicEvent)
@@ -30,7 +183,15 @@ export class PublicEventsResolver {
   @Query(() => [PublicEvent], {
     name: 'publicEvents',
     description:
-      'Lists public, non-deleted events for catalog and search surfaces. Supports optional date, major-event, event-group, text-search, and pagination filters; results are ordered by newest start date unless search relevance is available.',
+      'Lists public, non-deleted events for catalog and search surfaces. Supports optional date, major-event, event-group, text-search, and pagination filters; results are ordered by newest start date unless search relevance is available. Rate limited to 60 requests per minute.',
+  })
+  @UseGuards(GqlThrottlerGuard)
+  @Throttle({
+    publicEvents: {
+      limit: 60,
+      ttl: 60_000,
+      blockDuration: 60_000,
+    },
   })
   async publicEvents(
     @Args('query', {
@@ -65,11 +226,11 @@ export class PublicEventsResolver {
     @Args('take', {
       type: () => Int,
       nullable: true,
-      description: 'Maximum number of rows to return. Defaults to 50 and is capped at 1000.',
+      description: 'Maximum number of rows to return. Defaults to 50 and is capped at 100.',
     })
     take?: number,
   ) {
-    const pagination = resolvePagination(skip, take);
+    const pagination = resolvePublicEventsPagination(skip, take);
     const where: Prisma.EventWhereInput = {
       deletedAt: null,
       publiclyVisible: true,
@@ -340,51 +501,11 @@ export class PublicEventsResolver {
     name: 'lecturers',
     description: 'Public lecturer profiles associated with this event.',
   })
-  async lecturers(@Parent() event: PublicEvent): Promise<PublicLecturerProfile[]> {
-    const lecturers = await this.prisma.eventLecturer.findMany({
-      where: {
-        eventId: event.id,
-        person: {
-          deletedAt: null,
-          lecturerProfile: {
-            isNot: null,
-          },
-        },
-      },
-      select: {
-        person: {
-          select: {
-            lecturerProfile: {
-              select: {
-                id: true,
-                displayName: true,
-                biography: true,
-                publishGoogleUserPicture: true,
-                googleUserPicture: true,
-                email: true,
-                whatsapp: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
-
-    return lecturers
-      .map((lecturer) => lecturer.person.lecturerProfile)
-      .filter((profile): profile is NonNullable<typeof profile> => Boolean(profile))
-      .map((profile) => ({
-        id: profile.id,
-        displayName: profile.displayName,
-        biography: profile.biography,
-        publishGoogleUserPicture: profile.publishGoogleUserPicture,
-        googleUserPicture: profile.publishGoogleUserPicture ? profile.googleUserPicture : null,
-        email: profile.email,
-        whatsapp: profile.whatsapp,
-      }));
+  async lecturers(
+    @Parent() event: PublicEvent,
+    @Context() context?: PublicEventsGraphqlContext,
+  ): Promise<PublicLecturerProfile[]> {
+    return this.getLecturerProfileLoader(context).load(event.id);
   }
 
   async getPublicEventSubscriptionPagePayload(majorEventId: string): Promise<PublicMajorEventSubscriptionPage> {
@@ -401,6 +522,16 @@ export class PublicEventsResolver {
       },
       OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }],
     };
+  }
+
+  private getLecturerProfileLoader(context?: PublicEventsGraphqlContext): PublicEventLecturerProfileLoader {
+    if (!context) {
+      return new PublicEventLecturerProfileLoader(this.prisma);
+    }
+
+    context.publicEventLecturerProfileLoader ??= new PublicEventLecturerProfileLoader(this.prisma);
+
+    return context.publicEventLecturerProfileLoader;
   }
 
   private mapPublicEventSubscriptionSummary(

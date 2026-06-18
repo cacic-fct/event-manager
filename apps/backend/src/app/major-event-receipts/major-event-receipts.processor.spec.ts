@@ -1,4 +1,8 @@
 import { MajorEventReceiptsProcessor } from './major-event-receipts.processor';
+import { UnrecoverableError } from 'bullmq';
+import { Readable } from 'stream';
+import { MAX_RECEIPT_FILE_SIZE_BYTES } from './receipt.types';
+import { ReceiptImageProcessingLimitError } from './utils/receipt-image-processing.utils';
 
 describe('MajorEventReceiptsProcessor expected amount resolution', () => {
   it('falls back to stored self-service amount when no configured tier matches legacy data', () => {
@@ -42,5 +46,23 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
         },
       }),
     ).toBe(2500);
+  });
+
+  it('fails stored receipt streams that exceed the upload size limit', async () => {
+    const processor = new MajorEventReceiptsProcessor({} as never, {} as never, {} as never);
+    const streamToBuffer = processor['streamToBuffer'].bind(processor);
+
+    await expect(streamToBuffer(Readable.from([Buffer.alloc(MAX_RECEIPT_FILE_SIZE_BYTES + 1)]), MAX_RECEIPT_FILE_SIZE_BYTES)).rejects.toThrow(
+      ReceiptImageProcessingLimitError,
+    );
+  });
+
+  it('marks image processing limit failures as unrecoverable for BullMQ', () => {
+    const processor = new MajorEventReceiptsProcessor({} as never, {} as never, {} as never);
+    const toBullProcessingError = processor['toBullProcessingError'].bind(processor);
+
+    expect(toBullProcessingError(new ReceiptImageProcessingLimitError('too large'), 'too large')).toBeInstanceOf(
+      UnrecoverableError,
+    );
   });
 });
