@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { LgpdService } from './lgpd.service';
@@ -28,6 +29,7 @@ describe('LgpdService', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     jest.useRealTimers();
   });
 
@@ -74,6 +76,9 @@ describe('LgpdService', () => {
     );
     expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       tx.majorEventSubscription.deleteMany.mock.invocationCallOrder[0],
+    );
+    expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+      s3.deleteFile.mock.invocationCallOrder[0],
     );
   });
 
@@ -188,15 +193,45 @@ describe('LgpdService', () => {
     expect(prisma.majorEventReceipt.deleteMany).toHaveBeenCalledWith({
       where: { personId: { in: ['source-person', 'target-person'] } },
     });
-    expect(s3.deleteFile.mock.invocationCallOrder[0]).toBeLessThan(
-      prisma.majorEventReceiptValidationAction.deleteMany.mock.invocationCallOrder[0],
-    );
     expect(prisma.majorEventReceiptValidationAction.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       prisma.majorEventReceipt.deleteMany.mock.invocationCallOrder[0],
     );
     expect(prisma.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       prisma.majorEventSubscription.updateMany.mock.invocationCallOrder[0],
     );
+    expect(prisma.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+      s3.deleteFile.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('continues deleting receipt objects after an S3 cleanup failure', async () => {
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    prisma.majorEventReceipt.findMany.mockResolvedValueOnce([
+      { objectKey: 'receipts/old.png' },
+      { objectKey: 'receipts/broken.png' },
+      { objectKey: 'receipts/new.png' },
+    ]);
+    s3.deleteFile
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('s3 unavailable'))
+      .mockResolvedValueOnce(undefined);
+
+    await expect(
+      service.scheduleDeletion({
+        userId: 'old-user',
+        email: 'old@example.com',
+        requestId: 'schedule-1',
+      }),
+    ).resolves.toEqual({
+      success: true,
+      peopleUpdated: 2,
+      recordsUpdated: 7,
+    });
+
+    expect(s3.deleteFile).toHaveBeenNthCalledWith(1, 'receipts/old.png');
+    expect(s3.deleteFile).toHaveBeenNthCalledWith(2, 'receipts/broken.png');
+    expect(s3.deleteFile).toHaveBeenNthCalledWith(3, 'receipts/new.png');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('receipts/broken.png'));
   });
 });
 

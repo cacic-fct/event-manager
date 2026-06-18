@@ -165,7 +165,6 @@ export class LgpdService {
     }
 
     const receiptObjectKeys = await this.findReceiptObjectKeys(personIds);
-    await this.deleteReceiptObjects(receiptObjectKeys);
 
     const now = new Date();
     const [
@@ -214,6 +213,8 @@ export class LgpdService {
         }),
       ]);
 
+    await this.deleteReceiptObjects(receiptObjectKeys);
+
     const recordsUpdated =
       eventSubscriptions.count +
       eventGroupSubscriptions.count +
@@ -237,7 +238,6 @@ export class LgpdService {
     }
 
     const receiptObjectKeys = await this.findReceiptObjectKeys(personIds);
-    await this.deleteReceiptObjects(receiptObjectKeys);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const certificates = await tx.certificate.deleteMany({ where: { personId: { in: personIds } } });
@@ -283,6 +283,8 @@ export class LgpdService {
           lecturers.count,
       };
     });
+
+    await this.deleteReceiptObjects(receiptObjectKeys);
 
     this.logger.log(
       `Hard-deleted LGPD data request=${input.requestId}, user=${input.userId}, people=${result.peopleDeleted}, users=${result.usersDeleted}, related=${result.recordsDeleted}.`,
@@ -535,9 +537,23 @@ export class LgpdService {
 
   private async deleteReceiptObjects(objectKeys: string[]): Promise<void> {
     const uniqueObjectKeys = Array.from(new Set(objectKeys));
+    const failedObjectKeys: string[] = [];
 
     for (const objectKey of uniqueObjectKeys) {
-      await this.s3.deleteFile(objectKey);
+      try {
+        await this.s3.deleteFile(objectKey);
+      } catch (error: unknown) {
+        failedObjectKeys.push(objectKey);
+        this.logger.warn(
+          `Failed to delete LGPD receipt object ${objectKey}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
+    if (failedObjectKeys.length > 0) {
+      this.logger.warn(
+        `LGPD receipt cleanup completed with ${failedObjectKeys.length} failed object deletion(s): ${failedObjectKeys.join(', ')}`,
+      );
     }
   }
 

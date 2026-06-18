@@ -76,7 +76,6 @@ export class ReceiptUploadService {
     authenticatedUser: AuthenticatedUser,
   ): Promise<CurrentUserReceiptResponse> {
     assertValidReceiptUpload(file);
-    await this.assertReceiptImageCanBeProcessed(file.buffer);
     await this.frozenResources.assertMajorEventMutable(majorEventId, authenticatedUser, 'edit');
 
     const person = await this.currentUserContext.requireCurrentPerson(this.buildUserContext(authenticatedUser));
@@ -120,6 +119,7 @@ export class ReceiptUploadService {
     }
 
     await this.assertUploadRateLimit(subscription.id);
+    await this.assertReceiptImageCanBeProcessed(file.buffer);
 
     const receiptId = randomUUID();
     const uploadedAt = new Date();

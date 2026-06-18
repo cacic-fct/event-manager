@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import type {
   ChannelPreference,
@@ -13,13 +13,15 @@ import type {
 } from '@novu/js';
 import { AuthenticatedUser, AuthService } from '@cacic-fct/shared-angular';
 import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, retry, throwError, timer } from 'rxjs';
 
 export type NotificationPermissionState = 'unsupported' | 'default' | 'granted' | 'denied';
 
 const PUSH_PERMISSION_DISMISSED_KEY = 'cacic-eventos:novu-push-permission-dismissed';
 const ACTIVE_SUBSCRIBER_CACHE = 'cacic-eventos:notification-session';
 const ACTIVE_SUBSCRIBER_REQUEST = '/__cacic_notification_active_subscriber__';
+const NOVU_SESSION_RETRY_ATTEMPTS = 2;
+const NOVU_SESSION_RETRY_DELAY_MS = 2_000;
 
 export type NovuListNotificationsArgs = {
   tags?: string[];
@@ -458,12 +460,20 @@ export class NovuNotificationsService {
     this.loadingConfig.set(true);
     this.lastError.set(null);
     this.sessionRequestUserKey = userKey;
-    this.sessionRequest = firstValueFrom(this.http.get<NovuSubscriberSession>('/api/notifications/novu-session')).catch(
-      () => {
-        this.lastError.set('Não foi possível iniciar as notificações com segurança.');
-        return null;
-      },
-    );
+    this.sessionRequest = firstValueFrom(
+      this.http.get<NovuSubscriberSession>('/api/notifications/novu-session').pipe(
+        retry({
+          count: NOVU_SESSION_RETRY_ATTEMPTS,
+          delay: (error: unknown, retryCount) =>
+            this.isTransientSessionFetchError(error)
+              ? timer(NOVU_SESSION_RETRY_DELAY_MS * retryCount)
+              : throwError(() => error),
+        }),
+      ),
+    ).catch(() => {
+      this.lastError.set('Não foi possível iniciar as notificações com segurança.');
+      return null;
+    });
 
     try {
       return await this.sessionRequest;
@@ -474,6 +484,14 @@ export class NovuNotificationsService {
       }
       this.loadingConfig.set(false);
     }
+  }
+
+  private isTransientSessionFetchError(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)) {
+      return true;
+    }
+
+    return error.status === 0 || error.status >= 500;
   }
 
   private async runNotificationMutation(mutation: () => ReturnType<NovuNotification['read']>): Promise<void> {

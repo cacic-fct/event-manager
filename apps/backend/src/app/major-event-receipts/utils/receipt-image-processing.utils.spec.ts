@@ -51,8 +51,8 @@ describe('receipt-image-processing utils', () => {
   it('rejects images with too many decoded pixels', () => {
     expect(() =>
       assertReceiptImageMetadataWithinProcessingLimits({
-        width: MAX_RECEIPT_DECODED_IMAGE_PIXELS,
-        height: 2,
+        width: MAX_RECEIPT_IMAGE_DIMENSION_PIXELS,
+        height: Math.floor(MAX_RECEIPT_DECODED_IMAGE_PIXELS / MAX_RECEIPT_IMAGE_DIMENSION_PIXELS) + 1,
       }),
     ).toThrow(ReceiptImageProcessingLimitError);
   });
