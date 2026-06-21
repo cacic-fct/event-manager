@@ -1,8 +1,9 @@
 import { EventAttendance, EventAttendanceCsvImportInput, EventAttendanceCsvImportResult } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod } from '@prisma/client';
-import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
@@ -23,7 +24,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
   @Mutation(() => EventAttendanceCsvImportResult, {
     name: 'importEventAttendancesFromCsv',
   })
-  @RequireScopes('event-attendance#edit')
+  @RequirePermissions(Permission.EventAttendance.Import)
   async importEventAttendancesFromCsv(
     @Args('input', { type: () => EventAttendanceCsvImportInput })
     input: EventAttendanceCsvImportInput,

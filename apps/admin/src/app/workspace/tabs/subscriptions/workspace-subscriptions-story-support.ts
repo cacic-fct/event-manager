@@ -198,10 +198,9 @@ function defaultPermissions(): WorkspacePermissionScope[] {
   return [
     'event#read',
     'major-event#read',
-    'person#read',
     'subscription#read',
-    'subscription#edit',
-    'validate-receipt#read',
+    'subscription#update',
+    'receipt#read',
   ];
 }
 

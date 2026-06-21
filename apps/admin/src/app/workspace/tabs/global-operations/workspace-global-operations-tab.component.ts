@@ -4,6 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { CertificateApiService } from '../../../graphql/certificate-api.service';
 import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog.component';
@@ -22,6 +23,7 @@ export class WorkspaceGlobalOperationsTabComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly Permission = Permission;
 
   readonly reissuingCertificates = signal(false);
 

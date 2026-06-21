@@ -1,6 +1,7 @@
 import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { AccessibleEventGrantTargets } from '../authorization/authorization-policy.service';
 import { EVENT_GROUP_SELECT, EVENT_SELECT, MAJOR_EVENT_SELECT } from './certificate.constants';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -8,7 +9,12 @@ import { PrismaService } from '../prisma/prisma.service';
 export class CertificateTargetsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  listIssuableEvents(query?: string, skip?: number, take?: number) {
+  listIssuableEvents(
+    query?: string,
+    skip?: number,
+    take?: number,
+    accessibleTargets?: AccessibleEventGrantTargets | null,
+  ) {
     const normalizedQuery = query?.trim();
     const where: Prisma.EventWhereInput = {
       deletedAt: null,
@@ -27,6 +33,9 @@ export class CertificateTargetsService {
         },
       ],
     };
+    if (!this.applyAccessibleEventTargets(where, accessibleTargets)) {
+      return [];
+    }
 
     if (normalizedQuery) {
       where.name = {
@@ -46,7 +55,12 @@ export class CertificateTargetsService {
     });
   }
 
-  listIssuableEventGroups(query?: string, skip?: number, take?: number) {
+  listIssuableEventGroups(
+    query?: string,
+    skip?: number,
+    take?: number,
+    accessibleTargets?: AccessibleEventGrantTargets | null,
+  ) {
     const normalizedQuery = query?.trim();
     const where: Prisma.EventGroupWhereInput = {
       deletedAt: null,
@@ -60,6 +74,14 @@ export class CertificateTargetsService {
         },
       },
     };
+    if (accessibleTargets) {
+      if (accessibleTargets.eventGroupIds.size === 0) {
+        return [];
+      }
+      where.id = {
+        in: [...accessibleTargets.eventGroupIds],
+      };
+    }
 
     if (normalizedQuery) {
       where.name = {
@@ -79,7 +101,12 @@ export class CertificateTargetsService {
     });
   }
 
-  listIssuableMajorEvents(query?: string, skip?: number, take?: number) {
+  listIssuableMajorEvents(
+    query?: string,
+    skip?: number,
+    take?: number,
+    accessibleTargets?: AccessibleEventGrantTargets | null,
+  ) {
     const normalizedQuery = query?.trim();
     const where: Prisma.MajorEventWhereInput = {
       deletedAt: null,
@@ -101,6 +128,14 @@ export class CertificateTargetsService {
         },
       },
     };
+    if (accessibleTargets) {
+      if (accessibleTargets.majorEventIds.size === 0) {
+        return [];
+      }
+      where.id = {
+        in: [...accessibleTargets.majorEventIds],
+      };
+    }
 
     if (normalizedQuery) {
       where.name = {
@@ -204,5 +239,42 @@ export class CertificateTargetsService {
         throw new NotFoundException(`Major event ${targetId} cannot issue certificates.`);
       }
     }
+  }
+
+  private applyAccessibleEventTargets(
+    where: Prisma.EventWhereInput,
+    accessibleTargets: AccessibleEventGrantTargets | null | undefined,
+  ): boolean {
+    if (!accessibleTargets) {
+      return true;
+    }
+
+    const targetWhere: Prisma.EventWhereInput[] = [];
+    if (accessibleTargets.eventIds.size > 0) {
+      targetWhere.push({ id: { in: [...accessibleTargets.eventIds] } });
+    }
+    if (accessibleTargets.majorEventIds.size > 0) {
+      targetWhere.push({ majorEventId: { in: [...accessibleTargets.majorEventIds] } });
+    }
+    if (accessibleTargets.eventGroupIds.size > 0) {
+      targetWhere.push({ eventGroupId: { in: [...accessibleTargets.eventGroupIds] } });
+    }
+
+    if (targetWhere.length === 0) {
+      return false;
+    }
+
+    where.AND = [this.normalizeEventWhereAnd(where.AND), { OR: targetWhere }].flat();
+    return true;
+  }
+
+  private normalizeEventWhereAnd(
+    andWhere: Prisma.EventWhereInput | Prisma.EventWhereInput[] | undefined,
+  ): Prisma.EventWhereInput[] {
+    if (!andWhere) {
+      return [];
+    }
+
+    return Array.isArray(andWhere) ? andWhere : [andWhere];
   }
 }

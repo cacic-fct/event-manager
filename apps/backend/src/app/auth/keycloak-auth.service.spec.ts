@@ -230,7 +230,7 @@ describe('KeycloakAuthService', () => {
     expect(sessions.delete).toHaveBeenCalledWith(sessionId);
   });
 
-  it('authenticates tokens, caches principals, and evaluates missing permissions', async () => {
+  it('authenticates tokens and caches principals without Event Manager permissions', async () => {
     const accessToken = jwt({
       sub: 'user-1',
       preferred_username: 'ada',
@@ -247,7 +247,7 @@ describe('KeycloakAuthService', () => {
     mockedAxios.post.mockResolvedValueOnce({
       data: {
         active: true,
-        permissions: [{ rsname: 'event', scopes: ['edit'] }],
+        permissions: [{ rsname: 'event', scopes: ['update'] }],
       },
     });
     mockedAxios.get.mockResolvedValue({
@@ -256,29 +256,25 @@ describe('KeycloakAuthService', () => {
         preferred_username: 'ada',
       },
     });
-    mockedAxios.post.mockResolvedValueOnce({
-      data: [{ rsname: 'certificate', scopes: ['edit'] }],
-    });
 
-    const principal = await service.authenticateAccessToken(accessToken, ['admin', 'event#read']);
+    const principal = await service.authenticateAccessToken(accessToken, {
+      roles: ['admin'],
+    });
     expect(principal.sub).toBe('user-1');
     expect(principal.roleSet.has('admin')).toBe(true);
-    expect(principal.permissionSet.has('event#read')).toBe(true);
-
-    await expect(service.evaluateAccessTokenPermissions(accessToken, ['certificate#edit'])).resolves.toEqual([
-      'certificate#edit',
-    ]);
-    await service.authenticateAccessToken(accessToken, ['certificate#edit']);
+    expect(principal.permissions).toEqual([]);
+    expect(principal.permissionSet.size).toBe(0);
+    await service.authenticateAccessToken(accessToken, { roles: ['admin'] });
     expect(mockedAxios.get).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects inactive tokens and forbidden role or permission requirements', async () => {
+  it('rejects inactive tokens and forbidden role requirements', async () => {
     mockedAxios.post.mockResolvedValueOnce({ data: { active: false } });
     await expect(service.authenticateAccessToken(jwt({ sub: 'inactive-user' }))).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
 
-    mockedAxios.post.mockResolvedValueOnce({ data: { active: true } }).mockResolvedValueOnce({ data: [] });
+    mockedAxios.post.mockResolvedValueOnce({ data: { active: true } });
     mockedAxios.get.mockResolvedValueOnce({
       data: {
         sub: 'user-1',
@@ -288,9 +284,24 @@ describe('KeycloakAuthService', () => {
       },
     });
 
-    await expect(service.authenticateAccessToken(jwt({ sub: 'user-1' }), ['admin', 'event#edit'])).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      service.authenticateAccessToken(jwt({ sub: 'user-1' }), {
+        roles: ['admin'],
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects access tokens from clients outside the allowed list', async () => {
+    mockedAxios.post.mockResolvedValueOnce({ data: { active: true } });
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        sub: 'user-1',
+      },
+    });
+
+    await expect(
+      service.authenticateAccessToken(jwt({ azp: 'external-client', client_id: 'browser-client', sub: 'user-1' })),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('authenticates sessions and retries with a refreshed token after unauthorized token validation', async () => {
@@ -335,7 +346,7 @@ describe('KeycloakAuthService', () => {
       },
     });
 
-    await expect(service.authenticateSession('session-1', ['admin'])).resolves.toEqual(
+    await expect(service.authenticateSession('session-1', { roles: ['admin'] })).resolves.toEqual(
       expect.objectContaining({
         sub: 'user-1',
       }),
@@ -458,7 +469,7 @@ function createSessionStoreMock() {
 }
 
 function jwt(payload: Record<string, unknown>) {
-  return `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.signature`;
+  return `header.${Buffer.from(JSON.stringify({ azp: 'event-manager', ...payload })).toString('base64url')}.signature`;
 }
 
 function principalFixture(overrides: Record<string, unknown> = {}) {

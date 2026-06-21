@@ -8,6 +8,7 @@ model User {
   role             UserRole @default(USER)
 
   people People[]
+  eventManagerPermissionGrants EventManagerPermissionGrant[]
 
   createdAt   DateTime @default(now())
   createdById String?

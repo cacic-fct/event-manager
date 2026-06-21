@@ -89,6 +89,9 @@ export class PublicFeatureFlagService {
       defaultLoginRedirectPath: this.stringVariantValue(client.getVariant(PUBLIC_FEATURE_FLAGS.defaultLoginRedirectPath)),
       onboardingEnforcementEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.onboardingEnforcementEnabled),
       cookieBannerEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.cookieBannerEnabled),
+      undergraduateUnespRoleVerificationDisabled: client.isEnabled(
+        PUBLIC_FEATURE_FLAGS.undergraduateUnespRoleVerificationDisabled,
+      ),
     });
   }
 
@@ -115,6 +118,9 @@ export class PublicFeatureFlagService {
       defaultLoginRedirectPath: this.stringVariantValue(defaultRedirect?.variant),
       onboardingEnforcementEnabled: enabled('onboardingEnforcementEnabled'),
       cookieBannerEnabled: enabled('cookieBannerEnabled'),
+      undergraduateUnespRoleVerificationDisabled: enabled(
+        'undergraduateUnespRoleVerificationDisabled',
+      ),
     };
   }
 

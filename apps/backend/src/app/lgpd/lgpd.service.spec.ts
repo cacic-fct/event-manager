@@ -44,7 +44,7 @@ describe('LgpdService', () => {
       success: true,
       peopleDeleted: 2,
       usersDeleted: 2,
-      recordsDeleted: 1,
+      recordsDeleted: 3,
     });
 
     expect(tx.eventSubscription.deleteMany).toHaveBeenCalledWith({
@@ -61,6 +61,9 @@ describe('LgpdService', () => {
     expect(tx.people.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ['source-person', 'target-person'] } },
     });
+    expect(tx.eventManagerPermissionGrant.deleteMany).toHaveBeenCalledWith({
+      where: { userId: { in: ['old-user', 'new-user'] } },
+    });
     expect(tx.user.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ['old-user', 'new-user'] } },
     });
@@ -76,6 +79,9 @@ describe('LgpdService', () => {
     );
     expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       tx.majorEventSubscription.deleteMany.mock.invocationCallOrder[0],
+    );
+    expect(tx.eventManagerPermissionGrant.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.user.deleteMany.mock.invocationCallOrder[0],
     );
     expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       s3.deleteFile.mock.invocationCallOrder[0],
@@ -394,6 +400,7 @@ function createTransactionMock() {
     peopleMergeOperation: deleteManyDelegate(),
     mergeCandidate: deleteManyDelegate(),
     accountUserMerge: deleteManyDelegate(),
+    eventManagerPermissionGrant: deleteManyDelegate(2),
     people: deleteManyDelegate(2),
     user: deleteManyDelegate(2),
   };

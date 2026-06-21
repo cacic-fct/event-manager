@@ -1,6 +1,7 @@
 import { PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import type { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
 
@@ -17,7 +18,7 @@ export const authGuard: CanActivateFn = (_route, state) => {
 };
 
 export const requiredPermissionsGuard =
-  (permissions: readonly string[], fallbackUrl: string | UrlTree): CanActivateFn =>
+  (permissions: readonly Permission[], fallbackUrl: string | UrlTree): CanActivateFn =>
   async () => {
     const authService = inject(AuthService);
     const router = inject(Router);

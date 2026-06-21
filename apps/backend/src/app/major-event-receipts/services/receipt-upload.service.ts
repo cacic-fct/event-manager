@@ -13,7 +13,7 @@ import { MajorEventReceipt, SubscriptionStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { Readable } from 'stream';
-import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
+import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../../current-user/context.service';
 import { GraphqlContext } from '../../current-user/selects';
@@ -47,7 +47,7 @@ export class ReceiptUploadService {
     private readonly currentUserContext: CurrentUserContextService,
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly dashboardInsights: DashboardInsightsService,
-    private readonly keycloakAuthService: KeycloakAuthService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
     @InjectQueue(MAJOR_EVENT_RECEIPTS_QUEUE)
     private readonly receiptQueue: Queue<ReceiptProcessingJob>,
     private readonly frozenResources: FrozenResourceService = {
@@ -229,7 +229,7 @@ export class ReceiptUploadService {
       throw new GoneException(`Receipt ${receiptId} image has expired.`);
     }
 
-    await this.assertCanReadReceipt(receipt.personId, authenticatedUser);
+    await this.assertCanReadReceipt(receipt.id, receipt.personId, authenticatedUser);
 
     const file = await this.s3.downloadFile(receipt.objectKey);
     return {
@@ -269,8 +269,12 @@ export class ReceiptUploadService {
     }
   }
 
-  private async assertCanReadReceipt(personId: string, authenticatedUser: AuthenticatedUser): Promise<void> {
-    if (await this.hasAdminReceiptReadPermission(authenticatedUser)) {
+  private async assertCanReadReceipt(
+    receiptId: string,
+    personId: string,
+    authenticatedUser: AuthenticatedUser,
+  ): Promise<void> {
+    if (await this.hasAdminReceiptReadPermission(authenticatedUser, receiptId)) {
       return;
     }
 
@@ -282,15 +286,19 @@ export class ReceiptUploadService {
     throw new ForbiddenException('You cannot access this receipt.');
   }
 
-  private async hasAdminReceiptReadPermission(authenticatedUser: AuthenticatedUser): Promise<boolean> {
-    if (authenticatedUser.permissionSet.has(RECEIPT_ADMIN_PERMISSION)) {
+  private async hasAdminReceiptReadPermission(authenticatedUser: AuthenticatedUser, receiptId: string): Promise<boolean> {
+    try {
+      await this.authorizationPolicy.assertPermissions(authenticatedUser, [RECEIPT_ADMIN_PERMISSION], {
+        receiptId,
+      });
       return true;
-    }
+    } catch (error) {
+      if (!(error instanceof ForbiddenException)) {
+        throw error;
+      }
 
-    const grantedPermissions = await this.keycloakAuthService.evaluateAccessTokenPermissions(authenticatedUser.token, [
-      RECEIPT_ADMIN_PERMISSION,
-    ]);
-    return grantedPermissions.includes(RECEIPT_ADMIN_PERMISSION);
+      return false;
+    }
   }
 
   private buildUserContext(authenticatedUser: AuthenticatedUser): GraphqlContext {

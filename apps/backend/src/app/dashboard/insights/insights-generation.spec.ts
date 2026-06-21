@@ -1,3 +1,4 @@
+import { Permission } from '@cacic-fct/shared-permissions';
 import { createInsightsServiceTestContext, insightEvent } from './insights-service.fixtures';
 
 describe('DashboardInsightsService generation', () => {
@@ -10,14 +11,14 @@ describe('DashboardInsightsService generation', () => {
   });
 
   it('generates and caches permission-aware dashboard insights', async () => {
-    const { keycloakAuthService, prisma, redis, service, weatherService } = createInsightsServiceTestContext();
-    keycloakAuthService.evaluateAccessTokenPermissions.mockResolvedValue([
-      'event#edit',
-      'major-event#edit',
-      'certificate#edit',
+    const { authorizationPolicy, prisma, redis, service, weatherService } = createInsightsServiceTestContext();
+    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue([
+      'event#update',
+      'major-event#update',
+      'certificate#issue',
       'merge-candidate#read',
-      'validate-receipt#read',
-      'person#manage',
+      'receipt#read',
+      'person#update',
     ]);
     prisma.event.count.mockResolvedValue(10);
     prisma.eventGroup.count.mockResolvedValue(3);
@@ -182,18 +183,18 @@ describe('DashboardInsightsService generation', () => {
           type: 'event',
           label: 'Evento',
           resourceIcon: 'event',
-          actions: [expect.objectContaining({ scope: 'edit', label: 'Editar', icon: 'edit' })],
+          actions: [expect.objectContaining({ scope: 'update', label: 'Atualizar', icon: 'edit' })],
         }),
         expect.objectContaining({
           type: 'person',
-          label: 'Pessoas',
+          label: 'Pessoa',
           resourceIcon: 'person',
-          actions: [expect.objectContaining({ scope: 'manage', label: 'Gerenciar', icon: 'admin_panel_settings' })],
+          actions: [expect.objectContaining({ scope: 'update', label: 'Atualizar', icon: 'edit' })],
         }),
       ]),
     );
     expect(redis.set).toHaveBeenCalledWith(
-      'dashboard:workspace:v4:certificate#edit,event#edit,major-event#edit,merge-candidate#read,person#manage,validate-receipt#read',
+      'dashboard:workspace:v4:certificate#issue,event#update,major-event#update,merge-candidate#read,person#update,receipt#read',
       expect.stringContaining('"eventsCount":10'),
       'EX',
       300,
@@ -210,39 +211,49 @@ describe('DashboardInsightsService generation', () => {
     expect(prisma.event.count).not.toHaveBeenCalled();
   });
 
-  it('serves uncached non-personalized insights when permission evaluation fails', async () => {
-    const { currentUserContext, keycloakAuthService, prisma, redis, service } = createInsightsServiceTestContext();
-    currentUserContext.getAuthenticatedUser.mockReturnValue({
-      token: 'token',
-      permissionSet: new Set<string>(['event#edit', 'major-event#edit']),
-    });
-    keycloakAuthService.evaluateAccessTokenPermissions.mockRejectedValue(new Error('UMA unavailable'));
-    prisma.event.count.mockResolvedValue(0);
-    prisma.eventGroup.count.mockResolvedValue(0);
-    prisma.majorEvent.count.mockResolvedValue(0);
-    prisma.mergeCandidate.count.mockResolvedValue(9);
-    prisma.majorEventSubscription.count.mockResolvedValue(8);
-    prisma.majorEvent.findMany.mockResolvedValue([]);
-    prisma.event.findMany.mockResolvedValue([]);
-    prisma.eventGroup.findMany.mockResolvedValue([]);
+  it('renders an empty dashboard shell for scoped-only administrators without global insight queries', async () => {
+    const { authorizationPolicy, prisma, redis, service, weatherService } = createInsightsServiceTestContext();
+    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue([]);
+    authorizationPolicy.evaluatePermissions.mockResolvedValue([Permission.Event.Update]);
 
     const result = await service.getWorkspaceDashboardInsights({} as never);
 
-    expect(result.suggestions.map((suggestion) => suggestion.action)).toEqual([
-      'CREATE_EVENT_GROUP',
-      'CREATE_EVENT',
-      'CREATE_MAJOR_EVENT',
+    expect(result.summary).toEqual({
+      eventsCount: 0,
+      eventGroupsCount: 0,
+      majorEventsCount: 0,
+    });
+    expect(result.calendarEvents).toEqual([]);
+    expect(result.weatherAlerts).toEqual([]);
+    expect(result.permissions).toEqual([
+      expect.objectContaining({
+        type: 'event',
+        actions: [expect.objectContaining({ scope: 'update' })],
+      }),
     ]);
-    expect(result.pendingReceiptValidationsCount).toBe(0);
-    expect(result.pendingReceiptMajorEvents).toEqual([]);
-    expect(result.duplicatePeopleCount).toBe(0);
+    expect(prisma.event.count).not.toHaveBeenCalled();
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+    expect(prisma.eventGroup.findMany).not.toHaveBeenCalled();
+    expect(prisma.majorEvent.findMany).not.toHaveBeenCalled();
+    expect(weatherService.getPublicEventWeather).not.toHaveBeenCalled();
+    expect(redis.get).not.toHaveBeenCalled();
+    expect(redis.set).not.toHaveBeenCalled();
+  });
+
+  it('propagates permission evaluation failures', async () => {
+    const { authorizationPolicy, prisma, redis, service } = createInsightsServiceTestContext();
+    authorizationPolicy.evaluateGlobalPermissions.mockRejectedValue(new Error('policy unavailable'));
+
+    await expect(service.getWorkspaceDashboardInsights({} as never)).rejects.toThrow('policy unavailable');
+
+    expect(prisma.event.count).not.toHaveBeenCalled();
     expect(redis.get).not.toHaveBeenCalled();
     expect(redis.set).not.toHaveBeenCalled();
   });
 
   it('does not query or return event calendar data without event read permission', async () => {
-    const { keycloakAuthService, prisma, service, weatherService } = createInsightsServiceTestContext();
-    keycloakAuthService.evaluateAccessTokenPermissions.mockResolvedValue(['validate-receipt#read']);
+    const { authorizationPolicy, prisma, service, weatherService } = createInsightsServiceTestContext();
+    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue(['receipt#read']);
     prisma.majorEventSubscription.count.mockResolvedValue(2);
     prisma.majorEvent.findMany.mockResolvedValue([]);
 

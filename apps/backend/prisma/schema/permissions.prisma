@@ -1,0 +1,49 @@
+enum EventManagerPermissionGrantScope {
+  GLOBAL
+  EVENT
+  MAJOR_EVENT
+  EVENT_GROUP
+}
+
+model EventManagerPermissionGrant {
+  id String @id @default(uuid(7))
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  person   People? @relation(fields: [personId], references: [id])
+  personId String?
+
+  permission String
+  scope      EventManagerPermissionGrantScope @default(GLOBAL)
+
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  eventId String?
+
+  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
+  majorEventId String?
+
+  eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id], onDelete: Restrict)
+  eventGroupId String?
+
+  validFrom  DateTime?
+  validUntil DateTime?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@index([userId])
+  @@index([personId])
+  @@index([permission])
+  @@index([scope])
+  @@index([eventId])
+  @@index([majorEventId])
+  @@index([eventGroupId])
+  @@index([validFrom])
+  @@index([validUntil])
+  @@index([deletedAt])
+  @@map("event_manager_permission_grants")
+}

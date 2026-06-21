@@ -1,9 +1,12 @@
 import { DeletionResult, EventGroup, EventGroupCreateInput, EventGroupUpdateInput } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
+import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,17 +23,32 @@ export class EventGroupsResolver {
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   @Query(() => [EventGroup], { name: 'eventGroups' })
-  @RequireScopes('event#read')
+  @AllowScopedCollectionPermissions()
+  @RequirePermissions(Permission.EventGroup.Read)
   async eventGroups(
+    @Context() context: GraphqlContext,
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.EventGroupWhereInput = { deletedAt: null };
+    const accessibleEventGroupIds = await this.authorizationPolicy.accessibleEventGroupIds(
+      this.getUser(context),
+      Permission.EventGroup.Read,
+    );
+    if (accessibleEventGroupIds && accessibleEventGroupIds.size === 0) {
+      return [];
+    }
+    if (accessibleEventGroupIds) {
+      where.id = {
+        in: [...accessibleEventGroupIds],
+      };
+    }
     const normalizedQuery = query?.trim();
     let prioritizedIds: string[] = [];
 
@@ -40,6 +58,9 @@ export class EventGroupsResolver {
           normalizedQuery,
           pagination.skip + pagination.take,
         );
+        if (accessibleEventGroupIds) {
+          prioritizedIds = prioritizedIds.filter((id) => accessibleEventGroupIds.has(id));
+        }
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -72,7 +93,7 @@ export class EventGroupsResolver {
   }
 
   @Query(() => EventGroup, { name: 'eventGroup' })
-  @RequireScopes('event#read')
+  @RequirePermissions(Permission.EventGroup.Read)
   async eventGroup(@Args('id', { type: () => String }) id: string) {
     const eventGroup = await this.prisma.eventGroup.findFirst({
       where: {
@@ -92,7 +113,7 @@ export class EventGroupsResolver {
   }
 
   @Mutation(() => EventGroup, { name: 'createEventGroup' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.EventGroup.Create)
   async createEventGroup(
     @Args('input', { type: () => EventGroupCreateInput })
     input: EventGroupCreateInput,
@@ -109,7 +130,7 @@ export class EventGroupsResolver {
   }
 
   @Mutation(() => EventGroup, { name: 'updateEventGroup' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.EventGroup.Update)
   async updateEventGroup(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => EventGroupUpdateInput })
@@ -179,7 +200,7 @@ export class EventGroupsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteEventGroup' })
-  @RequireScopes('event#delete')
+  @RequirePermissions(Permission.EventGroup.Delete)
   async deleteEventGroup(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertEventGroupMutable(id, this.getUser(context), 'delete');
     const { count } = await this.prisma.eventGroup.updateMany({

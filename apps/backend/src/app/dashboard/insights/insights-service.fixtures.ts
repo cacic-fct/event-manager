@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
-import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
+import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../../current-user/context.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WeatherService } from '../../weather/weather.service';
@@ -15,8 +15,9 @@ export function createInsightsServiceTestContext() {
       permissionSet: new Set<string>(),
     }),
   };
-  const keycloakAuthService = {
-    evaluateAccessTokenPermissions: jest.fn().mockResolvedValue([]),
+  const authorizationPolicy = {
+    evaluateGlobalPermissions: jest.fn().mockResolvedValue([]),
+    evaluatePermissions: jest.fn().mockResolvedValue([]),
   };
   const weatherService = {
     getPublicEventWeather: jest.fn().mockResolvedValue(null),
@@ -33,7 +34,7 @@ export function createInsightsServiceTestContext() {
   const service = new DashboardInsightsService(
     prisma as unknown as PrismaService,
     currentUserContext as unknown as CurrentUserContextService,
-    keycloakAuthService as unknown as KeycloakAuthService,
+    authorizationPolicy as unknown as AuthorizationPolicyService,
     weatherService as unknown as WeatherService,
     redis as unknown as Redis,
     queue as unknown as Queue,
@@ -42,7 +43,7 @@ export function createInsightsServiceTestContext() {
   return {
     prisma,
     currentUserContext,
-    keycloakAuthService,
+    authorizationPolicy,
     weatherService,
     redis,
     queue,

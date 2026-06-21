@@ -2,7 +2,15 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Unauthor
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { Request } from 'express';
-import { ALLOW_NON_ONBOARDED_KEY, AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY, REQUIRED_ROLES_KEY } from '../auth.constants';
+import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
+import {
+  ALLOW_NON_ONBOARDED_KEY,
+  ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY,
+  AUTH_SESSION_COOKIE_NAME,
+  IS_PUBLIC_KEY,
+  REQUIRED_PERMISSIONS_KEY,
+  REQUIRED_ROLES_KEY,
+} from '../auth.constants';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../keycloak-auth.service';
 
@@ -16,6 +24,7 @@ export class KeycloakScopeGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly keycloakAuthService: KeycloakAuthService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -29,15 +38,23 @@ export class KeycloakScopeGuard implements CanActivate {
     }
 
     const request = this.getRequest(context);
-    const requiredRoles = this.reflector.getAllAndOverride<string[]>(REQUIRED_ROLES_KEY, [
+    const roles = this.reflector.getAllAndOverride<string[]>(REQUIRED_ROLES_KEY, [
       context.getHandler(),
       context.getClass(),
-    ]);
-    const roles = requiredRoles ?? [];
+    ]) ?? [];
+    const permissions = this.reflector.getAllAndOverride<string[]>(REQUIRED_PERMISSIONS_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]) ?? [];
 
     const accessToken = this.extractBearerToken(request.headers.authorization);
     if (accessToken) {
-      request.user = await this.keycloakAuthService.authenticateAccessToken(accessToken, roles);
+      request.user = await this.keycloakAuthService.authenticateAccessToken(accessToken, { roles });
+      await this.authorizationPolicy.assertPermissions(
+        request.user,
+        permissions,
+        this.getAuthorizationResourceContext(context, permissions),
+      );
       this.assertOnboardingAllowed(context, request.user);
       return true;
     }
@@ -47,10 +64,47 @@ export class KeycloakScopeGuard implements CanActivate {
       throw new UnauthorizedException('Missing authentication credentials.');
     }
 
-    request.user = await this.keycloakAuthService.authenticateSession(sessionId, roles);
+    request.user = await this.keycloakAuthService.authenticateSession(sessionId, { roles });
+    await this.authorizationPolicy.assertPermissions(
+      request.user,
+      permissions,
+      this.getAuthorizationResourceContext(context, permissions),
+    );
     this.assertOnboardingAllowed(context, request.user);
 
     return true;
+  }
+
+  private getAuthorizationResourceContext(context: ExecutionContext, permissions: readonly string[]) {
+    const allowScopedCollection = this.reflector.getAllAndOverride<boolean>(ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    const contextType = context.getType<'http' | 'graphql'>();
+    if (contextType === 'graphql') {
+      const gqlContext = GqlExecutionContext.create(context);
+      return {
+        ...this.authorizationPolicy.buildResourceContext(gqlContext.getArgs(), permissions),
+        allowScopedCollection,
+      };
+    }
+
+    if (contextType === 'http') {
+      const request = context.switchToHttp().getRequest<RequestWithUser>();
+      return {
+        ...this.authorizationPolicy.buildResourceContext(
+          {
+            params: request.params,
+            query: request.query,
+            body: request.body,
+          },
+          permissions,
+        ),
+        allowScopedCollection,
+      };
+    }
+
+    return {};
   }
 
   private assertOnboardingAllowed(context: ExecutionContext, user: AuthenticatedUser): void {

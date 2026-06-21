@@ -1,6 +1,7 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import type { Permission } from '@cacic-fct/shared-permissions';
 import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthOnlineStatusService } from './auth-online-status.service';
 import { AuthenticatedUser, AuthRefreshResult } from './auth.types';
@@ -152,7 +153,7 @@ export class AuthService {
     return this.refreshRequest$;
   }
 
-  evaluatePermissions(permissions: readonly string[]): Observable<string[]> {
+  evaluatePermissions(permissions: readonly Permission[]): Observable<string[]> {
     return this.http
       .post<{ permissions: string[] }>('/api/auth/permissions/evaluate', {
         permissions: [...new Set(permissions)],

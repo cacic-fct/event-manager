@@ -128,7 +128,7 @@ export const workspaceNavItems = [
     label: 'Locais',
     description: 'Gerencie presets de locais usados nos eventos.',
     icon: 'place',
-    permissionTab: WorkspacePermissionTab.Events,
+    permissionTab: WorkspacePermissionTab.Places,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {

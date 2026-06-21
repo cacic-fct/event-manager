@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { EventType } from '../../../graphql/models';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { isFrozenEvent } from '../../../shared/frozen-resource';
@@ -35,6 +36,7 @@ import { EventFilterPanelComponent } from '../shared/event-filter-panel.componen
 export class WorkspaceEventAttendancesSubtabComponent implements OnInit {
   readonly workspace = inject(WorkspaceAttendancesService);
   protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly Permission = Permission;
 
   ngOnInit(): void {
     if (this.workspace.attendanceEventResults().length === 0) {
@@ -57,18 +59,22 @@ export class WorkspaceEventAttendancesSubtabComponent implements OnInit {
   protected canEditSelectedEventAttendances(): boolean {
     const event = this.workspace.selectedAttendanceEvent();
     return (
-      this.permissions.canEdit('event-attendance#edit') &&
+      this.permissions.hasAny([
+        Permission.EventAttendance.Collect,
+        Permission.EventAttendance.Import,
+        Permission.EventAttendance.Update,
+      ]) &&
       Boolean(event) &&
-      (!isFrozenEvent(event) || this.permissions.has('frozen#edit'))
+      (!isFrozenEvent(event) || this.permissions.has(Permission.Frozen.Update))
     );
   }
 
   protected canDeleteSelectedEventAttendances(): boolean {
     const event = this.workspace.selectedAttendanceEvent();
     return (
-      this.permissions.canDelete('event-attendance#delete') &&
+      this.permissions.canDelete(Permission.EventAttendance.Delete) &&
       Boolean(event) &&
-      (!isFrozenEvent(event) || this.permissions.has('frozen#delete'))
+      (!isFrozenEvent(event) || this.permissions.has(Permission.Frozen.Delete))
     );
   }
 }

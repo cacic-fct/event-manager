@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { ReceiptValidationApiService } from '../../../graphql/receipt-validation-api.service';
 import { WorkspaceSubscriptionsService } from '../../../shared/services/workspace-subscriptions.service';
@@ -55,7 +56,7 @@ export class WorkspaceSubscriptionsTabComponent {
 
   private async initializeReceiptValidation(): Promise<void> {
     await this.permissions.evaluateWorkspacePermissions();
-    if (!this.permissions.has('validate-receipt#read')) {
+    if (!this.permissions.has(Permission.Receipt.Read)) {
       this.selectedMajorEventPendingReceiptsCount.set(0);
       return;
     }
@@ -64,7 +65,7 @@ export class WorkspaceSubscriptionsTabComponent {
   }
 
   private async loadSelectedMajorEventPendingReceiptCount(): Promise<void> {
-    if (!this.permissions.has('validate-receipt#read')) {
+    if (!this.permissions.has(Permission.Receipt.Read)) {
       this.selectedMajorEventPendingReceiptsCount.set(0);
       return;
     }

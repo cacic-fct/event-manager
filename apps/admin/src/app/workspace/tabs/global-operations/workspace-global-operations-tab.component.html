@@ -7,7 +7,7 @@
       </div>
 
       <div class="panel-actions">
-        @if (permissions.canEdit('certificate#edit') && permissions.has('frozen#edit')) {
+        @if (permissions.canEdit(Permission.Certificate.Reissue) && permissions.has(Permission.Frozen.Update)) {
           <button mat-flat-button type="button" [disabled]="reissuingCertificates()" (click)="reissueAllCertificates()">
             <mat-icon>workspace_premium</mat-icon>
             Reemitir certificados

@@ -34,7 +34,7 @@ import {
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Observable, interval, map, startWith, switchMap } from 'rxjs';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { MajorEventReceiptsService } from './major-event-receipts.service';
 import {
@@ -542,7 +542,7 @@ export class MajorEventReceiptsController {
   }
 
   @Sse('admin/queue/events')
-  @RequireScopes(RECEIPT_ADMIN_PERMISSION)
+  @RequirePermissions(RECEIPT_ADMIN_PERMISSION)
   @ApiTags('SSE', 'receipt-validation')
   @ApiOperation({
     summary: 'Stream receipt validation queue updates',

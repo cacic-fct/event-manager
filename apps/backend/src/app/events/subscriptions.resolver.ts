@@ -8,8 +8,9 @@ import {
   WorkspaceMajorEventSubscriptionCreateInput,
   WorkspaceMajorEventSubscriptionUpdateInput,
 } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,20 +28,24 @@ type GraphqlContext = {
 };
 
 const WORKSPACE_SUBSCRIPTION_READ_SCOPES = [
-  'subscription#read',
-  'event#read',
-  'major-event#read',
-  'person#read',
-];
+  Permission.Subscription.Read,
+  Permission.Event.Read,
+  Permission.MajorEvent.Read,
+] as const;
 
-const WORKSPACE_EVENT_SUBSCRIPTION_EDIT_SCOPES = ['subscription#edit', 'event#read', 'person#read'];
+const WORKSPACE_EVENT_SUBSCRIPTION_CREATE_PERMISSIONS = [Permission.Subscription.Create, Permission.Event.Read] as const;
 
-const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EDIT_SCOPES = [
-  'subscription#edit',
-  'event#read',
-  'major-event#read',
-  'person#read',
-];
+const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_CREATE_PERMISSIONS = [
+  Permission.Subscription.Create,
+  Permission.Event.Read,
+  Permission.MajorEvent.Read,
+] as const;
+
+const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_UPDATE_PERMISSIONS = [
+  Permission.Subscription.Update,
+  Permission.Event.Read,
+  Permission.MajorEvent.Read,
+] as const;
 
 const PERSON_SELECT = {
   id: true,
@@ -144,7 +149,7 @@ export class EventSubscriptionsResolver {
   @Query(() => [WorkspaceEventSubscription], {
     name: 'workspaceEventSubscriptions',
   })
-  @RequireScopes(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
+  @RequirePermissions(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
   async workspaceEventSubscriptions(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -188,7 +193,7 @@ export class EventSubscriptionsResolver {
   @Mutation(() => WorkspaceEventSubscription, {
     name: 'createWorkspaceEventSubscription',
   })
-  @RequireScopes(...WORKSPACE_EVENT_SUBSCRIPTION_EDIT_SCOPES)
+  @RequirePermissions(...WORKSPACE_EVENT_SUBSCRIPTION_CREATE_PERMISSIONS)
   async createWorkspaceEventSubscription(
     @Args('input', { type: () => WorkspaceEventSubscriptionCreateInput })
     input: WorkspaceEventSubscriptionCreateInput,
@@ -239,7 +244,7 @@ export class EventSubscriptionsResolver {
   @Query(() => [WorkspaceMajorEventSubscription], {
     name: 'workspaceMajorEventSubscriptions',
   })
-  @RequireScopes(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
+  @RequirePermissions(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
   async workspaceMajorEventSubscriptions(
     @Args('majorEventId', { type: () => String }) majorEventId: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -265,7 +270,7 @@ export class EventSubscriptionsResolver {
   @Mutation(() => WorkspaceMajorEventSubscription, {
     name: 'createWorkspaceMajorEventSubscription',
   })
-  @RequireScopes(...WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EDIT_SCOPES)
+  @RequirePermissions(...WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_CREATE_PERMISSIONS)
   async createWorkspaceMajorEventSubscription(
     @Args('input', { type: () => WorkspaceMajorEventSubscriptionCreateInput })
     input: WorkspaceMajorEventSubscriptionCreateInput,
@@ -335,7 +340,7 @@ export class EventSubscriptionsResolver {
   @Mutation(() => WorkspaceMajorEventSubscription, {
     name: 'updateWorkspaceMajorEventSubscription',
   })
-  @RequireScopes(...WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EDIT_SCOPES)
+  @RequirePermissions(...WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_UPDATE_PERMISSIONS)
   async updateWorkspaceMajorEventSubscription(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => WorkspaceMajorEventSubscriptionUpdateInput })

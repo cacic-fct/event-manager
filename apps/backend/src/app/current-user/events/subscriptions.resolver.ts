@@ -64,6 +64,7 @@ export class CurrentUserEventSubscriptionsResolver {
         deletedAt: null,
         event: {
           deletedAt: null,
+          publiclyVisible: true,
           majorEventId: null,
         },
       },
@@ -103,6 +104,7 @@ export class CurrentUserEventSubscriptionsResolver {
         deletedAt: null,
         event: {
           deletedAt: null,
+          publiclyVisible: true,
         },
       },
       select: CURRENT_USER_EVENT_SUBSCRIPTION_SELECT,
@@ -135,6 +137,7 @@ export class CurrentUserEventSubscriptionsResolver {
         event: {
           majorEventId,
           deletedAt: null,
+          publiclyVisible: true,
         },
       },
       select: CURRENT_USER_EVENT_SUBSCRIPTION_SELECT,

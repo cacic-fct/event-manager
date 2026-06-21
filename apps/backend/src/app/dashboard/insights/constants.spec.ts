@@ -20,13 +20,16 @@ describe('dashboard insights constants', () => {
     expect([...UNFAVORABLE_WEATHER_CODES]).toEqual([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99]);
     expect(DASHBOARD_PERMISSION_REQUIREMENTS).toEqual([
       'event#read',
-      'event#edit',
+      'event#update',
       'major-event#read',
-      'major-event#edit',
-      'certificate#edit',
+      'major-event#update',
+      'certificate#issue',
+      'certificate#reissue',
+      'certificate-config#update',
       'merge-candidate#read',
-      'validate-receipt#read',
-      'validate-receipt#edit',
+      'receipt#read',
+      'receipt#approve',
+      'receipt#reject',
     ]);
   });
 });

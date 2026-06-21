@@ -10,6 +10,8 @@ import { AppController } from './app.controller';
 import { AccountMergeController } from './account-merge/account-merge.controller';
 import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuthModule } from './auth/auth.module';
+import { PermissionGrantsResolver } from './authorization/permission-grants.resolver';
+import { PermissionGrantsService } from './authorization/permission-grants.service';
 import { KeycloakScopeGuard } from './auth/guards/keycloak-scope.guard';
 import { KeycloakAuthService } from './auth/keycloak-auth.service';
 import { createIntrospectionAuthPlugin } from './auth/introspection-auth.plugin';
@@ -192,6 +194,8 @@ import { VotingIntegrationService } from './voting-integration/service';
     UsersResolver,
     PeopleResolver,
     LecturerProfilesResolver,
+    PermissionGrantsResolver,
+    PermissionGrantsService,
     CurrentUserContextService,
     CurrentUserEventMapperService,
     CurrentUserPublicEventService,
