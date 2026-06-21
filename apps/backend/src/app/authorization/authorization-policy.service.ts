@@ -60,7 +60,7 @@ export class AuthorizationPolicyService {
     permissions: readonly string[],
     context: AuthorizationResourceContext = {},
   ): Promise<void> {
-    const requirements = this.normalizePermissions(permissions);
+    const requirements = this.normalizePermissionRequirements(permissions);
     if (requirements.length === 0) {
       return;
     }
@@ -285,7 +285,9 @@ export class AuthorizationPolicyService {
     const context: AuthorizationResourceContext = {};
     this.collectResourceIds(raw, context);
 
-    const resources = new Set(this.normalizePermissions(requiredPermissions).map((permission) => parsePermission(permission).resource));
+    const resources = new Set(
+      this.normalizePermissionRequirements(requiredPermissions).map((permission) => parsePermission(permission).resource),
+    );
     if (resources.size === 1) {
       context.primaryResource = [...resources][0];
     }
@@ -322,6 +324,23 @@ export class AuthorizationPolicyService {
     return [...new Set(permissions)]
       .map((permission) => permission.trim())
       .filter((permission): permission is Permission => EVENT_MANAGER_PERMISSION_SET.has(permission as Permission));
+  }
+
+  private normalizePermissionRequirements(permissions: readonly string[]): Permission[] {
+    if (permissions.length === 0) {
+      return [];
+    }
+
+    const normalized = [...new Set(permissions.map((permission) => permission.trim()))];
+    const invalidPermissions = normalized.filter(
+      (permission) => !permission || !EVENT_MANAGER_PERMISSION_SET.has(permission as Permission),
+    );
+
+    if (invalidPermissions.length > 0) {
+      throw new ForbiddenException(`Invalid Event Manager permission requirements: ${invalidPermissions.join(', ')}.`);
+    }
+
+    return normalized as Permission[];
   }
 
   private async findActiveGrants(userId: string | undefined, permissions?: readonly Permission[]): Promise<ActiveGrant[]> {

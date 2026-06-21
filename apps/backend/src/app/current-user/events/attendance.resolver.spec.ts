@@ -40,5 +40,6 @@ describe('CurrentUserEventAttendanceResolver', () => {
       },
       select: expect.any(Object),
     });
+    expect(frozenResources.assertEventMutable).not.toHaveBeenCalled();
   });
 });

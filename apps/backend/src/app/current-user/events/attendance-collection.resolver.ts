@@ -94,9 +94,9 @@ export class CurrentUserAttendanceCollectionResolver {
     input: EventAttendanceScannerCodeInput,
     @Context() context: GraphqlContext,
   ) {
+    const collector = await this.requireCollector(input.eventId, context, true);
     const authenticatedUser = this.getAuthenticatedUser(context);
     await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
-    const collector = await this.requireCollector(input.eventId, context, true);
     const userId = this.parseUserAztecCode(input.code);
     if (!userId) {
       throw new BadRequestException('Código Aztec incompatível.');
@@ -131,9 +131,9 @@ export class CurrentUserAttendanceCollectionResolver {
     input: EventAttendanceManualInput,
     @Context() context: GraphqlContext,
   ) {
+    const collector = await this.requireCollector(input.eventId, context, true);
     const authenticatedUser = this.getAuthenticatedUser(context);
     await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
-    const collector = await this.requireCollector(input.eventId, context, true);
     const person = await this.findSinglePersonForManualInput(input.value);
     return this.createAttendance({
       eventId: input.eventId,

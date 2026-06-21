@@ -93,6 +93,18 @@ describe('PermissionGrantsService', () => {
     );
   });
 
+  it('rejects scoped grants with targets from a different scope', async () => {
+    await expect(
+      service.createGrant({
+        userId: 'user-1',
+        permission: Permission.Event.Update,
+        scope: EventManagerPermissionGrantScope.EVENT,
+        eventId: 'event-1',
+        majorEventId: 'major-1',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('lists event targets for permission grant management without requiring the event resolver', async () => {
     prisma.event.findMany.mockResolvedValue([
       {
@@ -110,14 +122,16 @@ describe('PermissionGrantsService', () => {
     ]);
 
     await expect(service.listGrantTargets(EventManagerPermissionGrantScope.EVENT)).resolves.toEqual([
-      {
+      expect.objectContaining({
         id: 'event-1',
-        label: 'Credenciamento · CACiC',
-      },
-      {
+        label: 'Credenciamento',
+        description: 'CACiC',
+      }),
+      expect.objectContaining({
         id: 'event-2',
         label: 'Aula aberta',
-      },
+        description: 'Evento sem grande evento',
+      }),
     ]);
   });
 
@@ -275,6 +289,7 @@ describe('PermissionGrantsService', () => {
       expect.objectContaining({
         where: {
           id: 'grant-1',
+          deletedAt: null,
         },
         data: expect.objectContaining({
           userId: 'user-1',

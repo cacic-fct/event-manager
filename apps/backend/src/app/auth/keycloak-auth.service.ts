@@ -691,7 +691,11 @@ export class KeycloakAuthService {
       return true;
     }
 
-    return Boolean(readStringClaim(principal.claims, 'client_id'));
+    if (principal.sub?.startsWith('service-account-')) {
+      return true;
+    }
+
+    return Boolean(readStringClaim(principal.claims, 'client_id')?.startsWith('service-account-'));
   }
 
   private readClientId(principal: AuthenticatedUser): string | undefined {

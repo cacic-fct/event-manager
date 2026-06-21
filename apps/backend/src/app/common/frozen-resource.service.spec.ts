@@ -1,6 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { CertificateScope } from '@prisma/client';
-import { FrozenResourceService, isFrozenFromDates } from './frozen-resource.service';
+import { FROZEN_EDIT_PERMISSION, FrozenResourceService, isFrozenFromDates } from './frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 
@@ -121,6 +121,37 @@ describe('FrozenResourceService', () => {
     await expect(service.assertCertificateConfigMutable('config-1', buildUser([]), 'edit')).rejects.toBeInstanceOf(
       ForbiddenException,
     );
+  });
+
+  it('checks certificate config bypass after resolving the target context', async () => {
+    const user = buildUser([]);
+    const authorizationPolicy = {
+      canOverrideFrozenResource: jest.fn().mockResolvedValue(true),
+    };
+    const service = new FrozenResourceService(
+      {
+        certificateConfig: {
+          findFirst: jest.fn().mockResolvedValue({
+            scope: CertificateScope.MAJOR_EVENT,
+            majorEventId: 'major-event-1',
+            eventGroupId: null,
+            eventId: null,
+          }),
+        },
+        majorEvent: {
+          findFirst: jest.fn().mockResolvedValue({
+            createdAt: new Date('2026-01-01T12:00:00.000Z'),
+            endDate: new Date('2026-02-01T12:00:00.000Z'),
+          }),
+        },
+      } as unknown as PrismaService,
+      authorizationPolicy as never,
+    );
+
+    await expect(service.assertCertificateConfigMutable('config-1', user, 'edit')).resolves.toBeUndefined();
+    expect(authorizationPolicy.canOverrideFrozenResource).toHaveBeenCalledWith(user, FROZEN_EDIT_PERMISSION, {
+      majorEventId: 'major-event-1',
+    });
   });
 });
 

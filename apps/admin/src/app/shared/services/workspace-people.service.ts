@@ -88,7 +88,8 @@ export class WorkspacePeopleService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly locale = inject(LOCALE_ID);
   private permissionGrantTargetsLoaded = false;
-  private permissionGrantTargetsLoading: Promise<void> | null = null;
+  private permissionGrantTargetsLoading: Promise<boolean> | null = null;
+  private initializingPermissionGrantForm = false;
 
   readonly people = signal<Person[]>([]);
   readonly selectedPerson = signal<Person | null>(null);
@@ -526,20 +527,25 @@ export class WorkspacePeopleService {
 
   startEditingPermissionGrant(grant: EventManagerPermissionGrant): void {
     const parsed = parsePermission(grant.permission);
-    this.editingPermissionGrant.set(grant);
-    this.permissionGrantCategory.set(parsed.resource);
-    this.permissionGrantSelectedPermissions.set([grant.permission as Permission]);
-    this.permissionGrantForm.reset({
-      presetId: '',
-      category: parsed.resource,
-      permissions: [grant.permission as Permission],
-      permission: grant.permission as Permission,
-      scope: grant.scope,
-      targetId: grant.eventId ?? grant.majorEventId ?? grant.eventGroupId ?? '',
-      targetSearch: '',
-      validFrom: this.formatDateTimeInput(grant.validFrom),
-      validUntil: this.formatDateTimeInput(grant.validUntil),
-    });
+    this.initializingPermissionGrantForm = true;
+    try {
+      this.editingPermissionGrant.set(grant);
+      this.permissionGrantCategory.set(parsed.resource);
+      this.permissionGrantSelectedPermissions.set([grant.permission as Permission]);
+      this.permissionGrantForm.reset({
+        presetId: '',
+        category: parsed.resource,
+        permissions: [grant.permission as Permission],
+        permission: grant.permission as Permission,
+        scope: grant.scope,
+        targetId: grant.eventId ?? grant.majorEventId ?? grant.eventGroupId ?? '',
+        targetSearch: '',
+        validFrom: this.formatDateTimeInput(grant.validFrom),
+        validUntil: this.formatDateTimeInput(grant.validUntil),
+      });
+    } finally {
+      this.initializingPermissionGrantForm = false;
+    }
     this.permissionGrantTargetSearch.set('');
     this.applyPermissionGrantScopeRestrictions();
   }
@@ -1109,11 +1115,14 @@ export class WorkspacePeopleService {
   }
 
   private applyPermissionGrantScope(scope: EventManagerPermissionGrantScope): void {
+    const scopeChanged = this.permissionGrantScope() !== scope;
     this.permissionGrantScope.set(scope);
     const targetControl = this.permissionGrantForm.controls.targetId;
-    targetControl.reset('', { emitEvent: false });
-    this.permissionGrantForm.controls.targetSearch.reset('', { emitEvent: false });
-    this.permissionGrantTargetSearch.set('');
+    if (scopeChanged && !this.initializingPermissionGrantForm) {
+      targetControl.reset('', { emitEvent: false });
+      this.permissionGrantForm.controls.targetSearch.reset('', { emitEvent: false });
+      this.permissionGrantTargetSearch.set('');
+    }
 
     if (scope === EventManagerPermissionGrantScope.Global) {
       targetControl.clearValidators();
@@ -1129,6 +1138,11 @@ export class WorkspacePeopleService {
     const group = this.permissionGrantGroups.find((item) => item.resource === resource);
     const firstPermission = group?.options[0]?.permission ?? Permission.Event.Read;
     if (this.editingPermissionGrant()) {
+      if (this.initializingPermissionGrantForm) {
+        this.applyPermissionGrantScopeRestrictions();
+        return;
+      }
+
       this.permissionGrantForm.controls.permission.setValue(firstPermission, { emitEvent: false });
       this.permissionGrantSelectedPermissions.set([firstPermission]);
     } else {
@@ -1294,14 +1308,16 @@ export class WorkspacePeopleService {
 
     this.permissionGrantTargetsLoading = this.loadPermissionGrantTargets();
     try {
-      await this.permissionGrantTargetsLoading;
-      this.permissionGrantTargetsLoaded = true;
+      const loaded = await this.permissionGrantTargetsLoading;
+      if (loaded) {
+        this.permissionGrantTargetsLoaded = true;
+      }
     } finally {
       this.permissionGrantTargetsLoading = null;
     }
   }
 
-  private async loadPermissionGrantTargets(): Promise<void> {
+  private async loadPermissionGrantTargets(): Promise<boolean> {
     try {
       const [events, majorEvents, eventGroups] = await Promise.all([
         firstValueFrom(this.permissionGrantsApi.listTargets(EventManagerPermissionGrantScope.Event, { take: 500 })),
@@ -1312,10 +1328,12 @@ export class WorkspacePeopleService {
       this.eventPermissionGrantTargets.set(events ?? []);
       this.majorEventPermissionGrantTargets.set(majorEvents ?? []);
       this.eventGroupPermissionGrantTargets.set(eventGroups ?? []);
+      return true;
     } catch (error) {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível carregar os alvos de permissão.'), 'Fechar', {
         duration: 5000,
       });
+      return false;
     }
   }
 

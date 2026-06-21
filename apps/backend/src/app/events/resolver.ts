@@ -190,7 +190,7 @@ export class EventsResolver {
 
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled()) {
+      if (this.typesenseSearch.isEnabled() && !accessibleTargets) {
         prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, pagination.take);
         if (prioritizedIds.length === 0) {
           return [];

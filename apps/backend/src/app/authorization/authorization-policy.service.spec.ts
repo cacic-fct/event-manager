@@ -41,6 +41,17 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('fails closed when required permission names are invalid', async () => {
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), ['event#reed']),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when guard context is built with invalid permission names', () => {
+    expect(() => service.buildResourceContext({ id: 'event-1' }, ['event#reed'])).toThrow(ForbiddenException);
+  });
+
   it('only considers grants inside their validity window', async () => {
     prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
       grant({ permission: Permission.Event.Read, scope: EventManagerPermissionGrantScope.GLOBAL }),

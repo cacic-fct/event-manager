@@ -97,8 +97,6 @@ export class CurrentUserEventAttendanceResolver {
     input: ConfirmCurrentUserOnlineAttendanceInput,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventAttendance> {
-    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const normalizedCode = input.code.trim();
     if (!normalizedCode) {
@@ -133,6 +131,9 @@ export class CurrentUserEventAttendanceResolver {
     if (!event) {
       throw new BadRequestException(`Event ${input.eventId} was not found.`);
     }
+
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
 
     if (!event.shouldCollectAttendance || !event.isOnlineAttendanceAllowed) {
       throw new BadRequestException(`Event ${input.eventId} does not allow online attendance confirmation.`);

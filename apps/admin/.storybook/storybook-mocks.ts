@@ -6,6 +6,10 @@ faker.seed(20260516);
 
 const now = new Date('2026-05-16T12:00:00-03:00');
 
+type GraphqlMockError = {
+  errors: { message: string }[];
+};
+
 function isoDaysFromNow(days: number, hour = 14): string {
   const date = new Date(now);
   date.setDate(date.getDate() + days);
@@ -450,6 +454,55 @@ function deletionResult(id = 'deleted-id') {
   return { deleted: true, id };
 }
 
+function graphqlError(message: string): GraphqlMockError {
+  return {
+    errors: [{ message }],
+  };
+}
+
+function isGraphqlMockError(value: unknown): value is GraphqlMockError {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'errors' in value &&
+      Array.isArray((value as GraphqlMockError).errors),
+  );
+}
+
+function validatePermissionGrantTargetInput(
+  scope: string,
+  eventId: string | null,
+  majorEventId: string | null,
+  eventGroupId: string | null,
+): string | null {
+  if (scope === EventManagerPermissionGrantScope.Global) {
+    return eventId || majorEventId || eventGroupId ? 'Permissões globais não podem ter alvo de escopo.' : null;
+  }
+
+  if (scope === EventManagerPermissionGrantScope.Event) {
+    if (!eventId) {
+      return 'Informe o evento do escopo.';
+    }
+    return majorEventId || eventGroupId ? 'Informe apenas o alvo compatível com o escopo.' : null;
+  }
+
+  if (scope === EventManagerPermissionGrantScope.MajorEvent) {
+    if (!majorEventId) {
+      return 'Informe o grande evento do escopo.';
+    }
+    return eventId || eventGroupId ? 'Informe apenas o alvo compatível com o escopo.' : null;
+  }
+
+  if (scope === EventManagerPermissionGrantScope.EventGroup) {
+    if (!eventGroupId) {
+      return 'Informe o grupo de eventos do escopo.';
+    }
+    return eventId || majorEventId ? 'Informe apenas o alvo compatível com o escopo.' : null;
+  }
+
+  return null;
+}
+
 function graphqlData(query: string, variables: Record<string, unknown>) {
   if (query.includes('ListPeople') || query.includes('GetPerson')) {
     return { people, person: people.find((item) => item.id === variables['id']) ?? people[0] };
@@ -472,6 +525,12 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     const eventId = input['eventId'] ? String(input['eventId']) : null;
     const majorEventId = input['majorEventId'] ? String(input['majorEventId']) : null;
     const eventGroupId = input['eventGroupId'] ? String(input['eventGroupId']) : null;
+    const scope = String(input['scope'] ?? EventManagerPermissionGrantScope.Global);
+    const validationError = validatePermissionGrantTargetInput(scope, eventId, majorEventId, eventGroupId);
+    if (validationError) {
+      return graphqlError(validationError);
+    }
+
     const target =
       events.find((item) => item.id === eventId) ??
       majorEvents.find((item) => item.id === majorEventId) ??
@@ -484,7 +543,7 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
         userId: String(input['userId'] ?? people[0].userId),
         personId: input['personId'] ? String(input['personId']) : people[0].id,
         permission: String(input['permission'] ?? Permission.Event.Read),
-        scope: String(input['scope'] ?? EventManagerPermissionGrantScope.Global),
+        scope,
         eventId,
         majorEventId,
         eventGroupId,
@@ -504,6 +563,12 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     const eventId = input['eventId'] ? String(input['eventId']) : null;
     const majorEventId = input['majorEventId'] ? String(input['majorEventId']) : null;
     const eventGroupId = input['eventGroupId'] ? String(input['eventGroupId']) : null;
+    const scope = String(input['scope'] ?? EventManagerPermissionGrantScope.Global);
+    const validationError = validatePermissionGrantTargetInput(scope, eventId, majorEventId, eventGroupId);
+    if (validationError) {
+      return graphqlError(validationError);
+    }
+
     const target =
       events.find((item) => item.id === eventId) ??
       majorEvents.find((item) => item.id === majorEventId) ??
@@ -514,7 +579,7 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
       updateEventManagerPermissionGrant: {
         ...(permissionGrants.find((grant) => grant.id === variables['id']) ?? permissionGrants[0]),
         permission: String(input['permission'] ?? Permission.Event.Read),
-        scope: String(input['scope'] ?? EventManagerPermissionGrantScope.Global),
+        scope,
         eventId,
         majorEventId,
         eventGroupId,
@@ -840,7 +905,8 @@ const workspacePermissions = [...EVENT_MANAGER_PERMISSION_CATALOG];
 export const cacicEventosHandlers = [
   http.post('/api/graphql', async ({ request }) => {
     const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-    return HttpResponse.json({ data: graphqlData(body.query ?? '', body.variables ?? {}) });
+    const response = graphqlData(body.query ?? '', body.variables ?? {});
+    return HttpResponse.json(isGraphqlMockError(response) ? response : { data: response });
   }),
   http.post('/api/auth/permissions/evaluate', () => HttpResponse.json({ permissions: workspacePermissions })),
   http.get('/api/workspace/permissions', () => HttpResponse.json({ permissions: workspacePermissions })),

@@ -64,6 +64,7 @@ export class CurrentUserEventSubscriptionsResolver {
         deletedAt: null,
         event: {
           deletedAt: null,
+          publiclyVisible: true,
           majorEventId: null,
         },
       },

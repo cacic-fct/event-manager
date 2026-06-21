@@ -75,7 +75,7 @@ class RefreshSessionResponseDto {
 class PermissionEvaluationRequestDto {
   @ApiProperty({
     description:
-      'Permissions to evaluate against the current access token. Empty strings are ignored and duplicate values are removed before evaluation.',
+      'Permissions to evaluate against Event Manager policy rules and persisted permission grants. Empty strings are ignored and duplicate values are removed before evaluation.',
     example: [Permission.Event.Create, Permission.Event.Update, Permission.MajorEvent.Read],
     type: [String],
   })
@@ -84,7 +84,7 @@ class PermissionEvaluationRequestDto {
 
 class PermissionEvaluationResponseDto {
   @ApiProperty({
-    description: 'Permissions granted by Keycloak after evaluating the current access token.',
+    description: 'Permissions granted by Event Manager policy evaluation for the current authenticated user.',
     example: [Permission.Event.Create, Permission.MajorEvent.Read],
     type: [String],
   })

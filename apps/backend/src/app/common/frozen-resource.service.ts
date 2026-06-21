@@ -49,10 +49,6 @@ export class FrozenResourceService {
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (await this.canBypass(user, operation, { eventId })) {
-      return;
-    }
-
     const event = await this.prisma.event.findFirst({
       where: {
         id: eventId,
@@ -66,6 +62,10 @@ export class FrozenResourceService {
 
     if (!event) {
       throw new NotFoundException(`Event ${eventId} was not found.`);
+    }
+
+    if (await this.canBypass(user, operation, { eventId })) {
+      return;
     }
 
     this.assertDatesMutable([event.createdAt, event.endDate], operation);
@@ -132,10 +132,6 @@ export class FrozenResourceService {
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (await this.canBypass(user, operation, { eventGroupId })) {
-      return;
-    }
-
     const eventGroup = await this.prisma.eventGroup.findFirst({
       where: {
         id: eventGroupId,
@@ -159,6 +155,10 @@ export class FrozenResourceService {
       throw new NotFoundException(`Event group ${eventGroupId} was not found.`);
     }
 
+    if (await this.canBypass(user, operation, { eventGroupId })) {
+      return;
+    }
+
     this.assertDatesMutable(
       [eventGroup.createdAt, ...eventGroup.events.flatMap((event) => [event.createdAt, event.endDate])],
       operation,
@@ -170,10 +170,6 @@ export class FrozenResourceService {
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (await this.canBypass(user, operation, { majorEventId })) {
-      return;
-    }
-
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
         id: majorEventId,
@@ -187,6 +183,10 @@ export class FrozenResourceService {
 
     if (!majorEvent) {
       throw new NotFoundException(`Major event ${majorEventId} was not found.`);
+    }
+
+    if (await this.canBypass(user, operation, { majorEventId })) {
+      return;
     }
 
     this.assertDatesMutable([majorEvent.createdAt, majorEvent.endDate], operation);
@@ -218,10 +218,6 @@ export class FrozenResourceService {
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (await this.canBypass(user, operation)) {
-      return;
-    }
-
     const config = await this.prisma.certificateConfig.findFirst({
       where: {
         id: configId,
@@ -250,10 +246,6 @@ export class FrozenResourceService {
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (await this.canBypass(user, operation)) {
-      return;
-    }
-
     const certificate = await this.prisma.certificate.findFirst({
       where: {
         id: certificateId,
@@ -272,10 +264,6 @@ export class FrozenResourceService {
   }
 
   async assertNoFrozenCertificateTargets(user: AuthenticatedUser | undefined, operation: FrozenOperation): Promise<void> {
-    if (await this.canBypass(user, operation)) {
-      return;
-    }
-
     const cutoff = getFrozenCutoffDate();
     const frozenConfig = await this.prisma.certificateConfig.findFirst({
       where: {
@@ -352,9 +340,15 @@ export class FrozenResourceService {
       },
     });
 
-    if (frozenConfig) {
-      this.throwFrozen(operation);
+    if (!frozenConfig) {
+      return;
     }
+
+    if (await this.canBypass(user, operation)) {
+      return;
+    }
+
+    this.throwFrozen(operation);
   }
 
   async assertMajorEventSubscriptionMutable(

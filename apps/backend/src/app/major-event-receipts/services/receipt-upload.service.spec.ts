@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, GoneException, NotFoundExcepti
 import { SubscriptionStatus } from '@prisma/client';
 import sharp from 'sharp';
 import { Readable } from 'stream';
-import { RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';
+import { RECEIPT_ADMIN_PERMISSION, RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';
 import { ReceiptUploadService } from './receipt-upload.service';
 
 let validPngBuffer: Buffer;
@@ -163,7 +163,7 @@ describe('ReceiptUploadService', () => {
       contentType: 'image/png',
       contentLength: 5,
     });
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, ['receipt#read'], {
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [RECEIPT_ADMIN_PERMISSION], {
       receiptId: 'receipt-1',
     });
   });

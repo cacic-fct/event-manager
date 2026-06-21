@@ -144,6 +144,20 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('checks collector visibility before frozen resource state', async () => {
+    const { resolver, frozenResources } = createCollectionResolver({
+      collector: null,
+    });
+
+    await expect(
+      resolver.collectCurrentUserAttendanceFromScannerCode(
+        { eventId: 'hidden-event', code: 'user:user-1', location: preciseLocation() },
+        context as never,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(frozenResources.assertEventMutable).not.toHaveBeenCalled();
+  });
+
   it('returns not found when a scanned user has no active person', async () => {
     const { resolver } = createCollectionResolver({
       collector: collectorPerson(),
@@ -376,6 +390,7 @@ function createCollectionResolver(input: {
   transactionResult?: unknown;
   transactionError?: unknown;
   attendanceCategories?: { refreshForAttendance: jest.Mock };
+  frozenResources?: { assertEventMutable: jest.Mock };
 }) {
   const prisma = createPrisma({
     attendances: [],
@@ -401,6 +416,9 @@ function createCollectionResolver(input: {
   };
   const attendanceCategories = input.attendanceCategories ?? {
     refreshForAttendance: jest.fn().mockResolvedValue(undefined),
+  };
+  const frozenResources = input.frozenResources ?? {
+    assertEventMutable: jest.fn().mockResolvedValue(undefined),
   };
   const authorizationPolicy = {
     assertAttendanceCollectorForEvent: jest.fn(async (eventId: string, personId: string, options: {
@@ -435,10 +453,11 @@ function createCollectionResolver(input: {
       prisma as never,
       currentUserContext as never,
       attendanceCategories as never,
-      undefined as never,
+      frozenResources as never,
       authorizationPolicy as never,
     ),
     prisma,
+    frozenResources,
   };
 }
 

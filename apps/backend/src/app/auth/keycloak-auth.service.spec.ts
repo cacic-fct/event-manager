@@ -291,6 +291,19 @@ describe('KeycloakAuthService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('rejects access tokens from clients outside the allowed list', async () => {
+    mockedAxios.post.mockResolvedValueOnce({ data: { active: true } });
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        sub: 'user-1',
+      },
+    });
+
+    await expect(
+      service.authenticateAccessToken(jwt({ azp: 'external-client', client_id: 'browser-client', sub: 'user-1' })),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
   it('authenticates sessions and retries with a refreshed token after unauthorized token validation', async () => {
     const expiredAccessToken = jwt({ sub: 'user-1', exp: 1 });
     const freshAccessToken = jwt({

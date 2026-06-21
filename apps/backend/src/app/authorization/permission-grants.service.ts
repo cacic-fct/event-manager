@@ -168,6 +168,7 @@ export class PermissionGrantsService {
       const grant = await this.prisma.eventManagerPermissionGrant.update({
         where: {
           id,
+          deletedAt: null,
         },
         data,
         select: GRANT_SELECT,
@@ -177,6 +178,10 @@ export class PermissionGrantsService {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException('Esta permissão já foi concedida para esse escopo.');
+      }
+
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException(`Permission grant ${id} was not found.`);
       }
 
       throw error;
@@ -229,12 +234,15 @@ export class PermissionGrantsService {
         this.assertNoScopedTargets(input);
         return data;
       case EventManagerPermissionGrantScope.EVENT:
+        this.assertOnlyScopedTarget(input, 'eventId');
         data.eventId = await this.requireActiveEvent(input.eventId);
         return data;
       case EventManagerPermissionGrantScope.MAJOR_EVENT:
+        this.assertOnlyScopedTarget(input, 'majorEventId');
         data.majorEventId = await this.requireActiveMajorEvent(input.majorEventId);
         return data;
       case EventManagerPermissionGrantScope.EVENT_GROUP:
+        this.assertOnlyScopedTarget(input, 'eventGroupId');
         data.eventGroupId = await this.requireActiveEventGroup(input.eventGroupId);
         return data;
     }
@@ -460,6 +468,21 @@ export class PermissionGrantsService {
   private assertNoScopedTargets(input: EventManagerPermissionGrantCreateInput): void {
     if (input.eventId?.trim() || input.majorEventId?.trim() || input.eventGroupId?.trim()) {
       throw new BadRequestException('Permissões globais não podem ter alvo de escopo.');
+    }
+  }
+
+  private assertOnlyScopedTarget(
+    input: EventManagerPermissionGrantCreateInput,
+    targetField: 'eventId' | 'majorEventId' | 'eventGroupId',
+  ): void {
+    const targets = {
+      eventId: input.eventId?.trim(),
+      majorEventId: input.majorEventId?.trim(),
+      eventGroupId: input.eventGroupId?.trim(),
+    };
+
+    if (Object.entries(targets).some(([field, value]) => field !== targetField && Boolean(value))) {
+      throw new BadRequestException('Informe apenas o alvo compatível com o escopo.');
     }
   }
 

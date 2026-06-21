@@ -350,11 +350,19 @@
                     />
                   </mat-form-field>
 
-                  <mat-list class="result-list permission-target-list">
+                  <mat-list
+                    class="result-list permission-target-list"
+                    role="listbox"
+                    [attr.aria-label]="workspace.permissionGrantTargetSearchLabel()">
                     @for (target of workspace.filteredPermissionGrantTargetOptions(); track target.id) {
                       <mat-list-item
                         (click)="workspace.selectPermissionGrantTarget(target.id)"
-                        [class.selected-list-item]="workspace.isPermissionGrantTargetSelected(target.id)">
+                        (keydown.enter)="workspace.selectPermissionGrantTarget(target.id)"
+                        (keydown.space)="$event.preventDefault(); workspace.selectPermissionGrantTarget(target.id)"
+                        [attr.aria-selected]="workspace.isPermissionGrantTargetSelected(target.id)"
+                        [class.selected-list-item]="workspace.isPermissionGrantTargetSelected(target.id)"
+                        role="option"
+                        tabindex="0">
                         <span matListItemTitle class="list-title">
                           <app-twemoji [emoji]="target.emoji" />
                           <span>{{ target.label }}</span>

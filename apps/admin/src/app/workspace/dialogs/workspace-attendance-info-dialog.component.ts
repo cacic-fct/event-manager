@@ -1,9 +1,10 @@
-import { DOCUMENT, DecimalPipe } from '@angular/common';
+import { DOCUMENT, DecimalPipe, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
+  PLATFORM_ID,
   afterNextRender,
   computed,
   effect,
@@ -176,8 +177,11 @@ type AttendanceDetail = {
 export class WorkspaceAttendanceInfoDialogComponent implements OnDestroy {
   protected readonly data = inject<AttendanceInfoDialogData>(MAT_DIALOG_DATA);
   private readonly document = inject(DOCUMENT);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
-  private readonly markerIconUrl = new URL('assets/shared/pin.svg', this.document.baseURI).toString();
+  private readonly markerIconUrl = this.isBrowser
+    ? new URL('assets/shared/pin.svg', this.document.baseURI).toString()
+    : '';
 
   private map: { setTarget(target: HTMLElement | undefined): void; updateSize(): void } | null = null;
   private hasRendered = false;

@@ -19,6 +19,15 @@ CREATE TABLE "event_manager_permission_grants" (
     "updatedById" TEXT,
     "deletedAt" TIMESTAMP(3),
 
+    CONSTRAINT "event_manager_permission_grants_scope_target_check" CHECK (
+        ("scope" = 'GLOBAL' AND "eventId" IS NULL AND "majorEventId" IS NULL AND "eventGroupId" IS NULL)
+        OR ("scope" = 'EVENT' AND "eventId" IS NOT NULL AND "majorEventId" IS NULL AND "eventGroupId" IS NULL)
+        OR ("scope" = 'MAJOR_EVENT' AND "eventId" IS NULL AND "majorEventId" IS NOT NULL AND "eventGroupId" IS NULL)
+        OR ("scope" = 'EVENT_GROUP' AND "eventId" IS NULL AND "majorEventId" IS NULL AND "eventGroupId" IS NOT NULL)
+    ),
+    CONSTRAINT "event_manager_permission_grants_validity_window_check" CHECK (
+        "validFrom" IS NULL OR "validUntil" IS NULL OR "validFrom" <= "validUntil"
+    ),
     CONSTRAINT "event_manager_permission_grants_pkey" PRIMARY KEY ("id")
 );
 
