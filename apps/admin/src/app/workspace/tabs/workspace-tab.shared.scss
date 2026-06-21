@@ -109,6 +109,45 @@
   margin-top: 0.75rem;
 }
 
+.permission-target-search {
+  grid-column: span 2;
+}
+
+.permission-target-list {
+  flex: 1 1 100%;
+  grid-column: 1 / -1;
+  max-height: 14rem;
+  margin-top: 0;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+}
+
+.permission-preset-preview,
+.permission-draft-list {
+  flex: 1 1 100%;
+  max-height: 18rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+}
+
+.permission-draft-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1rem 0 0.5rem;
+}
+
+.permission-preset-preview mat-list-item,
+.permission-target-list mat-list-item,
+.permission-draft-list mat-list-item,
+.permission-grant-list mat-list-item {
+  height: auto;
+  min-height: 4.5rem;
+  padding-block: 0.5rem;
+}
+
 .list-title,
 .item-title {
   min-width: 0;
@@ -197,21 +236,72 @@
   margin: 0.75rem 0;
 }
 
-.person-choice {
+.permission-option {
+  height: auto;
+  min-height: 4.5rem;
+  padding-block: 0.5rem;
+  white-space: normal;
+}
+
+.permission-choice {
   display: grid;
+  width: 100%;
   min-width: 0;
+  gap: 0.125rem;
+  line-height: 1.3;
   text-align: left;
+  white-space: normal;
 }
 
-.person-choice span,
-.person-choice small {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.permission-choice__title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.person-choice small {
+.permission-choice__title mat-icon {
+  flex: 0 0 auto;
+}
+
+.permission-choice__summary {
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-body-small);
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.included-data-list {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.included-data-list__title {
+  color: var(--mat-sys-on-surface);
+  font-weight: 600;
+}
+
+.included-data-list ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.included-data-list li {
+  padding-left: 0.125rem;
+}
+
+.included-data-list strong,
+.included-data-list span {
+  display: block;
 }
 
 .selected-list-item {
@@ -283,6 +373,10 @@ app-twemoji[matPrefix] {
   }
 
   .span-2 {
+    grid-column: span 1;
+  }
+
+  .permission-target-search {
     grid-column: span 1;
   }
 }

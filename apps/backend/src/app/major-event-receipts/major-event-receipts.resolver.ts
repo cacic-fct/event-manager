@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { MajorEventReceiptsService } from './major-event-receipts.service';
@@ -13,7 +13,12 @@ import {
   CurrentUserReceipt,
   RejectReceiptInput,
 } from './receipt.models';
-import { RECEIPT_ADMIN_EDIT_PERMISSION, RECEIPT_ADMIN_PERMISSION } from './receipt.types';
+import {
+  RECEIPT_ADMIN_PERMISSION,
+  RECEIPT_APPROVE_PERMISSION,
+  RECEIPT_REJECT_PERMISSION,
+  RECEIPT_UNDO_PERMISSION,
+} from './receipt.types';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -41,7 +46,7 @@ export class MajorEventReceiptsResolver {
   @Query(() => AdminReceiptPendingCount, {
     name: 'adminReceiptPendingValidationCount',
   })
-  @RequireScopes(RECEIPT_ADMIN_PERMISSION)
+  @RequirePermissions(RECEIPT_ADMIN_PERMISSION)
   adminReceiptPendingValidationCount() {
     return this.receipts.getPendingValidationCount();
   }
@@ -49,7 +54,7 @@ export class MajorEventReceiptsResolver {
   @Query(() => AdminReceiptQueue, {
     name: 'adminReceiptValidationQueue',
   })
-  @RequireScopes(RECEIPT_ADMIN_PERMISSION)
+  @RequirePermissions(RECEIPT_ADMIN_PERMISSION)
   adminReceiptValidationQueue(
     @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
   ) {
@@ -59,7 +64,7 @@ export class MajorEventReceiptsResolver {
   @Mutation(() => AdminReceiptValidationResultModel, {
     name: 'approveAdminReceipt',
   })
-  @RequireScopes(RECEIPT_ADMIN_EDIT_PERMISSION)
+  @RequirePermissions(RECEIPT_APPROVE_PERMISSION)
   async approveAdminReceipt(@Args('input') input: ApproveReceiptInput, @Context() context: GraphqlContext) {
     const user = this.requireAuthenticatedUser(context);
     await this.frozenResources.assertMajorEventSubscriptionMutable(input.subscriptionId, user, 'edit');
@@ -74,7 +79,7 @@ export class MajorEventReceiptsResolver {
   @Mutation(() => AdminReceiptValidationResultModel, {
     name: 'rejectAdminReceipt',
   })
-  @RequireScopes(RECEIPT_ADMIN_EDIT_PERMISSION)
+  @RequirePermissions(RECEIPT_REJECT_PERMISSION)
   async rejectAdminReceipt(@Args('input') input: RejectReceiptInput, @Context() context: GraphqlContext) {
     const user = this.requireAuthenticatedUser(context);
     await this.frozenResources.assertMajorEventSubscriptionMutable(input.subscriptionId, user, 'edit');
@@ -90,7 +95,7 @@ export class MajorEventReceiptsResolver {
   @Mutation(() => AdminReceiptQueueItemModel, {
     name: 'undoAdminReceiptValidationAction',
   })
-  @RequireScopes(RECEIPT_ADMIN_EDIT_PERMISSION)
+  @RequirePermissions(RECEIPT_UNDO_PERMISSION)
   async undoAdminReceiptValidationAction(
     @Args('actionId', { type: () => String }) actionId: string,
     @Context() context: GraphqlContext,

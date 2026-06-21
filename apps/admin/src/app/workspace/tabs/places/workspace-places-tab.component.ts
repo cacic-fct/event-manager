@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -16,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { WorkspacePlacePresetsService } from '../../../shared/services/workspace-place-presets.service';
 
@@ -37,8 +39,11 @@ import { WorkspacePlacePresetsService } from '../../../shared/services/workspace
 export class WorkspacePlacesTabComponent implements OnDestroy {
   readonly workspace = inject(WorkspacePlacePresetsService);
   private readonly route = inject(ActivatedRoute);
+  private readonly document = inject(DOCUMENT);
   protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly Permission = Permission;
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
+  private readonly markerIconUrl = new URL('assets/shared/pin.svg', this.document.baseURI).toString();
 
   private map: { setTarget(target: HTMLElement | undefined): void; updateSize(): void } | null = null;
   private hasRendered = false;
@@ -133,7 +138,7 @@ export class WorkspacePlacesTabComponent implements OnDestroy {
           anchor: [400, 700],
           anchorXUnits: 'pixels',
           anchorYUnits: 'pixels',
-          src: '/admin/assets/shared/pin.svg',
+          src: this.markerIconUrl,
           scale: 0.065,
         }),
       }),

@@ -7,7 +7,8 @@ import {
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -29,7 +30,7 @@ export class PlacePresetsResolver {
   constructor(private readonly prisma: PrismaService) {}
 
   @Query(() => [PlacePreset], { name: 'placePresets' })
-  @RequireScopes('event#read')
+  @RequirePermissions(Permission.PlacePreset.Read)
   async placePresets(
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -61,7 +62,7 @@ export class PlacePresetsResolver {
   }
 
   @Query(() => PlacePreset, { name: 'placePreset' })
-  @RequireScopes('event#read')
+  @RequirePermissions(Permission.PlacePreset.Read)
   async placePreset(@Args('id', { type: () => String }) id: string) {
     const place = await this.prisma.placePreset.findFirst({
       where: {
@@ -79,7 +80,7 @@ export class PlacePresetsResolver {
   }
 
   @Mutation(() => PlacePreset, { name: 'createPlacePreset' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.PlacePreset.Create)
   async createPlacePreset(@Args('input', { type: () => PlacePresetCreateInput }) input: PlacePresetCreateInput) {
     return this.prisma.placePreset.create({
       data: this.normalizePlaceInput(input),
@@ -88,7 +89,7 @@ export class PlacePresetsResolver {
   }
 
   @Mutation(() => PlacePreset, { name: 'updatePlacePreset' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.PlacePreset.Update)
   async updatePlacePreset(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => PlacePresetUpdateInput }) input: PlacePresetUpdateInput,
@@ -109,7 +110,7 @@ export class PlacePresetsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deletePlacePreset' })
-  @RequireScopes('event#delete')
+  @RequirePermissions(Permission.PlacePreset.Delete)
   async deletePlacePreset(@Args('id', { type: () => String }) id: string) {
     const { count } = await this.prisma.placePreset.updateMany({
       where: {
@@ -132,7 +133,7 @@ export class PlacePresetsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'mergePlacePreset' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.PlacePreset.Merge)
   async mergePlacePreset(
     @Args('targetId', { type: () => String }) targetId: string,
     @Args('sourceId', { type: () => String }) sourceId: string,

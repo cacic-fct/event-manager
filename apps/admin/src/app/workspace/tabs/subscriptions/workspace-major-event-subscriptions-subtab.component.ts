@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { WorkspaceMajorEventSubscription } from '../../../graphql/models';
@@ -39,6 +40,7 @@ export class WorkspaceMajorEventSubscriptionsSubtabComponent {
   readonly pendingReceiptsCount = input.required<number>();
   readonly workspace = inject(WorkspaceSubscriptionsService);
   protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly Permission = Permission;
 
   protected readonly statuses = [
     'WAITING_RECEIPT_UPLOAD',
@@ -71,9 +73,13 @@ export class WorkspaceMajorEventSubscriptionsSubtabComponent {
       .majorEvents()
       .find((item) => item.id === this.workspace.majorEventForm.controls.majorEventId.value);
     return (
-      this.permissions.canEdit('subscription#edit') &&
+      this.permissions.hasAny([
+        Permission.Subscription.Create,
+        Permission.Subscription.Update,
+        Permission.Subscription.Import,
+      ]) &&
       Boolean(majorEvent) &&
-      (!isFrozenMajorEvent(majorEvent) || this.permissions.has('frozen#edit'))
+      (!isFrozenMajorEvent(majorEvent) || this.permissions.has(Permission.Frozen.Update))
     );
   }
 
@@ -82,9 +88,9 @@ export class WorkspaceMajorEventSubscriptionsSubtabComponent {
       .majorEvents()
       .find((item) => item.id === this.workspace.majorEventForm.controls.majorEventId.value);
     return (
-      this.permissions.canEdit('validate-receipt#edit') &&
+      this.permissions.hasAny([Permission.Receipt.Approve, Permission.Receipt.Reject, Permission.Receipt.Undo]) &&
       Boolean(majorEvent) &&
-      (!isFrozenMajorEvent(majorEvent) || this.permissions.has('frozen#edit'))
+      (!isFrozenMajorEvent(majorEvent) || this.permissions.has(Permission.Frozen.Update))
     );
   }
 }

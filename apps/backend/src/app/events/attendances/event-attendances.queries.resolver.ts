@@ -1,8 +1,9 @@
 import { EventAttendance, EventAttendanceScannerFeedItem, MajorEventUserAttendance } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
-import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
@@ -15,7 +16,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   }
 
   @Query(() => [EventAttendance], { name: 'eventAttendances' })
-  @RequireScopes('event-attendance#read')
+  @RequirePermissions(Permission.EventAttendance.Read)
   async eventAttendances(
     @Args('personId', { type: () => String, nullable: true }) personId?: string,
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
@@ -83,7 +84,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   }
 
   @Query(() => [EventAttendanceScannerFeedItem], { name: 'eventAttendanceScannerFeed' })
-  @RequireScopes('event-attendance#read')
+  @RequirePermissions(Permission.EventAttendance.Read)
   eventAttendanceScannerFeed(@Args('eventId', { type: () => String }) eventId: string) {
     return this.getScannerFeed(eventId);
   }
@@ -91,7 +92,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   @Query(() => [MajorEventUserAttendance], {
     name: 'majorEventUserAttendances',
   })
-  @RequireScopes('event-attendance#read')
+  @RequirePermissions(Permission.EventAttendance.Read)
   async majorEventUserAttendances(
     @Args('majorEventId', { type: () => String }) majorEventId: string,
     @Args('personId', { type: () => String, nullable: true }) personId?: string,
@@ -221,7 +222,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   }
 
   @Query(() => EventAttendance, { name: 'eventAttendance' })
-  @RequireScopes('event-attendance#read')
+  @RequirePermissions(Permission.EventAttendance.Read)
   async eventAttendance(
     @Args('personId', { type: () => String }) personId: string,
     @Args('eventId', { type: () => String }) eventId: string,

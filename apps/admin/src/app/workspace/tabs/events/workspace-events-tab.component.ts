@@ -11,6 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { Event, EventType } from '../../../graphql/models';
 import { WorkspaceEventsService } from '../../../shared/services/workspace-events.service';
@@ -44,6 +45,7 @@ export class WorkspaceEventsTabComponent {
   readonly workspace = inject(WorkspaceEventsService);
   private readonly route = inject(ActivatedRoute);
   protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly Permission = Permission;
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -77,27 +79,36 @@ export class WorkspaceEventsTabComponent {
 
   protected canEditEvent(eventItem: Event | null | undefined): boolean {
     return (
-      this.permissions.canEdit('event#edit') &&
-      (!eventItem || !isFrozenEvent(eventItem) || this.permissions.has('frozen#edit'))
+      this.permissions.canEdit(eventItem ? Permission.Event.Update : Permission.Event.Create) &&
+      (!eventItem || !isFrozenEvent(eventItem) || this.permissions.has(Permission.Frozen.Update))
     );
   }
 
   protected canDeleteEvent(eventItem: Event): boolean {
-    return this.permissions.canDelete('event#delete') && (!isFrozenEvent(eventItem) || this.permissions.has('frozen#delete'));
+    return (
+      this.permissions.canDelete(Permission.Event.Delete) &&
+      (!isFrozenEvent(eventItem) || this.permissions.has(Permission.Frozen.Delete))
+    );
   }
 
-  protected canEditSelectedEventRelation(scope: 'event#edit' | 'event-lecturer#edit' | 'person#edit'): boolean {
+  protected canEditSelectedEventRelation(
+    scope:
+      | typeof Permission.EventAttendanceCollector.Create
+      | typeof Permission.EventLecturer.Create
+      | typeof Permission.Person.Create,
+  ): boolean {
     return this.permissions.canEdit(scope) && (!this.workspace.selectedEvent() || this.canEditEvent(this.workspace.selectedEvent()));
   }
 
-  protected canRemoveSelectedEventRelation(scope: 'event#edit' | 'event-lecturer#delete'): boolean {
+  protected canRemoveSelectedEventRelation(
+    scope: typeof Permission.EventAttendanceCollector.Delete | typeof Permission.EventLecturer.Delete,
+  ): boolean {
     const selectedEvent = this.workspace.selectedEvent();
     if (!selectedEvent) {
-      return this.permissions.canEdit(scope === 'event#edit' ? 'event#edit' : 'event-lecturer#edit');
+      return this.permissions.canDelete(scope);
     }
 
-    const hasResourcePermission =
-      scope === 'event#edit' ? this.permissions.canEdit('event#edit') : this.permissions.canDelete('event-lecturer#delete');
-    return hasResourcePermission && (!isFrozenEvent(selectedEvent) || this.permissions.has('frozen#delete'));
+    const hasResourcePermission = this.permissions.canDelete(scope);
+    return hasResourcePermission && (!isFrozenEvent(selectedEvent) || this.permissions.has(Permission.Frozen.Delete));
   }
 }

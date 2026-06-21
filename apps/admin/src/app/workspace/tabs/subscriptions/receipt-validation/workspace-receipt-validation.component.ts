@@ -16,6 +16,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -257,12 +258,12 @@ export class WorkspaceReceiptValidationComponent {
 
   protected canEditReceiptValidation(item: ReceiptValidationQueueItem): boolean {
     return (
-      this.permissions.canEdit('validate-receipt#edit') &&
+      this.permissions.hasAny([Permission.Receipt.Approve, Permission.Receipt.Reject, Permission.Receipt.Undo]) &&
       (!isFrozenMajorEvent({
         createdAt: item.majorEventCreatedAt,
         endDate: item.majorEventEndDate,
       }) ||
-        this.permissions.has('frozen#edit'))
+        this.permissions.has(Permission.Frozen.Update))
     );
   }
 

@@ -8,6 +8,7 @@ import { KeycloakAuthService } from './keycloak-auth.service';
 import { KeycloakM2mTokenService } from './keycloak-m2m-token.service';
 import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
 import { getRedisConnectionOptions } from '../weather/redis-connection';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 
 @Module({
   controllers: [AuthController],
@@ -15,6 +16,7 @@ import { getRedisConnectionOptions } from '../weather/redis-connection';
     KeycloakAuthService,
     KeycloakM2mTokenService,
     AuthenticatedUserSyncService,
+    AuthorizationPolicyService,
     AuthSessionStoreService,
     AuthorizationStateService,
     AuthResolver,
@@ -23,6 +25,6 @@ import { getRedisConnectionOptions } from '../weather/redis-connection';
       useFactory: () => new Redis(getRedisConnectionOptions()),
     },
   ],
-  exports: [KeycloakAuthService, KeycloakM2mTokenService, AuthenticatedUserSyncService],
+  exports: [KeycloakAuthService, KeycloakM2mTokenService, AuthenticatedUserSyncService, AuthorizationPolicyService],
 })
 export class AuthModule {}

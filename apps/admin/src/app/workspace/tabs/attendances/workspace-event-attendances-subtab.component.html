@@ -120,7 +120,7 @@
           <button
             mat-stroked-button
             type="button"
-            [disabled]="!workspace.selectedAttendanceEvent()"
+            [disabled]="!workspace.selectedAttendanceEvent() || !permissions.has(Permission.Person.Read)"
             (click)="workspace.findAttendancePerson()">
             <mat-icon>person_search</mat-icon>
             Buscar pessoa
@@ -138,7 +138,13 @@
               </button>
             }
           } @empty {
-            <span class="empty-note">Busque uma pessoa para registrar.</span>
+            <span class="empty-note">
+              {{
+                permissions.has(Permission.Person.Read)
+                  ? 'Busque uma pessoa para registrar.'
+                  : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+              }}
+            </span>
           }
         </div>
       </section>

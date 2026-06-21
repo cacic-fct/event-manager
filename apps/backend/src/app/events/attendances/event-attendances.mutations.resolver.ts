@@ -6,10 +6,11 @@ import {
   EventAttendanceScannerCodeInput,
   EventAttendanceUpdateInput,
 } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
-import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
@@ -28,7 +29,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   }
 
   @Mutation(() => EventAttendance, { name: 'createEventAttendance' })
-  @RequireScopes('event-attendance#edit')
+  @RequirePermissions(Permission.EventAttendance.Collect)
   async createEventAttendance(
     @Args('input', { type: () => EventAttendanceCreateInput })
     input: EventAttendanceCreateInput,
@@ -79,7 +80,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   @Mutation(() => EventAttendance, {
     name: 'createEventAttendanceFromAztecCode',
   })
-  @RequireScopes('event-attendance#edit')
+  @RequirePermissions(Permission.EventAttendance.Collect)
   async createEventAttendanceFromAztecCode(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('code', { type: () => String }) code: string,
@@ -161,7 +162,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   @Mutation(() => EventAttendance, {
     name: 'createEventAttendanceFromScannerCode',
   })
-  @RequireScopes('event-attendance#edit')
+  @RequirePermissions(Permission.EventAttendance.Collect)
   async createEventAttendanceFromScannerCode(
     @Args('input', { type: () => EventAttendanceScannerCodeInput })
     input: EventAttendanceScannerCodeInput,
@@ -199,7 +200,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   @Mutation(() => EventAttendance, {
     name: 'createEventAttendanceFromManualInput',
   })
-  @RequireScopes('event-attendance#edit')
+  @RequirePermissions(Permission.EventAttendance.Collect)
   async createEventAttendanceFromManualInput(
     @Args('input', { type: () => EventAttendanceManualInput })
     input: EventAttendanceManualInput,
@@ -218,7 +219,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
 
 
   @Mutation(() => EventAttendance, { name: 'updateEventAttendance' })
-  @RequireScopes('event-attendance#edit')
+  @RequirePermissions(Permission.EventAttendance.Update)
   async updateEventAttendance(
     @Args('personId', { type: () => String }) personId: string,
     @Args('eventId', { type: () => String }) eventId: string,
@@ -281,7 +282,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteEventAttendance' })
-  @RequireScopes('event-attendance#delete')
+  @RequirePermissions(Permission.EventAttendance.Delete)
   async deleteEventAttendance(
     @Args('personId', { type: () => String }) personId: string,
     @Args('eventId', { type: () => String }) eventId: string,

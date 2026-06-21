@@ -12,7 +12,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Observable, interval, map, startWith, switchMap } from 'rxjs';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface EventAttendanceScannerFeedItem {
@@ -117,7 +118,7 @@ export class EventAttendancesController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Sse('events/:eventId/scanner-feed/events')
-  @RequireScopes('event-attendance#read')
+  @RequirePermissions(Permission.EventAttendance.Read)
   @ApiOperation({
     summary: 'Stream event attendance scanner feed updates',
     description: [
@@ -125,7 +126,7 @@ export class EventAttendancesController {
       '',
       'The stream emits an initial snapshot immediately and then refreshes the latest attendance feed every two seconds while the connection remains open.',
       '',
-      'Only callers with the `event-attendance#read` scope may subscribe.',
+      `Only callers with the \`${Permission.EventAttendance.Read}\` permission may subscribe.`,
       '',
       'Swagger UI documents this endpoint, but it is not a good interactive client for `text/event-stream`. Test it with the Angular EventSource client or an SSE-capable HTTP client.',
     ].join('\n'),
@@ -141,7 +142,7 @@ export class EventAttendancesController {
     type: EventAttendanceScannerFeedMessageDto,
   })
   @ApiForbiddenResponse({
-    description: 'Returned when the authenticated principal does not have the required scope: event-attendance#read.',
+    description: `Returned when the authenticated principal does not have the required permission: ${Permission.EventAttendance.Read}.`,
   })
   streamScannerFeed(@Param('eventId') eventId: string): Observable<MessageEvent> {
     return interval(2_000).pipe(

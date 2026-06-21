@@ -1,6 +1,11 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ALLOW_NON_ONBOARDED_KEY, IS_PUBLIC_KEY, REQUIRED_ROLES_KEY } from '../auth.constants';
+import {
+  ALLOW_NON_ONBOARDED_KEY,
+  IS_PUBLIC_KEY,
+  REQUIRED_PERMISSIONS_KEY,
+  REQUIRED_ROLES_KEY,
+} from '../auth.constants';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../keycloak-auth.service';
 import { KeycloakScopeGuard } from './keycloak-scope.guard';
@@ -22,6 +27,10 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
     authenticateAccessToken: jest.Mock;
     authenticateSession: jest.Mock;
   };
+  let authorizationPolicy: {
+    assertPermissions: jest.Mock;
+    buildResourceContext: jest.Mock;
+  };
   let guard: KeycloakScopeGuard;
 
   beforeEach(() => {
@@ -32,6 +41,10 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
         }
 
         if (key === REQUIRED_ROLES_KEY) {
+          return undefined;
+        }
+
+        if (key === REQUIRED_PERMISSIONS_KEY) {
           return undefined;
         }
 
@@ -46,9 +59,14 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
       authenticateAccessToken: jest.fn(),
       authenticateSession: jest.fn(),
     };
+    authorizationPolicy = {
+      assertPermissions: jest.fn().mockResolvedValue(undefined),
+      buildResourceContext: jest.fn().mockReturnValue({}),
+    };
     guard = new KeycloakScopeGuard(
       reflector as unknown as Reflector,
       keycloakAuthService as unknown as KeycloakAuthService,
+      authorizationPolicy as never,
     );
   });
 
@@ -64,7 +82,10 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
 
     await expect(guard.canActivate(createHttpContext(request))).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(keycloakAuthService.authenticateAccessToken).toHaveBeenCalledWith('access-token', []);
+    expect(keycloakAuthService.authenticateAccessToken).toHaveBeenCalledWith('access-token', {
+      roles: [],
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalled();
   });
 
   it('rejects non-onboarded session principals before protected handlers run', async () => {
@@ -79,7 +100,10 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
 
     await expect(guard.canActivate(createHttpContext(request))).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(keycloakAuthService.authenticateSession).toHaveBeenCalledWith('session-id', []);
+    expect(keycloakAuthService.authenticateSession).toHaveBeenCalledWith('session-id', {
+      roles: [],
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalled();
   });
 
   it.each([true, 'true'])('allows onboarded protected principals with claim %p', async (isOnboarded) => {

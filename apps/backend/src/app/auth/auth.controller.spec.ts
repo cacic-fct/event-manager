@@ -6,6 +6,9 @@ describe('AuthController callback redirect validation', () => {
   const originalEnv = { ...process.env };
   let controller: AuthController;
   let keycloakAuthService: Pick<KeycloakAuthService, 'buildAuthorizationUrl' | 'clearSession' | 'getSessionLogoutInput' | 'logout'>;
+  const authorizationPolicy = {
+    evaluatePermissions: jest.fn().mockResolvedValue([]),
+  };
 
   beforeEach(() => {
     process.env.KEYCLOAK_ALLOWED_CALLBACK_REDIRECT_ORIGINS = 'https://events.example.com';
@@ -21,7 +24,7 @@ describe('AuthController callback redirect validation', () => {
         logoutUrl: 'https://sso.example/logout',
       }),
     };
-    controller = new AuthController(keycloakAuthService as KeycloakAuthService);
+    controller = new AuthController(keycloakAuthService as KeycloakAuthService, authorizationPolicy as never);
   });
 
   afterEach(() => {
@@ -68,7 +71,7 @@ describe('AuthController callback redirect validation', () => {
 
   it('ignores malformed allowlist environment entries', async () => {
     process.env.KEYCLOAK_ALLOWED_CALLBACK_REDIRECT_ORIGINS = 'not a url,https://events.example.com';
-    controller = new AuthController(keycloakAuthService as KeycloakAuthService);
+    controller = new AuthController(keycloakAuthService as KeycloakAuthService, authorizationPolicy as never);
 
     await expect(
       controller.getLoginUrl(

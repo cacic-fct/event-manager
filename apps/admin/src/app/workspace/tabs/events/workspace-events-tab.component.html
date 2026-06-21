@@ -346,11 +346,15 @@
             <mat-label>Buscar pessoa</mat-label>
             <input matInput formControlName="query" />
           </mat-form-field>
-          <button mat-stroked-button type="button" (click)="workspace.searchLecturerCandidates()">
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!permissions.has(Permission.Person.Read)"
+            (click)="workspace.searchLecturerCandidates()">
             <mat-icon>person_search</mat-icon>
             Buscar
           </button>
-          @if (canEditSelectedEventRelation('event-lecturer#edit') && permissions.canEdit('person#edit')) {
+          @if (canEditSelectedEventRelation(Permission.EventLecturer.Create) && permissions.canEdit(Permission.Person.Create)) {
             <button mat-button type="button" (click)="workspace.createAndAddLecturer()">
               <mat-icon>person_add</mat-icon>
               Criar pessoa
@@ -360,7 +364,7 @@
 
         <div class="inline-list">
           @for (candidate of workspace.lecturerSearchResults(); track candidate.id) {
-            @if (canEditSelectedEventRelation('event-lecturer#edit')) {
+            @if (canEditSelectedEventRelation(Permission.EventLecturer.Create)) {
               <button mat-stroked-button type="button" (click)="workspace.addLecturer(candidate)">
                 <mat-icon>add</mat-icon>
                 <span class="person-choice">
@@ -373,14 +377,20 @@
               </button>
             }
           } @empty {
-            <span class="empty-note">Busque uma pessoa pelo nome, e-mail ou CPF.</span>
+            <span class="empty-note">
+              {{
+                permissions.has(Permission.Person.Read)
+                  ? 'Busque uma pessoa pelo nome, e-mail ou CPF.'
+                  : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+              }}
+            </span>
           }
         </div>
 
         @if (workspace.eventForm.controls.eventGroupId.value && workspace.suggestedGroupLecturers().length > 0) {
           <div class="inline-list">
             @for (candidate of workspace.suggestedGroupLecturers(); track candidate.id) {
-              @if (canEditSelectedEventRelation('event-lecturer#edit')) {
+              @if (canEditSelectedEventRelation(Permission.EventLecturer.Create)) {
                 <button mat-stroked-button type="button" (click)="workspace.addLecturer(candidate)">
                   <mat-icon>group_add</mat-icon>
                   <span class="person-choice">
@@ -395,7 +405,7 @@
 
         <div class="inline-list">
           @for (lecturer of workspace.eventLecturers(); track lecturer.personId) {
-            @if (canRemoveSelectedEventRelation('event-lecturer#delete')) {
+            @if (canRemoveSelectedEventRelation(Permission.EventLecturer.Delete)) {
               <button mat-stroked-button type="button" (click)="workspace.removeLecturer(lecturer.personId)">
                 <mat-icon>close</mat-icon>
                 {{ lecturer.name }}
@@ -418,7 +428,11 @@
             <mat-label>Buscar pessoa</mat-label>
             <input matInput formControlName="query" />
           </mat-form-field>
-          <button mat-stroked-button type="button" (click)="workspace.searchAttendanceCollectorCandidates()">
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!permissions.has(Permission.Person.Read)"
+            (click)="workspace.searchAttendanceCollectorCandidates()">
             <mat-icon>person_search</mat-icon>
             Buscar
           </button>
@@ -426,7 +440,7 @@
 
         <div class="inline-list">
           @for (candidate of workspace.attendanceCollectorSearchResults(); track candidate.id) {
-            @if (canEditSelectedEventRelation('event#edit')) {
+            @if (canEditSelectedEventRelation(Permission.EventAttendanceCollector.Create)) {
               <button mat-stroked-button type="button" (click)="workspace.addAttendanceCollector(candidate)">
                 <mat-icon>add</mat-icon>
                 <span class="person-choice">
@@ -439,13 +453,19 @@
               </button>
             }
           } @empty {
-            <span class="empty-note">Busque uma pessoa pelo nome, e-mail ou CPF.</span>
+            <span class="empty-note">
+              {{
+                permissions.has(Permission.Person.Read)
+                  ? 'Busque uma pessoa pelo nome, e-mail ou CPF.'
+                  : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+              }}
+            </span>
           }
         </div>
 
         <div class="inline-list">
           @for (collector of workspace.eventAttendanceCollectors(); track collector.personId) {
-            @if (canRemoveSelectedEventRelation('event#edit')) {
+            @if (canRemoveSelectedEventRelation(Permission.EventAttendanceCollector.Delete)) {
               <button mat-stroked-button type="button" (click)="workspace.removeAttendanceCollector(collector.personId)">
                 <mat-icon>close</mat-icon>
                 {{ collector.name }}

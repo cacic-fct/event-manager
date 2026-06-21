@@ -9,8 +9,9 @@ import {
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { actionablePendingMergeCandidateWhere } from './merge-candidate-filters';
@@ -24,7 +25,7 @@ export class MergeCandidatesResolver {
   ) {}
 
   @Query(() => [MergeCandidate], { name: 'mergeCandidates' })
-  @RequireScopes('merge-candidate#read')
+  @RequirePermissions(Permission.MergeCandidate.Read)
   mergeCandidates(
     @Args('status', { type: () => MergeCandidateStatus, nullable: true })
     status?: MergeCandidateStatus,
@@ -50,7 +51,7 @@ export class MergeCandidatesResolver {
   }
 
   @Query(() => MergeCandidate, { name: 'mergeCandidate' })
-  @RequireScopes('merge-candidate#read')
+  @RequirePermissions(Permission.MergeCandidate.Read)
   async mergeCandidate(@Args('id', { type: () => String }) id: string) {
     const candidate = await this.prisma.mergeCandidate.findUnique({
       where: {
@@ -70,7 +71,7 @@ export class MergeCandidatesResolver {
   }
 
   @Mutation(() => MergeCandidate, { name: 'createMergeCandidate' })
-  @RequireScopes('merge-candidate#edit')
+  @RequirePermissions(Permission.MergeCandidate.Create)
   createMergeCandidate(
     @Args('input', { type: () => MergeCandidateCreateInput })
     input: MergeCandidateCreateInput,
@@ -88,7 +89,7 @@ export class MergeCandidatesResolver {
   }
 
   @Mutation(() => MergeCandidate, { name: 'updateMergeCandidate' })
-  @RequireScopes('merge-candidate#edit')
+  @RequirePermissions(Permission.MergeCandidate.Update)
   async updateMergeCandidate(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => MergeCandidateUpdateInput })
@@ -169,13 +170,13 @@ export class MergeCandidatesResolver {
   }
 
   @Mutation(() => Int, { name: 'scanMergeCandidates' })
-  @RequireScopes('merge-candidate#edit')
+  @RequirePermissions(Permission.MergeCandidate.Scan)
   scanMergeCandidates(@Context() context: { req?: { user?: AuthenticatedUser } }) {
     return this.mergeOperations.scanMergeCandidates(this.getActorId(context));
   }
 
   @Mutation(() => MergeCandidate, { name: 'mergeCandidatePeople' })
-  @RequireScopes('merge-candidate#edit')
+  @RequirePermissions(Permission.MergeCandidate.Merge)
   mergeCandidatePeople(
     @Args('input', { type: () => MergeCandidateMergeInput })
     input: MergeCandidateMergeInput,
@@ -185,7 +186,7 @@ export class MergeCandidatesResolver {
   }
 
   @Mutation(() => MergeCandidate, { name: 'undoMergeCandidatePeople' })
-  @RequireScopes('merge-candidate#edit')
+  @RequirePermissions(Permission.MergeCandidate.Undo)
   undoMergeCandidatePeople(
     @Args('candidateId', { type: () => String }) candidateId: string,
     @Context() context: { req?: { user?: AuthenticatedUser } },
@@ -194,7 +195,7 @@ export class MergeCandidatesResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteMergeCandidate' })
-  @RequireScopes('merge-candidate#delete')
+  @RequirePermissions(Permission.MergeCandidate.Delete)
   async deleteMergeCandidate(@Args('id', { type: () => String }) id: string) {
     const { count } = await this.prisma.mergeCandidate.deleteMany({
       where: {

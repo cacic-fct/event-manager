@@ -252,7 +252,11 @@
               <mat-icon matPrefix>person_search</mat-icon>
               <input matInput formControlName="query" />
             </mat-form-field>
-            <button mat-stroked-button type="button" (click)="workspace.searchPeopleForManualIssue()">
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!permissions.has(Permission.Person.Read)"
+              (click)="workspace.searchPeopleForManualIssue()">
               <mat-icon>search</mat-icon>
               Buscar
             </button>
@@ -270,7 +274,13 @@
                 </button>
               }
             } @empty {
-              <span class="empty-note">Busque uma pessoa para emitir.</span>
+              <span class="empty-note">
+                {{
+                  permissions.has(Permission.Person.Read)
+                    ? 'Busque uma pessoa para emitir.'
+                    : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                }}
+              </span>
             }
           </div>
         </section>

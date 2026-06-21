@@ -1,46 +1,72 @@
+import { Permission } from '@cacic-fct/shared-permissions';
 import { DASHBOARD_PERMISSION_REQUIREMENTS } from './constants';
 import { formatPermissions, resolveDashboardPermissions } from './permissions';
 
 describe('dashboard permission helpers', () => {
-  it('merges authenticated and evaluated permissions and sorts them for cache stability', async () => {
-    const keycloakAuthService = {
-      evaluateAccessTokenPermissions: jest.fn().mockResolvedValue(['event#edit', 'certificate#edit']),
+  it('uses policy-evaluated permissions and sorts them for cache stability', async () => {
+    const authorizationPolicy = {
+      evaluateGlobalPermissions: jest.fn().mockResolvedValue([Permission.Event.Update, Permission.Certificate.Issue]),
+      evaluatePermissions: jest.fn(),
     };
+    const authenticatedUser = {
+      token: 'token',
+      permissionSet: new Set([Permission.Person.Update, Permission.Event.Update]),
+    } as never;
 
     await expect(
       resolveDashboardPermissions(
-        keycloakAuthService as never,
-        {
-          token: 'token',
-          permissionSet: new Set(['person#manage', 'event#edit']),
-        } as never,
+        authorizationPolicy as never,
+        authenticatedUser,
       ),
     ).resolves.toEqual({
-      permissions: ['certificate#edit', 'event#edit', 'person#manage'],
+      permissions: [Permission.Certificate.Issue, Permission.Event.Update],
       cacheable: true,
+      canReadGlobalInsights: true,
     });
-    expect(keycloakAuthService.evaluateAccessTokenPermissions).toHaveBeenCalledWith('token', [
+    expect(authorizationPolicy.evaluateGlobalPermissions).toHaveBeenCalledWith(authenticatedUser, [
+      ...DASHBOARD_PERMISSION_REQUIREMENTS,
+    ]);
+    expect(authorizationPolicy.evaluatePermissions).not.toHaveBeenCalled();
+  });
+
+  it('falls back to scoped permissions without allowing global insight queries', async () => {
+    const authorizationPolicy = {
+      evaluateGlobalPermissions: jest.fn().mockResolvedValue([]),
+      evaluatePermissions: jest.fn().mockResolvedValue([Permission.Event.Update, Permission.Certificate.Issue]),
+    };
+    const authenticatedUser = {
+      token: 'token',
+      permissionSet: new Set([Permission.Event.Update]),
+    } as never;
+
+    await expect(
+      resolveDashboardPermissions(
+        authorizationPolicy as never,
+        authenticatedUser,
+      ),
+    ).resolves.toEqual({
+      permissions: [Permission.Certificate.Issue, Permission.Event.Update],
+      cacheable: false,
+      canReadGlobalInsights: false,
+    });
+    expect(authorizationPolicy.evaluatePermissions).toHaveBeenCalledWith(authenticatedUser, [
       ...DASHBOARD_PERMISSION_REQUIREMENTS,
     ]);
   });
 
-  it('falls back to authenticated permissions without caching when evaluation fails', async () => {
-    const keycloakAuthService = {
-      evaluateAccessTokenPermissions: jest.fn().mockRejectedValue(new Error('UMA unavailable')),
+  it('propagates policy evaluation failures', async () => {
+    const authorizationPolicy = {
+      evaluateGlobalPermissions: jest.fn().mockRejectedValue(new Error('policy unavailable')),
     };
 
     await expect(
       resolveDashboardPermissions(
-        keycloakAuthService as never,
+        authorizationPolicy as never,
         {
           token: 'token',
-          permissionSet: new Set(['major-event#edit', 'event#edit']),
         } as never,
       ),
-    ).resolves.toEqual({
-      permissions: ['event#edit', 'major-event#edit'],
-      cacheable: false,
-    });
+    ).rejects.toThrow('policy unavailable');
   });
 
   it('formats known permission resources and actions once per scope', () => {
@@ -48,17 +74,15 @@ describe('dashboard permission helpers', () => {
       formatPermissions([
         'event#read',
         'event#create',
-        'event#edit',
         'event#update',
         'event#delete',
-        'event#manage',
-        'event#edit',
-        'major-event#edit',
+        'event#update',
+        'major-event#update',
         'event-group#read',
-        'certificate#edit',
+        'certificate#issue',
         'event-attendance#read',
         'event-lecturer#read',
-        'person#manage',
+        'person#update',
         'merge-candidate#read',
       ]),
     ).toEqual([
@@ -66,7 +90,7 @@ describe('dashboard permission helpers', () => {
         type: 'certificate',
         label: 'Certificado',
         resourceIcon: 'workspace_premium',
-        actions: [{ scope: 'edit', label: 'Editar', icon: 'edit' }],
+        actions: [{ scope: 'issue', label: 'Emitir', icon: 'workspace_premium' }],
       },
       {
         type: 'event',
@@ -75,22 +99,20 @@ describe('dashboard permission helpers', () => {
         actions: [
           { scope: 'read', label: 'Visualizar', icon: 'visibility' },
           { scope: 'create', label: 'Criar', icon: 'add' },
-          { scope: 'edit', label: 'Editar', icon: 'edit' },
-          { scope: 'update', label: 'Editar', icon: 'edit' },
+          { scope: 'update', label: 'Atualizar', icon: 'edit' },
           { scope: 'delete', label: 'Excluir', icon: 'delete' },
-          { scope: 'manage', label: 'Gerenciar', icon: 'admin_panel_settings' },
         ],
       },
       {
         type: 'major-event',
         label: 'Grande evento',
         resourceIcon: 'festival',
-        actions: [{ scope: 'edit', label: 'Editar', icon: 'edit' }],
+        actions: [{ scope: 'update', label: 'Atualizar', icon: 'edit' }],
       },
       {
         type: 'event-group',
         label: 'Grupo de eventos',
-        resourceIcon: 'groups',
+        resourceIcon: 'folder',
         actions: [{ scope: 'read', label: 'Visualizar', icon: 'visibility' }],
       },
       {
@@ -100,16 +122,16 @@ describe('dashboard permission helpers', () => {
         actions: [{ scope: 'read', label: 'Visualizar', icon: 'visibility' }],
       },
       {
-        type: 'merge-candidate',
-        label: 'Pessoa duplicada',
-        resourceIcon: 'merge',
-        actions: [{ scope: 'read', label: 'Visualizar', icon: 'visibility' }],
+        type: 'person',
+        label: 'Pessoa',
+        resourceIcon: 'person',
+        actions: [{ scope: 'update', label: 'Atualizar', icon: 'edit' }],
       },
       {
-        type: 'person',
-        label: 'Pessoas',
-        resourceIcon: 'person',
-        actions: [{ scope: 'manage', label: 'Gerenciar', icon: 'admin_panel_settings' }],
+        type: 'merge-candidate',
+        label: 'Pessoa duplicada',
+        resourceIcon: 'merge_type',
+        actions: [{ scope: 'read', label: 'Visualizar', icon: 'visibility' }],
       },
       {
         type: 'event-attendance',
@@ -132,7 +154,7 @@ describe('dashboard permission helpers', () => {
         type: 'other-resource',
         label: 'other-resource',
         resourceIcon: 'shield',
-        actions: [{ scope: 'approve', label: 'approve', icon: 'help' }],
+        actions: [{ scope: 'approve', label: 'Aprovar', icon: 'check_circle' }],
       },
     ]);
   });

@@ -1,44 +1,15 @@
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { AuthService } from '@cacic-fct/shared-angular';
+import {
+  EVENT_MANAGER_PERMISSION_SET,
+  Permission,
+  WORKSPACE_PERMISSION_EVALUATION_SET,
+  WORKSPACE_TAB_PERMISSIONS,
+} from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 
-export type WorkspacePermissionScope =
-  | 'certificate#read'
-  | 'certificate#edit'
-  | 'event#read'
-  | 'event#edit'
-  | 'event#delete'
-  | 'event-attendance#read'
-  | 'event-attendance#edit'
-  | 'event-attendance#delete'
-  | 'event-lecturer#read'
-  | 'event-lecturer#edit'
-  | 'event-lecturer#delete'
-  | 'frozen#edit'
-  | 'frozen#delete'
-  | 'major-event#read'
-  | 'major-event#edit'
-  | 'major-event#delete'
-  | 'merge-candidate#read'
-  | 'merge-candidate#edit'
-  | 'merge-candidate#delete'
-  | 'person#read'
-  | 'person#edit'
-  | 'person#delete'
-  | 'subscription#read'
-  | 'subscription#edit'
-  | 'subscription#delete'
-  | 'validate-receipt#read'
-  | 'validate-receipt#edit';
-
-export type WorkspaceTabPermission = {
-  label: string;
-  read: readonly WorkspacePermissionScope[];
-  edit: readonly WorkspacePermissionScope[];
-  delete: readonly WorkspacePermissionScope[];
-};
+export type WorkspacePermissionScope = Permission;
 
 export enum WorkspacePermissionTab {
   Events = 0,
@@ -49,107 +20,26 @@ export enum WorkspacePermissionTab {
   Certificates = 5,
   Attendances = 6,
   Subscriptions = 7,
-  GlobalOperations = 8,
-  Permissions = 9,
-  Notifications = 10,
+  Places = 8,
+  GlobalOperations = 9,
+  Permissions = 10,
+  Notifications = 11,
 }
 
-type KeycloakPermissionClaim =
-  | string
-  | {
-      rsname?: unknown;
-      resource_name?: unknown;
-      scopes?: unknown;
-    };
-
-const TAB_PERMISSIONS = [
-  {
-    label: 'Eventos',
-    read: ['event#read', 'major-event#read', 'event-lecturer#read', 'person#read'],
-    edit: ['event#edit', 'event-lecturer#edit', 'person#edit'],
-    delete: ['event#delete', 'event-lecturer#delete'],
-  },
-  {
-    label: 'Grandes eventos',
-    read: ['major-event#read', 'event#read'],
-    edit: ['major-event#edit', 'event#edit'],
-    delete: ['major-event#delete'],
-  },
-  {
-    label: 'Grupos',
-    read: ['event#read'],
-    edit: ['event#edit'],
-    delete: ['event#delete'],
-  },
-  {
-    label: 'Pessoas',
-    read: ['person#read'],
-    edit: ['person#edit'],
-    delete: ['person#delete'],
-  },
-  {
-    label: 'Pessoas duplicadas',
-    read: ['merge-candidate#read', 'person#read'],
-    edit: ['merge-candidate#edit', 'person#edit'],
-    delete: ['merge-candidate#delete'],
-  },
-  {
-    label: 'Certificados',
-    read: ['certificate#read', 'event#read', 'major-event#read', 'person#read'],
-    edit: ['certificate#edit'],
-    delete: [],
-  },
-  {
-    label: 'Presenças',
-    read: ['event-attendance#read', 'event#read', 'major-event#read', 'person#read'],
-    edit: ['event-attendance#edit'],
-    delete: ['event-attendance#delete'],
-  },
-  {
-    label: 'Inscrições',
-    read: ['subscription#read', 'event#read', 'major-event#read', 'person#read'],
-    edit: ['subscription#edit', 'validate-receipt#edit'],
-    delete: ['subscription#delete'],
-  },
-  {
-    label: 'Operações globais',
-    read: ['certificate#read'],
-    edit: ['certificate#edit'],
-    delete: [],
-  },
-  {
-    label: 'Permissões',
-    read: [],
-    edit: [],
-    delete: [],
-  },
-  {
-    label: 'Notificações',
-    read: [],
-    edit: [],
-    delete: [],
-  },
-] as const satisfies readonly WorkspaceTabPermission[];
+const TAB_PERMISSIONS = WORKSPACE_TAB_PERMISSIONS;
 
 @Injectable({
   providedIn: 'root',
 })
 export class WorkspacePermissionsService {
-  private readonly authService = inject(AuthService);
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
 
   readonly tabs = TAB_PERMISSIONS;
-  private readonly evaluatedPermissions = signal<Set<string>>(new Set());
+  private readonly evaluatedPermissions = signal<Set<Permission>>(new Set());
   private workspacePermissionsEvaluated = false;
   private evaluationPromise: Promise<void> | null = null;
-  readonly granted = computed(() => {
-    const permissions = this.extractGrantedPermissions();
-    for (const permission of this.evaluatedPermissions()) {
-      permissions.add(permission);
-    }
-    return permissions;
-  });
+  readonly granted = computed(() => this.evaluatedPermissions());
 
   has(scope: WorkspacePermissionScope): boolean {
     return this.granted().has(scope);
@@ -157,6 +47,10 @@ export class WorkspacePermissionsService {
 
   hasAll(scopes: readonly WorkspacePermissionScope[]): boolean {
     return scopes.every((scope) => this.has(scope));
+  }
+
+  hasAny(scopes: readonly WorkspacePermissionScope[]): boolean {
+    return scopes.some((scope) => this.has(scope));
   }
 
   missing(scopes: readonly WorkspacePermissionScope[]): WorkspacePermissionScope[] {
@@ -202,94 +96,24 @@ export class WorkspacePermissionsService {
   }
 
   private async fetchWorkspacePermissions(): Promise<void> {
-    const permissions: WorkspacePermissionScope[] = this.tabs.flatMap((tab) => [
-      ...tab.read,
-      ...tab.edit,
-      ...tab.delete,
-    ]);
-    permissions.push('validate-receipt#read');
-    permissions.push('frozen#edit', 'frozen#delete');
-    const uniquePermissions = [...new Set(permissions)];
+    const uniquePermissions = [...new Set(WORKSPACE_PERMISSION_EVALUATION_SET)];
     const result = await firstValueFrom(
       this.http.post<{ permissions: string[] }>('/api/auth/permissions/evaluate', {
         permissions: uniquePermissions,
       }),
     );
 
-    this.evaluatedPermissions.set(new Set(result.permissions));
+    this.evaluatedPermissions.set(
+      new Set(
+        result.permissions.filter((permission): permission is Permission =>
+          EVENT_MANAGER_PERMISSION_SET.has(permission as Permission),
+        ),
+      ),
+    );
     this.workspacePermissionsEvaluated = true;
   }
 
-  private extractGrantedPermissions(): Set<string> {
-    const permissions = new Set<string>();
-    const user = this.authService.user();
-
-    this.addPermissionClaims(user?.claims?.['permissions'], permissions);
-
-    const authorizationClaim = user?.claims?.['authorization'];
-    if (this.isRecord(authorizationClaim)) {
-      this.addPermissionClaims(authorizationClaim['permissions'], permissions);
-    }
-
-    this.addPermissionClaims(user?.permissions, permissions);
-
-    return permissions;
-  }
-
-  private addPermissionClaims(rawPermissions: unknown, permissions: Set<string>): void {
-    if (!Array.isArray(rawPermissions)) {
-      return;
-    }
-
-    for (const permission of rawPermissions as KeycloakPermissionClaim[]) {
-      if (typeof permission === 'string') {
-        this.addNormalizedPermission(permission, permissions);
-        continue;
-      }
-
-      if (!this.isRecord(permission)) {
-        continue;
-      }
-
-      const resourceName = this.readString(permission['rsname']) ?? this.readString(permission['resource_name']);
-
-      const rawScopes = permission['scopes'];
-      if (!Array.isArray(rawScopes)) {
-        continue;
-      }
-
-      for (const scope of rawScopes) {
-        if (typeof scope !== 'string') {
-          continue;
-        }
-
-        this.addNormalizedPermission(resourceName ? `${resourceName}#${scope}` : scope, permissions);
-      }
-    }
-  }
-
-  private addNormalizedPermission(permission: string, permissions: Set<string>): void {
-    const normalizedPermission = permission.trim();
-    if (normalizedPermission) {
-      permissions.add(normalizedPermission);
-    }
-  }
-
-  private isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
-  }
-
-  private readString(value: unknown): string | undefined {
-    if (typeof value !== 'string') {
-      return undefined;
-    }
-
-    const trimmed = value.trim();
-    return trimmed || undefined;
-  }
-
   readonly rawPermissions = computed(() => {
-    const permissions = this.extractGrantedPermissions();
-    return Array.from(permissions);
+    return Array.from(this.granted());
   });
 }

@@ -1,9 +1,14 @@
+import { EVENT_MANAGER_PERMISSION_CATALOG, EventManagerPermissionGrantScope, Permission } from '@cacic-fct/shared-permissions';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { http, HttpResponse } from 'msw';
 
 faker.seed(20260516);
 
 const now = new Date('2026-05-16T12:00:00-03:00');
+
+type GraphqlMockError = {
+  errors: { message: string }[];
+};
 
 function isoDaysFromNow(days: number, hour = 14): string {
   const date = new Date(now);
@@ -207,6 +212,48 @@ const majorEvents = Array.from({ length: 3 }, (_, index) => majorEvent(index));
 const events = Array.from({ length: 8 }, (_, index) => event(index));
 const placePresets = Array.from({ length: 4 }, (_, index) => placePreset(index));
 
+function permissionGrant(index = 0) {
+  const scope = faker.helpers.arrayElement([
+    EventManagerPermissionGrantScope.Global,
+    EventManagerPermissionGrantScope.Event,
+    EventManagerPermissionGrantScope.MajorEvent,
+    EventManagerPermissionGrantScope.EventGroup,
+  ]);
+  const target =
+    scope === EventManagerPermissionGrantScope.Event
+      ? events[index % events.length]
+      : scope === EventManagerPermissionGrantScope.MajorEvent
+        ? majorEvents[index % majorEvents.length]
+        : scope === EventManagerPermissionGrantScope.EventGroup
+          ? eventGroups[index % eventGroups.length]
+          : null;
+
+  return {
+    id: `permission-grant-${index + 1}`,
+    userId: people[0].userId,
+    personId: people[0].id,
+    permission: faker.helpers.arrayElement([
+      Permission.Event.Read,
+      Permission.Event.Update,
+      Permission.Subscription.Read,
+      Permission.Receipt.Approve,
+    ]),
+    scope,
+    eventId: scope === EventManagerPermissionGrantScope.Event ? target?.id : null,
+    majorEventId: scope === EventManagerPermissionGrantScope.MajorEvent ? target?.id : null,
+    eventGroupId: scope === EventManagerPermissionGrantScope.EventGroup ? target?.id : null,
+    targetLabel: target?.name ?? null,
+    validFrom: index === 1 ? isoDaysFromNow(2, 8) : null,
+    validUntil: index === 2 ? isoDaysFromNow(14, 23) : null,
+    createdAt: isoDaysFromNow(-index - 3, 10),
+    createdById: 'storybook-admin',
+    updatedAt: isoDaysFromNow(-index - 1, 10),
+    updatedById: 'storybook-admin',
+  };
+}
+
+const permissionGrants = Array.from({ length: 4 }, (_, index) => permissionGrant(index));
+
 const certificateTemplate = {
   id: 'template-1',
   name: 'Certificado padrao',
@@ -407,6 +454,55 @@ function deletionResult(id = 'deleted-id') {
   return { deleted: true, id };
 }
 
+function graphqlError(message: string): GraphqlMockError {
+  return {
+    errors: [{ message }],
+  };
+}
+
+function isGraphqlMockError(value: unknown): value is GraphqlMockError {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'errors' in value &&
+      Array.isArray((value as GraphqlMockError).errors),
+  );
+}
+
+function validatePermissionGrantTargetInput(
+  scope: string,
+  eventId: string | null,
+  majorEventId: string | null,
+  eventGroupId: string | null,
+): string | null {
+  if (scope === EventManagerPermissionGrantScope.Global) {
+    return eventId || majorEventId || eventGroupId ? 'Permissões globais não podem ter alvo de escopo.' : null;
+  }
+
+  if (scope === EventManagerPermissionGrantScope.Event) {
+    if (!eventId) {
+      return 'Informe o evento do escopo.';
+    }
+    return majorEventId || eventGroupId ? 'Informe apenas o alvo compatível com o escopo.' : null;
+  }
+
+  if (scope === EventManagerPermissionGrantScope.MajorEvent) {
+    if (!majorEventId) {
+      return 'Informe o grande evento do escopo.';
+    }
+    return eventId || eventGroupId ? 'Informe apenas o alvo compatível com o escopo.' : null;
+  }
+
+  if (scope === EventManagerPermissionGrantScope.EventGroup) {
+    if (!eventGroupId) {
+      return 'Informe o grupo de eventos do escopo.';
+    }
+    return eventId || majorEventId ? 'Informe apenas o alvo compatível com o escopo.' : null;
+  }
+
+  return null;
+}
+
 function graphqlData(query: string, variables: Record<string, unknown>) {
   if (query.includes('ListPeople') || query.includes('GetPerson')) {
     return { people, person: people.find((item) => item.id === variables['id']) ?? people[0] };
@@ -418,6 +514,86 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
 
   if (query.includes('UpdatePerson')) {
     return { updatePerson: people[0] };
+  }
+
+  if (query.includes('EventManagerPermissionGrants')) {
+    return { eventManagerPermissionGrants: permissionGrants };
+  }
+
+  if (query.includes('CreateEventManagerPermissionGrant')) {
+    const input = (variables['input'] ?? {}) as Record<string, unknown>;
+    const eventId = input['eventId'] ? String(input['eventId']) : null;
+    const majorEventId = input['majorEventId'] ? String(input['majorEventId']) : null;
+    const eventGroupId = input['eventGroupId'] ? String(input['eventGroupId']) : null;
+    const scope = String(input['scope'] ?? EventManagerPermissionGrantScope.Global);
+    const validationError = validatePermissionGrantTargetInput(scope, eventId, majorEventId, eventGroupId);
+    if (validationError) {
+      return graphqlError(validationError);
+    }
+
+    const target =
+      events.find((item) => item.id === eventId) ??
+      majorEvents.find((item) => item.id === majorEventId) ??
+      eventGroups.find((item) => item.id === eventGroupId) ??
+      null;
+
+    return {
+      createEventManagerPermissionGrant: {
+        id: 'permission-grant-new',
+        userId: String(input['userId'] ?? people[0].userId),
+        personId: input['personId'] ? String(input['personId']) : people[0].id,
+        permission: String(input['permission'] ?? Permission.Event.Read),
+        scope,
+        eventId,
+        majorEventId,
+        eventGroupId,
+        targetLabel: target?.name ?? null,
+        validFrom: input['validFrom'] ? String(input['validFrom']) : null,
+        validUntil: input['validUntil'] ? String(input['validUntil']) : null,
+        createdAt: now.toISOString(),
+        createdById: 'storybook-admin',
+        updatedAt: now.toISOString(),
+        updatedById: 'storybook-admin',
+      },
+    };
+  }
+
+  if (query.includes('UpdateEventManagerPermissionGrant')) {
+    const input = (variables['input'] ?? {}) as Record<string, unknown>;
+    const eventId = input['eventId'] ? String(input['eventId']) : null;
+    const majorEventId = input['majorEventId'] ? String(input['majorEventId']) : null;
+    const eventGroupId = input['eventGroupId'] ? String(input['eventGroupId']) : null;
+    const scope = String(input['scope'] ?? EventManagerPermissionGrantScope.Global);
+    const validationError = validatePermissionGrantTargetInput(scope, eventId, majorEventId, eventGroupId);
+    if (validationError) {
+      return graphqlError(validationError);
+    }
+
+    const target =
+      events.find((item) => item.id === eventId) ??
+      majorEvents.find((item) => item.id === majorEventId) ??
+      eventGroups.find((item) => item.id === eventGroupId) ??
+      null;
+
+    return {
+      updateEventManagerPermissionGrant: {
+        ...(permissionGrants.find((grant) => grant.id === variables['id']) ?? permissionGrants[0]),
+        permission: String(input['permission'] ?? Permission.Event.Read),
+        scope,
+        eventId,
+        majorEventId,
+        eventGroupId,
+        targetLabel: target?.name ?? null,
+        validFrom: input['validFrom'] ? String(input['validFrom']) : null,
+        validUntil: input['validUntil'] ? String(input['validUntil']) : null,
+        updatedAt: now.toISOString(),
+        updatedById: 'storybook-admin',
+      },
+    };
+  }
+
+  if (query.includes('DeleteEventManagerPermissionGrant')) {
+    return { deleteEventManagerPermissionGrant: deletionResult(String(variables['id'] ?? 'permission-grant-1')) };
   }
 
   if (query.includes('GetLecturerProfile')) {
@@ -724,40 +900,13 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
   return {};
 }
 
-const workspacePermissions = [
-  'event#read',
-  'event#edit',
-  'event#delete',
-  'event-attendance#read',
-  'event-attendance#edit',
-  'event-attendance#delete',
-  'event-lecturer#read',
-  'event-lecturer#edit',
-  'event-lecturer#delete',
-  'major-event#read',
-  'major-event#edit',
-  'major-event#delete',
-  'person#read',
-  'person#edit',
-  'person#delete',
-  'certificate#read',
-  'certificate#edit',
-  'subscription#read',
-  'subscription#edit',
-  'subscription#delete',
-  'merge-candidate#read',
-  'merge-candidate#edit',
-  'merge-candidate#delete',
-  'validate-receipt#read',
-  'validate-receipt#edit',
-  'frozen#edit',
-  'frozen#delete',
-];
+const workspacePermissions = [...EVENT_MANAGER_PERMISSION_CATALOG];
 
 export const cacicEventosHandlers = [
   http.post('/api/graphql', async ({ request }) => {
     const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-    return HttpResponse.json({ data: graphqlData(body.query ?? '', body.variables ?? {}) });
+    const response = graphqlData(body.query ?? '', body.variables ?? {});
+    return HttpResponse.json(isGraphqlMockError(response) ? response : { data: response });
   }),
   http.post('/api/auth/permissions/evaluate', () => HttpResponse.json({ permissions: workspacePermissions })),
   http.get('/api/workspace/permissions', () => HttpResponse.json({ permissions: workspacePermissions })),

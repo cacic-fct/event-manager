@@ -1,8 +1,9 @@
 import { LecturerProfile, LecturerProfileUpsertInput } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
@@ -46,7 +47,7 @@ export class LecturerProfilesResolver {
   ) {}
 
   @Query(() => LecturerProfile, { name: 'lecturerProfile', nullable: true })
-  @RequireScopes('person#read')
+  @RequirePermissions(Permission.Person.Read)
   lecturerProfile(@Args('personId', { type: () => String }) personId: string) {
     return this.prisma.lecturerProfile.findUnique({
       where: {
@@ -57,7 +58,7 @@ export class LecturerProfilesResolver {
   }
 
   @Mutation(() => LecturerProfile, { name: 'upsertLecturerProfile' })
-  @RequireScopes('person#edit')
+  @RequirePermissions(Permission.Person.Update)
   async upsertLecturerProfile(
     @Args('personId', { type: () => String }) personId: string,
     @Args('input', { type: () => LecturerProfileUpsertInput }) input: LecturerProfileUpsertInput,

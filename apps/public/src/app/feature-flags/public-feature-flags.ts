@@ -5,6 +5,8 @@ export const PUBLIC_FEATURE_FLAGS = {
   defaultLoginRedirectPath: 'events-public-default-login-redirect-path',
   onboardingEnforcementEnabled: 'events-public-onboarding-enforcement-enabled',
   cookieBannerEnabled: 'events-public-cookie-banner-enabled',
+  undergraduateUnespRoleVerificationDisabled:
+    'cacic-undergraduate-unesp-role-verification-disabled',
 } as const;
 
 export type PublicFeatureFlagKey = keyof typeof PUBLIC_FEATURE_FLAGS;
@@ -17,6 +19,7 @@ export interface PublicFeatureFlagValues {
   defaultLoginRedirectPath: string;
   onboardingEnforcementEnabled: boolean;
   cookieBannerEnabled: boolean;
+  undergraduateUnespRoleVerificationDisabled: boolean;
 }
 
 export const PUBLIC_FEATURE_FLAG_DEFAULTS: PublicFeatureFlagValues = {
@@ -26,6 +29,7 @@ export const PUBLIC_FEATURE_FLAG_DEFAULTS: PublicFeatureFlagValues = {
   defaultLoginRedirectPath: '/calendar',
   onboardingEnforcementEnabled: true,
   cookieBannerEnabled: true,
+  undergraduateUnespRoleVerificationDisabled: false,
 };
 
 export const PUBLIC_FEATURE_FLAG_BOOLEAN_KEYS = [
@@ -34,4 +38,5 @@ export const PUBLIC_FEATURE_FLAG_BOOLEAN_KEYS = [
   'notificationsTabEnabled',
   'onboardingEnforcementEnabled',
   'cookieBannerEnabled',
+  'undergraduateUnespRoleVerificationDisabled',
 ] as const satisfies readonly PublicFeatureFlagKey[];

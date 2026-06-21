@@ -8,6 +8,7 @@ export type MergeCandidateStatus = 'PENDING' | 'MERGED' | 'REJECTED' | 'STALE';
 export type MergeMatchMethod = 'CPF' | 'EMAIL' | 'NORMALIZED_NAME';
 export type AttendanceImportMatchType = 'IDENTITY_DOCUMENT' | 'EMAIL' | 'FULL_NAME';
 export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
+export type EventManagerPermissionGrantScope = 'GLOBAL' | 'EVENT' | 'MAJOR_EVENT' | 'EVENT_GROUP';
 export type SubscriptionStatus =
   | 'WAITING_RECEIPT_UPLOAD'
   | 'RECEIPT_UNDER_REVIEW'
@@ -248,6 +249,55 @@ export interface Person {
   updatedAt: string;
   updatedById?: string | null;
   lecturerProfile?: LecturerProfile | null;
+}
+
+export interface EventManagerPermissionGrant {
+  id: string;
+  userId: string;
+  personId?: string | null;
+  permission: string;
+  scope: EventManagerPermissionGrantScope;
+  eventId?: string | null;
+  majorEventId?: string | null;
+  eventGroupId?: string | null;
+  targetLabel?: string | null;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  createdAt: string;
+  createdById?: string | null;
+  updatedAt: string;
+  updatedById?: string | null;
+}
+
+export interface EventManagerPermissionGrantTarget {
+  id: string;
+  label: string;
+  description?: string | null;
+  emoji?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+export interface EventManagerPermissionGrantInput {
+  userId: string;
+  personId?: string | null;
+  permission: string;
+  scope: EventManagerPermissionGrantScope;
+  eventId?: string | null;
+  majorEventId?: string | null;
+  eventGroupId?: string | null;
+  validFrom?: string | null;
+  validUntil?: string | null;
+}
+
+export interface EventManagerPermissionGrantUpdateInput {
+  permission: string;
+  scope: EventManagerPermissionGrantScope;
+  eventId?: string | null;
+  majorEventId?: string | null;
+  eventGroupId?: string | null;
+  validFrom?: string | null;
+  validUntil?: string | null;
 }
 
 export interface LecturerProfile {

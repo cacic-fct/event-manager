@@ -1,4 +1,5 @@
 import { Buffer } from 'buffer';
+import { Permission } from '@cacic-fct/shared-permissions';
 
 export const MAJOR_EVENT_RECEIPTS_QUEUE = 'major-event-receipts';
 export const MAX_RECEIPT_FILE_SIZE_BYTES = 15 * 1024 * 1024;
@@ -9,8 +10,10 @@ export const RECEIPT_IMAGE_METADATA_TIMEOUT_SECONDS = 5;
 export const RECEIPT_IMAGE_CONVERSION_TIMEOUT_SECONDS = 15;
 export const RECEIPT_OCR_TIMEOUT_MS = 45_000;
 export const RECEIPT_PROCESSING_ATTEMPTS = 2;
-export const RECEIPT_ADMIN_PERMISSION = 'validate-receipt#read';
-export const RECEIPT_ADMIN_EDIT_PERMISSION = 'validate-receipt#edit';
+export const RECEIPT_ADMIN_PERMISSION = Permission.Receipt.Read;
+export const RECEIPT_APPROVE_PERMISSION = Permission.Receipt.Approve;
+export const RECEIPT_REJECT_PERMISSION = Permission.Receipt.Reject;
+export const RECEIPT_UNDO_PERMISSION = Permission.Receipt.Undo;
 
 export interface UploadedReceiptFile {
   buffer: Buffer;

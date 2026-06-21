@@ -1,5 +1,5 @@
 import { isValidCPF } from '@cacic-fct/shared-utils';
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod } from '@prisma/client';
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
@@ -17,6 +17,7 @@ import { AttendanceCategoryService } from '../../events/attendance-category.serv
 import { CurrentUserOnlineAttendanceRealtimeService } from './attendance-realtime.service';
 import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 
 @Resolver()
 export class CurrentUserEventAttendanceResolver {
@@ -27,6 +28,7 @@ export class CurrentUserEventAttendanceResolver {
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   @Query(() => [CurrentUserEventAttendance], {
@@ -95,8 +97,6 @@ export class CurrentUserEventAttendanceResolver {
     input: ConfirmCurrentUserOnlineAttendanceInput,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventAttendance> {
-    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const normalizedCode = input.code.trim();
     if (!normalizedCode) {
@@ -107,6 +107,7 @@ export class CurrentUserEventAttendanceResolver {
       where: {
         id: input.eventId,
         deletedAt: null,
+        publiclyVisible: true,
       },
       select: {
         id: true,
@@ -130,6 +131,9 @@ export class CurrentUserEventAttendanceResolver {
     if (!event) {
       throw new BadRequestException(`Event ${input.eventId} was not found.`);
     }
+
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
 
     if (!event.shouldCollectAttendance || !event.isOnlineAttendanceAllowed) {
       throw new BadRequestException(`Event ${input.eventId} does not allow online attendance confirmation.`);
@@ -280,7 +284,7 @@ export class CurrentUserEventAttendanceResolver {
         subscriberCount: subscriberCountByEventId.get(event.id) ?? 0,
         attendanceCount: attendanceCountByEventId.get(event.id) ?? 0,
         onlineAttendanceCode: event.onlineAttendanceCode ?? undefined,
-        canDownloadSubscriberList: this.canDownloadSubscriberList(event),
+        canDownloadSubscriberList: this.authorizationPolicy.canLecturerViewSubscriberList(event),
       })),
     };
   }
@@ -318,9 +322,7 @@ export class CurrentUserEventAttendanceResolver {
       throw new NotFoundException(`Event ${eventId} was not found.`);
     }
 
-    if (!this.canDownloadSubscriberList(event) || event.lecturers.length === 0) {
-      throw new ForbiddenException('Subscriber list is not available for this event.');
-    }
+    this.authorizationPolicy.assertLecturerCanViewSubscriberList(event, person.id);
 
     const [eventSubscriptions, majorEventSelections] = await Promise.all([
       this.prisma.eventSubscription.findMany({
@@ -452,13 +454,6 @@ export class CurrentUserEventAttendanceResolver {
       default:
         return firstEvent.name;
     }
-  }
-
-  private canDownloadSubscriberList(event: {
-    endDate: Date;
-    shouldProvideSubscriberListToLecturer: boolean;
-  }): boolean {
-    return event.shouldProvideSubscriberListToLecturer && event.endDate.getTime() > Date.now();
   }
 
   private formatSubscriberIdentityDocument(identityDocument: string | null): string {

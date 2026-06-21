@@ -5,6 +5,7 @@ import { MatIconRegistry } from '@angular/material/icon';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { EVENT_MANAGER_PERMISSION_CATALOG } from '@cacic-fct/shared-permissions';
 import type { Preview } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { initialize, mswLoader } from 'msw-storybook-addon';
@@ -130,34 +131,7 @@ class StorybookAuthService {
     email: 'admin@example.com',
     roles: ['admin'],
     scopes: ['profile', 'email'],
-    permissions: [
-      'event#read',
-      'event#edit',
-      'event#delete',
-      'event-attendance#read',
-      'event-attendance#edit',
-      'event-attendance#delete',
-      'event-lecturer#read',
-      'event-lecturer#edit',
-      'event-lecturer#delete',
-      'major-event#read',
-      'major-event#edit',
-      'major-event#delete',
-      'person#read',
-      'person#edit',
-      'person#delete',
-      'certificate#read',
-      'certificate#edit',
-      'subscription#read',
-      'subscription#edit',
-      'subscription#delete',
-      'merge-candidate#read',
-      'merge-candidate#edit',
-      'merge-candidate#delete',
-      'validate-receipt#read',
-      'validate-receipt#edit',
-      'frozen#edit',
-    ],
+    permissions: [...EVENT_MANAGER_PERMISSION_CATALOG],
     claims: {
       name: 'Storybook Admin',
       preferred_username: 'storybook-admin',

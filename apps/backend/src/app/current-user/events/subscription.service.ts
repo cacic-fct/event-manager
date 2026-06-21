@@ -84,6 +84,7 @@ export class CurrentUserEventSubscriptionService {
         where: {
           id: eventId,
           deletedAt: null,
+          publiclyVisible: true,
         },
         select: EVENT_SELECT,
       });
@@ -142,6 +143,7 @@ export class CurrentUserEventSubscriptionService {
         where: {
           id: eventId,
           deletedAt: null,
+          publiclyVisible: true,
         },
         select: EVENT_SELECT,
       });
@@ -214,6 +216,7 @@ export class CurrentUserEventSubscriptionService {
         },
         event: {
           deletedAt: null,
+          publiclyVisible: true,
         },
       },
       select: {
@@ -240,6 +243,7 @@ export class CurrentUserEventSubscriptionService {
           deletedAt: null,
           event: {
             deletedAt: null,
+            publiclyVisible: true,
             majorEventId: null,
           },
         },
@@ -308,6 +312,7 @@ export class CurrentUserEventSubscriptionService {
         where: {
           eventGroupId,
           deletedAt: null,
+          publiclyVisible: true,
         },
         select: EVENT_SELECT,
         orderBy: {
@@ -329,6 +334,7 @@ export class CurrentUserEventSubscriptionService {
           event: {
             eventGroupId,
             deletedAt: null,
+            publiclyVisible: true,
             majorEventId: null,
           },
         },
@@ -437,6 +443,7 @@ export class CurrentUserEventSubscriptionService {
         eventGroupSubscriptionId: subscription.id,
         event: {
           deletedAt: null,
+          publiclyVisible: true,
         },
       },
       select: {

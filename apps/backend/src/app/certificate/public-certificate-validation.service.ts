@@ -23,6 +23,7 @@ const CERTIFICATE_VALIDATION_EVENT_SELECT = {
   endDate: true,
   creditMinutes: true,
   type: true,
+  publiclyVisible: true,
 } satisfies Prisma.EventSelect;
 
 const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
@@ -97,7 +98,8 @@ export class PublicCertificateValidationService {
     }
 
     const events = await this.resolveCertificateEvents(certificate);
-    const sections = this.buildSections(certificate, events);
+    const publiclyVisibleEvents = events.filter((event) => event.publiclyVisible);
+    const sections = this.buildSections(certificate, publiclyVisibleEvents);
 
     return {
       id: certificate.id,
@@ -109,7 +111,7 @@ export class PublicCertificateValidationService {
       targetName: this.getTargetName(certificate),
       targetEmoji: this.getTargetEmoji(certificate),
       sections,
-      totalCreditMinutes: this.sumCreditMinutes(events),
+      totalCreditMinutes: this.sumCreditMinutes(publiclyVisibleEvents),
     };
   }
 
@@ -419,6 +421,10 @@ export class PublicCertificateValidationService {
   }
 
   private getTargetName(certificate: PublicCertificateValidationRecord): string | undefined {
+    if (certificate.config.scope === CertificateScope.EVENT && !certificate.config.event?.publiclyVisible) {
+      return undefined;
+    }
+
     return (
       certificate.config.majorEvent?.name ??
       certificate.config.eventGroup?.name ??
@@ -428,6 +434,10 @@ export class PublicCertificateValidationService {
   }
 
   private getTargetEmoji(certificate: PublicCertificateValidationRecord): string | undefined {
+    if (certificate.config.scope === CertificateScope.EVENT && !certificate.config.event?.publiclyVisible) {
+      return undefined;
+    }
+
     return certificate.config.majorEvent?.emoji ?? certificate.config.event?.emoji ?? undefined;
   }
 

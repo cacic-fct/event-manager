@@ -6,6 +6,7 @@ model EventGroup {
 
   events        Event[]
   subscriptions EventGroupSubscription[]
+  eventManagerPermissionGrants EventManagerPermissionGrant[]
 
   shouldIssueCertificate                          Boolean @default(false)
   shouldIssueCertificateForNonPayingAttendees     Boolean @default(false)

@@ -6,11 +6,14 @@ import {
   MajorEventUpdateInput,
   PaymentInfoInput,
 } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -94,11 +97,14 @@ export class MajorEventsResolver {
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
-  @RequireScopes('major-event#read')
+  @AllowScopedCollectionPermissions()
+  @RequirePermissions(Permission.MajorEvent.Read)
   async majorEvents(
+    @Context() context: GraphqlContext,
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('startDateFrom', { type: () => Date, nullable: true })
     startDateFrom?: Date,
@@ -111,6 +117,18 @@ export class MajorEventsResolver {
     const where: Prisma.MajorEventWhereInput = {
       deletedAt: null,
     };
+    const accessibleMajorEventIds = await this.authorizationPolicy.accessibleMajorEventIds(
+      this.getUser(context),
+      Permission.MajorEvent.Read,
+    );
+    if (accessibleMajorEventIds && accessibleMajorEventIds.size === 0) {
+      return [];
+    }
+    if (accessibleMajorEventIds) {
+      where.id = {
+        in: [...accessibleMajorEventIds],
+      };
+    }
     const normalizedQuery = query?.trim();
 
     if (startDateFrom || startDateUntil) {
@@ -130,6 +148,9 @@ export class MajorEventsResolver {
           normalizedQuery,
           pagination.skip + pagination.take,
         );
+        if (accessibleMajorEventIds) {
+          prioritizedIds = prioritizedIds.filter((id) => accessibleMajorEventIds.has(id));
+        }
         if (prioritizedIds.length === 0) {
           return [];
         }
@@ -164,7 +185,7 @@ export class MajorEventsResolver {
   }
 
   @Query(() => MajorEvent, { name: 'majorEvent' })
-  @RequireScopes('major-event#read')
+  @RequirePermissions(Permission.MajorEvent.Read)
   async majorEvent(@Args('id', { type: () => String }) id: string) {
     const paymentInfoTableExists = await this.hasPaymentInfoTable();
     const majorEvent = await this.prisma.majorEvent.findFirst({
@@ -183,7 +204,7 @@ export class MajorEventsResolver {
   }
 
   @Mutation(() => MajorEvent, { name: 'createMajorEvent' })
-  @RequireScopes('major-event#edit')
+  @RequirePermissions(Permission.MajorEvent.Create)
   async createMajorEvent(
     @Args('input', { type: () => MajorEventCreateInput })
     input: MajorEventCreateInput,
@@ -206,7 +227,7 @@ export class MajorEventsResolver {
   }
 
   @Mutation(() => MajorEvent, { name: 'updateMajorEvent' })
-  @RequireScopes('major-event#edit')
+  @RequirePermissions(Permission.MajorEvent.Update)
   async updateMajorEvent(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => MajorEventUpdateInput })
@@ -267,7 +288,7 @@ export class MajorEventsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteMajorEvent' })
-  @RequireScopes('major-event#delete')
+  @RequirePermissions(Permission.MajorEvent.Delete)
   async deleteMajorEvent(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertMajorEventMutable(id, this.getUser(context), 'delete');
     const { count } = await this.prisma.majorEvent.updateMany({
