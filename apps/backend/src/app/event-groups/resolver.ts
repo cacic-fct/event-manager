@@ -3,8 +3,10 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
+import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,17 +23,32 @@ export class EventGroupsResolver {
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   @Query(() => [EventGroup], { name: 'eventGroups' })
+  @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.EventGroup.Read)
   async eventGroups(
+    @Context() context: GraphqlContext,
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.EventGroupWhereInput = { deletedAt: null };
+    const accessibleEventGroupIds = await this.authorizationPolicy.accessibleEventGroupIds(
+      this.getUser(context),
+      Permission.EventGroup.Read,
+    );
+    if (accessibleEventGroupIds && accessibleEventGroupIds.size === 0) {
+      return [];
+    }
+    if (accessibleEventGroupIds) {
+      where.id = {
+        in: [...accessibleEventGroupIds],
+      };
+    }
     const normalizedQuery = query?.trim();
     let prioritizedIds: string[] = [];
 
@@ -41,6 +58,9 @@ export class EventGroupsResolver {
           normalizedQuery,
           pagination.skip + pagination.take,
         );
+        if (accessibleEventGroupIds) {
+          prioritizedIds = prioritizedIds.filter((id) => accessibleEventGroupIds.has(id));
+        }
         if (prioritizedIds.length === 0) {
           return [];
         }

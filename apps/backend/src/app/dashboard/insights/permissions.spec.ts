@@ -6,6 +6,7 @@ describe('dashboard permission helpers', () => {
   it('uses policy-evaluated permissions and sorts them for cache stability', async () => {
     const authorizationPolicy = {
       evaluateGlobalPermissions: jest.fn().mockResolvedValue([Permission.Event.Update, Permission.Certificate.Issue]),
+      evaluatePermissions: jest.fn(),
     };
     const authenticatedUser = {
       token: 'token',
@@ -20,8 +21,35 @@ describe('dashboard permission helpers', () => {
     ).resolves.toEqual({
       permissions: [Permission.Certificate.Issue, Permission.Event.Update],
       cacheable: true,
+      canReadGlobalInsights: true,
     });
     expect(authorizationPolicy.evaluateGlobalPermissions).toHaveBeenCalledWith(authenticatedUser, [
+      ...DASHBOARD_PERMISSION_REQUIREMENTS,
+    ]);
+    expect(authorizationPolicy.evaluatePermissions).not.toHaveBeenCalled();
+  });
+
+  it('falls back to scoped permissions without allowing global insight queries', async () => {
+    const authorizationPolicy = {
+      evaluateGlobalPermissions: jest.fn().mockResolvedValue([]),
+      evaluatePermissions: jest.fn().mockResolvedValue([Permission.Event.Update, Permission.Certificate.Issue]),
+    };
+    const authenticatedUser = {
+      token: 'token',
+      permissionSet: new Set([Permission.Event.Update]),
+    } as never;
+
+    await expect(
+      resolveDashboardPermissions(
+        authorizationPolicy as never,
+        authenticatedUser,
+      ),
+    ).resolves.toEqual({
+      permissions: [Permission.Certificate.Issue, Permission.Event.Update],
+      cacheable: false,
+      canReadGlobalInsights: false,
+    });
+    expect(authorizationPolicy.evaluatePermissions).toHaveBeenCalledWith(authenticatedUser, [
       ...DASHBOARD_PERMISSION_REQUIREMENTS,
     ]);
   });

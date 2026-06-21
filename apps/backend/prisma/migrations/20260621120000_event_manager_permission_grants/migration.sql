@@ -88,10 +88,10 @@ ALTER TABLE "event_manager_permission_grants" ADD CONSTRAINT "event_manager_perm
 ALTER TABLE "event_manager_permission_grants" ADD CONSTRAINT "event_manager_permission_grants_personId_fkey" FOREIGN KEY ("personId") REFERENCES "people"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "event_manager_permission_grants" ADD CONSTRAINT "event_manager_permission_grants_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "events"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "event_manager_permission_grants" ADD CONSTRAINT "event_manager_permission_grants_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "events"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "event_manager_permission_grants" ADD CONSTRAINT "event_manager_permission_grants_majorEventId_fkey" FOREIGN KEY ("majorEventId") REFERENCES "major_events"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "event_manager_permission_grants" ADD CONSTRAINT "event_manager_permission_grants_majorEventId_fkey" FOREIGN KEY ("majorEventId") REFERENCES "major_events"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "event_manager_permission_grants" ADD CONSTRAINT "event_manager_permission_grants_eventGroupId_fkey" FOREIGN KEY ("eventGroupId") REFERENCES "event_groups"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "event_manager_permission_grants" ADD CONSTRAINT "event_manager_permission_grants_eventGroupId_fkey" FOREIGN KEY ("eventGroupId") REFERENCES "event_groups"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

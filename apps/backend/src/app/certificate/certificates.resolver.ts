@@ -19,8 +19,10 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { GqlThrottlerGuard } from '../common/gql-throttler.guard';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
@@ -48,42 +50,62 @@ export class CertificatesResolver {
     private readonly downloadService: CertificateDownloadService,
     private readonly publicValidationService: PublicCertificateValidationService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   @Query(() => [Event], { name: 'certificateIssuableEvents' })
+  @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.CertificateConfig.Read)
-  certificateIssuableEvents(
+  async certificateIssuableEvents(
+    @Context() context: GraphqlContext,
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
     const pagination = resolvePagination(skip, take);
-    return this.targetsService.listIssuableEvents(query, pagination.skip, pagination.take);
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(
+      this.getUser(context),
+      Permission.CertificateConfig.Read,
+    );
+    return this.targetsService.listIssuableEvents(query, pagination.skip, pagination.take, accessibleTargets);
   }
 
   @Query(() => [EventGroup], { name: 'certificateIssuableEventGroups' })
+  @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.CertificateConfig.Read)
-  certificateIssuableEventGroups(
+  async certificateIssuableEventGroups(
+    @Context() context: GraphqlContext,
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
     const pagination = resolvePagination(skip, take);
-    return this.targetsService.listIssuableEventGroups(query, pagination.skip, pagination.take);
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(
+      this.getUser(context),
+      Permission.CertificateConfig.Read,
+    );
+    return this.targetsService.listIssuableEventGroups(query, pagination.skip, pagination.take, accessibleTargets);
   }
 
   @Query(() => [MajorEvent], { name: 'certificateIssuableMajorEvents' })
+  @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.CertificateConfig.Read)
-  certificateIssuableMajorEvents(
+  async certificateIssuableMajorEvents(
+    @Context() context: GraphqlContext,
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
     const pagination = resolvePagination(skip, take);
-    return this.targetsService.listIssuableMajorEvents(query, pagination.skip, pagination.take);
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(
+      this.getUser(context),
+      Permission.CertificateConfig.Read,
+    );
+    return this.targetsService.listIssuableMajorEvents(query, pagination.skip, pagination.take, accessibleTargets);
   }
 
   @Query(() => [CertificateTemplate], { name: 'certificateTemplates' })
+  @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.CertificateConfig.Read)
   certificateTemplates(
     @Args('query', { type: () => String, nullable: true }) query?: string,
@@ -203,6 +225,7 @@ export class CertificatesResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertCertificateConfigMutable(id, this.getUser(context), 'edit');
+    await this.assertReplacementCertificateConfigTarget(id, input, context);
     return this.configsService.updateConfig(id, input);
   }
 
@@ -260,7 +283,7 @@ export class CertificatesResolver {
 
   private getCertificateTargetId(
     scope: CertificateScope,
-    input: CertificateConfigCreateInput,
+    input: Pick<CertificateConfigCreateInput, 'eventId' | 'eventGroupId' | 'majorEventId'>,
   ): string {
     if (scope === CertificateScope.EVENT && input.eventId) {
       return input.eventId;
@@ -275,5 +298,38 @@ export class CertificatesResolver {
     }
 
     return '';
+  }
+
+  private async assertReplacementCertificateConfigTarget(
+    id: string,
+    input: CertificateConfigUpdateInput,
+    context: GraphqlContext,
+  ): Promise<void> {
+    const changesTarget =
+      input.scope !== undefined ||
+      input.eventId !== undefined ||
+      input.eventGroupId !== undefined ||
+      input.majorEventId !== undefined;
+    if (!changesTarget) {
+      return;
+    }
+
+    const existing = await this.configsService.getConfigById(id);
+    const scope = input.scope ?? existing.scope;
+    const targetId = this.getCertificateTargetId(scope, {
+      eventId: input.eventId === undefined ? existing.eventId : input.eventId,
+      eventGroupId: input.eventGroupId === undefined ? existing.eventGroupId : input.eventGroupId,
+      majorEventId: input.majorEventId === undefined ? existing.majorEventId : input.majorEventId,
+    });
+    if (!targetId) {
+      return;
+    }
+
+    const user = this.getUser(context);
+    await this.frozenResources.assertCertificateTargetMutable(scope, targetId, user, 'edit');
+    await this.authorizationPolicy.assertPermissions(user, [Permission.CertificateConfig.Update], {
+      scope,
+      targetId,
+    });
   }
 }

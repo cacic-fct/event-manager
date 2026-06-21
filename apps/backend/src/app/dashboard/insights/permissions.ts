@@ -10,15 +10,29 @@ export async function resolveDashboardPermissions(
 ): Promise<{
   permissions: string[];
   cacheable: boolean;
+  canReadGlobalInsights: boolean;
 }> {
-  const permissions = await authorizationPolicy.evaluateGlobalPermissions(
+  const globalPermissions = await authorizationPolicy.evaluateGlobalPermissions(
+    authenticatedUser,
+    DASHBOARD_PERMISSION_REQUIREMENTS,
+  );
+  if (globalPermissions.length > 0) {
+    return {
+      permissions: [...globalPermissions].sort(),
+      cacheable: true,
+      canReadGlobalInsights: true,
+    };
+  }
+
+  const scopedPermissions = await authorizationPolicy.evaluatePermissions(
     authenticatedUser,
     DASHBOARD_PERMISSION_REQUIREMENTS,
   );
 
   return {
-    permissions: [...permissions].sort(),
-    cacheable: true,
+    permissions: [...scopedPermissions].sort(),
+    cacheable: false,
+    canReadGlobalInsights: false,
   };
 }
 

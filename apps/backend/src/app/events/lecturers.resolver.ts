@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -106,6 +107,7 @@ export class EventLecturersResolver {
   constructor(
     private readonly prisma: PrismaService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   @Query(() => [EventLecturer], { name: 'eventLecturers' })
@@ -207,7 +209,11 @@ export class EventLecturersResolver {
   ) {
     await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
     if (input.eventId && input.eventId !== eventId) {
-      await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
+      const user = this.getUser(context);
+      await this.frozenResources.assertEventMutable(input.eventId, user, 'edit');
+      await this.authorizationPolicy.assertPermissions(user, [Permission.EventLecturer.Update], {
+        eventId: input.eventId,
+      });
     }
     const nextEventId = input.eventId ?? eventId;
     const nextPersonId = input.personId ?? personId;

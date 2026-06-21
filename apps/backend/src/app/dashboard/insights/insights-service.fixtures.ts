@@ -17,6 +17,7 @@ export function createInsightsServiceTestContext() {
   };
   const authorizationPolicy = {
     evaluateGlobalPermissions: jest.fn().mockResolvedValue([]),
+    evaluatePermissions: jest.fn().mockResolvedValue([]),
   };
   const weatherService = {
     getPublicEventWeather: jest.fn().mockResolvedValue(null),

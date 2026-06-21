@@ -10,7 +10,8 @@ describe('DashboardInsightsService cache and jobs', () => {
   });
 
   it('returns cached insights with dates restored and skips regeneration', async () => {
-    const { prisma, redis, service } = createInsightsServiceTestContext();
+    const { authorizationPolicy, prisma, redis, service } = createInsightsServiceTestContext();
+    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue(['event#read']);
     redis.get.mockResolvedValue(
       JSON.stringify({
         generatedAt: '2026-05-21T12:00:00.000Z',

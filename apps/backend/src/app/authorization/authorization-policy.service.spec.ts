@@ -212,6 +212,67 @@ describe('AuthorizationPolicyService', () => {
     });
   });
 
+  it('returns scoped event group ids for resolver filtering', async () => {
+    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+      grant({
+        permission: Permission.EventGroup.Read,
+        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        eventGroupId: 'group-1',
+      }),
+      grant({
+        permission: Permission.EventGroup.Read,
+        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+      }),
+    ]);
+
+    await expect(
+      service.accessibleEventGroupIds(user([EventManagerKeycloakRole.Access]), Permission.EventGroup.Read),
+    ).resolves.toEqual(new Set(['group-1']));
+  });
+
+  it('resolves generic subscription ids when subscription permissions are required with related resources', async () => {
+    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+      grant({
+        permission: Permission.Subscription.Update,
+        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+      }),
+      grant({
+        permission: Permission.Event.Read,
+        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+      }),
+      grant({
+        permission: Permission.MajorEvent.Read,
+        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+      }),
+    ]);
+    prisma.majorEventSubscription.findUnique.mockResolvedValue({
+      majorEventId: 'major-1',
+    });
+
+    const context = service.buildResourceContext(
+      {
+        id: 'subscription-1',
+        input: {
+          subscriptionStatus: 'CONFIRMED',
+        },
+      },
+      [Permission.Subscription.Update, Permission.Event.Read, Permission.MajorEvent.Read],
+    );
+
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [
+        Permission.Subscription.Update,
+        Permission.Event.Read,
+        Permission.MajorEvent.Read,
+      ], context),
+    ).resolves.toBeUndefined();
+    expect(context.subscriptionId).toBe('subscription-1');
+  });
+
   it('does not authorize primary resource mutations from nested input target ids', async () => {
     prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
       grant({

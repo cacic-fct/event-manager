@@ -366,6 +366,7 @@ export const EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS = [
   Permission.MergeCandidate.Merge,
   Permission.MergeCandidate.Undo,
   Permission.MergeCandidate.Delete,
+  Permission.Person.Read,
   Permission.Person.Create,
   Permission.Person.Update,
   Permission.Person.Delete,
@@ -373,6 +374,12 @@ export const EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS = [
   Permission.PermissionGrant.Create,
   Permission.PermissionGrant.Update,
   Permission.PermissionGrant.Delete,
+  Permission.PlacePreset.Read,
+  Permission.PlacePreset.Create,
+  Permission.PlacePreset.Update,
+  Permission.PlacePreset.Merge,
+  Permission.PlacePreset.Delete,
+  Permission.User.Read,
 ] as const satisfies PermissionRequirement;
 
 export const EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSION_SET = new Set<Permission>(

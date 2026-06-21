@@ -207,6 +207,30 @@ export class AuthorizationPolicyService {
     return target;
   }
 
+  async accessibleEventGroupIds(
+    user: AuthenticatedUser | undefined,
+    permission: Permission,
+  ): Promise<Set<string> | null> {
+    if (!user || !this.hasEventManagerAccess(user)) {
+      return new Set();
+    }
+
+    if (this.isSuperAdmin(user)) {
+      return null;
+    }
+
+    const grants = await this.findActiveGrants(user.sub, [permission]);
+    if (grants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+      return null;
+    }
+
+    return new Set(
+      grants
+        .filter((grant) => grant.scope === EventManagerPermissionGrantScope.EVENT_GROUP && grant.eventGroupId)
+        .map((grant) => grant.eventGroupId as string),
+    );
+  }
+
   async canOverrideFrozenResource(
     user: AuthenticatedUser | undefined,
     permission: Permission,
@@ -290,6 +314,9 @@ export class AuthorizationPolicyService {
     );
     if (resources.size === 1) {
       context.primaryResource = [...resources][0];
+    }
+    if (context.genericId && resources.has('subscription')) {
+      context.subscriptionId ??= context.genericId;
     }
 
     return context;

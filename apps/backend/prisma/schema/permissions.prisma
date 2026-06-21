@@ -17,13 +17,13 @@ model EventManagerPermissionGrant {
   permission String
   scope      EventManagerPermissionGrantScope @default(GLOBAL)
 
-  event   Event?  @relation(fields: [eventId], references: [id])
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Restrict)
   eventId String?
 
-  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id])
+  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
   majorEventId String?
 
-  eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id])
+  eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id], onDelete: Restrict)
   eventGroupId String?
 
   validFrom  DateTime?

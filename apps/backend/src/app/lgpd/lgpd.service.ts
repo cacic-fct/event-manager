@@ -265,6 +265,9 @@ export class LgpdService {
       await tx.accountUserMerge.deleteMany({
         where: { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] },
       });
+      const permissionGrants = await tx.eventManagerPermissionGrant.deleteMany({
+        where: { userId: { in: userIds } },
+      });
       const people = await tx.people.deleteMany({ where: { id: { in: personIds } } });
       const users = await tx.user.deleteMany({ where: { id: { in: userIds } } });
 
@@ -280,7 +283,8 @@ export class LgpdService {
           eventGroupSubscriptions.count +
           majorEventSubscriptions.count +
           attendances.count +
-          lecturers.count,
+          lecturers.count +
+          permissionGrants.count,
       };
     });
 

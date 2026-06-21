@@ -1,3 +1,4 @@
+import { Permission } from '@cacic-fct/shared-permissions';
 import { createInsightsServiceTestContext, insightEvent } from './insights-service.fixtures';
 
 describe('DashboardInsightsService generation', () => {
@@ -208,6 +209,35 @@ describe('DashboardInsightsService generation', () => {
     );
     expect(prisma.event.findMany).not.toHaveBeenCalled();
     expect(prisma.event.count).not.toHaveBeenCalled();
+  });
+
+  it('renders an empty dashboard shell for scoped-only administrators without global insight queries', async () => {
+    const { authorizationPolicy, prisma, redis, service, weatherService } = createInsightsServiceTestContext();
+    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue([]);
+    authorizationPolicy.evaluatePermissions.mockResolvedValue([Permission.Event.Update]);
+
+    const result = await service.getWorkspaceDashboardInsights({} as never);
+
+    expect(result.summary).toEqual({
+      eventsCount: 0,
+      eventGroupsCount: 0,
+      majorEventsCount: 0,
+    });
+    expect(result.calendarEvents).toEqual([]);
+    expect(result.weatherAlerts).toEqual([]);
+    expect(result.permissions).toEqual([
+      expect.objectContaining({
+        type: 'event',
+        actions: [expect.objectContaining({ scope: 'update' })],
+      }),
+    ]);
+    expect(prisma.event.count).not.toHaveBeenCalled();
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+    expect(prisma.eventGroup.findMany).not.toHaveBeenCalled();
+    expect(prisma.majorEvent.findMany).not.toHaveBeenCalled();
+    expect(weatherService.getPublicEventWeather).not.toHaveBeenCalled();
+    expect(redis.get).not.toHaveBeenCalled();
+    expect(redis.set).not.toHaveBeenCalled();
   });
 
   it('propagates permission evaluation failures', async () => {

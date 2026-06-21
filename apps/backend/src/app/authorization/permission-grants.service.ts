@@ -157,7 +157,7 @@ export class PermissionGrantsService {
         ...input,
       },
       actorId,
-      { includeCreatedBy: false },
+      { includeCreatedBy: false, preserveUndefinedValidity: true },
     );
     const duplicateGrant = await this.findMatchingActiveGrant(data, id);
     if (duplicateGrant) {
@@ -192,13 +192,13 @@ export class PermissionGrantsService {
     input: EventManagerPermissionGrantCreateInput,
     actorId?: string,
   ): Promise<Prisma.EventManagerPermissionGrantUncheckedCreateInput> {
-    return this.buildGrantData(input, actorId, { includeCreatedBy: true });
+    return this.buildGrantData(input, actorId, { includeCreatedBy: true, preserveUndefinedValidity: false });
   }
 
   private async buildGrantData(
     input: EventManagerPermissionGrantCreateInput,
     actorId: string | undefined,
-    options: { includeCreatedBy: boolean },
+    options: { includeCreatedBy: boolean; preserveUndefinedValidity: boolean },
   ): Promise<Prisma.EventManagerPermissionGrantUncheckedCreateInput> {
     const userId = input.userId.trim();
     if (!userId) {
@@ -222,7 +222,9 @@ export class PermissionGrantsService {
       eventId: null,
       majorEventId: null,
       eventGroupId: null,
-      ...this.normalizeValidityWindow(input.validFrom, input.validUntil),
+      ...this.normalizeValidityWindow(input.validFrom, input.validUntil, {
+        preserveUndefined: options.preserveUndefinedValidity,
+      }),
       updatedById: actorId,
     };
     if (options.includeCreatedBy) {
@@ -421,6 +423,7 @@ export class PermissionGrantsService {
   private normalizeValidityWindow(
     validFrom: Date | string | null | undefined,
     validUntil: Date | string | null | undefined,
+    options: { preserveUndefined: boolean },
   ): Pick<Prisma.EventManagerPermissionGrantUncheckedCreateInput, 'validFrom' | 'validUntil'> {
     const normalizedValidFrom = this.normalizeOptionalDate(validFrom, 'início da validade');
     const normalizedValidUntil = this.normalizeOptionalDate(validUntil, 'fim da validade');
@@ -434,8 +437,8 @@ export class PermissionGrantsService {
     }
 
     return {
-      validFrom: normalizedValidFrom ?? undefined,
-      validUntil: normalizedValidUntil ?? undefined,
+      ...(options.preserveUndefined && validFrom === undefined ? {} : { validFrom: normalizedValidFrom }),
+      ...(options.preserveUndefined && validUntil === undefined ? {} : { validUntil: normalizedValidUntil }),
     };
   }
 

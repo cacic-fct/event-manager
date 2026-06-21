@@ -157,6 +157,37 @@ describe('PermissionGrantsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('rejects scoped person read grants because person operations are not target-scoped', async () => {
+    await expect(
+      service.createGrant({
+        userId: 'user-1',
+        permission: Permission.Person.Read,
+        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        eventGroupId: 'group-1',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects scoped place and user grants because those operations are not target-scoped', async () => {
+    await expect(
+      service.createGrant({
+        userId: 'user-1',
+        permission: Permission.PlacePreset.Read,
+        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(
+      service.createGrant({
+        userId: 'user-1',
+        permission: Permission.User.Read,
+        scope: EventManagerPermissionGrantScope.EVENT,
+        eventId: 'event-1',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('rejects scoped permission-management grants because they only make sense globally', async () => {
     await expect(
       service.createGrant({
@@ -300,6 +331,36 @@ describe('PermissionGrantsService', () => {
           majorEventId: 'major-1',
           eventGroupId: null,
           updatedById: 'actor-1',
+        }),
+      }),
+    );
+  });
+
+  it('preserves explicit null validity values when updating a grant', async () => {
+    prisma.eventManagerPermissionGrant.findFirst
+      .mockResolvedValueOnce({ userId: 'user-1', personId: 'person-1' })
+      .mockResolvedValueOnce(null);
+    prisma.eventManagerPermissionGrant.update.mockResolvedValue(grantRecord({
+      permission: Permission.Event.Read,
+      scope: EventManagerPermissionGrantScope.GLOBAL,
+      validFrom: null,
+      validUntil: null,
+    }));
+
+    await expect(
+      service.updateGrant('grant-1', {
+        permission: Permission.Event.Read,
+        scope: EventManagerPermissionGrantScope.GLOBAL,
+        validFrom: null,
+        validUntil: null,
+      }),
+    ).resolves.toEqual(expect.objectContaining({ validFrom: null, validUntil: null }));
+
+    expect(prisma.eventManagerPermissionGrant.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          validFrom: null,
+          validUntil: null,
         }),
       }),
     );

@@ -41,7 +41,9 @@ export class DashboardInsightsService {
     const permissionResolution = await resolveDashboardPermissions(this.authorizationPolicy, authenticatedUser);
     const permissions = permissionResolution.permissions;
     if (!permissionResolution.cacheable) {
-      return this.generateInsights(permissions);
+      return this.generateInsights(permissions, {
+        canReadGlobalInsights: permissionResolution.canReadGlobalInsights,
+      });
     }
 
     const cacheKey = getCacheKey(permissions);
@@ -111,7 +113,10 @@ export class DashboardInsightsService {
     return insights;
   }
 
-  private async generateInsights(permissions: string[]): Promise<WorkspaceDashboardInsights> {
+  private async generateInsights(
+    permissions: string[],
+    options: { canReadGlobalInsights: boolean } = { canReadGlobalInsights: true },
+  ): Promise<WorkspaceDashboardInsights> {
     const now = new Date();
     const today = startOfLocalDay(now);
     const sevenDaysFromToday = new Date(today);
@@ -121,10 +126,11 @@ export class DashboardInsightsService {
     const inconsistencyWindowStart = new Date(now);
     inconsistencyWindowStart.setDate(inconsistencyWindowStart.getDate() - 14);
 
-    const permissionSet = new Set(permissions);
-    if (permissionSet.size === 0) {
+    const grantedPermissionSet = new Set(permissions);
+    if (grantedPermissionSet.size === 0) {
       throw new ForbiddenException('Workspace dashboard insights require an administrative permission.');
     }
+    const permissionSet = options.canReadGlobalInsights ? grantedPermissionSet : new Set<string>();
 
     const canManageEvents =
       permissionSet.has(Permission.Event.Create) ||
