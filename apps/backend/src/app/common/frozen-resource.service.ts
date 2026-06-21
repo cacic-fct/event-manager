@@ -1,12 +1,14 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { CertificateScope } from '@prisma/client';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type FrozenOperation = 'edit' | 'delete';
 
-export const FROZEN_EDIT_PERMISSION = 'frozen#edit';
-export const FROZEN_DELETE_PERMISSION = 'frozen#delete';
+export const FROZEN_EDIT_PERMISSION = Permission.Frozen.Update;
+export const FROZEN_DELETE_PERMISSION = Permission.Frozen.Delete;
 
 export function getFrozenCutoffDate(now = new Date()): Date {
   const cutoff = new Date(now);
@@ -34,14 +36,20 @@ export function isFrozenFromDates(dates: Array<Date | null | undefined>, now = n
 
 @Injectable()
 export class FrozenResourceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authorizationPolicy: AuthorizationPolicyService = {
+      canOverrideFrozenResource: async (user: AuthenticatedUser | undefined, permission: Permission) =>
+        Boolean(user?.permissionSet?.has(permission) || user?.permissions?.includes(permission)),
+    } as AuthorizationPolicyService,
+  ) {}
 
   async assertEventMutable(
     eventId: string,
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (this.canBypass(user, operation)) {
+    if (await this.canBypass(user, operation, { eventId })) {
       return;
     }
 
@@ -124,7 +132,7 @@ export class FrozenResourceService {
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (this.canBypass(user, operation)) {
+    if (await this.canBypass(user, operation, { eventGroupId })) {
       return;
     }
 
@@ -162,7 +170,7 @@ export class FrozenResourceService {
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (this.canBypass(user, operation)) {
+    if (await this.canBypass(user, operation, { majorEventId })) {
       return;
     }
 
@@ -210,7 +218,7 @@ export class FrozenResourceService {
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (this.canBypass(user, operation)) {
+    if (await this.canBypass(user, operation)) {
       return;
     }
 
@@ -242,7 +250,7 @@ export class FrozenResourceService {
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
   ): Promise<void> {
-    if (this.canBypass(user, operation)) {
+    if (await this.canBypass(user, operation)) {
       return;
     }
 
@@ -264,7 +272,7 @@ export class FrozenResourceService {
   }
 
   async assertNoFrozenCertificateTargets(user: AuthenticatedUser | undefined, operation: FrozenOperation): Promise<void> {
-    if (this.canBypass(user, operation)) {
+    if (await this.canBypass(user, operation)) {
       return;
     }
 
@@ -406,9 +414,13 @@ export class FrozenResourceService {
     );
   }
 
-  private canBypass(user: AuthenticatedUser | undefined, operation: FrozenOperation): boolean {
-    const permission = operation === 'delete' ? FROZEN_DELETE_PERMISSION : FROZEN_EDIT_PERMISSION;
-    return Boolean(user?.permissionSet?.has(permission) || user?.permissions?.includes(permission));
+  private canBypass(
+    user: AuthenticatedUser | undefined,
+    operation: FrozenOperation,
+    context = {},
+  ): Promise<boolean> {
+    const permission = operation === 'delete' ? Permission.Frozen.Delete : Permission.Frozen.Update;
+    return this.authorizationPolicy.canOverrideFrozenResource(user, permission, context);
   }
 
   private changedRelationIds(currentId: string | null, nextId: string | null | undefined): string[] {

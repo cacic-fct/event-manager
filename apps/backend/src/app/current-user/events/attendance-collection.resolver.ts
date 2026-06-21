@@ -4,7 +4,7 @@ import {
   EventAttendanceScannerCodeInput,
   EventAttendanceScannerFeedItem,
 } from '@cacic-fct/shared-data-types';
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { CurrentUserAttendanceCollectionEvent } from '../models';
@@ -15,6 +15,7 @@ import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 
 const MAX_LOCATION_ACCURACY_METERS = 200;
 
@@ -27,6 +28,9 @@ export class CurrentUserAttendanceCollectionResolver {
     private readonly frozenResources: FrozenResourceService = {
       assertEventMutable: async () => undefined,
     } as unknown as FrozenResourceService,
+    private readonly authorizationPolicy: AuthorizationPolicyService = {
+      assertAttendanceCollectorForEvent: async () => undefined,
+    } as unknown as AuthorizationPolicyService,
   ) {}
 
   @Query(() => [CurrentUserAttendanceCollectionEvent], {
@@ -142,38 +146,9 @@ export class CurrentUserAttendanceCollectionResolver {
 
   private async requireCollector(eventId: string, context: GraphqlContext, enforceCollectionWindow: boolean) {
     const collectorPerson = await this.currentUserContext.requireCurrentPerson(context);
-    const collector = await this.prisma.eventAttendanceCollector.findUnique({
-      where: {
-        eventId_personId: {
-          eventId,
-          personId: collectorPerson.id,
-        },
-      },
-      select: {
-        event: {
-          select: {
-            startDate: true,
-            endDate: true,
-            deletedAt: true,
-            publiclyVisible: true,
-            shouldCollectAttendance: true,
-          },
-        },
-      },
+    await this.authorizationPolicy.assertAttendanceCollectorForEvent(eventId, collectorPerson.id, {
+      enforceCollectionWindow,
     });
-
-    if (
-      !collector ||
-      collector.event.deletedAt ||
-      !collector.event.publiclyVisible ||
-      !collector.event.shouldCollectAttendance
-    ) {
-      throw new ForbiddenException('Você não pode coletar presença para este evento.');
-    }
-
-    if (enforceCollectionWindow && !this.isCollectionOpen(collector.event.startDate, collector.event.endDate)) {
-      throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
-    }
 
     return collectorPerson;
   }
@@ -184,11 +159,6 @@ export class CurrentUserAttendanceCollectionResolver {
       context.req?.user ??
       context.request?.user
     );
-  }
-
-  private isCollectionOpen(startDate: Date, endDate: Date): boolean {
-    const now = Date.now();
-    return now >= startDate.getTime() - 3 * 60 * 60_000 && now <= endDate.getTime() + 6 * 60 * 60_000;
   }
 
   private async getScannerFeed(eventId: string): Promise<EventAttendanceScannerFeedItem[]> {

@@ -1,4 +1,4 @@
-import { DecimalPipe } from '@angular/common';
+import { DOCUMENT, DecimalPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -175,7 +175,9 @@ type AttendanceDetail = {
 })
 export class WorkspaceAttendanceInfoDialogComponent implements OnDestroy {
   protected readonly data = inject<AttendanceInfoDialogData>(MAT_DIALOG_DATA);
+  private readonly document = inject(DOCUMENT);
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
+  private readonly markerIconUrl = new URL('assets/shared/pin.svg', this.document.baseURI).toString();
 
   private map: { setTarget(target: HTMLElement | undefined): void; updateSize(): void } | null = null;
   private hasRendered = false;
@@ -282,7 +284,7 @@ export class WorkspaceAttendanceInfoDialogComponent implements OnDestroy {
           anchor: [400, 700],
           anchorXUnits: 'pixels',
           anchorYUnits: 'pixels',
-          src: '/admin/assets/shared/pin.svg',
+          src: this.markerIconUrl,
           scale: 0.065,
         }),
       }),

@@ -12,6 +12,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { MajorEvent } from '../../../graphql/models';
 import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
@@ -59,23 +60,23 @@ export class WorkspaceMajorEventsTabComponent {
 
   protected canEditMajorEvent(majorEvent: MajorEvent | null | undefined): boolean {
     return (
-      this.permissions.canEdit('major-event#edit') &&
-      (!majorEvent || !isFrozenMajorEvent(majorEvent) || this.permissions.has('frozen#edit'))
+      this.permissions.canEdit(majorEvent ? Permission.MajorEvent.Update : Permission.MajorEvent.Create) &&
+      (!majorEvent || !isFrozenMajorEvent(majorEvent) || this.permissions.has(Permission.Frozen.Update))
     );
   }
 
   protected canDeleteMajorEvent(majorEvent: MajorEvent): boolean {
     return (
-      this.permissions.canDelete('major-event#delete') &&
-      (!isFrozenMajorEvent(majorEvent) || this.permissions.has('frozen#delete'))
+      this.permissions.canDelete(Permission.MajorEvent.Delete) &&
+      (!isFrozenMajorEvent(majorEvent) || this.permissions.has(Permission.Frozen.Delete))
     );
   }
 
   protected canEditSelectedMajorEventEvents(): boolean {
     const selectedMajorEvent = this.workspace.selectedMajorEvent();
     return (
-      this.permissions.canEdit('event#edit') &&
-      (!selectedMajorEvent || !isFrozenMajorEvent(selectedMajorEvent) || this.permissions.has('frozen#edit'))
+      this.permissions.hasAny([Permission.Event.Create, Permission.Event.Update]) &&
+      (!selectedMajorEvent || !isFrozenMajorEvent(selectedMajorEvent) || this.permissions.has(Permission.Frozen.Update))
     );
   }
 }

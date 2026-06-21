@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { EventGroup } from '../../../graphql/models';
 import { isFrozenEventGroup } from '../../../shared/frozen-resource';
@@ -55,13 +56,16 @@ export class WorkspaceEventGroupsTabComponent {
 
   protected canEditGroup(group: EventGroup | null | undefined): boolean {
     return (
-      this.permissions.canEdit('event#edit') &&
-      (!group || !this.isGroupFrozen(group) || this.permissions.has('frozen#edit'))
+      this.permissions.canEdit(group ? Permission.EventGroup.Update : Permission.EventGroup.Create) &&
+      (!group || !this.isGroupFrozen(group) || this.permissions.has(Permission.Frozen.Update))
     );
   }
 
   protected canDeleteGroup(group: EventGroup): boolean {
-    return this.permissions.canDelete('event#delete') && (!this.isGroupFrozen(group) || this.permissions.has('frozen#delete'));
+    return (
+      this.permissions.canDelete(Permission.EventGroup.Delete) &&
+      (!this.isGroupFrozen(group) || this.permissions.has(Permission.Frozen.Delete))
+    );
   }
 
   protected canEditSelectedGroupEvents(): boolean {

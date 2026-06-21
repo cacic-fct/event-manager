@@ -13,13 +13,14 @@ import {
   MajorEvent,
   PublicCertificateValidation,
 } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { UseGuards } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { Public } from '../auth/decorators/public.decorator';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { GqlThrottlerGuard } from '../common/gql-throttler.guard';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
@@ -50,7 +51,7 @@ export class CertificatesResolver {
   ) {}
 
   @Query(() => [Event], { name: 'certificateIssuableEvents' })
-  @RequireScopes('certificate#read')
+  @RequirePermissions(Permission.CertificateConfig.Read)
   certificateIssuableEvents(
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -61,7 +62,7 @@ export class CertificatesResolver {
   }
 
   @Query(() => [EventGroup], { name: 'certificateIssuableEventGroups' })
-  @RequireScopes('certificate#read')
+  @RequirePermissions(Permission.CertificateConfig.Read)
   certificateIssuableEventGroups(
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -72,7 +73,7 @@ export class CertificatesResolver {
   }
 
   @Query(() => [MajorEvent], { name: 'certificateIssuableMajorEvents' })
-  @RequireScopes('certificate#read')
+  @RequirePermissions(Permission.CertificateConfig.Read)
   certificateIssuableMajorEvents(
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -83,7 +84,7 @@ export class CertificatesResolver {
   }
 
   @Query(() => [CertificateTemplate], { name: 'certificateTemplates' })
-  @RequireScopes('certificate#read')
+  @RequirePermissions(Permission.CertificateConfig.Read)
   certificateTemplates(
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('includeInactive', { type: () => Boolean, nullable: true })
@@ -96,7 +97,7 @@ export class CertificatesResolver {
   }
 
   @Query(() => [CertificateConfig], { name: 'certificateConfigs' })
-  @RequireScopes('certificate#read')
+  @RequirePermissions(Permission.CertificateConfig.Read)
   certificateConfigs(
     @Args('scope', { type: () => CertificateScope }) scope: CertificateScope,
     @Args('targetId', { type: () => String }) targetId: string,
@@ -110,7 +111,7 @@ export class CertificatesResolver {
   }
 
   @Query(() => [Certificate], { name: 'certificates' })
-  @RequireScopes('certificate#read')
+  @RequirePermissions(Permission.Certificate.Read)
   certificates(
     @Args('scope', { type: () => CertificateScope }) scope: CertificateScope,
     @Args('targetId', { type: () => String }) targetId: string,
@@ -123,7 +124,7 @@ export class CertificatesResolver {
   }
 
   @Query(() => CertificateDownload, { name: 'downloadCertificate' })
-  @RequireScopes('certificate#read')
+  @RequirePermissions(Permission.Certificate.Read)
   downloadCertificate(@Args('certificateId', { type: () => String }) certificateId: string) {
     return this.downloadService.downloadCertificate(certificateId);
   }
@@ -178,7 +179,7 @@ export class CertificatesResolver {
   }
 
   @Mutation(() => CertificateConfig, { name: 'createCertificateConfig' })
-  @RequireScopes('certificate#edit')
+  @RequirePermissions(Permission.CertificateConfig.Create)
   async createCertificateConfig(
     @Args('input', { type: () => CertificateConfigCreateInput })
     input: CertificateConfigCreateInput,
@@ -194,7 +195,7 @@ export class CertificatesResolver {
   }
 
   @Mutation(() => CertificateConfig, { name: 'updateCertificateConfig' })
-  @RequireScopes('certificate#edit')
+  @RequirePermissions(Permission.CertificateConfig.Update)
   async updateCertificateConfig(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => CertificateConfigUpdateInput })
@@ -206,14 +207,14 @@ export class CertificatesResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteCertificateConfig' })
-  @RequireScopes('certificate#edit')
+  @RequirePermissions(Permission.CertificateConfig.Delete)
   async deleteCertificateConfig(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertCertificateConfigMutable(id, this.getUser(context), 'delete');
     return this.configsService.deleteConfig(id);
   }
 
   @Mutation(() => Certificate, { name: 'issueCertificateForPerson' })
-  @RequireScopes('certificate#edit')
+  @RequirePermissions(Permission.Certificate.Issue)
   async issueCertificateForPerson(
     @Args('configId', { type: () => String }) configId: string,
     @Args('personId', { type: () => String }) personId: string,
@@ -224,7 +225,7 @@ export class CertificatesResolver {
   }
 
   @Mutation(() => [Certificate], { name: 'issueMissedCertificates' })
-  @RequireScopes('certificate#edit')
+  @RequirePermissions(Permission.Certificate.Issue)
   async issueMissedCertificates(
     @Args('configId', { type: () => String }) configId: string,
     @Context() context: GraphqlContext,
@@ -234,14 +235,14 @@ export class CertificatesResolver {
   }
 
   @Mutation(() => CertificateReissueResult, { name: 'reissueAllCertificates' })
-  @RequireScopes('certificate#edit')
+  @RequirePermissions(Permission.Certificate.Reissue)
   async reissueAllCertificates(@Context() context: GraphqlContext) {
     await this.frozenResources.assertNoFrozenCertificateTargets(this.getUser(context), 'edit');
     return this.issuingService.reissueAllCertificates(this.getIssuedById(context));
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteCertificate' })
-  @RequireScopes('certificate#edit')
+  @RequirePermissions(Permission.Certificate.Delete)
   async deleteCertificate(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertCertificateMutable(id, this.getUser(context), 'delete');
     return this.issuingService.deleteCertificate(id);

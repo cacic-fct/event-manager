@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -5,6 +6,7 @@ import {
   OnDestroy,
   afterNextRender,
   effect,
+  inject,
   input,
   viewChild,
 } from '@angular/core';
@@ -20,7 +22,9 @@ export class EventLocationMap implements OnDestroy {
   readonly longitude = input.required<number | null>();
   readonly title = input.required<string>();
 
+  private readonly document = inject(DOCUMENT);
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
+  private readonly markerIconUrl = new URL('assets/shared/pin.svg', this.document.baseURI).toString();
 
   private map: { setTarget(target: HTMLElement | undefined): void } | null = null;
 
@@ -101,7 +105,7 @@ export class EventLocationMap implements OnDestroy {
           anchor: [400, 700],
           anchorXUnits: 'pixels',
           anchorYUnits: 'pixels',
-          src: '/app/assets/shared/pin.svg',
+          src: this.markerIconUrl,
           scale: 0.065,
         }),
       }),

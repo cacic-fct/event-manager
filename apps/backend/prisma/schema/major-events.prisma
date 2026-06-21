@@ -8,6 +8,7 @@ model MajorEvent {
   emoji       String  @default("❔")
 
   events Event[]
+  eventManagerPermissionGrants EventManagerPermissionGrant[]
 
   subscriptions         MajorEventSubscription[]
   subscriptionStartDate DateTime?

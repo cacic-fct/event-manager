@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { EventType } from '../../../graphql/models';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { isFrozenEvent } from '../../../shared/frozen-resource';
@@ -35,6 +36,7 @@ import { EventFilterPanelComponent } from '../shared/event-filter-panel.componen
 export class WorkspaceEventSubscriptionsSubtabComponent implements OnInit {
   readonly workspace = inject(WorkspaceSubscriptionsService);
   protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly Permission = Permission;
 
   ngOnInit(): void {
     if (this.workspace.eventResults().length === 0) {
@@ -57,9 +59,9 @@ export class WorkspaceEventSubscriptionsSubtabComponent implements OnInit {
   protected canEditSelectedEventSubscriptions(): boolean {
     const event = this.workspace.selectedEvent();
     return (
-      this.permissions.canEdit('subscription#edit') &&
+      this.permissions.canEdit(Permission.Subscription.Create) &&
       Boolean(event) &&
-      (!isFrozenEvent(event) || this.permissions.has('frozen#edit'))
+      (!isFrozenEvent(event) || this.permissions.has(Permission.Frozen.Update))
     );
   }
 }

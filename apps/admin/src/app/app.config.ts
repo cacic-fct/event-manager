@@ -1,11 +1,12 @@
 import {
   ApplicationConfig,
   LOCALE_ID,
+  PLATFORM_ID,
   provideBrowserGlobalErrorListeners,
   inject,
   provideAppInitializer,
 } from '@angular/core';
-import { registerLocaleData } from '@angular/common';
+import { isPlatformBrowser, registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { provideRouter } from '@angular/router';
 import { appRoutes } from './app.routes';
@@ -64,6 +65,10 @@ export const appConfig: ApplicationConfig = {
       },
     }),
     provideAppInitializer(() => {
+      if (!isPlatformBrowser(inject(PLATFORM_ID))) {
+        return;
+      }
+
       return inject(CacicAccountPrivacyService).initialize();
     }),
     provideAppInitializer(() => {
@@ -75,6 +80,10 @@ export const appConfig: ApplicationConfig = {
       return authService.initialize();
     }),
     provideAppInitializer(() => {
+      if (!isPlatformBrowser(inject(PLATFORM_ID))) {
+        return;
+      }
+
       startCacicAnalytics();
     }),
   ],

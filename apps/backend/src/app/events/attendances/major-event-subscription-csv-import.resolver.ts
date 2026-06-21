@@ -3,9 +3,10 @@ import {
   MajorEventSubscriptionCsvImportInput,
   MajorEventSubscriptionCsvImportResult,
 } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
-import { RequireScopes } from '../../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
@@ -26,7 +27,7 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
   @Mutation(() => MajorEventSubscriptionCsvImportResult, {
     name: 'importMajorEventSubscriptionsFromCsv',
   })
-  @RequireScopes('subscription#edit')
+  @RequirePermissions(Permission.Subscription.Import)
   async importMajorEventSubscriptionsFromCsv(
     @Args('input', { type: () => MajorEventSubscriptionCsvImportInput })
     input: MajorEventSubscriptionCsvImportInput,

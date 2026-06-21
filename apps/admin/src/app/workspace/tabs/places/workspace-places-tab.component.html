@@ -35,7 +35,7 @@
               type="button"
               aria-label="Editar local"
               matTooltip="Editar"
-              [disabled]="!permissions.canEdit('event#edit')"
+              [disabled]="!permissions.canEdit(Permission.PlacePreset.Update)"
               (click)="$event.stopPropagation(); workspace.pickPlacePreset(place)">
               <mat-icon>edit</mat-icon>
             </button>
@@ -44,7 +44,7 @@
               type="button"
               aria-label="Selecionar para unificar"
               matTooltip="Selecionar duplicado"
-              [disabled]="!permissions.canEdit('event#edit')"
+              [disabled]="!permissions.canEdit(Permission.PlacePreset.Merge)"
               (click)="$event.stopPropagation(); workspace.chooseMergeSource(place)">
               <mat-icon>call_merge</mat-icon>
             </button>
@@ -53,7 +53,7 @@
               type="button"
               aria-label="Excluir local"
               matTooltip="Excluir"
-              [disabled]="!permissions.canDelete('event#delete')"
+              [disabled]="!permissions.canDelete(Permission.PlacePreset.Delete)"
               (click)="$event.stopPropagation(); workspace.deletePlacePreset(place)">
               <mat-icon>delete</mat-icon>
             </button>
@@ -89,7 +89,7 @@
             mat-stroked-button
             type="button"
             [disabled]="
-              !workspace.selectedPlacePreset() || !workspace.mergeSource() || !permissions.canEdit('event#edit')
+              !workspace.selectedPlacePreset() || !workspace.mergeSource() || !permissions.canEdit(Permission.PlacePreset.Merge)
             "
             (click)="workspace.openMergeDialog(workspace.selectedPlacePreset()!)">
             <mat-icon>call_merge</mat-icon>
@@ -98,7 +98,9 @@
           <button
             mat-flat-button
             type="button"
-            [disabled]="!permissions.canEdit('event#edit')"
+            [disabled]="
+              !permissions.canEdit(workspace.selectedPlacePreset() ? Permission.PlacePreset.Update : Permission.PlacePreset.Create)
+            "
             (click)="workspace.savePlacePreset()">
             <mat-icon>save</mat-icon>
             Salvar

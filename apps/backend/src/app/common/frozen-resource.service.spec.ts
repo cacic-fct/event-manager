@@ -50,7 +50,7 @@ describe('FrozenResourceService', () => {
     );
   });
 
-  it('allows editing an old event with frozen edit permission', async () => {
+  it('allows editing an old event with frozen update permission', async () => {
     const service = new FrozenResourceService({
       event: {
         findFirst: jest.fn().mockResolvedValue({
@@ -60,7 +60,7 @@ describe('FrozenResourceService', () => {
       },
     } as unknown as PrismaService);
 
-    await expect(service.assertEventMutable('event-1', buildUser(['frozen#edit']), 'edit')).resolves.toBeUndefined();
+    await expect(service.assertEventMutable('event-1', buildUser(['frozen#update']), 'edit')).resolves.toBeUndefined();
   });
 
   it('uses the latest linked event end date for event groups', async () => {

@@ -1,9 +1,15 @@
 import { DeletionResult, Event, EventCreateInput, EventUpdateInput } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import {
+  AccessibleEventGrantTargets,
+  AuthorizationPolicyService,
+} from '../authorization/authorization-policy.service';
 import { resolvePagination } from '../common/pagination';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -116,11 +122,14 @@ export class EventsResolver {
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   @Query(() => [Event], { name: 'events' })
-  @RequireScopes('event#read')
+  @AllowScopedCollectionPermissions()
+  @RequirePermissions(Permission.Event.Read)
   async events(
+    @Context() context: GraphqlContext,
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('startDateFrom', { type: () => Date, nullable: true })
     startDateFrom?: Date,
@@ -141,6 +150,16 @@ export class EventsResolver {
     const where: Prisma.EventWhereInput = {
       deletedAt: null,
     };
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(
+      this.getUser(context),
+      Permission.Event.Read,
+    );
+    if (accessibleTargets && this.isEmptyAccessibleEventTargets(accessibleTargets)) {
+      return [];
+    }
+    if (accessibleTargets) {
+      where.AND = [this.buildAccessibleEventWhere(accessibleTargets)];
+    }
     const normalizedQuery = query?.trim();
 
     if (startDateFrom || startDateUntil) {
@@ -203,7 +222,7 @@ export class EventsResolver {
   }
 
   @Query(() => Event, { name: 'event' })
-  @RequireScopes('event#read')
+  @RequirePermissions(Permission.Event.Read)
   async event(@Args('id', { type: () => String }) id: string) {
     const event = await this.prisma.event.findFirst({
       where: {
@@ -221,7 +240,7 @@ export class EventsResolver {
   }
 
   @Mutation(() => Event, { name: 'createEvent' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.Event.Create)
   async createEvent(
     @Args('input', { type: () => EventCreateInput }) input: EventCreateInput,
     @Context() context: GraphqlContext,
@@ -286,7 +305,7 @@ export class EventsResolver {
   }
 
   @Mutation(() => Event, { name: 'updateEvent' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.Event.Update)
   async updateEvent(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => EventUpdateInput }) input: EventUpdateInput,
@@ -335,7 +354,7 @@ export class EventsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteEvent' })
-  @RequireScopes('event#delete')
+  @RequirePermissions(Permission.Event.Delete)
   async deleteEvent(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertEventMutable(id, this.getUser(context), 'delete');
     const { count } = await this.prisma.event.updateMany({
@@ -462,5 +481,39 @@ export class EventsResolver {
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
     return context.req?.user ?? context.request?.user;
+  }
+
+  private buildAccessibleEventWhere(targets: AccessibleEventGrantTargets): Prisma.EventWhereInput {
+    const OR: Prisma.EventWhereInput[] = [];
+
+    if (targets.eventIds.size > 0) {
+      OR.push({
+        id: {
+          in: [...targets.eventIds],
+        },
+      });
+    }
+
+    if (targets.majorEventIds.size > 0) {
+      OR.push({
+        majorEventId: {
+          in: [...targets.majorEventIds],
+        },
+      });
+    }
+
+    if (targets.eventGroupIds.size > 0) {
+      OR.push({
+        eventGroupId: {
+          in: [...targets.eventGroupIds],
+        },
+      });
+    }
+
+    return { OR };
+  }
+
+  private isEmptyAccessibleEventTargets(targets: AccessibleEventGrantTargets): boolean {
+    return targets.eventIds.size === 0 && targets.majorEventIds.size === 0 && targets.eventGroupIds.size === 0;
   }
 }

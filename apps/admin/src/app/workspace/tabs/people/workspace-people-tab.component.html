@@ -73,7 +73,7 @@
             <button
               mat-flat-button
               type="button"
-              [disabled]="!permissions.canEdit('person#edit')"
+              [disabled]="!permissions.canEdit(workspace.selectedPerson() ? Permission.Person.Update : Permission.Person.Create)"
               (click)="workspace.savePerson()">
               <mat-icon>save</mat-icon>
               Salvar
@@ -138,7 +138,7 @@
               <button
                 mat-stroked-button
                 type="button"
-                [disabled]="!permissions.canEdit('person#edit')"
+                [disabled]="!permissions.canEdit(Permission.Person.Update)"
                 (click)="workspace.saveLecturerProfile()">
                 <mat-icon>{{ workspace.hasLecturerProfile() ? 'save' : 'badge' }}</mat-icon>
                 {{ workspace.hasLecturerProfile() ? 'Salvar perfil' : 'Criar perfil' }}
@@ -201,6 +201,334 @@
               </div>
             } @else {
               <p class="empty-note">Nenhum usuário vinculado.</p>
+            }
+          </section>
+
+          <section class="surface field-group">
+            <div class="surface-heading">
+              <div>
+                <h4>Permissões do Event Manager</h4>
+                <span>Concessões gravadas no Event Manager para o usuário vinculado.</span>
+              </div>
+            </div>
+
+            @if (workspace.selectedPerson()?.user || workspace.selectedPerson()?.userId) {
+              <form [formGroup]="workspace.permissionGrantForm" class="compact-form">
+                @if (!workspace.editingPermissionGrant()) {
+                  <mat-form-field>
+                    <mat-label>Preset</mat-label>
+                    <mat-select formControlName="presetId">
+                      <mat-option value="">Sem preset</mat-option>
+                      @for (preset of workspace.permissionGrantPresetOptions; track preset.id) {
+                        <mat-option [value]="preset.id">
+                          <mat-icon>{{ preset.icon }}</mat-icon>
+                          {{ preset.label }}
+                        </mat-option>
+                      }
+                    </mat-select>
+                    @if (workspace.permissionGrantForm.controls.presetId.value) {
+                      <mat-hint>{{ workspace.getPermissionGrantPresetDescription(workspace.permissionGrantForm.controls.presetId.value) }}</mat-hint>
+                    }
+                  </mat-form-field>
+
+                  @if (workspace.selectedPermissionGrantPresetPreview().length > 0) {
+                    <mat-list class="detail-list permission-preset-preview">
+                      @for (group of workspace.selectedPermissionGrantPresetPreview(); track group.resource) {
+                        <mat-list-item>
+                          <mat-icon matListItemIcon>{{ group.icon }}</mat-icon>
+                          <span matListItemTitle>{{ group.label }} · {{ group.permissionCount }}</span>
+                          <span matListItemLine>{{ group.permissionLabels }}</span>
+                          @if (group.includedData.length > 0) {
+                            <div class="included-data-list">
+                              <span class="included-data-list__title">Inclui dados limitados</span>
+                              <ul>
+                                @for (item of group.includedData; track item.label + ':' + workspace.formatPermissionIncludedDataFields(item)) {
+                                  <li>
+                                    <strong>{{ item.label }}</strong>
+                                    <span>{{ workspace.formatPermissionIncludedDataFields(item) }}</span>
+                                  </li>
+                                }
+                              </ul>
+                            </div>
+                          }
+                        </mat-list-item>
+                      }
+                    </mat-list>
+                  }
+
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="!workspace.permissionGrantForm.controls.presetId.value || !permissions.canEdit(Permission.PermissionGrant.Create)"
+                    (click)="workspace.applySelectedPermissionPreset()">
+                    <mat-icon>auto_awesome</mat-icon>
+                    Adicionar preset à revisão
+                  </button>
+                }
+
+                <mat-form-field>
+                  <mat-label>Categoria</mat-label>
+                  <mat-select formControlName="category">
+                    @for (group of workspace.permissionGrantGroups; track group.resource) {
+                      <mat-option [value]="group.resource">
+                        <mat-icon>{{ group.icon }}</mat-icon>
+                        {{ group.label }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                @if (workspace.editingPermissionGrant()) {
+                  <mat-form-field>
+                    <mat-label>Permissão</mat-label>
+                    <mat-select formControlName="permission">
+                      <mat-select-trigger>
+                        {{ workspace.getPermissionGrantLabel(workspace.permissionGrantForm.controls.permission.value) }}
+                      </mat-select-trigger>
+                      @for (option of workspace.selectedPermissionGrantOptions(); track option.permission) {
+                        <mat-option class="permission-option" [value]="option.permission">
+                          <span class="permission-choice">
+                            <span class="permission-choice__title">
+                              <mat-icon>{{ option.icon }}</mat-icon>
+                              {{ option.label }}
+                            </span>
+                            @if (option.includedDataSummary) {
+                              <small class="permission-choice__summary">
+                                Inclui dados limitados: {{ option.includedDataSummary }}
+                              </small>
+                            }
+                          </span>
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                } @else {
+                  <mat-form-field>
+                    <mat-label>Permissões</mat-label>
+                    <mat-select formControlName="permissions" multiple>
+                      <mat-select-trigger>{{ workspace.permissionGrantSelectionLabel() }}</mat-select-trigger>
+                      @for (option of workspace.selectedPermissionGrantOptions(); track option.permission) {
+                        <mat-option class="permission-option" [value]="option.permission">
+                          <span class="permission-choice">
+                            <span class="permission-choice__title">
+                              <mat-icon>{{ option.icon }}</mat-icon>
+                              {{ option.label }}
+                            </span>
+                            @if (option.includedDataSummary) {
+                              <small class="permission-choice__summary">
+                                Inclui dados limitados: {{ option.includedDataSummary }}
+                              </small>
+                            }
+                          </span>
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                }
+
+                <mat-form-field>
+                  <mat-label>Escopo da permissão</mat-label>
+                  <mat-select formControlName="scope" aria-label="Escopo da permissão">
+                    @for (scope of workspace.permissionGrantAvailableScopes(); track scope.scope) {
+                      <mat-option [value]="scope.scope">
+                        <mat-icon>{{ scope.icon }}</mat-icon>
+                        {{ scope.label }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                @if (workspace.permissionGrantTargetRequired()) {
+                  <mat-form-field class="permission-target-search">
+                    <mat-label>{{ workspace.permissionGrantTargetSearchLabel() }}</mat-label>
+                    <mat-icon matPrefix>search</mat-icon>
+                    <input
+                      matInput
+                      formControlName="targetSearch"
+                      [placeholder]="workspace.permissionGrantTargetSearchLabel()"
+                      [attr.aria-label]="workspace.permissionGrantTargetSearchLabel()"
+                    />
+                  </mat-form-field>
+
+                  <mat-list class="result-list permission-target-list">
+                    @for (target of workspace.filteredPermissionGrantTargetOptions(); track target.id) {
+                      <mat-list-item
+                        (click)="workspace.selectPermissionGrantTarget(target.id)"
+                        [class.selected-list-item]="workspace.isPermissionGrantTargetSelected(target.id)">
+                        <span matListItemTitle class="list-title">
+                          <app-twemoji [emoji]="target.emoji" />
+                          <span>{{ target.label }}</span>
+                        </span>
+                        @if (workspace.getPermissionGrantTargetMetadataLabel(target)) {
+                          <span matListItemLine>{{ workspace.getPermissionGrantTargetMetadataLabel(target) }}</span>
+                        }
+                      </mat-list-item>
+                    } @empty {
+                      <mat-list-item>
+                        <span matListItemTitle>Nenhum alvo encontrado</span>
+                        <span matListItemLine>Refine a busca para selecionar o escopo.</span>
+                      </mat-list-item>
+                    }
+                  </mat-list>
+                }
+
+                <mat-form-field>
+                  <mat-label>Válida a partir de</mat-label>
+                  <input matInput type="datetime-local" formControlName="validFrom" />
+                </mat-form-field>
+
+                <mat-form-field>
+                  <mat-label>Válida até</mat-label>
+                  <input matInput type="datetime-local" formControlName="validUntil" />
+                </mat-form-field>
+
+                @if (workspace.editingPermissionGrant()) {
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="!permissions.canEdit(Permission.PermissionGrant.Update)"
+                    (click)="workspace.submitPermissionGrantForm()">
+                    <mat-icon>save</mat-icon>
+                    Salvar permissão
+                  </button>
+
+                  <button mat-button type="button" (click)="workspace.cancelEditingPermissionGrant()">
+                    <mat-icon>close</mat-icon>
+                    Cancelar edição
+                  </button>
+                } @else {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="!permissions.canEdit(Permission.PermissionGrant.Create)"
+                    (click)="workspace.addSelectedPermissionGrantsToReview()">
+                    <mat-icon>playlist_add</mat-icon>
+                    Adicionar à revisão
+                  </button>
+                }
+              </form>
+
+              @if (!workspace.editingPermissionGrant() && workspace.permissionGrantDrafts().length > 0) {
+                <div class="permission-draft-summary">
+                  <div>
+                    <h5>Permissões em revisão</h5>
+                    <span>{{ workspace.permissionGrantDraftCount() }} concessões serão salvas.</span>
+                  </div>
+                  <div class="permission-draft-actions">
+                    <button
+                      mat-flat-button
+                      type="button"
+                      [disabled]="!permissions.canEdit(Permission.PermissionGrant.Create)"
+                      (click)="workspace.submitPermissionGrantForm()">
+                      <mat-icon>save</mat-icon>
+                      Salvar permissões
+                    </button>
+                    <button mat-button type="button" (click)="workspace.clearPermissionGrantDrafts()">
+                      <mat-icon>delete_sweep</mat-icon>
+                      Limpar revisão
+                    </button>
+                  </div>
+                </div>
+
+                <mat-list class="detail-list permission-draft-list">
+                  @for (draft of workspace.permissionGrantDrafts(); track draft.id) {
+                    <mat-list-item>
+                      <mat-icon matListItemIcon>{{ workspace.getPermissionGrantIcon(draft.permission) }}</mat-icon>
+                      <span matListItemTitle>{{ workspace.getPermissionGrantLabel(draft.permission) }}</span>
+                      <span matListItemLine>
+                        {{ workspace.getPermissionGrantDraftScopeLabel(draft) }} ·
+                        {{ workspace.getPermissionGrantDraftTargetLabel(draft) }}
+                      </span>
+                      <span matListItemLine>
+                        {{ workspace.getPermissionGrantDraftValidityLabel(draft) }} · {{ draft.sourceLabel }}
+                      </span>
+                      @if (workspace.getPermissionGrantIncludedData(draft.permission).length > 0) {
+                        <div class="included-data-list">
+                          <span class="included-data-list__title">Inclui dados limitados</span>
+                          <ul>
+                            @for (
+                              item of workspace.getPermissionGrantIncludedData(draft.permission);
+                              track item.label + ':' + workspace.formatPermissionIncludedDataFields(item)
+                            ) {
+                              <li>
+                                <strong>{{ item.label }}</strong>
+                                <span>{{ workspace.formatPermissionIncludedDataFields(item) }}</span>
+                              </li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                      <button
+                        mat-icon-button
+                        matListItemMeta
+                        type="button"
+                        aria-label="Remover permissão da revisão"
+                        (click)="workspace.removePermissionGrantDraft(draft.id)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </mat-list-item>
+                  }
+                </mat-list>
+              }
+
+              <mat-list class="detail-list permission-grant-list">
+                @for (grant of workspace.permissionGrants(); track grant.id) {
+                  <mat-list-item>
+                    <mat-icon matListItemIcon>{{ workspace.getPermissionGrantIcon(grant.permission) }}</mat-icon>
+                    <span matListItemTitle>{{ workspace.getPermissionGrantLabel(grant.permission) }}</span>
+                    <span matListItemLine>
+                      {{ workspace.getPermissionGrantScopeLabel(grant.scope) }} ·
+                      {{ workspace.getPermissionGrantTargetLabel(grant) }} ·
+                      {{ workspace.getPermissionGrantStatusLabel(grant) }}
+                    </span>
+                    <span matListItemLine>
+                      {{ workspace.getPermissionGrantValidityLabel(grant) }}
+                    </span>
+                    @if (workspace.getPermissionGrantIncludedData(grant.permission).length > 0) {
+                      <div class="included-data-list">
+                        <span class="included-data-list__title">Inclui dados limitados</span>
+                        <ul>
+                          @for (
+                            item of workspace.getPermissionGrantIncludedData(grant.permission);
+                            track item.label + ':' + workspace.formatPermissionIncludedDataFields(item)
+                          ) {
+                            <li>
+                              <strong>{{ item.label }}</strong>
+                              <span>{{ workspace.formatPermissionIncludedDataFields(item) }}</span>
+                            </li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                    <button
+                      mat-icon-button
+                      matListItemMeta
+                      type="button"
+                      aria-label="Editar permissão"
+                      [disabled]="!permissions.canEdit(Permission.PermissionGrant.Update)"
+                      (click)="workspace.startEditingPermissionGrant(grant)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      matListItemMeta
+                      type="button"
+                      aria-label="Remover permissão"
+                      [disabled]="!permissions.canDelete(Permission.PermissionGrant.Delete)"
+                      (click)="workspace.deletePermissionGrant(grant)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </mat-list-item>
+                } @empty {
+                  <mat-list-item>
+                    <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+                    <span matListItemTitle>Nenhuma permissão concedida</span>
+                    <span matListItemLine>Use o formulário acima para liberar acessos.</span>
+                  </mat-list-item>
+                }
+              </mat-list>
+            } @else {
+              <p class="empty-note">Vincule essa pessoa a um usuário antes de conceder permissões.</p>
             }
           </section>
         }

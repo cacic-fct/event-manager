@@ -7,7 +7,8 @@ import {
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
@@ -108,7 +109,7 @@ export class EventLecturersResolver {
   ) {}
 
   @Query(() => [EventLecturer], { name: 'eventLecturers' })
-  @RequireScopes('event-lecturer#read')
+  @RequirePermissions(Permission.EventLecturer.Read)
   eventLecturers(
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('personId', { type: () => String, nullable: true }) personId?: string,
@@ -147,7 +148,7 @@ export class EventLecturersResolver {
   }
 
   @Query(() => EventLecturer, { name: 'eventLecturer' })
-  @RequireScopes('event-lecturer#read')
+  @RequirePermissions(Permission.EventLecturer.Read)
   async eventLecturer(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('personId', { type: () => String }) personId: string,
@@ -179,7 +180,7 @@ export class EventLecturersResolver {
   }
 
   @Mutation(() => EventLecturer, { name: 'createEventLecturer' })
-  @RequireScopes('event-lecturer#edit')
+  @RequirePermissions(Permission.EventLecturer.Create)
   async createEventLecturer(
     @Args('input', { type: () => EventLecturerCreateInput })
     input: EventLecturerCreateInput,
@@ -196,7 +197,7 @@ export class EventLecturersResolver {
   }
 
   @Mutation(() => EventLecturer, { name: 'updateEventLecturer' })
-  @RequireScopes('event-lecturer#edit')
+  @RequirePermissions(Permission.EventLecturer.Update)
   async updateEventLecturer(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('personId', { type: () => String }) personId: string,
@@ -243,7 +244,7 @@ export class EventLecturersResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteEventLecturer' })
-  @RequireScopes('event-lecturer#delete')
+  @RequirePermissions(Permission.EventLecturer.Delete)
   async deleteEventLecturer(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('personId', { type: () => String }) personId: string,

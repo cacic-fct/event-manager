@@ -25,6 +25,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME } from './auth.constants';
 import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
 import { AllowNonOnboarded } from './decorators/allow-non-onboarded.decorator';
@@ -33,6 +34,7 @@ import { LogoutDto } from './dto/logout.dto';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from './keycloak-auth.service';
 import { PublicAuthenticatedUser, toPublicAuthenticatedUser } from './public-authenticated-user';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUser;
@@ -74,7 +76,7 @@ class PermissionEvaluationRequestDto {
   @ApiProperty({
     description:
       'Permissions to evaluate against the current access token. Empty strings are ignored and duplicate values are removed before evaluation.',
-    example: ['events:create', 'events:update', 'major-events:read'],
+    example: [Permission.Event.Create, Permission.Event.Update, Permission.MajorEvent.Read],
     type: [String],
   })
   permissions!: string[];
@@ -83,7 +85,7 @@ class PermissionEvaluationRequestDto {
 class PermissionEvaluationResponseDto {
   @ApiProperty({
     description: 'Permissions granted by Keycloak after evaluating the current access token.',
-    example: ['events:create', 'major-events:read'],
+    example: [Permission.Event.Create, Permission.MajorEvent.Read],
     type: [String],
   })
   permissions!: string[];
@@ -132,7 +134,7 @@ class AuthenticatedUserResponseDto {
 
   @ApiProperty({
     description: 'Normalized permission list resolved for the authenticated user.',
-    example: ['events:create', 'events:update', 'major-events:read'],
+    example: [Permission.Event.Create, Permission.Event.Update, Permission.MajorEvent.Read],
     type: [String],
   })
   permissions!: string[];
@@ -173,7 +175,10 @@ export class AuthController {
   private readonly allowedCallbackRedirectOrigins = this.readAllowedCallbackRedirectOrigins();
   private readonly allowedPostLogoutRedirectOrigins = this.readAllowedPostLogoutRedirectOrigins();
 
-  constructor(private readonly keycloakAuthService: KeycloakAuthService) {}
+  constructor(
+    private readonly keycloakAuthService: KeycloakAuthService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
+  ) {}
 
   @Get('login')
   @Public()
@@ -488,9 +493,9 @@ export class AuthController {
   @Post('permissions/evaluate')
   @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
   @ApiOperation({
-    summary: 'Evaluate permissions for the current access token',
+    summary: 'Evaluate Event Manager permissions for the current identity',
     description:
-      'Normalizes the requested permission list, evaluates it against the current access token through Keycloak, and returns only the permissions granted by the authorization server.',
+      'Normalizes the requested permission list, evaluates it against Event Manager DB-backed grants, and returns only the permissions granted to the current identity.',
   })
   @ApiBody({
     type: PermissionEvaluationRequestDto,
@@ -513,8 +518,7 @@ export class AuthController {
     }
 
     const permissions = this.readPermissionList(body?.permissions);
-    const accessToken = request.user.token;
-    const grantedPermissions = await this.keycloakAuthService.evaluateAccessTokenPermissions(accessToken, permissions);
+    const grantedPermissions = await this.authorizationPolicy.evaluatePermissions(request.user, permissions);
 
     return { permissions: grantedPermissions };
   }

@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { MergeCandidateStatus, MergeMatchMethod } from '../../../graphql/models';
 import { WorkspaceMergeCandidatesService } from '../../../shared/services/workspace-merge-candidates.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
@@ -19,6 +20,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 export class WorkspaceMergeCandidatesTabComponent {
   readonly workspace = inject(WorkspaceMergeCandidatesService);
   protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly Permission = Permission;
 
   protected describeMergeMatchMethod(method: MergeMatchMethod | null | undefined): string {
     if (method === 'CPF') {

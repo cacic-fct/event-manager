@@ -23,7 +23,7 @@
         <button
           mat-flat-button
           type="button"
-          [disabled]="!permissions.canEdit('merge-candidate#edit')"
+          [disabled]="!permissions.canEdit(Permission.MergeCandidate.Scan)"
           (click)="workspace.scanMergeCandidates()">
           <mat-icon>find_replace</mat-icon>
           Verificar
@@ -47,7 +47,7 @@
             <button
               mat-flat-button
               type="button"
-              [disabled]="!permissions.canEdit('merge-candidate#edit', 'person#edit')"
+              [disabled]="!permissions.canEdit(Permission.MergeCandidate.Merge, Permission.Person.Update)"
               (click)="workspace.mergeCandidate(candidate)">
               <mat-icon>call_merge</mat-icon>
               Unificar
@@ -55,7 +55,7 @@
             <button
               mat-button
               type="button"
-              [disabled]="!permissions.canEdit('merge-candidate#edit')"
+              [disabled]="!permissions.canEdit(Permission.MergeCandidate.Update)"
               (click)="workspace.setMergeCandidateStatus(candidate, 'REJECTED')">
               <mat-icon>block</mat-icon>
               Rejeitar
@@ -64,7 +64,7 @@
             <button
               mat-button
               type="button"
-              [disabled]="!permissions.canEdit('merge-candidate#edit', 'person#edit')"
+              [disabled]="!permissions.canEdit(Permission.MergeCandidate.Undo, Permission.Person.Update)"
               (click)="workspace.undoMergeCandidate(candidate)">
               <mat-icon>undo</mat-icon>
               Desfazer
@@ -73,7 +73,7 @@
             <button
               mat-button
               type="button"
-              [disabled]="!permissions.canEdit('merge-candidate#edit')"
+              [disabled]="!permissions.canEdit(Permission.MergeCandidate.Update)"
               (click)="workspace.setMergeCandidateStatus(candidate, 'PENDING')">
               <mat-icon>replay</mat-icon>
               Reabrir
@@ -82,7 +82,7 @@
           <button
             mat-button
             type="button"
-            [disabled]="!permissions.canDelete('merge-candidate#delete')"
+            [disabled]="!permissions.canDelete(Permission.MergeCandidate.Delete)"
             (click)="workspace.deleteMergeCandidate(candidate)">
             <mat-icon>delete</mat-icon>
             Excluir

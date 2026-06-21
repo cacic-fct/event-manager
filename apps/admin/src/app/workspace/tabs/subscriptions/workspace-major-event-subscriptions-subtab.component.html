@@ -40,7 +40,7 @@
         mat-button
         [routerLink]="receiptValidationLink()"
         [disabled]="
-          !permissions.has('validate-receipt#read') ||
+          !permissions.has(Permission.Receipt.Read) ||
           !workspace.majorEventForm.controls.majorEventId.value ||
           pendingReceiptsCount() === 0
         ">
@@ -157,7 +157,11 @@
               <input matInput formControlName="identifier" />
             </mat-form-field>
 
-            <button mat-stroked-button type="button" (click)="workspace.findMajorEventPerson()">
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!permissions.has(Permission.Person.Read)"
+              (click)="workspace.findMajorEventPerson()">
               <mat-icon>person_search</mat-icon>
               Buscar pessoa
             </button>
@@ -174,6 +178,14 @@
                   >
                 </span>
               </button>
+            } @empty {
+              <span class="empty-note">
+                {{
+                  permissions.has(Permission.Person.Read)
+                    ? 'Busque uma pessoa para inscrever.'
+                    : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                }}
+              </span>
             }
           </div>
         </section>

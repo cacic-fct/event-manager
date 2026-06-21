@@ -18,6 +18,7 @@ model People {
   eventGroupSubscriptions EventGroupSubscription[]
   majorEventSubscriptions MajorEventSubscription[]
   lecturerProfile         LecturerProfile?
+  eventManagerPermissionGrants EventManagerPermissionGrant[]
 
   // Merge tracking
   mergedIntoId String?

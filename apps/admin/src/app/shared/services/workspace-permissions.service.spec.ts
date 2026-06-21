@@ -1,42 +1,21 @@
-import { PLATFORM_ID, signal } from '@angular/core';
+import { PLATFORM_ID } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { Permission, getPermissionIncludedDataSummary } from '@cacic-fct/shared-permissions';
 import { WorkspacePermissionsService, WorkspacePermissionTab } from './workspace-permissions.service';
 
 describe('WorkspacePermissionsService', () => {
-  let user: ReturnType<typeof signal>;
   let service: WorkspacePermissionsService;
   let httpTesting: HttpTestingController;
 
   beforeEach(() => {
-    user = signal({
-      claims: {
-        permissions: [' event#read ', 'person#read', 'event-lecturer#read'],
-        authorization: {
-          permissions: [
-            {
-              rsname: 'event',
-              scopes: ['edit', 'delete'],
-            },
-            {
-              resource_name: 'major-event',
-              scopes: ['read'],
-            },
-          ],
-        },
-      },
-      permissions: ['certificate#read', 'validate-receipt#read'],
-    });
-
     TestBed.configureTestingModule({
       providers: [
         WorkspacePermissionsService,
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: PLATFORM_ID, useValue: 'browser' },
-        { provide: AuthService, useValue: { user } },
       ],
     });
 
@@ -48,35 +27,48 @@ describe('WorkspacePermissionsService', () => {
     httpTesting.verify();
   });
 
-  it('extracts normalized permissions from user claims and authorization claims', () => {
-    expect(service.has('event#read')).toBe(true);
-    expect(service.has('event#edit')).toBe(true);
-    expect(service.has('event#delete')).toBe(true);
-    expect(service.has('major-event#read')).toBe(true);
-    expect(service.rawPermissions()).toEqual(
-      expect.arrayContaining(['event#read', 'event#edit', 'event#delete', 'major-event#read', 'certificate#read']),
-    );
+  it('starts without trusting Keycloak permission claims', () => {
+    expect(service.has(Permission.Event.Read)).toBe(false);
+    expect(service.has(Permission.Event.Update)).toBe(false);
+    expect(service.rawPermissions()).toEqual([]);
   });
 
   it('reports missing permissions and tab readability', () => {
-    expect(service.hasAll(['event#read', 'person#read'])).toBe(true);
-    expect(service.missing(['event#read', 'event-attendance#read', 'event-attendance#read'])).toEqual([
-      'event-attendance#read',
+    expect(service.hasAll([Permission.Event.Read, Permission.Person.Read])).toBe(false);
+    expect(service.hasAny([Permission.Event.Create, Permission.Event.Update])).toBe(false);
+    expect(service.missing([Permission.Event.Read, Permission.EventAttendance.Read, Permission.EventAttendance.Read])).toEqual([
+      Permission.Event.Read,
+      Permission.EventAttendance.Read,
     ]);
-    expect(service.canReadTab(WorkspacePermissionTab.Events)).toBe(true);
+    expect(service.canReadTab(WorkspacePermissionTab.Events)).toBe(false);
+    expect(service.canReadTab(WorkspacePermissionTab.Places)).toBe(false);
     expect(service.canReadTab(WorkspacePermissionTab.Attendances)).toBe(false);
-    expect(service.missingReadForTab(WorkspacePermissionTab.Attendances)).toEqual(['event-attendance#read']);
+    expect(service.missingReadForTab(WorkspacePermissionTab.Attendances)).toEqual([
+      Permission.EventAttendance.Read,
+      Permission.Event.Read,
+      Permission.MajorEvent.Read,
+    ]);
+    expect(service.missingReadForTab(WorkspacePermissionTab.Subscriptions)).not.toContain(Permission.Person.Read);
+    expect(service.missingReadForTab(WorkspacePermissionTab.Certificates)).not.toContain(Permission.Person.Read);
   });
 
-  it('evaluates workspace permissions once and merges server-granted permissions', async () => {
+  it('documents limited related person data without broad person permission inheritance', () => {
+    expect(getPermissionIncludedDataSummary(Permission.EventAttendance.Read)).toContain('Dados limitados da pessoa presente');
+    expect(getPermissionIncludedDataSummary(Permission.Subscription.Read)).toContain('Dados limitados da pessoa inscrita');
+    expect(getPermissionIncludedDataSummary(Permission.Receipt.Read)).toContain('Dados limitados da pessoa inscrita');
+    expect(getPermissionIncludedDataSummary(Permission.Certificate.Read)).toContain('Dados limitados da pessoa certificada');
+  });
+
+  it('evaluates workspace permissions once from the backend authority', async () => {
     const evaluationPromise = service.evaluateWorkspacePermissions();
     const request = httpTesting.expectOne('/api/auth/permissions/evaluate');
-    expect(request.request.body.permissions).toContain('subscription#read');
-    request.flush({ permissions: ['event-attendance#read', 'subscription#read'] });
+    expect(request.request.body.permissions).toContain(Permission.Subscription.Read);
+    request.flush({ permissions: [Permission.EventAttendance.Read, Permission.Subscription.Read, 'unknown#value'] });
     await evaluationPromise;
 
-    expect(service.has('event-attendance#read')).toBe(true);
-    expect(service.has('subscription#read')).toBe(true);
+    expect(service.has(Permission.EventAttendance.Read)).toBe(true);
+    expect(service.has(Permission.Subscription.Read)).toBe(true);
+    expect(service.rawPermissions()).toEqual([Permission.EventAttendance.Read, Permission.Subscription.Read]);
 
     await service.evaluateWorkspacePermissions();
     httpTesting.expectNone('/api/auth/permissions/evaluate');

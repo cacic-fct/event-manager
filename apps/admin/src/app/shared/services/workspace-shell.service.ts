@@ -32,8 +32,13 @@ export class WorkspaceShellService {
 
       const loads: Promise<void>[] = [];
 
-      if (this.permissions.canReadTab(WorkspacePermissionTab.Events)) {
+      const canReadEvents = this.permissions.canReadTab(WorkspacePermissionTab.Events);
+
+      if (canReadEvents) {
         loads.push(this.eventsService.loadEvents());
+      }
+
+      if (this.permissions.canReadTab(WorkspacePermissionTab.Places)) {
         loads.push(this.placePresetsService.loadPlacePresets());
       }
 

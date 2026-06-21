@@ -402,15 +402,49 @@ function createCollectionResolver(input: {
   const attendanceCategories = input.attendanceCategories ?? {
     refreshForAttendance: jest.fn().mockResolvedValue(undefined),
   };
+  const authorizationPolicy = {
+    assertAttendanceCollectorForEvent: jest.fn(async (eventId: string, personId: string, options: {
+      enforceCollectionWindow?: boolean;
+    }) => {
+      const collector = await prisma.eventAttendanceCollector.findUnique({
+        where: {
+          eventId_personId: {
+            eventId,
+            personId,
+          },
+        },
+      });
+
+      if (
+        !collector ||
+        collector.event.deletedAt ||
+        !collector.event.publiclyVisible ||
+        !collector.event.shouldCollectAttendance
+      ) {
+        throw new ForbiddenException('Você não pode coletar presença para este evento.');
+      }
+
+      if (options.enforceCollectionWindow && !isCollectionOpen(collector.event.startDate, collector.event.endDate)) {
+        throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
+      }
+    }),
+  };
 
   return {
     resolver: new CurrentUserAttendanceCollectionResolver(
       prisma as never,
       currentUserContext as never,
       attendanceCategories as never,
+      undefined as never,
+      authorizationPolicy as never,
     ),
     prisma,
   };
+}
+
+function isCollectionOpen(startDate: Date, endDate: Date): boolean {
+  const now = Date.now();
+  return now >= startDate.getTime() - 3 * 60 * 60_000 && now <= endDate.getTime() + 6 * 60 * 60_000;
 }
 
 function createTxMock(attendance: unknown) {

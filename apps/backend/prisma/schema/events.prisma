@@ -29,6 +29,7 @@ model Event {
   attendances           EventAttendance[]
   attendanceCollectors  EventAttendanceCollector[]
   lecturers             EventLecturer[]
+  eventManagerPermissionGrants EventManagerPermissionGrant[]
 
   allowSubscription     Boolean             @default(false)
   subscriptionStartDate DateTime?

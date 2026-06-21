@@ -1,9 +1,10 @@
 import { DeletionResult, EventGroup, EventGroupCreateInput, EventGroupUpdateInput } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,7 +24,7 @@ export class EventGroupsResolver {
   ) {}
 
   @Query(() => [EventGroup], { name: 'eventGroups' })
-  @RequireScopes('event#read')
+  @RequirePermissions(Permission.EventGroup.Read)
   async eventGroups(
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -72,7 +73,7 @@ export class EventGroupsResolver {
   }
 
   @Query(() => EventGroup, { name: 'eventGroup' })
-  @RequireScopes('event#read')
+  @RequirePermissions(Permission.EventGroup.Read)
   async eventGroup(@Args('id', { type: () => String }) id: string) {
     const eventGroup = await this.prisma.eventGroup.findFirst({
       where: {
@@ -92,7 +93,7 @@ export class EventGroupsResolver {
   }
 
   @Mutation(() => EventGroup, { name: 'createEventGroup' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.EventGroup.Create)
   async createEventGroup(
     @Args('input', { type: () => EventGroupCreateInput })
     input: EventGroupCreateInput,
@@ -109,7 +110,7 @@ export class EventGroupsResolver {
   }
 
   @Mutation(() => EventGroup, { name: 'updateEventGroup' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.EventGroup.Update)
   async updateEventGroup(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => EventGroupUpdateInput })
@@ -179,7 +180,7 @@ export class EventGroupsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteEventGroup' })
-  @RequireScopes('event#delete')
+  @RequirePermissions(Permission.EventGroup.Delete)
   async deleteEventGroup(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertEventGroupMutable(id, this.getUser(context), 'delete');
     const { count } = await this.prisma.eventGroup.updateMany({

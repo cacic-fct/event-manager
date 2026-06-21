@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { MajorEventSubscriptionCsvImportInput } from '@cacic-fct/shared-data-types';
-import { REQUIRED_ROLES_KEY } from '../../auth/auth.constants';
+import { REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
 import { MajorEventSubscriptionCsvImportResolver } from './major-event-subscription-csv-import.resolver';
 
 describe('MajorEventSubscriptionCsvImportResolver', () => {
@@ -14,13 +14,13 @@ describe('MajorEventSubscriptionCsvImportResolver', () => {
     resolver = new MajorEventSubscriptionCsvImportResolver(prisma as never, attendanceCategories as never);
   });
 
-  it('requires subscription edit permission for CSV subscription imports', () => {
+  it('requires subscription import permission for CSV subscription imports', () => {
     expect(
       Reflect.getMetadata(
-        REQUIRED_ROLES_KEY,
+        REQUIRED_PERMISSIONS_KEY,
         MajorEventSubscriptionCsvImportResolver.prototype.importMajorEventSubscriptionsFromCsv,
       ),
-    ).toEqual(['subscription#edit']);
+    ).toEqual(['subscription#import']);
   });
 
   it('creates people, subscriptions, and event subscriptions from mapped CSV rows', async () => {

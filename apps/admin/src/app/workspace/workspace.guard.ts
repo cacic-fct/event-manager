@@ -2,6 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { inject } from '@angular/core';
 import { PLATFORM_ID } from '@angular/core';
 import { CanMatchFn, Route } from '@angular/router';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { WorkspacePermissionTab, WorkspacePermissionsService } from '../shared/services/workspace-permissions.service';
 
 export const workspaceCanReadTabGuard: CanMatchFn = async (route: Route) => {
@@ -32,5 +33,5 @@ export const canValidateReceiptsGuard: CanMatchFn = async () => {
   }
 
   await permissions.evaluateWorkspacePermissions();
-  return permissions.has('validate-receipt#read');
+  return permissions.has(Permission.Receipt.Read);
 };

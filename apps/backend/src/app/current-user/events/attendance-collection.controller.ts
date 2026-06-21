@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, MessageEvent, Param, Req, Sse } from '@nestjs/common';
+import { Controller, MessageEvent, Param, Req, Sse } from '@nestjs/common';
 import { AttendanceCreationMethod, SubscriptionStatus } from '@prisma/client';
 import {
   ApiBearerAuth,
@@ -14,6 +14,7 @@ import {
 import { Request } from 'express';
 import { Observable, interval, map, startWith, switchMap } from 'rxjs';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserContextService } from '../context.service';
 
@@ -122,6 +123,7 @@ export class CurrentUserAttendanceCollectionController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currentUserContext: CurrentUserContextService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   @Sse('events/:eventId/feed/events')
@@ -165,51 +167,14 @@ export class CurrentUserAttendanceCollectionController {
     const collectorPerson = await this.currentUserContext.requireCurrentPerson({
       req: request,
     });
-
-    const collector = await this.prisma.eventAttendanceCollector.findUnique({
-      where: {
-        eventId_personId: {
-          eventId,
-          personId: collectorPerson.id,
-        },
-      },
-      select: {
-        personId: true,
-        event: {
-          select: {
-            id: true,
-            startDate: true,
-            endDate: true,
-            deletedAt: true,
-            publiclyVisible: true,
-            shouldCollectAttendance: true,
-          },
-        },
-      },
+    await this.authorizationPolicy.assertAttendanceCollectorForEvent(eventId, collectorPerson.id, {
+      enforceCollectionWindow,
     });
-
-    if (
-      !collector ||
-      collector.event.deletedAt ||
-      !collector.event.publiclyVisible ||
-      !collector.event.shouldCollectAttendance
-    ) {
-      throw new ForbiddenException('Você não pode coletar presença para este evento.');
-    }
-
-    if (enforceCollectionWindow && !this.isCollectionOpen(collector.event.startDate, collector.event.endDate)) {
-      throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
-    }
 
     return {
       collectorPerson,
       collectorUserId: request.user?.sub,
     };
-  }
-
-  private isCollectionOpen(startDate: Date, endDate: Date): boolean {
-    const now = Date.now();
-    return now >= startDate.getTime() - 3 * 60 * 60_000 && now <= endDate.getTime() + 6 * 60 * 60_000;
   }
 
   private async getScannerFeed(eventId: string): Promise<EventAttendanceScannerFeedItem[]> {

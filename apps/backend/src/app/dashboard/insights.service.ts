@@ -1,3 +1,4 @@
+import { Permission } from '@cacic-fct/shared-permissions';
 import { InjectQueue } from '@nestjs/bullmq';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
@@ -7,7 +8,7 @@ import { GraphqlContext } from '../current-user/selects';
 import { actionablePendingMergeCandidateWhere } from '../people/merge-candidates/merge-candidate-filters';
 import { PrismaService } from '../prisma/prisma.service';
 import { WeatherService } from '../weather/weather.service';
-import { KeycloakAuthService } from '../auth/keycloak-auth.service';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { WorkspaceDashboardInsights } from './models';
 import { getCachedInsights, getCacheKey } from './insights/cache';
 import { CACHE_TTL_SECONDS } from './insights/constants';
@@ -28,7 +29,7 @@ export class DashboardInsightsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currentUserContext: CurrentUserContextService,
-    private readonly keycloakAuthService: KeycloakAuthService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly weatherService: WeatherService,
     private readonly redis: Redis,
     @InjectQueue(DASHBOARD_INSIGHTS_QUEUE)
@@ -37,7 +38,7 @@ export class DashboardInsightsService {
 
   async getWorkspaceDashboardInsights(context: GraphqlContext): Promise<WorkspaceDashboardInsights> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    const permissionResolution = await resolveDashboardPermissions(this.keycloakAuthService, authenticatedUser);
+    const permissionResolution = await resolveDashboardPermissions(this.authorizationPolicy, authenticatedUser);
     const permissions = permissionResolution.permissions;
     if (!permissionResolution.cacheable) {
       return this.generateInsights(permissions);
@@ -125,14 +126,31 @@ export class DashboardInsightsService {
       throw new ForbiddenException('Workspace dashboard insights require an administrative permission.');
     }
 
-    const canReadEvents = permissionSet.has('event#read') || permissionSet.has('event#edit');
-    const canManageEvents = permissionSet.has('event#edit');
-    const canReadMajorEvents = permissionSet.has('major-event#read') || permissionSet.has('major-event#edit');
-    const canManageMajorEvents = permissionSet.has('major-event#edit');
-    const canManageCertificates = permissionSet.has('certificate#edit');
-    const canManageMergeCandidates = permissionSet.has('merge-candidate#read');
+    const canManageEvents =
+      permissionSet.has(Permission.Event.Create) ||
+      permissionSet.has(Permission.Event.Update) ||
+      permissionSet.has(Permission.Event.Delete);
+    const canReadEvents = permissionSet.has(Permission.Event.Read) || canManageEvents;
+    const canManageMajorEvents =
+      permissionSet.has(Permission.MajorEvent.Create) ||
+      permissionSet.has(Permission.MajorEvent.Update) ||
+      permissionSet.has(Permission.MajorEvent.Delete);
+    const canReadMajorEvents = permissionSet.has(Permission.MajorEvent.Read) || canManageMajorEvents;
+    const canManageCertificates =
+      permissionSet.has(Permission.Certificate.Issue) ||
+      permissionSet.has(Permission.Certificate.Reissue) ||
+      permissionSet.has(Permission.CertificateConfig.Create) ||
+      permissionSet.has(Permission.CertificateConfig.Update) ||
+      permissionSet.has(Permission.CertificateConfig.Delete);
+    const canManageMergeCandidates =
+      permissionSet.has(Permission.MergeCandidate.Read) ||
+      permissionSet.has(Permission.MergeCandidate.Merge) ||
+      permissionSet.has(Permission.MergeCandidate.Update);
     const canValidateReceipts =
-      permissionSet.has('validate-receipt#read') || permissionSet.has('validate-receipt#edit');
+      permissionSet.has(Permission.Receipt.Read) ||
+      permissionSet.has(Permission.Receipt.Approve) ||
+      permissionSet.has(Permission.Receipt.Reject) ||
+      permissionSet.has(Permission.Receipt.Undo);
     const shouldBuildInconsistencies = canManageEvents || canManageCertificates;
 
     const [

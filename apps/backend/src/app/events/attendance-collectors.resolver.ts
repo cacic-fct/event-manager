@@ -3,9 +3,10 @@ import {
   EventAttendanceCollector,
   EventAttendanceCollectorCreateInput,
 } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
@@ -24,7 +25,7 @@ export class EventAttendanceCollectorsResolver {
   ) {}
 
   @Query(() => [EventAttendanceCollector], { name: 'eventAttendanceCollectors' })
-  @RequireScopes('event#read')
+  @RequirePermissions(Permission.EventAttendanceCollector.Read)
   eventAttendanceCollectors(
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('personId', { type: () => String, nullable: true }) personId?: string,
@@ -60,7 +61,7 @@ export class EventAttendanceCollectorsResolver {
   }
 
   @Mutation(() => EventAttendanceCollector, { name: 'createEventAttendanceCollector' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.EventAttendanceCollector.Create)
   async createEventAttendanceCollector(
     @Args('input', { type: () => EventAttendanceCollectorCreateInput })
     input: EventAttendanceCollectorCreateInput,
@@ -76,7 +77,7 @@ export class EventAttendanceCollectorsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteEventAttendanceCollector' })
-  @RequireScopes('event#edit')
+  @RequirePermissions(Permission.EventAttendanceCollector.Delete)
   async deleteEventAttendanceCollector(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('personId', { type: () => String }) personId: string,

@@ -6,4 +6,5 @@ export const AUTH_STATE_COOKIE_NAME = 'cacic_eventos_oauth_state';
 export const IS_PUBLIC_KEY = 'isPublic';
 export const ALLOW_NON_ONBOARDED_KEY = 'allowNonOnboarded';
 export const REQUIRED_ROLES_KEY = 'requiredRoles';
-export const REQUIRED_SCOPES_KEY = REQUIRED_ROLES_KEY;
+export const REQUIRED_PERMISSIONS_KEY = 'requiredPermissions';
+export const ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY = 'allowScopedCollectionPermissions';

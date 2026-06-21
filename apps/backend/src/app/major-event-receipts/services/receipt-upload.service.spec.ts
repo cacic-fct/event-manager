@@ -33,8 +33,8 @@ describe('ReceiptUploadService', () => {
   const dashboardInsights = {
     invalidateCachedInsights: jest.fn(),
   };
-  const keycloakAuthService = {
-    evaluateAccessTokenPermissions: jest.fn(),
+  const authorizationPolicy = {
+    assertPermissions: jest.fn(),
   };
   const receiptQueue = {
     add: jest.fn(),
@@ -62,7 +62,7 @@ describe('ReceiptUploadService', () => {
       currentUserContext as never,
       attendanceCategories as never,
       dashboardInsights as never,
-      keycloakAuthService as never,
+      authorizationPolicy as never,
       receiptQueue as never,
     );
   });
@@ -154,7 +154,7 @@ describe('ReceiptUploadService', () => {
       mimeType: 'image/png',
       expiresAt: new Date('2100-01-01T00:00:00.000Z'),
     });
-    keycloakAuthService.evaluateAccessTokenPermissions.mockResolvedValue([]);
+    authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
     currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
     s3.downloadFile.mockResolvedValue({ stream, contentType: undefined, contentLength: 5 });
 
@@ -162,6 +162,9 @@ describe('ReceiptUploadService', () => {
       stream,
       contentType: 'image/png',
       contentLength: 5,
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, ['receipt#read'], {
+      receiptId: 'receipt-1',
     });
   });
 
@@ -185,9 +188,29 @@ describe('ReceiptUploadService', () => {
       mimeType: 'image/png',
       expiresAt: new Date('2100-01-01T00:00:00.000Z'),
     });
-    keycloakAuthService.evaluateAccessTokenPermissions.mockResolvedValue([]);
+    authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
     currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'other-person' } });
     await expect(service.getReceiptImage('receipt-1', user)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('serves receipt images to scoped receipt admins', async () => {
+    const stream = Readable.from(['image']);
+    prisma.majorEventReceipt.findUnique.mockResolvedValue({
+      id: 'receipt-1',
+      personId: 'person-1',
+      objectKey: 'object-key',
+      mimeType: 'image/png',
+      expiresAt: new Date('2100-01-01T00:00:00.000Z'),
+    });
+    authorizationPolicy.assertPermissions.mockResolvedValue(undefined);
+    s3.downloadFile.mockResolvedValue({ stream, contentType: 'image/jpeg', contentLength: 5 });
+
+    await expect(service.getReceiptImage('receipt-1', user)).resolves.toEqual({
+      stream,
+      contentType: 'image/jpeg',
+      contentLength: 5,
+    });
+    expect(currentUserContext.resolveCurrentUserContext).not.toHaveBeenCalled();
   });
 });
 

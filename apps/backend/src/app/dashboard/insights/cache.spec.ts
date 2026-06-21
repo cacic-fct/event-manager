@@ -96,11 +96,11 @@ describe('dashboard insights cache helpers', () => {
 
   it('builds permission-aware cache keys', () => {
     expect(getCacheKey([])).toBe('dashboard:workspace:v4:none');
-    expect(getCacheKey(['event#edit', 'certificate#edit', 'event#edit'])).toBe(
-      'dashboard:workspace:v4:certificate#edit,event#edit',
+    expect(getCacheKey(['event#update', 'certificate#issue', 'event#update'])).toBe(
+      'dashboard:workspace:v4:certificate#issue,event#update',
     );
-    expect(getCacheKey(['certificate#edit', 'event#edit'])).toBe(
-      'dashboard:workspace:v4:certificate#edit,event#edit',
+    expect(getCacheKey(['certificate#issue', 'event#update'])).toBe(
+      'dashboard:workspace:v4:certificate#issue,event#update',
     );
   });
 });

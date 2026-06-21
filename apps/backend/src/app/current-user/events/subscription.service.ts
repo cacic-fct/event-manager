@@ -84,6 +84,7 @@ export class CurrentUserEventSubscriptionService {
         where: {
           id: eventId,
           deletedAt: null,
+          publiclyVisible: true,
         },
         select: EVENT_SELECT,
       });
@@ -142,6 +143,7 @@ export class CurrentUserEventSubscriptionService {
         where: {
           id: eventId,
           deletedAt: null,
+          publiclyVisible: true,
         },
         select: EVENT_SELECT,
       });

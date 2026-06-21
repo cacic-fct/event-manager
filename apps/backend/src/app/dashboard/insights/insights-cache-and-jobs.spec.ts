@@ -74,8 +74,8 @@ describe('DashboardInsightsService cache and jobs', () => {
   });
 
   it('reuses an in-flight generation for the same permission cache key', async () => {
-    const { keycloakAuthService, prisma, redis, service } = createInsightsServiceTestContext();
-    keycloakAuthService.evaluateAccessTokenPermissions.mockResolvedValue(['event#edit']);
+    const { authorizationPolicy, prisma, redis, service } = createInsightsServiceTestContext();
+    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue(['event#update']);
     redis.get.mockResolvedValue(null);
     prisma.event.count.mockResolvedValue(1);
     prisma.eventGroup.count.mockResolvedValue(2);
@@ -101,9 +101,9 @@ describe('DashboardInsightsService cache and jobs', () => {
     const { queue, redis, service } = createInsightsServiceTestContext();
     redis.scanStream.mockReturnValue(
       (async function* scan() {
-        yield ['dashboard:workspace:v4:event#edit', 'dashboard:workspace:v4:none'];
+        yield ['dashboard:workspace:v4:event#update', 'dashboard:workspace:v4:none'];
         yield [];
-        yield ['dashboard:workspace:v4:certificate#edit'];
+        yield ['dashboard:workspace:v4:certificate#issue'];
       })(),
     );
 
@@ -126,7 +126,7 @@ describe('DashboardInsightsService cache and jobs', () => {
         repeat: { pattern: '*/30 * * * *' },
       }),
     );
-    expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v4:event#edit', 'dashboard:workspace:v4:none');
-    expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v4:certificate#edit');
+    expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v4:event#update', 'dashboard:workspace:v4:none');
+    expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v4:certificate#issue');
   });
 });

@@ -1,18 +1,6 @@
 import { Route } from '@angular/router';
+import { WORKSPACE_ENTRY_PERMISSIONS } from '@cacic-fct/shared-permissions';
 import { authGuard, redirectAuthenticatedGuard, requiredPermissionsGuard } from '@cacic-fct/shared-angular';
-
-const workspacePermissions = [
-  'certificate#read',
-  'event#read',
-  'event-attendance#read',
-  'event-lecturer#read',
-  'major-event#read',
-  'merge-candidate#read',
-  'person#read',
-  'subscription#read',
-  'user#read',
-  'validate-receipt#read',
-] as const;
 
 export const appRoutes: Route[] = [
   {
@@ -22,7 +10,7 @@ export const appRoutes: Route[] = [
   },
   {
     path: '',
-    canActivate: [authGuard, requiredPermissionsGuard(workspacePermissions, '/app/')],
+    canActivate: [authGuard, requiredPermissionsGuard(WORKSPACE_ENTRY_PERMISSIONS, '/app/')],
     loadChildren: () => import('./workspace/workspace.routes').then((m) => m.workspaceRoutes),
   },
   {

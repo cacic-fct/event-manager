@@ -1,4 +1,5 @@
 import { DeletionResult, Person, PersonCreateInput, PersonUpdateInput } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import {
   ConflictException,
   Logger,
@@ -7,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
-import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,7 +25,7 @@ export class PeopleResolver {
   ) {}
 
   @Query(() => [Person], { name: 'people' })
-  @RequireScopes('person#read')
+  @RequirePermissions(Permission.Person.Read)
   async people(
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('userId', { type: () => String, nullable: true }) userId?: string,
@@ -106,7 +107,7 @@ export class PeopleResolver {
   }
 
   @Query(() => Person, { name: 'person' })
-  @RequireScopes('person#read')
+  @RequirePermissions(Permission.Person.Read)
   async person(@Args('id', { type: () => String }) id: string) {
     const person = await this.prisma.people.findFirst({
       where: {
@@ -129,7 +130,7 @@ export class PeopleResolver {
   }
 
   @Mutation(() => Person, { name: 'createPerson' })
-  @RequireScopes('person#edit')
+  @RequirePermissions(Permission.Person.Create)
   async createPerson(@Args('input', { type: () => PersonCreateInput }) input: PersonCreateInput) {
     await this.ensureNoDuplicateIdentity(input);
 
@@ -154,7 +155,7 @@ export class PeopleResolver {
   }
 
   @Mutation(() => Person, { name: 'updatePerson' })
-  @RequireScopes('person#edit')
+  @RequirePermissions(Permission.Person.Update)
   async updatePerson(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => PersonUpdateInput }) input: PersonUpdateInput,
@@ -228,7 +229,7 @@ export class PeopleResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deletePerson' })
-  @RequireScopes('person#delete')
+  @RequirePermissions(Permission.Person.Delete)
   async deletePerson(@Args('id', { type: () => String }) id: string) {
     const { count } = await this.prisma.people.updateMany({
       where: {
