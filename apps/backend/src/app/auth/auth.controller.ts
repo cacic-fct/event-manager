@@ -27,6 +27,7 @@ import {
 import { Request, Response } from 'express';
 import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME } from './auth.constants';
 import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
+import { AllowNonOnboarded } from './decorators/allow-non-onboarded.decorator';
 import { Public } from './decorators/public.decorator';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
@@ -462,6 +463,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @AllowNonOnboarded()
   @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
   @ApiOperation({
     summary: 'Read the authenticated identity',

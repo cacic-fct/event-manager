@@ -24,7 +24,7 @@
     [fixedInViewport]="isMobile()">
     <nav class="nav-list" aria-label="Navegação interna">
       @for (item of navItems; track item.id) {
-        @if (item.id === 'divider') {
+        @if (item.kind === 'divider') {
           <mat-divider></mat-divider>
         } @else {
           <a

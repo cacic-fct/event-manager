@@ -15,7 +15,7 @@ import { filter, map, startWith } from 'rxjs';
 
 import { WorkspacePermissionsService } from '../shared/services/workspace-permissions.service';
 import { WorkspaceShellService } from '../shared/services/workspace-shell.service';
-import { workspaceNavItems } from './workspace-nav';
+import { findWorkspaceNavItemForUrl, workspaceNavItems } from './workspace-nav';
 import { isPlatformBrowser } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
 
@@ -71,9 +71,7 @@ export class WorkspaceLayoutComponent {
   );
 
   protected readonly activeNavItem = computed(() => {
-    const url = this.currentUrl().split('?')[0].split('#')[0];
-
-    return this.navItems.find((item) => url.includes(`/${item.path}`)) ?? this.navItems[0];
+    return findWorkspaceNavItemForUrl(this.currentUrl());
   });
 
   constructor() {

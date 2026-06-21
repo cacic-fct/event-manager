@@ -1,8 +1,8 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { Request } from 'express';
-import { AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY, REQUIRED_ROLES_KEY } from '../auth.constants';
+import { ALLOW_NON_ONBOARDED_KEY, AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY, REQUIRED_ROLES_KEY } from '../auth.constants';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../keycloak-auth.service';
 
@@ -38,6 +38,7 @@ export class KeycloakScopeGuard implements CanActivate {
     const accessToken = this.extractBearerToken(request.headers.authorization);
     if (accessToken) {
       request.user = await this.keycloakAuthService.authenticateAccessToken(accessToken, roles);
+      this.assertOnboardingAllowed(context, request.user);
       return true;
     }
 
@@ -47,8 +48,30 @@ export class KeycloakScopeGuard implements CanActivate {
     }
 
     request.user = await this.keycloakAuthService.authenticateSession(sessionId, roles);
+    this.assertOnboardingAllowed(context, request.user);
 
     return true;
+  }
+
+  private assertOnboardingAllowed(context: ExecutionContext, user: AuthenticatedUser): void {
+    const allowNonOnboarded = this.reflector.getAllAndOverride<boolean>(ALLOW_NON_ONBOARDED_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (allowNonOnboarded || this.isServiceAccountPrincipal(user) || this.isUserOnboarded(user)) {
+      return;
+    }
+
+    throw new ForbiddenException('Complete onboarding before using the event system.');
+  }
+
+  private isUserOnboarded(user: AuthenticatedUser): boolean {
+    const claimValue = user.claims['is_onboarded'];
+    return claimValue === true || claimValue === 'true';
+  }
+
+  private isServiceAccountPrincipal(user: AuthenticatedUser): boolean {
+    return user.preferredUsername?.startsWith('service-account-') === true;
   }
 
   private getRequest(context: ExecutionContext): RequestWithUser {

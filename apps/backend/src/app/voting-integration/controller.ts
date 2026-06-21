@@ -16,6 +16,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
+import { AllowNonOnboarded } from '../auth/decorators/allow-non-onboarded.decorator';
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
@@ -35,6 +36,7 @@ type RequestWithUser = Request & {
 
 @ApiTags('Internal M2M')
 @ApiBearerAuth()
+@AllowNonOnboarded()
 @UsePipes(REST_VALIDATION_PIPE)
 @Controller('internal/voting')
 export class VotingIntegrationController {
