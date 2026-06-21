@@ -1,128 +1,61 @@
 ---
 title: Níveis de acesso
-sidebar:
-  badge: Planned
 ---
 
-Atualmente, o sistema só possui dois tipos de permissão: `admin` e `usuário`.
+O CACiC Event Manager usa um modelo de acesso em camadas. O Keycloak autentica a pessoa e libera a entrada no sistema, mas as permissões administrativas de negócio são concessões gravadas no próprio Event Manager.
 
-## admin
+Essa separação evita criar um cargo diferente para cada operação no Keycloak e permite conceder acessos temporários ou limitados a um evento, grupo de eventos ou grande evento.
 
-Permissão total e irrestrita.
+## Camadas
 
-## usuário
+| Camada | Onde é configurada | O que controla |
+| --- | --- | --- |
+| Conta autenticada | Keycloak | Identidade da pessoa, sessão e claims de perfil. |
+| `event-manager#access` | Keycloak | Entrada no Event Manager e no painel administrativo. |
+| `event-manager#super-admin` | Keycloak | Bypass administrativo para todas as permissões do Event Manager. |
+| Concessões de permissão | Banco de dados do Event Manager | Operações administrativas como criar eventos, validar comprovantes, emitir certificados e gerenciar pessoas. |
+| Regras de domínio | Backend do Event Manager | Restrições adicionais como recurso congelado, recurso removido, janela de coleta de presença e vínculo com o evento. |
+| Papéis M2M | Keycloak | Endpoints internos de integração entre sistemas. Não devem ser usados para acesso humano ao painel. |
 
-Permissão de escrita em documentos próprios.
+## Usuário comum
 
----
+Usuários comuns podem acessar a interface pública, suas próprias informações e fluxos autenticados que não exigem permissão administrativa.
 
-:::note[Planned]
-Esta seção mostra uma especificação que não foi implementada.  
-:::
+Uma pessoa pode existir no Event Manager sem possuir uma conta de usuário. Permissões administrativas só podem ser concedidas quando há um usuário vinculado.
 
-## Administrador (admin)
+## Administrador operacional
 
-Possui acesso irrestrito ao FCT App.
+Um administrador operacional possui o papel `event-manager#access` no Keycloak e uma ou mais concessões no Event Manager.
 
-Pode conceder ou revogar quaisquer cargos, incluindo o próprio ou de outros administradores.
+As concessões seguem o formato `recurso#ação`, como `event#read`, `subscription#import` ou `receipt#approve`. Cada concessão também possui um escopo:
 
-Normalmente, pode ser:
+- `Global`: vale para todo o Event Manager;
+- `Grande evento`: vale para um grande evento específico;
+- `Grupo de eventos`: vale para um grupo de eventos específico;
+- `Evento`: vale para um evento específico.
 
-- Membro essencial da equipe de desenvolvimento, um _lead developer_;
-- Diretor executivo do CACiC;
-- Diretor executivo da EJComp.
+A permissão efetiva depende da operação executada. Por exemplo, uma pessoa pode conseguir abrir a aba de inscrições porque possui alguma concessão de `subscription#read`, mas o backend ainda verifica se aquela inscrição pertence ao evento, grupo ou grande evento liberado.
 
-O acesso deve ser transferido manualmente após a conclusão do mandato.
+## Super administrador
 
-:::caution[Cuidado]
-Tenha a autenticação em duas etapas ativada para evitar o comprometimento da conta.
-:::
+O papel `event-manager#super-admin` é um bypass de emergência e manutenção. Ele não depende das concessões gravadas no banco e deve ser usado apenas por pessoas que realmente precisam operar qualquer parte do sistema.
 
-### DevOps
+Na rotina, prefira conceder permissões específicas no Event Manager. Isso preserva rastreabilidade, reduz o impacto de erros e permite limitar a validade do acesso.
 
-Por possuir acesso a informações sensíveis, é considerado um administrador.
+## Responsabilidades típicas
 
-### Administrador permanente (founding lead developer)
+O painel de pessoas oferece presets para responsabilidades comuns. Os presets são atalhos para várias permissões e não criam novos cargos permanentes.
 
-Não pode ter o acesso revogado.
+- Administrador de grande evento: gerencia grande evento, eventos, inscrições, presenças, certificados e comprovantes no escopo escolhido.
+- Validador de comprovantes: valida, rejeita e desfaz validações de comprovantes dentro de um grande evento.
+- Coordenador de presenças: gerencia coleta, importação, ajustes e coletores de presença no escopo escolhido.
+- Operador de certificados: configura, emite, reemite e remove certificados no escopo escolhido.
+- Gestor de pessoas: gerencia pessoas e resolução de duplicidades. Esse acesso é sempre global.
 
-## Moderador (mod)
+Os presets podem mudar conforme o sistema evolui. A interface sempre mostra as permissões e os dados limitados incluídos antes de salvar a concessão.
 
-Possui acesso irrestrito ao FCT App.  
-Não pode conceder cargos iguais ou superiores ao seu.
+## Acessos temporários
 
-Normalmente, pode ser:
+Toda concessão pode ter início e fim de validade. Use validade limitada quando o acesso estiver ligado a um evento, plantão, comissão temporária ou mandato.
 
-- Diretor do CACiC;
-- Diretor da EJComp;
-
-O acesso é revogado automaticamente após 1 ano, independentemente do término do mandato.
-
-## Organizador (organizer)
-
-Possui permissões especiais para criar e gerenciar eventos desde que cumulativamente:
-
-- O evento tenha sido criado há menos de 2 meses;
-- Estejam relacionados ao curso do organizador;
-- Se for evento para todo o campus, deve ter sido criado por alguém do curso do organizador.
-
-Normalmente, pode ser:
-
-- Diretor ou membro de qualquer CA;
-- Diretor ou membro de qualquer EJ;
-- Responsável por um evento:
-  - Líder de comissão organizadora;
-  - Pessoa autorizada pelo líder.
-
-O acesso deve ser revogado automaticamente em 3 dias após o término do evento.
-
-Possui acesso aos seguintes dados de usuários:
-
-- Nome completo;
-- Endereços de e-mail:
-  - Institucional;
-  - Pessoal;
-- Número do celular;
-- CPF;
-- Vínculo com a Unesp;
-  - Número do registro acadêmico (RA).
-
-## Palestrante ou ministrante (host)
-
-Possui as seguintes permissões no próprio evento:
-
-- Editar;
-- Consultar dados de inscritos;
-- Coletar presença por leitura ou por inserção de código.
-
-A permissão é revogada automaticamente 1 hora após o término do evento.
-
-Possui acesso aos seguintes dados dos usuários inscritos no evento:
-
-- Nome completo;
-- Endereço de e-mail principal;
-  - Se possui vínculo, o e-mail institucional;
-- Vínculo com a Unesp;
-  - Curso.
-
-## Coletor de presença (attendance collector)
-
-Possui permissões para coletar presença por leitura de código em eventos específicos, por um período limitado.
-
-A revogação do acesso é automática.
-
-Possui acesso aos seguintes dados dos usuários que tiveram a presença coletada:
-
-- Nome completo;
-- Vínculo com a Unesp;
-  - Curso.
-
-Além disso, tem acesso a quem compareceu ou não no evento específico.
-
-## Professor
-
-É usuário comum.
-
-## Desenvolvedor
-
-Os desenvolvedores que não necessitam de permissão de administrador são usuários comum.
+Quando a validade expira, a concessão deixa de ser considerada pela autorização, mas continua registrada para histórico interno. Para revogar antes do prazo, remova a concessão no painel de pessoas.
