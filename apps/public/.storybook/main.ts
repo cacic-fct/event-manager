@@ -17,11 +17,11 @@ const config: StorybookConfig = {
     name: '@storybook/angular',
     options: {},
   },
-  webpackFinal: async (webpackConfig, { configType }) => ({
+  webpackFinal: async (webpackConfig) => ({
     ...webpackConfig,
     output: {
       ...webpackConfig.output,
-      publicPath: configType === 'PRODUCTION' ? '/event-manager/public/' : './',
+      publicPath: './',
     },
   }),
 };
