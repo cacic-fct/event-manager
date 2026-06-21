@@ -26,6 +26,22 @@ type GraphqlContext = {
   request?: { user?: AuthenticatedUser };
 };
 
+const WORKSPACE_SUBSCRIPTION_READ_SCOPES = [
+  'subscription#read',
+  'event#read',
+  'major-event#read',
+  'person#read',
+];
+
+const WORKSPACE_EVENT_SUBSCRIPTION_EDIT_SCOPES = ['subscription#edit', 'event#read', 'person#read'];
+
+const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EDIT_SCOPES = [
+  'subscription#edit',
+  'event#read',
+  'major-event#read',
+  'person#read',
+];
+
 const PERSON_SELECT = {
   id: true,
   name: true,
@@ -128,7 +144,7 @@ export class EventSubscriptionsResolver {
   @Query(() => [WorkspaceEventSubscription], {
     name: 'workspaceEventSubscriptions',
   })
-  @RequireScopes('subscription#read')
+  @RequireScopes(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
   async workspaceEventSubscriptions(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -172,7 +188,7 @@ export class EventSubscriptionsResolver {
   @Mutation(() => WorkspaceEventSubscription, {
     name: 'createWorkspaceEventSubscription',
   })
-  @RequireScopes('subscription#edit')
+  @RequireScopes(...WORKSPACE_EVENT_SUBSCRIPTION_EDIT_SCOPES)
   async createWorkspaceEventSubscription(
     @Args('input', { type: () => WorkspaceEventSubscriptionCreateInput })
     input: WorkspaceEventSubscriptionCreateInput,
@@ -223,7 +239,7 @@ export class EventSubscriptionsResolver {
   @Query(() => [WorkspaceMajorEventSubscription], {
     name: 'workspaceMajorEventSubscriptions',
   })
-  @RequireScopes('subscription#read')
+  @RequireScopes(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
   async workspaceMajorEventSubscriptions(
     @Args('majorEventId', { type: () => String }) majorEventId: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -249,7 +265,7 @@ export class EventSubscriptionsResolver {
   @Mutation(() => WorkspaceMajorEventSubscription, {
     name: 'createWorkspaceMajorEventSubscription',
   })
-  @RequireScopes('subscription#edit')
+  @RequireScopes(...WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EDIT_SCOPES)
   async createWorkspaceMajorEventSubscription(
     @Args('input', { type: () => WorkspaceMajorEventSubscriptionCreateInput })
     input: WorkspaceMajorEventSubscriptionCreateInput,
@@ -319,7 +335,7 @@ export class EventSubscriptionsResolver {
   @Mutation(() => WorkspaceMajorEventSubscription, {
     name: 'updateWorkspaceMajorEventSubscription',
   })
-  @RequireScopes('subscription#edit')
+  @RequireScopes(...WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EDIT_SCOPES)
   async updateWorkspaceMajorEventSubscription(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => WorkspaceMajorEventSubscriptionUpdateInput })

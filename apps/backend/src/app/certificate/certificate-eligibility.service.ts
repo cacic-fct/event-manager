@@ -615,7 +615,10 @@ export class CertificateEligibilityService {
 
   private canIssueForNonPayingEventAttendance(event: EventRecord): boolean {
     if (event.eventGroupId) {
-      return Boolean(event.eventGroup?.shouldIssueCertificateForNonPayingAttendees);
+      return (
+        event.shouldIssueCertificateForNonPayingAttendees &&
+        Boolean(event.eventGroup?.shouldIssueCertificateForNonPayingAttendees)
+      );
     }
 
     return event.shouldIssueCertificateForNonPayingAttendees;
@@ -623,7 +626,10 @@ export class CertificateEligibilityService {
 
   private canIssueForNonSubscribedEventAttendance(event: EventRecord): boolean {
     if (event.eventGroupId) {
-      return Boolean(event.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees);
+      return (
+        event.shouldIssueCertificateForNonSubscribedAttendees &&
+        Boolean(event.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees)
+      );
     }
 
     return event.shouldIssueCertificateForNonSubscribedAttendees;

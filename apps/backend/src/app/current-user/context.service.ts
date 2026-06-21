@@ -1,4 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AccountMergeService } from '../account-merge/account-merge.service';
 import { AuthenticatedUserSyncService, InferredAuthenticatedProfile } from '../auth/authenticated-user-sync.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -29,11 +36,17 @@ export class CurrentUserContextService {
   async resolveCurrentUserContext(
     authenticatedUser: AuthenticatedUser,
     includeUserFallback = false,
+    options: ResolveCurrentUserContextOptions = {},
   ): Promise<{ user: UserRecord | null; person: PersonRecord | null }> {
+    if (!options.allowNonOnboarded) {
+      this.assertAuthenticatedUserOnboarded(authenticatedUser);
+    }
+
     const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
     const user = await this.resolveCurrentUser(effectiveUser);
     const person =
-      (await this.resolveCurrentPerson(effectiveUser, user)) ?? (await this.createCurrentPerson(effectiveUser));
+      (await this.resolveCurrentPerson(effectiveUser, user)) ??
+      (await this.createCurrentPerson(effectiveUser, { allowNonOnboarded: options.allowNonOnboarded }));
 
     if (!user && includeUserFallback && person?.user) {
       return {
@@ -48,7 +61,7 @@ export class CurrentUserContextService {
   syncProfileUpdate(
     input: AuthenticatedProfileUpdateInput,
   ): Promise<{ user: UserRecord | null; person: PersonRecord | null }> {
-    return this.resolveCurrentUserContext(this.toAuthenticatedUser(input), true);
+    return this.resolveCurrentUserContext(this.toAuthenticatedUser(input), true, { allowNonOnboarded: true });
   }
 
   async requireCurrentPerson(context: GraphqlContext): Promise<PersonRecord> {
@@ -70,7 +83,14 @@ export class CurrentUserContextService {
     return normalizedEmail;
   }
 
-  async createCurrentPerson(authenticatedUser: AuthenticatedUser): Promise<PersonRecord> {
+  async createCurrentPerson(
+    authenticatedUser: AuthenticatedUser,
+    options: ResolveCurrentUserContextOptions = {},
+  ): Promise<PersonRecord> {
+    if (!options.allowNonOnboarded) {
+      this.assertAuthenticatedUserOnboarded(authenticatedUser);
+    }
+
     const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
     const profile = this.authenticatedUserSync.getInferredProfile(effectiveUser);
     const name = profile.name;
@@ -159,6 +179,15 @@ export class CurrentUserContextService {
       },
       select: USER_SELECT,
     });
+  }
+
+  private assertAuthenticatedUserOnboarded(authenticatedUser: AuthenticatedUser): void {
+    const claimValue = authenticatedUser.claims['is_onboarded'];
+    if (claimValue === true || claimValue === 'true') {
+      return;
+    }
+
+    throw new ForbiddenException('Complete onboarding before using the event system.');
   }
 
   private async resolveMergedAuthenticatedUser(authenticatedUser: AuthenticatedUser): Promise<AuthenticatedUser> {
@@ -330,8 +359,9 @@ export class CurrentUserContextService {
     if (!person.phone && profile.phone) {
       data.phone = profile.phone;
     }
-    const shouldRefreshCertificates = willUpdateName || (!person.identityDocument && Boolean(profile.identityDocument));
-    if (shouldRefreshCertificates) {
+    const willBackfillIdentityDocument = !person.identityDocument && Boolean(profile.identityDocument);
+    const shouldRefreshCertificates = willUpdateName || willBackfillIdentityDocument;
+    if (willBackfillIdentityDocument) {
       data.identityDocument = profile.identityDocument;
     }
     if (!person.academicId && profile.academicId) {
@@ -455,4 +485,8 @@ export type AuthenticatedProfileUpdateInput = {
   academicId?: string;
   unespRole?: string[];
   isOnboarded?: boolean;
+};
+
+type ResolveCurrentUserContextOptions = {
+  allowNonOnboarded?: boolean;
 };

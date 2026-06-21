@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 
 import { WorkspacePermissionsService } from '../shared/services/workspace-permissions.service';
-import { WorkspaceNavItem } from './workspace-nav';
+import { WorkspaceNavLinkItem } from './workspace-nav';
 
 @Component({
   selector: 'app-workspace-permission-denied',
@@ -89,7 +89,7 @@ export class WorkspacePermissionDeniedComponent {
   private readonly permissions = inject(WorkspacePermissionsService);
 
   protected readonly navItem = computed(() => {
-    return this.route.snapshot.data as WorkspaceNavItem;
+    return this.route.snapshot.data as WorkspaceNavLinkItem;
   });
 
   protected readonly missingPermissions = computed(() => {

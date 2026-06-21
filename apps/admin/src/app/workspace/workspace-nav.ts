@@ -1,6 +1,7 @@
 import { WorkspacePermissionTab } from '../shared/services/workspace-permissions.service';
 
-export type WorkspaceNavItem = {
+type WorkspaceNavLink = {
+  kind: 'link';
   id: string;
   path: string;
   label: string;
@@ -10,8 +11,16 @@ export type WorkspaceNavItem = {
   helpLink: string;
 };
 
+type WorkspaceNavDivider = {
+  kind: 'divider';
+  id: string;
+};
+
+export type WorkspaceNavItem = WorkspaceNavLink | WorkspaceNavDivider;
+
 export const workspaceNavItems = [
   {
+    kind: 'link',
     id: 'events',
     path: 'events',
     label: 'Eventos',
@@ -21,6 +30,7 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20evento',
   },
   {
+    kind: 'link',
     id: 'groups',
     path: 'groups',
     label: 'Grupos',
@@ -30,6 +40,7 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grupo%20de%20eventos',
   },
   {
+    kind: 'link',
     id: 'major-events',
     path: 'major-events',
     label: 'Grandes eventos',
@@ -39,15 +50,11 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grande%20evento',
   },
   {
-    id: 'divider',
-    path: '',
-    label: '',
-    description: '',
-    icon: '',
-    permissionTab: WorkspacePermissionTab.Events,
-    helpLink: '',
+    kind: 'divider',
+    id: 'divider-events-participation',
   },
   {
+    kind: 'link',
     id: 'subscriptions',
     path: 'subscriptions',
     label: 'Inscrições',
@@ -57,6 +64,7 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    kind: 'link',
     id: 'attendances',
     path: 'attendances',
     label: 'Presenças',
@@ -66,6 +74,7 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    kind: 'link',
     id: 'certificates',
     path: 'certificates',
     label: 'Certificados',
@@ -75,15 +84,11 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
-    id: 'divider',
-    path: '',
-    label: '',
-    description: '',
-    icon: '',
-    permissionTab: WorkspacePermissionTab.Events,
-    helpLink: '',
+    kind: 'divider',
+    id: 'divider-participation-people',
   },
   {
+    kind: 'link',
     id: 'people',
     path: 'people',
     label: 'Pessoas',
@@ -93,6 +98,7 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    kind: 'link',
     id: 'merge-candidates',
     path: 'merge-candidates',
     label: 'Pessoas duplicadas',
@@ -102,15 +108,11 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
-    id: 'divider',
-    path: '',
-    label: '',
-    description: '',
-    icon: '',
-    permissionTab: WorkspacePermissionTab.Events,
-    helpLink: '',
+    kind: 'divider',
+    id: 'divider-people-admin',
   },
   {
+    kind: 'link',
     id: 'notifications',
     path: 'notifications',
     label: 'Notificações',
@@ -120,6 +122,7 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    kind: 'link',
     id: 'places',
     path: 'places',
     label: 'Locais',
@@ -129,6 +132,7 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    kind: 'link',
     id: 'global-operations',
     path: 'global-operations',
     label: 'Operações globais',
@@ -138,6 +142,7 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
+    kind: 'link',
     id: 'permissions',
     path: 'permissions',
     label: 'Permissões',
@@ -147,3 +152,17 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
 ] as const satisfies readonly WorkspaceNavItem[];
+
+export type WorkspaceNavLinkItem = Extract<(typeof workspaceNavItems)[number], { kind: 'link' }>;
+export type WorkspaceNavLinkId = WorkspaceNavLinkItem['id'];
+
+export const workspaceNavLinkItems = workspaceNavItems.filter(
+  (item): item is WorkspaceNavLinkItem => item.kind === 'link',
+);
+
+export function findWorkspaceNavItemForUrl(rawUrl: string): WorkspaceNavLinkItem {
+  const url = rawUrl.split('?')[0].split('#')[0];
+  const segments = url.split('/').filter(Boolean);
+
+  return workspaceNavLinkItems.find((item) => segments.includes(item.path)) ?? workspaceNavLinkItems[0];
+}

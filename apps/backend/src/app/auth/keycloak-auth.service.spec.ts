@@ -125,9 +125,10 @@ describe('KeycloakAuthService', () => {
   });
 
   it('wraps token exchange and refresh failures as unauthorized responses', async () => {
-    mockedAxios.isAxiosError.mockReturnValue(true);
+    const loggerErrorSpy = jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
     mockedAxios.post.mockRejectedValueOnce({ response: { data: { error: 'invalid_grant' } } });
     await expect(service.exchangeCodeForTokens('bad-code')).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(loggerErrorSpy).not.toHaveBeenCalled();
 
     mockedAxios.post.mockRejectedValueOnce(new Error('refresh failed'));
     await expect(service.refreshAccessToken('bad-refresh-token')).rejects.toBeInstanceOf(UnauthorizedException);

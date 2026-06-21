@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AccountMergeService } from '../account-merge/account-merge.service';
 import { AuthenticatedUserSyncService } from '../auth/authenticated-user-sync.service';
@@ -58,6 +59,58 @@ describe('CurrentUserContextService', () => {
       certificateIssuingService as unknown as CertificateIssuingService,
       accountMergeService as unknown as AccountMergeService,
       new AuthenticatedUserSyncService(prisma as unknown as PrismaService),
+    );
+  });
+
+  it.each([false, 'false', undefined])(
+    'rejects non-onboarded current users before resolving a local person context for claim %p',
+    async (isOnboarded) => {
+      const authenticatedUser = createAuthenticatedUser({
+        claims: {
+          is_onboarded: isOnboarded,
+        },
+      });
+
+      await expect(service.resolveCurrentUserContext(authenticatedUser, true)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.people.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('allows internal profile sync to resolve a non-onboarded account update', async () => {
+    const user = createUserRecord();
+    const createdPerson = createPersonRecord({
+      userId: user.id,
+      user,
+    });
+
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(user);
+    prisma.people.findMany.mockResolvedValue([]);
+    prisma.people.findFirst.mockResolvedValue(null);
+    prisma.people.create.mockResolvedValue(createdPerson);
+
+    const result = await service.syncProfileUpdate({
+      userId: 'keycloak-sub',
+      email: 'student@example.edu',
+      fullname: 'Student Name',
+      isOnboarded: false,
+    });
+
+    expect(result).toEqual({
+      user,
+      person: createdPerson,
+    });
+    expect(prisma.people.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: 'keycloak-sub',
+        }),
+      }),
     );
   });
 
@@ -195,7 +248,7 @@ describe('CurrentUserContextService', () => {
         name: 'Student Name',
         set_fullname: 'Updated Student Name',
         phone: '+5511999999999',
-        identityDocument: '123.456.789-00',
+        identityDocument: '987.654.321-00',
         enrollmentNumber: '20240001',
       },
     });
@@ -226,6 +279,13 @@ describe('CurrentUserContextService', () => {
 
     await service.resolveCurrentUserContext(authenticatedUser, true);
 
+    expect(prisma.people.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({
+          identityDocument: expect.anything(),
+        }),
+      }),
+    );
     expect(certificateIssuingService.refreshIssuedCertificatesForPerson).toHaveBeenCalledWith(
       'person-name-change',
       'keycloak-sub',
@@ -272,6 +332,8 @@ describe('CurrentUserContextService', () => {
 });
 
 function createAuthenticatedUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
+  const { claims, ...rest } = overrides;
+
   return {
     realm_access: {
       roles: [],
@@ -294,8 +356,10 @@ function createAuthenticatedUser(overrides: Partial<AuthenticatedUser> = {}): Au
       identityDocument: '123.456.789-00',
       enrollmentNumber: '20240001',
       unesp_role: ['aluno-graduacao'],
+      is_onboarded: true,
+      ...(claims ?? {}),
     },
-    ...overrides,
+    ...rest,
   };
 }
 

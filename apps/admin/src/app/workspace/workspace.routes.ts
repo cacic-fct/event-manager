@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Route } from '@angular/router';
 import { canValidateReceiptsGuard, workspaceCanReadTabGuard } from './workspace.guard';
-import { workspaceNavItems } from './workspace-nav';
+import { WorkspaceNavLinkId, WorkspaceNavLinkItem, workspaceNavLinkItems } from './workspace-nav';
 import { WorkspaceNotificationsTabComponent } from './tabs/notifications/workspace-notifications-tab.component';
 
 const eventsData = getWorkspaceRouteData('events');
@@ -17,13 +17,13 @@ const notificationsData = getWorkspaceRouteData('notifications');
 const globalOperationsData = getWorkspaceRouteData('global-operations');
 const permissionsData = getWorkspaceRouteData('permissions');
 
-function getWorkspaceRouteData(id: (typeof workspaceNavItems)[number]['id']) {
-  return workspaceNavItems.find((item) => item.id === id)!;
+function getWorkspaceRouteData(id: WorkspaceNavLinkId) {
+  return workspaceNavLinkItems.find((item) => item.id === id)!;
 }
 
 function guardedWorkspaceTabRoute(
   path: string,
-  data: (typeof workspaceNavItems)[number],
+  data: WorkspaceNavLinkItem,
   loadComponent: Route['loadComponent'],
 ): Route[] {
   return [

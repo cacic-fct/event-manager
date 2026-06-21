@@ -205,7 +205,7 @@ describe('CertificateEligibilityService', () => {
     ]);
   });
 
-  it('uses event-group non-subscriber policy for grouped certificates', async () => {
+  it('requires event and event-group non-subscriber policies for grouped certificates', async () => {
     const eventGroup = {
       id: 'event-group-1',
       name: 'Grouped minicourse',
@@ -271,15 +271,117 @@ describe('CertificateEligibilityService', () => {
         issuedTo: CertificateIssuedTo.ATTENDEE,
         eventGroupId: eventGroup.id,
       } as never),
+    ).resolves.toEqual([]);
+  });
+
+  it('allows non-paying grouped certificates only when event and event-group policies both allow them', async () => {
+    const eventGroup = {
+      id: 'event-group-1',
+      name: 'Grouped minicourse',
+      emoji: null,
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: true,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
+      shouldIssueCertificateForEachEvent: false,
+      shouldIssuePartialCertificate: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdById: null,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedById: null,
+    };
+    const groupedEvent = {
+      ...event,
+      eventGroupId: eventGroup.id,
+      eventGroup,
+      shouldIssueCertificateForNonPayingAttendees: true,
+    };
+    const service = new CertificateEligibilityService({
+      eventGroup: {
+        findFirst: jest.fn().mockResolvedValue(eventGroup),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([groupedEvent]),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            personId: person.id,
+            eventId: groupedEvent.id,
+            category: AttendanceCategory.NON_PAYING,
+            person,
+          },
+        ]),
+      },
+    } as never);
+
+    await expect(
+      service.resolveEligibleRecipients({
+        id: 'config-1',
+        scope: CertificateScope.EVENT_GROUP,
+        issuedTo: CertificateIssuedTo.ATTENDEE,
+        eventGroupId: eventGroup.id,
+      } as never),
     ).resolves.toEqual([
       {
         person,
-        events: groupedEvents,
+        events: [groupedEvent],
       },
     ]);
   });
 
-  it('uses event-group non-subscriber policy for per-event certificates in a group', async () => {
+  it('rejects non-paying grouped certificates when the event policy disallows them', async () => {
+    const eventGroup = {
+      id: 'event-group-1',
+      name: 'Grouped minicourse',
+      emoji: null,
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: true,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
+      shouldIssueCertificateForEachEvent: false,
+      shouldIssuePartialCertificate: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdById: null,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedById: null,
+    };
+    const groupedEvent = {
+      ...event,
+      eventGroupId: eventGroup.id,
+      eventGroup,
+      shouldIssueCertificateForNonPayingAttendees: false,
+    };
+    const service = new CertificateEligibilityService({
+      eventGroup: {
+        findFirst: jest.fn().mockResolvedValue(eventGroup),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([groupedEvent]),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            personId: person.id,
+            eventId: groupedEvent.id,
+            category: AttendanceCategory.NON_PAYING,
+            person,
+          },
+        ]),
+      },
+    } as never);
+
+    await expect(
+      service.resolveEligibleRecipients({
+        id: 'config-1',
+        scope: CertificateScope.EVENT_GROUP,
+        issuedTo: CertificateIssuedTo.ATTENDEE,
+        eventGroupId: eventGroup.id,
+      } as never),
+    ).resolves.toEqual([]);
+  });
+
+  it('requires event and event-group non-subscriber policies for per-event certificates in a group', async () => {
     const eventGroup = {
       id: 'event-group-1',
       name: 'Grouped talks',
@@ -324,12 +426,66 @@ describe('CertificateEligibilityService', () => {
         issuedTo: CertificateIssuedTo.ATTENDEE,
         eventId: groupedEvent.id,
       } as never),
-    ).resolves.toEqual([
-      {
-        person,
-        events: [groupedEvent],
+    ).resolves.toEqual([]);
+  });
+
+  it('requires event and event-group non-subscriber policies for grouped events in major-event certificates', async () => {
+    const eventGroup = {
+      id: 'event-group-1',
+      name: 'Grouped talks',
+      emoji: null,
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: false,
+      shouldIssueCertificateForNonSubscribedAttendees: true,
+      shouldIssueCertificateForEachEvent: false,
+      shouldIssuePartialCertificate: false,
+      deletedAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdById: null,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedById: null,
+    };
+    const groupedEvent = {
+      ...event,
+      eventGroupId: eventGroup.id,
+      eventGroup,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
+    };
+    const service = new CertificateEligibilityService({
+      majorEvent: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: majorEventId,
+          isPaymentRequired: false,
+          shouldIssueCertificateForNonPayingAttendees: false,
+          shouldIssueCertificateForNonSubscribedAttendees: true,
+        }),
       },
-    ]);
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            majorEventId,
+            personId: person.id,
+            subscriptionStatus: SubscriptionStatus.CONFIRMED,
+            person,
+          },
+        ]),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([groupedEvent]),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            personId: person.id,
+            eventId: groupedEvent.id,
+            category: AttendanceCategory.NON_SUBSCRIBED,
+            person,
+          },
+        ]),
+      },
+    } as never);
+
+    await expect(service.resolveEligibleRecipients(config as never)).resolves.toEqual([]);
   });
 
   it('resolves lecturer configs from event lecturers', async () => {

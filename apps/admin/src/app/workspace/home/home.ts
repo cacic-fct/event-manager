@@ -21,7 +21,7 @@ import type {
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
 import { DashboardApiService } from '../../graphql/dashboard-api.service';
 import { TwemojiComponent } from '../../shared/components/twemoji.component';
-import { workspaceNavItems } from '../workspace-nav';
+import { workspaceNavLinkItems } from '../workspace-nav';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
@@ -60,7 +60,7 @@ export class Home implements OnInit, OnDestroy {
   readonly error = signal<string | null>(null);
 
   readonly greetings: Signal<string> = computed(() => this.getGreetings());
-  readonly navMap = computed(() => Object.fromEntries(workspaceNavItems.map((item) => [item.id, item])));
+  readonly navMap = computed(() => Object.fromEntries(workspaceNavLinkItems.map((item) => [item.id, item])));
   readonly todayEvents = computed(() => this.insights()?.calendarEvents.filter((event) => this.isToday(event)) ?? []);
   readonly upcomingEvents = computed(
     () => this.insights()?.calendarEvents.filter((event) => !this.isToday(event)) ?? [],
