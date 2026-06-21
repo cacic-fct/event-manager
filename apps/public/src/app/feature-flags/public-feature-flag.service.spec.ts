@@ -1,3 +1,4 @@
+import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { OfflineFeatureFlagCacheRecord, OfflinePublicDatabaseProvider } from '@cacic-fct/offline-public-data-access';
 import { PUBLIC_FEATURE_FLAG_CONFIG } from './public-feature-flag.config';
@@ -57,6 +58,7 @@ describe('PublicFeatureFlagService', () => {
   let cache: FeatureFlagCacheTableMock;
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
     vi.clearAllMocks();
@@ -64,6 +66,7 @@ describe('PublicFeatureFlagService', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        { provide: PLATFORM_ID, useValue: 'browser' },
         {
           provide: OfflinePublicDatabaseProvider,
           useValue: {
@@ -90,6 +93,7 @@ describe('PublicFeatureFlagService', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    TestBed.resetTestingModule();
   });
 
   it('uses hardcoded defaults when no cached flags are available', async () => {
