@@ -110,6 +110,46 @@ const EVENT_BASE_SELECT = {
   updatedById: true,
 } satisfies Prisma.EventSelect;
 
+const EVENT_AUDIT_SELECT = {
+  id: true,
+  name: true,
+  creditMinutes: true,
+  startDate: true,
+  endDate: true,
+  type: true,
+  emoji: true,
+  description: true,
+  shortDescription: true,
+  latitude: true,
+  longitude: true,
+  locationDescription: true,
+  majorEventId: true,
+  eventGroupId: true,
+  allowSubscription: true,
+  subscriptionStartDate: true,
+  subscriptionEndDate: true,
+  slots: true,
+  autoSubscribe: true,
+  shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
+  shouldCollectAttendance: true,
+  isOnlineAttendanceAllowed: true,
+  shouldProvideSubscriberListToLecturer: true,
+  onlineAttendanceCode: true,
+  onlineAttendanceStartDate: true,
+  onlineAttendanceEndDate: true,
+  publiclyVisible: true,
+  youtubeCode: true,
+  buttonText: true,
+  buttonLink: true,
+  deletedAt: true,
+  createdAt: true,
+  createdById: true,
+  updatedAt: true,
+  updatedById: true,
+} satisfies Prisma.EventSelect;
+
 const EVENT_DETAIL_SELECT = {
   ...EVENT_BASE_SELECT,
   attendances: true,
@@ -341,7 +381,7 @@ export class EventsResolver {
     const event = await this.prisma.$transaction(async (tx) => {
       const previousEvent = await tx.event.findFirst({
         where: { id, deletedAt: null },
-        select: EVENT_DETAIL_SELECT,
+        select: EVENT_AUDIT_SELECT,
       });
       if (!previousEvent) throw new NotFoundException(`Event ${id} was not found.`);
       const updatedCount = await tx.event.updateMany({ where: { id, deletedAt: null }, data: normalizedInput });
@@ -349,6 +389,7 @@ export class EventsResolver {
         throw new NotFoundException(`Event ${id} was not found.`);
       }
       const updated = await tx.event.findUniqueOrThrow({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
+      const updatedAudit = await tx.event.findUniqueOrThrow({ where: { id, deletedAt: null }, select: EVENT_AUDIT_SELECT });
       await this.disableGroupPerEventModeForMajorEvent(updated, tx);
       await this.auditLog.record(
         {
@@ -358,12 +399,12 @@ export class EventsResolver {
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
           before: previousEvent,
-          after: updated,
+          after: updatedAudit,
           scope: {
             permission: Permission.Event.Update,
-            eventId: updated.id,
-            majorEventId: updated.majorEventId,
-            eventGroupId: updated.eventGroupId,
+            eventId: updatedAudit.id,
+            majorEventId: updatedAudit.majorEventId,
+            eventGroupId: updatedAudit.eventGroupId,
           },
           summary: 'Evento atualizado.',
         },

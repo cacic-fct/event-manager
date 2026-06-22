@@ -48,11 +48,12 @@ export class FrozenResourceService {
     eventId: string,
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
+    includeDeleted = false,
   ): Promise<void> {
     const event = await this.prisma.event.findFirst({
       where: {
         id: eventId,
-        deletedAt: null,
+        ...(includeDeleted ? {} : { deletedAt: null }),
       },
       select: {
         createdAt: true,
@@ -94,8 +95,9 @@ export class FrozenResourceService {
       majorEventId?: string | null;
     },
     user: AuthenticatedUser | undefined,
+    includeDeleted = false,
   ): Promise<void> {
-    await this.assertEventMutable(eventId, user, 'edit');
+    await this.assertEventMutable(eventId, user, 'edit', includeDeleted);
 
     if (input.eventGroupId === undefined && input.majorEventId === undefined) {
       return;
@@ -104,7 +106,7 @@ export class FrozenResourceService {
     const event = await this.prisma.event.findFirst({
       where: {
         id: eventId,
-        deletedAt: null,
+        ...(includeDeleted ? {} : { deletedAt: null }),
       },
       select: {
         eventGroupId: true,
@@ -131,11 +133,12 @@ export class FrozenResourceService {
     eventGroupId: string,
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
+    includeDeleted = false,
   ): Promise<void> {
     const eventGroup = await this.prisma.eventGroup.findFirst({
       where: {
         id: eventGroupId,
-        deletedAt: null,
+        ...(includeDeleted ? {} : { deletedAt: null }),
       },
       select: {
         createdAt: true,
@@ -169,11 +172,12 @@ export class FrozenResourceService {
     majorEventId: string,
     user: AuthenticatedUser | undefined,
     operation: FrozenOperation,
+    includeDeleted = false,
   ): Promise<void> {
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
         id: majorEventId,
-        deletedAt: null,
+        ...(includeDeleted ? {} : { deletedAt: null }),
       },
       select: {
         createdAt: true,

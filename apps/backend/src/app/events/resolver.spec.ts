@@ -127,4 +127,96 @@ describe('EventsResolver', () => {
       }),
     );
   });
+
+  it('uses scalar event snapshots for update audit records', async () => {
+    const previousAudit = {
+      id: 'event-1',
+      name: 'Evento antigo',
+      majorEventId: 'major-old',
+      eventGroupId: null,
+    };
+    const updatedDetail = {
+      id: 'event-1',
+      name: 'Evento novo',
+      emoji: 'calendar',
+      type: 'OTHER',
+      description: null,
+      shortDescription: null,
+      locationDescription: null,
+      majorEventId: 'major-new',
+      majorEvent: {
+        id: 'major-new',
+        name: 'Grande evento',
+      },
+      eventGroupId: null,
+      eventGroup: null,
+      startDate: new Date('2026-06-22T12:00:00.000Z'),
+      endDate: new Date('2026-06-22T13:00:00.000Z'),
+    };
+    const updatedAudit = {
+      id: 'event-1',
+      name: 'Evento novo',
+      majorEventId: 'major-new',
+      eventGroupId: null,
+    };
+    const tx = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(previousAudit),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValueOnce(updatedAudit),
+      },
+      eventGroup: {
+        updateMany: jest.fn(),
+      },
+    };
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue({ eventGroupId: null }),
+      },
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const typesenseSearch = {
+      upsertEvent: jest.fn(),
+    };
+    const frozenResources = {
+      assertEventUpdateMutable: jest.fn(),
+    };
+    const auditLog = {
+      record: jest.fn(),
+    };
+    const resolver = new EventsResolver(
+      prisma as never,
+      typesenseSearch as never,
+      {} as never,
+      frozenResources as never,
+      {} as never,
+      auditLog as never,
+    );
+
+    await expect(
+      resolver.updateEvent(
+        'event-1',
+        {
+          name: 'Evento novo',
+          majorEventId: 'major-new',
+          eventGroupId: null,
+        } as never,
+        { req: { user: { sub: 'user-1' } } } as never,
+      ),
+    ).resolves.toBe(updatedDetail);
+
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        before: previousAudit,
+        after: updatedAudit,
+        scope: expect.objectContaining({
+          majorEventId: 'major-new',
+          eventGroupId: null,
+        }),
+      }),
+      tx,
+    );
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
+  });
 });

@@ -1,6 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, AuditLogRevertMode, Prisma } from '@prisma/client';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from './audit-log.service';
 
@@ -9,6 +9,7 @@ describe('AuditLogService', () => {
   let authorizationPolicy: { assertPermissions: jest.Mock };
   let typesenseSearch: ReturnType<typeof createTypesenseSearch>;
   let attendanceRealtime: { notifyAllConnectedPeople: jest.Mock };
+  let frozenResources: ReturnType<typeof createFrozenResources>;
   let service: AuditLogService;
 
   beforeEach(() => {
@@ -16,11 +17,13 @@ describe('AuditLogService', () => {
     authorizationPolicy = { assertPermissions: jest.fn() };
     typesenseSearch = createTypesenseSearch();
     attendanceRealtime = { notifyAllConnectedPeople: jest.fn() };
+    frozenResources = createFrozenResources();
     service = new AuditLogService(
       prisma as never,
       authorizationPolicy as never,
       typesenseSearch as never,
       attendanceRealtime as never,
+      frozenResources as never,
     );
   });
 
@@ -40,6 +43,7 @@ describe('AuditLogService', () => {
         name: 'Ana Silva',
         email: null,
         updatedAt: '2026-06-21T17:00:00.000Z',
+        updatedById: 'admin-0',
         paymentInfo: {
           bankName: 'Banco A',
         },
@@ -48,6 +52,7 @@ describe('AuditLogService', () => {
         name: 'Ana Clara Silva',
         email: 'ana@unesp.br',
         updatedAt: '2026-06-21T17:10:00.000Z',
+        updatedById: 'admin-1',
         paymentInfo: {
           bankName: 'Banco B',
         },
@@ -75,6 +80,7 @@ describe('AuditLogService', () => {
       expect.objectContaining({ field: 'paymentInfo.bankName', before: 'Banco A', after: 'Banco B' }),
     ]);
     expect(createdChanges(prisma).some((change) => change.field === 'updatedAt')).toBe(false);
+    expect(createdChanges(prisma).some((change) => change.field === 'updatedById')).toBe(false);
   });
 
   it('skips no-op audit records unless they are forced', async () => {
@@ -173,6 +179,11 @@ describe('AuditLogService', () => {
       id: 'audit-1',
       entityLabel: 'Ana Silva',
       summary: 'Pessoa atualizada.',
+      operation: AuditLogOperation.UPDATE,
+      actorId: 'admin-1',
+      actorName: 'Renan Yudi',
+      permission: Permission.Person.Update,
+      lastRecordedAt: new Date(),
       before: {
         name: 'Ana Silva',
         email: 'ana@example.com',
@@ -221,11 +232,61 @@ describe('AuditLogService', () => {
     ]);
   });
 
+  it('does not squash when another audit entry is the latest entity change', async () => {
+    prisma.auditLogEntry.findFirst.mockResolvedValue({
+      id: 'audit-2',
+      entityLabel: 'Ana Silva',
+      summary: 'Pessoa atualizada por outra pessoa.',
+      operation: AuditLogOperation.UPDATE,
+      actorId: 'admin-2',
+      actorName: 'Outro Admin',
+      permission: Permission.Person.Update,
+      lastRecordedAt: new Date(),
+      before: {
+        name: 'Ana Maria Silva',
+      },
+    });
+
+    await service.record({
+      entityType: AuditLogEntityType.PERSON,
+      entityId: 'person-1',
+      entityLabel: 'Ana Clara Silva',
+      operation: AuditLogOperation.UPDATE,
+      actor: {
+        id: 'admin-1',
+        name: 'Renan Yudi',
+        type: AuditLogActorType.USER,
+      },
+      before: {
+        name: 'Ana Silva',
+      },
+      after: {
+        name: 'Ana Clara Silva',
+      },
+      scope: {
+        permission: Permission.Person.Update,
+      },
+    });
+
+    expect(prisma.auditLogEntry.update).not.toHaveBeenCalled();
+    expect(prisma.auditLogEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        entityId: 'person-1',
+        changedFields: ['name'],
+      }),
+    });
+  });
+
   it('creates a new entry when a squash candidate does not change the original snapshot', async () => {
     prisma.auditLogEntry.findFirst.mockResolvedValue({
       id: 'audit-1',
       entityLabel: 'Ana Silva',
       summary: 'Pessoa atualizada.',
+      operation: AuditLogOperation.UPDATE,
+      actorId: 'admin-1',
+      actorName: 'Renan Yudi',
+      permission: null,
+      lastRecordedAt: new Date(),
       before: {
         name: 'Ana Clara Silva',
       },
@@ -508,6 +569,56 @@ describe('AuditLogService', () => {
     );
   });
 
+  it('rejects cascade reverts when a later entry is non-reversible', async () => {
+    const targetEntry = createAuditEntry({
+      id: 'audit-update',
+      entityType: AuditLogEntityType.PERSON,
+      entityId: 'person-1',
+      operation: AuditLogOperation.UPDATE,
+      changedFields: ['name'],
+      before: {
+        name: 'Ana',
+      },
+      after: {
+        name: 'Ana Clara',
+      },
+      lastRecordedAt: new Date('2026-06-22T12:00:00.000Z'),
+    });
+    const mergeEntry = createAuditEntry({
+      id: 'audit-merge',
+      entityType: AuditLogEntityType.PERSON,
+      entityId: 'person-1',
+      operation: AuditLogOperation.MERGE,
+      changedFields: ['mergedIntoId'],
+      before: {
+        mergedIntoId: null,
+      },
+      after: {
+        mergedIntoId: 'person-2',
+      },
+      lastRecordedAt: new Date('2026-06-22T12:01:00.000Z'),
+    });
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.auditLogEntry.findMany.mockResolvedValue([mergeEntry, targetEntry]);
+    prisma.people.findUnique.mockResolvedValue({
+      id: 'person-1',
+      name: 'Ana Clara',
+      mergedIntoId: 'person-2',
+    });
+
+    await expect(
+      service.revertEntry(
+        {
+          entryId: 'audit-update',
+          mode: AuditLogRevertMode.ENTRY_AND_AFTER,
+        },
+        undefined,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('rejects reverts when the current record no longer exists', async () => {
     prisma.auditLogEntry.findUnique.mockResolvedValue(
       createAuditEntry({
@@ -535,6 +646,59 @@ describe('AuditLogService', () => {
         undefined,
       ),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('enforces frozen event checks before applying a revert update', async () => {
+    const targetEntry = createAuditEntry({
+      id: 'audit-event',
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      operation: AuditLogOperation.UPDATE,
+      eventId: 'event-1',
+      before: {
+        id: 'event-1',
+        name: 'Evento antigo',
+        eventGroupId: 'group-old',
+        majorEventId: null,
+      },
+      after: {
+        id: 'event-1',
+        name: 'Evento novo',
+        eventGroupId: 'group-new',
+        majorEventId: null,
+      },
+      changedFields: ['name', 'eventGroupId'],
+    });
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.event.findUnique.mockResolvedValue({
+      id: 'event-1',
+      name: 'Evento novo',
+      eventGroupId: 'group-new',
+      majorEventId: null,
+      deletedAt: null,
+    });
+    frozenResources.assertEventUpdateMutable.mockRejectedValue(new ForbiddenException('Dados congelados.'));
+
+    await expect(
+      service.revertEntry(
+        {
+          entryId: 'audit-event',
+          mode: AuditLogRevertMode.ENTRY_ONLY,
+        },
+        undefined,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(frozenResources.assertEventUpdateMutable).toHaveBeenCalledWith(
+      'event-1',
+      {
+        eventGroupId: 'group-old',
+        majorEventId: undefined,
+      },
+      undefined,
+      true,
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('reverts an event group entry and applies certificate invariants in the same transaction', async () => {
@@ -737,6 +901,15 @@ describe('AuditLogService', () => {
         name: true,
       }),
     });
+    expect(frozenResources.assertEventUpdateMutable).toHaveBeenCalledWith(
+      'event-1',
+      {
+        eventGroupId: undefined,
+        majorEventId: undefined,
+      },
+      undefined,
+      true,
+    );
     expect(tx.eventGroup.updateMany).toHaveBeenCalledWith({
       where: {
         id: 'group-1',
@@ -928,6 +1101,15 @@ function createTransaction(updated: Record<string, unknown>, revertLog: ReturnTy
       create: jest.fn().mockResolvedValue(revertLog),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
+  };
+}
+
+function createFrozenResources() {
+  return {
+    assertEventMutable: jest.fn(),
+    assertEventUpdateMutable: jest.fn(),
+    assertEventGroupMutable: jest.fn(),
+    assertMajorEventMutable: jest.fn(),
   };
 }
 

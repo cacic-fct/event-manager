@@ -10,6 +10,7 @@ import {
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
+import { FrozenOperation, FrozenResourceService } from '../common/frozen-resource.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
@@ -63,7 +64,7 @@ type RevertEntityConfig = {
 };
 
 const DEFAULT_SQUASH_WINDOW_MS = 2 * 60_000;
-const IGNORED_AUDIT_FIELDS = new Set(['createdAt', 'updatedAt']);
+const IGNORED_AUDIT_FIELDS = new Set(['createdAt', 'updatedAt', 'updatedById']);
 const NON_REVERSIBLE_OPERATIONS = new Set<AuditLogOperation>([
   AuditLogOperation.IMPORT,
   AuditLogOperation.ISSUE,
@@ -204,6 +205,12 @@ export class AuditLogService {
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService = {
       notifyAllConnectedPeople: async () => undefined,
     } as unknown as CurrentUserOnlineAttendanceRealtimeService,
+    private readonly frozenResources: FrozenResourceService = {
+      assertEventMutable: async () => undefined,
+      assertEventUpdateMutable: async () => undefined,
+      assertEventGroupMutable: async () => undefined,
+      assertMajorEventMutable: async () => undefined,
+    } as unknown as FrozenResourceService,
   ) {}
 
   async record(options: AuditRecordOptions, prisma: AuditPrismaClient = this.prisma): Promise<void> {
@@ -308,6 +315,7 @@ export class AuditLogService {
         `Campos alterados depois dessa entrada: ${laterConflicts.map((field) => this.getFieldLabel(field)).join(', ')}. Use "desfazer daqui em diante".`,
       );
     }
+    this.assertEntriesCanBeReverted(entriesToRevert);
 
     const currentRecord = await this.findCurrentEntityRecord(targetEntry.entityType, targetEntry.entityId);
     if (!currentRecord && targetEntry.operation !== AuditLogOperation.CREATE) {
@@ -318,6 +326,7 @@ export class AuditLogService {
     if (Object.keys(revertData).length === 0) {
       throw new BadRequestException('Não há campos reversíveis nessa alteração.');
     }
+    await this.assertFrozenResourceCanRevert(targetEntry, revertData, actor);
 
     const resolvedActor = await this.resolveActor(actor);
     const now = new Date();
@@ -406,22 +415,13 @@ export class AuditLogService {
       where: {
         entityType: options.entityType,
         entityId: options.entityId,
-        operation: options.operation,
-        actorId: actor.id ?? null,
-        actorName: actor.name,
-        permission: options.scope?.permission ?? null,
         revertedAt: null,
         revertTargetId: null,
-        lastRecordedAt: {
-          gte: new Date(now.getTime() - squashWindowMs),
-        },
       },
-      orderBy: {
-        lastRecordedAt: 'desc',
-      },
+      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
     });
 
-    if (!lastEntry) {
+    if (!lastEntry || !this.canSquashIntoEntry(lastEntry, options, actor, now, squashWindowMs)) {
       return false;
     }
 
@@ -449,6 +449,22 @@ export class AuditLogService {
     });
 
     return true;
+  }
+
+  private canSquashIntoEntry(
+    entry: PrismaAuditLogEntry,
+    options: AuditRecordOptions,
+    actor: AuditActor,
+    now: Date,
+    squashWindowMs: number,
+  ): boolean {
+    return (
+      entry.operation === options.operation &&
+      (entry.actorId ?? null) === (actor.id ?? null) &&
+      entry.actorName === actor.name &&
+      (entry.permission ?? null) === (options.scope?.permission ?? null) &&
+      entry.lastRecordedAt.getTime() >= now.getTime() - squashWindowMs
+    );
   }
 
   private async resolveActor(
@@ -833,6 +849,10 @@ export class AuditLogService {
     }
 
     for (const entry of entries) {
+      if (!this.isReversibleOperation(entry.operation)) {
+        throw new BadRequestException('Esse tipo de alteração não pode ser desfeito automaticamente.');
+      }
+
       if (entry.operation === AuditLogOperation.CREATE) {
         if (config.supportsSoftDelete) {
           data['deletedAt'] = new Date();
@@ -855,6 +875,62 @@ export class AuditLogService {
     }
 
     return data;
+  }
+
+  private assertEntriesCanBeReverted(entries: PrismaAuditLogEntry[]): void {
+    const nonReversibleEntry = entries.find((entry) => !this.isReversibleOperation(entry.operation));
+    if (nonReversibleEntry) {
+      throw new BadRequestException(
+        `A entrada ${nonReversibleEntry.id} tem um tipo de alteração que não pode ser desfeito automaticamente.`,
+      );
+    }
+  }
+
+  private async assertFrozenResourceCanRevert(
+    entry: PrismaAuditLogEntry,
+    revertData: Record<string, unknown>,
+    actor: AuthenticatedUser | undefined,
+  ): Promise<void> {
+    const operation: FrozenOperation = entry.operation === AuditLogOperation.CREATE ? 'delete' : 'edit';
+
+    switch (entry.entityType) {
+      case AuditLogEntityType.EVENT:
+        if (operation === 'delete') {
+          await this.frozenResources.assertEventMutable(entry.entityId, actor, operation, true);
+          return;
+        }
+
+        await this.frozenResources.assertEventUpdateMutable(
+          entry.entityId,
+          {
+            eventGroupId: this.readOptionalId(revertData['eventGroupId']),
+            majorEventId: this.readOptionalId(revertData['majorEventId']),
+          },
+          actor,
+          true,
+        );
+        return;
+      case AuditLogEntityType.MAJOR_EVENT:
+        await this.frozenResources.assertMajorEventMutable(entry.entityId, actor, operation, true);
+        return;
+      case AuditLogEntityType.EVENT_GROUP:
+        await this.frozenResources.assertEventGroupMutable(entry.entityId, actor, operation, true);
+        return;
+      default:
+        return;
+    }
+  }
+
+  private readOptionalId(value: unknown): string | null | undefined {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value === null) {
+      return null;
+    }
+
+    return undefined;
   }
 
   private async findCurrentEntityRecord(entityType: AuditLogEntityType, entityId: string): Promise<Record<string, unknown> | null> {

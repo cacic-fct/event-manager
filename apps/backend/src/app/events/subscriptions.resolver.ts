@@ -193,36 +193,51 @@ export class EventSubscriptionsResolver {
       ),
     ];
     const personIds = [...new Set(subscriptions.map((subscription) => subscription.personId))];
-    const majorEventSubscriptions =
+    const eventIds = [...new Set(subscriptions.map((subscription) => subscription.eventId))];
+    const majorEventSubscriptionSelections =
       majorEventIds.length > 0
-        ? await this.prisma.majorEventSubscription.findMany({
+        ? await this.prisma.majorEventSubscriptionEventSelection.findMany({
             where: {
               deletedAt: null,
-              majorEventId: {
-                in: majorEventIds,
+              eventId: {
+                in: eventIds,
               },
-              personId: {
-                in: personIds,
+              subscription: {
+                deletedAt: null,
+                subscriptionStatus: SubscriptionStatus.CONFIRMED,
+                majorEventId: {
+                  in: majorEventIds,
+                },
+                personId: {
+                  in: personIds,
+                },
               },
             },
             select: {
-              id: true,
-              majorEventId: true,
-              personId: true,
+              eventId: true,
+              subscription: {
+                select: {
+                  id: true,
+                  majorEventId: true,
+                  personId: true,
+                },
+              },
             },
           })
         : [];
-    const majorEventSubscriptionIdsByPersonAndEvent = new Map(
-      majorEventSubscriptions.map((subscription) => [
-        `${subscription.personId}:${subscription.majorEventId}`,
-        subscription.id,
+    const majorEventSubscriptionIdsByPersonMajorAndEvent = new Map(
+      majorEventSubscriptionSelections.map((selection) => [
+        `${selection.subscription.personId}:${selection.subscription.majorEventId}:${selection.eventId}`,
+        selection.subscription.id,
       ]),
     );
     const lecturerPersonIds = await this.getLecturerPersonIds([eventId]);
     return subscriptions.map((subscription) => ({
       ...subscription,
       majorEventSubscriptionId: subscription.event.majorEventId
-        ? majorEventSubscriptionIdsByPersonAndEvent.get(`${subscription.personId}:${subscription.event.majorEventId}`) ?? null
+        ? majorEventSubscriptionIdsByPersonMajorAndEvent.get(
+            `${subscription.personId}:${subscription.event.majorEventId}:${subscription.eventId}`,
+          ) ?? null
         : null,
       isLecturerSubscription: lecturerPersonIds.has(subscription.personId),
     }));
