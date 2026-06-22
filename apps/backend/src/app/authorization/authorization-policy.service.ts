@@ -513,13 +513,21 @@ export class AuthorizationPolicyService {
   }
 
   private async addSubscriptionTarget(target: ResolvedGrantTarget, subscriptionId: string): Promise<void> {
-    const [eventSubscription, majorEventSubscription] = await Promise.all([
+    const [eventSubscription, eventGroupSubscription, majorEventSubscription] = await Promise.all([
       this.prisma.eventSubscription.findUnique({
         where: {
           id: subscriptionId,
         },
         select: {
           eventId: true,
+        },
+      }),
+      this.prisma.eventGroupSubscription.findUnique({
+        where: {
+          id: subscriptionId,
+        },
+        select: {
+          eventGroupId: true,
         },
       }),
       this.prisma.majorEventSubscription.findUnique({
@@ -534,6 +542,9 @@ export class AuthorizationPolicyService {
 
     if (eventSubscription?.eventId) {
       await this.addEventTarget(target, eventSubscription.eventId);
+    }
+    if (eventGroupSubscription?.eventGroupId) {
+      target.eventGroupIds.add(eventGroupSubscription.eventGroupId);
     }
     if (majorEventSubscription?.majorEventId) {
       target.majorEventIds.add(majorEventSubscription.majorEventId);

@@ -8,10 +8,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
+import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { WorkspaceAttendancesService } from '../../../shared/services/workspace-attendances.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 
@@ -28,6 +30,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
     MatInputModule,
     MatListModule,
     MatSelectModule,
+    MatTooltipModule,
     TwemojiComponent,
   ],
   templateUrl: './workspace-major-event-attendances-subtab.component.html',
@@ -35,6 +38,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 })
 export class WorkspaceMajorEventAttendancesSubtabComponent {
   readonly workspace = inject(WorkspaceAttendancesService);
+  protected readonly auditLog = inject(WorkspaceAuditLogService);
   protected readonly permissions = inject(WorkspacePermissionsService);
 
   protected readonly statuses = [

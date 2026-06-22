@@ -16,6 +16,7 @@ import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { Event, EventType } from '../../../graphql/models';
 import { WorkspaceEventsService } from '../../../shared/services/workspace-events.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
+import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { isFrozenEvent } from '../../../shared/frozen-resource';
 import { EventFilterPanelComponent } from '../shared/event-filter-panel.component';
 
@@ -44,6 +45,7 @@ export class WorkspaceEventsTabComponent {
   private eventFilterPanel?: EventFilterPanelComponent;
   readonly workspace = inject(WorkspaceEventsService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly auditLog = inject(WorkspaceAuditLogService);
   protected readonly permissions = inject(WorkspacePermissionsService);
   protected readonly Permission = Permission;
 

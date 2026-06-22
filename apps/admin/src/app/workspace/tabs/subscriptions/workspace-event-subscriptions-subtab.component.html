@@ -140,6 +140,16 @@
                 {{ subscription.createdAt | date: 'short' }} ·
                 {{ subscription.createdByMethod }}
               </span>
+              <div matListItemMeta class="item-actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Ver histórico da inscrição"
+                  matTooltip="Histórico"
+                  (click)="auditLog.openHistory('EVENT_SUBSCRIPTION', subscription.id, subscription.person?.name ?? subscription.personId)">
+                  <mat-icon>history</mat-icon>
+                </button>
+              </div>
             </mat-list-item>
           } @empty {
             <mat-list-item>
@@ -162,6 +172,16 @@
                     {{ subscription.person?.name ?? subscription.personId }}
                   </span>
                   <span matListItemLine> Esta pessoa é palestrante deste evento. </span>
+                  <div matListItemMeta class="item-actions">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      aria-label="Ver histórico da inscrição"
+                      matTooltip="Histórico"
+                      (click)="auditLog.openHistory('EVENT_SUBSCRIPTION', subscription.id, subscription.person?.name ?? subscription.personId)">
+                      <mat-icon>history</mat-icon>
+                    </button>
+                  </div>
                 </mat-list-item>
               }
             </mat-list>

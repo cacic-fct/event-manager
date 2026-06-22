@@ -9,8 +9,9 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
-import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
@@ -21,6 +22,10 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   constructor(
     prisma: PrismaService,
     attendanceCategories: AttendanceCategoryService,
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+      buildCompositeEntityId: (parts: readonly string[]) => parts.join(':'),
+    } as unknown as AuditLogService,
     private readonly frozenResources: FrozenResourceService = {
       assertEventMutable: async () => undefined,
     } as unknown as FrozenResourceService,
@@ -39,7 +44,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const attendance = await this.prisma.$transaction(async (tx) => {
         await tx.eventAttendance.create({
           data: {
             personId: input.personId,
@@ -50,7 +55,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           },
         });
         await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-        return tx.eventAttendance.findUniqueOrThrow({
+        const attendance = await tx.eventAttendance.findUniqueOrThrow({
           where: {
             personId_eventId: {
               personId: input.personId,
@@ -67,7 +72,15 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
             category: true,
           },
         });
+        await this.recordAttendanceCreate(
+          attendance,
+          context,
+          'Presença registrada manualmente pelo painel administrativo.',
+          tx,
+        );
+        return attendance;
       });
+      return attendance;
     } catch (error: unknown) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException('Presença já registrada para este evento.');
@@ -122,7 +135,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const attendance = await this.prisma.$transaction(async (tx) => {
         await tx.eventAttendance.create({
           data: {
             eventId,
@@ -132,7 +145,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           },
         });
         await this.attendanceCategories.refreshForAttendance(person.id, eventId, tx);
-        return tx.eventAttendance.findUniqueOrThrow({
+        const attendance = await tx.eventAttendance.findUniqueOrThrow({
           where: {
             personId_eventId: {
               personId: person.id,
@@ -149,7 +162,15 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
             category: true,
           },
         });
+        await this.recordAttendanceCreate(
+          attendance,
+          context,
+          'Presença registrada por leitura de código no painel administrativo.',
+          tx,
+        );
+        return attendance;
       });
+      return attendance;
     } catch (error: unknown) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException('Presença já registrada para este evento.');
@@ -188,13 +209,16 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       throw new NotFoundException(`Person for user ${userId} was not found.`);
     }
 
-    return this.createAttendanceWithMetadata({
-      eventId: input.eventId,
-      personId: person.id,
-      createdByMethod: AttendanceCreationMethod.SCANNER,
-      createdById: this.getActorId(context),
-      location: input.location,
-    });
+    return this.createAttendanceWithMetadata(
+      {
+        eventId: input.eventId,
+        personId: person.id,
+        createdByMethod: AttendanceCreationMethod.SCANNER,
+        createdById: this.getActorId(context),
+        location: input.location,
+      },
+      (attendance, tx) => this.recordAttendanceCreate(attendance, context, 'Presença registrada pelo scanner.', tx),
+    );
   }
 
   @Mutation(() => EventAttendance, {
@@ -208,13 +232,16 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   ) {
     await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     const person = await this.findSinglePersonForManualInput(input.value);
-    return this.createAttendanceWithMetadata({
-      eventId: input.eventId,
-      personId: person.id,
-      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
-      createdById: this.getActorId(context),
-      location: input.location,
-    });
+    return this.createAttendanceWithMetadata(
+      {
+        eventId: input.eventId,
+        personId: person.id,
+        createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+        createdById: this.getActorId(context),
+        location: input.location,
+      },
+      (attendance, tx) => this.recordAttendanceCreate(attendance, context, 'Presença registrada por entrada manual.', tx),
+    );
   }
 
 
@@ -228,46 +255,45 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     @Context() context?: GraphqlContext,
   ) {
     await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
-    const { count } = await this.prisma.$transaction(async (tx) => {
-      const result = await tx.eventAttendance.updateMany({
-        where: {
-          personId,
-          eventId,
-        },
+    return this.prisma.$transaction(async (tx) => {
+      const previousAttendance = await tx.eventAttendance.findUnique({
+        where: { personId_eventId: { personId, eventId } },
+      });
+      if (!previousAttendance) throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
+      await tx.eventAttendance.update({
+        where: { personId_eventId: { personId, eventId } },
         data: this.buildEventAttendanceUpdateData(input),
       });
-
-      if (result.count > 0) {
-        await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
-      }
-
-      return result;
-    });
-
-    if (count === 0) {
-      throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
-    }
-
-    return this.prisma.eventAttendance.findUnique({
-      where: {
-        personId_eventId: {
-          personId,
-          eventId,
+      await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
+      const attendance = await tx.eventAttendance.findUniqueOrThrow({
+        where: { personId_eventId: { personId, eventId } },
+        select: {
+          personId: true,
+          eventId: true,
+          attendedAt: true,
+          createdAt: true,
+          createdById: true,
+          createdByMethod: true,
+          category: true,
+          person: true,
+          event: { select: EVENT_RELATION_SELECT },
         },
-      },
-      select: {
-        personId: true,
-        eventId: true,
-        attendedAt: true,
-        createdAt: true,
-        createdById: true,
-        createdByMethod: true,
-        category: true,
-        person: true,
-        event: {
-          select: EVENT_RELATION_SELECT,
+      });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+          entityId: this.auditLog.buildCompositeEntityId([personId, eventId]),
+          entityLabel: attendance.person?.name ?? personId,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: previousAttendance,
+          after: attendance,
+          scope: { permission: Permission.EventAttendance.Update, eventId },
+          summary: 'Presença atualizada.',
         },
-      },
+        tx,
+      );
+      return attendance;
     });
   }
 
@@ -289,16 +315,28 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     @Context() context?: GraphqlContext,
   ) {
     await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'delete');
-    const { count } = await this.prisma.eventAttendance.deleteMany({
-      where: {
-        personId,
-        eventId,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const previousAttendance = await tx.eventAttendance.findUnique({
+        where: { personId_eventId: { personId, eventId } },
+      });
+      if (!previousAttendance) throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
+      await tx.eventAttendance.delete({ where: { personId_eventId: { personId, eventId } } });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+          entityId: this.auditLog.buildCompositeEntityId([personId, eventId]),
+          entityLabel: personId,
+          operation: AuditLogOperation.DELETE,
+          actor: this.getUser(context),
+          before: previousAttendance,
+          after: {},
+          scope: { permission: Permission.EventAttendance.Delete, eventId },
+          summary: 'Presença removida.',
+          force: true,
+        },
+        tx,
+      );
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
-    }
 
     return {
       deleted: true,
@@ -309,5 +347,30 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
 
   private getUser(context: GraphqlContext | undefined) {
     return context?.req?.user ?? context?.request?.user;
+  }
+
+  private async recordAttendanceCreate(
+    attendance: {
+      personId: string;
+      eventId: string;
+      person?: { name?: string | null } | null;
+    },
+    context: GraphqlContext,
+    summary: string,
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
+    await this.auditLog.record({
+      entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+      entityId: this.auditLog.buildCompositeEntityId([attendance.personId, attendance.eventId]),
+      entityLabel: attendance.person?.name ?? attendance.personId,
+      operation: AuditLogOperation.CREATE,
+      actor: this.getUser(context),
+      after: attendance,
+      scope: {
+        permission: Permission.EventAttendance.Collect,
+        eventId: attendance.eventId,
+      },
+      summary,
+    }, prisma);
   }
 }

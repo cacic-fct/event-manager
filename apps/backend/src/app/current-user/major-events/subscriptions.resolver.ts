@@ -1,6 +1,13 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { MajorEventSubscriptionFlow, Prisma, SubscriptionStatus } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  MajorEventSubscriptionFlow,
+  Prisma,
+  SubscriptionStatus,
+} from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
@@ -9,6 +16,7 @@ import { CurrentUserMajorEventSubscriptionService } from './subscription.service
 import { CurrentUserPublicEventService } from '../public-event.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import {
   CurrentUserMajorEventFeedItem,
   CurrentUserMajorEventSubscription,
@@ -27,6 +35,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     private readonly frozenResources: FrozenResourceService = {
       assertMajorEventMutable: async () => undefined,
     } as unknown as FrozenResourceService,
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+    } as unknown as AuditLogService,
   ) {}
 
   @Query(() => [CurrentUserMajorEventSubscription], {
@@ -242,7 +253,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     const selfServicePayment = this.majorEventSubscriptions.resolveSelfServicePayment(majorEvent, input.paymentTier);
 
     const now = new Date();
-    const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
+    const upsertResult = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const existingSubscription = await tx.majorEventSubscription.findFirst({
         where: {
           majorEventId: input.majorEventId,
@@ -478,8 +489,31 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         throw new NotFoundException(`Subscription for major event ${input.majorEventId} was not found after upsert.`);
       }
 
-      return updatedSubscription;
+      if (!existingSubscription) {
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+            entityId: updatedSubscription.id,
+            entityLabel: person.id,
+            operation: AuditLogOperation.USER_CREATE,
+            actor: authenticatedUser,
+            after: updatedSubscription,
+            scope: {
+              permission: Permission.Subscription.Create,
+              majorEventId: updatedSubscription.majorEventId,
+            },
+            summary: 'Inscrição em grande evento criada pelo usuário.',
+          },
+          tx,
+        );
+      }
+
+      return {
+        subscription: updatedSubscription,
+        createdSubscription: !existingSubscription,
+      };
     });
+    const subscription = upsertResult.subscription;
 
     const orderedEvents = selectedEventIds.map((eventId) =>
       this.mapper.mapPublicEvent(selectedEventsById.get(eventId) as EventRecord),

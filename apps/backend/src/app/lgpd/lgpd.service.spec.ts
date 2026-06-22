@@ -34,6 +34,22 @@ describe('LgpdService', () => {
   });
 
   it('hard deletes source and target identities when the request uses the old merged user id', async () => {
+    tx.auditLogEntry.findMany.mockResolvedValue([
+      {
+        id: 'audit-1',
+        entityType: 'PERSON',
+        entityId: 'source-person',
+        entityLabel: 'Source Person',
+        actorId: 'old-user',
+        actorName: 'Old User',
+        actorEmail: 'old@example.com',
+        before: { id: 'source-person', name: 'Previous Source Person', email: 'previous@example.com' },
+        after: { id: 'source-person', name: 'Source Person', email: 'old@example.com' },
+        changes: [{ field: 'name', before: 'Previous Source Person', after: 'Source Person' }],
+        metadata: null,
+      },
+    ]);
+
     await expect(
       service.hardDelete({
         userId: 'old-user',
@@ -66,6 +82,21 @@ describe('LgpdService', () => {
     });
     expect(tx.user.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ['old-user', 'new-user'] } },
+    });
+    expect(tx.auditLogEntry.update).toHaveBeenCalledWith({
+      where: { id: 'audit-1' },
+      data: expect.objectContaining({
+        actorId: null,
+        actorName: 'Usuário anonimizado',
+        actorEmail: null,
+        entityId: 'anonymized:audit-1',
+        entityLabel: 'Dados anonimizados',
+        before: expect.objectContaining({
+          id: '[ANONIMIZADO]',
+          name: '[ANONIMIZADO]',
+          email: '[ANONIMIZADO]',
+        }),
+      }),
     });
     expect(s3.deleteFile).toHaveBeenCalledWith('receipts/old.png');
     expect(tx.majorEventReceiptValidationAction.deleteMany).toHaveBeenCalledWith({
@@ -387,6 +418,10 @@ function createTransactionMock() {
   });
 
   return {
+    auditLogEntry: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn().mockResolvedValue({}),
+    },
     certificate: deleteManyDelegate(),
     majorEventSubscriptionEventSelection: deleteManyDelegate(),
     majorEventReceiptValidationAction: deleteManyDelegate(),

@@ -1,5 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import {
@@ -37,6 +40,9 @@ export class CurrentUserEventSubscriptionService {
     private readonly mapper: CurrentUserEventMapperService,
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly counters: EventSubscriptionCountersService = new EventSubscriptionCountersService(),
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+    } as unknown as AuditLogService,
   ) {}
 
   getEventSubscriptionError(
@@ -78,8 +84,12 @@ export class CurrentUserEventSubscriptionService {
     }
   }
 
-  async subscribeCurrentUserEvent(personId: string, eventId: string): Promise<PublicEvent> {
-    const event = await this.runSerializableSubscriptionTransaction(async (tx) => {
+  async subscribeCurrentUserEvent(
+    personId: string,
+    eventId: string,
+    actor?: AuthenticatedUser,
+  ): Promise<PublicEvent> {
+    const result = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const targetEvent = await tx.event.findFirst({
         where: {
           id: eventId,
@@ -103,8 +113,27 @@ export class CurrentUserEventSubscriptionService {
       this.ensureEventSubscriptionWindowOpen(targetEvent, now);
 
       if (targetEvent.eventGroupId) {
-        await this.subscribeCurrentUserEventGroupTx(tx, personId, targetEvent.eventGroupId, now);
-        return targetEvent;
+        const groupSubscription = await this.subscribeCurrentUserEventGroupTx(tx, personId, targetEvent.eventGroupId, now);
+        if (groupSubscription.createdGroupSubscription) {
+          await this.auditLog.record(
+            {
+              entityType: AuditLogEntityType.EVENT_GROUP_SUBSCRIPTION,
+              entityId: groupSubscription.subscription.id,
+              entityLabel: personId,
+              operation: AuditLogOperation.USER_CREATE,
+              actor,
+              after: groupSubscription.subscription,
+              scope: { permission: Permission.Subscription.Create, eventGroupId: targetEvent.eventGroupId },
+              summary: 'Inscrição em grupo de eventos criada pelo usuário.',
+            },
+            tx,
+          );
+        }
+        return {
+          event: targetEvent,
+          createdSubscription: null,
+          createdGroupSubscription: groupSubscription.createdGroupSubscription ? groupSubscription.subscription : null,
+        };
       }
 
       const existingSubscription = await tx.eventSubscription.findFirst({
@@ -120,21 +149,43 @@ export class CurrentUserEventSubscriptionService {
 
       if (!existingSubscription) {
         await this.ensureAvailableSlots(tx, targetEvent);
-        await tx.eventSubscription.create({
+        const createdSubscription = await tx.eventSubscription.create({
           data: {
             eventId: targetEvent.id,
             personId,
             createdByMethod: 'SELF_SUBSCRIPTION',
           },
+          select: {
+            id: true,
+            eventId: true,
+            personId: true,
+            createdAt: true,
+            createdById: true,
+            createdByMethod: true,
+          },
         });
         await this.attendanceCategories.refreshForAttendance(personId, targetEvent.id, tx);
         await this.refreshEventSubscriptionCounters(tx, [targetEvent.id]);
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.EVENT_SUBSCRIPTION,
+            entityId: createdSubscription.id,
+            entityLabel: personId,
+            operation: AuditLogOperation.USER_CREATE,
+            actor,
+            after: createdSubscription,
+            scope: { permission: Permission.Subscription.Create, eventId: createdSubscription.eventId },
+            summary: 'Inscrição em evento criada pelo usuário.',
+          },
+          tx,
+        );
+        return { event: targetEvent, createdSubscription, createdGroupSubscription: null };
       }
 
-      return targetEvent;
+      return { event: targetEvent, createdSubscription: null, createdGroupSubscription: null };
     });
 
-    return this.mapper.mapPublicEvent(event);
+    return this.mapper.mapPublicEvent(result.event);
   }
 
   async unsubscribeCurrentUserEvent(personId: string, eventId: string): Promise<PublicEvent> {
@@ -191,10 +242,27 @@ export class CurrentUserEventSubscriptionService {
   async subscribeCurrentUserEventGroup(
     personId: string,
     eventGroupId: string,
+    actor?: AuthenticatedUser,
   ): Promise<CurrentUserEventGroupSubscription> {
-    const subscription = await this.runSerializableSubscriptionTransaction((tx) =>
-      this.subscribeCurrentUserEventGroupTx(tx, personId, eventGroupId),
-    );
+    const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const result = await this.subscribeCurrentUserEventGroupTx(tx, personId, eventGroupId);
+      if (result.createdGroupSubscription) {
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.EVENT_GROUP_SUBSCRIPTION,
+            entityId: result.subscription.id,
+            entityLabel: personId,
+            operation: AuditLogOperation.USER_CREATE,
+            actor,
+            after: result.subscription,
+            scope: { permission: Permission.Subscription.Create, eventGroupId },
+            summary: 'Inscrição em grupo de eventos criada pelo usuário.',
+          },
+          tx,
+        );
+      }
+      return result;
+    });
 
     return this.mapper.mapCurrentUserEventGroupSubscription(subscription.subscription, subscription.events);
   }
@@ -306,6 +374,7 @@ export class CurrentUserEventSubscriptionService {
   ): Promise<{
     subscription: EventGroupSubscriptionRecord;
     events: PublicEvent[];
+    createdGroupSubscription: boolean;
   }> {
     const [groupEvents, existingSubscription, activeChildSubscriptions] = await Promise.all([
       tx.event.findMany({
@@ -377,6 +446,7 @@ export class CurrentUserEventSubscriptionService {
       );
     }
 
+    const createdGroupSubscription = existingSubscription == null;
     const subscription =
       existingSubscription ??
       (await tx.eventGroupSubscription.create({
@@ -461,6 +531,7 @@ export class CurrentUserEventSubscriptionService {
     return {
       subscription,
       events: events.map((eventSubscription) => eventSubscription.event),
+      createdGroupSubscription,
     };
   }
 

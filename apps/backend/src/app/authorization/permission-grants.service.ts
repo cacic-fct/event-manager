@@ -4,7 +4,15 @@ import {
   requiresGlobalPermissionGrantScope,
 } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { EventManagerPermissionGrantScope, Prisma } from '@prisma/client';
+import {
+  AuditLogActorType,
+  AuditLogEntityType,
+  AuditLogOperation,
+  EventManagerPermissionGrantScope,
+  Prisma,
+} from '@prisma/client';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   EventManagerPermissionGrant,
@@ -49,7 +57,12 @@ type GrantRecord = Prisma.EventManagerPermissionGrantGetPayload<{ select: typeof
 
 @Injectable()
 export class PermissionGrantsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+    } as unknown as AuditLogService,
+  ) {}
 
   async listUserGrants(userId: string): Promise<EventManagerPermissionGrant[]> {
     const grants = await this.prisma.eventManagerPermissionGrant.findMany({
@@ -83,8 +96,9 @@ export class PermissionGrantsService {
 
   async createGrant(
     input: EventManagerPermissionGrantCreateInput,
-    actorId?: string,
+    actor?: AuthenticatedUser | string,
   ): Promise<EventManagerPermissionGrant> {
+    const actorId = this.getActorId(actor);
     const data = await this.buildCreateData(input, actorId);
     const existingGrant = await this.findMatchingActiveGrant(data);
     if (existingGrant) {
@@ -98,9 +112,27 @@ export class PermissionGrantsService {
     }
 
     try {
-      const grant = await this.prisma.eventManagerPermissionGrant.create({
-        data,
-        select: GRANT_SELECT,
+      const grant = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.eventManagerPermissionGrant.create({ data, select: GRANT_SELECT });
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.PERMISSION_GRANT,
+            entityId: created.id,
+            entityLabel: this.getGrantEntityLabel(created),
+            operation: AuditLogOperation.CREATE,
+            actor: this.getAuditActor(actor),
+            after: created,
+            scope: {
+              permission: Permission.PermissionGrant.Create,
+              eventId: created.eventId,
+              majorEventId: created.majorEventId,
+              eventGroupId: created.eventGroupId,
+            },
+            summary: 'Permissão concedida.',
+          },
+          tx,
+        );
+        return created;
       });
 
       return this.mapGrant(grant);
@@ -113,37 +145,51 @@ export class PermissionGrantsService {
     }
   }
 
-  async deleteGrant(id: string, actorId?: string): Promise<void> {
-    const { count } = await this.prisma.eventManagerPermissionGrant.updateMany({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-        updatedById: actorId,
-      },
+  async deleteGrant(id: string, actor?: AuthenticatedUser | string): Promise<void> {
+    const actorId = this.getActorId(actor);
+    const deletedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const existingGrant = await tx.eventManagerPermissionGrant.findFirst({
+        where: { id, deletedAt: null },
+        select: GRANT_SELECT,
+      });
+      if (!existingGrant) throw new NotFoundException(`Permission grant ${id} was not found.`);
+      await tx.eventManagerPermissionGrant.update({ where: { id }, data: { deletedAt, updatedById: actorId } });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.PERMISSION_GRANT,
+          entityId: existingGrant.id,
+          entityLabel: this.getGrantEntityLabel(existingGrant),
+          operation: AuditLogOperation.DELETE,
+          actor: this.getAuditActor(actor),
+          before: existingGrant,
+          after: { ...existingGrant, deletedAt, updatedById: actorId },
+          scope: {
+            permission: Permission.PermissionGrant.Delete,
+            eventId: existingGrant.eventId,
+            majorEventId: existingGrant.majorEventId,
+            eventGroupId: existingGrant.eventGroupId,
+          },
+          summary: 'Permissão removida.',
+          force: true,
+        },
+        tx,
+      );
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Permission grant ${id} was not found.`);
-    }
   }
 
   async updateGrant(
     id: string,
     input: EventManagerPermissionGrantUpdateInput,
-    actorId?: string,
+    actor?: AuthenticatedUser | string,
   ): Promise<EventManagerPermissionGrant> {
+    const actorId = this.getActorId(actor);
     const existingGrant = await this.prisma.eventManagerPermissionGrant.findFirst({
       where: {
         id,
         deletedAt: null,
       },
-      select: {
-        userId: true,
-        personId: true,
-      },
+      select: GRANT_SELECT,
     });
 
     if (!existingGrant) {
@@ -165,13 +211,32 @@ export class PermissionGrantsService {
     }
 
     try {
-      const grant = await this.prisma.eventManagerPermissionGrant.update({
-        where: {
-          id,
-          deletedAt: null,
-        },
-        data,
-        select: GRANT_SELECT,
+      const grant = await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.eventManagerPermissionGrant.update({
+          where: { id, deletedAt: null },
+          data,
+          select: GRANT_SELECT,
+        });
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.PERMISSION_GRANT,
+            entityId: updated.id,
+            entityLabel: this.getGrantEntityLabel(updated),
+            operation: AuditLogOperation.UPDATE,
+            actor: this.getAuditActor(actor),
+            before: existingGrant,
+            after: updated,
+            scope: {
+              permission: Permission.PermissionGrant.Update,
+              eventId: updated.eventId,
+              majorEventId: updated.majorEventId,
+              eventGroupId: updated.eventGroupId,
+            },
+            summary: 'Permissão atualizada.',
+          },
+          tx,
+        );
+        return updated;
       });
 
       return this.mapGrant(grant);
@@ -193,6 +258,35 @@ export class PermissionGrantsService {
     actorId?: string,
   ): Promise<Prisma.EventManagerPermissionGrantUncheckedCreateInput> {
     return this.buildGrantData(input, actorId, { includeCreatedBy: true, preserveUndefinedValidity: false });
+  }
+
+  private getActorId(actor: AuthenticatedUser | string | undefined): string | undefined {
+    return typeof actor === 'string' ? actor : actor?.sub;
+  }
+
+  private getAuditActor(
+    actor: AuthenticatedUser | string | undefined,
+  ): AuthenticatedUser | { id: string; name: string; type: AuditLogActorType } | undefined {
+    if (!actor) {
+      return undefined;
+    }
+
+    if (typeof actor !== 'string') {
+      return actor;
+    }
+
+    return {
+      id: actor,
+      name: actor,
+      type: AuditLogActorType.USER,
+    };
+  }
+
+  private getGrantEntityLabel(
+    grant: Pick<GrantRecord, 'permission' | 'scope' | 'event' | 'majorEvent' | 'eventGroup'>,
+  ): string {
+    const targetLabel = grant.event?.name ?? grant.majorEvent?.name ?? grant.eventGroup?.name ?? null;
+    return [grant.permission, grant.scope, targetLabel].filter(Boolean).join(' · ');
   }
 
   private async buildGrantData(

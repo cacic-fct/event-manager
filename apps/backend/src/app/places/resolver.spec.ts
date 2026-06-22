@@ -95,11 +95,10 @@ describe('PlacePresetsResolver', () => {
       locationDescription: '  Second floor  ',
     });
 
-    expect(prisma.placePreset.updateMany).toHaveBeenCalledWith(
+    expect(prisma.placePreset.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           id: 'place-1',
-          deletedAt: null,
         },
         data: {
           name: 'Lab 2',
@@ -114,11 +113,10 @@ describe('PlacePresetsResolver', () => {
       deleted: true,
       id: 'place-1',
     });
-    expect(prisma.placePreset.updateMany).toHaveBeenLastCalledWith(
+    expect(prisma.placePreset.update).toHaveBeenLastCalledWith(
       expect.objectContaining({
         where: {
           id: 'place-1',
-          deletedAt: null,
         },
         data: {
           deletedAt: expect.any(Date),
@@ -129,7 +127,7 @@ describe('PlacePresetsResolver', () => {
 
   it('rejects updates and deletes when the place is missing or deleted', async () => {
     const prisma = createPrismaMock();
-    prisma.placePreset.updateMany.mockResolvedValue({ count: 0 });
+    prisma.placePreset.findFirst.mockResolvedValue(null);
     const resolver = new PlacePresetsResolver(prisma as never);
 
     await expect(resolver.updatePlacePreset('missing-place', { name: 'Missing' })).rejects.toBeInstanceOf(
@@ -204,8 +202,8 @@ function createPrismaMock() {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue({ id: 'place-1' }),
       create: jest.fn().mockResolvedValue({ id: 'place-1' }),
-      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       update: jest.fn().mockResolvedValue({ id: 'place-1' }),
+      findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'target-place', name: 'Sala final' }),
     },
     $transaction: jest.fn(async (callback: (tx: unknown) => Promise<void>) => callback(prisma)),
   };

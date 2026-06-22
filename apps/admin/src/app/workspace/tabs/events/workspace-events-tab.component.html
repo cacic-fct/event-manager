@@ -80,6 +80,15 @@
         </div>
 
         <div class="panel-actions">
+          @if (workspace.selectedEvent(); as selectedEvent) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="auditLog.openHistory('EVENT', selectedEvent.id, selectedEvent.name)">
+              <mat-icon>history</mat-icon>
+              Histórico
+            </button>
+          }
           <button mat-button type="button" (click)="workspace.resetEventForm()">
             <mat-icon>restart_alt</mat-icon>
             Limpar

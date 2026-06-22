@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma, SubscriptionStatus } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
 import {
   WorkspaceEventSubscription,
   WorkspaceEventSubscriptionCreateInput,
@@ -11,6 +11,7 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -142,6 +143,7 @@ export class EventSubscriptionsResolver {
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly notifications: NovuNotificationsService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly auditLog: AuditLogService,
     private readonly counters: EventSubscriptionCountersService = new EventSubscriptionCountersService(),
     private readonly eventSubscriptionSync: EventSubscriptionSyncService = new EventSubscriptionSyncService(),
   ) {}
@@ -232,6 +234,19 @@ export class EventSubscriptionsResolver {
       });
       await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
       await this.refreshEventSubscriptionCounters(tx, [input.eventId]);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_SUBSCRIPTION,
+          entityId: created.id,
+          entityLabel: created.person.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: created,
+          scope: { permission: Permission.Subscription.Create, eventId: created.eventId },
+          summary: 'Inscrição em evento criada pelo painel administrativo.',
+        },
+        tx,
+      );
       return created;
     });
 
@@ -330,11 +345,27 @@ export class EventSubscriptionsResolver {
         ...(subscriptionSyncResult?.createdEventIds ?? []),
       ]);
 
-      return majorEventSubscription;
+      const [result] = await this.attachMajorEventSubscriptionEvents(
+        input.majorEventId,
+        [majorEventSubscription],
+        tx,
+      );
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+          entityId: result.id,
+          entityLabel: result.person.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: result,
+          scope: { permission: Permission.Subscription.Create, majorEventId: result.majorEventId },
+          summary: 'Inscrição em grande evento criada pelo painel administrativo.',
+        },
+        tx,
+      );
+      return result;
     });
-
-    const [result] = await this.attachMajorEventSubscriptionEvents(input.majorEventId, [subscription]);
-    return result;
+    return subscription;
   }
 
   @Mutation(() => WorkspaceMajorEventSubscription, {
@@ -363,6 +394,12 @@ export class EventSubscriptionsResolver {
       throw new NotFoundException(`Subscription ${id} was not found.`);
     }
     await this.frozenResources.assertMajorEventMutable(existing.majorEventId, this.getUser(context), 'edit');
+    const previousSubscription = await this.prisma.majorEventSubscription.findUnique({
+      where: {
+        id,
+      },
+      select: this.majorEventSubscriptionSelect(),
+    });
 
     const selectedEventIds =
       input.selectedEventIds == null ? undefined : this.normalizeEventIds(input.selectedEventIds);
@@ -421,17 +458,30 @@ export class EventSubscriptionsResolver {
       await this.attendanceCategories.refreshForMajorEventPerson(existing.majorEventId, existing.personId, tx);
       await this.refreshEventSubscriptionCounters(tx, effectiveSelectedEventIds);
 
-      return updated;
+      const [result] = await this.attachMajorEventSubscriptionEvents(existing.majorEventId, [updated], tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+          entityId: result.id,
+          entityLabel: result.person.name,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: previousSubscription,
+          after: result,
+          scope: { permission: Permission.Subscription.Update, majorEventId: result.majorEventId },
+          summary: 'Inscrição em grande evento atualizada.',
+        },
+        tx,
+      );
+      return result;
     });
-
-    const [result] = await this.attachMajorEventSubscriptionEvents(existing.majorEventId, [subscription]);
     if (existing.subscriptionStatus !== subscription.subscriptionStatus) {
       const notificationRecord = await this.findMajorEventSubscriptionNotificationRecord(subscription.id);
       if (notificationRecord) {
         await this.notifications.notifyMajorEventSubscriptionRecordChanged(existing.subscriptionStatus, notificationRecord);
       }
     }
-    return result;
+    return subscription;
   }
 
   private async findMajorEventSubscriptionNotificationRecord(
@@ -499,12 +549,13 @@ export class EventSubscriptionsResolver {
         select: ReturnType<EventSubscriptionsResolver['majorEventSubscriptionSelect']>;
       }>
     >,
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<WorkspaceMajorEventSubscription[]> {
     if (subscriptions.length === 0) {
       return [];
     }
 
-    const events = await this.prisma.event.findMany({
+    const events = await prisma.event.findMany({
       where: {
         majorEventId,
         deletedAt: null,
@@ -525,7 +576,7 @@ export class EventSubscriptionsResolver {
     });
     const eventIds = events.map((event) => event.id);
     const personIds = subscriptions.map((subscription) => subscription.personId);
-    const eventSelections = await this.prisma.majorEventSubscriptionEventSelection.findMany({
+    const eventSelections = await prisma.majorEventSubscriptionEventSelection.findMany({
       where: {
         deletedAt: null,
         subscription: {
