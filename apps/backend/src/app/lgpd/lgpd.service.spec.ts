@@ -48,6 +48,19 @@ describe('LgpdService', () => {
         changes: [{ field: 'name', before: 'Previous Source Person', after: 'Source Person' }],
         metadata: null,
       },
+      {
+        id: 'audit-attendance',
+        entityType: 'EVENT_ATTENDANCE',
+        entityId: 'source-person:event-1',
+        entityLabel: 'Source Person',
+        actorId: null,
+        actorName: 'Admin',
+        actorEmail: null,
+        before: { personId: 'source-person', eventId: 'event-1' },
+        after: { personId: 'source-person', eventId: 'event-1' },
+        changes: [{ field: 'personId', before: 'source-person', after: 'source-person' }],
+        metadata: null,
+      },
     ]);
 
     await expect(
@@ -96,6 +109,40 @@ describe('LgpdService', () => {
           name: '[ANONIMIZADO]',
           email: '[ANONIMIZADO]',
         }),
+        after: expect.objectContaining({
+          id: '[ANONIMIZADO]',
+          name: '[ANONIMIZADO]',
+          email: '[ANONIMIZADO]',
+        }),
+        changes: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'name',
+            before: '[ANONIMIZADO]',
+            after: '[ANONIMIZADO]',
+          }),
+        ]),
+      }),
+    });
+    expect(tx.auditLogEntry.update).toHaveBeenCalledWith({
+      where: { id: 'audit-attendance' },
+      data: expect.objectContaining({
+        entityId: 'anonymized%3Aaudit-attendance:event-1',
+        entityLabel: 'Dados anonimizados',
+        before: expect.objectContaining({
+          personId: '[ANONIMIZADO]',
+          eventId: 'event-1',
+        }),
+        after: expect.objectContaining({
+          personId: '[ANONIMIZADO]',
+          eventId: 'event-1',
+        }),
+        changes: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'personId',
+            before: '[ANONIMIZADO]',
+            after: '[ANONIMIZADO]',
+          }),
+        ]),
       }),
     });
     expect(s3.deleteFile).toHaveBeenCalledWith('receipts/old.png');

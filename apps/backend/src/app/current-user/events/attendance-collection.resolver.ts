@@ -4,6 +4,7 @@ import {
   EventAttendanceScannerCodeInput,
   EventAttendanceScannerFeedItem,
 } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
@@ -358,7 +359,7 @@ export class CurrentUserAttendanceCollectionResolver {
       actor: this.getAuthenticatedUser(context),
       after: attendance,
       scope: {
-        permission: 'event-attendance#collect',
+        permission: Permission.EventAttendance.Collect,
         eventId: attendance.eventId,
       },
       summary,

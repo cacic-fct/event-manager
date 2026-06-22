@@ -338,7 +338,7 @@ export class LgpdService {
     const sensitiveValues = this.getSensitiveAuditValues(dataSubject);
     const identityValues = new Set(identifiers);
 
-    for (const entry of entries) {
+    const auditEntryUpdates = entries.map((entry) => {
       const actorMatches =
         (entry.actorId != null && dataSubject.userIds.includes(entry.actorId)) ||
         (entry.actorEmail != null && emails.includes(entry.actorEmail.toLowerCase()));
@@ -347,16 +347,15 @@ export class LgpdService {
         this.containsAuditIdentity(entry.before, identityValues) ||
         this.containsAuditIdentity(entry.after, identityValues);
 
-      await tx.auditLogEntry.update({
+      return tx.auditLogEntry.update({
         where: { id: entry.id },
         data: {
           actorId: actorMatches ? null : entry.actorId,
           actorName: actorMatches ? 'Usuário anonimizado' : entry.actorName,
           actorEmail: actorMatches ? null : entry.actorEmail,
-          entityId:
-            subjectMatches && entry.entityType === AuditLogEntityType.PERSON
-              ? `anonymized:${entry.id}`
-              : entry.entityId,
+          entityId: subjectMatches
+            ? this.anonymizeAuditEntityId(entry.entityType, entry.entityId, dataSubject.personIds, entry.id)
+            : entry.entityId,
           entityLabel: subjectMatches ? 'Dados anonimizados' : entry.entityLabel,
           before: subjectMatches
             ? this.anonymizeNullableAuditJson(
@@ -386,6 +385,43 @@ export class LgpdService {
               : undefined,
         },
       });
+    });
+
+    await Promise.all(auditEntryUpdates);
+  }
+
+  private anonymizeAuditEntityId(
+    entityType: AuditLogEntityType,
+    entityId: string,
+    personIds: readonly string[],
+    auditEntryId: string,
+  ): string {
+    if (entityType === AuditLogEntityType.PERSON && personIds.includes(entityId)) {
+      return `anonymized:${auditEntryId}`;
+    }
+
+    if (entityType !== AuditLogEntityType.EVENT_ATTENDANCE) {
+      return entityId;
+    }
+
+    const [personSegment, ...remainingSegments] = entityId.split(':');
+    if (!personSegment || remainingSegments.length === 0) {
+      return entityId;
+    }
+
+    const personId = this.decodeAuditEntityIdSegment(personSegment);
+    if (!personIds.includes(personId)) {
+      return entityId;
+    }
+
+    return [encodeURIComponent(`anonymized:${auditEntryId}`), ...remainingSegments].join(':');
+  }
+
+  private decodeAuditEntityIdSegment(segment: string): string {
+    try {
+      return decodeURIComponent(segment);
+    } catch {
+      return segment;
     }
   }
 

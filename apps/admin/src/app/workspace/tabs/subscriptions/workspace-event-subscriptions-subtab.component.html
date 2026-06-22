@@ -146,7 +146,7 @@
                   type="button"
                   aria-label="Ver histórico da inscrição"
                   matTooltip="Histórico"
-                  (click)="auditLog.openHistory('EVENT_SUBSCRIPTION', subscription.id, subscription.person?.name ?? subscription.personId)">
+                  (click)="auditLog.openHistory(subscriptionAuditEntityType(subscription), subscriptionAuditEntityId(subscription), subscription.person?.name ?? subscription.personId)">
                   <mat-icon>history</mat-icon>
                 </button>
               </div>
@@ -178,7 +178,7 @@
                       type="button"
                       aria-label="Ver histórico da inscrição"
                       matTooltip="Histórico"
-                      (click)="auditLog.openHistory('EVENT_SUBSCRIPTION', subscription.id, subscription.person?.name ?? subscription.personId)">
+                      (click)="auditLog.openHistory(subscriptionAuditEntityType(subscription), subscriptionAuditEntityId(subscription), subscription.person?.name ?? subscription.personId)">
                       <mat-icon>history</mat-icon>
                     </button>
                   </div>

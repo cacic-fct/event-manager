@@ -185,9 +185,45 @@ export class EventSubscriptionsResolver {
       take: pagination.take,
     });
 
+    const majorEventIds = [
+      ...new Set(
+        subscriptions
+          .map((subscription) => subscription.event.majorEventId)
+          .filter((majorEventId): majorEventId is string => Boolean(majorEventId)),
+      ),
+    ];
+    const personIds = [...new Set(subscriptions.map((subscription) => subscription.personId))];
+    const majorEventSubscriptions =
+      majorEventIds.length > 0
+        ? await this.prisma.majorEventSubscription.findMany({
+            where: {
+              deletedAt: null,
+              majorEventId: {
+                in: majorEventIds,
+              },
+              personId: {
+                in: personIds,
+              },
+            },
+            select: {
+              id: true,
+              majorEventId: true,
+              personId: true,
+            },
+          })
+        : [];
+    const majorEventSubscriptionIdsByPersonAndEvent = new Map(
+      majorEventSubscriptions.map((subscription) => [
+        `${subscription.personId}:${subscription.majorEventId}`,
+        subscription.id,
+      ]),
+    );
     const lecturerPersonIds = await this.getLecturerPersonIds([eventId]);
     return subscriptions.map((subscription) => ({
       ...subscription,
+      majorEventSubscriptionId: subscription.event.majorEventId
+        ? majorEventSubscriptionIdsByPersonAndEvent.get(`${subscription.personId}:${subscription.event.majorEventId}`) ?? null
+        : null,
       isLecturerSubscription: lecturerPersonIds.has(subscription.personId),
     }));
   }
@@ -394,13 +430,6 @@ export class EventSubscriptionsResolver {
       throw new NotFoundException(`Subscription ${id} was not found.`);
     }
     await this.frozenResources.assertMajorEventMutable(existing.majorEventId, this.getUser(context), 'edit');
-    const previousSubscription = await this.prisma.majorEventSubscription.findUnique({
-      where: {
-        id,
-      },
-      select: this.majorEventSubscriptionSelect(),
-    });
-
     const selectedEventIds =
       input.selectedEventIds == null ? undefined : this.normalizeEventIds(input.selectedEventIds);
 
@@ -410,6 +439,23 @@ export class EventSubscriptionsResolver {
     }
 
     const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const previousRecord = await tx.majorEventSubscription.findUnique({
+        where: {
+          id,
+        },
+        select: this.majorEventSubscriptionSelect(),
+      });
+      if (!previousRecord) {
+        throw new NotFoundException(`Subscription ${id} was not found.`);
+      }
+      const [previousSubscription] = await this.attachMajorEventSubscriptionEvents(
+        existing.majorEventId,
+        [previousRecord],
+        tx,
+      );
+      if (!previousSubscription) {
+        throw new NotFoundException(`Subscription ${id} was not found.`);
+      }
       const updateData: Prisma.MajorEventSubscriptionUpdateInput = {};
       if (input.subscriptionStatus !== undefined) {
         updateData.subscriptionStatus = this.normalizeStatus(input.subscriptionStatus);

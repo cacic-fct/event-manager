@@ -276,11 +276,12 @@ describe('PermissionGrantsService', () => {
       permission: Permission.Person.Read,
       scope: EventManagerPermissionGrantScope.GLOBAL,
     }));
+    prisma.eventManagerPermissionGrant.updateMany.mockResolvedValue({ count: 1 });
     await expect(service.deleteGrant('grant-1', 'actor-1')).resolves.toBeUndefined();
 
-    expect(prisma.eventManagerPermissionGrant.update).toHaveBeenCalledWith(
+    expect(prisma.eventManagerPermissionGrant.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'grant-1' },
+        where: { id: 'grant-1', deletedAt: null },
         data: {
           deletedAt: expect.any(Date),
           updatedById: 'actor-1',

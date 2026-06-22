@@ -344,7 +344,11 @@ export class EventsResolver {
         select: EVENT_DETAIL_SELECT,
       });
       if (!previousEvent) throw new NotFoundException(`Event ${id} was not found.`);
-      const updated = await tx.event.update({ where: { id }, data: normalizedInput, select: EVENT_DETAIL_SELECT });
+      const updatedCount = await tx.event.updateMany({ where: { id, deletedAt: null }, data: normalizedInput });
+      if (updatedCount.count !== 1) {
+        throw new NotFoundException(`Event ${id} was not found.`);
+      }
+      const updated = await tx.event.findUniqueOrThrow({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
       await this.disableGroupPerEventModeForMajorEvent(updated, tx);
       await this.auditLog.record(
         {
@@ -396,7 +400,10 @@ export class EventsResolver {
     await this.prisma.$transaction(async (tx) => {
       const event = await tx.event.findFirst({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
       if (!event) throw new NotFoundException(`Event ${id} was not found.`);
-      await tx.event.update({ where: { id }, data: { deletedAt } });
+      const deleted = await tx.event.updateMany({ where: { id, deletedAt: null }, data: { deletedAt } });
+      if (deleted.count !== 1) {
+        throw new NotFoundException(`Event ${id} was not found.`);
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,

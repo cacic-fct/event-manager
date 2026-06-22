@@ -9,7 +9,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { EventType } from '../../../graphql/models';
+import { type AuditLogEntityType, type EventType, type WorkspaceEventSubscription } from '../../../graphql/models';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { isFrozenEvent } from '../../../shared/frozen-resource';
 import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
@@ -58,6 +58,22 @@ export class WorkspaceEventSubscriptionsSubtabComponent implements OnInit {
     }
 
     return 'Outro';
+  }
+
+  protected subscriptionAuditEntityType(subscription: WorkspaceEventSubscription): AuditLogEntityType {
+    if (subscription.eventGroupSubscriptionId) {
+      return 'EVENT_GROUP_SUBSCRIPTION';
+    }
+
+    if (subscription.majorEventSubscriptionId) {
+      return 'MAJOR_EVENT_SUBSCRIPTION';
+    }
+
+    return 'EVENT_SUBSCRIPTION';
+  }
+
+  protected subscriptionAuditEntityId(subscription: WorkspaceEventSubscription): string {
+    return subscription.eventGroupSubscriptionId ?? subscription.majorEventSubscriptionId ?? subscription.id;
   }
 
   protected canEditSelectedEventSubscriptions(): boolean {

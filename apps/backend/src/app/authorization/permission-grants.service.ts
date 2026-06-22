@@ -154,7 +154,13 @@ export class PermissionGrantsService {
         select: GRANT_SELECT,
       });
       if (!existingGrant) throw new NotFoundException(`Permission grant ${id} was not found.`);
-      await tx.eventManagerPermissionGrant.update({ where: { id }, data: { deletedAt, updatedById: actorId } });
+      const deleted = await tx.eventManagerPermissionGrant.updateMany({
+        where: { id, deletedAt: null },
+        data: { deletedAt, updatedById: actorId },
+      });
+      if (deleted.count !== 1) {
+        throw new ConflictException('Essa permissão já foi removida.');
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.PERMISSION_GRANT,

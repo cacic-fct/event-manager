@@ -280,20 +280,25 @@ export class MajorEventsResolver {
     );
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
-      await tx.majorEvent.update({
+      const persisted = await tx.majorEvent.update({
         where: {
           id,
+          deletedAt: null,
         },
         data,
+        select: {
+          id: true,
+        },
       });
+      const effectiveId = persisted.id;
 
       if (input.price !== undefined) {
-        await this.syncMajorEventPrice(tx, id, input.price);
+        await this.syncMajorEventPrice(tx, effectiveId, input.price);
       }
 
       const updated = await tx.majorEvent.findUniqueOrThrow({
         where: {
-          id,
+          id: effectiveId,
         },
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });

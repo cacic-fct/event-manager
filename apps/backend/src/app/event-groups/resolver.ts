@@ -161,7 +161,7 @@ export class EventGroupsResolver {
     const eventGroup = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
       if (!previous) throw new NotFoundException(`Event group ${id} was not found.`);
-      await tx.eventGroup.update({ where: { id }, data: normalizedInput });
+      await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
 
       if (normalizedInput.shouldIssueCertificate === false) {
         await tx.event.updateMany({
@@ -189,7 +189,7 @@ export class EventGroupsResolver {
         });
       }
 
-      const updated = await tx.eventGroup.findUniqueOrThrow({ where: { id } });
+      const updated = await tx.eventGroup.findUniqueOrThrow({ where: { id, deletedAt: null } });
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT_GROUP,

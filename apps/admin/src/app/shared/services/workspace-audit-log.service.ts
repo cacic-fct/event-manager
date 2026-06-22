@@ -1,13 +1,19 @@
-import { Injectable, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { AuditLogEntityType } from '../../graphql/models';
+import { type AuditLogEntityType } from '../../graphql/models';
 import { AuditLogDialogComponent } from '../../workspace/dialogs/audit-log-dialog.component';
 
 @Injectable({ providedIn: 'root' })
 export class WorkspaceAuditLogService {
   private readonly dialog = inject(MatDialog);
+  private readonly platformId = inject(PLATFORM_ID);
 
   openHistory(entityType: AuditLogEntityType, entityId: string, entityLabel?: string | null): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
     this.dialog.open(AuditLogDialogComponent, {
       data: {
         entityType,

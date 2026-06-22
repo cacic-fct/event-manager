@@ -226,11 +226,11 @@ export class PeopleResolver {
         data: this.buildPersonUpdateData(input),
         include: { user: true, lecturerProfile: true },
       });
-      const auditPerson = await tx.people.findUniqueOrThrow({ where: { id }, select: PERSON_AUDIT_SELECT });
+      const auditPerson = await tx.people.findUniqueOrThrow({ where: { id: updated.id }, select: PERSON_AUDIT_SELECT });
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.PERSON,
-          entityId: id,
+          entityId: updated.id,
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),

@@ -272,6 +272,32 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         );
       }
 
+      const previousSubscription = existingSubscription
+        ? await tx.majorEventSubscription.findFirst({
+            where: {
+              id: existingSubscription.id,
+              deletedAt: null,
+            },
+            select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
+          })
+        : null;
+      const previousSelectedEventIds = existingSubscription
+        ? (
+            await tx.majorEventSubscriptionEventSelection.findMany({
+              where: {
+                subscriptionId: existingSubscription.id,
+                deletedAt: null,
+              },
+              select: {
+                eventId: true,
+              },
+            })
+          ).map((selection) => selection.eventId)
+        : [];
+      const previousAuditSnapshot = previousSubscription
+        ? { ...previousSubscription, selectedEventIds: previousSelectedEventIds }
+        : null;
+
       const nextStatus = this.majorEventSubscriptions.resolveNextSubscriptionStatus(
         majorEvent.isPaymentRequired,
         existingSubscription?.subscriptionStatus,
@@ -497,12 +523,30 @@ export class CurrentUserMajorEventSubscriptionsResolver {
             entityLabel: person.id,
             operation: AuditLogOperation.USER_CREATE,
             actor: authenticatedUser,
-            after: updatedSubscription,
+            after: { ...updatedSubscription, selectedEventIds },
             scope: {
               permission: Permission.Subscription.Create,
               majorEventId: updatedSubscription.majorEventId,
             },
             summary: 'Inscrição em grande evento criada pelo usuário.',
+          },
+          tx,
+        );
+      } else if (previousAuditSnapshot) {
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+            entityId: updatedSubscription.id,
+            entityLabel: person.id,
+            operation: AuditLogOperation.UPDATE,
+            actor: authenticatedUser,
+            before: previousAuditSnapshot,
+            after: { ...updatedSubscription, selectedEventIds },
+            scope: {
+              permission: Permission.Subscription.Update,
+              majorEventId: updatedSubscription.majorEventId,
+            },
+            summary: 'Inscrição em grande evento atualizada pelo usuário.',
           },
           tx,
         );

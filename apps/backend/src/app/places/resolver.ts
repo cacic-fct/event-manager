@@ -133,7 +133,7 @@ export class PlacePresetsResolver {
       });
       if (!previousPlace) throw new NotFoundException(`Place preset ${id} was not found.`);
       const place = await tx.placePreset.update({
-        where: { id },
+        where: { id, deletedAt: null },
         data: this.normalizePlaceInput(input),
         select: PLACE_PRESET_SELECT,
       });
@@ -165,7 +165,7 @@ export class PlacePresetsResolver {
         select: PLACE_PRESET_SELECT,
       });
       if (!place) throw new NotFoundException(`Place preset ${id} was not found.`);
-      await tx.placePreset.update({ where: { id }, data: { deletedAt } });
+      await tx.placePreset.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.PLACE_PRESET,
@@ -218,12 +218,14 @@ export class PlacePresetsResolver {
       await tx.placePreset.update({
         where: {
           id: targetId,
+          deletedAt: null,
         },
         data: this.normalizePlaceInput(input),
       });
       await tx.placePreset.update({
         where: {
           id: sourceId,
+          deletedAt: null,
         },
         data: {
           deletedAt,
@@ -233,6 +235,7 @@ export class PlacePresetsResolver {
       const updatedTarget = await tx.placePreset.findUniqueOrThrow({
         where: {
           id: targetId,
+          deletedAt: null,
         },
         select: PLACE_PRESET_SELECT,
       });
@@ -255,7 +258,7 @@ export class PlacePresetsResolver {
           entityType: AuditLogEntityType.PLACE_PRESET,
           entityId: sourceId,
           entityLabel: source.name,
-          operation: AuditLogOperation.DELETE,
+          operation: AuditLogOperation.MERGE,
           actor: this.getUser(context),
           before: source,
           after: { ...source, deletedAt },

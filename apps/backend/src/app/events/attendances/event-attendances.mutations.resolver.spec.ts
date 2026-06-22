@@ -30,13 +30,24 @@ describe('EventAttendancesMutationsResolver', () => {
     expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
 
     tx.eventAttendance.findUnique.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
-    tx.eventAttendance.findUniqueOrThrow.mockResolvedValue({
-      personId: 'person-1',
-      eventId: 'event-1',
-      createdById: 'collector-2',
-    });
-    prisma.$transaction.mockImplementationOnce(async (callback) => callback(tx));
     const attendedAt = new Date('2026-05-21T13:00:00.000Z');
+    tx.eventAttendance.findUniqueOrThrow
+      .mockReset()
+      .mockResolvedValueOnce({
+        personId: 'person-1',
+        eventId: 'event-1',
+        attendedAt,
+        createdById: 'collector-2',
+        collectedLatitude: null,
+        collectedLongitude: null,
+        collectedAccuracyMeters: null,
+      })
+      .mockResolvedValueOnce({
+        personId: 'person-1',
+        eventId: 'event-1',
+        createdById: 'collector-2',
+      });
+    prisma.$transaction.mockImplementationOnce(async (callback) => callback(tx));
     await expect(resolver.updateEventAttendance('person-1', 'event-1', { attendedAt })).resolves.toEqual({
       personId: 'person-1',
       eventId: 'event-1',

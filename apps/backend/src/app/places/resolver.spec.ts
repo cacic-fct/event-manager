@@ -1,4 +1,6 @@
+import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { PlacePresetsResolver } from './resolver';
 
 describe('PlacePresetsResolver', () => {
@@ -63,7 +65,8 @@ describe('PlacePresetsResolver', () => {
 
   it('normalizes blank fields when creating a preset', async () => {
     const prisma = createPrismaMock();
-    const resolver = new PlacePresetsResolver(prisma as never);
+    const auditLog = createAuditLogMock();
+    const resolver = new PlacePresetsResolver(prisma as never, auditLog as never);
 
     await resolver.createPlacePreset({
       name: '  Sala 1  ',
@@ -82,11 +85,21 @@ describe('PlacePresetsResolver', () => {
         },
       }),
     );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'place-1',
+        operation: AuditLogOperation.CREATE,
+        scope: { permission: Permission.PlacePreset.Create },
+      }),
+      prisma,
+    );
   });
 
   it('updates and deletes active presets only', async () => {
     const prisma = createPrismaMock();
-    const resolver = new PlacePresetsResolver(prisma as never);
+    const auditLog = createAuditLogMock();
+    const resolver = new PlacePresetsResolver(prisma as never, auditLog as never);
 
     await resolver.updatePlacePreset('place-1', {
       name: '  Lab 2  ',
@@ -99,6 +112,7 @@ describe('PlacePresetsResolver', () => {
       expect.objectContaining({
         where: {
           id: 'place-1',
+          deletedAt: null,
         },
         data: {
           name: 'Lab 2',
@@ -117,11 +131,30 @@ describe('PlacePresetsResolver', () => {
       expect.objectContaining({
         where: {
           id: 'place-1',
+          deletedAt: null,
         },
         data: {
           deletedAt: expect.any(Date),
         },
       }),
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'place-1',
+        operation: AuditLogOperation.UPDATE,
+        scope: { permission: Permission.PlacePreset.Update },
+      }),
+      prisma,
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'place-1',
+        operation: AuditLogOperation.DELETE,
+        scope: { permission: Permission.PlacePreset.Delete },
+      }),
+      prisma,
     );
   });
 
@@ -138,7 +171,8 @@ describe('PlacePresetsResolver', () => {
 
   it('merges presets without touching event location data', async () => {
     const prisma = createPrismaMock();
-    const resolver = new PlacePresetsResolver(prisma as never);
+    const auditLog = createAuditLogMock();
+    const resolver = new PlacePresetsResolver(prisma as never, auditLog as never);
 
     await resolver.mergePlacePreset('target-place', 'source-place', {
       name: 'Sala final',
@@ -150,7 +184,7 @@ describe('PlacePresetsResolver', () => {
     expect(prisma.event.updateMany).not.toHaveBeenCalled();
     expect(prisma.placePreset.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'target-place' },
+        where: { id: 'target-place', deletedAt: null },
         data: {
           name: 'Sala final',
           latitude: -22.1,
@@ -161,11 +195,29 @@ describe('PlacePresetsResolver', () => {
     );
     expect(prisma.placePreset.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'source-place' },
+        where: { id: 'source-place', deletedAt: null },
         data: {
           deletedAt: expect.any(Date),
         },
       }),
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'target-place',
+        operation: AuditLogOperation.MERGE,
+        scope: { permission: Permission.PlacePreset.Merge },
+      }),
+      prisma,
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'source-place',
+        operation: AuditLogOperation.MERGE,
+        scope: { permission: Permission.PlacePreset.Merge },
+      }),
+      prisma,
     );
   });
 
@@ -209,4 +261,10 @@ function createPrismaMock() {
   };
 
   return prisma;
+}
+
+function createAuditLogMock() {
+  return {
+    record: jest.fn(),
+  };
 }

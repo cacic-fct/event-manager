@@ -17,6 +17,19 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT, GraphqlContext } from './event-attendances.shared';
 
+const EVENT_ATTENDANCE_AUDIT_SELECT = {
+  personId: true,
+  eventId: true,
+  attendedAt: true,
+  createdAt: true,
+  createdById: true,
+  createdByMethod: true,
+  category: true,
+  collectedLatitude: true,
+  collectedLongitude: true,
+  collectedAccuracyMeters: true,
+} satisfies Prisma.EventAttendanceSelect;
+
 @Resolver(() => EventAttendance)
 export class EventAttendancesMutationsResolver extends EventAttendancesResolverBase {
   constructor(
@@ -258,6 +271,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     return this.prisma.$transaction(async (tx) => {
       const previousAttendance = await tx.eventAttendance.findUnique({
         where: { personId_eventId: { personId, eventId } },
+        select: EVENT_ATTENDANCE_AUDIT_SELECT,
       });
       if (!previousAttendance) throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
       await tx.eventAttendance.update({
@@ -265,6 +279,10 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         data: this.buildEventAttendanceUpdateData(input),
       });
       await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
+      const auditAttendance = await tx.eventAttendance.findUniqueOrThrow({
+        where: { personId_eventId: { personId, eventId } },
+        select: EVENT_ATTENDANCE_AUDIT_SELECT,
+      });
       const attendance = await tx.eventAttendance.findUniqueOrThrow({
         where: { personId_eventId: { personId, eventId } },
         select: {
@@ -287,7 +305,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
           before: previousAttendance,
-          after: attendance,
+          after: auditAttendance,
           scope: { permission: Permission.EventAttendance.Update, eventId },
           summary: 'Presença atualizada.',
         },

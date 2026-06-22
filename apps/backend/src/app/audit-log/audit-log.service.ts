@@ -357,7 +357,7 @@ export class AuditLogService {
         },
       });
 
-      await tx.auditLogEntry.updateMany({
+      const revertedEntries = await tx.auditLogEntry.updateMany({
         where: {
           id: {
             in: entriesToRevert.map((entry) => entry.id),
@@ -371,6 +371,9 @@ export class AuditLogService {
           revertedByEntryId: revertLog.id,
         },
       });
+      if (revertedEntries.count !== entriesToRevert.length) {
+        throw new ConflictException('Uma ou mais alterações já foram desfeitas por outra operação.');
+      }
 
       return { revertLogId: revertLog.id, updated };
     });
@@ -635,10 +638,7 @@ export class AuditLogService {
       revertedByEntryId: entry.revertedByEntryId,
       revertTargetId: entry.revertTargetId,
       revertMode: entry.revertMode,
-      canRevert:
-        !entry.revertedAt &&
-        this.isReversibleOperation(entry.operation) &&
-        this.hasReversibleConfig(entry.entityType, entry.operation),
+      canRevert: this.canRevertEntry(entry),
     };
   }
 
@@ -745,6 +745,7 @@ export class AuditLogService {
       case AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION:
         return { genericId: entityId, primaryResource: 'subscription', subscriptionId: entityId };
       case AuditLogEntityType.EVENT_ATTENDANCE:
+        return this.resolveEventAttendanceContext(entityId, entry);
       case AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR:
       case AuditLogEntityType.EVENT_LECTURER:
       case AuditLogEntityType.CERTIFICATE_CONFIG:
@@ -788,6 +789,7 @@ export class AuditLogService {
 
   private async findLaterChangedFields(targetEntry: PrismaAuditLogEntry): Promise<string[]> {
     const targetFields = new Set(targetEntry.changedFields);
+    const targetRootFields = new Set(targetEntry.changedFields.map((field) => field.split('.')[0]));
     const laterEntries = await this.prisma.auditLogEntry.findMany({
       where: {
         entityType: targetEntry.entityType,
@@ -809,7 +811,7 @@ export class AuditLogService {
       ...new Set(
         laterEntries
           .flatMap((entry) => entry.changedFields)
-          .filter((field) => targetFields.has(field) || targetFields.has(field.split('.')[0])),
+          .filter((field) => targetFields.has(field) || targetRootFields.has(field.split('.')[0])),
       ),
     ];
   }
@@ -845,8 +847,8 @@ export class AuditLogService {
 
       for (const field of entry.changedFields) {
         const rootField = field.split('.')[0];
-        if (!mutableFields.has(rootField) || field.includes('.')) {
-          continue;
+        if (!mutableFields.has(rootField)) {
+          throw new BadRequestException(`O campo ${this.getFieldLabel(field)} não pode ser desfeito automaticamente.`);
         }
         data[rootField] = before[rootField] ?? null;
       }
@@ -1001,17 +1003,52 @@ export class AuditLogService {
     });
   }
 
-  private hasReversibleConfig(entityType: AuditLogEntityType, operation: AuditLogOperation): boolean {
+  private canRevertEntry(entry: PrismaAuditLogEntry): boolean {
+    if (entry.revertedAt || !this.isReversibleOperation(entry.operation)) {
+      return false;
+    }
+
     try {
-      const config = this.getRevertConfig(entityType);
-      if (operation === AuditLogOperation.CREATE) {
+      const config = this.getRevertConfig(entry.entityType);
+      if (entry.operation === AuditLogOperation.CREATE) {
         return Boolean(config.deletePermission && config.supportsSoftDelete);
       }
 
-      return Boolean(config.updatePermission && config.mutableFields.length > 0);
+      if (!config.updatePermission || config.mutableFields.length === 0 || entry.changedFields.length === 0) {
+        return false;
+      }
+
+      return this.changedFieldsAreReversible(entry.changedFields, config);
     } catch {
       return false;
     }
+  }
+
+  private changedFieldsAreReversible(changedFields: readonly string[], config: RevertEntityConfig): boolean {
+    const mutableFields = new Set(config.mutableFields);
+    return changedFields.every((field) => mutableFields.has(field.split('.')[0]));
+  }
+
+  private resolveEventAttendanceContext(
+    entityId: string,
+    entry?: Pick<PrismaAuditLogEntry, 'eventId' | 'majorEventId' | 'eventGroupId'>,
+  ) {
+    const decodedEventId = this.decodeCompositeEntityId(entityId)[1];
+    return {
+      eventId: entry?.eventId ?? decodedEventId,
+      majorEventId: entry?.majorEventId ?? undefined,
+      eventGroupId: entry?.eventGroupId ?? undefined,
+    };
+  }
+
+  private decodeCompositeEntityId(entityId: string): string[] {
+    return entityId.split(':').map((part) => {
+      try {
+        return decodeURIComponent(part);
+      } catch {
+        return part;
+      }
+    });
   }
 
   private getRevertConfig(entityType: AuditLogEntityType): RevertEntityConfig {
