@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver, createUnionType } from '@nestjs/graphql';
+import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import {
   CurrentUserEventGroupSubscription,
   CurrentUserEventSubscription,
@@ -18,6 +19,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublicEvent } from '../../public-events/models';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { TurnstileService } from '../../turnstile/turnstile.service';
 
 export const SubscribedItemUnion = createUnionType({
   name: 'SubscribedItem',
@@ -42,10 +44,8 @@ export class CurrentUserEventSubscriptionsResolver {
     private readonly currentUserContext: CurrentUserContextService,
     private readonly mapper: CurrentUserEventMapperService,
     private readonly eventSubscriptions: CurrentUserEventSubscriptionService,
-    private readonly frozenResources: FrozenResourceService = {
-      assertEventMutable: async () => undefined,
-      assertEventGroupMutable: async () => undefined,
-    } as unknown as FrozenResourceService,
+    private readonly frozenResources: FrozenResourceService,
+    private readonly turnstile: TurnstileService,
   ) {}
 
   @Query(() => [PublicEvent], {
@@ -154,9 +154,15 @@ export class CurrentUserEventSubscriptionsResolver {
   @Mutation(() => PublicEvent, { name: 'subscribeCurrentUserStandaloneEvent' })
   async subscribeCurrentUserStandaloneEvent(
     @Args('eventId', { type: () => String }) eventId: string,
+    @Args('turnstileToken', { type: () => String, nullable: true }) turnstileToken: string | null | undefined,
     @Context() context: GraphqlContext,
   ): Promise<PublicEvent> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.turnstile.assertValidToken(
+      turnstileToken,
+      context.req ?? context.request,
+      TURNSTILE_ACTIONS.standaloneEventSubscription,
+    );
     await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId, authenticatedUser);

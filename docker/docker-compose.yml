@@ -146,6 +146,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:?TURNSTILE_SITE_KEY is required}
     depends_on:
       backend:
         condition: service_started

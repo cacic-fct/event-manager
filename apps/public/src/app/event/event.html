@@ -76,10 +76,22 @@
       Cancelar inscrição
     </button>
     } @else if (hasStandaloneSubscription(event)) {
+    @if (isAuthenticated() && canSubscribe(data)) {
+    <div class="turnstile-action">
+      <lib-cloudflare-turnstile
+        [action]="standaloneSubscriptionTurnstileAction"
+        (tokenChange)="standaloneSubscriptionTurnstileToken.set($event)" />
+    </div>
+    }
     <button
       mat-flat-button
       type="button"
-      [disabled]="!isOnline() || !canSubscribe(data) || isSubscribing()"
+      [disabled]="
+        !isOnline() ||
+        !canSubscribe(data) ||
+        isSubscribing() ||
+        (isAuthenticated() && !standaloneSubscriptionTurnstileToken())
+      "
       (click)="subscribe(data)">
       <mat-icon>event_available</mat-icon>
       Inscrever-se

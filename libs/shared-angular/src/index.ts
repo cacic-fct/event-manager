@@ -19,3 +19,6 @@ export * from './lib/service-worker/service-worker.service';
 export * from './lib/sitemap/sitemap.utils';
 export * from './lib/guards/guards';
 export * from './lib/guards/redirect-authenticated';
+export * from './lib/turnstile/cloudflare-turnstile.component';
+export * from './lib/turnstile/cloudflare-turnstile.config';
+export * from './lib/turnstile/cloudflare-turnstile.service';

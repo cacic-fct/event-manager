@@ -46,20 +46,20 @@ export class OnlineAttendanceApiService {
     ).pipe(map((data) => data.currentUserPendingOnlineAttendanceEvents));
   }
 
-  confirmAttendance(eventId: string, code: string): Observable<CurrentUserEventAttendance> {
+  confirmAttendance(eventId: string, code: string, turnstileToken: string): Observable<CurrentUserEventAttendance> {
     return this.query<{
       confirmCurrentUserOnlineAttendance: CurrentUserEventAttendance;
     }>(
       `
-        mutation ConfirmCurrentUserOnlineAttendance($eventId: String!, $code: String!) {
-          confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code }) {
+        mutation ConfirmCurrentUserOnlineAttendance($eventId: String!, $code: String!, $turnstileToken: String) {
+          confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code, turnstileToken: $turnstileToken }) {
             eventId
             attendedAt
             createdAt
           }
         }
       `,
-      { eventId, code },
+      { eventId, code, turnstileToken },
     ).pipe(map((data) => data.confirmCurrentUserOnlineAttendance));
   }
 

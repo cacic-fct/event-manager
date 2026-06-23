@@ -16,10 +16,11 @@ import { Observable, map } from 'rxjs';
 export class CertificateValidationApiService {
   private readonly http = inject(HttpClient);
 
-  validateCertificate(certificateId: string): Observable<PublicCertificateValidation | null> {
-    return this.query<PublicCertificateValidationQuery>(PUBLIC_CERTIFICATE_VALIDATION_QUERY, { certificateId }).pipe(
-      map((data) => data.publicCertificateValidation),
-    );
+  validateCertificate(certificateId: string, turnstileToken: string): Observable<PublicCertificateValidation | null> {
+    return this.query<PublicCertificateValidationQuery>(PUBLIC_CERTIFICATE_VALIDATION_QUERY, {
+      certificateId,
+      turnstileToken,
+    }).pipe(map((data) => data.publicCertificateValidation));
   }
 
   downloadCertificate(certificateId: string): Observable<CertificateDownload> {

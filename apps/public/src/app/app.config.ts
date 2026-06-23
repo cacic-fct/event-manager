@@ -19,6 +19,7 @@ import {
   ServiceWorkerService,
   authInterceptor,
   provideCacicObservability,
+  provideCloudflareTurnstile,
 } from '@cacic-fct/shared-angular';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
@@ -30,6 +31,7 @@ import { NetworkStatusSnackbarService } from './shared/network-status-snackbar.s
 import { AppRouteReuseStrategy } from './tabs/reuse.strategy';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
 import { PUBLIC_FEATURE_FLAG_CONFIG, type PublicFeatureFlagConfig } from './feature-flags/public-feature-flag.config';
+import { TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS } from '@cacic-fct/shared-utils';
 
 registerLocaleData(localePt);
 
@@ -38,6 +40,7 @@ declare global {
     __cacicPublicConfig__?: {
       unleashClientKey?: string;
       unleashEnvironment?: string;
+      turnstileSiteKey?: string;
     };
   }
 }
@@ -54,6 +57,9 @@ const publicFeatureFlagConfig: PublicFeatureFlagConfig = {
 };
 
 const accountPrivacyApiBaseUrl = 'https://account.cacic.dev.br/api';
+const turnstileSiteKey =
+  readRuntimeConfigValue('cacic-turnstile-site-key', 'turnstileSiteKey', 'TURNSTILE_SITE_KEY') ||
+  (isDevMode() ? TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS : '');
 
 const accountPrivacy = () => inject(CacicAccountPrivacyService);
 const isAccountAnalyticsEnabled = () => accountPrivacy().isAnalyticsEnabled();
@@ -63,6 +69,7 @@ const isAccountPerformanceMonitoringEnabled = () => accountPrivacy().isPerforman
 function readRuntimeConfigValue(
   metaName: string,
   windowConfigKey: keyof NonNullable<Window['__cacicPublicConfig__']>,
+  serverEnvKey?: string,
 ): string {
   if (typeof document !== 'undefined') {
     const metaValue = document.querySelector<HTMLMetaElement>(`meta[name="${metaName}"]`)?.content;
@@ -72,10 +79,33 @@ function readRuntimeConfigValue(
   }
 
   if (typeof window !== 'undefined') {
-    return window.__cacicPublicConfig__?.[windowConfigKey] ?? '';
+    const windowValue = window.__cacicPublicConfig__?.[windowConfigKey];
+    if (windowValue) {
+      return windowValue;
+    }
+  }
+
+  if (serverEnvKey) {
+    return readServerEnvironmentValue(serverEnvKey);
   }
 
   return '';
+}
+
+function readServerEnvironmentValue(key: string): string {
+  const processLike = (
+    globalThis as {
+      process?: {
+        env?: Record<string, string | undefined>;
+        versions?: { node?: string };
+      };
+    }
+  ).process;
+  if (!processLike?.versions?.node) {
+    return '';
+  }
+
+  return processLike?.env?.[key] ?? '';
 }
 
 export const appConfig: ApplicationConfig = {
@@ -86,6 +116,9 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideCloudflareTurnstile({
+      siteKey: turnstileSiteKey,
+    }),
     provideCacicAccountPrivacy({
       apiBaseUrl: accountPrivacyApiBaseUrl,
     }),
