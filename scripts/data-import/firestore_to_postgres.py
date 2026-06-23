@@ -13,24 +13,31 @@ This imports:
 - __collections__.events.*.__collections__.non-paying-attendance -> event_attendances
 
 ID strategy:
-- Firestore IDs are remapped to deterministic UUIDv7-like IDs for imported entities.
+- Firestore IDs are remapped to stable UUIDs for imported entities.
 - Foreign-key references are rebound to those generated IDs.
 - Original Firestore person ID is preserved in people.externalRef.
 
 Requirements:
-  pip install "psycopg[binary]" uuid
+  pip install "psycopg[binary]"
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-from uuid import uuid7
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+
+from import_common import (
+    add_database_connection_args,
+    connect_psycopg,
+    database_url_from_args,
+    execute_many_if_any,
+)
 
 
 DEFAULT_UNKNOWN_EMOJI = "❔"
@@ -76,14 +83,10 @@ class IdMappings:
     person_ids: dict[str, str]
 
 
-class Uuid7LikeGenerator:
-    """
-    Wrapper that produces deterministic UUIDv7 values for a given seed
-    using the `uuid7` implementation from the `uuid` package.
-    """
+class StableUuidGenerator:
+    """Produces deterministic UUIDs for legacy Firestore IDs."""
 
-    def __init__(self, base_timestamp_ms: int = 1704067200000) -> None:
-        self.base_timestamp_ms = base_timestamp_ms
+    def __init__(self) -> None:
         self.generated_by_seed: dict[str, str] = {}
 
     def for_seed(self, seed: str) -> str:
@@ -91,10 +94,7 @@ class Uuid7LikeGenerator:
         if existing is not None:
             return existing
 
-        # Delegate to uuid7 from the external `uuid` package. The package's
-        # uuid7 implementation is expected to accept a seed/name to produce a
-        # deterministic value for the same input.
-        generated = str(uuid7(seed))
+        generated = str(uuid.uuid5(uuid.NAMESPACE_URL, f"fct-app-import:{seed}"))
         self.generated_by_seed[seed] = generated
         return generated
 
@@ -109,17 +109,7 @@ def parse_args() -> argparse.Namespace:
         default=Path("import/file.json"),
         help="Path to Firestore export JSON file.",
     )
-    parser.add_argument(
-        "--database-url",
-        type=str,
-        default="",
-        help="Full PostgreSQL URL. If omitted, individual --db-* options are used.",
-    )
-    parser.add_argument("--db-host", type=str, default="localhost")
-    parser.add_argument("--db-port", type=int, default=5432)
-    parser.add_argument("--db-name", type=str, default="postgres")
-    parser.add_argument("--db-user", type=str, default="postgres")
-    parser.add_argument("--db-password", type=str, default="postgres")
+    add_database_connection_args(parser)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -155,11 +145,7 @@ def main() -> None:
         print("Dry run enabled. No database changes were made.")
         return
 
-    database_url = args.database_url or (
-        f"postgresql://{args.db_user}:{args.db_password}@"
-        f"{args.db_host}:{args.db_port}/{args.db_name}"
-    )
-    write_payload(database_url, payload)
+    write_payload(database_url_from_args(args), payload)
     print("Import completed.")
 
 
@@ -180,7 +166,7 @@ def build_payload(json_path: Path) -> MigrationPayload:
         raise ValueError("Expected '__collections__.users' to be an object.")
 
     now = utc_now()
-    id_generator = Uuid7LikeGenerator()
+    id_generator = StableUuidGenerator()
 
     mappings = IdMappings(
         major_event_ids={
@@ -288,7 +274,7 @@ def build_people_from_users(
     raw_users: dict[str, Any],
     mappings: IdMappings,
     people_rows_by_id: dict[str, dict[str, Any]],
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
     fallback_now: datetime,
 ) -> None:
     for user_key in sorted(raw_users.keys()):
@@ -338,7 +324,7 @@ def resolve_person_id(
     legacy_person_id: str,
     mappings: IdMappings,
     people_rows_by_id: dict[str, dict[str, Any]],
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
     fallback_now: datetime,
 ) -> str:
     existing = mappings.person_ids.get(legacy_person_id)
@@ -364,7 +350,7 @@ def resolve_person_id(
 def resolve_event_group_id(
     group_name: str,
     mappings: IdMappings,
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
 ) -> str:
     existing = mappings.event_group_ids.get(group_name)
     if existing is not None:
@@ -379,7 +365,7 @@ def map_major_events(
     raw_major_events: dict[str, Any],
     mappings: IdMappings,
     people_rows_by_id: dict[str, dict[str, Any]],
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
     fallback_now: datetime,
 ) -> tuple[
     list[dict[str, Any]],
@@ -555,7 +541,7 @@ def merge_major_subscriptions_from_user_refs(
     raw_users: dict[str, Any],
     mappings: IdMappings,
     people_rows_by_id: dict[str, dict[str, Any]],
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
     major_event_sub_rows: list[dict[str, Any]],
     fallback_now: datetime,
 ) -> tuple[list[dict[str, Any]], int]:
@@ -614,7 +600,7 @@ def map_events(
     raw_events: dict[str, Any],
     mappings: IdMappings,
     people_rows_by_id: dict[str, dict[str, Any]],
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
     fallback_now: datetime,
 ) -> tuple[
     list[dict[str, Any]],
@@ -796,7 +782,7 @@ def map_event_subscriptions(
     raw_users: dict[str, Any],
     mappings: IdMappings,
     people_rows_by_id: dict[str, dict[str, Any]],
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
     event_subscription_seeds_from_events: dict[tuple[str, str], EventSubscriptionSeed],
     major_sub_event_seeds: dict[tuple[str, str], SubscriptionSeed],
     event_group_subscription_seeds: dict[tuple[str, str], SubscriptionSeed],
@@ -902,7 +888,7 @@ def map_event_attendances(
     raw_events: dict[str, Any],
     mappings: IdMappings,
     people_rows_by_id: dict[str, dict[str, Any]],
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
     fallback_now: datetime,
 ) -> list[dict[str, Any]]:
     attendance_by_pair: dict[tuple[str, str], SubscriptionSeed] = {}
@@ -950,14 +936,7 @@ def map_event_attendances(
     ]
 
 def write_payload(database_url: str, payload: MigrationPayload) -> None:
-    try:
-        import psycopg
-    except ImportError as error:
-        raise RuntimeError(
-            "Missing dependency 'psycopg'. Install with: pip install \"psycopg[binary]\""
-        ) from error
-
-    with psycopg.connect(database_url) as connection:
+    with connect_psycopg(database_url) as connection:
         with connection.cursor() as cursor:
             execute_many_if_any(
                 cursor,
@@ -1241,12 +1220,6 @@ def write_payload(database_url: str, payload: MigrationPayload) -> None:
             )
 
 
-def execute_many_if_any(cursor: Any, query: str, rows: list[dict[str, Any]]) -> None:
-    if not rows:
-        return
-    cursor.executemany(query, rows)
-
-
 def upsert_seed(
     seed_map: dict[tuple[str, str], SubscriptionSeed],
     pair: tuple[str, str],
@@ -1294,7 +1267,7 @@ def upsert_event_subscription_seed(
 def build_payment_info_row(
     major_event_id: str,
     payment_info: dict[str, Any],
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
 ) -> dict[str, Any] | None:
     if not payment_info:
         return None
@@ -1324,7 +1297,7 @@ def build_payment_info_row(
 def build_major_event_price_rows(
     major_event_id: str,
     raw_price: Any,
-    id_generator: Uuid7LikeGenerator,
+    id_generator: StableUuidGenerator,
     created_at: datetime,
 ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
     single_price = parse_int(raw_price)
