@@ -298,7 +298,11 @@ export class CertificatesResolver {
 
   private getCertificateTargetId(
     scope: CertificateScope,
-    input: Pick<CertificateConfigCreateInput, 'eventId' | 'eventGroupId' | 'majorEventId'>,
+    input: {
+      eventId?: string | null;
+      eventGroupId?: string | null;
+      majorEventId?: string | null;
+    },
   ): string {
     if (scope === CertificateScope.EVENT && input.eventId) {
       return input.eventId;

@@ -23,10 +23,10 @@ export class PaymentInfo {
   document!: string;
 
   @Field(() => String, { nullable: true })
-  pixKey?: string;
+  pixKey?: string | null;
 
   @Field(() => String, { nullable: true })
-  pixCity?: string;
+  pixCity?: string | null;
 
   @Field(() => String)
   majorEventId!: string;
@@ -74,37 +74,37 @@ export class MajorEvent {
   endDate!: Date;
 
   @Field(() => String, { nullable: true })
-  description?: string;
+  description?: string | null;
 
   @Field(() => Date, { nullable: true })
-  subscriptionStartDate?: Date;
+  subscriptionStartDate?: Date | null;
 
   @Field(() => Date, { nullable: true })
-  subscriptionEndDate?: Date;
+  subscriptionEndDate?: Date | null;
 
   @Field(() => Int, { nullable: true })
-  maxCoursesPerAttendee?: number;
+  maxCoursesPerAttendee?: number | null;
 
   @Field(() => Int, { nullable: true })
-  maxLecturesPerAttendee?: number;
+  maxLecturesPerAttendee?: number | null;
 
   @Field(() => Int, { nullable: true })
-  maxUncategorizedPerAttendee?: number;
+  maxUncategorizedPerAttendee?: number | null;
 
   @Field(() => Boolean)
   rankedSubscriptionEnabled!: boolean;
 
   @Field(() => String, { nullable: true })
-  buttonText?: string;
+  buttonText?: string | null;
 
   @Field(() => String, { nullable: true })
-  buttonLink?: string;
+  buttonLink?: string | null;
 
   @Field(() => String, { nullable: true })
-  contactInfo?: string;
+  contactInfo?: string | null;
 
   @Field(() => ContactType, { nullable: true })
-  contactType?: ContactType;
+  contactType?: ContactType | null;
 
   @Field(() => Boolean)
   isPaymentRequired!: boolean;
@@ -116,26 +116,26 @@ export class MajorEvent {
   shouldIssueCertificateForNonSubscribedAttendees!: boolean;
 
   @Field(() => String, { nullable: true })
-  additionalPaymentInfo?: string;
+  additionalPaymentInfo?: string | null;
 
   @Field(() => PaymentInfo, { nullable: true })
-  paymentInfo?: PaymentInfo;
+  paymentInfo?: PaymentInfo | null;
 
   @Field(() => [MajorEventPrice], { nullable: true })
-  majorEventPrices?: MajorEventPrice[];
+  majorEventPrices?: MajorEventPrice[] | null;
 
   @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 
   @Field(() => Date)
   createdAt!: Date;
 
   @Field(() => String, { nullable: true })
-  createdById?: string;
+  createdById?: string | null;
 
   @Field(() => Date)
   updatedAt!: Date;
 
   @Field(() => String, { nullable: true })
-  updatedById?: string;
+  updatedById?: string | null;
 }

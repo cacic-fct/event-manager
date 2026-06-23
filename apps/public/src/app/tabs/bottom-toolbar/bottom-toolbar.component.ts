@@ -10,7 +10,6 @@ import {
   DestroyRef,
   NgZone,
   PLATFORM_ID,
-  Signal,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { DOCUMENT } from '@angular/common';

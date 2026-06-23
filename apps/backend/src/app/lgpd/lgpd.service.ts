@@ -537,7 +537,7 @@ export class LgpdService {
     }
     if (value && typeof value === 'object') {
       const changedField = typeof value['field'] === 'string' ? value['field'] : null;
-      return Object.entries(value).some(([key, child]) => {
+      return Object.entries(value as Record<string, Prisma.JsonValue>).some(([key, child]) => {
         const nextPath = [...path, key];
         if (
           (key === 'before' || key === 'after') &&
@@ -597,7 +597,7 @@ export class LgpdService {
       const redactChangeValues = personRoot && changedField != null && PERSONAL_AUDIT_FIELDS.has(changedField);
       const anonymizeChangeValues = changedField != null && this.isAuditIdentityField(changedField, personRoot);
       return Object.fromEntries(
-        Object.entries(value).map(([key, child]) => {
+        Object.entries(value as Record<string, Prisma.JsonValue>).map(([key, child]) => {
           const nextPath = [...path, key];
           const isNestedPerson = path.includes('person') || path.includes('user');
           const redactPersonalField = PERSONAL_AUDIT_FIELDS.has(key) && (personRoot || isNestedPerson);

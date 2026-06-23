@@ -280,16 +280,9 @@ export class FrozenResourceService {
               createdAt: {
                 lt: cutoff,
               },
-              OR: [
-                {
-                  endDate: null,
-                },
-                {
-                  endDate: {
-                    lt: cutoff,
-                  },
-                },
-              ],
+              endDate: {
+                lt: cutoff,
+              },
             },
           },
           {
@@ -299,16 +292,9 @@ export class FrozenResourceService {
               createdAt: {
                 lt: cutoff,
               },
-              OR: [
-                {
-                  endDate: null,
-                },
-                {
-                  endDate: {
-                    lt: cutoff,
-                  },
-                },
-              ],
+              endDate: {
+                lt: cutoff,
+              },
             },
           },
           {

@@ -597,7 +597,7 @@ export class CurrentUserMajorEventSubscriptionService {
     }
 
     for (const { event } of lecturerMajorEvents) {
-      if (!event.majorEventId || itemsByMajorEventId.has(event.majorEventId)) {
+      if (!event.majorEventId || !event.majorEvent || itemsByMajorEventId.has(event.majorEventId)) {
         continue;
       }
 
@@ -616,7 +616,7 @@ export class CurrentUserMajorEventSubscriptionService {
     }
 
     for (const { config } of certificates) {
-      if (!config.majorEventId || itemsByMajorEventId.has(config.majorEventId)) {
+      if (!config.majorEventId || !config.majorEvent || itemsByMajorEventId.has(config.majorEventId)) {
         continue;
       }
 

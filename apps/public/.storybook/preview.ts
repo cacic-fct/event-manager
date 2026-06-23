@@ -1,4 +1,4 @@
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { inject, provideAppInitializer } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -214,7 +214,7 @@ const preview: Preview = {
   decorators: [
     applicationConfig({
       providers: [
-        provideHttpClient(withFetch()),
+        provideHttpClient(),
         provideNoopAnimations(),
         provideRouter([], withDisabledInitialNavigation()),
         provideCloudflareTurnstile({

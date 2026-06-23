@@ -15,7 +15,7 @@ export class Event {
   name!: string;
 
   @Field(() => Int, { nullable: true })
-  creditMinutes?: number;
+  creditMinutes?: number | null;
 
   @Field(() => Date)
   startDate!: Date;
@@ -30,49 +30,49 @@ export class Event {
   type!: EventType;
 
   @Field(() => String, { nullable: true })
-  description?: string;
+  description?: string | null;
 
   @Field(() => String, { nullable: true })
-  shortDescription?: string;
+  shortDescription?: string | null;
 
   @Field(() => Float, { nullable: true })
-  latitude?: number;
+  latitude?: number | null;
 
   @Field(() => Float, { nullable: true })
-  longitude?: number;
+  longitude?: number | null;
 
   @Field(() => String, { nullable: true })
-  locationDescription?: string;
+  locationDescription?: string | null;
 
   @Field(() => String, { nullable: true })
-  majorEventId?: string;
+  majorEventId?: string | null;
 
   @Field(() => MajorEvent, { nullable: true })
-  majorEvent?: MajorEvent;
+  majorEvent?: MajorEvent | null;
 
   @Field(() => String, { nullable: true })
-  eventGroupId?: string;
+  eventGroupId?: string | null;
 
   @Field(() => EventGroup, { nullable: true })
-  eventGroup?: EventGroup;
+  eventGroup?: EventGroup | null;
 
   @Field(() => [EventAttendance], { nullable: true })
-  attendances?: EventAttendance[];
+  attendances?: EventAttendance[] | null;
 
   @Field(() => [EventLecturer], { nullable: true })
-  lecturers?: EventLecturer[];
+  lecturers?: EventLecturer[] | null;
 
   @Field(() => Boolean)
   allowSubscription!: boolean;
 
   @Field(() => Date, { nullable: true })
-  subscriptionStartDate?: Date;
+  subscriptionStartDate?: Date | null;
 
   @Field(() => Date, { nullable: true })
-  subscriptionEndDate?: Date;
+  subscriptionEndDate?: Date | null;
 
   @Field(() => Int, { nullable: true })
-  slots?: number;
+  slots?: number | null;
 
   @Field(() => Boolean)
   autoSubscribe!: boolean;
@@ -93,43 +93,43 @@ export class Event {
   isOnlineAttendanceAllowed!: boolean;
 
   @Field(() => Boolean, { nullable: true })
-  shouldProvideSubscriberListToLecturer?: boolean;
+  shouldProvideSubscriberListToLecturer?: boolean | null;
 
   @Field(() => String, { nullable: true })
-  onlineAttendanceCode?: string;
+  onlineAttendanceCode?: string | null;
 
   @Field(() => Date, { nullable: true })
-  onlineAttendanceStartDate?: Date;
+  onlineAttendanceStartDate?: Date | null;
 
   @Field(() => Date, { nullable: true })
-  onlineAttendanceEndDate?: Date;
+  onlineAttendanceEndDate?: Date | null;
 
   @Field(() => Boolean)
   publiclyVisible!: boolean;
 
   @Field(() => String, { nullable: true })
-  youtubeCode?: string;
+  youtubeCode?: string | null;
 
   @Field(() => String, { nullable: true })
-  buttonText?: string;
+  buttonText?: string | null;
 
   @Field(() => String, { nullable: true })
-  buttonLink?: string;
+  buttonLink?: string | null;
 
   @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 
   @Field(() => Date)
   createdAt!: Date;
 
   @Field(() => String, { nullable: true })
-  createdById?: string;
+  createdById?: string | null;
 
   @Field(() => Date)
   updatedAt!: Date;
 
   @Field(() => String, { nullable: true })
-  updatedById?: string;
+  updatedById?: string | null;
 }
 
 @ObjectType()
