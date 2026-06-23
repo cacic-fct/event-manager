@@ -13,6 +13,10 @@ export const authGuard: CanActivateFn = (_route, state) => {
     return true;
   }
 
+  if (authService.consumePostLogoutRedirect()) {
+    return router.parseUrl('/login');
+  }
+
   void authService.login({ returnTo: state.url });
   return router.parseUrl('/login');
 };
