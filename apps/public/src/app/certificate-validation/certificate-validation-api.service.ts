@@ -1,73 +1,31 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { CertificateDownload, PublicCertificateValidation } from '@cacic-fct/shared-utils';
+import {
+  DOWNLOAD_PUBLIC_CERTIFICATE_QUERY,
+  PUBLIC_CERTIFICATE_VALIDATION_QUERY,
+  type CertificateDownload,
+  type DownloadPublicCertificateQuery,
+  type GraphqlResponse,
+  type GraphqlVariables,
+  type PublicCertificateValidation,
+  type PublicCertificateValidationQuery,
+} from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
-
-type GraphqlVariable = string | number | boolean | null | undefined;
-type GraphqlVariables = Record<string, GraphqlVariable>;
-
-interface GraphqlResponse<TData> {
-  data?: TData;
-  errors?: Array<{ message: string }>;
-}
-
-const CERTIFICATE_VALIDATION_FIELDS = `
-  id
-  issuedAt
-  personName
-  maskedIdentityDocument
-  scope
-  certificateName
-  targetName
-  targetEmoji
-  totalCreditMinutes
-  sections {
-    title
-    type
-    creditMinutes
-    events {
-      name
-      id
-      emoji
-      startDate
-      endDate
-      creditMinutes
-    }
-  }
-`;
 
 @Injectable({ providedIn: 'root' })
 export class CertificateValidationApiService {
   private readonly http = inject(HttpClient);
 
   validateCertificate(certificateId: string): Observable<PublicCertificateValidation | null> {
-    return this.query<{
-      publicCertificateValidation: PublicCertificateValidation | null;
-    }>(
-      `
-        query PublicCertificateValidation($certificateId: String!) {
-          publicCertificateValidation(certificateId: $certificateId) {
-            ${CERTIFICATE_VALIDATION_FIELDS}
-          }
-        }
-      `,
-      { certificateId },
-    ).pipe(map((data) => data.publicCertificateValidation));
+    return this.query<PublicCertificateValidationQuery>(PUBLIC_CERTIFICATE_VALIDATION_QUERY, { certificateId }).pipe(
+      map((data) => data.publicCertificateValidation),
+    );
   }
 
   downloadCertificate(certificateId: string): Observable<CertificateDownload> {
-    return this.query<{ downloadPublicCertificate: CertificateDownload }>(
-      `
-        query DownloadPublicCertificate($certificateId: String!) {
-          downloadPublicCertificate(certificateId: $certificateId) {
-            fileName
-            mimeType
-            contentBase64
-          }
-        }
-      `,
-      { certificateId },
-    ).pipe(map((data) => data.downloadPublicCertificate));
+    return this.query<DownloadPublicCertificateQuery>(DOWNLOAD_PUBLIC_CERTIFICATE_QUERY, { certificateId }).pipe(
+      map((data) => data.downloadPublicCertificate),
+    );
   }
 
   private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {

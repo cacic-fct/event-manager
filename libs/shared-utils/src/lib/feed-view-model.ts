@@ -1,3 +1,4 @@
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import {
   compareIsoDateDesc,
   formatStatusLine,
@@ -11,7 +12,6 @@ import {
   CurrentUserEventAttendance,
   CurrentUserEventParticipation,
   CurrentUserMajorEventFeedItem,
-  PublicEvent,
   SubscribedItem,
   SubscriptionsFeed,
 } from './attendance-models';

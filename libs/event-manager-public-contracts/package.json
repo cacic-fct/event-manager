@@ -1,0 +1,49 @@
+{
+  "name": "@cacic-fct/event-manager-public-contracts",
+  "version": "0.0.1",
+  "description": "Framework-agnostic CACiC Event Manager public GraphQL contracts.",
+  "license": "AGPL-3.0-only",
+  "type": "commonjs",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./types": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/types/index.js"
+    },
+    "./types/events": {
+      "types": "./lib/types/events.d.ts",
+      "default": "./lib/types/events.js"
+    },
+    "./types/certificates": {
+      "types": "./lib/types/certificates.d.ts",
+      "default": "./lib/types/certificates.js"
+    },
+    "./graphql": {
+      "types": "./lib/graphql/index.d.ts",
+      "default": "./lib/graphql/index.js"
+    },
+    "./graphql/fragments": {
+      "types": "./lib/graphql/fragments.d.ts",
+      "default": "./lib/graphql/fragments.js"
+    },
+    "./graphql/queries": {
+      "types": "./lib/graphql/queries.d.ts",
+      "default": "./lib/graphql/queries.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cacic-fct/event-manager.git",
+    "directory": "libs/event-manager-public-contracts"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "sideEffects": false
+}

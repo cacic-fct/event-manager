@@ -1,7 +1,7 @@
-import type { Meta, StoryObj } from '@storybook/angular';
+import type { EventType, PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { fakerPT_BR as faker } from '@faker-js/faker';
+import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import type { EventType, PublicEvent, PublicMajorEvent } from '@cacic-fct/shared-utils';
 import { CalendarEventListItem } from './calendar-event-list-item';
 
 faker.seed(20260616);

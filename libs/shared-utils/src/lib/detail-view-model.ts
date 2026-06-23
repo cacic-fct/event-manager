@@ -1,3 +1,9 @@
+import type {
+  EventTargetType,
+  PublicEvent,
+  PublicEventGroup,
+  PublicMajorEvent,
+} from '@cacic-fct/event-manager-public-contracts';
 import {
   compareIsoDateAsc,
   formatCreditMinutes,
@@ -23,12 +29,8 @@ import {
   DetailViewModel,
   EventDetails,
   EventGroupDetails,
-  EventTargetType,
   InfoRow,
   MajorEventDetails,
-  PublicEvent,
-  PublicEventGroup,
-  PublicMajorEvent,
 } from './attendance-models';
 
 type DetailViewModelInput =

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import type { PublicEvent } from '@cacic-fct/shared-utils';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { CalendarEventListItem } from './calendar-event-list-item';
 

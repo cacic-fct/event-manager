@@ -1,10 +1,11 @@
+import type { EventType, PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { fakerPT_BR as faker } from '@faker-js/faker';
-import { HttpResponse, http } from 'msw';
-import { NEVER } from 'rxjs';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
+import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
+import { HttpResponse, http } from 'msw';
+import { NEVER } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
-import type { CurrentUserMajorEventSubscription, EventType, PublicEvent, PublicMajorEvent } from '@cacic-fct/shared-utils';
 import { RankedMajorEventSubscription } from './ranked-subscription';
 import { MajorEventSubscriptionRealtimeService } from './subscription-realtime.service';
 

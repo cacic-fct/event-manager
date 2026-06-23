@@ -1,6 +1,7 @@
+import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Injectable } from '@angular/core';
 import { CacicAnalyticsService } from '@cacic-fct/shared-angular';
-import type { CurrentUserMajorEventSubscription, PublicMajorEvent } from '@cacic-fct/shared-utils';
+import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService extends CacicAnalyticsService {

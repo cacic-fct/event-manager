@@ -9,9 +9,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import type { PublicEvent } from '@cacic-fct/shared-utils';
-import { getEventTypeLabel } from '@cacic-fct/shared-utils';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { addDays, isAfter, isBefore, startOfDay, startOfWeek, subDays, subMonths } from 'date-fns';
 import {
   Observable,

@@ -1,11 +1,9 @@
-import {
-  CertificateIssuedTo,
-  CertificateScope,
-  EventType,
+import type {
   PublicCertificateValidation,
   PublicCertificateValidationEvent,
   PublicCertificateValidationEventSection,
-} from '@cacic-fct/shared-data-types';
+} from '@cacic-fct/event-manager-public-contracts';
+import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { isValidCPF } from '@cacic-fct/shared-utils';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
