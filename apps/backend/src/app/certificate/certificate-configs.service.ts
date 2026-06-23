@@ -50,7 +50,11 @@ export class CertificateConfigsService {
       if (this.typesenseSearch.isEnabled()) {
         const searchResult = await this.typesenseSearch.searchCertificateTemplates(
           normalizedQuery,
-          (skip ?? 0) + (take ?? 50),
+          {
+            filterBy: includeInactive ? undefined : 'isActive:=true',
+            limit: take ?? 50,
+            offset: skip ?? 0,
+          },
         );
         if (searchResult.available) {
           prioritizedIds = searchResult.ids;
@@ -92,7 +96,6 @@ export class CertificateConfigsService {
         (left, right) =>
           (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
       )
-      .slice(skip ?? 0, (skip ?? 0) + (take ?? 50))
       .map(mapCertificateTemplate);
   }
 

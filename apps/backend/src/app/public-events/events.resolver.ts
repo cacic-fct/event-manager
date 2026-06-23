@@ -170,6 +170,38 @@ function resolvePublicEventsPagination(skip?: number, take?: number): { skip: nu
   };
 }
 
+function buildPublicEventsTypesenseFilter(input: {
+  eventGroupId?: string;
+  majorEventId?: string;
+  startDateFrom?: Date;
+  startDateUntil?: Date;
+}): string {
+  const filters = ['publiclyVisible:=true'];
+
+  if (input.eventGroupId) {
+    filters.push(`eventGroupId:=${escapeTypesenseFilterValue(input.eventGroupId)}`);
+  }
+  if (input.majorEventId) {
+    filters.push(`majorEventId:=${escapeTypesenseFilterValue(input.majorEventId)}`);
+  }
+  if (input.startDateFrom) {
+    filters.push(`startDate:>=${toTypesenseTimestamp(input.startDateFrom)}`);
+  }
+  if (input.startDateUntil) {
+    filters.push(`startDate:<=${toTypesenseTimestamp(input.startDateUntil)}`);
+  }
+
+  return filters.join(' && ');
+}
+
+function escapeTypesenseFilterValue(value: string): string {
+  return `\`${value.replace(/[`\\]/g, '\\$&')}\``;
+}
+
+function toTypesenseTimestamp(date: Date): number {
+  return Math.floor(date.getTime() / 1000);
+}
+
 @Public()
 @Resolver(() => PublicEvent)
 export class PublicEventsResolver {
@@ -258,10 +290,16 @@ export class PublicEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        const searchResult = await this.typesenseSearch.searchEvents(
-          normalizedQuery,
-          pagination.skip + pagination.take,
-        );
+        const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, {
+          filterBy: buildPublicEventsTypesenseFilter({
+            eventGroupId,
+            majorEventId,
+            startDateFrom,
+            startDateUntil,
+          }),
+          limit: pagination.take,
+          offset: pagination.skip,
+        });
         if (searchResult.available) {
           prioritizedIds = searchResult.ids;
           if (prioritizedIds.length === 0) {
@@ -295,8 +333,7 @@ export class PublicEventsResolver {
       .sort(
         (left, right) =>
           (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-      )
-      .slice(pagination.skip, pagination.skip + pagination.take);
+      );
   }
 
   @Query(() => [PublicEvent], {

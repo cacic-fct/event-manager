@@ -112,6 +112,47 @@ describe('TypesenseSearchService', () => {
     });
   });
 
+  it('passes Typesense filters and offsets while chunking large result windows', async () => {
+    const { client, service } = createEnabledService();
+    client.documents.search
+      .mockResolvedValueOnce({
+        hits: Array.from({ length: 250 }, (_, index) => ({ document: { id: `event-${index}` } })),
+      })
+      .mockResolvedValueOnce({
+        hits: [
+          { document: { id: 'event-250' } },
+          { document: { id: 'event-251' } },
+          { document: { id: 'event-252' } },
+        ],
+      });
+
+    await expect(
+      service.searchEvents('aula', {
+        filterBy: 'publiclyVisible:=true',
+        limit: 253,
+        offset: 250,
+      }),
+    ).resolves.toEqual({
+      available: true,
+      ids: [...Array.from({ length: 250 }, (_, index) => `event-${index}`), 'event-250', 'event-251', 'event-252'],
+    });
+
+    expect(client.documents.search).toHaveBeenNthCalledWith(1, {
+      q: 'aula',
+      query_by: 'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
+      per_page: 250,
+      offset: 250,
+      filter_by: 'publiclyVisible:=true',
+    });
+    expect(client.documents.search).toHaveBeenNthCalledWith(2, {
+      q: 'aula',
+      query_by: 'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
+      per_page: 3,
+      offset: 500,
+      filter_by: 'publiclyVisible:=true',
+    });
+  });
+
   it('returns an unavailable result when Typesense search fails', async () => {
     const { client, service } = createEnabledService();
     jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
@@ -126,7 +167,11 @@ describe('TypesenseSearchService', () => {
   it('upserts event documents with denormalized active parent names', async () => {
     const prisma = createPrismaMock();
     prisma.majorEvent.findFirst.mockResolvedValue({ name: '  Semana academica  ' });
-    prisma.eventGroup.findFirst.mockResolvedValue({ name: '  Minicursos  ' });
+    prisma.eventGroup.findFirst.mockResolvedValue({
+      name: '  Minicursos  ',
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForEachEvent: true,
+    });
     const { client, service } = createEnabledService(prisma);
     const startDate = new Date('2026-06-22T12:00:00.000Z');
     const endDate = new Date('2026-06-22T13:30:00.000Z');
@@ -141,6 +186,8 @@ describe('TypesenseSearchService', () => {
       locationDescription: null,
       majorEventId: 'major-1',
       eventGroupId: 'group-1',
+      shouldIssueCertificate: true,
+      publiclyVisible: true,
       startDate,
       endDate,
     });
@@ -151,7 +198,11 @@ describe('TypesenseSearchService', () => {
     });
     expect(prisma.eventGroup.findFirst).toHaveBeenCalledWith({
       where: { id: 'group-1', deletedAt: null },
-      select: { name: true },
+      select: {
+        name: true,
+        shouldIssueCertificate: true,
+        shouldIssueCertificateForEachEvent: true,
+      },
     });
     expect(client.documents.upsert).toHaveBeenCalledWith({
       id: 'event-1',
@@ -167,6 +218,8 @@ describe('TypesenseSearchService', () => {
       eventGroupName: 'Minicursos',
       startDate: Math.floor(startDate.getTime() / 1000),
       endDate: Math.floor(endDate.getTime() / 1000),
+      publiclyVisible: true,
+      isIssuableCertificateEvent: false,
     });
   });
 
@@ -199,9 +252,13 @@ describe('TypesenseSearchService', () => {
       eventGroup: {
         name: 'Grupo',
         deletedAt: null,
+        shouldIssueCertificate: true,
+        shouldIssueCertificateForEachEvent: true,
       },
       startDate: new Date('2026-06-22T12:00:00.000Z'),
       endDate: new Date('2026-06-22T13:00:00.000Z'),
+      shouldIssueCertificate: true,
+      publiclyVisible: true,
     };
     const prisma = createPrismaMock({
       event: [reindexedEvent],
@@ -355,9 +412,13 @@ describe('TypesenseSearchService', () => {
           eventGroup: {
             name: 'Grupo removido',
             deletedAt: new Date('2026-06-01T00:00:00.000Z'),
+            shouldIssueCertificate: true,
+            shouldIssueCertificateForEachEvent: true,
           },
           startDate: new Date('2026-06-22T12:00:00.000Z'),
           endDate: new Date('2026-06-22T13:00:00.000Z'),
+          shouldIssueCertificate: true,
+          publiclyVisible: true,
         },
       ],
       majorEvent: [
@@ -407,6 +468,8 @@ describe('TypesenseSearchService', () => {
           majorEventName: 'Grande evento',
           eventGroupName: undefined,
           startDate: Math.floor(new Date('2026-06-22T12:00:00.000Z').getTime() / 1000),
+          publiclyVisible: true,
+          isIssuableCertificateEvent: false,
         }),
       ],
       { action: 'upsert' },

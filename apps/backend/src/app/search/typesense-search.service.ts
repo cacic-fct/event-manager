@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import Typesense from 'typesense';
-import type { CollectionCreateSchema, CollectionFieldSchema, CollectionSchema } from 'typesense';
+import type { CollectionCreateSchema, CollectionFieldSchema, CollectionSchema, SearchParams } from 'typesense';
 import type { Client as TypesenseClient } from 'typesense';
 
 type EventSearchDocument = {
@@ -19,6 +19,8 @@ type EventSearchDocument = {
   eventGroupName?: string;
   startDate: number;
   endDate: number;
+  publiclyVisible: boolean;
+  isIssuableCertificateEvent: boolean;
 };
 
 type MajorEventSearchDocument = {
@@ -64,11 +66,19 @@ export type TypesenseSearchResult = {
   ids: string[];
 };
 
+export type TypesenseSearchOptions = {
+  filterBy?: string;
+  limit?: number;
+  offset?: number;
+};
+
 type TypesenseNodeConfig = {
   host: string;
   port: number;
   protocol: string;
 };
+
+const TYPESENSE_MAX_PER_PAGE = 250;
 
 @Injectable()
 export class TypesenseSearchService implements OnModuleInit {
@@ -95,21 +105,21 @@ export class TypesenseSearchService implements OnModuleInit {
     return this.client != null;
   }
 
-  async searchEvents(query: string, take = 50): Promise<TypesenseSearchResult> {
+  async searchEvents(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<EventSearchDocument>(
       'events',
       query,
       'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
-      take,
+      options,
     );
   }
 
-  async searchMajorEvents(query: string, take = 50): Promise<TypesenseSearchResult> {
-    return this.searchDocumentIds<MajorEventSearchDocument>('major_events', query, 'name,description', take);
+  async searchMajorEvents(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
+    return this.searchDocumentIds<MajorEventSearchDocument>('major_events', query, 'name,description', options);
   }
 
-  async searchEventGroups(query: string, take = 50): Promise<TypesenseSearchResult> {
-    return this.searchDocumentIds<EventGroupSearchDocument>('event_groups', query, 'name', take);
+  async searchEventGroups(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
+    return this.searchDocumentIds<EventGroupSearchDocument>('event_groups', query, 'name', options);
   }
 
   async searchPeople(query: string, take = 50): Promise<TypesenseSearchResult> {
@@ -130,12 +140,15 @@ export class TypesenseSearchService implements OnModuleInit {
     );
   }
 
-  async searchCertificateTemplates(query: string, take = 50): Promise<TypesenseSearchResult> {
+  async searchCertificateTemplates(
+    query: string,
+    options: number | TypesenseSearchOptions = 50,
+  ): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<CertificateTemplateSearchDocument>(
       'certificate_templates',
       query,
       'name,description',
-      take,
+      options,
     );
   }
 
@@ -149,6 +162,8 @@ export class TypesenseSearchService implements OnModuleInit {
     locationDescription?: string | null;
     majorEventId?: string | null;
     eventGroupId?: string | null;
+    shouldIssueCertificate?: boolean | null;
+    publiclyVisible?: boolean | null;
     startDate: Date;
     endDate: Date;
   }): Promise<void> {
@@ -156,9 +171,9 @@ export class TypesenseSearchService implements OnModuleInit {
       return;
     }
 
-    const [majorEventName, eventGroupName] = await Promise.all([
+    const [majorEventName, eventGroupContext] = await Promise.all([
       this.resolveMajorEventName(input.majorEventId),
-      this.resolveEventGroupName(input.eventGroupId),
+      this.resolveEventGroupContext(input.eventGroupId),
     ]);
 
     await this.upsertDocument<EventSearchDocument>('events', {
@@ -172,9 +187,16 @@ export class TypesenseSearchService implements OnModuleInit {
       majorEventId: this.toOptionalString(input.majorEventId),
       majorEventName,
       eventGroupId: this.toOptionalString(input.eventGroupId),
-      eventGroupName,
+      eventGroupName: eventGroupContext?.name,
       startDate: this.toUnixTimestamp(input.startDate),
       endDate: this.toUnixTimestamp(input.endDate),
+      publiclyVisible: Boolean(input.publiclyVisible),
+      isIssuableCertificateEvent: this.isIssuableCertificateEvent({
+        eventGroup: eventGroupContext,
+        eventGroupId: input.eventGroupId,
+        majorEventId: input.majorEventId,
+        shouldIssueCertificate: input.shouldIssueCertificate,
+      }),
     });
   }
 
@@ -374,6 +396,8 @@ export class TypesenseSearchService implements OnModuleInit {
         { name: 'eventGroupName', type: 'string', optional: true },
         { name: 'startDate', type: 'int64', sort: true },
         { name: 'endDate', type: 'int64', sort: true },
+        { name: 'publiclyVisible', type: 'bool', optional: true, facet: true },
+        { name: 'isIssuableCertificateEvent', type: 'bool', optional: true, facet: true },
       ]),
       this.createCollectionSchema('major_events', [
         { name: 'id', type: 'string' },
@@ -474,10 +498,14 @@ export class TypesenseSearchService implements OnModuleInit {
             select: {
               name: true,
               deletedAt: true,
+              shouldIssueCertificate: true,
+              shouldIssueCertificateForEachEvent: true,
             },
           },
           startDate: true,
           endDate: true,
+          shouldIssueCertificate: true,
+          publiclyVisible: true,
         },
       }),
       this.prisma.majorEvent.findMany({
@@ -547,6 +575,8 @@ export class TypesenseSearchService implements OnModuleInit {
           eventGroupName: event.eventGroup?.deletedAt ? undefined : this.toOptionalString(event.eventGroup?.name),
           startDate: this.toUnixTimestamp(event.startDate),
           endDate: this.toUnixTimestamp(event.endDate),
+          publiclyVisible: event.publiclyVisible,
+          isIssuableCertificateEvent: this.isIssuableCertificateEvent(event),
         })),
       ),
       this.replaceCollectionDocuments<MajorEventSearchDocument>(
@@ -638,10 +668,14 @@ export class TypesenseSearchService implements OnModuleInit {
           select: {
             name: true,
             deletedAt: true,
+            shouldIssueCertificate: true,
+            shouldIssueCertificateForEachEvent: true,
           },
         },
         startDate: true,
         endDate: true,
+        shouldIssueCertificate: true,
+        publiclyVisible: true,
       },
     });
 
@@ -661,6 +695,8 @@ export class TypesenseSearchService implements OnModuleInit {
           eventGroupName: event.eventGroup?.deletedAt ? undefined : this.toOptionalString(event.eventGroup?.name),
           startDate: this.toUnixTimestamp(event.startDate),
           endDate: this.toUnixTimestamp(event.endDate),
+          publiclyVisible: event.publiclyVisible,
+          isIssuableCertificateEvent: this.isIssuableCertificateEvent(event),
         }),
       ),
     );
@@ -714,28 +750,74 @@ export class TypesenseSearchService implements OnModuleInit {
     collectionName: string,
     query: string,
     queryBy: string,
-    take: number,
+    options: number | TypesenseSearchOptions,
   ): Promise<TypesenseSearchResult> {
     const normalizedQuery = query.trim();
     if (!this.client || !normalizedQuery) {
       return { available: false, ids: [] };
     }
 
+    const { filterBy, limit, offset } = this.normalizeSearchOptions(options);
+    if (limit === 0) {
+      return { available: true, ids: [] };
+    }
+
     try {
-      const result = await this.client.collections<T & Record<string, unknown>>(collectionName).documents().search({
-        q: normalizedQuery,
-        query_by: queryBy,
-        per_page: take,
-      });
+      const ids: string[] = [];
+      let nextOffset = offset;
+
+      while (ids.length < limit) {
+        const pageSize = Math.min(TYPESENSE_MAX_PER_PAGE, limit - ids.length);
+        const searchParameters: SearchParams<T & Record<string, unknown>> = {
+          q: normalizedQuery,
+          query_by: queryBy,
+          per_page: pageSize,
+        };
+
+        if (nextOffset > 0) {
+          searchParameters.offset = nextOffset;
+        }
+        if (filterBy) {
+          searchParameters.filter_by = filterBy;
+        }
+
+        const result = await this.client
+          .collections<T & Record<string, unknown>>(collectionName)
+          .documents()
+          .search(searchParameters);
+        const hits = result.hits ?? [];
+        ids.push(...hits.map((hit) => hit.document.id).filter((id) => Boolean(id)));
+
+        if (hits.length < pageSize) {
+          break;
+        }
+        nextOffset += hits.length;
+      }
 
       return {
         available: true,
-        ids: result.hits?.map((hit) => hit.document.id).filter((id) => Boolean(id)) ?? [],
+        ids,
       };
     } catch (error) {
       this.logger.error(`Typesense search failed for collection ${collectionName}.`, error);
       return { available: false, ids: [] };
     }
+  }
+
+  private normalizeSearchOptions(options: number | TypesenseSearchOptions): Required<TypesenseSearchOptions> {
+    if (typeof options === 'number') {
+      return {
+        filterBy: '',
+        limit: Math.max(0, Math.floor(options)),
+        offset: 0,
+      };
+    }
+
+    return {
+      filterBy: options.filterBy?.trim() ?? '',
+      limit: Math.max(0, Math.floor(options.limit ?? 50)),
+      offset: Math.max(0, Math.floor(options.offset ?? 0)),
+    };
   }
 
   private async resolveMajorEventName(majorEventId?: string | null): Promise<string | undefined> {
@@ -751,17 +833,59 @@ export class TypesenseSearchService implements OnModuleInit {
     return this.toOptionalString(majorEvent?.name);
   }
 
-  private async resolveEventGroupName(eventGroupId?: string | null): Promise<string | undefined> {
+  private async resolveEventGroupContext(eventGroupId?: string | null): Promise<{
+    name: string;
+    shouldIssueCertificate: boolean;
+    shouldIssueCertificateForEachEvent: boolean;
+  } | null> {
     if (!eventGroupId) {
-      return undefined;
+      return null;
     }
 
     const eventGroup = await this.prisma.eventGroup.findFirst({
       where: { id: eventGroupId, deletedAt: null },
-      select: { name: true },
+      select: {
+        name: true,
+        shouldIssueCertificate: true,
+        shouldIssueCertificateForEachEvent: true,
+      },
     });
 
-    return this.toOptionalString(eventGroup?.name);
+    if (!eventGroup) {
+      return null;
+    }
+
+    return {
+      name: this.toOptionalString(eventGroup.name) ?? '',
+      shouldIssueCertificate: eventGroup.shouldIssueCertificate,
+      shouldIssueCertificateForEachEvent: eventGroup.shouldIssueCertificateForEachEvent,
+    };
+  }
+
+  private isIssuableCertificateEvent(input: {
+    eventGroup?: {
+      deletedAt?: Date | string | null;
+      shouldIssueCertificate?: boolean | null;
+      shouldIssueCertificateForEachEvent?: boolean | null;
+    } | null;
+    eventGroupId?: string | null;
+    majorEventId?: string | null;
+    shouldIssueCertificate?: boolean | null;
+  }): boolean {
+    if (input.majorEventId || !input.shouldIssueCertificate) {
+      return false;
+    }
+
+    if (!input.eventGroupId) {
+      return true;
+    }
+
+    return Boolean(
+      input.eventGroup &&
+        !input.eventGroup.deletedAt &&
+        input.eventGroup.shouldIssueCertificate &&
+        input.eventGroup.shouldIssueCertificateForEachEvent,
+    );
   }
 
   private toUnixTimestamp(date: Date): number {

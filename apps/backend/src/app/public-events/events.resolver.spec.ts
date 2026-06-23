@@ -8,31 +8,35 @@ describe('PublicEventsResolver lecturer profiles', () => {
   it('uses Typesense rank for public event searches before applying pagination', async () => {
     const prisma = {
       event: {
-        findMany: jest.fn().mockResolvedValue([{ id: 'event-b' }, { id: 'event-a' }]),
+        findMany: jest.fn().mockResolvedValue([{ id: 'event-b' }]),
       },
     };
     const typesenseSearch = createTypesenseSearch({
       available: true,
-      ids: ['event-a', 'event-b'],
+      ids: ['event-b'],
     });
     const resolver = new PublicEventsResolver(prisma as never, typesenseSearch as never);
 
     await expect(
-      resolver.publicEvents(' aula ', undefined, undefined, undefined, undefined, 1, 1),
+      resolver.publicEvents(' aula ', undefined, undefined, undefined, undefined, 250, 100),
     ).resolves.toEqual([{ id: 'event-b' }]);
 
-    expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', 2);
+    expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', {
+      filterBy: 'publiclyVisible:=true',
+      limit: 100,
+      offset: 250,
+    });
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           deletedAt: null,
           publiclyVisible: true,
           id: {
-            in: ['event-a', 'event-b'],
+            in: ['event-b'],
           },
         },
         skip: 0,
-        take: 2,
+        take: 1,
       }),
     );
   });

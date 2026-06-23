@@ -6,13 +6,12 @@ describe('CertificateConfigsService', () => {
       certificateTemplate: {
         findMany: jest.fn().mockResolvedValue([
           createTemplate({ id: 'template-b', name: 'B' }),
-          createTemplate({ id: 'template-a', name: 'A' }),
         ]),
       },
     });
     const typesenseSearch = createTypesenseSearch({
       available: true,
-      ids: ['template-a', 'template-b'],
+      ids: ['template-b'],
     });
     const service = new CertificateConfigsService(prisma as never, {} as never, {} as never, typesenseSearch as never);
 
@@ -22,18 +21,22 @@ describe('CertificateConfigsService', () => {
       }),
     ]);
 
-    expect(typesenseSearch.searchCertificateTemplates).toHaveBeenCalledWith('certificado', 2);
+    expect(typesenseSearch.searchCertificateTemplates).toHaveBeenCalledWith('certificado', {
+      filterBy: 'isActive:=true',
+      limit: 1,
+      offset: 1,
+    });
     expect(prisma.certificateTemplate.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           deletedAt: null,
           isActive: true,
           id: {
-            in: ['template-a', 'template-b'],
+            in: ['template-b'],
           },
         },
         skip: 0,
-        take: 2,
+        take: 1,
       }),
     );
   });

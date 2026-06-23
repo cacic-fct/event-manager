@@ -3,27 +3,31 @@ import { CertificateTargetsService } from './certificate-targets.service';
 describe('CertificateTargetsService', () => {
   it('uses Typesense rank for issuable event searches before applying pagination', async () => {
     const prisma = createPrisma();
-    prisma.event.findMany.mockResolvedValue([{ id: 'event-b' }, { id: 'event-a' }]);
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-b' }]);
     const typesenseSearch = createTypesenseSearch({
       searchEvents: jest.fn().mockResolvedValue({
         available: true,
-        ids: ['event-a', 'event-b'],
+        ids: ['event-b'],
       }),
     });
     const service = new CertificateTargetsService(prisma as never, typesenseSearch as never);
 
     await expect(service.listIssuableEvents(' aula ', 1, 1)).resolves.toEqual([{ id: 'event-b' }]);
 
-    expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', 2);
+    expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', {
+      filterBy: 'isIssuableCertificateEvent:=true',
+      limit: 1,
+      offset: 1,
+    });
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           id: {
-            in: ['event-a', 'event-b'],
+            in: ['event-b'],
           },
         }),
         skip: 0,
-        take: 2,
+        take: 1,
       }),
     );
   });

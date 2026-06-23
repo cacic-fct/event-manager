@@ -49,7 +49,11 @@ export class CertificateTargetsService {
     if (normalizedQuery) {
       const canUseTypesense = this.typesenseSearch.isEnabled() && !accessibleTargets;
       if (canUseTypesense) {
-        const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, (skip ?? 0) + (take ?? 50));
+        const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, {
+          filterBy: 'isIssuableCertificateEvent:=true',
+          limit: take ?? 50,
+          offset: skip ?? 0,
+        });
         if (searchResult.available) {
           if (searchResult.ids.length === 0) {
             return [];
@@ -66,7 +70,7 @@ export class CertificateTargetsService {
             take: searchResult.ids.length,
           });
 
-          return this.sortByTypesenseRank(events, searchResult.ids).slice(skip ?? 0, (skip ?? 0) + (take ?? 50));
+          return this.sortByTypesenseRank(events, searchResult.ids);
         }
       }
 

@@ -374,6 +374,8 @@ export class EventsResolver {
       locationDescription: event.locationDescription,
       majorEventId: event.majorEventId,
       eventGroupId: event.eventGroupId,
+      shouldIssueCertificate: event.shouldIssueCertificate,
+      publiclyVisible: event.publiclyVisible,
       startDate: event.startDate,
       endDate: event.endDate,
     });
@@ -434,6 +436,8 @@ export class EventsResolver {
         locationDescription: event.locationDescription,
         majorEventId: event.majorEventId,
         eventGroupId: event.eventGroupId,
+        shouldIssueCertificate: event.shouldIssueCertificate,
+        publiclyVisible: event.publiclyVisible,
         startDate: event.startDate,
         endDate: event.endDate,
       });
