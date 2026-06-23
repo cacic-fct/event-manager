@@ -258,11 +258,19 @@ export class PublicEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, pagination.take);
-        if (prioritizedIds.length === 0) {
-          return [];
+        const searchResult = await this.typesenseSearch.searchEvents(
+          normalizedQuery,
+          pagination.skip + pagination.take,
+        );
+        if (searchResult.available) {
+          prioritizedIds = searchResult.ids;
+          if (prioritizedIds.length === 0) {
+            return [];
+          }
+          where.id = { in: prioritizedIds };
+        } else {
+          where.name = { contains: normalizedQuery, mode: 'insensitive' };
         }
-        where.id = { in: prioritizedIds };
       } else {
         where.name = { contains: normalizedQuery, mode: 'insensitive' };
       }
@@ -274,8 +282,8 @@ export class PublicEventsResolver {
       orderBy: {
         startDate: 'desc',
       },
-      skip: pagination.skip,
-      take: pagination.take,
+      skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
+      take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });
 
     if (prioritizedIds.length === 0) {
@@ -283,9 +291,12 @@ export class PublicEventsResolver {
     }
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
-    return [...events].sort(
-      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-    );
+    return [...events]
+      .sort(
+        (left, right) =>
+          (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(pagination.skip, pagination.skip + pagination.take);
   }
 
   @Query(() => [PublicEvent], {
@@ -352,11 +363,16 @@ export class PublicEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEvents(normalizedQuery, 500);
-        if (prioritizedIds.length === 0) {
-          return [];
+        const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, 500);
+        if (searchResult.available) {
+          prioritizedIds = searchResult.ids;
+          if (prioritizedIds.length === 0) {
+            return [];
+          }
+          where.id = { in: prioritizedIds };
+        } else {
+          where.name = { contains: normalizedQuery, mode: 'insensitive' };
         }
-        where.id = { in: prioritizedIds };
       } else {
         where.name = { contains: normalizedQuery, mode: 'insensitive' };
       }

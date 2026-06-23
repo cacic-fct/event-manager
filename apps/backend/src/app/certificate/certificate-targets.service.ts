@@ -4,12 +4,21 @@ import { Prisma } from '@prisma/client';
 import { AccessibleEventGrantTargets } from '../authorization/authorization-policy.service';
 import { EVENT_GROUP_SELECT, EVENT_SELECT, MAJOR_EVENT_SELECT } from './certificate.constants';
 import { PrismaService } from '../prisma/prisma.service';
+import { TypesenseSearchService } from '../search/typesense-search.service';
 
 @Injectable()
 export class CertificateTargetsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly typesenseSearch: TypesenseSearchService = {
+      isEnabled: () => false,
+      searchEvents: async () => ({ available: false, ids: [] }),
+      searchEventGroups: async () => ({ available: false, ids: [] }),
+      searchMajorEvents: async () => ({ available: false, ids: [] }),
+    } as unknown as TypesenseSearchService,
+  ) {}
 
-  listIssuableEvents(
+  async listIssuableEvents(
     query?: string,
     skip?: number,
     take?: number,
@@ -38,6 +47,29 @@ export class CertificateTargetsService {
     }
 
     if (normalizedQuery) {
+      const canUseTypesense = this.typesenseSearch.isEnabled() && !accessibleTargets;
+      if (canUseTypesense) {
+        const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, (skip ?? 0) + (take ?? 50));
+        if (searchResult.available) {
+          if (searchResult.ids.length === 0) {
+            return [];
+          }
+          where.id = { in: searchResult.ids };
+
+          const events = await this.prisma.event.findMany({
+            where,
+            select: EVENT_SELECT,
+            orderBy: {
+              startDate: 'desc',
+            },
+            skip: 0,
+            take: searchResult.ids.length,
+          });
+
+          return this.sortByTypesenseRank(events, searchResult.ids).slice(skip ?? 0, (skip ?? 0) + (take ?? 50));
+        }
+      }
+
       where.name = {
         contains: normalizedQuery,
         mode: 'insensitive',
@@ -55,7 +87,7 @@ export class CertificateTargetsService {
     });
   }
 
-  listIssuableEventGroups(
+  async listIssuableEventGroups(
     query?: string,
     skip?: number,
     take?: number,
@@ -84,6 +116,29 @@ export class CertificateTargetsService {
     }
 
     if (normalizedQuery) {
+      const canUseTypesense = this.typesenseSearch.isEnabled() && !accessibleTargets;
+      if (canUseTypesense) {
+        const searchResult = await this.typesenseSearch.searchEventGroups(normalizedQuery, (skip ?? 0) + (take ?? 50));
+        if (searchResult.available) {
+          if (searchResult.ids.length === 0) {
+            return [];
+          }
+          where.id = { in: searchResult.ids };
+
+          const eventGroups = await this.prisma.eventGroup.findMany({
+            where,
+            select: EVENT_GROUP_SELECT,
+            orderBy: {
+              name: 'asc',
+            },
+            skip: 0,
+            take: searchResult.ids.length,
+          });
+
+          return this.sortByTypesenseRank(eventGroups, searchResult.ids).slice(skip ?? 0, (skip ?? 0) + (take ?? 50));
+        }
+      }
+
       where.name = {
         contains: normalizedQuery,
         mode: 'insensitive',
@@ -101,7 +156,7 @@ export class CertificateTargetsService {
     });
   }
 
-  listIssuableMajorEvents(
+  async listIssuableMajorEvents(
     query?: string,
     skip?: number,
     take?: number,
@@ -138,6 +193,29 @@ export class CertificateTargetsService {
     }
 
     if (normalizedQuery) {
+      const canUseTypesense = this.typesenseSearch.isEnabled() && !accessibleTargets;
+      if (canUseTypesense) {
+        const searchResult = await this.typesenseSearch.searchMajorEvents(normalizedQuery, (skip ?? 0) + (take ?? 50));
+        if (searchResult.available) {
+          if (searchResult.ids.length === 0) {
+            return [];
+          }
+          where.id = { in: searchResult.ids };
+
+          const majorEvents = await this.prisma.majorEvent.findMany({
+            where,
+            select: MAJOR_EVENT_SELECT,
+            orderBy: {
+              startDate: 'desc',
+            },
+            skip: 0,
+            take: searchResult.ids.length,
+          });
+
+          return this.sortByTypesenseRank(majorEvents, searchResult.ids).slice(skip ?? 0, (skip ?? 0) + (take ?? 50));
+        }
+      }
+
       where.name = {
         contains: normalizedQuery,
         mode: 'insensitive',
@@ -266,6 +344,14 @@ export class CertificateTargetsService {
 
     where.AND = [this.normalizeEventWhereAnd(where.AND), { OR: targetWhere }].flat();
     return true;
+  }
+
+  private sortByTypesenseRank<T extends { id: string }>(items: T[], ids: string[]): T[] {
+    const rank = new Map(ids.map((id, index) => [id, index]));
+    return [...items].sort(
+      (left, right) =>
+        (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+    );
   }
 
   private normalizeEventWhereAnd(

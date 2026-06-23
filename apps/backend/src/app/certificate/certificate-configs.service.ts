@@ -10,6 +10,7 @@ import {
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
   CERTIFICATE_CONFIG_SELECT,
   CERTIFICATE_TEMPLATE_SELECT,
@@ -26,6 +27,10 @@ export class CertificateConfigsService {
     private readonly prisma: PrismaService,
     private readonly validation: CertificateValidationService,
     private readonly targetsService: CertificateTargetsService,
+    private readonly typesenseSearch: TypesenseSearchService = {
+      isEnabled: () => false,
+      searchCertificateTemplates: async () => ({ available: false, ids: [] }),
+    } as unknown as TypesenseSearchService,
   ) {}
 
   async listTemplates(
@@ -35,28 +40,60 @@ export class CertificateConfigsService {
     take?: number,
   ): Promise<CertificateTemplate[]> {
     const normalizedQuery = query?.trim();
+    const where: Prisma.CertificateTemplateWhereInput = {
+      deletedAt: null,
+      ...(includeInactive ? {} : { isActive: true }),
+    };
+
+    let prioritizedIds: string[] = [];
+    if (normalizedQuery) {
+      if (this.typesenseSearch.isEnabled()) {
+        const searchResult = await this.typesenseSearch.searchCertificateTemplates(
+          normalizedQuery,
+          (skip ?? 0) + (take ?? 50),
+        );
+        if (searchResult.available) {
+          prioritizedIds = searchResult.ids;
+          if (prioritizedIds.length === 0) {
+            return [];
+          }
+          where.id = { in: prioritizedIds };
+        } else {
+          where.name = {
+            contains: normalizedQuery,
+            mode: 'insensitive',
+          };
+        }
+      } else {
+        where.name = {
+          contains: normalizedQuery,
+          mode: 'insensitive',
+        };
+      }
+    }
+
     const templates = await this.prisma.certificateTemplate.findMany({
-      where: {
-        deletedAt: null,
-        ...(includeInactive ? {} : { isActive: true }),
-        ...(normalizedQuery
-          ? {
-              name: {
-                contains: normalizedQuery,
-                mode: 'insensitive',
-              },
-            }
-          : {}),
-      },
+      where,
       select: CERTIFICATE_TEMPLATE_SELECT,
       orderBy: {
         name: 'asc',
       },
-      skip,
-      take,
+      skip: prioritizedIds.length > 0 ? 0 : skip,
+      take: prioritizedIds.length > 0 ? prioritizedIds.length : take,
     });
 
-    return templates.map(mapCertificateTemplate);
+    if (prioritizedIds.length === 0) {
+      return templates.map(mapCertificateTemplate);
+    }
+
+    const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
+    return [...templates]
+      .sort(
+        (left, right) =>
+          (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(skip ?? 0, (skip ?? 0) + (take ?? 50))
+      .map(mapCertificateTemplate);
   }
 
   async listConfigsByTarget(
