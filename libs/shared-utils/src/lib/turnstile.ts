@@ -1,4 +1,5 @@
 export const TURNSTILE_ACTIONS = {
+  certificateValidation: 'certificate_validation',
   majorEventSubscription: 'major_event_subscription',
   onlineAttendance: 'online_attendance',
   receiptUpload: 'receipt_upload',

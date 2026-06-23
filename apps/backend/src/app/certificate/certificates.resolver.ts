@@ -14,6 +14,7 @@ import {
   PublicCertificateValidation,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { UseGuards } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Throttle } from '@nestjs/throttler';
@@ -31,6 +32,7 @@ import { CertificateDownloadService } from './certificate-download.service';
 import { CertificateIssuingService } from './certificate-issuing.service';
 import { CertificateTargetsService } from './certificate-targets.service';
 import { PublicCertificateValidationService } from './public-certificate-validation.service';
+import { TurnstileService } from '../turnstile/turnstile.service';
 
 type GraphqlRequest = Request & {
   user?: AuthenticatedUser;
@@ -49,6 +51,7 @@ export class CertificatesResolver {
     private readonly issuingService: CertificateIssuingService,
     private readonly downloadService: CertificateDownloadService,
     private readonly publicValidationService: PublicCertificateValidationService,
+    private readonly turnstile: TurnstileService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
@@ -166,13 +169,25 @@ export class CertificatesResolver {
     description:
       'Public certificate authenticity lookup. Returns participant-safe certificate metadata, masked identity information, grouped credited events, and total workload; returns null when the certificate cannot be publicly validated. Rate limited to 20 lookups per minute.',
   })
-  publicCertificateValidation(
+  async publicCertificateValidation(
     @Args('certificateId', {
       type: () => String,
       description: 'Certificate identifier printed in certificate verification links and QR codes.',
     })
     certificateId: string,
+    @Args('turnstileToken', {
+      type: () => String,
+      nullable: true,
+      description: 'Cloudflare Turnstile token required before public certificate lookup.',
+    })
+    turnstileToken: string | null | undefined,
+    @Context() context: GraphqlContext,
   ) {
+    await this.turnstile.assertValidToken(
+      turnstileToken,
+      context.req ?? context.request,
+      TURNSTILE_ACTIONS.certificateValidation,
+    );
     return this.publicValidationService.validateCertificate(certificateId);
   }
 
