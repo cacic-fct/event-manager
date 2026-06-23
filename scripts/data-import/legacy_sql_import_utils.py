@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import re
-import secrets
-import time as unix_time
 import uuid
 from datetime import date, datetime, time, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+
+from import_common import connect_psycopg, execute_many_if_any, uuid7_string
 
 SQL_NUMBER_PATTERN = re.compile(r"^-?\d+(?:\.\d+)?$")
 MOJIBAKE_PATTERN = re.compile("(?:\u00C3.|\u00C2.|\u00E2[\u0080-\u00BF])")
@@ -414,21 +414,6 @@ def deterministic_prefixed_id(prefix: str, seed: str) -> str:
     return f"{prefix}{generated}"
 
 
-def uuid7_string() -> str:
-    timestamp_ms = int(unix_time.time_ns() // 1_000_000)
-    random_a = secrets.randbits(12)
-    random_b = secrets.randbits(62)
-
-    uuid_int = 0
-    uuid_int |= (timestamp_ms & ((1 << 48) - 1)) << 80
-    uuid_int |= 0x7 << 76
-    uuid_int |= random_a << 64
-    uuid_int |= 0b10 << 62
-    uuid_int |= random_b
-
-    return str(uuid.UUID(int=uuid_int))
-
-
 def normalize_id_part(value: Any) -> str:
     text = coerce_text(value, fix_mojibake=True) or ""
     normalized = re.sub(r"[^a-zA-Z0-9_.-]+", "-", text)
@@ -438,3 +423,262 @@ def normalize_id_part(value: Any) -> str:
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def write_legacy_sql_payload(database_url: str, payload: Any) -> None:
+    with connect_psycopg(database_url) as connection:
+        with connection.cursor() as cursor:
+            old_person_id_to_external_ref, resolved_person_id_by_external_ref = (
+                reconcile_people_ids_with_database(cursor, payload.people)
+            )
+            rebind_people_foreign_keys(
+                payload,
+                old_person_id_to_external_ref,
+                resolved_person_id_by_external_ref,
+            )
+
+            execute_many_if_any(
+                cursor,
+                """
+                INSERT INTO major_events (
+                  id, name, "startDate", "endDate", description, "isPaymentRequired", "createdAt", "updatedAt"
+                )
+                VALUES (
+                  %(id)s, %(name)s, %(startDate)s, %(endDate)s, %(description)s, %(isPaymentRequired)s, %(createdAt)s, %(updatedAt)s
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                  name = EXCLUDED.name,
+                  "startDate" = EXCLUDED."startDate",
+                  "endDate" = EXCLUDED."endDate",
+                  description = EXCLUDED.description,
+                  "isPaymentRequired" = EXCLUDED."isPaymentRequired",
+                  "updatedAt" = EXCLUDED."updatedAt"
+                """,
+                payload.major_events,
+            )
+
+            event_groups = [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "createdAt": row["createdAt"],
+                    "updatedAt": row["updatedAt"],
+                }
+                for row in payload.event_groups
+            ]
+            execute_many_if_any(
+                cursor,
+                """
+                INSERT INTO event_groups (
+                  id, name, "createdAt", "updatedAt"
+                )
+                VALUES (
+                  %(id)s, %(name)s, %(createdAt)s, %(updatedAt)s
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                  name = EXCLUDED.name,
+                  "updatedAt" = EXCLUDED."updatedAt"
+                """,
+                event_groups,
+            )
+
+            execute_many_if_any(
+                cursor,
+                """
+                INSERT INTO events (
+                  id, name, "creditMinutes", "startDate", "endDate", type, emoji,
+                  description, "shortDescription", latitude, longitude, "locationDescription",
+                  "majorEventId", "eventGroupId", "allowSubscription", slots,
+                  "shouldIssueCertificate", "shouldCollectAttendance",
+                  "isOnlineAttendanceAllowed", "onlineAttendanceCode",
+                  "onlineAttendanceStartDate", "onlineAttendanceEndDate",
+                  "publiclyVisible", "youtubeCode", "buttonText", "buttonLink",
+                  "createdAt", "createdById", "updatedAt"
+                )
+                VALUES (
+                  %(id)s, %(name)s, %(creditMinutes)s, %(startDate)s, %(endDate)s, %(type)s, %(emoji)s,
+                  %(description)s, %(shortDescription)s, %(latitude)s, %(longitude)s, %(locationDescription)s,
+                  %(majorEventId)s, %(eventGroupId)s, %(allowSubscription)s, %(slots)s,
+                  %(shouldIssueCertificate)s, %(shouldCollectAttendance)s,
+                  %(isOnlineAttendanceAllowed)s, %(onlineAttendanceCode)s,
+                  %(onlineAttendanceStartDate)s, %(onlineAttendanceEndDate)s,
+                  %(publiclyVisible)s, %(youtubeCode)s, %(buttonText)s, %(buttonLink)s,
+                  %(createdAt)s, %(createdById)s, %(updatedAt)s
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                  name = EXCLUDED.name,
+                  "creditMinutes" = EXCLUDED."creditMinutes",
+                  "startDate" = EXCLUDED."startDate",
+                  "endDate" = EXCLUDED."endDate",
+                  type = EXCLUDED.type,
+                  emoji = EXCLUDED.emoji,
+                  description = EXCLUDED.description,
+                  "shortDescription" = EXCLUDED."shortDescription",
+                  latitude = EXCLUDED.latitude,
+                  longitude = EXCLUDED.longitude,
+                  "locationDescription" = EXCLUDED."locationDescription",
+                  "majorEventId" = EXCLUDED."majorEventId",
+                  "eventGroupId" = EXCLUDED."eventGroupId",
+                  "allowSubscription" = EXCLUDED."allowSubscription",
+                  slots = EXCLUDED.slots,
+                  "shouldIssueCertificate" = EXCLUDED."shouldIssueCertificate",
+                  "shouldCollectAttendance" = EXCLUDED."shouldCollectAttendance",
+                  "isOnlineAttendanceAllowed" = EXCLUDED."isOnlineAttendanceAllowed",
+                  "onlineAttendanceCode" = EXCLUDED."onlineAttendanceCode",
+                  "onlineAttendanceStartDate" = EXCLUDED."onlineAttendanceStartDate",
+                  "onlineAttendanceEndDate" = EXCLUDED."onlineAttendanceEndDate",
+                  "publiclyVisible" = EXCLUDED."publiclyVisible",
+                  "youtubeCode" = EXCLUDED."youtubeCode",
+                  "buttonText" = EXCLUDED."buttonText",
+                  "buttonLink" = EXCLUDED."buttonLink",
+                  "updatedAt" = EXCLUDED."updatedAt"
+                """,
+                payload.events,
+            )
+
+            execute_many_if_any(
+                cursor,
+                """
+                INSERT INTO people (
+                  id, name, email, "identityDocument", "academicId", "externalRef", "createdAt", "updatedAt"
+                )
+                VALUES (
+                  %(id)s, %(name)s, %(email)s, %(identityDocument)s, %(academicId)s, %(externalRef)s, %(createdAt)s, %(updatedAt)s
+                )
+                ON CONFLICT ("externalRef") DO UPDATE SET
+                  name = EXCLUDED.name,
+                  email = EXCLUDED.email,
+                  "identityDocument" = EXCLUDED."identityDocument",
+                  "academicId" = EXCLUDED."academicId",
+                  "updatedAt" = EXCLUDED."updatedAt"
+                """,
+                payload.people,
+            )
+
+            execute_many_if_any(
+                cursor,
+                """
+                INSERT INTO major_event_subscriptions (
+                  id, "majorEventId", "personId", "amountPaid", "paymentDate",
+                  "paymentTier", "subscriptionStatus", "createdAt", "createdById"
+                )
+                VALUES (
+                  %(id)s, %(majorEventId)s, %(personId)s, %(amountPaid)s, %(paymentDate)s,
+                  %(paymentTier)s, %(subscriptionStatus)s, %(createdAt)s, %(createdById)s
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                  "majorEventId" = EXCLUDED."majorEventId",
+                  "personId" = EXCLUDED."personId",
+                  "amountPaid" = EXCLUDED."amountPaid",
+                  "paymentDate" = EXCLUDED."paymentDate",
+                  "paymentTier" = EXCLUDED."paymentTier",
+                  "subscriptionStatus" = EXCLUDED."subscriptionStatus",
+                  "createdAt" = EXCLUDED."createdAt",
+                  "createdById" = EXCLUDED."createdById"
+                """,
+                payload.major_event_subscriptions,
+            )
+
+            execute_many_if_any(
+                cursor,
+                """
+                INSERT INTO event_subscriptions (
+                  id, "eventId", "personId", "createdAt", "createdById"
+                )
+                VALUES (
+                  %(id)s, %(eventId)s, %(personId)s, %(createdAt)s, %(createdById)s
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                  "eventId" = EXCLUDED."eventId",
+                  "personId" = EXCLUDED."personId",
+                  "createdAt" = EXCLUDED."createdAt",
+                  "createdById" = EXCLUDED."createdById"
+                """,
+                payload.event_subscriptions,
+            )
+
+            execute_many_if_any(
+                cursor,
+                """
+                INSERT INTO event_attendances (
+                  "personId", "eventId", "attendedAt", "createdAt", "createdById"
+                )
+                VALUES (
+                  %(personId)s, %(eventId)s, %(attendedAt)s, %(createdAt)s, %(createdById)s
+                )
+                ON CONFLICT ("personId", "eventId") DO UPDATE SET
+                  "attendedAt" = EXCLUDED."attendedAt",
+                  "createdAt" = EXCLUDED."createdAt",
+                  "createdById" = EXCLUDED."createdById"
+                """,
+                payload.event_attendances,
+            )
+
+            execute_many_if_any(
+                cursor,
+                """
+                INSERT INTO event_lecturers (
+                  "eventId", "personId", "createdAt", "createdById"
+                )
+                VALUES (
+                  %(eventId)s, %(personId)s, %(createdAt)s, %(createdById)s
+                )
+                ON CONFLICT ("eventId", "personId") DO UPDATE SET
+                  "createdAt" = EXCLUDED."createdAt",
+                  "createdById" = EXCLUDED."createdById"
+                """,
+                payload.event_lecturers,
+            )
+
+
+def reconcile_people_ids_with_database(
+    cursor: Any, people_rows: list[dict[str, Any]]
+) -> tuple[dict[str, str], dict[str, str]]:
+    old_person_id_to_external_ref: dict[str, str] = {
+        row["id"]: row["externalRef"] for row in people_rows
+    }
+    resolved_person_id_by_external_ref: dict[str, str] = {
+        row["externalRef"]: row["id"] for row in people_rows
+    }
+
+    external_refs = list(resolved_person_id_by_external_ref.keys())
+    if external_refs:
+        cursor.execute(
+            'SELECT id, "externalRef" FROM people WHERE "externalRef" = ANY(%s)',
+            (external_refs,),
+        )
+        for person_id, external_ref in cursor.fetchall():
+            resolved_person_id_by_external_ref[str(external_ref)] = str(person_id)
+
+    for row in people_rows:
+        row["id"] = resolved_person_id_by_external_ref[row["externalRef"]]
+
+    return old_person_id_to_external_ref, resolved_person_id_by_external_ref
+
+
+def rebind_people_foreign_keys(
+    payload: Any,
+    old_person_id_to_external_ref: dict[str, str],
+    resolved_person_id_by_external_ref: dict[str, str],
+) -> None:
+    collections_and_keys = (
+        (payload.major_event_subscriptions, "personId"),
+        (payload.event_subscriptions, "personId"),
+        (payload.event_attendances, "personId"),
+        (payload.event_lecturers, "personId"),
+    )
+
+    for rows, key in collections_and_keys:
+        for row in rows:
+            old_person_id = row.get(key)
+            if not isinstance(old_person_id, str):
+                raise RuntimeError("Unexpected personId type while rebinding references.")
+            external_ref = old_person_id_to_external_ref.get(old_person_id)
+            if external_ref is None:
+                raise RuntimeError(f"Missing externalRef mapping for personId '{old_person_id}'.")
+            resolved_person_id = resolved_person_id_by_external_ref.get(external_ref)
+            if resolved_person_id is None:
+                raise RuntimeError(
+                    f"Missing resolved personId for externalRef '{external_ref}'."
+                )
+            row[key] = resolved_person_id

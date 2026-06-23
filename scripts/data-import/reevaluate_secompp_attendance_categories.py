@@ -22,13 +22,19 @@ from __future__ import annotations
 import argparse
 import sys
 from collections import Counter
-from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, TypeVar
+from typing import Any, Literal
 
 sys.dont_write_bytecode = True
 
+from import_common import (
+    add_database_connection_args,
+    chunks,
+    connect_psycopg,
+    database_url_from_args,
+    format_counter,
+)
 from legacy_sql_import_utils import (
     build_prefixed_id,
     coerce_text,
@@ -50,7 +56,6 @@ REQUIRED_TABLES = {
 
 AttendanceCategory = Literal["NON_PAYING", "NON_SUBSCRIBED", "REGULAR", "UNKNOWN"]
 EventKind = Literal["lecture", "shortcourse"]
-T = TypeVar("T")
 
 
 @dataclass(slots=True)
@@ -86,17 +91,7 @@ def parse_args() -> argparse.Namespace:
         default=Path("import/secompp.sql"),
         help="Path to secompp SQL dump file.",
     )
-    parser.add_argument(
-        "--database-url",
-        type=str,
-        default="",
-        help="Full PostgreSQL URL. If omitted, individual --db-* options are used.",
-    )
-    parser.add_argument("--db-host", type=str, default="localhost")
-    parser.add_argument("--db-port", type=int, default=5432)
-    parser.add_argument("--db-name", type=str, default="postgres")
-    parser.add_argument("--db-user", type=str, default="postgres")
-    parser.add_argument("--db-password", type=str, default="postgres")
+    add_database_connection_args(parser)
     parser.add_argument(
         "--apply",
         action="store_true",
@@ -112,10 +107,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    database_url = args.database_url or (
-        f"postgresql://{args.db_user}:{args.db_password}@"
-        f"{args.db_host}:{args.db_port}/{args.db_name}"
-    )
+    database_url = database_url_from_args(args)
 
     parsed = parse_insert_rows_by_table(args.input, REQUIRED_TABLES)
     legacy_attendances, skipped_attendances = build_legacy_attendances(parsed)
@@ -350,14 +342,7 @@ def resolve_shortcourse_category(
 
 
 def connect(database_url: str) -> Any:
-    try:
-        import psycopg
-    except ImportError as error:
-        raise SystemExit(
-            'Missing dependency \'psycopg\'. Install with: pip install "psycopg[binary]"'
-        ) from error
-
-    return psycopg.connect(database_url)
+    return connect_psycopg(database_url)
 
 
 def match_attendances(
@@ -513,17 +498,6 @@ def apply_updates(db: Any, updates: list[MatchedAttendance]) -> None:
                 for row in updates
             ],
         )
-
-
-def chunks(items: list[T], size: int) -> Iterable[list[T]]:
-    for index in range(0, len(items), size):
-        yield items[index : index + size]
-
-
-def format_counter(counter: Counter[str]) -> str:
-    if not counter:
-        return "none"
-    return ", ".join(f"{key}={counter[key]}" for key in sorted(counter.keys()))
 
 
 def print_unmatched_people(unmatched_people: set[int]) -> None:
