@@ -338,6 +338,24 @@
   margin: 0.5rem 0 0;
 }
 
+.notice {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  background: color-mix(in srgb, var(--mat-sys-primary) 8%, var(--mat-sys-surface));
+  font: var(--mat-sys-body-medium);
+}
+
+.notice mat-icon {
+  flex: 0 0 auto;
+  color: var(--mat-sys-primary);
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
