@@ -121,6 +121,8 @@ describe('PublicEventsResolver lecturer profiles', () => {
           {
             eventId: 'event-1',
             person: {
+              id: 'person-1',
+              name: 'Ada Lovelace',
               lecturerProfile: {
                 id: 'profile-1',
                 displayName: 'Ada Lovelace',
@@ -160,6 +162,49 @@ describe('PublicEventsResolver lecturer profiles', () => {
     );
   });
 
+  it('exposes lecturer names when the person does not have a public lecturer profile', async () => {
+    const prisma = {
+      eventLecturer: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            eventId: 'event-1',
+            person: {
+              id: 'person-1',
+              name: 'Grace Hopper',
+              lecturerProfile: null,
+            },
+          },
+        ]),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(resolver.lecturers({ id: 'event-1' } as never)).resolves.toEqual([
+      {
+        id: 'person-1',
+        displayName: 'Grace Hopper',
+        biography: null,
+        publishGoogleUserPicture: false,
+        googleUserPicture: null,
+        email: null,
+        whatsapp: null,
+      },
+    ]);
+
+    expect(prisma.eventLecturer.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          eventId: {
+            in: ['event-1'],
+          },
+          person: {
+            deletedAt: null,
+          },
+        },
+      }),
+    );
+  });
+
   it('batches lecturer profile loading for multiple public events in the same request', async () => {
     const prisma = {
       eventLecturer: {
@@ -167,6 +212,8 @@ describe('PublicEventsResolver lecturer profiles', () => {
           {
             eventId: 'event-1',
             person: {
+              id: 'person-1',
+              name: 'Ada Lovelace',
               lecturerProfile: {
                 id: 'profile-1',
                 displayName: 'Ada Lovelace',
@@ -181,6 +228,8 @@ describe('PublicEventsResolver lecturer profiles', () => {
           {
             eventId: 'event-2',
             person: {
+              id: 'person-2',
+              name: 'Grace Hopper',
               lecturerProfile: {
                 id: 'profile-2',
                 displayName: 'Grace Hopper',

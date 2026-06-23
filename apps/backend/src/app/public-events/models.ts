@@ -435,16 +435,16 @@ export class PublicEventGroup {
 
 @ObjectType({
   description:
-    'Public lecturer profile attached to an event. This profile is global for the person and may appear in multiple events.',
+    'Public lecturer details attached to an event. Profile fields are included when the lecturer has a public profile.',
 })
 export class PublicLecturerProfile {
   @Field(() => String, {
-    description: 'Lecturer profile identifier.',
+    description: 'Public lecturer identifier. Uses the profile identifier when available, otherwise the person identifier.',
   })
   id!: string;
 
   @Field(() => String, {
-    description: 'Public display name chosen for event pages.',
+    description: 'Public display name shown on event pages.',
   })
   displayName!: string;
 
@@ -674,7 +674,7 @@ export class PublicEvent {
   buttonLink?: string | null;
 
   @Field(() => [PublicLecturerProfile], {
-    description: 'Public lecturer profiles associated with this event.',
+    description: 'Public lecturers associated with this event.',
   })
   lecturers?: PublicLecturerProfile[];
 }

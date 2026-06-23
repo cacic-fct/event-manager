@@ -25,6 +25,8 @@ const PUBLIC_EVENT_LECTURER_PROFILE_SELECT = {
   eventId: true,
   person: {
     select: {
+      id: true,
+      name: true,
       lecturerProfile: {
         select: {
           id: true,
@@ -117,9 +119,6 @@ class PublicEventLecturerProfileLoader {
         },
         person: {
           deletedAt: null,
-          lecturerProfile: {
-            isNot: null,
-          },
         },
       },
       select: PUBLIC_EVENT_LECTURER_PROFILE_SELECT,
@@ -147,10 +146,21 @@ class PublicEventLecturerProfileLoader {
 }
 
 function mapPublicLecturerProfiles(lecturers: PublicEventLecturerProfileRecord[]): PublicLecturerProfile[] {
-  return lecturers
-    .map((lecturer) => lecturer.person.lecturerProfile)
-    .filter((profile): profile is PublicLecturerProfileRecord => Boolean(profile))
-    .map((profile) => ({
+  return lecturers.map((lecturer) => {
+    const profile = lecturer.person.lecturerProfile;
+    if (!profile) {
+      return {
+        id: lecturer.person.id,
+        displayName: lecturer.person.name,
+        biography: null,
+        publishGoogleUserPicture: false,
+        googleUserPicture: null,
+        email: null,
+        whatsapp: null,
+      };
+    }
+
+    return {
       id: profile.id,
       displayName: profile.displayName,
       biography: profile.biography,
@@ -158,7 +168,8 @@ function mapPublicLecturerProfiles(lecturers: PublicEventLecturerProfileRecord[]
       googleUserPicture: profile.publishGoogleUserPicture ? profile.googleUserPicture : null,
       email: profile.email,
       whatsapp: profile.whatsapp,
-    }));
+    };
+  });
 }
 
 function resolvePublicEventsPagination(skip?: number, take?: number): { skip: number; take: number } {
