@@ -75,15 +75,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
               eventId: input.eventId,
             },
           },
-          select: {
-            personId: true,
-            eventId: true,
-            attendedAt: true,
-            createdAt: true,
-            createdById: true,
-            createdByMethod: true,
-            category: true,
-          },
+          select: EVENT_ATTENDANCE_AUDIT_SELECT,
         });
         await this.recordAttendanceCreate(
           attendance,
@@ -165,15 +157,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
               eventId,
             },
           },
-          select: {
-            personId: true,
-            eventId: true,
-            attendedAt: true,
-            createdAt: true,
-            createdById: true,
-            createdByMethod: true,
-            category: true,
-          },
+          select: EVENT_ATTENDANCE_AUDIT_SELECT,
         });
         await this.recordAttendanceCreate(
           attendance,

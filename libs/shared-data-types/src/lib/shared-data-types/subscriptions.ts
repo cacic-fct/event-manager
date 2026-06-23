@@ -26,7 +26,7 @@ export class WorkspaceEventSubscription {
   eventGroupSubscriptionId?: string;
 
   @Field(() => String, { nullable: true })
-  majorEventSubscriptionId?: string;
+  majorEventSubscriptionId!: string | null;
 
   @Field(() => Date)
   createdAt!: Date;

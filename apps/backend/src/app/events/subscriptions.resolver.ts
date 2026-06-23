@@ -303,6 +303,7 @@ export class EventSubscriptionsResolver {
 
     return {
       ...subscription,
+      majorEventSubscriptionId: null,
       isLecturerSubscription: false,
     };
   }

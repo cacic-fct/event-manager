@@ -223,7 +223,7 @@ export class EventGroupsResolver {
     await this.prisma.$transaction(async (tx) => {
       const eventGroup = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
       if (!eventGroup) throw new NotFoundException(`Event group ${id} was not found.`);
-      await tx.eventGroup.update({ where: { id }, data: { deletedAt } });
+      await tx.eventGroup.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT_GROUP,

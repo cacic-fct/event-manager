@@ -276,7 +276,7 @@ export class PeopleResolver {
         select: PERSON_AUDIT_SELECT,
       });
       if (!existingPerson) throw new NotFoundException(`Person ${id} was not found.`);
-      await tx.people.update({ where: { id }, data: { deletedAt } });
+      await tx.people.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.PERSON,

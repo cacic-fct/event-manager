@@ -340,7 +340,7 @@ export class MajorEventsResolver {
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
       if (!majorEvent) throw new NotFoundException(`Major event ${id} was not found.`);
-      await tx.majorEvent.update({ where: { id }, data: { deletedAt } });
+      await tx.majorEvent.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.MAJOR_EVENT,

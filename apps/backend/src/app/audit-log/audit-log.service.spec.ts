@@ -232,6 +232,56 @@ describe('AuditLogService', () => {
     ]);
   });
 
+  it('does not squash updates recorded under a different scope id', async () => {
+    prisma.auditLogEntry.findFirst.mockResolvedValue({
+      id: 'audit-1',
+      entityLabel: 'Ana Silva',
+      summary: 'Pessoa atualizada.',
+      operation: AuditLogOperation.UPDATE,
+      actorId: 'admin-1',
+      actorName: 'Renan Yudi',
+      permission: Permission.Person.Update,
+      eventId: 'event-1',
+      majorEventId: null,
+      eventGroupId: null,
+      lastRecordedAt: new Date(),
+      before: {
+        name: 'Ana Silva',
+      },
+    });
+
+    await service.record({
+      entityType: AuditLogEntityType.PERSON,
+      entityId: 'person-1',
+      entityLabel: 'Ana Clara Silva',
+      operation: AuditLogOperation.UPDATE,
+      actor: {
+        id: 'admin-1',
+        name: 'Renan Yudi',
+        type: AuditLogActorType.USER,
+      },
+      before: {
+        name: 'Ana Maria Silva',
+      },
+      after: {
+        name: 'Ana Clara Silva',
+      },
+      scope: {
+        permission: Permission.Person.Update,
+        eventId: 'event-2',
+      },
+    });
+
+    expect(prisma.auditLogEntry.update).not.toHaveBeenCalled();
+    expect(prisma.auditLogEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        entityId: 'person-1',
+        eventId: 'event-2',
+        changedFields: ['name'],
+      }),
+    });
+  });
+
   it('does not squash when another audit entry is the latest entity change', async () => {
     prisma.auditLogEntry.findFirst.mockResolvedValue({
       id: 'audit-2',

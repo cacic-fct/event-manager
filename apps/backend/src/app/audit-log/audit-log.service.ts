@@ -463,6 +463,9 @@ export class AuditLogService {
       (entry.actorId ?? null) === (actor.id ?? null) &&
       entry.actorName === actor.name &&
       (entry.permission ?? null) === (options.scope?.permission ?? null) &&
+      (entry.eventId ?? null) === (options.scope?.eventId ?? null) &&
+      (entry.majorEventId ?? null) === (options.scope?.majorEventId ?? null) &&
+      (entry.eventGroupId ?? null) === (options.scope?.eventGroupId ?? null) &&
       entry.lastRecordedAt.getTime() >= now.getTime() - squashWindowMs
     );
   }

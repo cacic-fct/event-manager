@@ -242,7 +242,7 @@ describe('EventGroupsResolver authorization', () => {
     });
 
     expect(tx.eventGroup.update).toHaveBeenCalledWith({
-      where: { id: 'group-1' },
+      where: { id: 'group-1', deletedAt: null },
       data: { deletedAt: expect.any(Date) },
     });
     expect(auditLog.record).toHaveBeenCalledWith(
