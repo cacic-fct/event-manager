@@ -185,14 +185,24 @@
                     mat-icon-button
                     type="button"
                     aria-label="Ver detalhes da presença"
+                    matTooltip="Detalhes"
                     (click)="workspace.showAttendanceInfo(attendance)">
                     <mat-icon>info</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Ver histórico da presença"
+                    matTooltip="Histórico"
+                    (click)="auditLog.openEventAttendanceHistory(attendance.personId, attendance.eventId, attendance.personName)">
+                    <mat-icon>history</mat-icon>
                   </button>
                   @if (canDeleteSelectedEventAttendances()) {
                     <button
                       mat-icon-button
                       type="button"
                       aria-label="Remover presença"
+                      matTooltip="Remover"
                       (click)="workspace.deleteAttendance(attendance)">
                       <mat-icon>delete</mat-icon>
                     </button>

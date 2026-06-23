@@ -16,6 +16,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { MajorEvent } from '../../../graphql/models';
 import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
+import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { WorkspaceMajorEventsService } from '../../../shared/services/workspace-major-events.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 
@@ -42,6 +43,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 export class WorkspaceMajorEventsTabComponent {
   readonly workspace = inject(WorkspaceMajorEventsService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly auditLog = inject(WorkspaceAuditLogService);
   protected readonly permissions = inject(WorkspacePermissionsService);
 
   constructor() {

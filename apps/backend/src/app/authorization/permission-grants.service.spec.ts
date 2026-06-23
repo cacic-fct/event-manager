@@ -272,20 +272,22 @@ describe('PermissionGrantsService', () => {
   });
 
   it('soft deletes active grants', async () => {
+    prisma.eventManagerPermissionGrant.findFirst.mockResolvedValue(grantRecord({
+      permission: Permission.Person.Read,
+      scope: EventManagerPermissionGrantScope.GLOBAL,
+    }));
     prisma.eventManagerPermissionGrant.updateMany.mockResolvedValue({ count: 1 });
-
     await expect(service.deleteGrant('grant-1', 'actor-1')).resolves.toBeUndefined();
 
-    expect(prisma.eventManagerPermissionGrant.updateMany).toHaveBeenCalledWith({
-      where: {
-        id: 'grant-1',
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: expect.any(Date),
-        updatedById: 'actor-1',
-      },
-    });
+    expect(prisma.eventManagerPermissionGrant.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'grant-1', deletedAt: null },
+        data: {
+          deletedAt: expect.any(Date),
+          updatedById: 'actor-1',
+        },
+      }),
+    );
   });
 
   it('updates an active grant without deleting it', async () => {
@@ -384,7 +386,7 @@ describe('PermissionGrantsService', () => {
 });
 
 function createPrisma() {
-  return {
+  const prisma = {
     eventManagerPermissionGrant: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue(null),
@@ -410,7 +412,10 @@ function createPrisma() {
       findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
     },
+    $transaction: jest.fn(),
   };
+  prisma.$transaction.mockImplementation(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation(prisma));
+  return prisma;
 }
 
 function grantRecord(input: {

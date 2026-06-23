@@ -10,7 +10,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
+import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { WorkspacePeopleService } from '../../../shared/services/workspace-people.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 
@@ -26,6 +28,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
     MatListModule,
     MatSelectModule,
     MatSlideToggleModule,
+    MatTooltipModule,
     TwemojiComponent,
   ],
   templateUrl: './workspace-people-tab.component.html',
@@ -34,6 +37,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 export class WorkspacePeopleTabComponent {
   readonly workspace = inject(WorkspacePeopleService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly auditLog = inject(WorkspaceAuditLogService);
   protected readonly permissions = inject(WorkspacePermissionsService);
   protected readonly Permission = Permission;
 

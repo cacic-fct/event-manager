@@ -81,6 +81,15 @@
         </div>
 
         <div class="panel-actions">
+          @if (workspace.selectedPlacePreset(); as selectedPlacePreset) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="auditLog.openHistory('PLACE_PRESET', selectedPlacePreset.id, selectedPlacePreset.name)">
+              <mat-icon>history</mat-icon>
+              Histórico
+            </button>
+          }
           <button mat-button type="button" (click)="workspace.startNewPlacePreset()">
             <mat-icon>restart_alt</mat-icon>
             Limpar

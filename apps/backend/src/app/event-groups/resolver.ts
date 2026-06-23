@@ -2,9 +2,10 @@ import { DeletionResult, EventGroup, EventGroupCreateInput, EventGroupUpdateInpu
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
@@ -24,6 +25,9 @@ export class EventGroupsResolver {
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+    } as unknown as AuditLogService,
   ) {}
 
   @Query(() => [EventGroup], { name: 'eventGroups' })
@@ -117,10 +121,25 @@ export class EventGroupsResolver {
   async createEventGroup(
     @Args('input', { type: () => EventGroupCreateInput })
     input: EventGroupCreateInput,
+    @Context() context: GraphqlContext,
   ) {
     const normalizedInput = this.normalizeEventGroupCertificateInput(input);
-    const eventGroup = await this.prisma.eventGroup.create({
-      data: normalizedInput,
+    const eventGroup = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.eventGroup.create({ data: normalizedInput });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_GROUP,
+          entityId: created.id,
+          entityLabel: created.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: created,
+          scope: { permission: Permission.EventGroup.Create, eventGroupId: created.id },
+          summary: 'Grupo de eventos criado.',
+        },
+        tx,
+      );
+      return created;
     });
     await this.typesenseSearch.upsertEventGroup({
       id: eventGroup.id,
@@ -139,56 +158,53 @@ export class EventGroupsResolver {
   ) {
     await this.frozenResources.assertEventGroupMutable(id, this.getUser(context), 'edit');
     const normalizedInput = this.normalizeEventGroupCertificateInput(input, await this.hasMajorEventEvents(id));
-    const { count } = await this.prisma.eventGroup.updateMany({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      data: normalizedInput,
-    });
+    const eventGroup = await this.prisma.$transaction(async (tx) => {
+      const previous = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
+      if (!previous) throw new NotFoundException(`Event group ${id} was not found.`);
+      await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
 
-    if (count === 0) {
-      throw new NotFoundException(`Event group ${id} was not found.`);
-    }
+      if (normalizedInput.shouldIssueCertificate === false) {
+        await tx.event.updateMany({
+          where: { eventGroupId: id, deletedAt: null },
+          data: {
+            shouldIssueCertificate: false,
+            shouldIssueCertificateForNonPayingAttendees: false,
+            shouldIssueCertificateForNonSubscribedAttendees: false,
+          },
+        });
+      } else if (
+        normalizedInput.shouldIssueCertificateForNonPayingAttendees === false ||
+        normalizedInput.shouldIssueCertificateForNonSubscribedAttendees === false
+      ) {
+        await tx.event.updateMany({
+          where: { eventGroupId: id, deletedAt: null },
+          data: {
+            ...(normalizedInput.shouldIssueCertificateForNonPayingAttendees === false
+              ? { shouldIssueCertificateForNonPayingAttendees: false }
+              : {}),
+            ...(normalizedInput.shouldIssueCertificateForNonSubscribedAttendees === false
+              ? { shouldIssueCertificateForNonSubscribedAttendees: false }
+              : {}),
+          },
+        });
+      }
 
-    if (normalizedInput.shouldIssueCertificate === false) {
-      await this.prisma.event.updateMany({
-        where: {
-          eventGroupId: id,
-          deletedAt: null,
+      const updated = await tx.eventGroup.findUniqueOrThrow({ where: { id, deletedAt: null } });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_GROUP,
+          entityId: updated.id,
+          entityLabel: updated.name,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: previous,
+          after: updated,
+          scope: { permission: Permission.EventGroup.Update, eventGroupId: updated.id },
+          summary: 'Grupo de eventos atualizado.',
         },
-        data: {
-          shouldIssueCertificate: false,
-          shouldIssueCertificateForNonPayingAttendees: false,
-          shouldIssueCertificateForNonSubscribedAttendees: false,
-        },
-      });
-    }
-
-    if (
-      normalizedInput.shouldIssueCertificateForNonPayingAttendees === false ||
-      normalizedInput.shouldIssueCertificateForNonSubscribedAttendees === false
-    ) {
-      await this.prisma.event.updateMany({
-        where: {
-          eventGroupId: id,
-          deletedAt: null,
-        },
-        data: {
-          ...(normalizedInput.shouldIssueCertificateForNonPayingAttendees === false
-            ? { shouldIssueCertificateForNonPayingAttendees: false }
-            : {}),
-          ...(normalizedInput.shouldIssueCertificateForNonSubscribedAttendees === false
-            ? { shouldIssueCertificateForNonSubscribedAttendees: false }
-            : {}),
-        },
-      });
-    }
-
-    const eventGroup = await this.prisma.eventGroup.findUnique({
-      where: {
-        id,
-      },
+        tx,
+      );
+      return updated;
     });
     if (eventGroup) {
       await this.typesenseSearch.upsertEventGroup({
@@ -203,20 +219,27 @@ export class EventGroupsResolver {
   @RequirePermissions(Permission.EventGroup.Delete)
   async deleteEventGroup(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertEventGroupMutable(id, this.getUser(context), 'delete');
-    const { count } = await this.prisma.eventGroup.updateMany({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+    const deletedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const eventGroup = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
+      if (!eventGroup) throw new NotFoundException(`Event group ${id} was not found.`);
+      await tx.eventGroup.update({ where: { id, deletedAt: null }, data: { deletedAt } });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_GROUP,
+          entityId: id,
+          entityLabel: eventGroup.name,
+          operation: AuditLogOperation.DELETE,
+          actor: this.getUser(context),
+          before: eventGroup,
+          after: { ...eventGroup, deletedAt },
+          scope: { permission: Permission.EventGroup.Delete, eventGroupId: id },
+          summary: 'Grupo de eventos excluído.',
+          force: true,
+        },
+        tx,
+      );
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Event group ${id} was not found.`);
-    }
-
     await this.typesenseSearch.deleteEventGroup(id);
     return {
       deleted: true,

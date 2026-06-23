@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 
@@ -13,6 +13,26 @@ type DataSubjectResolution = {
   personIds: string[];
   people: LgpdResolvedPerson[];
 };
+
+const ANONYMIZED_AUDIT_VALUE = '[ANONIMIZADO]';
+const AUDIT_IDENTITY_FIELDS = new Set([
+  'personId',
+  'userId',
+  'createdById',
+  'updatedById',
+  'revertedById',
+  'receiptValidatedBy',
+  'undoneById',
+]);
+const PERSONAL_AUDIT_FIELDS = new Set([
+  'name',
+  'email',
+  'secondaryEmails',
+  'phone',
+  'identityDocument',
+  'academicId',
+  'externalRef',
+]);
 
 @Injectable()
 export class LgpdService {
@@ -232,7 +252,8 @@ export class LgpdService {
   }
 
   async hardDelete(input: { userId: string; email?: string; requestId: string }) {
-    const { personIds, userIds } = await this.resolveDataSubject(input);
+    const dataSubject = await this.resolveDataSubject(input);
+    const { people: dataSubjectPeople, personIds, userIds } = dataSubject;
     if (personIds.length === 0 && userIds.length === 0) {
       return { success: true, peopleDeleted: 0, usersDeleted: 0, recordsDeleted: 0 };
     }
@@ -240,6 +261,15 @@ export class LgpdService {
     const receiptObjectKeys = await this.findReceiptObjectKeys(personIds);
 
     const result = await this.prisma.$transaction(async (tx) => {
+      await this.anonymizeAuditEntries(
+        tx,
+        {
+          people: dataSubjectPeople,
+          personIds,
+          userIds,
+        },
+        this.buildAnonymizedAuditSubjectId(input.requestId),
+      );
       const certificates = await tx.certificate.deleteMany({ where: { personId: { in: personIds } } });
       const selections = await tx.majorEventSubscriptionEventSelection.deleteMany({
         where: { subscription: { personId: { in: personIds } } },
@@ -295,6 +325,317 @@ export class LgpdService {
     );
 
     return { success: true, ...result };
+  }
+
+  private async anonymizeAuditEntries(
+    tx: Prisma.TransactionClient,
+    dataSubject: DataSubjectResolution,
+    anonymizedSubjectId: string,
+  ): Promise<void> {
+    const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
+    const emails = this.getDataSubjectEmails(dataSubject.people);
+    const jsonIdentityConditions: Prisma.AuditLogEntryWhereInput[] = identifiers.flatMap((identifier) =>
+      [...AUDIT_IDENTITY_FIELDS].flatMap((field) => [
+        { before: { path: [field], equals: identifier } },
+        { after: { path: [field], equals: identifier } },
+      ]),
+    );
+    const eventAttendanceEntityConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap(
+      (personId) => [
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+          entityId: { startsWith: `${personId}:` },
+        },
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+          entityId: { startsWith: `${encodeURIComponent(personId)}:` },
+        },
+      ],
+    );
+    const entries = await tx.auditLogEntry.findMany({
+      where: {
+        OR: [
+          { actorId: { in: dataSubject.userIds } },
+          ...(emails.length > 0 ? [{ actorEmail: { in: emails, mode: 'insensitive' as const } }] : []),
+          {
+            entityType: AuditLogEntityType.PERSON,
+            entityId: { in: dataSubject.personIds },
+          },
+          ...eventAttendanceEntityConditions,
+          ...jsonIdentityConditions,
+        ],
+      },
+    });
+    const sensitiveValues = this.getSensitiveAuditValues(dataSubject);
+    const identityValues = new Set(identifiers);
+
+    const auditEntryUpdates = entries.map((entry) => {
+      const actorMatches =
+        (entry.actorId != null && dataSubject.userIds.includes(entry.actorId)) ||
+        (entry.actorEmail != null && emails.includes(entry.actorEmail.toLowerCase()));
+      const entitySubjectMatches =
+        (entry.entityType === AuditLogEntityType.PERSON && dataSubject.personIds.includes(entry.entityId)) ||
+        this.isEventAttendanceAuditEntityForPerson(entry.entityType, entry.entityId, dataSubject.personIds);
+      const payloadMatches =
+        this.containsAuditIdentity(entry.before, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
+        this.containsAuditIdentity(entry.after, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
+        this.containsAuditIdentity(entry.changes, identityValues, false) ||
+        this.containsAuditIdentity(entry.metadata, identityValues, false);
+      const shouldScrubPayload = actorMatches || entitySubjectMatches || payloadMatches;
+
+      return tx.auditLogEntry.update({
+        where: { id: entry.id },
+        data: {
+          actorId: actorMatches ? null : entry.actorId,
+          actorName: actorMatches ? 'Usuário anonimizado' : entry.actorName,
+          actorEmail: actorMatches ? null : entry.actorEmail,
+          entityId: entitySubjectMatches
+            ? this.anonymizeAuditEntityId(entry.entityType, entry.entityId, dataSubject.personIds, anonymizedSubjectId)
+            : entry.entityId,
+          entityLabel: actorMatches || entitySubjectMatches || payloadMatches ? 'Dados anonimizados' : entry.entityLabel,
+          before: shouldScrubPayload
+            ? this.anonymizeNullableAuditJson(
+                entry.before,
+                sensitiveValues,
+                identityValues,
+                anonymizedSubjectId,
+                entry.entityType === AuditLogEntityType.PERSON,
+              )
+            : undefined,
+          after: shouldScrubPayload
+            ? this.anonymizeNullableAuditJson(
+                entry.after,
+                sensitiveValues,
+                identityValues,
+                anonymizedSubjectId,
+                entry.entityType === AuditLogEntityType.PERSON,
+              )
+            : undefined,
+          changes: shouldScrubPayload
+            ? this.anonymizeAuditJson(
+                entry.changes,
+                sensitiveValues,
+                identityValues,
+                anonymizedSubjectId,
+                [],
+                entry.entityType === AuditLogEntityType.PERSON,
+              )
+            : undefined,
+          metadata:
+            shouldScrubPayload && entry.metadata != null
+              ? this.anonymizeAuditJson(entry.metadata, sensitiveValues, identityValues, anonymizedSubjectId, [], false)
+              : undefined,
+        },
+      });
+    });
+
+    await Promise.all(auditEntryUpdates);
+  }
+
+  private anonymizeAuditEntityId(
+    entityType: AuditLogEntityType,
+    entityId: string,
+    personIds: readonly string[],
+    anonymizedSubjectId: string,
+  ): string {
+    if (entityType === AuditLogEntityType.PERSON && personIds.includes(entityId)) {
+      return anonymizedSubjectId;
+    }
+
+    if (entityType !== AuditLogEntityType.EVENT_ATTENDANCE) {
+      return entityId;
+    }
+
+    const [personSegment, ...remainingSegments] = entityId.split(':');
+    if (!personSegment || remainingSegments.length === 0) {
+      return entityId;
+    }
+
+    const personId = this.decodeAuditEntityIdSegment(personSegment);
+    if (!personIds.includes(personId)) {
+      return entityId;
+    }
+
+    return [encodeURIComponent(anonymizedSubjectId), ...remainingSegments].join(':');
+  }
+
+  private buildAnonymizedAuditSubjectId(requestId: string): string {
+    const normalizedRequestId = requestId.trim() || 'request';
+    return `anonymized:${encodeURIComponent(normalizedRequestId)}`;
+  }
+
+  private isEventAttendanceAuditEntityForPerson(
+    entityType: AuditLogEntityType,
+    entityId: string,
+    personIds: readonly string[],
+  ): boolean {
+    if (entityType !== AuditLogEntityType.EVENT_ATTENDANCE) {
+      return false;
+    }
+
+    const [personSegment, ...remainingSegments] = entityId.split(':');
+    if (!personSegment || remainingSegments.length === 0) {
+      return false;
+    }
+
+    return personIds.includes(this.decodeAuditEntityIdSegment(personSegment));
+  }
+
+  private decodeAuditEntityIdSegment(segment: string): string {
+    try {
+      return decodeURIComponent(segment);
+    } catch {
+      return segment;
+    }
+  }
+
+  private getDataSubjectEmails(people: DataSubjectResolution['people']): string[] {
+    return [
+      ...new Set(
+        people
+          .flatMap((person) => [person.email, ...person.secondaryEmails, person.user?.email])
+          .map((email) => this.normalizeEmail(email))
+          .filter((email): email is string => Boolean(email)),
+      ),
+    ];
+  }
+
+  private getSensitiveAuditValues(dataSubject: DataSubjectResolution): Set<string> {
+    const values = new Set<string>([...dataSubject.userIds, ...dataSubject.personIds]);
+    for (const person of dataSubject.people) {
+      for (const value of [
+        person.name,
+        person.email,
+        ...person.secondaryEmails,
+        person.phone,
+        person.identityDocument,
+        person.academicId,
+        person.externalRef,
+        person.user?.name,
+        person.user?.email,
+      ]) {
+        if (typeof value === 'string' && value.length > 0) {
+          values.add(value);
+          values.add(value.toLowerCase());
+        }
+      }
+    }
+    return values;
+  }
+
+  private containsAuditIdentity(
+    value: Prisma.JsonValue | null,
+    identities: ReadonlySet<string>,
+    personRoot: boolean,
+    path: readonly string[] = [],
+  ): boolean {
+    if (typeof value === 'string') {
+      return this.isAuditIdentityPath(path, personRoot) && identities.has(value);
+    }
+    if (Array.isArray(value)) {
+      return value.some((child) => this.containsAuditIdentity(child, identities, personRoot, path));
+    }
+    if (value && typeof value === 'object') {
+      const changedField = typeof value['field'] === 'string' ? value['field'] : null;
+      return Object.entries(value).some(([key, child]) => {
+        const nextPath = [...path, key];
+        if (
+          (key === 'before' || key === 'after') &&
+          changedField &&
+          this.isAuditIdentityField(changedField, personRoot)
+        ) {
+          return this.containsAuditIdentity(child, identities, personRoot, [...path, changedField]);
+        }
+        return this.containsAuditIdentity(child, identities, personRoot, nextPath);
+      });
+    }
+    return false;
+  }
+
+  private anonymizeNullableAuditJson(
+    value: Prisma.JsonValue | null,
+    sensitiveValues: ReadonlySet<string>,
+    identityValues: ReadonlySet<string>,
+    anonymizedSubjectId: string,
+    personRoot: boolean,
+  ): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+    return value === null
+      ? Prisma.JsonNull
+      : this.anonymizeAuditJson(value, sensitiveValues, identityValues, anonymizedSubjectId, [], personRoot);
+  }
+
+  private anonymizeAuditJson(
+    value: Prisma.JsonValue,
+    sensitiveValues: ReadonlySet<string>,
+    identityValues: ReadonlySet<string>,
+    anonymizedSubjectId: string,
+    path: readonly string[],
+    personRoot: boolean,
+    identityContext = false,
+  ): Prisma.InputJsonValue {
+    if (typeof value === 'string') {
+      if ((identityContext || this.isAuditIdentityPath(path, personRoot)) && identityValues.has(value)) {
+        return anonymizedSubjectId;
+      }
+      return sensitiveValues.has(value) || sensitiveValues.has(value.toLowerCase()) ? ANONYMIZED_AUDIT_VALUE : value;
+    }
+    if (Array.isArray(value)) {
+      return value.map((child) =>
+        this.anonymizeAuditJson(
+          child,
+          sensitiveValues,
+          identityValues,
+          anonymizedSubjectId,
+          path,
+          personRoot,
+          identityContext,
+        ),
+      );
+    }
+    if (value && typeof value === 'object') {
+      const changedField = typeof value['field'] === 'string' ? value['field'].split('.')[0] : null;
+      const redactChangeValues = personRoot && changedField != null && PERSONAL_AUDIT_FIELDS.has(changedField);
+      const anonymizeChangeValues = changedField != null && this.isAuditIdentityField(changedField, personRoot);
+      return Object.fromEntries(
+        Object.entries(value).map(([key, child]) => {
+          const nextPath = [...path, key];
+          const isNestedPerson = path.includes('person') || path.includes('user');
+          const redactPersonalField = PERSONAL_AUDIT_FIELDS.has(key) && (personRoot || isNestedPerson);
+          if (redactPersonalField || (redactChangeValues && (key === 'before' || key === 'after'))) {
+            return [key, ANONYMIZED_AUDIT_VALUE];
+          }
+          return [
+            key,
+            this.anonymizeAuditJson(
+              child,
+              sensitiveValues,
+              identityValues,
+              anonymizedSubjectId,
+              nextPath,
+              personRoot,
+              identityContext ||
+                this.isAuditIdentityPath(nextPath, personRoot) ||
+                (anonymizeChangeValues && (key === 'before' || key === 'after')),
+            ),
+          ];
+        }),
+      );
+    }
+    return value as Prisma.InputJsonValue;
+  }
+
+  private isAuditIdentityPath(path: readonly string[], personRoot: boolean): boolean {
+    const key = path.at(-1);
+    if (!key) {
+      return false;
+    }
+
+    return this.isAuditIdentityField(key, personRoot || path.includes('person') || path.includes('user'));
+  }
+
+  private isAuditIdentityField(field: string, personRoot: boolean): boolean {
+    const rootField = field.split('.')[0];
+    return AUDIT_IDENTITY_FIELDS.has(rootField) || (rootField === 'id' && personRoot);
   }
 
   private async resolveDataSubject(input: LgpdUserLookup): Promise<DataSubjectResolution> {

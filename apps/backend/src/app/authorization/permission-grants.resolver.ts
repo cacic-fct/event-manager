@@ -49,7 +49,7 @@ export class PermissionGrantsResolver {
     input: EventManagerPermissionGrantCreateInput,
     @Context() context: GraphqlContext,
   ) {
-    return this.permissionGrants.createGrant(input, this.getActorId(context));
+    return this.permissionGrants.createGrant(input, this.getUser(context));
   }
 
   @Mutation(() => EventManagerPermissionGrant, {
@@ -62,7 +62,7 @@ export class PermissionGrantsResolver {
     input: EventManagerPermissionGrantUpdateInput,
     @Context() context: GraphqlContext,
   ) {
-    return this.permissionGrants.updateGrant(id, input, this.getActorId(context));
+    return this.permissionGrants.updateGrant(id, input, this.getUser(context));
   }
 
   @Mutation(() => DeletionResult, {
@@ -73,15 +73,15 @@ export class PermissionGrantsResolver {
     @Args('id', { type: () => String }) id: string,
     @Context() context: GraphqlContext,
   ) {
-    await this.permissionGrants.deleteGrant(id, this.getActorId(context));
+    await this.permissionGrants.deleteGrant(id, this.getUser(context));
     return {
       deleted: true,
       id,
     };
   }
 
-  private getActorId(context: GraphqlContext): string | undefined {
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
     const user = context.req?.user ?? context.request?.user;
-    return user?.sub ?? user?.email ?? user?.preferredUsername;
+    return user;
   }
 }

@@ -82,11 +82,19 @@
             {{ statusLabel(subscription.subscriptionStatus) }} ·
             {{ subscription.createdByMethod }}
           </span>
-          @if (hasSubscribedLecturer(subscription)) {
-            <div matListItemMeta>
+          <div matListItemMeta class="item-actions">
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Ver histórico da inscrição"
+              matTooltip="Histórico"
+              (click)="$event.stopPropagation(); auditLog.openHistory('MAJOR_EVENT_SUBSCRIPTION', subscription.id, subscription.person?.name ?? subscription.personId)">
+              <mat-icon>history</mat-icon>
+            </button>
+            @if (hasSubscribedLecturer(subscription)) {
               <mat-icon class="warning-icon">warning</mat-icon>
-            </div>
-          }
+            }
+          </div>
         </mat-list-item>
       } @empty {
         <mat-list-item>
@@ -120,6 +128,15 @@
         </div>
 
         <div class="panel-actions">
+          @if (workspace.selectedMajorEventSubscription(); as selectedSubscription) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="auditLog.openHistory('MAJOR_EVENT_SUBSCRIPTION', selectedSubscription.id, selectedSubscription.person?.name ?? selectedSubscription.personId)">
+              <mat-icon>history</mat-icon>
+              Histórico
+            </button>
+          }
           @if (!workspace.editMode()) {
             @if (canEditSelectedMajorEventSubscriptions()) {
               <button matIconButton type="button" (click)="workspace.enableMajorEventEdit()" aria-label="Editar inscrição">

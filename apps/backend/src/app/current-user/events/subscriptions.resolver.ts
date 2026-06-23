@@ -159,7 +159,7 @@ export class CurrentUserEventSubscriptionsResolver {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId);
+    return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId, authenticatedUser);
   }
 
   @Mutation(() => PublicEvent, { name: 'unsubscribeCurrentUserStandaloneEvent' })
@@ -170,7 +170,7 @@ export class CurrentUserEventSubscriptionsResolver {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'delete');
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    return this.eventSubscriptions.unsubscribeCurrentUserEvent(person.id, eventId);
+    return this.eventSubscriptions.unsubscribeCurrentUserEvent(person.id, eventId, authenticatedUser);
   }
 
   @Query(() => [CurrentUserEventGroupSubscription], {
@@ -289,7 +289,7 @@ export class CurrentUserEventSubscriptionsResolver {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     await this.frozenResources.assertEventGroupMutable(eventGroupId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    return this.eventSubscriptions.subscribeCurrentUserEventGroup(person.id, eventGroupId);
+    return this.eventSubscriptions.subscribeCurrentUserEventGroup(person.id, eventGroupId, authenticatedUser);
   }
 
   @Query(() => [PublicEvent], { name: 'eventsByMajorEventId' })

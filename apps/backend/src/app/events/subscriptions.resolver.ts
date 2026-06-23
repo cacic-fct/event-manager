@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma, SubscriptionStatus } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
 import {
   WorkspaceEventSubscription,
   WorkspaceEventSubscriptionCreateInput,
@@ -11,6 +11,7 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -142,6 +143,7 @@ export class EventSubscriptionsResolver {
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly notifications: NovuNotificationsService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly auditLog: AuditLogService,
     private readonly counters: EventSubscriptionCountersService = new EventSubscriptionCountersService(),
     private readonly eventSubscriptionSync: EventSubscriptionSyncService = new EventSubscriptionSyncService(),
   ) {}
@@ -183,9 +185,60 @@ export class EventSubscriptionsResolver {
       take: pagination.take,
     });
 
+    const majorEventIds = [
+      ...new Set(
+        subscriptions
+          .map((subscription) => subscription.event.majorEventId)
+          .filter((majorEventId): majorEventId is string => Boolean(majorEventId)),
+      ),
+    ];
+    const personIds = [...new Set(subscriptions.map((subscription) => subscription.personId))];
+    const eventIds = [...new Set(subscriptions.map((subscription) => subscription.eventId))];
+    const majorEventSubscriptionSelections =
+      majorEventIds.length > 0
+        ? await this.prisma.majorEventSubscriptionEventSelection.findMany({
+            where: {
+              deletedAt: null,
+              eventId: {
+                in: eventIds,
+              },
+              subscription: {
+                deletedAt: null,
+                subscriptionStatus: SubscriptionStatus.CONFIRMED,
+                majorEventId: {
+                  in: majorEventIds,
+                },
+                personId: {
+                  in: personIds,
+                },
+              },
+            },
+            select: {
+              eventId: true,
+              subscription: {
+                select: {
+                  id: true,
+                  majorEventId: true,
+                  personId: true,
+                },
+              },
+            },
+          })
+        : [];
+    const majorEventSubscriptionIdsByPersonMajorAndEvent = new Map(
+      majorEventSubscriptionSelections.map((selection) => [
+        `${selection.subscription.personId}:${selection.subscription.majorEventId}:${selection.eventId}`,
+        selection.subscription.id,
+      ]),
+    );
     const lecturerPersonIds = await this.getLecturerPersonIds([eventId]);
     return subscriptions.map((subscription) => ({
       ...subscription,
+      majorEventSubscriptionId: subscription.event.majorEventId
+        ? majorEventSubscriptionIdsByPersonMajorAndEvent.get(
+            `${subscription.personId}:${subscription.event.majorEventId}:${subscription.eventId}`,
+          ) ?? null
+        : null,
       isLecturerSubscription: lecturerPersonIds.has(subscription.personId),
     }));
   }
@@ -232,11 +285,25 @@ export class EventSubscriptionsResolver {
       });
       await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
       await this.refreshEventSubscriptionCounters(tx, [input.eventId]);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_SUBSCRIPTION,
+          entityId: created.id,
+          entityLabel: created.person.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: created,
+          scope: { permission: Permission.Subscription.Create, eventId: created.eventId },
+          summary: 'Inscrição em evento criada pelo painel administrativo.',
+        },
+        tx,
+      );
       return created;
     });
 
     return {
       ...subscription,
+      majorEventSubscriptionId: null,
       isLecturerSubscription: false,
     };
   }
@@ -330,11 +397,27 @@ export class EventSubscriptionsResolver {
         ...(subscriptionSyncResult?.createdEventIds ?? []),
       ]);
 
-      return majorEventSubscription;
+      const [result] = await this.attachMajorEventSubscriptionEvents(
+        input.majorEventId,
+        [majorEventSubscription],
+        tx,
+      );
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+          entityId: result.id,
+          entityLabel: result.person.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: result,
+          scope: { permission: Permission.Subscription.Create, majorEventId: result.majorEventId },
+          summary: 'Inscrição em grande evento criada pelo painel administrativo.',
+        },
+        tx,
+      );
+      return result;
     });
-
-    const [result] = await this.attachMajorEventSubscriptionEvents(input.majorEventId, [subscription]);
-    return result;
+    return subscription;
   }
 
   @Mutation(() => WorkspaceMajorEventSubscription, {
@@ -363,7 +446,6 @@ export class EventSubscriptionsResolver {
       throw new NotFoundException(`Subscription ${id} was not found.`);
     }
     await this.frozenResources.assertMajorEventMutable(existing.majorEventId, this.getUser(context), 'edit');
-
     const selectedEventIds =
       input.selectedEventIds == null ? undefined : this.normalizeEventIds(input.selectedEventIds);
 
@@ -373,6 +455,23 @@ export class EventSubscriptionsResolver {
     }
 
     const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const previousRecord = await tx.majorEventSubscription.findUnique({
+        where: {
+          id,
+        },
+        select: this.majorEventSubscriptionSelect(),
+      });
+      if (!previousRecord) {
+        throw new NotFoundException(`Subscription ${id} was not found.`);
+      }
+      const [previousSubscription] = await this.attachMajorEventSubscriptionEvents(
+        existing.majorEventId,
+        [previousRecord],
+        tx,
+      );
+      if (!previousSubscription) {
+        throw new NotFoundException(`Subscription ${id} was not found.`);
+      }
       const updateData: Prisma.MajorEventSubscriptionUpdateInput = {};
       if (input.subscriptionStatus !== undefined) {
         updateData.subscriptionStatus = this.normalizeStatus(input.subscriptionStatus);
@@ -421,17 +520,30 @@ export class EventSubscriptionsResolver {
       await this.attendanceCategories.refreshForMajorEventPerson(existing.majorEventId, existing.personId, tx);
       await this.refreshEventSubscriptionCounters(tx, effectiveSelectedEventIds);
 
-      return updated;
+      const [result] = await this.attachMajorEventSubscriptionEvents(existing.majorEventId, [updated], tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+          entityId: result.id,
+          entityLabel: result.person.name,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: previousSubscription,
+          after: result,
+          scope: { permission: Permission.Subscription.Update, majorEventId: result.majorEventId },
+          summary: 'Inscrição em grande evento atualizada.',
+        },
+        tx,
+      );
+      return result;
     });
-
-    const [result] = await this.attachMajorEventSubscriptionEvents(existing.majorEventId, [subscription]);
     if (existing.subscriptionStatus !== subscription.subscriptionStatus) {
       const notificationRecord = await this.findMajorEventSubscriptionNotificationRecord(subscription.id);
       if (notificationRecord) {
         await this.notifications.notifyMajorEventSubscriptionRecordChanged(existing.subscriptionStatus, notificationRecord);
       }
     }
-    return result;
+    return subscription;
   }
 
   private async findMajorEventSubscriptionNotificationRecord(
@@ -499,12 +611,13 @@ export class EventSubscriptionsResolver {
         select: ReturnType<EventSubscriptionsResolver['majorEventSubscriptionSelect']>;
       }>
     >,
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<WorkspaceMajorEventSubscription[]> {
     if (subscriptions.length === 0) {
       return [];
     }
 
-    const events = await this.prisma.event.findMany({
+    const events = await prisma.event.findMany({
       where: {
         majorEventId,
         deletedAt: null,
@@ -525,7 +638,7 @@ export class EventSubscriptionsResolver {
     });
     const eventIds = events.map((event) => event.id);
     const personIds = subscriptions.map((subscription) => subscription.personId);
-    const eventSelections = await this.prisma.majorEventSubscriptionEventSelection.findMany({
+    const eventSelections = await prisma.majorEventSubscriptionEventSelection.findMany({
       where: {
         deletedAt: null,
         subscription: {

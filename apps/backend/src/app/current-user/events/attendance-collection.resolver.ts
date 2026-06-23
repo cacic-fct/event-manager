@@ -4,9 +4,10 @@ import {
   EventAttendanceScannerCodeInput,
   EventAttendanceScannerFeedItem,
 } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { CurrentUserAttendanceCollectionEvent } from '../models';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
@@ -16,6 +17,7 @@ import { AttendanceCategoryService } from '../../events/attendance-category.serv
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 
 const MAX_LOCATION_ACCURACY_METERS = 200;
 
@@ -31,6 +33,10 @@ export class CurrentUserAttendanceCollectionResolver {
     private readonly authorizationPolicy: AuthorizationPolicyService = {
       assertAttendanceCollectorForEvent: async () => undefined,
     } as unknown as AuthorizationPolicyService,
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+      buildCompositeEntityId: (parts: readonly string[]) => parts.join(':'),
+    } as unknown as AuditLogService,
   ) {}
 
   @Query(() => [CurrentUserAttendanceCollectionEvent], {
@@ -116,13 +122,17 @@ export class CurrentUserAttendanceCollectionResolver {
       throw new NotFoundException(`Person for user ${userId} was not found.`);
     }
 
-    return this.createAttendance({
-      eventId: input.eventId,
-      personId: person.id,
-      createdByMethod: AttendanceCreationMethod.SCANNER,
-      createdById: this.getActorId(context) ?? collector.userId ?? undefined,
-      location: input.location,
-    });
+    return this.createAttendance(
+      {
+        eventId: input.eventId,
+        personId: person.id,
+        createdByMethod: AttendanceCreationMethod.SCANNER,
+        createdById: this.getActorId(context) ?? collector.userId ?? undefined,
+        location: input.location,
+      },
+      (attendance, tx) =>
+        this.recordAttendanceCreate(attendance, context, 'Presença registrada pelo coletor via scanner.', tx),
+    );
   }
 
   @Mutation(() => EventAttendance, { name: 'collectCurrentUserManualAttendance' })
@@ -135,13 +145,17 @@ export class CurrentUserAttendanceCollectionResolver {
     const authenticatedUser = this.getAuthenticatedUser(context);
     await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
     const person = await this.findSinglePersonForManualInput(input.value);
-    return this.createAttendance({
-      eventId: input.eventId,
-      personId: person.id,
-      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
-      createdById: this.getActorId(context) ?? collector.userId ?? undefined,
-      location: input.location,
-    });
+    return this.createAttendance(
+      {
+        eventId: input.eventId,
+        personId: person.id,
+        createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+        createdById: this.getActorId(context) ?? collector.userId ?? undefined,
+        location: input.location,
+      },
+      (attendance, tx) =>
+        this.recordAttendanceCreate(attendance, context, 'Presença registrada pelo coletor manualmente.', tx),
+    );
   }
 
   private async requireCollector(eventId: string, context: GraphqlContext, enforceCollectionWindow: boolean) {
@@ -293,7 +307,7 @@ export class CurrentUserAttendanceCollectionResolver {
     createdByMethod: AttendanceCreationMethod;
     createdById?: string;
     location?: { latitude: number; longitude: number; accuracyMeters: number };
-  }) {
+  }, afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>) {
     const locationData = this.getRequiredLocationData(input.location);
 
     try {
@@ -308,7 +322,7 @@ export class CurrentUserAttendanceCollectionResolver {
           },
         });
         await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-        return tx.eventAttendance.findUniqueOrThrow({
+        const attendance = await tx.eventAttendance.findUniqueOrThrow({
           where: {
             personId_eventId: {
               eventId: input.eventId,
@@ -316,6 +330,8 @@ export class CurrentUserAttendanceCollectionResolver {
             },
           },
         });
+        await afterCreate?.(attendance, tx);
+        return attendance;
       });
     } catch (error: unknown) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -324,6 +340,30 @@ export class CurrentUserAttendanceCollectionResolver {
 
       throw error;
     }
+  }
+
+  private async recordAttendanceCreate(
+    attendance: {
+      personId: string;
+      eventId: string;
+    },
+    context: GraphqlContext,
+    summary: string,
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
+    await this.auditLog.record({
+      entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+      entityId: this.auditLog.buildCompositeEntityId([attendance.personId, attendance.eventId]),
+      entityLabel: attendance.personId,
+      operation: AuditLogOperation.USER_CREATE,
+      actor: this.getAuthenticatedUser(context),
+      after: attendance,
+      scope: {
+        permission: Permission.EventAttendance.Collect,
+        eventId: attendance.eventId,
+      },
+      summary,
+    }, prisma);
   }
 
   private async findSinglePersonForManualInput(rawValue: string): Promise<{ id: string }> {

@@ -70,6 +70,15 @@
         </div>
 
         <div class="panel-actions">
+          @if (workspace.selectedMajorEvent(); as selectedMajorEvent) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="auditLog.openHistory('MAJOR_EVENT', selectedMajorEvent.id, selectedMajorEvent.name)">
+              <mat-icon>history</mat-icon>
+              Histórico
+            </button>
+          }
           <button mat-button type="button" (click)="workspace.resetMajorEventForm()">
             <mat-icon>restart_alt</mat-icon>
             Limpar
