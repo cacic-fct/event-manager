@@ -42,6 +42,7 @@ COPY eslint.config.mjs jest.config.ts jest.preset.js ./
 COPY apps/backend ./apps/backend
 COPY libs/event-manager-m2m-contracts ./libs/event-manager-m2m-contracts
 COPY libs/shared-data-types ./libs/shared-data-types
+COPY libs/shared-permissions ./libs/shared-permissions
 COPY libs/shared-utils ./libs/shared-utils
 COPY certificate-templates ./certificate-templates
 

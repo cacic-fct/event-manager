@@ -26,6 +26,8 @@ apps/*
 !libs/event-manager-m2m-contracts/**
 !libs/shared-data-types
 !libs/shared-data-types/**
+!libs/shared-permissions
+!libs/shared-permissions/**
 !libs/shared-utils
 !libs/shared-utils/**
 !certificate-templates

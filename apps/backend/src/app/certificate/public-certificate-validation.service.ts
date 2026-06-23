@@ -101,7 +101,7 @@ export class PublicCertificateValidationService {
 
     return {
       id: certificate.id,
-      issuedAt: certificate.issuedAt,
+      issuedAt: certificate.issuedAt.toISOString(),
       personName: certificate.person.name,
       maskedIdentityDocument: this.maskCpf(certificate.person.identityDocument, certificate.person.isCPF),
       scope: certificate.config.scope as CertificateScope,
@@ -412,8 +412,8 @@ export class PublicCertificateValidationService {
       name: event.name,
       id: event.id,
       emoji: event.emoji,
-      startDate: event.startDate,
-      endDate: event.endDate,
+      startDate: event.startDate.toISOString(),
+      endDate: event.endDate.toISOString(),
       creditMinutes: event.creditMinutes ?? undefined,
     };
   }
