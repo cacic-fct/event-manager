@@ -128,6 +128,60 @@ describe('EventsResolver', () => {
     );
   });
 
+  it('uses Typesense rank for unscoped event searches before applying pagination', async () => {
+    const prisma = {
+      event: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'event-b' }, { id: 'event-a' }]),
+      },
+    };
+    const typesenseSearch = {
+      isEnabled: jest.fn().mockReturnValue(true),
+      searchEvents: jest.fn().mockResolvedValue({
+        available: true,
+        ids: ['event-a', 'event-b'],
+      }),
+    };
+    const authorizationPolicy = {
+      accessibleEventTargets: jest.fn().mockResolvedValue(null),
+    };
+    const resolver = new EventsResolver(
+      prisma as never,
+      typesenseSearch as never,
+      {} as never,
+      {} as never,
+      authorizationPolicy as never,
+    );
+
+    await expect(
+      resolver.events(
+        { req: { user: { sub: 'user-1' } } } as never,
+        ' aula ',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        1,
+        1,
+      ),
+    ).resolves.toEqual([{ id: 'event-b' }]);
+
+    expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', 2);
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          id: {
+            in: ['event-a', 'event-b'],
+          },
+        },
+        skip: 0,
+        take: 2,
+      }),
+    );
+  });
+
   it('uses scalar event snapshots for update audit records', async () => {
     const previousAudit = {
       id: 'event-1',
