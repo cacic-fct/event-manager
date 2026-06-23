@@ -27,9 +27,9 @@ Os principais pontos de manutenção são:
 
 1. O guard autentica a sessão ou o bearer token.
 2. O guard lê os metadados de `RequireRoles(...)` e `RequirePermissions(...)`.
-3. Papéis M2M são verificados pelo caminho de roles quando o endpoint é uma integração interna.
+3. Papéis M2M são verificados contra o audience M2M quando o endpoint é uma integração interna.
 4. Permissões humanas do Event Manager são enviadas para `AuthorizationPolicyService`.
-5. A camada de autorização exige `event-manager#access`, exceto quando o usuário possui `event-manager#super-admin`.
+5. A camada de autorização exige o client role `access` do Event Manager, exceto quando o usuário possui `super-admin`.
 6. A camada de autorização procura concessões ativas no banco.
 7. A camada de autorização resolve o alvo real da operação a partir dos argumentos GraphQL ou de `params`, `query` e `body` em REST.
 8. A operação só continua se a concessão cobre a permissão e o alvo.
@@ -38,12 +38,14 @@ Use `RequirePermissions(Permission.Resource.Action)` em handlers administrativos
 
 ## Papéis do Keycloak
 
-O Event Manager usa apenas papéis humanos de alto nível no Keycloak:
+O Event Manager usa apenas dois client roles humanos de alto nível no cliente Keycloak do Event Manager:
 
-- `event-manager#access`: permite entrar no Event Manager;
-- `event-manager#super-admin`: bypass para todas as permissões do Event Manager.
+- `access`: permite entrar no Event Manager;
+- `super-admin`: bypass para todas as permissões do Event Manager.
 
 Papéis M2M continuam existindo para contas de serviço, mas não devem ser usados para representar permissões humanas do painel.
+
+Não use recursos, escopos ou políticas do Keycloak Authorization Services para permissões administrativas humanas. A autorização de negócio usa o catálogo compartilhado e as concessões do banco do Event Manager.
 
 ## Concessões do Event Manager
 
@@ -114,6 +116,6 @@ Não trate checks de frontend como autorização.
 
 Não adicione novos papéis de Keycloak para permissões de negócio sem mudar a arquitetura conscientemente.
 
-Não conceda `event-manager#super-admin` para resolver falta de escopo em uma operação comum.
+Não conceda `super-admin` para resolver falta de escopo em uma operação comum.
 
 Não edite permissões antigas em migrações já aplicadas. Quando a mudança exigir alterações no banco de dados, crie uma nova migração.

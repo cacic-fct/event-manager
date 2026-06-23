@@ -4,15 +4,19 @@ O Keycloak autentica usuários e concede papéis de entrada no Event Manager. As
 
 Não crie papéis de Keycloak para permissões como `event#read`, `subscription#import` ou `receipt#approve`. Essas permissões pertencem ao catálogo do Event Manager e devem ser concedidas pelo painel de pessoas.
 
+Também não configure recursos, escopos ou políticas do Keycloak Authorization Services para permissões administrativas humanas. Para o cliente do Event Manager, os únicos client roles humanos esperados são `access` e `super-admin`.
+
+Demais permissões devem ser database-driven, pois o Event Manager precisa avaliar o escopo de cada concessão no momento da ação. Por exemplo, um usuário pode ter `event#update` para um evento, mas não para outro.
+
 ## Papéis usados no Keycloak
 
 | Papel | Uso |
 | --- | --- |
-| `event-manager#access` | Libera a entrada no Event Manager. Sem esse papel, o usuário não deve acessar operações administrativas, mesmo que existam concessões no banco. |
-| `event-manager#super-admin` | Bypass administrativo. Autoriza todas as permissões do Event Manager e deve ser restrito a poucos responsáveis. |
+| `access` | Client role do cliente Keycloak do Event Manager. Libera a entrada no sistema. Sem esse papel, o usuário não deve acessar operações administrativas, mesmo que existam concessões no banco. |
+| `super-admin` | Client role do cliente Keycloak do Event Manager. Bypass administrativo. Autoriza todas as permissões do Event Manager e deve ser restrito a poucos responsáveis. |
 | Papéis M2M | Usados por contas de serviço em endpoints internos, como integrações de LGPD, votação, perfil ou mesclagem de contas. Não substituem permissões humanas do painel. |
 
-O papel `event-manager#access` é a porta de entrada. O que a pessoa pode fazer depois disso depende das concessões do Event Manager, exceto quando ela possui `event-manager#super-admin`.
+O papel `access` é a porta de entrada. O que a pessoa pode fazer depois disso depende das concessões do Event Manager, exceto quando ela possui `super-admin`.
 
 ## Onde alterar permissões
 
@@ -60,8 +64,8 @@ Conceda essas permissões apenas a administradores que precisam fazer correçõe
 
 Se uma pessoa não consegue acessar uma tela:
 
-- Confirme se ela possui `event-manager#access` no Keycloak;
-- Confirme se ela não depende de `event-manager#super-admin` por engano;
+- Confirme se ela possui `access` no cliente Keycloak do Event Manager;
+- Confirme se ela não depende de `super-admin` por engano;
 - Confirme se existe concessão ativa no painel de pessoas;
 - Confira se a validade da concessão não expirou;
 - Confira se o escopo da concessão cobre o evento, grupo ou grande evento acessado;

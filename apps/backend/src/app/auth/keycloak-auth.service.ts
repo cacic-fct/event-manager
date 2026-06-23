@@ -60,18 +60,25 @@ export class KeycloakAuthService {
     const principal = await this.getOrCreatePrincipal(accessToken);
 
     const requiredRoles = requirements.roles ?? [];
+    this.assertClientRoles(principal, requiredRoles);
+
+    return principal;
+  }
+
+  assertClientRoles(principal: AuthenticatedUser | undefined, requiredRoles: readonly string[]): void {
+    if (!principal) {
+      throw new UnauthorizedException('Missing authenticated principal.');
+    }
 
     const missingRoles = requiredRoles.filter((role) => !principal.roleSet.has(role));
 
     if (missingRoles.length > 0) {
       throw new ForbiddenException(
-        `Missing required roles: ${missingRoles.join(', ')}. Granted roles: ${
+        `Missing required client roles: ${missingRoles.join(', ')}. Granted client roles: ${
           principal.roles.join(', ') || '(none)'
         }.`,
       );
     }
-
-    return principal;
   }
 
   async buildAuthorizationUrl(options?: {
@@ -455,7 +462,7 @@ export class KeycloakAuthService {
       ...keycloakClaims,
     };
 
-    const roles = extractRoles(decodedClaims, introspectionJwtClaims, keycloakClaims);
+    const roles = extractRoles(this.clientId, decodedClaims, introspectionJwtClaims, keycloakClaims);
     const roleSet = new Set(roles);
     const oidcScopes = extractOidcScopes(decodedClaims, introspectionJwtClaims, keycloakClaims);
     const oidcScopeSet = new Set(oidcScopes);

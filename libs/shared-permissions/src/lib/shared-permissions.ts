@@ -108,8 +108,8 @@ export type Permission = NestedPermissionValue<typeof Permission>;
 export type PermissionRequirement = readonly Permission[];
 
 export const EventManagerKeycloakRole = {
-  Access: 'event-manager#access',
-  SuperAdmin: 'event-manager#super-admin',
+  Access: 'access',
+  SuperAdmin: 'super-admin',
 } as const;
 
 export type EventManagerKeycloakRole =

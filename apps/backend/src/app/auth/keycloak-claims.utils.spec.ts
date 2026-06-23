@@ -2,6 +2,7 @@ import {
   decodeJwtPayload,
   extractOidcScopes,
   extractPermissions,
+  extractRealmRoles,
   extractRoles,
   readNumberClaim,
   readStringClaim,
@@ -29,18 +30,22 @@ describe('keycloak claims utils', () => {
     expect(decodeJwtPayload('not-a-jwt')).toEqual({});
   });
 
-  it('extracts unique normalized realm and client roles from multiple claim sources', () => {
+  it('extracts unique normalized roles from the configured client only', () => {
     expect(
       extractRoles(
+        'event-manager',
         {
           realm_access: {
             roles: [' admin ', '', 'participant', 123],
           },
           resource_access: {
-            adminClient: {
-              roles: ['editor', 'admin'],
+            'event-manager': {
+              roles: [' access ', 'super-admin'],
             },
-            ignoredClient: {
+            unrelatedClient: {
+              roles: ['access', 'account-merge:write'],
+            },
+            ignoredShape: {
               roles: [null, ''],
             },
           },
@@ -49,9 +54,27 @@ describe('keycloak claims utils', () => {
           realm_access: {
             roles: ['participant', 'reviewer'],
           },
+          resource_access: {
+            'event-manager': {
+              roles: ['access'],
+            },
+          },
         },
       ),
-    ).toEqual(['admin', 'participant', 'editor', 'reviewer']);
+    ).toEqual(['access', 'super-admin']);
+  });
+
+  it('extracts realm roles separately from client roles', () => {
+    expect(
+      extractRealmRoles(
+        {
+          roles: [' admin ', '', 'participant', 123],
+        },
+        {
+          roles: ['participant', 'reviewer'],
+        },
+      ),
+    ).toEqual(['admin', 'participant', 'reviewer']);
   });
 
   it('extracts unique normalized oidc scopes from space-separated scope claims', () => {
