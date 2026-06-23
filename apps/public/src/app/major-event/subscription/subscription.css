@@ -99,6 +99,12 @@ mat-chip-set {
   margin-right: 12px;
 }
 
+.turnstile-section {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  margin-top: 20px;
+  padding-top: 20px;
+}
+
 .subscribe-fab {
   bottom: 24px;
   position: fixed;

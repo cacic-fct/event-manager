@@ -117,11 +117,15 @@
     </div>
     <mat-divider></mat-divider>
     } @if (canUpload()) {
+    <lib-cloudflare-turnstile
+      [action]="receiptUploadTurnstileAction"
+      (tokenChange)="turnstileToken.set($event)" />
     <input #fileInput class="file-input" type="file" accept="image/*" (change)="onFileSelected($event)" />
     <button
       class="upload-box"
       type="button"
       [class.dragging]="isDragging()"
+      [disabled]="!turnstileToken()"
       (click)="fileInput.click()"
       (dragover)="onDragOver($event)"
       (dragleave)="onDragLeave($event)"

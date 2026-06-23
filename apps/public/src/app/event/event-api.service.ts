@@ -78,16 +78,16 @@ export class EventApiService {
     );
   }
 
-  subscribeToEvent(eventId: string): Observable<PublicEvent> {
+  subscribeToEvent(eventId: string, turnstileToken: string): Observable<PublicEvent> {
     return this.query<{ subscribeCurrentUserStandaloneEvent: PublicEvent }>(
       `
-        mutation SubscribeCurrentUserStandaloneEvent($eventId: String!) {
-          subscribeCurrentUserStandaloneEvent(eventId: $eventId) {
+        mutation SubscribeCurrentUserStandaloneEvent($eventId: String!, $turnstileToken: String) {
+          subscribeCurrentUserStandaloneEvent(eventId: $eventId, turnstileToken: $turnstileToken) {
             id
           }
         }
       `,
-      { eventId },
+      { eventId, turnstileToken },
     ).pipe(map((data) => data.subscribeCurrentUserStandaloneEvent));
   }
 
@@ -104,19 +104,19 @@ export class EventApiService {
     ).pipe(map((data) => data.unsubscribeCurrentUserStandaloneEvent));
   }
 
-  confirmAttendance(eventId: string, code: string): Observable<CurrentUserEventAttendance> {
+  confirmAttendance(eventId: string, code: string, turnstileToken: string): Observable<CurrentUserEventAttendance> {
     return this.query<{
       confirmCurrentUserOnlineAttendance: CurrentUserEventAttendance;
     }>(
       `
-        mutation ConfirmCurrentUserOnlineAttendance($eventId: String!, $code: String!) {
-          confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code }) {
+        mutation ConfirmCurrentUserOnlineAttendance($eventId: String!, $code: String!, $turnstileToken: String) {
+          confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code, turnstileToken: $turnstileToken }) {
             eventId
             attendedAt
           }
         }
       `,
-      { eventId, code },
+      { eventId, code, turnstileToken },
     ).pipe(map((data) => data.confirmCurrentUserOnlineAttendance));
   }
 

@@ -87,12 +87,23 @@
   </section>
   }
 
+  @if (isAuthenticated() && currentUserSubscription()?.subscriptionStatus !== 'CONFIRMED') {
+  <section class="turnstile-section">
+    <lib-cloudflare-turnstile [action]="turnstileAction" (tokenChange)="turnstileToken.set($event)" />
+  </section>
+  }
+
   <button
     mat-fab
     extended
     type="button"
     class="subscribe-fab"
-    [disabled]="isSubmitting() || selectedEvents().length === 0 || currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'"
+    [disabled]="
+      isSubmitting() ||
+      selectedEvents().length === 0 ||
+      currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' ||
+      (isAuthenticated() && !turnstileToken())
+    "
     (click)="submit()">
     <mat-icon>{{ submitButtonIcon() }}</mat-icon>
     {{ submitButtonLabel() }}

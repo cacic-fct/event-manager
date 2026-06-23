@@ -19,6 +19,7 @@ import {
   ServiceWorkerService,
   authInterceptor,
   provideCacicObservability,
+  provideCloudflareTurnstile,
 } from '@cacic-fct/shared-angular';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
@@ -30,6 +31,7 @@ import { NetworkStatusSnackbarService } from './shared/network-status-snackbar.s
 import { AppRouteReuseStrategy } from './tabs/reuse.strategy';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
 import { PUBLIC_FEATURE_FLAG_CONFIG, type PublicFeatureFlagConfig } from './feature-flags/public-feature-flag.config';
+import { TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS } from '@cacic-fct/shared-utils';
 
 registerLocaleData(localePt);
 
@@ -38,6 +40,7 @@ declare global {
     __cacicPublicConfig__?: {
       unleashClientKey?: string;
       unleashEnvironment?: string;
+      turnstileSiteKey?: string;
     };
   }
 }
@@ -54,6 +57,9 @@ const publicFeatureFlagConfig: PublicFeatureFlagConfig = {
 };
 
 const accountPrivacyApiBaseUrl = 'https://account.cacic.dev.br/api';
+const turnstileSiteKey =
+  readRuntimeConfigValue('cacic-turnstile-site-key', 'turnstileSiteKey') ||
+  (isDevMode() ? TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS : '');
 
 const accountPrivacy = () => inject(CacicAccountPrivacyService);
 const isAccountAnalyticsEnabled = () => accountPrivacy().isAnalyticsEnabled();
@@ -86,6 +92,9 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideCloudflareTurnstile({
+      siteKey: turnstileSiteKey,
+    }),
     provideCacicAccountPrivacy({
       apiBaseUrl: accountPrivacyApiBaseUrl,
     }),

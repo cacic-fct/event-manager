@@ -56,7 +56,9 @@
         <p class="field-error">Informe os 4 caracteres do código.</p>
       }
 
-      <button mat-flat-button type="submit" [disabled]="codeControl.invalid || isSubmitting()">
+      <lib-cloudflare-turnstile [action]="turnstileAction" (tokenChange)="turnstileToken.set($event)" />
+
+      <button mat-flat-button type="submit" [disabled]="codeControl.invalid || isSubmitting() || !turnstileToken()">
         <mat-icon>how_to_reg</mat-icon>
         Confirmar
       </button>

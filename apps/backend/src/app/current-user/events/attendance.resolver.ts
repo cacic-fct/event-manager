@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod } from '@prisma/client';
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
+import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import {
   ConfirmCurrentUserOnlineAttendanceInput,
   CurrentUserEventAttendance,
@@ -18,6 +19,7 @@ import { CurrentUserOnlineAttendanceRealtimeService } from './attendance-realtim
 import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
+import { TurnstileService } from '../../turnstile/turnstile.service';
 
 @Resolver()
 export class CurrentUserEventAttendanceResolver {
@@ -29,6 +31,9 @@ export class CurrentUserEventAttendanceResolver {
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly turnstile: TurnstileService = {
+      assertValidToken: async () => undefined,
+    } as unknown as TurnstileService,
   ) {}
 
   @Query(() => [CurrentUserEventAttendance], {
@@ -97,6 +102,11 @@ export class CurrentUserEventAttendanceResolver {
     input: ConfirmCurrentUserOnlineAttendanceInput,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventAttendance> {
+    await this.turnstile.assertValidToken(
+      input.turnstileToken,
+      context.req ?? context.request,
+      TURNSTILE_ACTIONS.onlineAttendance,
+    );
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const normalizedCode = input.code.trim();
     if (!normalizedCode) {

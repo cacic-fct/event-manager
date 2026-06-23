@@ -103,6 +103,8 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
 import { AnalyticsModule } from './analytics/analytics.module';
 import { VotingIntegrationController } from './voting-integration/controller';
 import { VotingIntegrationService } from './voting-integration/service';
+import { ReceiptUploadTurnstileGuard } from './turnstile/receipt-upload-turnstile.guard';
+import { TurnstileService } from './turnstile/turnstile.service';
 
 @Module({
   imports: [
@@ -256,6 +258,8 @@ import { VotingIntegrationService } from './voting-integration/service';
     WeatherProcessor,
     FrozenResourceService,
     VotingIntegrationService,
+    ReceiptUploadTurnstileGuard,
+    TurnstileService,
     {
       provide: Redis,
       useFactory: () => new Redis(getRedisConnectionOptions()),

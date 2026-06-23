@@ -6,6 +6,7 @@ import {
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -17,9 +18,14 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import {
+  CurrentUserMajorEventSubscription,
+  TURNSTILE_ACTIONS,
+  getSubscriptionStatusLabel,
+} from '@cacic-fct/shared-utils';
+import { CloudflareTurnstileComponent } from '@cacic-fct/shared-angular';
 import { toSVG } from '@bwip-js/browser';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from '../subscription/subscription-api.service';
 import { PaymentReceipt, PaymentReceiptApiService } from './payment-receipt-api.service';
@@ -54,6 +60,7 @@ interface ConfirmReceiptDialogData {
     MatSnackBarModule,
     MatToolbarModule,
     RouterLink,
+    CloudflareTurnstileComponent,
   ],
   templateUrl: './payment-info.html',
   styleUrl: './payment-info.css',
@@ -67,12 +74,15 @@ export class PaymentInfo {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly turnstileWidget = viewChild(CloudflareTurnstileComponent);
 
   readonly majorEventId =
     this.route.snapshot.paramMap.get('majorEventId') ?? this.route.snapshot.paramMap.get('eventID') ?? '';
   readonly state = signal<PaymentState>({ status: 'loading' });
   readonly isDragging = signal(false);
   readonly uploadProgress = signal<number | null>(null);
+  readonly receiptUploadTurnstileAction = TURNSTILE_ACTIONS.receiptUpload;
+  readonly turnstileToken = signal<string | null>(null);
   readonly isUploading = computed(() => this.uploadProgress() !== null);
   readonly applicablePrice = computed(() => {
     const subscription = this.readySubscription();
@@ -176,6 +186,8 @@ export class PaymentInfo {
     }
 
     this.state.set({ status: 'loading' });
+    this.turnstileToken.set(null);
+    this.turnstileWidget()?.reset();
     forkJoin({
       subscription: this.subscriptionApi.getCurrentUserSubscription(this.majorEventId),
       receipt: this.receiptApi.getCurrentReceipt(this.majorEventId),
@@ -241,10 +253,22 @@ export class PaymentInfo {
   }
 
   private uploadReceipt(file: File): void {
+    const turnstileToken = this.turnstileToken();
+    if (!turnstileToken) {
+      this.snackBar.open('Conclua a verificação anti-spam.', 'OK', { duration: 3000 });
+      return;
+    }
+
     this.uploadProgress.set(0);
     this.receiptApi
-      .uploadReceipt(this.majorEventId, file)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .uploadReceipt(this.majorEventId, file, turnstileToken)
+      .pipe(
+        finalize(() => {
+          this.turnstileToken.set(null);
+          this.turnstileWidget()?.reset();
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (event) => {
           if (event.type === 'progress') {

@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -11,8 +11,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, CloudflareTurnstileComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
+import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { filter, finalize, map } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
@@ -44,6 +45,7 @@ type SubscriptionPageState =
     MatToolbarModule,
     RouterLink,
     RouterOutlet,
+    CloudflareTurnstileComponent,
     SubscriptionEventList,
   ],
   templateUrl: './subscription.html',
@@ -60,10 +62,13 @@ export class MajorEventSubscription {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly turnstileWidget = viewChild(CloudflareTurnstileComponent);
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly isSubmitting = signal(false);
+  readonly turnstileAction = TURNSTILE_ACTIONS.majorEventSubscription;
+  readonly turnstileToken = signal<string | null>(null);
   readonly pageState = signal<SubscriptionPageState>({ status: 'loading' });
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
   readonly selectedEventIds = signal<Set<string>>(new Set());
@@ -171,6 +176,8 @@ export class MajorEventSubscription {
       this.initializedMajorEventId.set(null);
       this.pendingRealtimeDelta.set(null);
       this.selectedPriceTierName.set(null);
+      this.turnstileToken.set(null);
+      this.turnstileWidget()?.reset();
 
       const initialSubscription = this.api
         .getSubscriptionPage(majorEventId)
@@ -374,11 +381,21 @@ export class MajorEventSubscription {
   }
 
   private confirmSubscription(data: PublicMajorEventSubscriptionPage, paymentTier: string | null): void {
+    const turnstileToken = this.turnstileToken();
+    if (!turnstileToken) {
+      this.snackBar.open('Conclua a verificação anti-spam.', 'OK', { duration: 3000 });
+      return;
+    }
+
     this.isSubmitting.set(true);
     this.api
-      .upsertSubscription(data.majorEvent.id, [...this.effectiveSelectedEventIds()], paymentTier)
+      .upsertSubscription(data.majorEvent.id, [...this.effectiveSelectedEventIds()], paymentTier, turnstileToken)
       .pipe(
-        finalize(() => this.isSubmitting.set(false)),
+        finalize(() => {
+          this.isSubmitting.set(false);
+          this.turnstileToken.set(null);
+          this.turnstileWidget()?.reset();
+        }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({

@@ -7,7 +7,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import type { EventType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
-import { formatDateRange, getEventTypeLabel, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import {
+  TURNSTILE_ACTIONS,
+  formatDateRange,
+  getEventTypeLabel,
+  getSubscriptionStatusLabel,
+} from '@cacic-fct/shared-utils';
 import { finalize, map } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
@@ -47,6 +52,8 @@ export class RankedSubscriptionStore {
 
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly isSubmitting = signal(false);
+  readonly turnstileAction = TURNSTILE_ACTIONS.majorEventSubscription;
+  readonly turnstileToken = signal<string | null>(null);
   readonly pageState = signal<RankedSubscriptionPageState>({ status: 'loading' });
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
   readonly selectedEventIds = signal<ReadonlySet<string>>(new Set());
@@ -112,6 +119,7 @@ export class RankedSubscriptionStore {
         this.initializedMajorEventId.set(null);
         this.pendingRealtimeDelta.set(null);
         this.selectedPriceTierName.set(null);
+        this.turnstileToken.set(null);
       });
 
       const initialSubscription = this.api.getSubscriptionPage(majorEventId).subscribe({
@@ -222,7 +230,7 @@ export class RankedSubscriptionStore {
     this.selectedPriceTierName.set(tierName);
   }
 
-  submit(): void {
+  submit(resetTurnstile?: () => void): void {
     const data = this.data();
     if (!data || this.isSubmitting()) {
       return;
@@ -245,6 +253,12 @@ export class RankedSubscriptionStore {
       return;
     }
 
+    const turnstileToken = this.turnstileToken();
+    if (!turnstileToken) {
+      this.snackBar.open('Conclua a verificação anti-spam.', 'OK', { duration: 3000 });
+      return;
+    }
+
     const dialogRef = this.dialog.open<ConfirmSubscriptionDialog, ConfirmSubscriptionDialogData, boolean>(
       ConfirmSubscriptionDialog,
       {
@@ -261,7 +275,7 @@ export class RankedSubscriptionStore {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((confirmed) => {
         if (confirmed) {
-          this.confirmSubscription(data, rankedEventIds, selectedPaymentTier ?? null);
+          this.confirmSubscription(data, rankedEventIds, selectedPaymentTier ?? null, turnstileToken, resetTurnstile);
         }
       });
   }
@@ -303,7 +317,13 @@ export class RankedSubscriptionStore {
     }
   }
 
-  private confirmSubscription(data: PublicMajorEventSubscriptionPage, eventIds: string[], paymentTier: string | null): void {
+  private confirmSubscription(
+    data: PublicMajorEventSubscriptionPage,
+    eventIds: string[],
+    paymentTier: string | null,
+    turnstileToken: string,
+    resetTurnstile?: () => void,
+  ): void {
     this.isSubmitting.set(true);
     this.api
       .upsertRankedSubscription(
@@ -315,9 +335,14 @@ export class RankedSubscriptionStore {
           desiredUncategorized: this.desiredUncategorized(),
         },
         paymentTier,
+        turnstileToken,
       )
       .pipe(
-        finalize(() => this.isSubmitting.set(false)),
+        finalize(() => {
+          this.isSubmitting.set(false);
+          this.turnstileToken.set(null);
+          resetTurnstile?.();
+        }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({

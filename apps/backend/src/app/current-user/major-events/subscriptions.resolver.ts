@@ -8,6 +8,7 @@ import {
   SubscriptionStatus,
 } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
@@ -17,6 +18,7 @@ import { CurrentUserPublicEventService } from '../public-event.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
+import { TurnstileService } from '../../turnstile/turnstile.service';
 import {
   CurrentUserMajorEventFeedItem,
   CurrentUserMajorEventSubscription,
@@ -38,6 +40,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     private readonly auditLog: AuditLogService = {
       record: async () => undefined,
     } as unknown as AuditLogService,
+    private readonly turnstile: TurnstileService = {
+      assertValidToken: async () => undefined,
+    } as unknown as TurnstileService,
   ) {}
 
   @Query(() => [CurrentUserMajorEventSubscription], {
@@ -163,6 +168,11 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserMajorEventSubscription> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    await this.turnstile.assertValidToken(
+      input.turnstileToken,
+      context.req ?? context.request,
+      TURNSTILE_ACTIONS.majorEventSubscription,
+    );
     await this.frozenResources.assertMajorEventMutable(input.majorEventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     let selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(input.selectedEventIds);
