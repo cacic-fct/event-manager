@@ -5,7 +5,8 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { ActivatedRoute, convertToParamMap, provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, provideCloudflareTurnstile } from '@cacic-fct/shared-angular';
+import { TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS } from '@cacic-fct/shared-utils';
 import type { Preview } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { NEVER, of } from 'rxjs';
@@ -216,6 +217,9 @@ const preview: Preview = {
         provideHttpClient(withFetch()),
         provideNoopAnimations(),
         provideRouter([], withDisabledInitialNavigation()),
+        provideCloudflareTurnstile({
+          siteKey: TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS,
+        }),
         provideAppInitializer(() => {
           inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
         }),
