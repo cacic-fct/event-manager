@@ -11,6 +11,7 @@ model User {
   people People[]
   eventManagerPermissionGrants EventManagerPermissionGrant[]
   calendarFeedSettings UserCalendarFeedSettings?
+  adminCalendarFeedSettings UserAdminCalendarFeedSettings?
 
   createdAt   DateTime @default(now())
   createdById String?
@@ -41,6 +42,45 @@ model UserCalendarFeedSettings {
   @@index([enabled])
   @@index([lastFetchedAt])
   @@map("user_calendar_feed_settings")
+}
+
+model UserAdminCalendarFeedSettings {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  feedKey String @unique
+  enabled Boolean @default(false)
+
+  disabledAt     DateTime?
+  disabledReason String?
+  lastFetchedAt  DateTime?
+  lastCheckedAt  DateTime?
+  rotatedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([lastCheckedAt])
+  @@index([lastFetchedAt])
+  @@map("user_admin_calendar_feed_settings")
+}
+
+model SuperAdminCalendarFeedSettings {
+  id String @id
+
+  feedKey String @unique
+  enabled Boolean @default(true)
+
+  lastFetchedAt DateTime?
+  rotatedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([lastFetchedAt])
+  @@map("super_admin_calendar_feed_settings")
 }
 
 enum UserRole {

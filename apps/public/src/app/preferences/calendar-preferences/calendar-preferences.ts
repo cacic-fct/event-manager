@@ -1,4 +1,4 @@
-import { DOCUMENT, DatePipe, isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -14,11 +14,11 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Observable, catchError, finalize, map, of, startWith, switchMap } from 'rxjs';
 import {
-  CalendarFeedSettingsApiService,
+  CalendarPreferencesApiService,
   CurrentUserCalendarFeedSettings,
-} from './calendar-feed-settings-api.service';
+} from './calendar-preferences-api.service';
 
-type CalendarFeedSettingsState =
+type CalendarPreferencesState =
   | { status: 'loading' }
   | { status: 'ready'; settings: CurrentUserCalendarFeedSettings }
   | { status: 'error'; message: string };
@@ -26,9 +26,8 @@ type CalendarFeedSettingsState =
 const STALE_LOGIN_DISABLED_REASON = 'STALE_LOGIN';
 
 @Component({
-  selector: 'app-calendar-feed-preferences',
+  selector: 'app-calendar-preferences',
   imports: [
-    DatePipe,
     RouterLink,
     MatButtonModule,
     MatFormFieldModule,
@@ -41,12 +40,12 @@ const STALE_LOGIN_DISABLED_REASON = 'STALE_LOGIN';
     MatToolbarModule,
     MatTooltipModule,
   ],
-  templateUrl: './calendar-feed-preferences.html',
-  styleUrl: './calendar-feed-preferences.css',
+  templateUrl: './calendar-preferences.html',
+  styleUrl: './calendar-preferences.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CalendarFeedPreferences {
-  private readonly api = inject(CalendarFeedSettingsApiService);
+export class CalendarPreferences {
+  private readonly api = inject(CalendarPreferencesApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
@@ -57,11 +56,11 @@ export class CalendarFeedPreferences {
   readonly isSaving = signal(false);
   readonly isRotating = signal(false);
   readonly settingsState = toSignal(this.createSettingsState(), {
-    initialValue: { status: 'loading' } satisfies CalendarFeedSettingsState,
+    initialValue: { status: 'loading' } satisfies CalendarPreferencesState,
   });
   readonly feedUrl = computed(() => {
     const state = this.settingsState();
-    if (state.status !== 'ready' || !state.settings.feedPath) {
+    if (state.status !== 'ready' || !state.settings.enabled || !state.settings.feedPath) {
       return null;
     }
 
@@ -137,22 +136,22 @@ export class CalendarFeedPreferences {
     return null;
   }
 
-  private createSettingsState(): Observable<CalendarFeedSettingsState> {
+  private createSettingsState(): Observable<CalendarPreferencesState> {
     return toObservable(this.reloadCounter).pipe(
       switchMap(() =>
         this.api.getSettings().pipe(
           map(
-            (settings): CalendarFeedSettingsState => ({
+            (settings): CalendarPreferencesState => ({
               status: 'ready',
               settings,
             }),
           ),
-          startWith({ status: 'loading' } satisfies CalendarFeedSettingsState),
+          startWith({ status: 'loading' } satisfies CalendarPreferencesState),
           catchError((error: unknown) =>
             of({
               status: 'error',
               message: error instanceof Error ? error.message : 'Não foi possível carregar as preferências.',
-            } satisfies CalendarFeedSettingsState),
+            } satisfies CalendarPreferencesState),
           ),
         ),
       ),

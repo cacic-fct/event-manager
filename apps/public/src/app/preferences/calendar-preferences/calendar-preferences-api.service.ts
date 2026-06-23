@@ -8,23 +8,17 @@ export interface CurrentUserCalendarFeedSettings {
   feedPath?: string | null;
   disabledAt?: string | null;
   disabledReason?: string | null;
-  lastFetchedAt?: string | null;
-  rotatedAt?: string | null;
-  updatedAt?: string | null;
 }
 
-const CURRENT_USER_CALENDAR_FEED_SETTINGS_FIELDS = `
+const CURRENT_USER_CALENDAR_PREFERENCES_FIELDS = `
   enabled
   feedPath
   disabledAt
   disabledReason
-  lastFetchedAt
-  rotatedAt
-  updatedAt
 `;
 
 @Injectable({ providedIn: 'root' })
-export class CalendarFeedSettingsApiService {
+export class CalendarPreferencesApiService {
   private readonly http = inject(HttpClient);
 
   getSettings(): Observable<CurrentUserCalendarFeedSettings> {
@@ -32,7 +26,7 @@ export class CalendarFeedSettingsApiService {
       `
         query CurrentUserCalendarFeedSettings {
           currentUserCalendarFeedSettings {
-            ${CURRENT_USER_CALENDAR_FEED_SETTINGS_FIELDS}
+            ${CURRENT_USER_CALENDAR_PREFERENCES_FIELDS}
           }
         }
       `,
@@ -44,7 +38,7 @@ export class CalendarFeedSettingsApiService {
       `
         mutation SetCurrentUserCalendarFeedEnabled($enabled: Boolean!) {
           setCurrentUserCalendarFeedEnabled(enabled: $enabled) {
-            ${CURRENT_USER_CALENDAR_FEED_SETTINGS_FIELDS}
+            ${CURRENT_USER_CALENDAR_PREFERENCES_FIELDS}
           }
         }
       `,
@@ -57,7 +51,7 @@ export class CalendarFeedSettingsApiService {
       `
         mutation RotateCurrentUserCalendarFeedKey {
           rotateCurrentUserCalendarFeedKey {
-            ${CURRENT_USER_CALENDAR_FEED_SETTINGS_FIELDS}
+            ${CURRENT_USER_CALENDAR_PREFERENCES_FIELDS}
           }
         }
       `,

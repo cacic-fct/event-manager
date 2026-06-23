@@ -344,6 +344,12 @@ export const WORKSPACE_TAB_PERMISSIONS = [
     edit: [],
     delete: [],
   },
+  {
+    label: 'Preferências',
+    read: [],
+    edit: [],
+    delete: [],
+  },
 ] as const satisfies readonly WorkspaceTabPermission[];
 
 export const WORKSPACE_PERMISSION_EVALUATION_SET = [

@@ -18,7 +18,6 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 
     <main class="global-container">
       <mat-nav-list>
-        <h3 matSubheader>Preferências</h3>
         <a mat-list-item routerLink="/preferences/calendar">
           <mat-icon matListItemIcon>calendar_month</mat-icon>
           <span matListItemTitle>Calendário</span>

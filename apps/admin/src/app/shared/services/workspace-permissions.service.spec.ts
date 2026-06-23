@@ -43,11 +43,13 @@ describe('WorkspacePermissionsService', () => {
     expect(service.canReadTab(WorkspacePermissionTab.Events)).toBe(false);
     expect(service.canReadTab(WorkspacePermissionTab.Places)).toBe(false);
     expect(service.canReadTab(WorkspacePermissionTab.Attendances)).toBe(false);
+    expect(service.canReadTab(WorkspacePermissionTab.Preferences)).toBe(true);
     expect(service.missingReadForTab(WorkspacePermissionTab.Attendances)).toEqual([
       Permission.EventAttendance.Read,
       Permission.Event.Read,
       Permission.MajorEvent.Read,
     ]);
+    expect(service.missingReadForTab(WorkspacePermissionTab.Preferences)).toEqual([]);
     expect(service.missingReadForTab(WorkspacePermissionTab.Subscriptions)).not.toContain(Permission.Person.Read);
     expect(service.missingReadForTab(WorkspacePermissionTab.Certificates)).not.toContain(Permission.Person.Read);
   });

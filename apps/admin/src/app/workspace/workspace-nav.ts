@@ -151,6 +151,16 @@ export const workspaceNavItems = [
     permissionTab: WorkspacePermissionTab.Permissions,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
+  {
+    kind: 'link',
+    id: 'preferences',
+    path: 'preferences',
+    label: 'Preferências',
+    description: 'Ajuste preferências administrativas da sua conta.',
+    icon: 'settings',
+    permissionTab: WorkspacePermissionTab.Preferences,
+    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+  },
 ] as const satisfies readonly WorkspaceNavItem[];
 
 export type WorkspaceNavLinkItem = Extract<(typeof workspaceNavItems)[number], { kind: 'link' }>;
