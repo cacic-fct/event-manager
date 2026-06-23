@@ -1,0 +1,28 @@
+.calendar-preferences {
+  display: grid;
+  gap: 16px;
+}
+
+.feed-section {
+  display: grid;
+  gap: 12px;
+}
+
+.feed-url-field {
+  width: 100%;
+}
+
+.feed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.empty-section {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 24px;
+  text-align: center;
+}

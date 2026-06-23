@@ -6,9 +6,11 @@ model User {
   academicId       String?
   unespRole        String[] @default([])
   role             UserRole @default(USER)
+  lastLoginAt      DateTime?
 
   people People[]
   eventManagerPermissionGrants EventManagerPermissionGrant[]
+  calendarFeedSettings UserCalendarFeedSettings?
 
   createdAt   DateTime @default(now())
   createdById String?
@@ -17,7 +19,28 @@ model User {
 
   @@index([identityDocument])
   @@index([academicId])
+  @@index([lastLoginAt])
   @@map("users")
+}
+
+model UserCalendarFeedSettings {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  feedKey String @unique
+  enabled Boolean @default(false)
+
+  disabledAt     DateTime?
+  disabledReason String?
+  lastFetchedAt  DateTime?
+  rotatedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([lastFetchedAt])
+  @@map("user_calendar_feed_settings")
 }
 
 enum UserRole {

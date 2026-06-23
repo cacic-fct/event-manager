@@ -35,6 +35,7 @@ describe('AuthenticatedUserSyncService', () => {
         identityDocument: '123.456.789-00',
         academicId: '20240001',
         unespRole: ['aluno-graduacao', 'servidor'],
+        lastLoginAt: expect.any(Date),
       },
     });
   });
@@ -63,6 +64,7 @@ describe('AuthenticatedUserSyncService', () => {
       expect.objectContaining({
         data: {
           unespRole: [],
+          lastLoginAt: expect.any(Date),
         },
       }),
     );

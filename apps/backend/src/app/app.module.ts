@@ -22,6 +22,9 @@ import { LgpdController } from './lgpd/lgpd.controller';
 import { LgpdService } from './lgpd/lgpd.service';
 import { GqlThrottlerGuard } from './common/gql-throttler.guard';
 import { FrozenResourceService } from './common/frozen-resource.service';
+import { CalendarController } from './calendar/calendar.controller';
+import { CalendarResolver } from './calendar/calendar.resolver';
+import { CalendarService } from './calendar/calendar.service';
 import { CertificateConfigsService } from './certificate/certificate-configs.service';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
@@ -179,6 +182,7 @@ import { TurnstileService } from './turnstile/turnstile.service';
     LgpdController,
     CurrentUserRealtimeEventsController,
     CurrentUserAttendanceCollectionController,
+    CalendarController,
     AccountProfileUpdateController,
     EventAttendancesController,
     MajorEventReceiptsController,
@@ -203,6 +207,8 @@ import { TurnstileService } from './turnstile/turnstile.service';
     PermissionGrantsService,
     AuditLogResolver,
     AuditLogService,
+    CalendarResolver,
+    CalendarService,
     CurrentUserContextService,
     CurrentUserEventMapperService,
     CurrentUserPublicEventService,

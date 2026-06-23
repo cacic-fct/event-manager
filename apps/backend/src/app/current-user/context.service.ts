@@ -176,6 +176,7 @@ export class CurrentUserContextService {
         identityDocument: profile.identityDocument ?? null,
         academicId: profile.academicId ?? null,
         unespRole: profile.unespRole,
+        lastLoginAt: new Date(),
       },
       select: USER_SELECT,
     });
