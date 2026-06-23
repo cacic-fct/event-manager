@@ -88,6 +88,7 @@ export class MajorEventSubscriptionApiService {
     majorEventId: string,
     selectedEventIds: string[],
     paymentTier?: string | null,
+    turnstileToken?: string | null,
   ): Observable<CurrentUserMajorEventSubscription> {
     return this.query<{
       upsertCurrentUserMajorEventSubscription: CurrentUserMajorEventSubscription;
@@ -97,12 +98,14 @@ export class MajorEventSubscriptionApiService {
           $majorEventId: String!
           $selectedEventIds: [String!]!
           $paymentTier: String
+          $turnstileToken: String
         ) {
           upsertCurrentUserMajorEventSubscription(
             input: {
               majorEventId: $majorEventId
               selectedEventIds: $selectedEventIds
               paymentTier: $paymentTier
+              turnstileToken: $turnstileToken
             }
           ) {
             id
@@ -120,7 +123,7 @@ export class MajorEventSubscriptionApiService {
           }
         }
       `,
-      { majorEventId, selectedEventIds, paymentTier },
+      { majorEventId, selectedEventIds, paymentTier, turnstileToken },
     ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
   }
 
@@ -133,6 +136,7 @@ export class MajorEventSubscriptionApiService {
       desiredUncategorized?: number | null;
     },
     paymentTier?: string | null,
+    turnstileToken?: string | null,
   ): Observable<CurrentUserMajorEventSubscription> {
     return this.query<{
       upsertCurrentUserMajorEventSubscription: CurrentUserMajorEventSubscription;
@@ -145,6 +149,7 @@ export class MajorEventSubscriptionApiService {
           $desiredLectures: Int
           $desiredUncategorized: Int
           $paymentTier: String
+          $turnstileToken: String
         ) {
           upsertCurrentUserMajorEventSubscription(
             input: {
@@ -154,6 +159,7 @@ export class MajorEventSubscriptionApiService {
               desiredLectures: $desiredLectures
               desiredUncategorized: $desiredUncategorized
               paymentTier: $paymentTier
+              turnstileToken: $turnstileToken
             }
           ) {
             id
@@ -171,7 +177,7 @@ export class MajorEventSubscriptionApiService {
           }
         }
       `,
-      { majorEventId, selectedEventIds, ...desiredCounts, paymentTier },
+      { majorEventId, selectedEventIds, ...desiredCounts, paymentTier, turnstileToken },
     ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
   }
 

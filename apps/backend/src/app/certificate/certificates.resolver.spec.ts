@@ -1,5 +1,7 @@
 import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
+import { BadRequestException } from '@nestjs/common';
 import { CertificatesResolver } from './certificates.resolver';
 
 describe('CertificatesResolver authorization', () => {
@@ -69,6 +71,40 @@ describe('CertificatesResolver authorization', () => {
       },
     );
   });
+
+  it('verifies Turnstile before public certificate validation lookup', async () => {
+    const { publicValidationService, resolver, turnstile } = createResolver();
+    const request = { ip: '203.0.113.10' };
+    publicValidationService.validateCertificate.mockResolvedValue({ id: 'certificate-1' });
+
+    await expect(
+      resolver.publicCertificateValidation('certificate-1', 'turnstile-token', { req: request } as never),
+    ).resolves.toEqual({ id: 'certificate-1' });
+
+    expect(turnstile.assertValidToken).toHaveBeenCalledWith(
+      'turnstile-token',
+      request,
+      TURNSTILE_ACTIONS.certificateValidation,
+    );
+    expect(publicValidationService.validateCertificate).toHaveBeenCalledWith('certificate-1');
+    expect(turnstile.assertValidToken.mock.invocationCallOrder[0]).toBeLessThan(
+      publicValidationService.validateCertificate.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('does not validate a public certificate when Turnstile validation fails', async () => {
+    const { publicValidationService, resolver, turnstile } = createResolver();
+    const error = new BadRequestException('Turnstile verification failed.');
+    turnstile.assertValidToken.mockRejectedValueOnce(error);
+
+    await expect(
+      resolver.publicCertificateValidation('certificate-1', 'turnstile-token', {
+        req: { ip: '203.0.113.10' },
+      } as never),
+    ).rejects.toBe(error);
+
+    expect(publicValidationService.validateCertificate).not.toHaveBeenCalled();
+  });
 });
 
 function createResolver() {
@@ -98,6 +134,9 @@ function createResolver() {
   const publicValidationService = {
     validateCertificate: jest.fn(),
   };
+  const turnstile = {
+    assertValidToken: jest.fn().mockResolvedValue(undefined),
+  };
   const frozenResources = {
     assertCertificateTargetMutable: jest.fn(),
     assertCertificateConfigMutable: jest.fn(),
@@ -114,6 +153,7 @@ function createResolver() {
     issuingService as never,
     downloadService as never,
     publicValidationService as never,
+    turnstile as never,
     frozenResources as never,
     authorizationPolicy as never,
   );
@@ -122,7 +162,9 @@ function createResolver() {
     authorizationPolicy,
     configsService,
     frozenResources,
+    publicValidationService,
     resolver,
     targetsService,
+    turnstile,
   };
 }

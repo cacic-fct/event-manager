@@ -15,6 +15,8 @@
     <h1>Validar certificado</h1>
   </header>
 
+  @let currentState = state();
+
   <form class="lookup-form" [formGroup]="validationForm" (ngSubmit)="submit()">
     <mat-form-field class="id-field">
       <mat-label>Código do certificado</mat-label>
@@ -26,8 +28,21 @@
       }
     </mat-form-field>
 
+    <section class="turnstile-section" [class.turnstile-section-active]="currentState.status === 'challenge'">
+      @if (currentState.status === 'challenge') {
+      <div class="challenge-copy" aria-live="polite">
+        <mat-icon aria-hidden="true">verified_user</mat-icon>
+        <p>{{ challengeMessage(currentState.source) }}</p>
+      </div>
+      }
+      <lib-cloudflare-turnstile [action]="turnstileAction" (tokenChange)="onTurnstileTokenChange($event)" />
+    </section>
+
     <div class="button-container">
-      <button mat-flat-button type="submit">
+      <button
+        mat-flat-button
+        type="submit"
+        [disabled]="certificateIdControl.invalid || currentState.status === 'loading' || !turnstileToken()">
         <mat-icon>search</mat-icon>
         Validar
       </button>
@@ -37,7 +52,7 @@
     </div>
   </form>
 
-  @let currentState = state(); @if (currentState.status === 'loading') {
+  @if (currentState.status === 'loading') {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">

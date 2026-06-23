@@ -181,6 +181,7 @@ export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_PAGE_QUERY = `
 
 export interface PublicCertificateValidationQueryVariables {
   certificateId: string;
+  turnstileToken?: string | null;
 }
 
 export interface PublicCertificateValidationQuery {
@@ -188,8 +189,8 @@ export interface PublicCertificateValidationQuery {
 }
 
 export const PUBLIC_CERTIFICATE_VALIDATION_QUERY = `
-  query PublicCertificateValidation($certificateId: String!) {
-    publicCertificateValidation(certificateId: $certificateId) {
+  query PublicCertificateValidation($certificateId: String!, $turnstileToken: String) {
+    publicCertificateValidation(certificateId: $certificateId, turnstileToken: $turnstileToken) {
       ${PUBLIC_CERTIFICATE_VALIDATION_FIELDS}
     }
   }

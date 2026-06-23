@@ -8,13 +8,19 @@ import {
   effect,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import type { PublicEvent, PublicLecturerProfile } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, MailtoService } from '@cacic-fct/shared-angular';
-import { formatDateRange, getEventTypeLabel, isOnlineAttendanceRegistrationOpen } from '@cacic-fct/shared-utils';
+import { AuthService, CloudflareTurnstileComponent, MailtoService } from '@cacic-fct/shared-angular';
+import {
+  TURNSTILE_ACTIONS,
+  formatDateRange,
+  getEventTypeLabel,
+  isOnlineAttendanceRegistrationOpen,
+} from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule } from '@angular/material/dialog';
@@ -50,6 +56,7 @@ type EventPageState =
     MatSnackBarModule,
     MatToolbarModule,
     MatTooltipModule,
+    CloudflareTurnstileComponent,
   ],
   templateUrl: './event.html',
   styleUrl: './event.css',
@@ -67,6 +74,7 @@ export class Event {
   private readonly realtime = inject(EventSubscriptionRealtimeService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly mailto = inject(MailtoService);
+  private readonly standaloneSubscriptionTurnstile = viewChild(CloudflareTurnstileComponent);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
@@ -76,6 +84,8 @@ export class Event {
   readonly isSubscribing = signal(false);
   readonly isUnsubscribing = signal(false);
   readonly isConfirmingAttendance = signal(false);
+  readonly standaloneSubscriptionTurnstileAction = TURNSTILE_ACTIONS.standaloneEventSubscription;
+  readonly standaloneSubscriptionTurnstileToken = signal<string | null>(null);
 
   private readonly reloadCounter = signal(0);
   private readonly realtimeAvailability = signal<{ eventId: string; hasAvailableSlots: boolean } | null>(null);
@@ -109,6 +119,17 @@ export class Event {
     onCleanup(() => subscription.unsubscribe());
   });
 
+  private readonly turnstileResetWatcher = effect(() => {
+    const currentState = this.eventState();
+    if (currentState.status !== 'ready') {
+      this.standaloneSubscriptionTurnstileToken.set(null);
+      return;
+    }
+
+    this.standaloneSubscriptionTurnstileToken.set(null);
+    this.standaloneSubscriptionTurnstile()?.reset();
+  });
+
   goBack(): void {
     void this.router.navigateByUrl(this.backUrl());
   }
@@ -140,12 +161,22 @@ export class Event {
       return;
     }
 
+    const turnstileToken = this.standaloneSubscriptionTurnstileToken();
+    if (!turnstileToken) {
+      this.snackBar.open('Conclua a verificação anti-spam.', 'OK', { duration: 3000 });
+      return;
+    }
+
     this.isSubscribing.set(true);
 
     this.api
-      .subscribeToEvent(data.event.id)
+      .subscribeToEvent(data.event.id, turnstileToken)
       .pipe(
-        finalize(() => this.isSubscribing.set(false)),
+        finalize(() => {
+          this.isSubscribing.set(false);
+          this.standaloneSubscriptionTurnstileToken.set(null);
+          this.standaloneSubscriptionTurnstile()?.reset();
+        }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({

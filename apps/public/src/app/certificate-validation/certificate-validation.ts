@@ -6,6 +6,7 @@ import {
   inject,
   PLATFORM_ID,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -21,8 +22,8 @@ import type {
   PublicCertificateValidation,
   PublicCertificateValidationEvent,
 } from '@cacic-fct/event-manager-public-contracts';
-import { formatCreditMinutes, formatDateRange } from '@cacic-fct/shared-utils';
-import { catchError, combineLatest, distinctUntilChanged, finalize, map, of, startWith, switchMap, tap } from 'rxjs';
+import { TURNSTILE_ACTIONS, formatCreditMinutes, formatDateRange } from '@cacic-fct/shared-utils';
+import { Subscription, combineLatest, distinctUntilChanged, finalize, map } from 'rxjs';
 import { CertificateFileDownloadService } from '../shared/certificate-file-download.service';
 import { EmojiService } from '../shared/emoji.service';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
@@ -31,6 +32,7 @@ import {
   AztecScannerDialogComponent,
   CacicAnalyticsService,
   CacicLogoComponent,
+  CloudflareTurnstileComponent,
 } from '@cacic-fct/shared-angular';
 import { isPlatformBrowser } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -39,9 +41,12 @@ import { MatDialog } from '@angular/material/dialog';
 
 type ValidationState =
   | { status: 'idle' }
+  | { status: 'challenge'; certificateId: string; source: ValidationSource }
   | { status: 'loading' }
   | { status: 'ready'; certificate: PublicCertificateValidation }
   | { status: 'error'; message: string };
+
+type ValidationSource = 'link' | 'manual' | 'scan';
 
 @Component({
   selector: 'app-certificate-validation',
@@ -61,6 +66,7 @@ type ValidationState =
     MatToolbarModule,
     CacicLogoComponent,
     MatTooltipModule,
+    CloudflareTurnstileComponent,
   ],
 })
 export class CertificateValidation {
@@ -74,8 +80,13 @@ export class CertificateValidation {
   readonly emoji = inject(EmojiService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly turnstileWidget = viewChild(CloudflareTurnstileComponent);
 
   private platformId = inject(PLATFORM_ID);
+  private activeValidation: Subscription | null = null;
+  private pendingCertificateId: string | null = null;
+  private nextValidationSource: ValidationSource | null = null;
+  private currentRouteCertificateId: string | null = null;
   private isDarkSignal = signal(false);
   fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
 
@@ -89,6 +100,8 @@ export class CertificateValidation {
   readonly state = signal<ValidationState>({ status: 'idle' });
   readonly downloading = signal(false);
   readonly downloadError = signal<string | null>(null);
+  readonly turnstileAction = TURNSTILE_ACTIONS.certificateValidation;
+  readonly turnstileToken = signal<string | null>(null);
 
   constructor() {
     combineLatest([this.route.paramMap, this.route.queryParamMap])
@@ -102,59 +115,54 @@ export class CertificateValidation {
           (previous, current) =>
             previous.certificateId === current.certificateId && previous.invalidId === current.invalidId,
         ),
-        tap(({ certificateId, invalidId }) => this.syncInput(certificateId, invalidId)),
-        switchMap(({ certificateId }) => {
-          if (!certificateId) {
-            return of({ status: 'idle' } satisfies ValidationState);
-          }
-
-          return this.api.validateCertificate(certificateId).pipe(
-            switchMap((certificate) => {
-              if (!certificate) {
-                void this.router.navigate(['/validate'], {
-                  queryParams: { invalidId: certificateId },
-                  replaceUrl: true,
-                });
-                return of({ status: 'loading' } satisfies ValidationState);
-              }
-
-              return of({
-                status: 'ready',
-                certificate,
-              } satisfies ValidationState);
-            }),
-            startWith({ status: 'loading' } satisfies ValidationState),
-            catchError((error: unknown) =>
-              of({
-                status: 'error',
-                message: this.getErrorMessage(error),
-              } satisfies ValidationState),
-            ),
-          );
-        }),
         takeUntilDestroyed(),
       )
-      .subscribe((state) => this.state.set(state));
+      .subscribe(({ certificateId, invalidId }) => {
+        this.currentRouteCertificateId = certificateId;
+        this.syncInput(certificateId, invalidId);
 
-    if (isPlatformBrowser(this.platformId)) {
+        if (!certificateId) {
+          this.cancelPendingValidation();
+          this.state.set({ status: 'idle' });
+          return;
+        }
+
+        this.queueValidation(certificateId, this.consumeNextValidationSource());
+      });
+
+    this.destroyRef.onDestroy(() => this.activeValidation?.unsubscribe());
+
+    if (isPlatformBrowser(this.platformId) && window.matchMedia) {
       const media = window.matchMedia('(prefers-color-scheme: dark)');
 
       this.isDarkSignal.set(media.matches);
 
-      media.addEventListener('change', (e) => {
-        this.isDarkSignal.set(e.matches);
-        console.log('Dark mode changed:', e.matches);
+      const listener = (event: MediaQueryListEvent) => {
+        this.isDarkSignal.set(event.matches);
+      };
+
+      media.addEventListener('change', listener);
+
+      this.destroyRef.onDestroy(() => {
+        media.removeEventListener('change', listener);
       });
     }
   }
 
-  submit(): void {
+  submit(source: ValidationSource = 'manual'): void {
     const certificateId = this.certificateIdControl.value.trim();
     if (!certificateId) {
       this.certificateIdControl.markAsTouched();
       this.certificateIdControl.updateValueAndValidity();
       return;
     }
+
+    if (certificateId === this.currentRouteCertificateId) {
+      this.queueValidation(certificateId, source);
+      return;
+    }
+
+    this.nextValidationSource = source;
 
     // Navigate using query params to ensure the value is reliably available
     // to the component regardless of router URL handling.
@@ -210,8 +218,18 @@ export class CertificateValidation {
 
         this.certificateIdControl.setValue(certificateId);
 
-        this.submit();
+        this.submit('scan');
       });
+  }
+
+  onTurnstileTokenChange(token: string | null): void {
+    this.turnstileToken.set(token);
+
+    if (!token || !this.pendingCertificateId) {
+      return;
+    }
+
+    this.validatePendingCertificate(token);
   }
 
   formatEventDate(event: PublicCertificateValidationEvent): string {
@@ -224,6 +242,94 @@ export class CertificateValidation {
     }
 
     return formatCreditMinutes(creditMinutes);
+  }
+
+  challengeMessage(source: ValidationSource): string {
+    if (source === 'scan') {
+      return 'Código escaneado. Conclua a verificação anti-spam para validar o certificado.';
+    }
+
+    if (source === 'link') {
+      return 'Você abriu um certificado por QR Code ou link. Conclua a verificação anti-spam para validar.';
+    }
+
+    return 'Conclua a verificação anti-spam para validar o certificado.';
+  }
+
+  private queueValidation(certificateId: string, source: ValidationSource): void {
+    const normalizedCertificateId = this.normalizeId(certificateId);
+    if (!normalizedCertificateId) {
+      this.cancelPendingValidation();
+      this.state.set({ status: 'idle' });
+      return;
+    }
+
+    this.pendingCertificateId = normalizedCertificateId;
+
+    const turnstileToken = this.turnstileToken();
+    if (!turnstileToken) {
+      this.state.set({
+        status: 'challenge',
+        certificateId: normalizedCertificateId,
+        source,
+      });
+      return;
+    }
+
+    this.validatePendingCertificate(turnstileToken);
+  }
+
+  private validatePendingCertificate(turnstileToken: string): void {
+    const certificateId = this.pendingCertificateId;
+    if (!certificateId) {
+      return;
+    }
+
+    this.pendingCertificateId = null;
+    this.state.set({ status: 'loading' });
+    this.activeValidation?.unsubscribe();
+    this.activeValidation = this.api
+      .validateCertificate(certificateId, turnstileToken)
+      .pipe(
+        finalize(() => {
+          this.turnstileToken.set(null);
+          this.turnstileWidget()?.reset();
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (certificate) => {
+          if (!certificate) {
+            void this.router.navigate(['/validate'], {
+              queryParams: { invalidId: certificateId },
+              replaceUrl: true,
+            });
+            return;
+          }
+
+          this.state.set({
+            status: 'ready',
+            certificate,
+          });
+        },
+        error: (error: unknown) =>
+          this.state.set({
+            status: 'error',
+            message: this.getErrorMessage(error),
+          }),
+      });
+  }
+
+  private cancelPendingValidation(): void {
+    this.pendingCertificateId = null;
+    this.activeValidation?.unsubscribe();
+    this.activeValidation = null;
+  }
+
+  private consumeNextValidationSource(): ValidationSource {
+    const source = this.nextValidationSource ?? 'link';
+    this.nextValidationSource = null;
+    return source;
   }
 
   private syncInput(certificateId: string | null, invalidId: string | null): void {
@@ -247,6 +353,18 @@ export class CertificateValidation {
     const message = error instanceof Error ? error.message : '';
     if (message.includes('Too Many Requests') || message.includes('ThrottlerException')) {
       return 'Muitas tentativas. Aguarde um instante e tente novamente.';
+    }
+
+    if (message.includes('Turnstile verification is temporarily unavailable')) {
+      return 'A verificação anti-spam está temporariamente indisponível. Tente novamente em instantes.';
+    }
+
+    if (message.includes('Turnstile verification is not configured')) {
+      return 'A verificação anti-spam não está configurada. Avise a organização do evento.';
+    }
+
+    if (message.includes('Turnstile verification')) {
+      return 'Não foi possível confirmar a verificação anti-spam. Tente novamente.';
     }
 
     return message || 'Não foi possível validar o certificado.';

@@ -52,6 +52,29 @@ h3 {
   width: 100%;
 }
 
+.turnstile-section {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.turnstile-section-active {
+  border-inline-start: 3px solid var(--mat-sys-primary);
+  padding-inline-start: 12px;
+}
+
+.challenge-copy {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: flex;
+  gap: 8px;
+  font: var(--mat-sys-body-medium);
+}
+
+.challenge-copy p {
+  margin: 0;
+}
+
 .certificate-section,
 .events-section {
   margin-top: 28px;
@@ -150,6 +173,15 @@ mat-list {
   .lookup-form {
     align-items: start;
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .turnstile-section {
+    grid-column: 1 / -1;
+  }
+
+  .button-container {
+    grid-column: 2;
+    grid-row: 1;
   }
 }
 

@@ -87,6 +87,10 @@ h3 {
   margin: 16px 0 8px;
 }
 
+.turnstile-action {
+  flex-basis: 100%;
+}
+
 .status-line {
   display: flex;
   flex-wrap: wrap;

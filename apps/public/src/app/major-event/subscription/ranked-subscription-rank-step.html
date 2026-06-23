@@ -136,6 +136,14 @@
     </button>
   </div>
 
+  @if (store.isAuthenticated() && store.currentUserSubscription()?.subscriptionStatus !== 'CONFIRMED') {
+  <section class="turnstile-section">
+    <lib-cloudflare-turnstile
+      [action]="store.turnstileAction"
+      (tokenChange)="store.turnstileToken.set($event)" />
+  </section>
+  }
+
   <button
     mat-fab
     extended
@@ -144,9 +152,10 @@
     [disabled]="
       store.isSubmitting() ||
       store.effectiveSelectedEventIds().size === 0 ||
-      store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'
+      store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' ||
+      (store.isAuthenticated() && !store.turnstileToken())
     "
-    (click)="store.submit()">
+    (click)="submit()">
     <mat-icon>{{ store.currentUserSubscription() ? 'edit' : 'event_available' }}</mat-icon>
     {{ store.currentUserSubscription() ? 'Atualizar inscrição' : 'Inscrever-se' }}
   </button>
