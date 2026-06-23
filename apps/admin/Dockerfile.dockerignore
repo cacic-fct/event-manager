@@ -29,6 +29,8 @@ apps/*
 !libs/shared-data-types/**
 !libs/shared-utils
 !libs/shared-utils/**
+!libs/shared-permissions
+!libs/shared-permissions/**
 !libs/shared-notifications-angular
 !libs/shared-notifications-angular/**
 !libs/shared-environment

@@ -16,6 +16,7 @@ COPY apps/admin/project.json apps/admin/tsconfig*.json ./apps/admin/
 COPY libs/shared-angular/project.json libs/shared-angular/tsconfig*.json ./libs/shared-angular/
 COPY libs/shared-data-types/project.json libs/shared-data-types/tsconfig*.json ./libs/shared-data-types/
 COPY libs/shared-utils/project.json libs/shared-utils/tsconfig*.json ./libs/shared-utils/
+COPY libs/shared-permissions/project.json libs/shared-permissions/tsconfig*.json ./libs/shared-permissions/
 COPY libs/shared-notifications-angular/project.json libs/shared-notifications-angular/tsconfig*.json ./libs/shared-notifications-angular/
 COPY libs/shared-environment/project.json libs/shared-environment/tsconfig*.json ./libs/shared-environment/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
@@ -29,6 +30,7 @@ COPY apps/admin ./apps/admin
 COPY libs/shared-angular ./libs/shared-angular
 COPY libs/shared-data-types ./libs/shared-data-types
 COPY libs/shared-utils ./libs/shared-utils
+COPY libs/shared-permissions ./libs/shared-permissions
 COPY libs/shared-notifications-angular ./libs/shared-notifications-angular
 COPY libs/shared-environment ./libs/shared-environment
 RUN bun x nx build admin --configuration=production

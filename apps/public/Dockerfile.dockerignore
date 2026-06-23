@@ -29,6 +29,8 @@ apps/*
 !libs/shared-data-types/**
 !libs/shared-utils
 !libs/shared-utils/**
+!libs/shared-permissions
+!libs/shared-permissions/**
 !libs/offline-public-data-access
 !libs/offline-public-data-access/**
 !libs/shared-notifications-angular
