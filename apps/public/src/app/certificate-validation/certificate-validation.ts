@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, PLATFORM_ID, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  PLATFORM_ID,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,12 +17,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import {
+import type {
   PublicCertificateValidation,
   PublicCertificateValidationEvent,
-  formatCreditMinutes,
-  formatDateRange,
-} from '@cacic-fct/shared-utils';
+} from '@cacic-fct/event-manager-public-contracts';
+import { formatCreditMinutes, formatDateRange } from '@cacic-fct/shared-utils';
 import { catchError, combineLatest, distinctUntilChanged, finalize, map, of, startWith, switchMap, tap } from 'rxjs';
 import { CertificateFileDownloadService } from '../shared/certificate-file-download.service';
 import { EmojiService } from '../shared/emoji.service';

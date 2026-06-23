@@ -1,0 +1,17 @@
+{
+  "name": "event-manager-public-contracts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/event-manager-public-contracts/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:contract"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/libs/event-manager-public-contracts"],
+      "options": {
+        "cwd": "libs/event-manager-public-contracts",
+        "command": "bun run tsc -p tsconfig.lib.json && cp package.json README.md ../../dist/libs/event-manager-public-contracts/"
+      }
+    }
+  }
+}

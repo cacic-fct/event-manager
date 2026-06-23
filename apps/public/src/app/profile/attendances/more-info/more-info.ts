@@ -1,3 +1,4 @@
+import type { EventTargetType } from '@cacic-fct/event-manager-public-contracts';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,7 +11,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { OfflineAttendanceDetail, OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
-import { DetailViewModel, EventTargetType, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
+import { DetailViewModel, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
 import { Observable, catchError, from, map, of, startWith, switchMap } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';

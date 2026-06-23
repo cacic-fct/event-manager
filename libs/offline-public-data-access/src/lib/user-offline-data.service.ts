@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import type { EventTargetType, SubscriptionsFeed } from '@cacic-fct/shared-utils';
+import type { EventTargetType } from '@cacic-fct/event-manager-public-contracts';
+import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { OfflineAttendanceDetail, OfflineUserSnapshot } from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 

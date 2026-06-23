@@ -1,118 +1,32 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { CurrentUserMajorEventSubscription, PublicEvent, PublicMajorEvent } from '@cacic-fct/shared-utils';
+import {
+  PUBLIC_MAJOR_EVENTS_QUERY,
+  PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS,
+  PUBLIC_MAJOR_EVENT_SUBSCRIPTION_PAGE_QUERY,
+  PUBLIC_SUBSCRIPTION_EVENT_FIELDS,
+  type GraphqlResponse,
+  type GraphqlVariables,
+  type PublicMajorEventsQuery,
+  type PublicMajorEventsQueryVariables,
+  type PublicMajorEvent,
+  type PublicMajorEventSubscriptionPage,
+  type PublicMajorEventSubscriptionPageQuery,
+} from '@cacic-fct/event-manager-public-contracts';
+import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
 
-export interface PublicEventSubscriptionSummary {
-  eventId: string;
-  hasAvailableSlots: boolean;
-}
-
-export interface PublicMajorEventSubscriptionPage {
-  majorEvent: PublicMajorEvent;
-  events: PublicEvent[];
-  subscriptionSummaries: PublicEventSubscriptionSummary[];
-}
-
-type GraphqlVariable = string | number | boolean | null | undefined | readonly string[];
-type GraphqlVariables = Record<string, GraphqlVariable>;
-
-interface GraphqlResponse<TData> {
-  data?: TData;
-  errors?: Array<{ message: string }>;
-}
-
-const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
-  id
-  name
-  emoji
-  startDate
-  endDate
-  description
-  subscriptionStartDate
-  subscriptionEndDate
-  rankedSubscriptionEnabled
-  buttonText
-  buttonLink
-  isPaymentRequired
-`;
-
-const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
-  id
-  name
-  emoji
-  startDate
-  endDate
-  description
-  subscriptionStartDate
-  subscriptionEndDate
-  maxCoursesPerAttendee
-  maxLecturesPerAttendee
-  maxUncategorizedPerAttendee
-  rankedSubscriptionEnabled
-  isPaymentRequired
-  additionalPaymentInfo
-  paymentInfo {
-    id
-    bankName
-    agency
-    account
-    holder
-    document
-    pixKey
-    pixCity
-    majorEventId
-  }
-  majorEventPrices {
-    id
-    type
-    tiers {
-      id
-      name
-      value
-    }
-  }
-`;
-
-const PUBLIC_SUBSCRIPTION_EVENT_FIELDS = `
-  id
-  name
-  startDate
-  endDate
-  emoji
-  type
-  shortDescription
-  locationDescription
-  eventGroupId
-  autoSubscribe
-  eventGroup {
-    id
-    name
-  }
-`;
-
-const SUBSCRIPTION_SUMMARY_FIELDS = `
-  eventId
-  hasAvailableSlots
-`;
+export type { PublicEventSubscriptionSummary, PublicMajorEventSubscriptionPage } from '@cacic-fct/event-manager-public-contracts';
 
 @Injectable({ providedIn: 'root' })
 export class MajorEventSubscriptionApiService {
   private readonly http = inject(HttpClient);
 
   listMajorEvents(startDateFrom?: string): Observable<PublicMajorEvent[]> {
-    return this.query<{
-      publicMajorEvents: PublicMajorEvent[];
-    }>(
-      `
-        query PublicMajorEvents($startDateFrom: DateTime) {
-          publicMajorEvents(startDateFrom: $startDateFrom) {
-            ${PUBLIC_MAJOR_EVENT_CARD_FIELDS}
-          }
-        }
-      `,
-      { startDateFrom },
-    ).pipe(map((data) => data.publicMajorEvents));
+    const variables: PublicMajorEventsQueryVariables = { startDateFrom };
+    return this.query<PublicMajorEventsQuery>(PUBLIC_MAJOR_EVENTS_QUERY, variables).pipe(
+      map((data) => data.publicMajorEvents),
+    );
   }
 
   listCurrentUserSubscriptions(): Observable<CurrentUserMajorEventSubscription[]> {
@@ -139,26 +53,9 @@ export class MajorEventSubscriptionApiService {
   }
 
   getSubscriptionPage(majorEventId: string): Observable<PublicMajorEventSubscriptionPage> {
-    return this.query<{
-      publicMajorEventSubscriptionPage: PublicMajorEventSubscriptionPage;
-    }>(
-      `
-        query PublicMajorEventSubscriptionPage($majorEventId: String!) {
-          publicMajorEventSubscriptionPage(majorEventId: $majorEventId) {
-            majorEvent {
-              ${PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS}
-            }
-            events {
-              ${PUBLIC_SUBSCRIPTION_EVENT_FIELDS}
-            }
-            subscriptionSummaries {
-              ${SUBSCRIPTION_SUMMARY_FIELDS}
-            }
-          }
-        }
-      `,
-      { majorEventId },
-    ).pipe(map((data) => data.publicMajorEventSubscriptionPage));
+    return this.query<PublicMajorEventSubscriptionPageQuery>(PUBLIC_MAJOR_EVENT_SUBSCRIPTION_PAGE_QUERY, {
+      majorEventId,
+    }).pipe(map((data) => data.publicMajorEventSubscriptionPage));
   }
 
   getCurrentUserSubscription(majorEventId: string): Observable<CurrentUserMajorEventSubscription | null> {

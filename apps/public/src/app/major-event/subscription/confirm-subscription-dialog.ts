@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/shared-utils';
+import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { EmojiService } from '../../shared/emoji.service';
 

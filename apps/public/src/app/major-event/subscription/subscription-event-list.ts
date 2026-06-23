@@ -5,7 +5,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import type { PublicEvent } from '@cacic-fct/shared-utils';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { EmojiService } from '../../shared/emoji.service';

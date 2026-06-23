@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import type { PublicEvent } from '@cacic-fct/shared-utils';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { OfflineCalendarEvent } from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 

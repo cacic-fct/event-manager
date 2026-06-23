@@ -1,9 +1,9 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
+  PLATFORM_ID,
   Component,
   DestroyRef,
-  PLATFORM_ID,
   computed,
   effect,
   inject,
@@ -12,14 +12,9 @@ import {
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
+import type { PublicEvent, PublicLecturerProfile } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService, MailtoService } from '@cacic-fct/shared-angular';
-import {
-  PublicEvent,
-  PublicLecturerProfile,
-  formatDateRange,
-  getEventTypeLabel,
-  isOnlineAttendanceRegistrationOpen,
-} from '@cacic-fct/shared-utils';
+import { formatDateRange, getEventTypeLabel, isOnlineAttendanceRegistrationOpen } from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule } from '@angular/material/dialog';

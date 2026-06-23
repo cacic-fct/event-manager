@@ -11,12 +11,14 @@ on:
         options:
           - all
           - event-manager-m2m-contracts
+          - event-manager-public-contracts
 
   push:
     branches:
       - main
     paths:
       - 'libs/event-manager-m2m-contracts/**'
+      - 'libs/event-manager-public-contracts/**'
       - 'package.json'
       - 'bun.lock'
       - 'bun.lockb'
@@ -64,14 +66,19 @@ jobs:
           set -euo pipefail
 
           event_manager_m2m_contracts=false
+          event_manager_public_contracts=false
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             case "${{ inputs.package }}" in
               all)
                 event_manager_m2m_contracts=true
+                event_manager_public_contracts=true
                 ;;
               event-manager-m2m-contracts)
                 event_manager_m2m_contracts=true
+                ;;
+              event-manager-public-contracts)
+                event_manager_public_contracts=true
                 ;;
             esac
           else
@@ -86,6 +93,10 @@ jobs:
             if grep -q '^libs/event-manager-m2m-contracts/' <<< "${changed_files}"; then
               event_manager_m2m_contracts=true
             fi
+
+            if grep -q '^libs/event-manager-public-contracts/' <<< "${changed_files}"; then
+              event_manager_public_contracts=true
+            fi
           fi
 
           any_changed=false
@@ -94,8 +105,13 @@ jobs:
             any_changed=true
           fi
 
+          if [[ "${event_manager_public_contracts}" == "true" ]]; then
+            any_changed=true
+          fi
+
           {
             echo "event_manager_m2m_contracts=${event_manager_m2m_contracts}"
+            echo "event_manager_public_contracts=${event_manager_public_contracts}"
             echo "any_changed=${any_changed}"
           } >> "${GITHUB_OUTPUT}"
 
@@ -118,9 +134,38 @@ jobs:
         if: steps.changes.outputs.event_manager_m2m_contracts == 'true'
         run: bunx nx build event-manager-m2m-contracts
 
+      - name: Build Event Manager public contracts
+        if: steps.changes.outputs.event_manager_public_contracts == 'true'
+        run: bunx nx build event-manager-public-contracts
+
       - name: Publish Event Manager M2M contracts
         if: steps.changes.outputs.event_manager_m2m_contracts == 'true'
         working-directory: dist/libs/event-manager-m2m-contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node - <<'NODE'
+          const fs = require('node:fs');
+
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+
+          if (!pkg.name || !pkg.name.startsWith('@cacic-fct/')) {
+            throw new Error(`Package name must be scoped for GitHub Packages. Found: ${pkg.name}`);
+          }
+
+          if (!pkg.version) {
+            throw new Error('Package version is required.');
+          }
+          NODE
+
+          bun publish --registry https://npm.pkg.github.com --tolerate-republish
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Event Manager public contracts
+        if: steps.changes.outputs.event_manager_public_contracts == 'true'
+        working-directory: dist/libs/event-manager-public-contracts
         shell: bash
         run: |
           set -euo pipefail

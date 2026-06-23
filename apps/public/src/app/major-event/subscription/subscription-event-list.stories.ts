@@ -1,6 +1,6 @@
+import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/shared-utils';
 import { SubscriptionEventList } from './subscription-event-list';
 
 const meta: Meta<SubscriptionEventList> = {

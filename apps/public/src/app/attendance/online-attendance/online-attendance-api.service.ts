@@ -1,6 +1,7 @@
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { CurrentUserEventAttendance, PublicEvent } from '@cacic-fct/shared-utils';
+import type { CurrentUserEventAttendance } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
 
 interface GraphqlResponse<TData> {

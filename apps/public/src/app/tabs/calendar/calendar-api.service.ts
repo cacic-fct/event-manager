@@ -1,7 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { EventType } from '@cacic-fct/shared-data-types';
-import type { PublicEvent } from '@cacic-fct/shared-utils';
+import {
+  PUBLIC_CALENDAR_EVENTS_QUERY,
+  type EventType,
+  type GraphqlResponse,
+  type GraphqlVariables,
+  type PublicCalendarEventsQuery,
+  type PublicCalendarEventsQueryVariables,
+  type PublicEvent,
+} from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
 
 export type CalendarEventTypeFilter = EventType | 'ALL';
@@ -13,62 +20,21 @@ export interface CalendarEventFilters {
   startDateUntil?: string;
 }
 
-type GraphqlVariable = string | number | boolean | null | undefined;
-type GraphqlVariables = Record<string, GraphqlVariable>;
-
-interface GraphqlResponse<TData> {
-  data?: TData;
-  errors?: Array<{ message: string }>;
-}
-
-const PUBLIC_EVENT_FIELDS = `
-  id
-  name
-  startDate
-  endDate
-  emoji
-  type
-  shortDescription
-  locationDescription
-  majorEvent {
-    id
-    name
-  }
-  eventGroup {
-    id
-    name
-  }
-`;
-
 @Injectable({ providedIn: 'root' })
 export class CalendarApiService {
   private readonly http = inject(HttpClient);
 
   getCalendarEvents(filters: CalendarEventFilters): Observable<PublicEvent[]> {
-    return this.query<{ publicCalendarEvents: PublicEvent[] }>(
-      `
-        query PublicCalendarEvents(
-          $query: String
-          $eventType: EventType
-          $startDateFrom: DateTime
-          $startDateUntil: DateTime
-        ) {
-          publicCalendarEvents(
-            query: $query
-            eventType: $eventType
-            startDateFrom: $startDateFrom
-            startDateUntil: $startDateUntil
-          ) {
-            ${PUBLIC_EVENT_FIELDS}
-          }
-        }
-      `,
-      {
-        query: filters.query || null,
-        eventType: filters.eventType === 'ALL' ? null : filters.eventType,
-        startDateFrom: filters.startDateFrom,
-        startDateUntil: filters.startDateUntil ?? null,
-      },
+    const variables: PublicCalendarEventsQueryVariables = {
+      query: filters.query || null,
+      eventType: filters.eventType === 'ALL' ? null : filters.eventType,
+      startDateFrom: filters.startDateFrom,
+      startDateUntil: filters.startDateUntil ?? null,
+    };
+
+    return this.query<PublicCalendarEventsQuery>(
+      PUBLIC_CALENDAR_EVENTS_QUERY,
+      variables,
     ).pipe(map((data) => data.publicCalendarEvents));
   }
 

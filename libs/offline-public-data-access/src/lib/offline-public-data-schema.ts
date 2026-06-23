@@ -1,9 +1,8 @@
+import type { EventTargetType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import type {
   EventDetails,
   EventGroupDetails,
-  EventTargetType,
   MajorEventDetails,
-  PublicEvent,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
 import Dexie, { Table } from 'dexie';

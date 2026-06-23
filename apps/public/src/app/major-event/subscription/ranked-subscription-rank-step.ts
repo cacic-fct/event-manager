@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, inject, output } from '@angular/cor
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
-import type { PublicEvent } from '@cacic-fct/shared-utils';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { EmojiService } from '../../shared/emoji.service';
 import { RankedSubscriptionStore } from './ranked-subscription.store';
 

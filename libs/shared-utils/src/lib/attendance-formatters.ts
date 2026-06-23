@@ -1,6 +1,7 @@
+import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { compareAsc, compareDesc, format, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
-import { CurrentUserEventAttendance, PublicEvent, PublicEventGroup, PublicMajorEvent } from './attendance-models';
+import type { CurrentUserEventAttendance } from './attendance-models';
 
 export function compareIsoDateAsc(leftDate: string, rightDate: string): number {
   return compareAsc(parseISO(leftDate), parseISO(rightDate));

@@ -1,9 +1,9 @@
-import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { AttendancesApiService } from './attendances-api.service';
-import { PublicEvent } from '@cacic-fct/shared-utils';
+import { TestBed } from '@angular/core/testing';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { firstValueFrom } from 'rxjs';
+import { AttendancesApiService } from './attendances-api.service';
 
 describe('AttendancesApiService', () => {
   let service: AttendancesApiService;

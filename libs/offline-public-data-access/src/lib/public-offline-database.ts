@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import type { EventTargetType, PublicEvent, SubscriptionsFeed } from '@cacic-fct/shared-utils';
+import type { EventTargetType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { CalendarOfflineDataService } from './calendar-offline-data.service';
 import { OfflineAttendanceDetail, OfflineUserSnapshot } from './offline-public-data-schema';
 import { UserOfflineDataService } from './user-offline-data.service';

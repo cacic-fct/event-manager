@@ -1,9 +1,17 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import {
+  PUBLIC_ATTENDANCE_EVENT_FIELDS,
+  PUBLIC_EVENT_GROUP_DETAIL_FIELDS,
+  PUBLIC_MAJOR_EVENT_PROFILE_FIELDS,
+  type CertificateDownload,
+  type CertificateScope,
+  type EventTargetType,
+  type PublicEvent,
+  type PublicEventGroup,
+} from '@cacic-fct/event-manager-public-contracts';
 import type {
   Certificate,
-  CertificateDownload,
-  CertificateScope,
   CertificateTarget,
   CurrentUserEventAttendance,
   CurrentUserEventGroupSubscription,
@@ -12,10 +20,7 @@ import type {
   CurrentUserMajorEventSubscription,
   EventDetails,
   EventGroupDetails,
-  EventTargetType,
   MajorEventDetails,
-  PublicEvent,
-  PublicEventGroup,
   SubscribedItem,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
@@ -23,7 +28,6 @@ import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 
 export type {
   Certificate,
-  CertificateDownload,
   CertificateTarget,
   CurrentUserEventAttendance,
   CurrentUserMajorEventFeedItem,
@@ -31,11 +35,10 @@ export type {
   EventDetails,
   EventGroupDetails,
   MajorEventDetails,
-  PublicEvent,
-  PublicEventGroup,
   SubscribedItem,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
+export type { CertificateDownload, PublicEvent, PublicEventGroup } from '@cacic-fct/event-manager-public-contracts';
 
 type GraphqlVariable = string | number | boolean | null | undefined | readonly string[] | object;
 type GraphqlVariables = Record<string, GraphqlVariable>;
@@ -112,76 +115,6 @@ export interface LecturerProfileInput {
   email?: string | null;
   whatsapp?: string | null;
 }
-
-const PUBLIC_MAJOR_EVENT_FIELDS = `
-  id
-  name
-  emoji
-  startDate
-  endDate
-  description
-  subscriptionStartDate
-  subscriptionEndDate
-  maxCoursesPerAttendee
-  maxLecturesPerAttendee
-  buttonText
-  buttonLink
-  contactInfo
-  contactType
-  isPaymentRequired
-  additionalPaymentInfo
-  shouldIssueCertificate
-`;
-
-const PUBLIC_EVENT_GROUP_FIELDS = `
-  id
-  name
-  emoji
-  shouldIssueCertificateForEachEvent
-  shouldIssuePartialCertificate
-  shouldIssueCertificate
-`;
-
-const PUBLIC_EVENT_FIELDS = `
-  id
-  name
-  creditMinutes
-  startDate
-  endDate
-  emoji
-  type
-  description
-  shortDescription
-  locationDescription
-  majorEventId
-  eventGroupId
-  subscriptionStartDate
-  subscriptionEndDate
-  slots
-  shouldIssueCertificate
-  shouldCollectAttendance
-  isOnlineAttendanceAllowed
-  onlineAttendanceStartDate
-  onlineAttendanceEndDate
-  youtubeCode
-  buttonText
-  buttonLink
-  majorEvent {
-    ${PUBLIC_MAJOR_EVENT_FIELDS}
-  }
-  eventGroup {
-    ${PUBLIC_EVENT_GROUP_FIELDS}
-  }
-  lecturers {
-    id
-    displayName
-    biography
-    publishGoogleUserPicture
-    googleUserPicture
-    email
-    whatsapp
-  }
-`;
 
 const CERTIFICATE_FIELDS = `
   id
@@ -344,13 +277,13 @@ export class AttendancesApiService {
               paymentDate
               paymentTier
               majorEvent {
-                ${PUBLIC_MAJOR_EVENT_FIELDS}
+                ${PUBLIC_MAJOR_EVENT_PROFILE_FIELDS}
               }
               selectedEvents {
-                ${PUBLIC_EVENT_FIELDS}
+                ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
               }
               notSubscribedEvents {
-                ${PUBLIC_EVENT_FIELDS}
+                ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
               }
             }
             currentUserMajorEventEventSubscriptions(majorEventId: $majorEventId) {
@@ -358,7 +291,7 @@ export class AttendancesApiService {
               eventGroupSubscriptionId
               createdAt
               event {
-                ${PUBLIC_EVENT_FIELDS}
+                ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
               }
             }
             currentUserEventAttendances {
@@ -366,7 +299,7 @@ export class AttendancesApiService {
               attendedAt
             }
             publicEvents(majorEventId: $majorEventId) {
-              ${PUBLIC_EVENT_FIELDS}
+              ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
             }
           }
         `,
@@ -402,7 +335,7 @@ export class AttendancesApiService {
               eventGroupSubscriptionId
               createdAt
               event {
-                ${PUBLIC_EVENT_FIELDS}
+                ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
               }
             }
             currentUserEventAttendance(eventId: $eventId) {
@@ -441,10 +374,10 @@ export class AttendancesApiService {
               eventGroupId
               createdAt
               eventGroup {
-                ${PUBLIC_EVENT_GROUP_FIELDS}
+                ${PUBLIC_EVENT_GROUP_DETAIL_FIELDS}
               }
               events {
-                ${PUBLIC_EVENT_FIELDS}
+                ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
               }
             }
             currentUserEventAttendances {
@@ -452,7 +385,7 @@ export class AttendancesApiService {
               attendedAt
             }
             publicEvents(eventGroupId: $eventGroupId) {
-              ${PUBLIC_EVENT_FIELDS}
+              ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
             }
           }
         `,
@@ -491,7 +424,7 @@ export class AttendancesApiService {
               onlineAttendanceCode
               canDownloadSubscriberList
               event {
-                ${PUBLIC_EVENT_FIELDS}
+                ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
               }
             }
           }
@@ -601,7 +534,7 @@ export class AttendancesApiService {
       `
         query PublicEventForAttendanceDetails($eventId: String!) {
           publicEvent(id: $eventId) {
-            ${PUBLIC_EVENT_FIELDS}
+            ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
           }
         }
       `,
@@ -623,7 +556,7 @@ export class AttendancesApiService {
             paymentDate
             paymentTier
             majorEvent {
-              ${PUBLIC_MAJOR_EVENT_FIELDS}
+              ${PUBLIC_MAJOR_EVENT_PROFILE_FIELDS}
             }
             participation {
               isSubscribed

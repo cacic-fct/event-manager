@@ -1,3 +1,4 @@
+import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import {
   buildEventDetail,
   buildEventGroupDetail,
@@ -6,8 +7,8 @@ import {
   formatCPF,
   formatCreditMinutes,
   formatCurrency,
-  formatUnespRole,
   formatStatusLine,
+  formatUnespRole,
   getContactLabel,
   getEventAttendanceStatusLabel,
   getEventGroupCertificateLabel,
@@ -24,9 +25,6 @@ import {
   parseEventTargetType,
   sortSubscriptionsFeed,
   unformatCPF,
-  type PublicEvent,
-  type PublicEventGroup,
-  type PublicMajorEvent,
 } from '@cacic-fct/shared-utils';
 
 describe('shared utility coverage from public app', () => {

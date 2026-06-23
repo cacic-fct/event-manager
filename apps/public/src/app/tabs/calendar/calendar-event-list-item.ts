@@ -2,7 +2,8 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
 import { RouterLink } from '@angular/router';
-import { PublicEvent, getEventTypeLabel } from '@cacic-fct/shared-utils';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import { getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { EmojiService } from '../../shared/emoji.service';
 
 @Component({

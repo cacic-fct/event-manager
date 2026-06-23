@@ -1,23 +1,19 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { CurrentUserEventAttendance, CurrentUserEventSubscription, PublicEvent } from '@cacic-fct/shared-utils';
+import {
+  PUBLIC_EVENT_PAGE_FIELDS,
+  PUBLIC_EVENT_SUBSCRIPTION_SUMMARY_FIELDS,
+  PUBLIC_EVENT_WEATHER_FIELDS,
+  type GraphqlResponse,
+  type GraphqlVariables,
+  type PublicEvent,
+  type PublicEventSubscriptionSummary,
+  type PublicEventWeather,
+} from '@cacic-fct/event-manager-public-contracts';
+import type { CurrentUserEventAttendance, CurrentUserEventSubscription } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
 
-export interface PublicEventWeather {
-  eventId: string;
-  temperature: number;
-  weatherCode: number;
-  summary: string;
-  materialIcon: string;
-  forecastTime: string;
-  fetchedAt: string;
-  attribution: string;
-}
-
-export interface PublicEventSubscriptionSummary {
-  eventId: string;
-  hasAvailableSlots: boolean;
-}
+export type { PublicEventSubscriptionSummary, PublicEventWeather } from '@cacic-fct/event-manager-public-contracts';
 
 export interface EventPageData {
   event: PublicEvent;
@@ -26,66 +22,6 @@ export interface EventPageData {
   currentUserSubscription: CurrentUserEventSubscription | null;
   currentUserAttendance: CurrentUserEventAttendance | null;
 }
-
-export type GraphqlVariable = string | number | boolean | null | undefined | readonly string[];
-type GraphqlVariables = Record<string, GraphqlVariable>;
-
-interface GraphqlResponse<TData> {
-  data?: TData;
-  errors?: Array<{ message: string }>;
-}
-
-const PUBLIC_MAJOR_EVENT_FIELDS = `
-  id
-  name
-  subscriptionStartDate
-  subscriptionEndDate
-`;
-
-const PUBLIC_EVENT_FIELDS = `
-  id
-  name
-  creditMinutes
-  startDate
-  endDate
-  emoji
-  type
-  description
-  shortDescription
-  latitude
-  longitude
-  locationDescription
-  majorEventId
-  eventGroupId
-  allowSubscription
-  subscriptionStartDate
-  subscriptionEndDate
-  shouldIssueCertificate
-  shouldCollectAttendance
-  isOnlineAttendanceAllowed
-  onlineAttendanceStartDate
-  onlineAttendanceEndDate
-  publiclyVisible
-  youtubeCode
-  buttonText
-  buttonLink
-  majorEvent {
-    ${PUBLIC_MAJOR_EVENT_FIELDS}
-  }
-  eventGroup {
-    id
-    name
-  }
-  lecturers {
-    id
-    displayName
-    biography
-    publishGoogleUserPicture
-    googleUserPicture
-    email
-    whatsapp
-  }
-`;
 
 @Injectable({ providedIn: 'root' })
 export class EventApiService {
@@ -102,21 +38,13 @@ export class EventApiService {
       `
         query PublicEventPage($eventId: String!) {
           publicEvent(id: $eventId) {
-            ${PUBLIC_EVENT_FIELDS}
+            ${PUBLIC_EVENT_PAGE_FIELDS}
           }
           publicEventSubscriptionSummary(eventId: $eventId) {
-            eventId
-            hasAvailableSlots
+            ${PUBLIC_EVENT_SUBSCRIPTION_SUMMARY_FIELDS}
           }
           publicEventWeather(eventId: $eventId) {
-            eventId
-            temperature
-            weatherCode
-            summary
-            materialIcon
-            forecastTime
-            fetchedAt
-            attribution
+            ${PUBLIC_EVENT_WEATHER_FIELDS}
           }
           ${
             includeCurrentUser

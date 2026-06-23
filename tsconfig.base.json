@@ -23,6 +23,25 @@
       "@cacic-fct/shared-environment": ["libs/shared-environment/src/index.ts"],
       "@cacic-fct/shared-notifications-angular": ["libs/shared-notifications-angular/src/index.ts"],
       "@cacic-fct/offline-public-data-access": ["libs/offline-public-data-access/src/index.ts"],
+      "@cacic-fct/event-manager-public-contracts": ["libs/event-manager-public-contracts/src/index.ts"],
+      "@cacic-fct/event-manager-public-contracts/types": [
+        "libs/event-manager-public-contracts/src/lib/types/index.ts"
+      ],
+      "@cacic-fct/event-manager-public-contracts/types/events": [
+        "libs/event-manager-public-contracts/src/lib/types/events.ts"
+      ],
+      "@cacic-fct/event-manager-public-contracts/types/certificates": [
+        "libs/event-manager-public-contracts/src/lib/types/certificates.ts"
+      ],
+      "@cacic-fct/event-manager-public-contracts/graphql": [
+        "libs/event-manager-public-contracts/src/lib/graphql/index.ts"
+      ],
+      "@cacic-fct/event-manager-public-contracts/graphql/fragments": [
+        "libs/event-manager-public-contracts/src/lib/graphql/fragments.ts"
+      ],
+      "@cacic-fct/event-manager-public-contracts/graphql/queries": [
+        "libs/event-manager-public-contracts/src/lib/graphql/queries.ts"
+      ],
       "@cacic-fct/event-manager-m2m-contracts": ["libs/event-manager-m2m-contracts/src/index.ts"]
     }
   },
