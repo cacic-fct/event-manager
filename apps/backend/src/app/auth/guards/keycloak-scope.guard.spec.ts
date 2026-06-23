@@ -26,6 +26,8 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
   let keycloakAuthService: {
     authenticateAccessToken: jest.Mock;
     authenticateSession: jest.Mock;
+    assertClientRoles: jest.Mock;
+    assertMachineToMachinePrincipal: jest.Mock;
   };
   let authorizationPolicy: {
     assertPermissions: jest.Mock;
@@ -58,6 +60,8 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
     keycloakAuthService = {
       authenticateAccessToken: jest.fn(),
       authenticateSession: jest.fn(),
+      assertClientRoles: jest.fn(),
+      assertMachineToMachinePrincipal: jest.fn(),
     };
     authorizationPolicy = {
       assertPermissions: jest.fn().mockResolvedValue(undefined),
@@ -82,9 +86,8 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
 
     await expect(guard.canActivate(createHttpContext(request))).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(keycloakAuthService.authenticateAccessToken).toHaveBeenCalledWith('access-token', {
-      roles: [],
-    });
+    expect(keycloakAuthService.authenticateAccessToken).toHaveBeenCalledWith('access-token');
+    expect(keycloakAuthService.assertClientRoles).not.toHaveBeenCalled();
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalled();
   });
 
@@ -100,9 +103,8 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
 
     await expect(guard.canActivate(createHttpContext(request))).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(keycloakAuthService.authenticateSession).toHaveBeenCalledWith('session-id', {
-      roles: [],
-    });
+    expect(keycloakAuthService.authenticateSession).toHaveBeenCalledWith('session-id');
+    expect(keycloakAuthService.assertClientRoles).not.toHaveBeenCalled();
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalled();
   });
 
@@ -153,6 +155,59 @@ describe('KeycloakScopeGuard onboarding enforcement', () => {
     );
 
     await expect(guard.canActivate(createHttpContext(request))).resolves.toBe(true);
+  });
+
+  it('checks required roles as Event Manager client roles for human principals', async () => {
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === REQUIRED_ROLES_KEY) {
+        return ['access'];
+      }
+
+      if (key === IS_PUBLIC_KEY) {
+        return false;
+      }
+
+      return undefined;
+    });
+    const request = createRequest({ authorization: 'Bearer access-token' });
+    const user = createAuthenticatedUser({
+      claims: {
+        is_onboarded: true,
+      },
+    });
+    keycloakAuthService.authenticateAccessToken.mockResolvedValue(user);
+
+    await expect(guard.canActivate(createHttpContext(request))).resolves.toBe(true);
+
+    expect(keycloakAuthService.assertClientRoles).toHaveBeenCalledWith(user, ['access']);
+    expect(keycloakAuthService.assertMachineToMachinePrincipal).not.toHaveBeenCalled();
+  });
+
+  it('checks required roles against the M2M audience for service-account principals', async () => {
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === REQUIRED_ROLES_KEY) {
+        return ['lgpd:read'];
+      }
+
+      if (key === IS_PUBLIC_KEY) {
+        return false;
+      }
+
+      return undefined;
+    });
+    const request = createRequest({ authorization: 'Bearer service-token' });
+    const user = createAuthenticatedUser({
+      preferredUsername: 'service-account-account-backend',
+      claims: {},
+    });
+    keycloakAuthService.authenticateAccessToken.mockResolvedValue(user);
+
+    await expect(guard.canActivate(createHttpContext(request))).resolves.toBe(true);
+
+    expect(keycloakAuthService.assertMachineToMachinePrincipal).toHaveBeenCalledWith(user, {
+      requiredRoles: ['lgpd:read'],
+    });
+    expect(keycloakAuthService.assertClientRoles).not.toHaveBeenCalled();
   });
 });
 

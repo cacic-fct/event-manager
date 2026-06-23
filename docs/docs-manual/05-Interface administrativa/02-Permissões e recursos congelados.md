@@ -11,7 +11,7 @@ O Keycloak libera a entrada no Event Manager, mas as permissões de negócio sã
 Para uma ação administrativa ser autorizada, o sistema avalia camadas diferentes:
 
 1. O usuário precisa estar autenticado.
-2. O usuário precisa possuir `event-manager#access` no Keycloak ou `event-manager#super-admin`.
+2. O usuário precisa possuir `access` no cliente Keycloak do Event Manager ou `super-admin`.
 3. Se não for super administrador, precisa possuir uma concessão ativa no Event Manager.
 4. A concessão precisa cobrir a ação solicitada e o escopo do recurso.
 5. O backend ainda aplica regras de domínio, como recurso removido, recurso congelado, janela de coleta de presença e vínculos com eventos.
@@ -41,7 +41,7 @@ Ela não concede permissões. Para conceder, editar ou remover permissões, use 
 
 Quando uma tela indicar permissões ausentes:
 
-1. Confira se o usuário possui `event-manager#access` no Keycloak.
+1. Confira se o usuário possui `access` no cliente Keycloak do Event Manager.
 2. Confira se existe uma concessão ativa no Event Manager.
 3. Confira se a validade da concessão já começou e ainda não expirou.
 4. Confira se o escopo da concessão cobre o evento, grupo ou grande evento da operação.

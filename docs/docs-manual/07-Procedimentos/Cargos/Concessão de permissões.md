@@ -7,10 +7,10 @@ As permissões administrativas do Event Manager são concedidas pelo painel de p
 Antes de liberar qualquer acesso:
 
 - Confirme que a pessoa possui uma conta vinculada no Event Manager;
-- Confirme que o usuário possui `event-manager#access` no Keycloak;
+- Confirme que o usuário possui `access` no cliente Keycloak do Event Manager;
 - Escolha o menor escopo suficiente para a responsabilidade;
 - Defina uma data de fim quando o acesso for temporário;
-- Evite `event-manager#super-admin`, exceto para manutenção, emergência ou pessoas com responsabilidade irrestrita pelo sistema.
+- Evite `super-admin`, exceto para manutenção, emergência ou pessoas com responsabilidade irrestrita pelo sistema.
 
 Para visualizar e gerenciar concessões, o administrador também precisa das permissões de gestão de permissões no Event Manager:
 
@@ -73,7 +73,7 @@ Quando o acesso era temporário e já possui data de fim correta, não é necess
 
 Depois de conceder, peça para a pessoa recarregar o painel administrativo. Se a tela ainda indicar permissão ausente, confira:
 
-- Se `event-manager#access` está presente no Keycloak;
+- Se `access` está presente no cliente Keycloak do Event Manager;
 - Se a concessão foi salva para o usuário correto;
 - Se a pessoa selecionada está vinculada ao mesmo usuário;
 - Se a validade já começou;

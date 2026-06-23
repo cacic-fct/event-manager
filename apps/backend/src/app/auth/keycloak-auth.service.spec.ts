@@ -240,6 +240,14 @@ describe('KeycloakAuthService', () => {
       realm_access: {
         roles: ['admin'],
       },
+      resource_access: {
+        'event-manager': {
+          roles: [' access ', 'super-admin'],
+        },
+        unrelatedClient: {
+          roles: ['admin'],
+        },
+      },
       authorization: {
         permissions: [{ rsname: 'event', scopes: ['read'] }],
       },
@@ -258,13 +266,15 @@ describe('KeycloakAuthService', () => {
     });
 
     const principal = await service.authenticateAccessToken(accessToken, {
-      roles: ['admin'],
+      roles: ['access'],
     });
     expect(principal.sub).toBe('user-1');
-    expect(principal.roleSet.has('admin')).toBe(true);
+    expect(principal.roleSet.has('access')).toBe(true);
+    expect(principal.roleSet.has('super-admin')).toBe(true);
+    expect(principal.roleSet.has('admin')).toBe(false);
     expect(principal.permissions).toEqual([]);
     expect(principal.permissionSet.size).toBe(0);
-    await service.authenticateAccessToken(accessToken, { roles: ['admin'] });
+    await service.authenticateAccessToken(accessToken, { roles: ['access'] });
     expect(mockedAxios.get).toHaveBeenCalledTimes(1);
   });
 
@@ -278,8 +288,10 @@ describe('KeycloakAuthService', () => {
     mockedAxios.get.mockResolvedValueOnce({
       data: {
         sub: 'user-1',
-        realm_access: {
-          roles: ['user'],
+        resource_access: {
+          'event-manager': {
+            roles: ['user'],
+          },
         },
       },
     });
@@ -309,7 +321,11 @@ describe('KeycloakAuthService', () => {
     const freshAccessToken = jwt({
       sub: 'user-1',
       exp: 1_800_000_000,
-      realm_access: { roles: ['admin'] },
+      resource_access: {
+        'event-manager': {
+          roles: ['admin'],
+        },
+      },
     });
     sessions.get
       .mockResolvedValueOnce({
@@ -342,7 +358,11 @@ describe('KeycloakAuthService', () => {
     mockedAxios.get.mockResolvedValueOnce({
       data: {
         sub: 'user-1',
-        realm_access: { roles: ['admin'] },
+        resource_access: {
+          'event-manager': {
+            roles: ['admin'],
+          },
+        },
       },
     });
 

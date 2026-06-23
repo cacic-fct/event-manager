@@ -17,42 +17,38 @@ export function decodeJwtPayload(accessToken: string): Record<string, unknown> {
   }
 }
 
-export function extractRoles(...claimsSources: Record<string, unknown>[]): string[] {
+export function extractRoles(clientId: string, ...claimsSources: Record<string, unknown>[]): string[] {
   const roles = new Set<string>();
   for (const claims of claimsSources) {
-    for (const role of extractRealmRoles(claims['realm_access'])) {
-      roles.add(role);
-    }
-    extractClientRoles(claims['resource_access'], roles);
+    extractClientRoles(claims['resource_access'], clientId, roles);
   }
 
   return [...roles];
 }
 
-export function extractClientRoles(resourceAccessClaim: unknown, roles: Set<string>): void {
+export function extractClientRoles(resourceAccessClaim: unknown, clientId: string, roles: Set<string>): void {
   if (!isRecord(resourceAccessClaim)) {
     return;
   }
 
-  for (const clientAccess of Object.values(resourceAccessClaim)) {
-    if (!isRecord(clientAccess)) {
+  const clientAccess = resourceAccessClaim[clientId];
+  if (!isRecord(clientAccess)) {
+    return;
+  }
+
+  const clientRoles = clientAccess['roles'];
+  if (!Array.isArray(clientRoles)) {
+    return;
+  }
+
+  for (const role of clientRoles) {
+    if (typeof role !== 'string') {
       continue;
     }
 
-    const clientRoles = clientAccess['roles'];
-    if (!Array.isArray(clientRoles)) {
-      continue;
-    }
-
-    for (const role of clientRoles) {
-      if (typeof role !== 'string') {
-        continue;
-      }
-
-      const normalizedRole = role.trim();
-      if (normalizedRole) {
-        roles.add(normalizedRole);
-      }
+    const normalizedRole = role.trim();
+    if (normalizedRole) {
+      roles.add(normalizedRole);
     }
   }
 }

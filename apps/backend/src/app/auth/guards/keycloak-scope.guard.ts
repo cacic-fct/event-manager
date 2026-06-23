@@ -49,7 +49,8 @@ export class KeycloakScopeGuard implements CanActivate {
 
     const accessToken = this.extractBearerToken(request.headers.authorization);
     if (accessToken) {
-      request.user = await this.keycloakAuthService.authenticateAccessToken(accessToken, { roles });
+      request.user = await this.keycloakAuthService.authenticateAccessToken(accessToken);
+      this.assertRequiredRoles(request.user, roles);
       await this.authorizationPolicy.assertPermissions(
         request.user,
         permissions,
@@ -64,7 +65,8 @@ export class KeycloakScopeGuard implements CanActivate {
       throw new UnauthorizedException('Missing authentication credentials.');
     }
 
-    request.user = await this.keycloakAuthService.authenticateSession(sessionId, { roles });
+    request.user = await this.keycloakAuthService.authenticateSession(sessionId);
+    this.assertRequiredRoles(request.user, roles);
     await this.authorizationPolicy.assertPermissions(
       request.user,
       permissions,
@@ -73,6 +75,21 @@ export class KeycloakScopeGuard implements CanActivate {
     this.assertOnboardingAllowed(context, request.user);
 
     return true;
+  }
+
+  private assertRequiredRoles(user: AuthenticatedUser, roles: readonly string[]): void {
+    if (roles.length === 0) {
+      return;
+    }
+
+    if (this.isServiceAccountPrincipal(user)) {
+      this.keycloakAuthService.assertMachineToMachinePrincipal(user, {
+        requiredRoles: [...roles],
+      });
+      return;
+    }
+
+    this.keycloakAuthService.assertClientRoles(user, roles);
   }
 
   private getAuthorizationResourceContext(context: ExecutionContext, permissions: readonly string[]) {

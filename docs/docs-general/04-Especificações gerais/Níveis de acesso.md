@@ -11,8 +11,8 @@ Essa separação evita criar um cargo diferente para cada operação no Keycloak
 | Camada | Onde é configurada | O que controla |
 | --- | --- | --- |
 | Conta autenticada | Keycloak | Identidade da pessoa, sessão e claims de perfil. |
-| `event-manager#access` | Keycloak | Entrada no Event Manager e no painel administrativo. |
-| `event-manager#super-admin` | Keycloak | Bypass administrativo para todas as permissões do Event Manager. |
+| `access` | Client role do Keycloak | Entrada no Event Manager e no painel administrativo. |
+| `super-admin` | Client role do Keycloak | Bypass administrativo para todas as permissões do Event Manager. |
 | Concessões de permissão | Banco de dados do Event Manager | Operações administrativas como criar eventos, validar comprovantes, emitir certificados e gerenciar pessoas. |
 | Regras de domínio | Backend do Event Manager | Restrições adicionais como recurso congelado, recurso removido, janela de coleta de presença e vínculo com o evento. |
 | Papéis M2M | Keycloak | Endpoints internos de integração entre sistemas. Não devem ser usados para acesso humano ao painel. |
@@ -25,7 +25,7 @@ Uma pessoa pode existir no Event Manager sem possuir uma conta de usuário. Perm
 
 ## Administrador operacional
 
-Um administrador operacional possui o papel `event-manager#access` no Keycloak e uma ou mais concessões no Event Manager.
+Um administrador operacional possui o client role `access` no Keycloak e uma ou mais concessões no Event Manager.
 
 As concessões seguem o formato `recurso#ação`, como `event#read`, `subscription#import` ou `receipt#approve`. Cada concessão também possui um escopo:
 
@@ -38,7 +38,7 @@ A permissão efetiva depende da operação executada. Por exemplo, uma pessoa po
 
 ## Super administrador
 
-O papel `event-manager#super-admin` é um bypass de emergência e manutenção. Ele não depende das concessões gravadas no banco e deve ser usado apenas por pessoas que realmente precisam operar qualquer parte do sistema.
+O client role `super-admin` é um bypass de emergência e manutenção. Ele não depende das concessões gravadas no banco e deve ser usado apenas por pessoas que realmente precisam operar qualquer parte do sistema.
 
 Na rotina, prefira conceder permissões específicas no Event Manager. Isso preserva rastreabilidade, reduz o impacto de erros e permite limitar a validade do acesso.
 

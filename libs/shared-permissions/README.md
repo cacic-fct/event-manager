@@ -17,11 +17,13 @@ This package is the source of truth for permission names used by the backend and
 
 ## Authorization model
 
-Keycloak only decides coarse access:
+Keycloak only decides coarse access through client roles on the Event Manager client:
 
-- `event-manager#access` lets a user enter Event Manager administration.
-- `event-manager#super-admin` bypasses Event Manager permission grants.
+- `access` lets a user enter Event Manager administration.
+- `super-admin` bypasses Event Manager permission grants.
 - M2M roles belong to service-account integrations and are separate from human admin grants.
+
+Do not model human admin permissions as Keycloak Authorization Services resources, scopes, or policies.
 
 Business permissions are Event Manager grants stored in the application database. A grant has:
 
