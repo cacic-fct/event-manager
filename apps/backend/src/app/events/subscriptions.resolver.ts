@@ -402,6 +402,9 @@ export class EventSubscriptionsResolver {
         [majorEventSubscription],
         tx,
       );
+      if (!result?.person) {
+        throw new NotFoundException(`Subscription ${majorEventSubscription.id} was not found.`);
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
@@ -521,6 +524,9 @@ export class EventSubscriptionsResolver {
       await this.refreshEventSubscriptionCounters(tx, effectiveSelectedEventIds);
 
       const [result] = await this.attachMajorEventSubscriptionEvents(existing.majorEventId, [updated], tx);
+      if (!result?.person) {
+        throw new NotFoundException(`Subscription ${id} was not found.`);
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,

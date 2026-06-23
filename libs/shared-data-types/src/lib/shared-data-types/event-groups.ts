@@ -27,17 +27,17 @@ export class EventGroup {
   shouldIssuePartialCertificate!: boolean;
 
   @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 
   @Field(() => Date)
   createdAt!: Date;
 
   @Field(() => String, { nullable: true })
-  createdById?: string;
+  createdById?: string | null;
 
   @Field(() => Date)
   updatedAt!: Date;
 
   @Field(() => String, { nullable: true })
-  updatedById?: string;
+  updatedById?: string | null;
 }

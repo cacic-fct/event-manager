@@ -476,9 +476,9 @@ export class CertificateIssuingService {
       return `[${value.map((item) => this.stableJsonStringify(item)).join(',')}]`;
     }
 
-    return `{${Object.keys(value)
+    return `{${Object.entries(value)
       .sort()
-      .map((key) => `${JSON.stringify(key)}:${this.stableJsonStringify(value[key])}`)
+      .map(([key, child]) => `${JSON.stringify(key)}:${this.stableJsonStringify(child)}`)
       .join(',')}}`;
   }
 

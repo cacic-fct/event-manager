@@ -5,6 +5,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ThrottlerModule } from '@nestjs/throttler';
+import type { Request, Response } from 'express';
 import Redis from 'ioredis';
 import { AppController } from './app.controller';
 import { AccountMergeController } from './account-merge/account-merge.controller';
@@ -167,7 +168,7 @@ import { TurnstileService } from './turnstile/turnstile.service';
             production: process.env.NODE_ENV === 'production',
           }),
         ],
-        context: ({ req, res }) => ({ req, res }),
+        context: ({ req, res }: { req: Request; res: Response }) => ({ req, res }),
       }),
     }),
     AnalyticsModule,

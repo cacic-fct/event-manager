@@ -15,55 +15,55 @@ export class Person {
   name!: string;
 
   @Field(() => String, { nullable: true })
-  email?: string;
+  email?: string | null;
 
   @Field(() => [String], { nullable: true })
-  secondaryEmails?: string[];
+  secondaryEmails?: string[] | null;
 
   @Field(() => String, { nullable: true })
-  phone?: string;
+  phone?: string | null;
 
   @Field(() => String, { nullable: true })
-  identityDocument?: string;
+  identityDocument?: string | null;
 
   @Field(() => String, { nullable: true })
-  academicId?: string;
+  academicId?: string | null;
 
   @Field(() => String, { nullable: true })
-  userId?: string;
+  userId?: string | null;
 
   @Field(() => User, { nullable: true })
-  user?: User;
+  user?: User | null;
 
   @Field(() => [EventAttendance], { nullable: true })
-  attendances?: EventAttendance[];
+  attendances?: EventAttendance[] | null;
 
   @Field(() => [EventLecturer], { nullable: true })
-  lectures?: EventLecturer[];
+  lectures?: EventLecturer[] | null;
 
   @Field(() => LecturerProfile, { nullable: true })
   lecturerProfile?: LecturerProfile | null;
 
   @Field(() => String, { nullable: true })
-  mergedIntoId?: string;
+  mergedIntoId?: string | null;
 
   @Field(() => String, { nullable: true })
-  externalRef?: string;
+  externalRef?: string | null;
 
   @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 
   @Field(() => Date)
   createdAt!: Date;
 
   @Field(() => String, { nullable: true })
-  createdById?: string;
+  createdById?: string | null;
 
   @Field(() => Date)
   updatedAt!: Date;
 
   @Field(() => String, { nullable: true })
-  updatedById?: string;
+  updatedById?: string | null;
 }
 
 @ObjectType()

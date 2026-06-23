@@ -5,13 +5,13 @@ import { UserRole } from './enums';
 @ObjectType()
 export class AuthenticatedUser {
   @Field(() => String, { nullable: true })
-  sub?: string;
+  sub?: string | null;
 
   @Field(() => String, { nullable: true })
-  preferredUsername?: string;
+  preferredUsername?: string | null;
 
   @Field(() => String, { nullable: true })
-  email?: string;
+  email?: string | null;
 
   @Field(() => [String])
   roles!: string[];
@@ -38,10 +38,10 @@ export class User {
   name!: string;
 
   @Field(() => String, { nullable: true })
-  identityDocument?: string;
+  identityDocument?: string | null;
 
   @Field(() => String, { nullable: true })
-  academicId?: string;
+  academicId?: string | null;
 
   @Field(() => [String])
   unespRole!: string[];
@@ -53,11 +53,11 @@ export class User {
   createdAt!: Date;
 
   @Field(() => String, { nullable: true })
-  createdById?: string;
+  createdById?: string | null;
 
   @Field(() => Date)
   updatedAt!: Date;
 
   @Field(() => String, { nullable: true })
-  updatedById?: string;
+  updatedById?: string | null;
 }

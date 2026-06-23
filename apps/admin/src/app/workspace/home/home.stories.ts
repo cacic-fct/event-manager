@@ -1,7 +1,7 @@
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { LOCALE_ID, signal } from '@angular/core';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
@@ -76,7 +76,7 @@ const meta: Meta<HomeStoryArgs> = {
   decorators: [
     applicationConfig({
       providers: [
-        provideHttpClient(withFetch()),
+        provideHttpClient(),
         provideRouter([]),
         { provide: LOCALE_ID, useValue: 'pt-BR' },
         {
@@ -234,7 +234,9 @@ function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsi
       : Array.from({ length: args.pendingCertificates }, (_, index) => buildPendingCertificate(index)),
     pendingReceiptValidationsCount: empty ? 0 : args.pendingReceiptValidationsCount,
     pendingReceiptMajorEvents: empty ? [] : buildPendingReceiptMajorEvents(args.pendingReceiptValidationsCount),
-    inconsistencies: empty ? [] : Array.from({ length: args.inconsistencies }, (_, index) => buildInconsistency(index, args)),
+    inconsistencies: empty
+      ? []
+      : Array.from({ length: args.inconsistencies }, (_, index) => buildInconsistency(index, args)),
     duplicatePeopleCount: empty ? 0 : args.duplicatePeopleCount,
   };
 }
@@ -297,7 +299,11 @@ function buildPendingCertificate(index: number): DashboardCertificatePendingItem
     targetType,
     targetId: `certificate-target-${index}`,
     title: faker.helpers.arrayElement(['Semana da Computação', 'Minicurso de NestJS', 'Trilha Frontend']),
-    subtitle: faker.helpers.arrayElement(['58 participantes elegíveis', '12 certificados prontos', 'Aguardando revisão']),
+    subtitle: faker.helpers.arrayElement([
+      '58 participantes elegíveis',
+      '12 certificados prontos',
+      'Aguardando revisão',
+    ]),
     finishedAt: dateFromNow(-index - 1, 18).toISOString(),
   };
 }

@@ -71,3 +71,7 @@ docker/typesense-data/
 typesense-data/
 
 __screenshots__/
+
+.nx/polygraph
+.nx/self-healing
+.nx/migrate-runs

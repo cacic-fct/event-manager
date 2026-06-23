@@ -15,7 +15,7 @@ export class CertificateTemplate {
   name!: string;
 
   @Field(() => String, { nullable: true })
-  description?: string;
+  description?: string | null;
 
   @Field(() => Int)
   version!: number;
@@ -24,22 +24,22 @@ export class CertificateTemplate {
   isActive!: boolean;
 
   @Field(() => String, { nullable: true })
-  certificateFieldsJson?: string;
+  certificateFieldsJson?: string | null;
 
   @Field(() => Date)
   createdAt!: Date;
 
   @Field(() => String, { nullable: true })
-  createdById?: string;
+  createdById?: string | null;
 
   @Field(() => Date)
   updatedAt!: Date;
 
   @Field(() => String, { nullable: true })
-  updatedById?: string;
+  updatedById?: string | null;
 
   @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 }
 
 @ObjectType()
@@ -54,22 +54,22 @@ export class CertificateConfig {
   scope!: CertificateScope;
 
   @Field(() => String, { nullable: true })
-  majorEventId?: string;
+  majorEventId?: string | null;
 
   @Field(() => MajorEvent, { nullable: true })
-  majorEvent?: MajorEvent;
+  majorEvent?: MajorEvent | null;
 
   @Field(() => String, { nullable: true })
-  eventGroupId?: string;
+  eventGroupId?: string | null;
 
   @Field(() => EventGroup, { nullable: true })
-  eventGroup?: EventGroup;
+  eventGroup?: EventGroup | null;
 
   @Field(() => String, { nullable: true })
-  eventId?: string;
+  eventId?: string | null;
 
   @Field(() => Event, { nullable: true })
-  event?: Event;
+  event?: Event | null;
 
   @Field(() => String)
   certificateTemplateId!: string;
@@ -78,13 +78,13 @@ export class CertificateConfig {
   certificateTemplate!: CertificateTemplate;
 
   @Field(() => String, { nullable: true })
-  certificateText?: string;
+  certificateText?: string | null;
 
   @Field(() => Boolean)
   shouldAutofillSecondPage!: boolean;
 
   @Field(() => String, { nullable: true })
-  secondPageText?: string;
+  secondPageText?: string | null;
 
   @Field(() => Boolean)
   isActive!: boolean;
@@ -93,22 +93,22 @@ export class CertificateConfig {
   issuedTo!: CertificateIssuedTo;
 
   @Field(() => String, { nullable: true })
-  certificateFieldsJson?: string;
+  certificateFieldsJson?: string | null;
 
   @Field(() => Date)
   createdAt!: Date;
 
   @Field(() => String, { nullable: true })
-  createdById?: string;
+  createdById?: string | null;
 
   @Field(() => Date)
   updatedAt!: Date;
 
   @Field(() => String, { nullable: true })
-  updatedById?: string;
+  updatedById?: string | null;
 
   @Field(() => Date, { nullable: true })
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 }
 
 @ObjectType()
@@ -135,7 +135,7 @@ export class Certificate {
   issuedAt!: Date;
 
   @Field(() => String, { nullable: true })
-  issuedById?: string;
+  issuedById?: string | null;
 
   @Field(() => String)
   certificateTemplateId!: string;

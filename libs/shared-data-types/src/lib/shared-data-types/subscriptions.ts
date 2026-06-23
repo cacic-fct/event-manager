@@ -14,16 +14,16 @@ export class WorkspaceEventSubscription {
   eventId!: string;
 
   @Field(() => Event, { nullable: true })
-  event?: Event;
+  event?: Event | null;
 
   @Field(() => String)
   personId!: string;
 
   @Field(() => Person, { nullable: true })
-  person?: Person;
+  person?: Person | null;
 
   @Field(() => String, { nullable: true })
-  eventGroupSubscriptionId?: string;
+  eventGroupSubscriptionId?: string | null;
 
   @Field(() => String, { nullable: true })
   majorEventSubscriptionId!: string | null;
@@ -32,7 +32,7 @@ export class WorkspaceEventSubscription {
   createdAt!: Date;
 
   @Field(() => String, { nullable: true })
-  createdById?: string;
+  createdById?: string | null;
 
   @Field(() => SubscriptionCreationMethod)
   createdByMethod!: SubscriptionCreationMethod;
@@ -50,7 +50,7 @@ export class WorkspaceMajorEventSubscriptionEvent {
   eventName!: string;
 
   @Field(() => Date, { nullable: true })
-  eventStartDate?: Date;
+  eventStartDate?: Date | null;
 
   @Field(() => Boolean)
   subscribed!: boolean;
@@ -68,31 +68,31 @@ export class WorkspaceMajorEventSubscription {
   majorEventId!: string;
 
   @Field(() => MajorEvent, { nullable: true })
-  majorEvent?: MajorEvent;
+  majorEvent?: MajorEvent | null;
 
   @Field(() => String)
   personId!: string;
 
   @Field(() => Person, { nullable: true })
-  person?: Person;
+  person?: Person | null;
 
   @Field(() => SubscriptionStatus)
   subscriptionStatus!: SubscriptionStatus;
 
   @Field(() => Int, { nullable: true })
-  amountPaid?: number;
+  amountPaid?: number | null;
 
   @Field(() => Date, { nullable: true })
-  paymentDate?: Date;
+  paymentDate?: Date | null;
 
   @Field(() => String, { nullable: true })
-  paymentTier?: string;
+  paymentTier?: string | null;
 
   @Field(() => Date)
   createdAt!: Date;
 
   @Field(() => String, { nullable: true })
-  createdById?: string;
+  createdById?: string | null;
 
   @Field(() => SubscriptionCreationMethod)
   createdByMethod!: SubscriptionCreationMethod;

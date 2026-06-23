@@ -1,4 +1,4 @@
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { inject, provideAppInitializer } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconRegistry } from '@angular/material/icon';
@@ -27,7 +27,6 @@ function ensureStorybookGlobalStyles(): void {
   if (document.getElementById('storybook-app-global-styles')) {
     return;
   }
-
   const style = document.createElement('style');
   style.id = 'storybook-app-global-styles';
   style.textContent = `
@@ -168,7 +167,7 @@ const preview: Preview = {
   decorators: [
     applicationConfig({
       providers: [
-        provideHttpClient(withFetch()),
+        provideHttpClient(),
         provideNoopAnimations(),
         provideRouter([], withDisabledInitialNavigation()),
         provideAppInitializer(() => {

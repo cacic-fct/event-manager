@@ -41,16 +41,16 @@
     <div class="panel-heading">
       <div>
         <h3>
-          @if (workspace.selectedEvent()) {
-            <app-twemoji [emoji]="workspace.selectedEvent()?.emoji" />
-            {{ workspace.selectedEvent()?.name }}
+          @if (workspace.selectedEvent(); as selectedEvent) {
+            <app-twemoji [emoji]="selectedEvent.emoji" />
+            {{ selectedEvent.name }}
           } @else {
             Selecione um evento
           }
         </h3>
         <p>
-          @if (workspace.selectedEvent()) {
-            {{ workspace.selectedEvent()?.startDate | date: 'medium' }}
+          @if (workspace.selectedEvent(); as selectedEvent) {
+            {{ selectedEvent.startDate | date: 'medium' }}
           } @else {
             As inscrições do evento aparecem aqui.
           }

@@ -13,5 +13,13 @@
     "../../../libs/shared-notifications-angular/src/**/*.stories.ts",
     "*.js",
     "*.ts"
-  ]
+  ],
+  "angularCompilerOptions": {
+    "extendedDiagnostics": {
+      "checks": {
+        "nullishCoalescingNotNullable": "suppress",
+        "optionalChainNotNullable": "suppress"
+      }
+    }
+  }
 }
