@@ -39,6 +39,48 @@ describe('EventGroupsResolver authorization', () => {
     );
   });
 
+  it('filters Typesense event group hits to scoped grants before querying', async () => {
+    const prisma = {
+      eventGroup: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'group-b', name: 'Grupo permitido' }]),
+      },
+    };
+    const typesenseSearch = {
+      isEnabled: jest.fn().mockReturnValue(true),
+      searchEventGroups: jest.fn().mockResolvedValue({
+        available: true,
+        ids: ['group-a', 'group-b'],
+      }),
+    };
+    const authorizationPolicy = {
+      accessibleEventGroupIds: jest.fn().mockResolvedValue(new Set(['group-b'])),
+    };
+    const resolver = new EventGroupsResolver(
+      prisma as never,
+      typesenseSearch as never,
+      {} as never,
+      authorizationPolicy as never,
+    );
+
+    await expect(resolver.eventGroups({ req: { user: { sub: 'user-1' } } } as never, 'grupo', 0, 10)).resolves.toEqual([
+      { id: 'group-b', name: 'Grupo permitido' },
+    ]);
+
+    expect(typesenseSearch.searchEventGroups).toHaveBeenCalledWith('grupo', 10);
+    expect(prisma.eventGroup.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          id: {
+            in: ['group-b'],
+          },
+        },
+        skip: 0,
+        take: 1,
+      }),
+    );
+  });
+
   it('records event group creation inside the transaction before search indexing', async () => {
     const group = {
       id: 'group-1',

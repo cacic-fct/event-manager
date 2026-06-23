@@ -19,3 +19,12 @@ services:
     volumes:
       - /Volumes/Mobile/cacic-events/redis:/data
     command: redis-server --appendonly yes
+
+  typesense:
+    image: typesense/typesense:30.2
+    restart: on-failure
+    ports:
+      - '8108:8108'
+    volumes:
+      - ./typesense-data:/data
+    command: '--data-dir /data --api-key=xyz'

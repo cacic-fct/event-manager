@@ -1027,6 +1027,15 @@ export class AuditLogService {
           updated as Parameters<TypesenseSearchService['upsertEventGroup']>[0],
         );
         return;
+      case AuditLogEntityType.PLACE_PRESET:
+        if (isDeleted) {
+          await this.typesenseSearch.deletePlacePreset(entityId);
+          return;
+        }
+        await this.typesenseSearch.upsertPlacePreset(
+          updated as Parameters<TypesenseSearchService['upsertPlacePreset']>[0],
+        );
+        return;
       default:
         return;
     }
@@ -1264,6 +1273,7 @@ export class AuditLogService {
           supportsSoftDelete: true,
           mutableFields: ['name', 'latitude', 'longitude', 'locationDescription', 'deletedAt'],
           select: {
+            id: true,
             name: true,
             latitude: true,
             longitude: true,

@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import Typesense from 'typesense';
-import type { CollectionCreateSchema, CollectionFieldSchema } from 'typesense';
+import type { CollectionCreateSchema, CollectionFieldSchema, CollectionSchema, SearchParams } from 'typesense';
 import type { Client as TypesenseClient } from 'typesense';
 
 type EventSearchDocument = {
@@ -13,9 +14,13 @@ type EventSearchDocument = {
   shortDescription?: string;
   locationDescription?: string;
   majorEventId?: string;
+  majorEventName?: string;
   eventGroupId?: string;
+  eventGroupName?: string;
   startDate: number;
   endDate: number;
+  publiclyVisible: boolean;
+  isIssuableCertificateEvent: boolean;
 };
 
 type MajorEventSearchDocument = {
@@ -42,6 +47,39 @@ type PersonSearchDocument = {
   userId?: string;
 };
 
+type PlacePresetSearchDocument = {
+  id: string;
+  name: string;
+  locationDescription?: string;
+};
+
+type CertificateTemplateSearchDocument = {
+  id: string;
+  name: string;
+  description?: string;
+  version: number;
+  isActive: boolean;
+};
+
+export type TypesenseSearchResult = {
+  available: boolean;
+  ids: string[];
+};
+
+export type TypesenseSearchOptions = {
+  filterBy?: string;
+  limit?: number;
+  offset?: number;
+};
+
+type TypesenseNodeConfig = {
+  host: string;
+  port: number;
+  protocol: string;
+};
+
+const TYPESENSE_MAX_PER_PAGE = 250;
+
 @Injectable()
 export class TypesenseSearchService implements OnModuleInit {
   private readonly logger = new Logger(TypesenseSearchService.name);
@@ -67,29 +105,50 @@ export class TypesenseSearchService implements OnModuleInit {
     return this.client != null;
   }
 
-  async searchEvents(query: string, take = 50): Promise<string[]> {
+  async searchEvents(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<EventSearchDocument>(
       'events',
       query,
-      'name,description,shortDescription,emoji',
-      take,
+      'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
+      options,
     );
   }
 
-  async searchMajorEvents(query: string, take = 50): Promise<string[]> {
-    return this.searchDocumentIds<MajorEventSearchDocument>('major_events', query, 'name,description', take);
+  async searchMajorEvents(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
+    return this.searchDocumentIds<MajorEventSearchDocument>('major_events', query, 'name,description', options);
   }
 
-  async searchEventGroups(query: string, take = 50): Promise<string[]> {
-    return this.searchDocumentIds<EventGroupSearchDocument>('event_groups', query, 'name', take);
+  async searchEventGroups(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
+    return this.searchDocumentIds<EventGroupSearchDocument>('event_groups', query, 'name', options);
   }
 
-  async searchPeople(query: string, take = 50): Promise<string[]> {
+  async searchPeople(query: string, take = 50): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<PersonSearchDocument>(
       'people',
       query,
       'name,email,secondaryEmails,phone,identityDocument,academicId',
       take,
+    );
+  }
+
+  async searchPlacePresets(query: string, take = 50): Promise<TypesenseSearchResult> {
+    return this.searchDocumentIds<PlacePresetSearchDocument>(
+      'place_presets',
+      query,
+      'name,locationDescription',
+      take,
+    );
+  }
+
+  async searchCertificateTemplates(
+    query: string,
+    options: number | TypesenseSearchOptions = 50,
+  ): Promise<TypesenseSearchResult> {
+    return this.searchDocumentIds<CertificateTemplateSearchDocument>(
+      'certificate_templates',
+      query,
+      'name,description',
+      options,
     );
   }
 
@@ -103,9 +162,20 @@ export class TypesenseSearchService implements OnModuleInit {
     locationDescription?: string | null;
     majorEventId?: string | null;
     eventGroupId?: string | null;
+    shouldIssueCertificate?: boolean | null;
+    publiclyVisible?: boolean | null;
     startDate: Date;
     endDate: Date;
   }): Promise<void> {
+    if (!this.client) {
+      return;
+    }
+
+    const [majorEventName, eventGroupContext] = await Promise.all([
+      this.resolveMajorEventName(input.majorEventId),
+      this.resolveEventGroupContext(input.eventGroupId),
+    ]);
+
     await this.upsertDocument<EventSearchDocument>('events', {
       id: input.id,
       name: input.name,
@@ -115,9 +185,18 @@ export class TypesenseSearchService implements OnModuleInit {
       shortDescription: this.toOptionalString(input.shortDescription),
       locationDescription: this.toOptionalString(input.locationDescription),
       majorEventId: this.toOptionalString(input.majorEventId),
+      majorEventName,
       eventGroupId: this.toOptionalString(input.eventGroupId),
+      eventGroupName: eventGroupContext?.name,
       startDate: this.toUnixTimestamp(input.startDate),
       endDate: this.toUnixTimestamp(input.endDate),
+      publiclyVisible: Boolean(input.publiclyVisible),
+      isIssuableCertificateEvent: this.isIssuableCertificateEvent({
+        eventGroup: eventGroupContext,
+        eventGroupId: input.eventGroupId,
+        majorEventId: input.majorEventId,
+        shouldIssueCertificate: input.shouldIssueCertificate,
+      }),
     });
   }
 
@@ -132,6 +211,10 @@ export class TypesenseSearchService implements OnModuleInit {
     startDate: Date;
     endDate: Date;
   }): Promise<void> {
+    if (!this.client) {
+      return;
+    }
+
     await this.upsertDocument<MajorEventSearchDocument>('major_events', {
       id: input.id,
       name: input.name,
@@ -139,21 +222,29 @@ export class TypesenseSearchService implements OnModuleInit {
       startDate: this.toUnixTimestamp(input.startDate),
       endDate: this.toUnixTimestamp(input.endDate),
     });
+    await this.reindexEventsByMajorEventId(input.id);
   }
 
   async deleteMajorEvent(id: string): Promise<void> {
     await this.deleteDocument('major_events', id);
+    await this.reindexEventsByMajorEventId(id);
   }
 
   async upsertEventGroup(input: { id: string; name: string }): Promise<void> {
+    if (!this.client) {
+      return;
+    }
+
     await this.upsertDocument<EventGroupSearchDocument>('event_groups', {
       id: input.id,
       name: input.name,
     });
+    await this.reindexEventsByEventGroupId(input.id);
   }
 
   async deleteEventGroup(id: string): Promise<void> {
     await this.deleteDocument('event_groups', id);
+    await this.reindexEventsByEventGroupId(id);
   }
 
   async upsertPerson(input: {
@@ -182,17 +273,67 @@ export class TypesenseSearchService implements OnModuleInit {
     await this.deleteDocument('people', id);
   }
 
+  async upsertPlacePreset(input: {
+    id: string;
+    name: string;
+    locationDescription?: string | null;
+  }): Promise<void> {
+    await this.upsertDocument<PlacePresetSearchDocument>('place_presets', {
+      id: input.id,
+      name: input.name,
+      locationDescription: this.toOptionalString(input.locationDescription),
+    });
+  }
+
+  async deletePlacePreset(id: string): Promise<void> {
+    await this.deleteDocument('place_presets', id);
+  }
+
+  async upsertCertificateTemplate(input: {
+    id: string;
+    name: string;
+    description?: string | null;
+    version: number;
+    isActive: boolean;
+  }): Promise<void> {
+    await this.upsertDocument<CertificateTemplateSearchDocument>('certificate_templates', {
+      id: input.id,
+      name: input.name,
+      description: this.toOptionalString(input.description),
+      version: input.version,
+      isActive: input.isActive,
+    });
+  }
+
+  async deleteCertificateTemplate(id: string): Promise<void> {
+    await this.deleteDocument('certificate_templates', id);
+  }
+
   private buildClient(): TypesenseClient | null {
     if (!this.enabled) {
       return null;
     }
 
+    const urlConfig = this.buildNodeConfigFromUrl(process.env.TYPESENSE_URL);
     const host = process.env.TYPESENSE_HOST;
     const protocol = process.env.TYPESENSE_PROTOCOL;
     const apiKey = process.env.TYPESENSE_API_KEY;
     const portRaw = process.env.TYPESENSE_PORT;
 
-    if (!host || !protocol || !apiKey || !portRaw) {
+    if (!apiKey) {
+      this.logger.warn('Typesense is enabled but TYPESENSE_API_KEY is missing. Disabling search indexing.');
+      return null;
+    }
+
+    if (urlConfig) {
+      return new Typesense.Client({
+        apiKey,
+        nodes: [urlConfig],
+        connectionTimeoutSeconds: 5,
+      });
+    }
+
+    if (!host || !protocol || !portRaw) {
       this.logger.warn('Typesense is enabled but configuration is incomplete. Disabling search indexing.');
       return null;
     }
@@ -210,6 +351,31 @@ export class TypesenseSearchService implements OnModuleInit {
     });
   }
 
+  private buildNodeConfigFromUrl(rawUrl?: string): TypesenseNodeConfig | null {
+    const value = rawUrl?.trim();
+    if (!value) {
+      return null;
+    }
+
+    try {
+      const parsed = new URL(value);
+      const protocol = parsed.protocol.replace(':', '');
+      if (protocol !== 'http' && protocol !== 'https') {
+        this.logger.warn('Typesense URL protocol must be http or https. Falling back to host settings.');
+        return null;
+      }
+
+      return {
+        host: parsed.hostname,
+        port: parsed.port ? Number(parsed.port) : protocol === 'https' ? 443 : 80,
+        protocol,
+      };
+    } catch {
+      this.logger.warn('Typesense URL is invalid. Falling back to host settings.');
+      return null;
+    }
+  }
+
   private async ensureCollections(): Promise<void> {
     if (!this.client) {
       return;
@@ -225,9 +391,13 @@ export class TypesenseSearchService implements OnModuleInit {
         { name: 'shortDescription', type: 'string', optional: true },
         { name: 'locationDescription', type: 'string', optional: true },
         { name: 'majorEventId', type: 'string', optional: true, facet: true },
+        { name: 'majorEventName', type: 'string', optional: true },
         { name: 'eventGroupId', type: 'string', optional: true, facet: true },
+        { name: 'eventGroupName', type: 'string', optional: true },
         { name: 'startDate', type: 'int64', sort: true },
         { name: 'endDate', type: 'int64', sort: true },
+        { name: 'publiclyVisible', type: 'bool', optional: true, facet: true },
+        { name: 'isIssuableCertificateEvent', type: 'bool', optional: true, facet: true },
       ]),
       this.createCollectionSchema('major_events', [
         { name: 'id', type: 'string' },
@@ -250,15 +420,47 @@ export class TypesenseSearchService implements OnModuleInit {
         { name: 'academicId', type: 'string', optional: true, facet: true },
         { name: 'userId', type: 'string', optional: true, facet: true },
       ]),
+      this.createCollectionSchema('place_presets', [
+        { name: 'id', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'locationDescription', type: 'string', optional: true },
+      ]),
+      this.createCollectionSchema('certificate_templates', [
+        { name: 'id', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'description', type: 'string', optional: true },
+        { name: 'version', type: 'int32', sort: true },
+        { name: 'isActive', type: 'bool', facet: true },
+      ]),
     ];
 
     for (const schema of schemas) {
-      const collection = this.client.collections(schema.name);
-      const exists = await collection.exists();
-      if (!exists) {
-        await this.client.collections().create(schema);
-      }
+      await this.ensureCollection(schema);
     }
+  }
+
+  private async ensureCollection(schema: CollectionCreateSchema): Promise<void> {
+    if (!this.client) {
+      return;
+    }
+
+    const collection = this.client.collections(schema.name);
+    const exists = await collection.exists();
+    if (!exists) {
+      await this.client.collections().create(schema);
+      return;
+    }
+
+    const existing = await collection.retrieve();
+    const missingFields = this.findMissingFields(schema, existing);
+    if (missingFields.length > 0) {
+      await collection.update({ fields: missingFields });
+    }
+  }
+
+  private findMissingFields(schema: CollectionCreateSchema, existing: CollectionSchema): CollectionFieldSchema[] {
+    const currentNames = new Set(existing.fields.map((field) => field.name));
+    return (schema.fields ?? []).filter((field) => !currentNames.has(field.name));
   }
 
   private createCollectionSchema(name: string, fields: CollectionFieldSchema[]): CollectionCreateSchema {
@@ -273,7 +475,7 @@ export class TypesenseSearchService implements OnModuleInit {
       return;
     }
 
-    const [events, majorEvents, eventGroups, people] = await Promise.all([
+    const [events, majorEvents, eventGroups, people, placePresets, certificateTemplates] = await Promise.all([
       this.prisma.event.findMany({
         where: { deletedAt: null },
         select: {
@@ -285,9 +487,25 @@ export class TypesenseSearchService implements OnModuleInit {
           shortDescription: true,
           locationDescription: true,
           majorEventId: true,
+          majorEvent: {
+            select: {
+              name: true,
+              deletedAt: true,
+            },
+          },
           eventGroupId: true,
+          eventGroup: {
+            select: {
+              name: true,
+              deletedAt: true,
+              shouldIssueCertificate: true,
+              shouldIssueCertificateForEachEvent: true,
+            },
+          },
           startDate: true,
           endDate: true,
+          shouldIssueCertificate: true,
+          publiclyVisible: true,
         },
       }),
       this.prisma.majorEvent.findMany({
@@ -320,6 +538,24 @@ export class TypesenseSearchService implements OnModuleInit {
           userId: true,
         },
       }),
+      this.prisma.placePreset.findMany({
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          name: true,
+          locationDescription: true,
+        },
+      }),
+      this.prisma.certificateTemplate.findMany({
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          version: true,
+          isActive: true,
+        },
+      }),
     ]);
 
     await Promise.all([
@@ -334,9 +570,13 @@ export class TypesenseSearchService implements OnModuleInit {
           shortDescription: this.toOptionalString(event.shortDescription),
           locationDescription: this.toOptionalString(event.locationDescription),
           majorEventId: this.toOptionalString(event.majorEventId),
+          majorEventName: event.majorEvent?.deletedAt ? undefined : this.toOptionalString(event.majorEvent?.name),
           eventGroupId: this.toOptionalString(event.eventGroupId),
+          eventGroupName: event.eventGroup?.deletedAt ? undefined : this.toOptionalString(event.eventGroup?.name),
           startDate: this.toUnixTimestamp(event.startDate),
           endDate: this.toUnixTimestamp(event.endDate),
+          publiclyVisible: event.publiclyVisible,
+          isIssuableCertificateEvent: this.isIssuableCertificateEvent(event),
         })),
       ),
       this.replaceCollectionDocuments<MajorEventSearchDocument>(
@@ -369,7 +609,97 @@ export class TypesenseSearchService implements OnModuleInit {
           userId: this.toOptionalString(person.userId),
         })),
       ),
+      this.replaceCollectionDocuments<PlacePresetSearchDocument>(
+        'place_presets',
+        placePresets.map((placePreset) => ({
+          id: placePreset.id,
+          name: placePreset.name,
+          locationDescription: this.toOptionalString(placePreset.locationDescription),
+        })),
+      ),
+      this.replaceCollectionDocuments<CertificateTemplateSearchDocument>(
+        'certificate_templates',
+        certificateTemplates.map((certificateTemplate) => ({
+          id: certificateTemplate.id,
+          name: certificateTemplate.name,
+          description: this.toOptionalString(certificateTemplate.description),
+          version: certificateTemplate.version,
+          isActive: certificateTemplate.isActive,
+        })),
+      ),
     ]);
+  }
+
+  private async reindexEventsByMajorEventId(majorEventId: string): Promise<void> {
+    await this.reindexEvents({ majorEventId });
+  }
+
+  private async reindexEventsByEventGroupId(eventGroupId: string): Promise<void> {
+    await this.reindexEvents({ eventGroupId });
+  }
+
+  private async reindexEvents(where: Prisma.EventWhereInput): Promise<void> {
+    if (!this.client) {
+      return;
+    }
+
+    const events = await this.prisma.event.findMany({
+      where: {
+        ...where,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        emoji: true,
+        type: true,
+        description: true,
+        shortDescription: true,
+        locationDescription: true,
+        majorEventId: true,
+        majorEvent: {
+          select: {
+            name: true,
+            deletedAt: true,
+          },
+        },
+        eventGroupId: true,
+        eventGroup: {
+          select: {
+            name: true,
+            deletedAt: true,
+            shouldIssueCertificate: true,
+            shouldIssueCertificateForEachEvent: true,
+          },
+        },
+        startDate: true,
+        endDate: true,
+        shouldIssueCertificate: true,
+        publiclyVisible: true,
+      },
+    });
+
+    await Promise.all(
+      events.map((event) =>
+        this.upsertDocument<EventSearchDocument>('events', {
+          id: event.id,
+          name: event.name,
+          emoji: event.emoji,
+          type: event.type,
+          description: this.toOptionalString(event.description),
+          shortDescription: this.toOptionalString(event.shortDescription),
+          locationDescription: this.toOptionalString(event.locationDescription),
+          majorEventId: this.toOptionalString(event.majorEventId),
+          majorEventName: event.majorEvent?.deletedAt ? undefined : this.toOptionalString(event.majorEvent?.name),
+          eventGroupId: this.toOptionalString(event.eventGroupId),
+          eventGroupName: event.eventGroup?.deletedAt ? undefined : this.toOptionalString(event.eventGroup?.name),
+          startDate: this.toUnixTimestamp(event.startDate),
+          endDate: this.toUnixTimestamp(event.endDate),
+          publiclyVisible: event.publiclyVisible,
+          isIssuableCertificateEvent: this.isIssuableCertificateEvent(event),
+        }),
+      ),
+    );
   }
 
   private async replaceCollectionDocuments<T extends { id: string }>(
@@ -420,25 +750,142 @@ export class TypesenseSearchService implements OnModuleInit {
     collectionName: string,
     query: string,
     queryBy: string,
-    take: number,
-  ): Promise<string[]> {
+    options: number | TypesenseSearchOptions,
+  ): Promise<TypesenseSearchResult> {
     const normalizedQuery = query.trim();
     if (!this.client || !normalizedQuery) {
-      return [];
+      return { available: false, ids: [] };
+    }
+
+    const { filterBy, limit, offset } = this.normalizeSearchOptions(options);
+    if (limit === 0) {
+      return { available: true, ids: [] };
     }
 
     try {
-      const result = await this.client.collections<T & Record<string, unknown>>(collectionName).documents().search({
-        q: normalizedQuery,
-        query_by: queryBy,
-        per_page: take,
-      });
+      const ids: string[] = [];
+      let nextOffset = offset;
 
-      return result.hits?.map((hit) => hit.document.id).filter((id) => Boolean(id)) ?? [];
+      while (ids.length < limit) {
+        const pageSize = Math.min(TYPESENSE_MAX_PER_PAGE, limit - ids.length);
+        const searchParameters: SearchParams<T & Record<string, unknown>> = {
+          q: normalizedQuery,
+          query_by: queryBy,
+          per_page: pageSize,
+        };
+
+        if (nextOffset > 0) {
+          searchParameters.offset = nextOffset;
+        }
+        if (filterBy) {
+          searchParameters.filter_by = filterBy;
+        }
+
+        const result = await this.client
+          .collections<T & Record<string, unknown>>(collectionName)
+          .documents()
+          .search(searchParameters);
+        const hits = result.hits ?? [];
+        ids.push(...hits.map((hit) => hit.document.id).filter((id) => Boolean(id)));
+
+        if (hits.length < pageSize) {
+          break;
+        }
+        nextOffset += hits.length;
+      }
+
+      return {
+        available: true,
+        ids,
+      };
     } catch (error) {
       this.logger.error(`Typesense search failed for collection ${collectionName}.`, error);
-      return [];
+      return { available: false, ids: [] };
     }
+  }
+
+  private normalizeSearchOptions(options: number | TypesenseSearchOptions): Required<TypesenseSearchOptions> {
+    if (typeof options === 'number') {
+      return {
+        filterBy: '',
+        limit: Math.max(0, Math.floor(options)),
+        offset: 0,
+      };
+    }
+
+    return {
+      filterBy: options.filterBy?.trim() ?? '',
+      limit: Math.max(0, Math.floor(options.limit ?? 50)),
+      offset: Math.max(0, Math.floor(options.offset ?? 0)),
+    };
+  }
+
+  private async resolveMajorEventName(majorEventId?: string | null): Promise<string | undefined> {
+    if (!majorEventId) {
+      return undefined;
+    }
+
+    const majorEvent = await this.prisma.majorEvent.findFirst({
+      where: { id: majorEventId, deletedAt: null },
+      select: { name: true },
+    });
+
+    return this.toOptionalString(majorEvent?.name);
+  }
+
+  private async resolveEventGroupContext(eventGroupId?: string | null): Promise<{
+    name: string;
+    shouldIssueCertificate: boolean;
+    shouldIssueCertificateForEachEvent: boolean;
+  } | null> {
+    if (!eventGroupId) {
+      return null;
+    }
+
+    const eventGroup = await this.prisma.eventGroup.findFirst({
+      where: { id: eventGroupId, deletedAt: null },
+      select: {
+        name: true,
+        shouldIssueCertificate: true,
+        shouldIssueCertificateForEachEvent: true,
+      },
+    });
+
+    if (!eventGroup) {
+      return null;
+    }
+
+    return {
+      name: this.toOptionalString(eventGroup.name) ?? '',
+      shouldIssueCertificate: eventGroup.shouldIssueCertificate,
+      shouldIssueCertificateForEachEvent: eventGroup.shouldIssueCertificateForEachEvent,
+    };
+  }
+
+  private isIssuableCertificateEvent(input: {
+    eventGroup?: {
+      deletedAt?: Date | string | null;
+      shouldIssueCertificate?: boolean | null;
+      shouldIssueCertificateForEachEvent?: boolean | null;
+    } | null;
+    eventGroupId?: string | null;
+    majorEventId?: string | null;
+    shouldIssueCertificate?: boolean | null;
+  }): boolean {
+    if (input.majorEventId || !input.shouldIssueCertificate) {
+      return false;
+    }
+
+    if (!input.eventGroupId) {
+      return true;
+    }
+
+    return Boolean(
+      input.eventGroup &&
+        !input.eventGroup.deletedAt &&
+        input.eventGroup.shouldIssueCertificate &&
+        input.eventGroup.shouldIssueCertificateForEachEvent,
+    );
   }
 
   private toUnixTimestamp(date: Date): number {

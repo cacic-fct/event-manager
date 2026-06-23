@@ -45,6 +45,34 @@ describe('PlacePresetsResolver', () => {
     );
   });
 
+  it('uses Typesense rank for place searches before applying pagination', async () => {
+    const prisma = createPrismaMock();
+    prisma.placePreset.findMany.mockResolvedValue([{ id: 'place-b' }, { id: 'place-a' }]);
+    const typesenseSearch = createTypesenseMock({
+      searchPlacePresets: jest.fn().mockResolvedValue({
+        available: true,
+        ids: ['place-a', 'place-b'],
+      }),
+    });
+    const resolver = new PlacePresetsResolver(prisma as never, createAuditLogMock() as never, typesenseSearch as never);
+
+    await expect(resolver.placePresets(' lab ', 1, 1)).resolves.toEqual([{ id: 'place-b' }]);
+
+    expect(typesenseSearch.searchPlacePresets).toHaveBeenCalledWith('lab', 2);
+    expect(prisma.placePreset.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          id: {
+            in: ['place-a', 'place-b'],
+          },
+        },
+        skip: 0,
+        take: 2,
+      }),
+    );
+  });
+
   it('returns one active place and rejects missing places', async () => {
     const prisma = createPrismaMock();
     const resolver = new PlacePresetsResolver(prisma as never);
@@ -94,6 +122,36 @@ describe('PlacePresetsResolver', () => {
       }),
       prisma,
     );
+  });
+
+  it('synchronizes place preset search documents after mutations', async () => {
+    const prisma = createPrismaMock();
+    const typesenseSearch = createTypesenseMock();
+    const resolver = new PlacePresetsResolver(prisma as never, createAuditLogMock() as never, typesenseSearch as never);
+
+    await resolver.createPlacePreset({
+      name: 'Sala 1',
+      latitude: null,
+      longitude: null,
+      locationDescription: 'Bloco A',
+    });
+    await resolver.updatePlacePreset('place-1', {
+      name: 'Sala 2',
+      locationDescription: 'Bloco B',
+    });
+    await resolver.deletePlacePreset('place-1');
+
+    expect(typesenseSearch.upsertPlacePreset).toHaveBeenCalledWith({
+      id: 'place-1',
+      name: 'Sala 1',
+      locationDescription: 'Bloco A',
+    });
+    expect(typesenseSearch.upsertPlacePreset).toHaveBeenCalledWith({
+      id: 'place-1',
+      name: 'Sala 2',
+      locationDescription: 'Bloco B',
+    });
+    expect(typesenseSearch.deletePlacePreset).toHaveBeenCalledWith('place-1');
   });
 
   it('updates and deletes active presets only', async () => {
@@ -253,8 +311,20 @@ function createPrismaMock() {
     placePreset: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue({ id: 'place-1' }),
-      create: jest.fn().mockResolvedValue({ id: 'place-1' }),
-      update: jest.fn().mockResolvedValue({ id: 'place-1' }),
+      create: jest.fn().mockImplementation(({ data }) =>
+        Promise.resolve({
+          id: 'place-1',
+          name: data.name,
+          locationDescription: data.locationDescription,
+        }),
+      ),
+      update: jest.fn().mockImplementation(({ data }) =>
+        Promise.resolve({
+          id: 'place-1',
+          name: data.name ?? 'Sala 2',
+          locationDescription: data.locationDescription ?? 'Bloco B',
+        }),
+      ),
       findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'target-place', name: 'Sala final' }),
     },
     $transaction: jest.fn(async (callback: (tx: unknown) => Promise<void>) => callback(prisma)),
@@ -266,5 +336,20 @@ function createPrismaMock() {
 function createAuditLogMock() {
   return {
     record: jest.fn(),
+  };
+}
+
+function createTypesenseMock(overrides: Partial<{
+  isEnabled: jest.Mock;
+  searchPlacePresets: jest.Mock;
+  upsertPlacePreset: jest.Mock;
+  deletePlacePreset: jest.Mock;
+}> = {}) {
+  return {
+    isEnabled: jest.fn().mockReturnValue(true),
+    searchPlacePresets: jest.fn().mockResolvedValue({ available: false, ids: [] }),
+    upsertPlacePreset: jest.fn(),
+    deletePlacePreset: jest.fn(),
+    ...overrides,
   };
 }

@@ -67,5 +67,7 @@ temp/
 .claude/settings.local.json
 /generated/prisma
 apps/backend/prisma/schema/database-erd.md
+docker/typesense-data/
+typesense-data/
 
 __screenshots__/

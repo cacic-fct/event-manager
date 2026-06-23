@@ -884,6 +884,155 @@ describe('AuditLogService', () => {
     expect(typesenseSearch.upsertEventGroup).toHaveBeenCalledWith(revertedGroup);
   });
 
+  it('reindexes reverted place presets with their id', async () => {
+    const targetEntry = createAuditEntry({
+      id: 'audit-place',
+      entityType: AuditLogEntityType.PLACE_PRESET,
+      entityId: 'place-1',
+      entityLabel: 'Sala nova',
+      operation: AuditLogOperation.UPDATE,
+      permission: Permission.PlacePreset.Update,
+      before: {
+        id: 'place-1',
+        name: 'Sala antiga',
+        locationDescription: 'Bloco A',
+      },
+      after: {
+        id: 'place-1',
+        name: 'Sala nova',
+        locationDescription: 'Bloco B',
+      },
+      changedFields: ['name', 'locationDescription'],
+      lastRecordedAt: new Date('2026-06-22T12:00:00.000Z'),
+    });
+    const currentPlace = {
+      id: 'place-1',
+      name: 'Sala nova',
+      latitude: null,
+      longitude: null,
+      locationDescription: 'Bloco B',
+      deletedAt: null,
+    };
+    const revertedPlace = {
+      ...currentPlace,
+      name: 'Sala antiga',
+      locationDescription: 'Bloco A',
+    };
+    const revertLog = createAuditEntry({
+      id: 'audit-place-revert',
+      entityType: AuditLogEntityType.PLACE_PRESET,
+      entityId: 'place-1',
+      operation: AuditLogOperation.REVERT,
+      revertTargetId: 'audit-place',
+    });
+    const tx = createTransaction(revertedPlace, revertLog);
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.auditLogEntry.findMany.mockResolvedValue([targetEntry]);
+    prisma.placePreset.findUnique.mockResolvedValue(currentPlace);
+    prisma.$transaction.mockImplementation(async (operation: (transaction: typeof tx) => Promise<unknown>) =>
+      operation(tx),
+    );
+    prisma.auditLogEntry.findUniqueOrThrow.mockResolvedValue(revertLog);
+
+    await expect(
+      service.revertEntry(
+        {
+          entryId: 'audit-place',
+          mode: AuditLogRevertMode.ENTRY_AND_AFTER,
+        },
+        undefined,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ id: 'audit-place-revert', revertTargetId: 'audit-place' }));
+
+    expect(tx.placePreset.update).toHaveBeenCalledWith({
+      where: {
+        id: 'place-1',
+      },
+      data: {
+        name: 'Sala antiga',
+        locationDescription: 'Bloco A',
+      },
+      select: expect.objectContaining({
+        id: true,
+        name: true,
+        locationDescription: true,
+      }),
+    });
+    expect(typesenseSearch.upsertPlacePreset).toHaveBeenCalledWith(revertedPlace);
+  });
+
+  it('removes reverted major events from search when the revert soft-deletes the record', async () => {
+    const deletedAt = new Date('2026-06-22T12:00:00.000Z');
+    const targetEntry = createAuditEntry({
+      id: 'audit-major',
+      entityType: AuditLogEntityType.MAJOR_EVENT,
+      entityId: 'major-1',
+      entityLabel: 'Grande evento',
+      operation: AuditLogOperation.UPDATE,
+      permission: Permission.MajorEvent.Update,
+      majorEventId: 'major-1',
+      before: {
+        id: 'major-1',
+        name: 'Grande evento',
+        deletedAt,
+      },
+      after: {
+        id: 'major-1',
+        name: 'Grande evento',
+        deletedAt: null,
+      },
+      changedFields: ['deletedAt'],
+      lastRecordedAt: new Date('2026-06-22T12:01:00.000Z'),
+    });
+    const currentMajorEvent = {
+      id: 'major-1',
+      name: 'Grande evento',
+      deletedAt: null,
+    };
+    const revertedMajorEvent = {
+      ...currentMajorEvent,
+      deletedAt,
+    };
+    const revertLog = createAuditEntry({
+      id: 'audit-major-revert',
+      entityType: AuditLogEntityType.MAJOR_EVENT,
+      entityId: 'major-1',
+      operation: AuditLogOperation.REVERT,
+      revertTargetId: 'audit-major',
+    });
+    const tx = createTransaction(revertedMajorEvent, revertLog);
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.majorEvent.findUnique.mockResolvedValue(currentMajorEvent);
+    prisma.$transaction.mockImplementation(async (operation: (transaction: typeof tx) => Promise<unknown>) =>
+      operation(tx),
+    );
+    prisma.auditLogEntry.findUniqueOrThrow.mockResolvedValue(revertLog);
+
+    await expect(
+      service.revertEntry(
+        {
+          entryId: 'audit-major',
+          mode: AuditLogRevertMode.ENTRY_ONLY,
+        },
+        undefined,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ id: 'audit-major-revert' }));
+
+    expect(tx.majorEvent.update).toHaveBeenCalledWith({
+      where: {
+        id: 'major-1',
+      },
+      data: {
+        deletedAt,
+      },
+      select: expect.objectContaining({
+        id: true,
+        deletedAt: true,
+      }),
+    });
+    expect(typesenseSearch.deleteMajorEvent).toHaveBeenCalledWith('major-1');
+  });
+
   it('reverts event updates, restores event-group invariants, and reindexes live events', async () => {
     const targetEntry = createAuditEntry({
       id: 'audit-event',
@@ -1173,6 +1322,8 @@ function createTypesenseSearch() {
     deleteEventGroup: jest.fn(),
     upsertPerson: jest.fn(),
     deletePerson: jest.fn(),
+    upsertPlacePreset: jest.fn(),
+    deletePlacePreset: jest.fn(),
   };
 }
 

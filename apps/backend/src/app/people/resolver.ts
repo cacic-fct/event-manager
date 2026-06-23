@@ -85,14 +85,25 @@ export class PeopleResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchPeople(
+        const searchResult = await this.typesenseSearch.searchPeople(
           normalizedQuery,
           pagination.skip + pagination.take,
         );
-        if (prioritizedIds.length === 0) {
-          return [];
+        if (searchResult.available) {
+          prioritizedIds = searchResult.ids;
+          if (prioritizedIds.length === 0) {
+            return [];
+          }
+          where.id = { in: prioritizedIds };
+        } else {
+          where.OR = [
+            { name: { contains: normalizedQuery, mode: 'insensitive' } },
+            { email: { contains: normalizedQuery, mode: 'insensitive' } },
+            { phone: { contains: normalizedQuery, mode: 'insensitive' } },
+            { identityDocument: { contains: normalizedQuery } },
+            { academicId: { contains: normalizedQuery } },
+          ];
         }
-        where.id = { in: prioritizedIds };
       } else {
         where.OR = [
           { name: { contains: normalizedQuery, mode: 'insensitive' } },
