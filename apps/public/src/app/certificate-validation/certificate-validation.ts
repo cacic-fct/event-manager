@@ -137,8 +137,14 @@ export class CertificateValidation {
 
       this.isDarkSignal.set(media.matches);
 
-      media.addEventListener('change', (e) => {
-        this.isDarkSignal.set(e.matches);
+      const listener = (event: MediaQueryListEvent) => {
+        this.isDarkSignal.set(event.matches);
+      };
+
+      media.addEventListener('change', listener);
+
+      this.destroyRef.onDestroy(() => {
+        media.removeEventListener('change', listener);
       });
     }
   }

@@ -58,7 +58,7 @@ const publicFeatureFlagConfig: PublicFeatureFlagConfig = {
 
 const accountPrivacyApiBaseUrl = 'https://account.cacic.dev.br/api';
 const turnstileSiteKey =
-  readRuntimeConfigValue('cacic-turnstile-site-key', 'turnstileSiteKey') ||
+  readRuntimeConfigValue('cacic-turnstile-site-key', 'turnstileSiteKey', 'TURNSTILE_SITE_KEY') ||
   (isDevMode() ? TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS : '');
 
 const accountPrivacy = () => inject(CacicAccountPrivacyService);
@@ -69,6 +69,7 @@ const isAccountPerformanceMonitoringEnabled = () => accountPrivacy().isPerforman
 function readRuntimeConfigValue(
   metaName: string,
   windowConfigKey: keyof NonNullable<Window['__cacicPublicConfig__']>,
+  serverEnvKey?: string,
 ): string {
   if (typeof document !== 'undefined') {
     const metaValue = document.querySelector<HTMLMetaElement>(`meta[name="${metaName}"]`)?.content;
@@ -78,10 +79,33 @@ function readRuntimeConfigValue(
   }
 
   if (typeof window !== 'undefined') {
-    return window.__cacicPublicConfig__?.[windowConfigKey] ?? '';
+    const windowValue = window.__cacicPublicConfig__?.[windowConfigKey];
+    if (windowValue) {
+      return windowValue;
+    }
+  }
+
+  if (serverEnvKey) {
+    return readServerEnvironmentValue(serverEnvKey);
   }
 
   return '';
+}
+
+function readServerEnvironmentValue(key: string): string {
+  const processLike = (
+    globalThis as {
+      process?: {
+        env?: Record<string, string | undefined>;
+        versions?: { node?: string };
+      };
+    }
+  ).process;
+  if (!processLike?.versions?.node) {
+    return '';
+  }
+
+  return processLike?.env?.[key] ?? '';
 }
 
 export const appConfig: ApplicationConfig = {

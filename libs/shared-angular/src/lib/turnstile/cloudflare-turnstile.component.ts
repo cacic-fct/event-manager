@@ -100,6 +100,12 @@ export class CloudflareTurnstileComponent implements AfterViewInit, OnDestroy {
       });
 
       this.widgetId = widgetId ?? null;
+      if (widgetId == null) {
+        this.status.set('error');
+        this.tokenChange.emit(null);
+        return;
+      }
+
       this.status.set('ready');
     } catch {
       this.status.set('error');

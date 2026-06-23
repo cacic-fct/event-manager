@@ -44,13 +44,8 @@ export class CurrentUserEventSubscriptionsResolver {
     private readonly currentUserContext: CurrentUserContextService,
     private readonly mapper: CurrentUserEventMapperService,
     private readonly eventSubscriptions: CurrentUserEventSubscriptionService,
-    private readonly frozenResources: FrozenResourceService = {
-      assertEventMutable: async () => undefined,
-      assertEventGroupMutable: async () => undefined,
-    } as unknown as FrozenResourceService,
-    private readonly turnstile: TurnstileService = {
-      assertValidToken: async () => undefined,
-    } as unknown as TurnstileService,
+    private readonly frozenResources: FrozenResourceService,
+    private readonly turnstile: TurnstileService,
   ) {}
 
   @Query(() => [PublicEvent], {

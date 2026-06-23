@@ -34,15 +34,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     private readonly publicEvents: CurrentUserPublicEventService,
     private readonly majorEventSubscriptions: CurrentUserMajorEventSubscriptionService,
     private readonly attendanceCategories: AttendanceCategoryService,
-    private readonly frozenResources: FrozenResourceService = {
-      assertMajorEventMutable: async () => undefined,
-    } as unknown as FrozenResourceService,
-    private readonly auditLog: AuditLogService = {
-      record: async () => undefined,
-    } as unknown as AuditLogService,
-    private readonly turnstile: TurnstileService = {
-      assertValidToken: async () => undefined,
-    } as unknown as TurnstileService,
+    private readonly frozenResources: FrozenResourceService,
+    private readonly auditLog: AuditLogService,
+    private readonly turnstile: TurnstileService,
   ) {}
 
   @Query(() => [CurrentUserMajorEventSubscription], {

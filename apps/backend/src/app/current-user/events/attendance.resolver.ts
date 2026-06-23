@@ -31,9 +31,7 @@ export class CurrentUserEventAttendanceResolver {
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
-    private readonly turnstile: TurnstileService = {
-      assertValidToken: async () => undefined,
-    } as unknown as TurnstileService,
+    private readonly turnstile: TurnstileService,
   ) {}
 
   @Query(() => [CurrentUserEventAttendance], {

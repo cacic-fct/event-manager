@@ -60,6 +60,11 @@ export class CloudflareTurnstileService {
         reject(new Error('Turnstile script loaded without exposing the API.'));
       };
 
+      if (existingScript && window.turnstile) {
+        resolveWhenReady();
+        return;
+      }
+
       script.addEventListener('load', resolveWhenReady, { once: true });
       script.addEventListener(
         'error',

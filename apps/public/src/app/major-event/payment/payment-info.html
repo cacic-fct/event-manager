@@ -120,7 +120,13 @@
     <lib-cloudflare-turnstile
       [action]="receiptUploadTurnstileAction"
       (tokenChange)="turnstileToken.set($event)" />
-    <input #fileInput class="file-input" type="file" accept="image/*" (change)="onFileSelected($event)" />
+    <input
+      #fileInput
+      class="file-input"
+      type="file"
+      accept="image/*"
+      aria-label="Enviar imagem do comprovante de pagamento"
+      (change)="onFileSelected($event)" />
     <button
       class="upload-box"
       type="button"

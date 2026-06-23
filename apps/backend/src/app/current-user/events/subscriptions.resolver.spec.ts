@@ -1,6 +1,18 @@
 import { CurrentUserEventSubscriptionsResolver } from './subscriptions.resolver';
 
 describe('CurrentUserEventSubscriptionsResolver', () => {
+  const frozenResources = {
+    assertEventMutable: jest.fn().mockResolvedValue(undefined),
+    assertEventGroupMutable: jest.fn().mockResolvedValue(undefined),
+  };
+  const turnstile = {
+    assertValidToken: jest.fn().mockResolvedValue(undefined),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('lists standalone event subscriptions only through publicly visible events', async () => {
     const subscription = {
       event: {
@@ -24,6 +36,8 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       currentUserContext as never,
       mapper as never,
       {} as never,
+      frozenResources as never,
+      turnstile as never,
     );
 
     await expect(
@@ -65,6 +79,8 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       currentUserContext as never,
       {} as never,
       {} as never,
+      frozenResources as never,
+      turnstile as never,
     );
 
     await expect(
@@ -115,6 +131,8 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       currentUserContext as never,
       mapper as never,
       {} as never,
+      frozenResources as never,
+      turnstile as never,
     );
 
     await expect(

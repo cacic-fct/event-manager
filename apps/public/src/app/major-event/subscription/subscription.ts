@@ -1,5 +1,15 @@
 import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -177,7 +187,7 @@ export class MajorEventSubscription {
       this.pendingRealtimeDelta.set(null);
       this.selectedPriceTierName.set(null);
       this.turnstileToken.set(null);
-      this.turnstileWidget()?.reset();
+      untracked(() => this.turnstileWidget()?.reset());
 
       const initialSubscription = this.api
         .getSubscriptionPage(majorEventId)

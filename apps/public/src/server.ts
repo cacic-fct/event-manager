@@ -15,6 +15,8 @@ import xmlbuilder from 'xmlbuilder';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
+const turnstileSiteKeyMetaName = 'cacic-turnstile-site-key';
+const turnstileSiteKey = process.env['TURNSTILE_SITE_KEY']?.trim() ?? '';
 
 const app = express();
 const angularApp = new AngularNodeAppEngine({
@@ -75,7 +77,16 @@ app.use(
 app.use('/{*splat}', (req, res, next) => {
   angularApp
     .handle(req)
-    .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))
+    .then(async (response) => {
+      if (!response) {
+        next();
+        return;
+      }
+
+      const configuredResponse =
+        turnstileSiteKey && isHtmlResponse(response) ? await injectTurnstileSiteKey(response) : response;
+      writeResponseToNodeResponse(configuredResponse, res);
+    })
     .catch(next);
 });
 
@@ -117,3 +128,36 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
  * Request handler used by the Angular CLI (for dev-server and during build) or Firebase Cloud Functions.
  */
 export const reqHandler = createNodeRequestHandler(app);
+
+function isHtmlResponse(response: Response): boolean {
+  return (response.headers.get('content-type') ?? '').includes('text/html');
+}
+
+async function injectTurnstileSiteKey(response: Response): Promise<Response> {
+  const html = await response.text();
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+
+  return new Response(addTurnstileSiteKeyMeta(html), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function addTurnstileSiteKeyMeta(html: string): string {
+  if (html.includes(`name="${turnstileSiteKeyMetaName}"`)) {
+    return html;
+  }
+
+  const meta = `<meta name="${turnstileSiteKeyMetaName}" content="${escapeHtmlAttribute(turnstileSiteKey)}" />`;
+  return html.replace('</head>', `    ${meta}\n  </head>`);
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
