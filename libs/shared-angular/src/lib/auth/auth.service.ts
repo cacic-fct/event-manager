@@ -11,6 +11,8 @@ import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforceme
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly accountLoginUrl = 'https://account.cacic.dev.br/api/auth/login';
+  private readonly accountTrackingClearUrl = 'https://account.cacic.dev.br/api/tracking/clear';
+  private readonly accountTrackingSessionUrl = 'https://account.cacic.dev.br/api/tracking/session';
   private readonly onboardingReturnStorageKey = 'cacic-eventos:onboarding-return-url';
   private readonly onboardingRefreshAttemptStorageKey = 'cacic-eventos:onboarding-refresh-attempted';
   private readonly silentSsoAttemptStorageKey = 'cacic-eventos:silent-sso-attempted';
@@ -98,6 +100,7 @@ export class AuthService {
           }),
         );
 
+        await this.clearAccountTrackingCookies();
         this.clearSession();
         this.markPostLogoutRedirect();
 
@@ -110,6 +113,7 @@ export class AuthService {
         this.logUnexpectedAuthError('Logout failed', error);
       }
 
+      await this.clearAccountTrackingCookies();
       this.clearSession();
       this.markPostLogoutRedirect();
       window.location.assign(postLogoutRedirectUri);
@@ -146,7 +150,12 @@ export class AuthService {
       tap(({ expiresAt }) => this.scheduleRefresh(expiresAt)),
       switchMap((result) =>
         this.http.get<AuthenticatedUser | null>('/api/auth/me').pipe(
-          tap((user) => this.user.set(user)),
+          tap((user) => {
+            this.user.set(user);
+            if (user) {
+              void this.refreshAccountTrackingCookies();
+            }
+          }),
           tap((user) => this.scheduleRefreshFromUser(user)),
           map(() => result),
         ),
@@ -199,6 +208,7 @@ export class AuthService {
       if (user) {
         this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
         this.removeSessionStorageItem(this.postLogoutRedirectStorageKey);
+        void this.refreshAccountTrackingCookies();
       }
 
       this.scheduleRefreshFromUser(user);
@@ -376,6 +386,32 @@ export class AuthService {
     const url = new URL(this.accountLoginUrl);
     url.searchParams.set('ru', returnTo);
     return url.toString();
+  }
+
+  private async refreshAccountTrackingCookies(): Promise<void> {
+    await this.callAccountTrackingEndpoint(this.accountTrackingSessionUrl, 'GET');
+  }
+
+  private async clearAccountTrackingCookies(): Promise<void> {
+    await this.callAccountTrackingEndpoint(this.accountTrackingClearUrl, 'POST');
+  }
+
+  private async callAccountTrackingEndpoint(
+    url: string,
+    method: 'GET' | 'POST',
+  ): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    try {
+      await fetch(url, {
+        credentials: 'include',
+        method,
+      });
+    } catch {
+      return;
+    }
   }
 
   private clearRefreshTimer(): void {
