@@ -273,6 +273,25 @@ describe('AuthorizationPolicyService', () => {
     expect(context.subscriptionId).toBe('subscription-1');
   });
 
+  it('matches event-group scoped grants through an event-group subscription', async () => {
+    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+      grant({
+        permission: Permission.Subscription.Read,
+        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        eventGroupId: 'group-1',
+      }),
+    ]);
+    prisma.eventGroupSubscription.findUnique.mockResolvedValue({
+      eventGroupId: 'group-1',
+    });
+
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.Subscription.Read], {
+        subscriptionId: 'group-subscription-1',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it('does not authorize primary resource mutations from nested input target ids', async () => {
     prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
       grant({
@@ -436,6 +455,9 @@ function createPrisma() {
       findUnique: jest.fn().mockResolvedValue(null),
     },
     eventSubscription: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
+    eventGroupSubscription: {
       findUnique: jest.fn().mockResolvedValue(null),
     },
     majorEventSubscription: {

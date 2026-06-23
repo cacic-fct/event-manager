@@ -9,6 +9,7 @@ const WORKSPACE_EVENT_SUBSCRIPTION_FIELDS = `
   eventId
   personId
   eventGroupSubscriptionId
+  majorEventSubscriptionId
   createdAt
   createdById
   createdByMethod

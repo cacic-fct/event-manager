@@ -1,0 +1,102 @@
+enum AuditLogEntityType {
+  PERSON
+  LECTURER_PROFILE
+  EVENT
+  MAJOR_EVENT
+  EVENT_GROUP
+  PLACE_PRESET
+  PERMISSION_GRANT
+  EVENT_SUBSCRIPTION
+  EVENT_GROUP_SUBSCRIPTION
+  MAJOR_EVENT_SUBSCRIPTION
+  EVENT_ATTENDANCE
+  EVENT_ATTENDANCE_COLLECTOR
+  EVENT_LECTURER
+  CERTIFICATE_CONFIG
+  CERTIFICATE
+  MERGE_CANDIDATE
+  RECEIPT_VALIDATION
+  SYSTEM
+}
+
+enum AuditLogOperation {
+  CREATE
+  UPDATE
+  DELETE
+  MERGE
+  IMPORT
+  APPROVE
+  REJECT
+  ISSUE
+  REISSUE
+  SCAN
+  UNDO
+  REVERT
+  USER_CREATE
+}
+
+enum AuditLogActorType {
+  USER
+  SERVICE
+  SYSTEM
+}
+
+enum AuditLogRevertMode {
+  ENTRY_ONLY
+  ENTRY_AND_AFTER
+}
+
+model AuditLogEntry {
+  id String @id @default(uuid(7))
+
+  entityType  AuditLogEntityType
+  entityId    String
+  entityLabel String?
+
+  operation AuditLogOperation
+  summary   String?
+
+  actorId    String?
+  actorName  String
+  actorEmail String?
+  actorType  AuditLogActorType @default(USER)
+
+  permission String?
+
+  eventId      String?
+  majorEventId String?
+  eventGroupId String?
+
+  before Json?
+  after  Json?
+
+  changes       Json
+  changedFields String[]
+
+  groupedCount    Int      @default(1)
+  firstRecordedAt DateTime @default(now())
+  lastRecordedAt  DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  revertedAt        DateTime?
+  revertedById      String?
+  revertedByName    String?
+  revertedByEntryId String?
+
+  revertTargetId String?
+  revertMode     AuditLogRevertMode?
+
+  metadata Json?
+
+  @@index([entityType, entityId])
+  @@index([entityType, entityId, lastRecordedAt])
+  @@index([actorId])
+  @@index([operation])
+  @@index([permission])
+  @@index([eventId])
+  @@index([majorEventId])
+  @@index([eventGroupId])
+  @@index([revertedAt])
+  @@index([revertTargetId])
+  @@map("audit_log_entries")
+}

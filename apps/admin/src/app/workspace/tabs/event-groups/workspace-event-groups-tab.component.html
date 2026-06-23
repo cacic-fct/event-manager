@@ -91,6 +91,15 @@
         </div>
 
         <div class="panel-actions">
+          @if (workspace.selectedEventGroup(); as selectedEventGroup) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="auditLog.openHistory('EVENT_GROUP', selectedEventGroup.id, selectedEventGroup.name)">
+              <mat-icon>history</mat-icon>
+              Histórico
+            </button>
+          }
           <button mat-button type="button" (click)="workspace.startNewEventGroup()">
             <mat-icon>restart_alt</mat-icon>
             Limpar

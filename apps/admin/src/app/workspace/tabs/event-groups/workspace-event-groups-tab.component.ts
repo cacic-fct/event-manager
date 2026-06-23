@@ -13,6 +13,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { EventGroup } from '../../../graphql/models';
 import { isFrozenEventGroup } from '../../../shared/frozen-resource';
+import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { WorkspaceEventGroupsService } from '../../../shared/services/workspace-event-groups.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { DatePipe } from '@angular/common';
@@ -38,6 +39,7 @@ import { DatePipe } from '@angular/common';
 export class WorkspaceEventGroupsTabComponent {
   readonly workspace = inject(WorkspaceEventGroupsService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly auditLog = inject(WorkspaceAuditLogService);
   protected readonly permissions = inject(WorkspacePermissionsService);
 
   constructor() {

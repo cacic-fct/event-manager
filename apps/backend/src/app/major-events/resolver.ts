@@ -9,10 +9,11 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
@@ -98,6 +99,9 @@ export class MajorEventsResolver {
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+    } as unknown as AuditLogService,
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
@@ -208,13 +212,30 @@ export class MajorEventsResolver {
   async createMajorEvent(
     @Args('input', { type: () => MajorEventCreateInput })
     input: MajorEventCreateInput,
+    @Context() context: GraphqlContext,
   ) {
     const paymentInfoTableExists = await this.hasPaymentInfoTable();
     const data = this.buildMajorEventCreateData(input, paymentInfoTableExists);
 
-    const majorEvent = await this.prisma.majorEvent.create({
-      data,
-      select: this.getMajorEventSelect(paymentInfoTableExists),
+    const majorEvent = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.majorEvent.create({
+        data,
+        select: this.getMajorEventSelect(paymentInfoTableExists),
+      });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MAJOR_EVENT,
+          entityId: created.id,
+          entityLabel: created.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: created,
+          scope: { permission: Permission.MajorEvent.Create, majorEventId: created.id },
+          summary: 'Grande evento criado.',
+        },
+        tx,
+      );
+      return created;
     });
     await this.typesenseSearch.upsertMajorEvent({
       id: majorEvent.id,
@@ -259,23 +280,43 @@ export class MajorEventsResolver {
     );
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
-      await tx.majorEvent.update({
+      const persisted = await tx.majorEvent.update({
         where: {
           id,
+          deletedAt: null,
         },
         data,
+        select: {
+          id: true,
+        },
       });
+      const effectiveId = persisted.id;
 
       if (input.price !== undefined) {
-        await this.syncMajorEventPrice(tx, id, input.price);
+        await this.syncMajorEventPrice(tx, effectiveId, input.price);
       }
 
-      return tx.majorEvent.findUniqueOrThrow({
+      const updated = await tx.majorEvent.findUniqueOrThrow({
         where: {
-          id,
+          id: effectiveId,
         },
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MAJOR_EVENT,
+          entityId: updated.id,
+          entityLabel: updated.name,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: majorEvent,
+          after: updated,
+          scope: { permission: Permission.MajorEvent.Update, majorEventId: updated.id },
+          summary: 'Grande evento atualizado.',
+        },
+        tx,
+      );
+      return updated;
     });
     await this.typesenseSearch.upsertMajorEvent({
       id: updatedMajorEvent.id,
@@ -291,20 +332,31 @@ export class MajorEventsResolver {
   @RequirePermissions(Permission.MajorEvent.Delete)
   async deleteMajorEvent(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertMajorEventMutable(id, this.getUser(context), 'delete');
-    const { count } = await this.prisma.majorEvent.updateMany({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+    const paymentInfoTableExists = await this.hasPaymentInfoTable();
+    const deletedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const majorEvent = await tx.majorEvent.findFirst({
+        where: { id, deletedAt: null },
+        select: this.getMajorEventSelect(paymentInfoTableExists),
+      });
+      if (!majorEvent) throw new NotFoundException(`Major event ${id} was not found.`);
+      await tx.majorEvent.update({ where: { id, deletedAt: null }, data: { deletedAt } });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MAJOR_EVENT,
+          entityId: id,
+          entityLabel: majorEvent.name,
+          operation: AuditLogOperation.DELETE,
+          actor: this.getUser(context),
+          before: majorEvent,
+          after: { ...majorEvent, deletedAt },
+          scope: { permission: Permission.MajorEvent.Delete, majorEventId: id },
+          summary: 'Grande evento excluído.',
+          force: true,
+        },
+        tx,
+      );
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Major event ${id} was not found.`);
-    }
-
     await this.typesenseSearch.deleteMajorEvent(id);
     return {
       deleted: true,

@@ -1,4 +1,6 @@
+import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { PlacePresetsResolver } from './resolver';
 
 describe('PlacePresetsResolver', () => {
@@ -63,7 +65,8 @@ describe('PlacePresetsResolver', () => {
 
   it('normalizes blank fields when creating a preset', async () => {
     const prisma = createPrismaMock();
-    const resolver = new PlacePresetsResolver(prisma as never);
+    const auditLog = createAuditLogMock();
+    const resolver = new PlacePresetsResolver(prisma as never, auditLog as never);
 
     await resolver.createPlacePreset({
       name: '  Sala 1  ',
@@ -82,11 +85,21 @@ describe('PlacePresetsResolver', () => {
         },
       }),
     );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'place-1',
+        operation: AuditLogOperation.CREATE,
+        scope: { permission: Permission.PlacePreset.Create },
+      }),
+      prisma,
+    );
   });
 
   it('updates and deletes active presets only', async () => {
     const prisma = createPrismaMock();
-    const resolver = new PlacePresetsResolver(prisma as never);
+    const auditLog = createAuditLogMock();
+    const resolver = new PlacePresetsResolver(prisma as never, auditLog as never);
 
     await resolver.updatePlacePreset('place-1', {
       name: '  Lab 2  ',
@@ -95,7 +108,7 @@ describe('PlacePresetsResolver', () => {
       locationDescription: '  Second floor  ',
     });
 
-    expect(prisma.placePreset.updateMany).toHaveBeenCalledWith(
+    expect(prisma.placePreset.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           id: 'place-1',
@@ -114,7 +127,7 @@ describe('PlacePresetsResolver', () => {
       deleted: true,
       id: 'place-1',
     });
-    expect(prisma.placePreset.updateMany).toHaveBeenLastCalledWith(
+    expect(prisma.placePreset.update).toHaveBeenLastCalledWith(
       expect.objectContaining({
         where: {
           id: 'place-1',
@@ -125,11 +138,29 @@ describe('PlacePresetsResolver', () => {
         },
       }),
     );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'place-1',
+        operation: AuditLogOperation.UPDATE,
+        scope: { permission: Permission.PlacePreset.Update },
+      }),
+      prisma,
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'place-1',
+        operation: AuditLogOperation.DELETE,
+        scope: { permission: Permission.PlacePreset.Delete },
+      }),
+      prisma,
+    );
   });
 
   it('rejects updates and deletes when the place is missing or deleted', async () => {
     const prisma = createPrismaMock();
-    prisma.placePreset.updateMany.mockResolvedValue({ count: 0 });
+    prisma.placePreset.findFirst.mockResolvedValue(null);
     const resolver = new PlacePresetsResolver(prisma as never);
 
     await expect(resolver.updatePlacePreset('missing-place', { name: 'Missing' })).rejects.toBeInstanceOf(
@@ -140,7 +171,8 @@ describe('PlacePresetsResolver', () => {
 
   it('merges presets without touching event location data', async () => {
     const prisma = createPrismaMock();
-    const resolver = new PlacePresetsResolver(prisma as never);
+    const auditLog = createAuditLogMock();
+    const resolver = new PlacePresetsResolver(prisma as never, auditLog as never);
 
     await resolver.mergePlacePreset('target-place', 'source-place', {
       name: 'Sala final',
@@ -152,7 +184,7 @@ describe('PlacePresetsResolver', () => {
     expect(prisma.event.updateMany).not.toHaveBeenCalled();
     expect(prisma.placePreset.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'target-place' },
+        where: { id: 'target-place', deletedAt: null },
         data: {
           name: 'Sala final',
           latitude: -22.1,
@@ -163,11 +195,29 @@ describe('PlacePresetsResolver', () => {
     );
     expect(prisma.placePreset.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'source-place' },
+        where: { id: 'source-place', deletedAt: null },
         data: {
           deletedAt: expect.any(Date),
         },
       }),
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'target-place',
+        operation: AuditLogOperation.MERGE,
+        scope: { permission: Permission.PlacePreset.Merge },
+      }),
+      prisma,
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PLACE_PRESET,
+        entityId: 'source-place',
+        operation: AuditLogOperation.MERGE,
+        scope: { permission: Permission.PlacePreset.Merge },
+      }),
+      prisma,
     );
   });
 
@@ -204,11 +254,17 @@ function createPrismaMock() {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue({ id: 'place-1' }),
       create: jest.fn().mockResolvedValue({ id: 'place-1' }),
-      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       update: jest.fn().mockResolvedValue({ id: 'place-1' }),
+      findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'target-place', name: 'Sala final' }),
     },
     $transaction: jest.fn(async (callback: (tx: unknown) => Promise<void>) => callback(prisma)),
   };
 
   return prisma;
+}
+
+function createAuditLogMock() {
+  return {
+    record: jest.fn(),
+  };
 }

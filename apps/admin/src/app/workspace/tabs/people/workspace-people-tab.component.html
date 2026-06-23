@@ -66,6 +66,15 @@
           </div>
 
           <div class="panel-actions">
+            @if (workspace.selectedPerson(); as selectedPerson) {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="auditLog.openHistory('PERSON', selectedPerson.id, selectedPerson.name)">
+                <mat-icon>history</mat-icon>
+                Histórico
+              </button>
+            }
             <button mat-button type="button" (click)="workspace.resetPersonForm()">
               <mat-icon>close</mat-icon>
               Fechar
@@ -508,6 +517,15 @@
                         </ul>
                       </div>
                     }
+                    <button
+                      mat-icon-button
+                      matListItemMeta
+                      type="button"
+                      aria-label="Ver histórico da permissão"
+                      matTooltip="Histórico"
+                      (click)="auditLog.openHistory('PERMISSION_GRANT', grant.id, workspace.getPermissionGrantLabel(grant.permission))">
+                      <mat-icon>history</mat-icon>
+                    </button>
                     <button
                       mat-icon-button
                       matListItemMeta

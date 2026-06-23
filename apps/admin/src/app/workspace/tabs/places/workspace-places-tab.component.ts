@@ -18,6 +18,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { WorkspacePlacePresetsService } from '../../../shared/services/workspace-place-presets.service';
 
@@ -40,6 +41,7 @@ export class WorkspacePlacesTabComponent implements OnDestroy {
   readonly workspace = inject(WorkspacePlacePresetsService);
   private readonly route = inject(ActivatedRoute);
   private readonly document = inject(DOCUMENT);
+  protected readonly auditLog = inject(WorkspaceAuditLogService);
   protected readonly permissions = inject(WorkspacePermissionsService);
   protected readonly Permission = Permission;
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');

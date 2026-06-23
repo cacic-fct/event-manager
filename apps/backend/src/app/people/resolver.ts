@@ -6,13 +6,36 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma } from '@prisma/client';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+
+type GraphqlContext = {
+  req?: { user?: AuthenticatedUser };
+  request?: { user?: AuthenticatedUser };
+};
+
+const PERSON_AUDIT_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  secondaryEmails: true,
+  phone: true,
+  identityDocument: true,
+  academicId: true,
+  userId: true,
+  mergedIntoId: true,
+  externalRef: true,
+  deletedAt: true,
+  createdById: true,
+  updatedById: true,
+} satisfies Prisma.PeopleSelect;
 
 @Resolver(() => Person)
 export class PeopleResolver {
@@ -22,6 +45,7 @@ export class PeopleResolver {
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly certificateIssuingService: CertificateIssuingService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   @Query(() => [Person], { name: 'people' })
@@ -131,15 +155,35 @@ export class PeopleResolver {
 
   @Mutation(() => Person, { name: 'createPerson' })
   @RequirePermissions(Permission.Person.Create)
-  async createPerson(@Args('input', { type: () => PersonCreateInput }) input: PersonCreateInput) {
+  async createPerson(
+    @Args('input', { type: () => PersonCreateInput }) input: PersonCreateInput,
+    @Context() context: GraphqlContext,
+  ) {
     await this.ensureNoDuplicateIdentity(input);
 
-    const person = await this.prisma.people.create({
-      data: this.buildPersonCreateData(input),
-      include: {
-        user: true,
-        lecturerProfile: true,
-      },
+    const person = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.people.create({
+        data: this.buildPersonCreateData(input),
+        include: { user: true, lecturerProfile: true },
+      });
+      const auditPerson = await tx.people.findUniqueOrThrow({
+        where: { id: created.id },
+        select: PERSON_AUDIT_SELECT,
+      });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.PERSON,
+          entityId: created.id,
+          entityLabel: created.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: auditPerson,
+          scope: { permission: Permission.Person.Create },
+          summary: 'Pessoa criada.',
+        },
+        tx,
+      );
+      return created;
     });
     await this.typesenseSearch.upsertPerson({
       id: person.id,
@@ -159,20 +203,14 @@ export class PeopleResolver {
   async updatePerson(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => PersonUpdateInput }) input: PersonUpdateInput,
+    @Context() context: GraphqlContext,
   ) {
     const existingPerson = await this.prisma.people.findFirst({
       where: {
         id,
         deletedAt: null,
       },
-      select: {
-        name: true,
-        email: true,
-        phone: true,
-        identityDocument: true,
-        academicId: true,
-        userId: true,
-      },
+      select: PERSON_AUDIT_SELECT,
     });
 
     if (!existingPerson) {
@@ -182,40 +220,40 @@ export class PeopleResolver {
     this.ensureExternallyManagedFieldsAreUnchanged(input, existingPerson);
     await this.ensureNoDuplicateIdentity(input, id);
 
-    const { count } = await this.prisma.people.updateMany({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      data: this.buildPersonUpdateData(input),
-    });
-
-    if (count === 0) {
-      throw new NotFoundException(`Person ${id} was not found.`);
-    }
-
-    const person = await this.prisma.people.findUnique({
-      where: {
-        id,
-      },
-      include: {
-        user: true,
-        lecturerProfile: true,
-      },
-    });
-    if (person) {
-      await this.typesenseSearch.upsertPerson({
-        id: person.id,
-        name: person.name,
-        email: person.email,
-        secondaryEmails: person.secondaryEmails,
-        phone: person.phone,
-        identityDocument: person.identityDocument,
-        academicId: person.academicId,
-        userId: person.userId,
+    const person = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.people.update({
+        where: { id, deletedAt: null },
+        data: this.buildPersonUpdateData(input),
+        include: { user: true, lecturerProfile: true },
       });
-    }
-    if (person && this.shouldRefreshCertificates(existingPerson, person)) {
+      const auditPerson = await tx.people.findUniqueOrThrow({ where: { id: updated.id }, select: PERSON_AUDIT_SELECT });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.PERSON,
+          entityId: updated.id,
+          entityLabel: updated.name,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: existingPerson,
+          after: auditPerson,
+          scope: { permission: Permission.Person.Update },
+          summary: 'Pessoa atualizada.',
+        },
+        tx,
+      );
+      return updated;
+    });
+    await this.typesenseSearch.upsertPerson({
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      secondaryEmails: person.secondaryEmails,
+      phone: person.phone,
+      identityDocument: person.identityDocument,
+      academicId: person.academicId,
+      userId: person.userId,
+    });
+    if (this.shouldRefreshCertificates(existingPerson, person)) {
       try {
         await this.certificateIssuingService.refreshIssuedCertificatesForPerson(person.id);
       } catch (error) {
@@ -230,21 +268,31 @@ export class PeopleResolver {
 
   @Mutation(() => DeletionResult, { name: 'deletePerson' })
   @RequirePermissions(Permission.Person.Delete)
-  async deletePerson(@Args('id', { type: () => String }) id: string) {
-    const { count } = await this.prisma.people.updateMany({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+  async deletePerson(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    const deletedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const existingPerson = await tx.people.findFirst({
+        where: { id, deletedAt: null },
+        select: PERSON_AUDIT_SELECT,
+      });
+      if (!existingPerson) throw new NotFoundException(`Person ${id} was not found.`);
+      await tx.people.update({ where: { id, deletedAt: null }, data: { deletedAt } });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.PERSON,
+          entityId: id,
+          entityLabel: existingPerson.name,
+          operation: AuditLogOperation.DELETE,
+          actor: this.getUser(context),
+          before: existingPerson,
+          after: { ...existingPerson, deletedAt },
+          scope: { permission: Permission.Person.Delete },
+          summary: 'Pessoa excluída.',
+          force: true,
+        },
+        tx,
+      );
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Person ${id} was not found.`);
-    }
-
     await this.typesenseSearch.deletePerson(id);
     return {
       deleted: true,
@@ -377,5 +425,9 @@ export class PeopleResolver {
     if (input.externalRef !== undefined) data.externalRef = input.externalRef;
 
     return data;
+  }
+
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
   }
 }

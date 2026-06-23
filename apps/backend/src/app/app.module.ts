@@ -9,6 +9,8 @@ import Redis from 'ioredis';
 import { AppController } from './app.controller';
 import { AccountMergeController } from './account-merge/account-merge.controller';
 import { AccountMergeService } from './account-merge/account-merge.service';
+import { AuditLogResolver } from './audit-log/audit-log.resolver';
+import { AuditLogService } from './audit-log/audit-log.service';
 import { AuthModule } from './auth/auth.module';
 import { PermissionGrantsResolver } from './authorization/permission-grants.resolver';
 import { PermissionGrantsService } from './authorization/permission-grants.service';
@@ -196,6 +198,8 @@ import { VotingIntegrationService } from './voting-integration/service';
     LecturerProfilesResolver,
     PermissionGrantsResolver,
     PermissionGrantsService,
+    AuditLogResolver,
+    AuditLogService,
     CurrentUserContextService,
     CurrentUserEventMapperService,
     CurrentUserPublicEventService,

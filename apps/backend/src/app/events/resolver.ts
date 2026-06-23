@@ -2,10 +2,11 @@ import { DeletionResult, Event, EventCreateInput, EventUpdateInput } from '@caci
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import {
   AccessibleEventGrantTargets,
   AuthorizationPolicyService,
@@ -109,6 +110,46 @@ const EVENT_BASE_SELECT = {
   updatedById: true,
 } satisfies Prisma.EventSelect;
 
+const EVENT_AUDIT_SELECT = {
+  id: true,
+  name: true,
+  creditMinutes: true,
+  startDate: true,
+  endDate: true,
+  type: true,
+  emoji: true,
+  description: true,
+  shortDescription: true,
+  latitude: true,
+  longitude: true,
+  locationDescription: true,
+  majorEventId: true,
+  eventGroupId: true,
+  allowSubscription: true,
+  subscriptionStartDate: true,
+  subscriptionEndDate: true,
+  slots: true,
+  autoSubscribe: true,
+  shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
+  shouldCollectAttendance: true,
+  isOnlineAttendanceAllowed: true,
+  shouldProvideSubscriberListToLecturer: true,
+  onlineAttendanceCode: true,
+  onlineAttendanceStartDate: true,
+  onlineAttendanceEndDate: true,
+  publiclyVisible: true,
+  youtubeCode: true,
+  buttonText: true,
+  buttonLink: true,
+  deletedAt: true,
+  createdAt: true,
+  createdById: true,
+  updatedAt: true,
+  updatedById: true,
+} satisfies Prisma.EventSelect;
+
 const EVENT_DETAIL_SELECT = {
   ...EVENT_BASE_SELECT,
   attendances: true,
@@ -123,6 +164,9 @@ export class EventsResolver {
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+    } as unknown as AuditLogService,
   ) {}
 
   @Query(() => [Event], { name: 'events' })
@@ -255,39 +299,60 @@ export class EventsResolver {
     const actorId = context.req?.user?.sub ?? context.request?.user?.sub;
     const uniqueLecturerPersonIds = [...new Set(lecturerPersonIds ?? [])];
     const uniqueAttendanceCollectorPersonIds = [...new Set(attendanceCollectorPersonIds ?? [])];
-    const event = await this.prisma.event.create({
-      data: {
-        ...eventInput,
-        lecturers:
-          uniqueLecturerPersonIds.length > 0
-            ? {
-                create: uniqueLecturerPersonIds.map((personId) => ({
-                  person: {
-                    connect: {
-                      id: personId,
+    const event = await this.prisma.$transaction(async (tx) => {
+      const createdEvent = await tx.event.create({
+        data: {
+          ...eventInput,
+          lecturers:
+            uniqueLecturerPersonIds.length > 0
+              ? {
+                  create: uniqueLecturerPersonIds.map((personId) => ({
+                    person: {
+                      connect: {
+                        id: personId,
+                      },
                     },
-                  },
-                  createdById: actorId,
-                })),
-              }
-            : undefined,
-        attendanceCollectors:
-          uniqueAttendanceCollectorPersonIds.length > 0
-            ? {
-                create: uniqueAttendanceCollectorPersonIds.map((personId) => ({
-                  person: {
-                    connect: {
-                      id: personId,
+                    createdById: actorId,
+                  })),
+                }
+              : undefined,
+          attendanceCollectors:
+            uniqueAttendanceCollectorPersonIds.length > 0
+              ? {
+                  create: uniqueAttendanceCollectorPersonIds.map((personId) => ({
+                    person: {
+                      connect: {
+                        id: personId,
+                      },
                     },
-                  },
-                  createdById: actorId,
-                })),
-              }
-            : undefined,
-      },
-      select: EVENT_DETAIL_SELECT,
+                    createdById: actorId,
+                  })),
+                }
+              : undefined,
+        },
+        select: EVENT_DETAIL_SELECT,
+      });
+      await this.disableGroupPerEventModeForMajorEvent(createdEvent, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT,
+          entityId: createdEvent.id,
+          entityLabel: createdEvent.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: createdEvent,
+          scope: {
+            permission: Permission.Event.Create,
+            eventId: createdEvent.id,
+            majorEventId: createdEvent.majorEventId,
+            eventGroupId: createdEvent.eventGroupId,
+          },
+          summary: 'Evento criado.',
+        },
+        tx,
+      );
+      return createdEvent;
     });
-    await this.disableGroupPerEventModeForMajorEvent(event);
     await this.typesenseSearch.upsertEvent({
       id: event.id,
       name: event.name,
@@ -313,26 +378,41 @@ export class EventsResolver {
   ) {
     await this.frozenResources.assertEventUpdateMutable(id, input, this.getUser(context));
     const normalizedInput = await this.normalizeEventCertificateInput(input, id);
-    const { count } = await this.prisma.event.updateMany({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      data: normalizedInput,
-    });
-
-    if (count === 0) {
-      throw new NotFoundException(`Event ${id} was not found.`);
-    }
-
-    const event = await this.prisma.event.findUnique({
-      where: {
-        id,
-      },
-      select: EVENT_DETAIL_SELECT,
+    const event = await this.prisma.$transaction(async (tx) => {
+      const previousEvent = await tx.event.findFirst({
+        where: { id, deletedAt: null },
+        select: EVENT_AUDIT_SELECT,
+      });
+      if (!previousEvent) throw new NotFoundException(`Event ${id} was not found.`);
+      const updatedCount = await tx.event.updateMany({ where: { id, deletedAt: null }, data: normalizedInput });
+      if (updatedCount.count !== 1) {
+        throw new NotFoundException(`Event ${id} was not found.`);
+      }
+      const updated = await tx.event.findUniqueOrThrow({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
+      const updatedAudit = await tx.event.findUniqueOrThrow({ where: { id, deletedAt: null }, select: EVENT_AUDIT_SELECT });
+      await this.disableGroupPerEventModeForMajorEvent(updated, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT,
+          entityId: updated.id,
+          entityLabel: updated.name,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: previousEvent,
+          after: updatedAudit,
+          scope: {
+            permission: Permission.Event.Update,
+            eventId: updatedAudit.id,
+            majorEventId: updatedAudit.majorEventId,
+            eventGroupId: updatedAudit.eventGroupId,
+          },
+          summary: 'Evento atualizado.',
+        },
+        tx,
+      );
+      return updated;
     });
     if (event) {
-      await this.disableGroupPerEventModeForMajorEvent(event);
       await this.typesenseSearch.upsertEvent({
         id: event.id,
         name: event.name,
@@ -357,20 +437,35 @@ export class EventsResolver {
   @RequirePermissions(Permission.Event.Delete)
   async deleteEvent(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertEventMutable(id, this.getUser(context), 'delete');
-    const { count } = await this.prisma.event.updateMany({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+    const deletedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.findFirst({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
+      if (!event) throw new NotFoundException(`Event ${id} was not found.`);
+      const deleted = await tx.event.updateMany({ where: { id, deletedAt: null }, data: { deletedAt } });
+      if (deleted.count !== 1) {
+        throw new NotFoundException(`Event ${id} was not found.`);
+      }
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT,
+          entityId: id,
+          entityLabel: event.name,
+          operation: AuditLogOperation.DELETE,
+          actor: this.getUser(context),
+          before: event,
+          after: { ...event, deletedAt },
+          scope: {
+            permission: Permission.Event.Delete,
+            eventId: id,
+            majorEventId: event.majorEventId,
+            eventGroupId: event.eventGroupId,
+          },
+          summary: 'Evento excluído.',
+          force: true,
+        },
+        tx,
+      );
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Event ${id} was not found.`);
-    }
-
     await this.typesenseSearch.deleteEvent(id);
     return {
       deleted: true,
@@ -449,15 +544,18 @@ export class EventsResolver {
     return normalizedInput;
   }
 
-  private async disableGroupPerEventModeForMajorEvent(event: {
-    eventGroupId?: string | null;
-    majorEventId?: string | null;
-  }): Promise<void> {
+  private async disableGroupPerEventModeForMajorEvent(
+    event: {
+      eventGroupId?: string | null;
+      majorEventId?: string | null;
+    },
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
     if (!event.eventGroupId || !event.majorEventId) {
       return;
     }
 
-    await this.prisma.eventGroup.updateMany({
+    await prisma.eventGroup.updateMany({
       where: {
         id: event.eventGroupId,
         deletedAt: null,

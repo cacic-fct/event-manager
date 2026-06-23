@@ -9,7 +9,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
     createdByMethod: AttendanceCreationMethod;
     createdById?: string;
     location?: { latitude: number; longitude: number; accuracyMeters: number };
-  }) {
+  }, afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>) {
     const locationData = input.location
       ? {
           collectedLatitude: input.location.latitude,
@@ -30,7 +30,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
           },
         });
         await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-        return tx.eventAttendance.findUniqueOrThrow({
+        const attendance = await tx.eventAttendance.findUniqueOrThrow({
           where: {
             personId_eventId: {
               personId: input.personId,
@@ -50,6 +50,8 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
             collectedAccuracyMeters: true,
           },
         });
+        await afterCreate?.(attendance, tx);
+        return attendance;
       });
     } catch (error: unknown) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

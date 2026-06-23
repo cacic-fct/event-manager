@@ -66,6 +66,18 @@
               {{ statusLabel(subscription.subscriptionStatus) }} · {{ subscription.amountPaid ?? '-' }} ·
               {{ subscription.paymentTier ?? '-' }}
             </span>
+            @if (subscription.subscriptionId) {
+              <div matListItemMeta class="item-actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Ver histórico da inscrição"
+                  matTooltip="Histórico"
+                  (click)="$event.stopPropagation(); auditLog.openHistory('MAJOR_EVENT_SUBSCRIPTION', subscription.subscriptionId, subscription.person?.name ?? subscription.personId)">
+                  <mat-icon>history</mat-icon>
+                </button>
+              </div>
+            }
           </mat-list-item>
         }
       } @empty {
@@ -91,6 +103,15 @@
           </p>
         </div>
         <div class="panel-actions">
+          @if (workspace.selectedMajorEventUserAttendance()?.subscriptionId; as subscriptionId) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="auditLog.openHistory('MAJOR_EVENT_SUBSCRIPTION', subscriptionId, workspace.selectedMajorEventUserAttendance()?.person?.name ?? workspace.selectedMajorEventUserAttendance()?.personId)">
+              <mat-icon>history</mat-icon>
+              Histórico
+            </button>
+          }
           @if (workspace.majorEventAttendanceEditMode()) {
             <button mat-button type="button" (click)="workspace.cancelMajorEventAttendanceEdit()">
               Cancelar

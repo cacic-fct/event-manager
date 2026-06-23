@@ -338,6 +338,7 @@ export interface WorkspaceEventSubscription {
   personId: string;
   person?: Person | null;
   eventGroupSubscriptionId?: string | null;
+  majorEventSubscriptionId?: string | null;
   createdAt: string;
   createdById?: string | null;
   createdByMethod: SubscriptionCreationMethod;
