@@ -13,6 +13,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
+import { TypesenseSearchService } from '../search/typesense-search.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -39,6 +40,12 @@ export class PlacePresetsResolver {
     private readonly auditLog: AuditLogService = {
       record: async () => undefined,
     } as unknown as AuditLogService,
+    private readonly typesenseSearch: TypesenseSearchService = {
+      isEnabled: () => false,
+      searchPlacePresets: async () => ({ available: false, ids: [] }),
+      upsertPlacePreset: async () => undefined,
+      deletePlacePreset: async () => undefined,
+    } as unknown as TypesenseSearchService,
   ) {}
 
   @Query(() => [PlacePreset], { name: 'placePresets' })
@@ -52,25 +59,56 @@ export class PlacePresetsResolver {
     const normalizedQuery = query?.trim();
     const where: Prisma.PlacePresetWhereInput = {
       deletedAt: null,
-      ...(normalizedQuery
-        ? {
-            OR: [
-              { name: { contains: normalizedQuery, mode: 'insensitive' } },
-              { locationDescription: { contains: normalizedQuery, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
     };
+    let prioritizedIds: string[] = [];
 
-    return this.prisma.placePreset.findMany({
+    if (normalizedQuery) {
+      if (this.typesenseSearch.isEnabled()) {
+        const searchResult = await this.typesenseSearch.searchPlacePresets(
+          normalizedQuery,
+          pagination.skip + pagination.take,
+        );
+        if (searchResult.available) {
+          prioritizedIds = searchResult.ids;
+          if (prioritizedIds.length === 0) {
+            return [];
+          }
+          where.id = { in: prioritizedIds };
+        } else {
+          where.OR = [
+            { name: { contains: normalizedQuery, mode: 'insensitive' } },
+            { locationDescription: { contains: normalizedQuery, mode: 'insensitive' } },
+          ];
+        }
+      } else {
+        where.OR = [
+          { name: { contains: normalizedQuery, mode: 'insensitive' } },
+          { locationDescription: { contains: normalizedQuery, mode: 'insensitive' } },
+        ];
+      }
+    }
+
+    const places = await this.prisma.placePreset.findMany({
       where,
       select: PLACE_PRESET_SELECT,
       orderBy: {
         name: 'asc',
       },
-      skip: pagination.skip,
-      take: pagination.take,
+      skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
+      take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });
+
+    if (prioritizedIds.length === 0) {
+      return places;
+    }
+
+    const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
+    return [...places]
+      .sort(
+        (left, right) =>
+          (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(pagination.skip, pagination.skip + pagination.take);
   }
 
   @Query(() => PlacePreset, { name: 'placePreset' })
@@ -97,7 +135,7 @@ export class PlacePresetsResolver {
     @Args('input', { type: () => PlacePresetCreateInput }) input: PlacePresetCreateInput,
     @Context() context: GraphqlContext = {},
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const place = await this.prisma.$transaction(async (tx) => {
       const place = await tx.placePreset.create({
         data: this.normalizePlaceInput(input),
         select: PLACE_PRESET_SELECT,
@@ -117,6 +155,12 @@ export class PlacePresetsResolver {
       );
       return place;
     });
+    await this.typesenseSearch.upsertPlacePreset({
+      id: place.id,
+      name: place.name,
+      locationDescription: place.locationDescription,
+    });
+    return place;
   }
 
   @Mutation(() => PlacePreset, { name: 'updatePlacePreset' })
@@ -126,7 +170,7 @@ export class PlacePresetsResolver {
     @Args('input', { type: () => PlacePresetUpdateInput }) input: PlacePresetUpdateInput,
     @Context() context: GraphqlContext = {},
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const place = await this.prisma.$transaction(async (tx) => {
       const previousPlace = await tx.placePreset.findFirst({
         where: { id, deletedAt: null },
         select: PLACE_PRESET_SELECT,
@@ -153,6 +197,12 @@ export class PlacePresetsResolver {
       );
       return place;
     });
+    await this.typesenseSearch.upsertPlacePreset({
+      id: place.id,
+      name: place.name,
+      locationDescription: place.locationDescription,
+    });
+    return place;
   }
 
   @Mutation(() => DeletionResult, { name: 'deletePlacePreset' })
@@ -182,6 +232,7 @@ export class PlacePresetsResolver {
         tx,
       );
     });
+    await this.typesenseSearch.deletePlacePreset(id);
     return {
       deleted: true,
       id,
@@ -201,7 +252,7 @@ export class PlacePresetsResolver {
     }
 
     const deletedAt = new Date();
-    await this.prisma.$transaction(async (tx) => {
+    const { source, updatedTarget } = await this.prisma.$transaction(async (tx) => {
       const [target, source] = await Promise.all([
         tx.placePreset.findFirst({ where: { id: targetId, deletedAt: null }, select: PLACE_PRESET_SELECT }),
         tx.placePreset.findFirst({ where: { id: sourceId, deletedAt: null }, select: PLACE_PRESET_SELECT }),
@@ -270,6 +321,12 @@ export class PlacePresetsResolver {
       );
       return { target, source, updatedTarget };
     });
+    await this.typesenseSearch.upsertPlacePreset({
+      id: updatedTarget.id,
+      name: updatedTarget.name,
+      locationDescription: updatedTarget.locationDescription,
+    });
+    await this.typesenseSearch.deletePlacePreset(source.id);
 
     return {
       deleted: true,

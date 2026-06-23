@@ -72,14 +72,19 @@ export class PublicMajorEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchMajorEvents(
+        const searchResult = await this.typesenseSearch.searchMajorEvents(
           normalizedQuery,
           pagination.skip + pagination.take,
         );
-        if (prioritizedIds.length === 0) {
-          return [];
+        if (searchResult.available) {
+          prioritizedIds = searchResult.ids;
+          if (prioritizedIds.length === 0) {
+            return [];
+          }
+          where.id = { in: prioritizedIds };
+        } else {
+          where.name = { contains: normalizedQuery, mode: 'insensitive' };
         }
-        where.id = { in: prioritizedIds };
       } else {
         where.name = { contains: normalizedQuery, mode: 'insensitive' };
       }

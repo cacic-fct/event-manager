@@ -58,17 +58,24 @@ export class EventGroupsResolver {
 
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        prioritizedIds = await this.typesenseSearch.searchEventGroups(
+        const searchResult = await this.typesenseSearch.searchEventGroups(
           normalizedQuery,
           pagination.skip + pagination.take,
         );
-        if (accessibleEventGroupIds) {
+        if (searchResult.available) {
+          prioritizedIds = searchResult.ids;
+        } else {
+          where.name = { contains: normalizedQuery, mode: 'insensitive' };
+        }
+        if (searchResult.available && accessibleEventGroupIds) {
           prioritizedIds = prioritizedIds.filter((id) => accessibleEventGroupIds.has(id));
         }
-        if (prioritizedIds.length === 0) {
+        if (searchResult.available && prioritizedIds.length === 0) {
           return [];
         }
-        where.id = { in: prioritizedIds };
+        if (searchResult.available) {
+          where.id = { in: prioritizedIds };
+        }
       } else {
         where.name = { contains: normalizedQuery, mode: 'insensitive' };
       }

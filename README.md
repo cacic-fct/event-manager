@@ -65,6 +65,14 @@ Se o comando ainda retornar `401`, verifique se o token tem `read:packages` e se
 
 Este projeto usa o [Nx](https://nx.dev) para gerenciar o monorepo.
 
+#### Serviços locais
+
+O backend depende de PostgreSQL, Redis e Typesense. Para subir os serviços locais de desenvolvimento, use:
+
+```bash
+docker compose -f docker/docker-compose.dev.yml up -d
+```
+
 Para iniciar um aplicativo em modo de desenvolvimento, use:
 
 ```bash
