@@ -74,6 +74,14 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'preferences',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'preferences/calendar',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: '**',
     renderMode: RenderMode.Prerender,
   },

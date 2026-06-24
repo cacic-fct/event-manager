@@ -6,13 +6,13 @@ export class PlacePresetCreateInput {
   name!: string;
 
   @Field(() => Float, { nullable: true })
-  latitude?: number;
+  latitude?: number | null;
 
   @Field(() => Float, { nullable: true })
-  longitude?: number;
+  longitude?: number | null;
 
   @Field(() => String, { nullable: true })
-  locationDescription?: string;
+  locationDescription?: string | null;
 }
 
 @InputType()
@@ -21,11 +21,11 @@ export class PlacePresetUpdateInput {
   name?: string;
 
   @Field(() => Float, { nullable: true })
-  latitude?: number;
+  latitude?: number | null;
 
   @Field(() => Float, { nullable: true })
-  longitude?: number;
+  longitude?: number | null;
 
   @Field(() => String, { nullable: true })
-  locationDescription?: string;
+  locationDescription?: string | null;
 }

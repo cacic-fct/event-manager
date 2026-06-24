@@ -11,6 +11,7 @@ export const USER_SELECT = {
   academicId: true,
   unespRole: true,
   role: true,
+  lastLoginAt: true,
   createdAt: true,
   createdById: true,
   updatedAt: true,

@@ -59,6 +59,7 @@
     "dexie": "^4.4.4",
     "express": "^5.2.1",
     "graphql": "^16.14.2",
+    "ical-generator": "^11.0.0",
     "ioredis": "^5.11.1",
     "ol": "^10.9.0",
     "passport": "^0.7.0",

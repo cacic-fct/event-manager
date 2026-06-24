@@ -98,13 +98,13 @@ describe('TypesenseSearchService', () => {
       ids: ['template-1'],
     });
 
-    expect(client.instance.collections).toHaveBeenNthCalledWith(1, 'events');
+    expect(client.instance.collections).toHaveBeenNthCalledWith(1, 'cacic_event_manager_events');
     expect(client.documents.search).toHaveBeenNthCalledWith(1, {
       q: 'aula',
       query_by: 'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
       per_page: 7,
     });
-    expect(client.instance.collections).toHaveBeenNthCalledWith(4, 'people');
+    expect(client.instance.collections).toHaveBeenNthCalledWith(4, 'cacic_event_manager_people');
     expect(client.documents.search).toHaveBeenNthCalledWith(4, {
       q: 'ana',
       query_by: 'name,email,secondaryEmails,phone,identityDocument,academicId',
@@ -371,9 +371,9 @@ describe('TypesenseSearchService', () => {
     });
     await service['ensureCollections']();
     await service['reindexAll']();
-    await service['replaceCollectionDocuments']('events', [{ id: 'event-1' }]);
-    await service['upsertDocument']('events', { id: 'event-1' });
-    await service['deleteDocument']('events', 'event-1');
+    await service['replaceCollectionDocuments']('cacic_event_manager_events', [{ id: 'event-1' }]);
+    await service['upsertDocument']('cacic_event_manager_events', { id: 'event-1' });
+    await service['deleteDocument']('cacic_event_manager_events', 'event-1');
 
     expect(typesenseClientConstructor).not.toHaveBeenCalled();
   });
@@ -386,7 +386,9 @@ describe('TypesenseSearchService', () => {
     await expect(service.onModuleInit()).resolves.toBeUndefined();
 
     client.documents.delete.mockRejectedValueOnce(new Error('truncate failed'));
-    await expect(service['replaceCollectionDocuments']('events', [{ id: 'event-1' }])).resolves.toBeUndefined();
+    await expect(
+      service['replaceCollectionDocuments']('cacic_event_manager_events', [{ id: 'event-1' }]),
+    ).resolves.toBeUndefined();
 
     client.documents.upsert.mockRejectedValueOnce(new Error('upsert failed'));
     await expect(service.upsertPerson({ id: 'person-1', name: 'Ana' })).resolves.toBeUndefined();
@@ -460,6 +462,24 @@ describe('TypesenseSearchService', () => {
     await service.onModuleInit();
 
     expect(client.rootCollections.create).toHaveBeenCalledTimes(6);
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'cacic_event_manager_events' }),
+    );
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'cacic_event_manager_major_events' }),
+    );
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'cacic_event_manager_event_groups' }),
+    );
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'cacic_event_manager_people' }),
+    );
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'cacic_event_manager_place_presets' }),
+    );
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'cacic_event_manager_certificate_templates' }),
+    );
     expect(client.documents.delete).toHaveBeenCalledWith({ truncate: true });
     expect(client.documents.import).toHaveBeenCalledWith(
       [

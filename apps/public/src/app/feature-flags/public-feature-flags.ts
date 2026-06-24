@@ -4,7 +4,7 @@ export const PUBLIC_FEATURE_FLAGS = {
   notificationsTabEnabled: 'events-public-notifications-tab-enabled',
   defaultLoginRedirectPath: 'events-public-default-login-redirect-path',
   onboardingEnforcementEnabled: 'events-public-onboarding-enforcement-enabled',
-  cookieBannerEnabled: 'events-public-cookie-banner-enabled',
+  cookieBannerEnabled: 'cookie-banner-enabled',
   undergraduateUnespRoleVerificationDisabled:
     'cacic-undergraduate-unesp-role-verification-disabled',
 } as const;

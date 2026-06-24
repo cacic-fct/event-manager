@@ -22,6 +22,12 @@ import { LgpdController } from './lgpd/lgpd.controller';
 import { LgpdService } from './lgpd/lgpd.service';
 import { GqlThrottlerGuard } from './common/gql-throttler.guard';
 import { FrozenResourceService } from './common/frozen-resource.service';
+import { CalendarController } from './calendar/calendar.controller';
+import { CalendarFeedMaintenanceProcessor } from './calendar/calendar-feed-maintenance.processor';
+import { CalendarFeedMaintenanceScheduler } from './calendar/calendar-feed-maintenance.scheduler';
+import { CalendarResolver } from './calendar/calendar.resolver';
+import { CALENDAR_FEED_MAINTENANCE_QUEUE } from './calendar/calendar.models';
+import { CalendarService } from './calendar/calendar.service';
 import { CertificateConfigsService } from './certificate/certificate-configs.service';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
@@ -126,6 +132,9 @@ import { TurnstileService } from './turnstile/turnstile.service';
     BullModule.registerQueue({
       name: MAJOR_EVENT_RECEIPTS_QUEUE,
     }),
+    BullModule.registerQueue({
+      name: CALENDAR_FEED_MAINTENANCE_QUEUE,
+    }),
     ThrottlerModule.forRoot({
       setHeaders: false,
       throttlers: [
@@ -179,6 +188,7 @@ import { TurnstileService } from './turnstile/turnstile.service';
     LgpdController,
     CurrentUserRealtimeEventsController,
     CurrentUserAttendanceCollectionController,
+    CalendarController,
     AccountProfileUpdateController,
     EventAttendancesController,
     MajorEventReceiptsController,
@@ -203,6 +213,10 @@ import { TurnstileService } from './turnstile/turnstile.service';
     PermissionGrantsService,
     AuditLogResolver,
     AuditLogService,
+    CalendarResolver,
+    CalendarService,
+    CalendarFeedMaintenanceScheduler,
+    CalendarFeedMaintenanceProcessor,
     CurrentUserContextService,
     CurrentUserEventMapperService,
     CurrentUserPublicEventService,

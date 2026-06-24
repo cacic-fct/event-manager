@@ -98,6 +98,14 @@ export class Event {
   readonly eventState = toSignal(this.createEventState(), {
     initialValue: { status: 'loading' } satisfies EventPageState,
   });
+  readonly calendarDownloadUrl = computed(() => {
+    const currentState = this.eventState();
+    if (currentState.status !== 'ready') {
+      return null;
+    }
+
+    return `/api/calendar/events/${encodeURIComponent(currentState.data.event.id)}.ics`;
+  });
 
   readonly backUrl = computed(() => this.returnUrl());
 
