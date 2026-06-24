@@ -8,7 +8,13 @@ import { CookieBannerSyncService } from './privacy/cookie-banner-sync.service';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
 
 describe('App', () => {
+  const acceptCookieBanner = vi.fn(() => of(true));
+  const refreshAccountPrivacy = vi.fn(() => of(undefined));
+
   beforeEach(async () => {
+    acceptCookieBanner.mockReturnValue(of(true));
+    refreshAccountPrivacy.mockReturnValue(of(undefined));
+
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
@@ -21,13 +27,13 @@ describe('App', () => {
         {
           provide: CookieBannerSyncService,
           useValue: {
-            acceptCookieBanner: () => of(true),
+            acceptCookieBanner,
           },
         },
         {
           provide: CacicAccountPrivacyService,
           useValue: {
-            refresh: () => of(undefined),
+            refresh: refreshAccountPrivacy,
           },
         },
         {
@@ -56,5 +62,16 @@ describe('App', () => {
 
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('app-cookie-banner')).toBeNull();
+  });
+
+  it('does not reject local cookie acceptance when backend sync fails', async () => {
+    acceptCookieBanner.mockReturnValue(of(false));
+    const fixture = TestBed.createComponent(App);
+    const component = fixture.componentInstance as unknown as {
+      cookieBannerConfig: { onAccept?: (context: { isAuthenticated: boolean }) => Promise<unknown> };
+    };
+
+    await expect(component.cookieBannerConfig.onAccept?.({ isAuthenticated: true })).resolves.toBeUndefined();
+    expect(refreshAccountPrivacy).not.toHaveBeenCalled();
   });
 });

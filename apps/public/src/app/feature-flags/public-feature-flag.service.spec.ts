@@ -185,6 +185,26 @@ describe('PublicFeatureFlagService', () => {
     );
   });
 
+  it('does not block initialization when Unleash startup hangs', async () => {
+    TestBed.overrideProvider(PUBLIC_FEATURE_FLAG_CONFIG, {
+      useValue: {
+        url: 'https://unleash.cacic.dev.br/api/frontend',
+        clientKey: 'default:production.test',
+        appName: 'events-public',
+        environment: 'production',
+        refreshIntervalSeconds: 60,
+        disableMetrics: true,
+      },
+    });
+    unleashClientMock.start.mockReturnValueOnce(new Promise(() => undefined));
+
+    const service = TestBed.inject(PublicFeatureFlagService);
+
+    await expect(service.initialize()).resolves.toBeUndefined();
+    expect(unleashClientMock.start).toHaveBeenCalledOnce();
+    expect(service.booleanValue('calendarTabEnabled')).toBe(true);
+  });
+
   it('keeps cached flags when Unleash cannot start', async () => {
     cache.seed({
       key: 'repo',

@@ -101,6 +101,7 @@ import { NovuNotificationsService } from './notifications/novu-notifications.ser
 import { NovuNotificationsController } from './notifications/novu-notifications.controller';
 import { AccountManagerPrivacySyncService } from './privacy/account-manager-privacy-sync.service';
 import { PrivacyController } from './privacy/privacy.controller';
+import { TrackingController } from './privacy/tracking.controller';
 import { getRedisConnectionOptions } from './weather/redis-connection';
 import { WeatherProcessor } from './weather/weather.processor';
 import { WeatherResolver } from './weather/weather.resolver';
@@ -194,6 +195,7 @@ import { TurnstileService } from './turnstile/turnstile.service';
     MajorEventReceiptsController,
     NovuNotificationsController,
     PrivacyController,
+    TrackingController,
     VotingIntegrationController,
   ],
   providers: [

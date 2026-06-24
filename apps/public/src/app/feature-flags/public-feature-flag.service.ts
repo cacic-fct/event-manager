@@ -57,13 +57,7 @@ export class PublicFeatureFlagService {
     client.on('update', () => this.syncFromClient());
     client.on('error', () => this.syncFromClient());
 
-    try {
-      await client.start();
-    } catch {
-      return;
-    }
-
-    this.syncFromClient();
+    this.startClient(client);
   }
 
   booleanValue(key: PublicFeatureFlagKey): boolean {
@@ -101,6 +95,13 @@ export class PublicFeatureFlagService {
         PUBLIC_FEATURE_FLAGS.undergraduateUnespRoleVerificationDisabled,
       ),
     });
+  }
+
+  private startClient(client: UnleashClient): void {
+    void client
+      .start()
+      .then(() => this.syncFromClient())
+      .catch(() => undefined);
   }
 
   private async loadCachedToggles(): Promise<void> {

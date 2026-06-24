@@ -1,6 +1,7 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import type { Permission } from '@cacic-fct/shared-permissions';
 import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthOnlineStatusService } from './auth-online-status.service';
@@ -11,14 +12,13 @@ import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforceme
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly accountLoginUrl = 'https://account.cacic.dev.br/api/auth/login';
-  private readonly accountTrackingClearUrl = 'https://account.cacic.dev.br/api/tracking/clear';
-  private readonly accountTrackingSessionUrl = 'https://account.cacic.dev.br/api/tracking/session';
   private readonly onboardingReturnStorageKey = 'cacic-eventos:onboarding-return-url';
   private readonly onboardingRefreshAttemptStorageKey = 'cacic-eventos:onboarding-refresh-attempted';
   private readonly silentSsoAttemptStorageKey = 'cacic-eventos:silent-sso-attempted';
   private readonly postLogoutRedirectStorageKey = 'cacic-eventos:post-logout-redirect';
 
   private readonly http = inject(HttpClient);
+  private readonly accountPrivacy = inject(CacicAccountPrivacyService);
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly onlineStatus = inject(AuthOnlineStatusService);
@@ -389,29 +389,11 @@ export class AuthService {
   }
 
   private async refreshAccountTrackingCookies(): Promise<void> {
-    await this.callAccountTrackingEndpoint(this.accountTrackingSessionUrl, 'GET');
+    await firstValueFrom(this.accountPrivacy.refreshTrackingCookies());
   }
 
   private async clearAccountTrackingCookies(): Promise<void> {
-    await this.callAccountTrackingEndpoint(this.accountTrackingClearUrl, 'POST');
-  }
-
-  private async callAccountTrackingEndpoint(
-    url: string,
-    method: 'GET' | 'POST',
-  ): Promise<void> {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-
-    try {
-      await fetch(url, {
-        credentials: 'include',
-        method,
-      });
-    } catch {
-      return;
-    }
+    await firstValueFrom(this.accountPrivacy.clearTrackingCookies());
   }
 
   private clearRefreshTimer(): void {

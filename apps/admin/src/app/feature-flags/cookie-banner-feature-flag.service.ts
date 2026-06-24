@@ -45,12 +45,7 @@ export class CookieBannerFeatureFlagService {
     client.on('update', () => this.syncFromClient());
     client.on('error', () => this.syncFromClient());
 
-    try {
-      await client.start();
-      this.syncFromClient();
-    } catch {
-      this.enabledSignal.set(true);
-    }
+    this.startClient(client);
   }
 
   private syncFromClient(): void {
@@ -60,6 +55,13 @@ export class CookieBannerFeatureFlagService {
     }
 
     this.enabledSignal.set(client.isEnabled(COOKIE_BANNER_FEATURE_FLAG));
+  }
+
+  private startClient(client: UnleashClient): void {
+    void client
+      .start()
+      .then(() => this.syncFromClient())
+      .catch(() => undefined);
   }
 
   private readDevelopmentStorageValue(): boolean | null {

@@ -2,10 +2,11 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { Observable, catchError, map, of, tap } from 'rxjs';
+import { Observable, catchError, map, of, tap, timeout } from 'rxjs';
 
 const COOKIE_BANNER_ACCEPTED_STORAGE_KEY = 'cacic.cookieBanner.accepted';
 const COOKIE_BANNER_SYNCED_STORAGE_PREFIX = 'cacic.cookieBanner.synced.';
+const COOKIE_BANNER_SYNC_TIMEOUT_MS = 3000;
 
 @Injectable({ providedIn: 'root' })
 export class CookieBannerSyncService {
@@ -26,6 +27,7 @@ export class CookieBannerSyncService {
 
   acceptCookieBanner(syncedUserId = this.auth.user()?.sub): Observable<boolean> {
     return this.http.post<{ synced: boolean }>('/api/privacy/cookie-banner/accept', {}).pipe(
+      timeout({ first: COOKIE_BANNER_SYNC_TIMEOUT_MS }),
       tap((response) => {
         if (response.synced && syncedUserId) {
           this.markSynced(syncedUserId);
