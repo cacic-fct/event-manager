@@ -28,7 +28,8 @@ model UserCalendarFeedSettings {
   userId String @id
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  feedKeyHash String @unique
+  feedKey     String?
+  feedKeyHash String  @unique
   enabled Boolean @default(false)
 
   disabledAt     DateTime?
@@ -48,7 +49,8 @@ model UserAdminCalendarFeedSettings {
   userId String @id
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  feedKeyHash String @unique
+  feedKey     String?
+  feedKeyHash String  @unique
   enabled Boolean @default(false)
 
   disabledAt     DateTime?
@@ -69,7 +71,8 @@ model UserAdminCalendarFeedSettings {
 model SuperAdminCalendarFeedSettings {
   id String @id
 
-  feedKeyHash String @unique
+  feedKey     String?
+  feedKeyHash String  @unique
   enabled Boolean @default(true)
 
   lastFetchedAt DateTime?
