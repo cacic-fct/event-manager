@@ -14,22 +14,41 @@ export const authGuard: CanActivateFn = (_route, state) => {
   }
 
   if (authService.consumePostLogoutRedirect()) {
-    return router.parseUrl('/login');
+    return router.parseUrl('/');
   }
 
   void authService.login({ returnTo: state.url });
-  return router.parseUrl('/login');
+  return false;
 };
+
+export const authGuardWithLocalLogin =
+  (loginUrl = '/login'): CanActivateFn =>
+  (_route, state) => {
+    const authService = inject(AuthService);
+    const router = inject(Router);
+
+    if (authService.isAuthenticated()) {
+      return true;
+    }
+
+    if (authService.consumePostLogoutRedirect()) {
+      return router.parseUrl(loginUrl);
+    }
+
+    void authService.login({ returnTo: state.url });
+    return router.parseUrl(loginUrl);
+  };
 
 export const requiredPermissionsGuard =
   (permissions: readonly Permission[], fallbackUrl: string | UrlTree): CanActivateFn =>
-  async () => {
+  async (_route, state) => {
     const authService = inject(AuthService);
     const router = inject(Router);
     const platformId = inject(PLATFORM_ID);
 
     if (!authService.isAuthenticated()) {
-      return router.parseUrl('/login');
+      void authService.login({ returnTo: state.url });
+      return false;
     }
 
     const grantedPermissions = await firstValueFrom(authService.evaluatePermissions(permissions));
