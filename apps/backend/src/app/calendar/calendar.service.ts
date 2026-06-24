@@ -307,27 +307,41 @@ export class CalendarService {
       throw new BadRequestException('Não há eventos administrativos atuais ou futuros para este usuário.');
     }
 
-    const feedKey = this.generateFeedKey();
-    const feedKeyHash = this.hashFeedKey(feedKey);
-    const settings = await this.prisma.userAdminCalendarFeedSettings.upsert({
+    const currentSettings = await this.prisma.userAdminCalendarFeedSettings.findUnique({
       where: {
         userId,
       },
-      create: {
+      select: {
+        feedKeyHash: true,
+      },
+    });
+
+    if (currentSettings) {
+      const settings = await this.prisma.userAdminCalendarFeedSettings.update({
+        where: {
+          userId,
+        },
+        data: {
+          enabled: true,
+          disabledAt: null,
+          disabledReason: null,
+          lastCheckedAt: now,
+        },
+        select: ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
+      });
+
+      return this.mapAdminSettings(settings);
+    }
+
+    const feedKey = this.generateFeedKey();
+    const feedKeyHash = this.hashFeedKey(feedKey);
+    const settings = await this.prisma.userAdminCalendarFeedSettings.create({
+      data: {
         userId,
         feedKeyHash,
         enabled: true,
         rotatedAt: now,
         lastCheckedAt: now,
-      },
-      update: {
-        feedKeyHash,
-        enabled: true,
-        disabledAt: null,
-        disabledReason: null,
-        lastFetchedAt: null,
-        lastCheckedAt: now,
-        rotatedAt: now,
       },
       select: ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
     });
@@ -586,8 +600,46 @@ export class CalendarService {
 
   private async enableCurrentUserCalendarFeed(
     userId: string,
-  ): Promise<{ feedKey: string; settings: CalendarFeedSettingsRecord }> {
+  ): Promise<{ feedKey?: string; settings: CalendarFeedSettingsRecord }> {
     const now = new Date();
+    const currentSettings = await this.prisma.userCalendarFeedSettings.findUnique({
+      where: {
+        userId,
+      },
+      select: {
+        feedKeyHash: true,
+      },
+    });
+
+    if (currentSettings) {
+      const [, settings] = await this.prisma.$transaction([
+        this.prisma.user.update({
+          where: {
+            id: userId,
+          },
+          data: {
+            lastLoginAt: now,
+          },
+          select: {
+            id: true,
+          },
+        }),
+        this.prisma.userCalendarFeedSettings.update({
+          where: {
+            userId,
+          },
+          data: {
+            enabled: true,
+            disabledAt: null,
+            disabledReason: null,
+          },
+          select: CALENDAR_FEED_SETTINGS_SELECT,
+        }),
+      ]);
+
+      return { settings };
+    }
+
     const feedKey = this.generateFeedKey();
     const feedKeyHash = this.hashFeedKey(feedKey);
 
@@ -603,22 +655,11 @@ export class CalendarService {
           id: true,
         },
       }),
-      this.prisma.userCalendarFeedSettings.upsert({
-        where: {
-          userId,
-        },
-        create: {
+      this.prisma.userCalendarFeedSettings.create({
+        data: {
           userId,
           feedKeyHash,
           enabled: true,
-          rotatedAt: now,
-        },
-        update: {
-          feedKeyHash,
-          enabled: true,
-          disabledAt: null,
-          disabledReason: null,
-          lastFetchedAt: null,
           rotatedAt: now,
         },
         select: CALENDAR_FEED_SETTINGS_SELECT,

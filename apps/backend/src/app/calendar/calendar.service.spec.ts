@@ -165,6 +165,98 @@ describe('CalendarService', () => {
     });
   });
 
+  it('creates a private feed key only for first-time private feed enablement', async () => {
+    const prisma = createPrismaMock({
+      userCalendarFeedSettings: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          feedKeyHash: 'hashed-new-private-key',
+          enabled: true,
+          disabledAt: null,
+          disabledReason: null,
+          lastFetchedAt: null,
+          rotatedAt: now,
+          updatedAt: now,
+        }),
+      },
+      user: {
+        update: jest.fn().mockResolvedValue({ id: 'user-1' }),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    await expect(service.setCurrentUserCalendarFeedEnabled('user-1', true)).resolves.toEqual({
+      enabled: true,
+      feedPath: expect.stringMatching(/^\/api\/calendar\/feeds\/[^/]+\.ics$/),
+      disabledAt: null,
+      disabledReason: null,
+      lastFetchedAt: null,
+      rotatedAt: now,
+      updatedAt: now,
+    });
+
+    expect(prisma.userCalendarFeedSettings.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'user-1',
+        enabled: true,
+        rotatedAt: now,
+        feedKeyHash: expect.any(String),
+      }),
+      select: expect.objectContaining({
+        feedKeyHash: true,
+      }),
+    });
+  });
+
+  it('re-enables existing private feed settings without rotating the key', async () => {
+    const prisma = createPrismaMock({
+      userCalendarFeedSettings: {
+        findUnique: jest.fn().mockResolvedValue({
+          feedKeyHash: 'hashed-existing-private-key',
+        }),
+        update: jest.fn().mockResolvedValue({
+          feedKeyHash: 'hashed-existing-private-key',
+          enabled: true,
+          disabledAt: null,
+          disabledReason: null,
+          lastFetchedAt: new Date('2026-06-22T12:00:00.000Z'),
+          rotatedAt: new Date('2026-06-20T12:00:00.000Z'),
+          updatedAt: now,
+        }),
+        create: jest.fn(),
+      },
+      user: {
+        update: jest.fn().mockResolvedValue({ id: 'user-1' }),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    await expect(service.setCurrentUserCalendarFeedEnabled('user-1', true)).resolves.toEqual({
+      enabled: true,
+      feedPath: null,
+      disabledAt: null,
+      disabledReason: null,
+      lastFetchedAt: new Date('2026-06-22T12:00:00.000Z'),
+      rotatedAt: new Date('2026-06-20T12:00:00.000Z'),
+      updatedAt: now,
+    });
+
+    expect(prisma.userCalendarFeedSettings.create).not.toHaveBeenCalled();
+    expect(prisma.userCalendarFeedSettings.update).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+      },
+      data: {
+        enabled: true,
+        disabledAt: null,
+        disabledReason: null,
+      },
+      select: expect.objectContaining({
+        feedKeyHash: true,
+      }),
+    });
+  });
+
   it('rejects private feed key rotation inside the 24-hour cooldown', async () => {
     const prisma = createPrismaMock({
       userCalendarFeedSettings: {
@@ -380,7 +472,7 @@ describe('CalendarService', () => {
   it('does not enable current admin feed settings without current targets', async () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
-        upsert: jest.fn(),
+        create: jest.fn(),
       },
       eventManagerPermissionGrant: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -392,13 +484,14 @@ describe('CalendarService', () => {
       BadRequestException,
     );
 
-    expect(prisma.userAdminCalendarFeedSettings.upsert).not.toHaveBeenCalled();
+    expect(prisma.userAdminCalendarFeedSettings.create).not.toHaveBeenCalled();
   });
 
-  it('enables current admin feed settings after confirming current targets', async () => {
+  it('creates a current admin feed key only for first-time admin feed enablement', async () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
-        upsert: jest.fn().mockResolvedValue({
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
           feedKeyHash: 'hashed-enabled-key',
           enabled: true,
           disabledAt: null,
@@ -448,29 +541,82 @@ describe('CalendarService', () => {
         take: 1,
       }),
     );
-    expect(prisma.userAdminCalendarFeedSettings.upsert).toHaveBeenCalledWith({
-      where: {
-        userId: 'admin-user',
-      },
-      create: expect.objectContaining({
+    expect(prisma.userAdminCalendarFeedSettings.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
         userId: 'admin-user',
         enabled: true,
         lastCheckedAt: now,
         rotatedAt: now,
         feedKeyHash: expect.any(String),
       }),
-      update: {
-        feedKeyHash: expect.any(String),
-        enabled: true,
-        disabledAt: null,
-        disabledReason: null,
-        lastFetchedAt: null,
-        lastCheckedAt: now,
-        rotatedAt: now,
-      },
       select: expect.objectContaining({
         feedKeyHash: true,
         lastCheckedAt: true,
+      }),
+    });
+  });
+
+  it('re-enables existing current admin feed settings without rotating the key', async () => {
+    const previousFetchedAt = new Date('2026-06-22T12:00:00.000Z');
+    const previousRotatedAt = new Date('2026-06-20T12:00:00.000Z');
+    const prisma = createPrismaMock({
+      userAdminCalendarFeedSettings: {
+        findUnique: jest.fn().mockResolvedValue({
+          feedKeyHash: 'hashed-existing-admin-key',
+        }),
+        update: jest.fn().mockResolvedValue({
+          feedKeyHash: 'hashed-existing-admin-key',
+          enabled: true,
+          disabledAt: null,
+          disabledReason: null,
+          lastFetchedAt: previousFetchedAt,
+          lastCheckedAt: now,
+          rotatedAt: previousRotatedAt,
+          updatedAt: now,
+        }),
+        create: jest.fn(),
+      },
+      eventManagerPermissionGrant: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            permission: Permission.Event.Read,
+            scope: EventManagerPermissionGrantScope.GLOBAL,
+            eventId: null,
+            majorEventId: null,
+            eventGroupId: null,
+          },
+        ]),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([publicEvent]),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    await expect(service.setCurrentUserAdminCalendarFeedEnabled('admin-user', true)).resolves.toEqual({
+      enabled: true,
+      feedPath: null,
+      disabledAt: null,
+      disabledReason: null,
+      lastFetchedAt: previousFetchedAt,
+      lastCheckedAt: now,
+      rotatedAt: previousRotatedAt,
+      updatedAt: now,
+    });
+
+    expect(prisma.userAdminCalendarFeedSettings.create).not.toHaveBeenCalled();
+    expect(prisma.userAdminCalendarFeedSettings.update).toHaveBeenCalledWith({
+      where: {
+        userId: 'admin-user',
+      },
+      data: {
+        enabled: true,
+        disabledAt: null,
+        disabledReason: null,
+        lastCheckedAt: now,
+      },
+      select: expect.objectContaining({
+        feedKeyHash: true,
       }),
     });
   });
@@ -988,12 +1134,15 @@ function createPrismaMock(overrides: Record<string, unknown>) {
     },
     userCalendarFeedSettings: {
       findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
       updateMany: jest.fn(),
       upsert: jest.fn(),
       updateManyAndReturn: jest.fn(),
     },
     userAdminCalendarFeedSettings: {
       findUnique: jest.fn(),
+      create: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
@@ -1032,7 +1181,7 @@ function createPrismaMock(overrides: Record<string, unknown>) {
     majorEvent: {
       findMany: jest.fn().mockResolvedValue([]),
     },
-    $transaction: jest.fn(),
+    $transaction: jest.fn((operations: Array<Promise<unknown>>) => Promise.all(operations)),
     ...overrides,
   };
 }
