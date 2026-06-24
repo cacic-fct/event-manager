@@ -1,6 +1,6 @@
 {
   "name": "@cacic-fct/event-manager-public-contracts",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Framework-agnostic CACiC Event Manager public GraphQL contracts.",
   "license": "AGPL-3.0-only",
   "type": "commonjs",
@@ -42,8 +42,8 @@
     "directory": "libs/event-manager-public-contracts"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   },
   "sideEffects": false
 }
