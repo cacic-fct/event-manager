@@ -28,7 +28,7 @@
     "@aws-sdk/lib-storage": "^3.1075.0",
     "@bwip-js/browser": "^4.11.1",
     "@bwip-js/node": "^4.11.1",
-    "@cacic-fct/account-manager-cookie-banner": "^0.0.1",
+    "@cacic-fct/account-manager-cookie-banner": "^0.0.2",
     "@cacic-fct/account-manager-m2m-contracts": "0.0.1",
     "@cacic-fct/account-manager-privacy": "0.0.1",
     "@cacic-fct/ngx-umami": "^1.1.1",

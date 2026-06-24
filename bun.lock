@@ -23,7 +23,7 @@
         "@aws-sdk/lib-storage": "^3.1075.0",
         "@bwip-js/browser": "^4.11.1",
         "@bwip-js/node": "^4.11.1",
-        "@cacic-fct/account-manager-cookie-banner": "^0.0.1",
+        "@cacic-fct/account-manager-cookie-banner": "^0.0.2",
         "@cacic-fct/account-manager-m2m-contracts": "0.0.1",
         "@cacic-fct/account-manager-privacy": "0.0.1",
         "@cacic-fct/ngx-umami": "^1.1.1",
@@ -591,7 +591,7 @@
 
     "@bwip-js/node": ["@bwip-js/node@4.11.1", "", {}, "sha512-jViMtIAlJws/FGc2qZa4gxCs3xBZDtS/wcQ4X2bxclPuxIsJWSo+QkaioqlWimn01IYGzRCSns5BjBLJ74wHDA=="],
 
-    "@cacic-fct/account-manager-cookie-banner": ["@cacic-fct/account-manager-cookie-banner@0.0.1", "https://npm.pkg.github.com/download/@cacic-fct/account-manager-cookie-banner/0.0.1/b429d2eaeca92306f4a044c46f615a4c373c0b9e", { "peerDependencies": { "@angular/common": ">=19", "@angular/core": ">=19" } }, "sha512-lNllPo8JwJCVqDB/6bhLTaWu2Yr6ZvIkHk20tfpV8LvP2ZZcLOpRbimrRFaDZcQXg0VdgaU1wxwnRfshcCNkEw=="],
+    "@cacic-fct/account-manager-cookie-banner": ["@cacic-fct/account-manager-cookie-banner@0.0.2", "https://npm.pkg.github.com/download/@cacic-fct/account-manager-cookie-banner/0.0.2/695ae11e9bad48a294af37a38deb1d59ec9672ea", {}, "sha512-6RtBMnJhvPFcTSs7BhSkFl0v8To4+oYtoWSfNHbfZFyvB0Ow3wngNBsCXZX8dE0+n0LJh6+pFCslI3cGADZTuw=="],
 
     "@cacic-fct/account-manager-m2m-contracts": ["@cacic-fct/account-manager-m2m-contracts@0.0.1", "https://npm.pkg.github.com/download/@cacic-fct/account-manager-m2m-contracts/0.0.1/dad24cec4f417f3af3ed574e2a122de9b918ffd1", {}, "sha512-RWRn8T6wU2ZwZqBxOCJV4F6g/yQzzKhzjg+kSrqMQjC3jyybsRZ9OL/uD0GjEdTiNb51/EjlGnUPj8f8aCF46w=="],
 
