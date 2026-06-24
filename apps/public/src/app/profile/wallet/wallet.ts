@@ -162,6 +162,8 @@ export class Wallet {
 
       return;
     }
+
+    window.print();
   }
 
   public availableOffline(): void {
