@@ -339,8 +339,6 @@ export class UpsertCurrentUserMajorEventSubscriptionInput {
   @Field(() => Int, { nullable: true })
   desiredUncategorized?: number | null;
 
-  @Field(() => String, { nullable: true })
-  turnstileToken?: string | null;
 }
 
 @InputType()
@@ -350,7 +348,4 @@ export class ConfirmCurrentUserOnlineAttendanceInput {
 
   @Field(() => String)
   code!: string;
-
-  @Field(() => String, { nullable: true })
-  turnstileToken?: string | null;
 }

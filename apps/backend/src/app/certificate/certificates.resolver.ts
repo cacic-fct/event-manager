@@ -17,16 +17,17 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { UseGuards } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { GqlThrottlerGuard } from '../common/gql-throttler.guard';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { CertificateConfigsService } from './certificate-configs.service';
 import { CertificateDownloadService } from './certificate-download.service';
 import { CertificateIssuingService } from './certificate-issuing.service';
@@ -155,19 +156,13 @@ export class CertificatesResolver {
   }
 
   @Public()
-  @UseGuards(GqlThrottlerGuard)
-  @Throttle({
-    publicCertificateValidation: {
-      limit: 20,
-      ttl: 60_000,
-      blockDuration: 60_000,
-    },
-  })
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.publicCertificateValidation)
   @Query(() => PublicCertificateValidation, {
     name: 'publicCertificateValidation',
     nullable: true,
     description:
-      'Public certificate authenticity lookup. Returns participant-safe certificate metadata, masked identity information, grouped credited events, and total workload; returns null when the certificate cannot be publicly validated. Rate limited to 20 lookups per minute.',
+      'Public certificate authenticity lookup. Returns participant-safe certificate metadata, masked identity information, grouped credited events, and total workload; returns null when the certificate cannot be publicly validated. Rate limited to 5 lookups per minute.',
   })
   async publicCertificateValidation(
     @Args('certificateId', {
@@ -192,14 +187,8 @@ export class CertificatesResolver {
   }
 
   @Public()
-  @UseGuards(GqlThrottlerGuard)
-  @Throttle({
-    publicCertificateValidation: {
-      limit: 10,
-      ttl: 60_000,
-      blockDuration: 60_000,
-    },
-  })
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.publicCertificateDownload)
   @Query(() => CertificateDownload, {
     name: 'downloadPublicCertificate',
     description:

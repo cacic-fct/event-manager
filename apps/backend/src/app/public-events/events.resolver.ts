@@ -1,14 +1,15 @@
 import { Args, Context, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { NotFoundException, UseGuards } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
 import { startOfDay, subMonths } from 'date-fns';
 import { Prisma } from '@prisma/client';
 import { EventType } from '@cacic-fct/shared-data-types';
 import { Public } from '../auth/decorators/public.decorator';
 import { resolvePagination } from '../common/pagination';
-import { GqlThrottlerGuard } from '../common/gql-throttler.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import {
   PUBLIC_MAJOR_EVENT_SELECT,
   PUBLIC_EVENT_SELECT,
@@ -228,14 +229,8 @@ export class PublicEventsResolver {
     description:
       'Lists public, non-deleted events for catalog and search surfaces. Supports optional date, major-event, event-group, text-search, and pagination filters; results are ordered by newest start date unless search relevance is available. Rate limited to 60 requests per minute.',
   })
-  @UseGuards(GqlThrottlerGuard)
-  @Throttle({
-    publicEvents: {
-      limit: 60,
-      ttl: 60_000,
-      blockDuration: 60_000,
-    },
-  })
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.publicEvents)
   async publicEvents(
     @Args('query', {
       type: () => String,

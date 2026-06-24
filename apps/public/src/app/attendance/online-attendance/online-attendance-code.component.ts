@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -11,12 +11,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import {
   AztecScannerDialogComponent,
-  CloudflareTurnstileComponent,
   ScannerFeedbackService,
 } from '@cacic-fct/shared-angular';
-import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { catchError, combineLatest, finalize, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
+import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
 
 type AttendanceCodeState =
@@ -34,7 +33,6 @@ type AttendanceCodeState =
     MatSnackBarModule,
     MatToolbarModule,
     ReactiveFormsModule,
-    CloudflareTurnstileComponent,
   ],
   templateUrl: './online-attendance-code.component.html',
   styleUrl: './online-attendance-code.component.css',
@@ -48,13 +46,12 @@ export class OnlineAttendanceCodeComponent {
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly scannerFeedback = inject(ScannerFeedbackService);
-  private readonly turnstileWidget = viewChild(CloudflareTurnstileComponent);
+  private readonly cooldown = createRateLimitCooldown(this.destroyRef);
 
   readonly emoji = inject(EmojiService);
   readonly isSubmitting = signal(false);
   readonly codeValue = signal('');
-  readonly turnstileAction = TURNSTILE_ACTIONS.onlineAttendance;
-  readonly turnstileToken = signal<string | null>(null);
+  readonly cooldownSeconds = this.cooldown.seconds;
   readonly codeControl = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required, Validators.minLength(4)],
@@ -111,20 +108,17 @@ export class OnlineAttendanceCodeComponent {
       return;
     }
 
-    const turnstileToken = this.turnstileToken();
-    if (!turnstileToken) {
-      this.snackBar.open('Conclua a verificação anti-spam.', 'OK', { duration: 3000 });
+    if (this.cooldownSeconds() > 0) {
+      this.snackBar.open(`Aguarde ${this.cooldownSeconds()}s para tentar novamente.`, 'OK', { duration: 3000 });
       return;
     }
 
     this.isSubmitting.set(true);
     this.api
-      .confirmAttendance(state.item.eventId, code, turnstileToken)
+      .confirmAttendance(state.item.eventId, code)
       .pipe(
         finalize(() => {
           this.isSubmitting.set(false);
-          this.turnstileToken.set(null);
-          this.turnstileWidget()?.reset();
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -136,6 +130,9 @@ export class OnlineAttendanceCodeComponent {
         },
         error: (error: unknown) => {
           this.scannerFeedback.show('invalid');
+          if (error instanceof RateLimitError) {
+            this.cooldown.start(error.retryAfterSeconds);
+          }
           this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível confirmar presença.', 'OK', {
             duration: 5000,
           });

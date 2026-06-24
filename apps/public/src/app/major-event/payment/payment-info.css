@@ -130,6 +130,11 @@ h2 {
   display: none;
 }
 
+.upload-cooldown {
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-small);
+}
+
 .upload-box {
   align-items: center;
   background: var(--mat-sys-surface-container-low);

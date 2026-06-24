@@ -87,10 +87,8 @@
   </section>
   }
 
-  @if (isAuthenticated() && currentUserSubscription()?.subscriptionStatus !== 'CONFIRMED') {
-  <section class="turnstile-section">
-    <lib-cloudflare-turnstile [action]="turnstileAction" (tokenChange)="turnstileToken.set($event)" />
-  </section>
+  @if (subscriptionCooldownSeconds() > 0) {
+  <p class="rate-limit-message">Aguarde {{ subscriptionCooldownSeconds() }}s para alterar a inscrição novamente.</p>
   }
 
   <button
@@ -102,7 +100,7 @@
       isSubmitting() ||
       selectedEvents().length === 0 ||
       currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' ||
-      (isAuthenticated() && !turnstileToken())
+      subscriptionCooldownSeconds() > 0
     "
     (click)="submit()">
     <mat-icon>{{ submitButtonIcon() }}</mat-icon>

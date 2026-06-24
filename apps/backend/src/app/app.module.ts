@@ -4,7 +4,6 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
-import { ThrottlerModule } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import Redis from 'ioredis';
 import { AppController } from './app.controller';
@@ -20,7 +19,6 @@ import { KeycloakAuthService } from './auth/keycloak-auth.service';
 import { createIntrospectionAuthPlugin } from './auth/introspection-auth.plugin';
 import { LgpdController } from './lgpd/lgpd.controller';
 import { LgpdService } from './lgpd/lgpd.service';
-import { GqlThrottlerGuard } from './common/gql-throttler.guard';
 import { FrozenResourceService } from './common/frozen-resource.service';
 import { CalendarController } from './calendar/calendar.controller';
 import { CalendarFeedMaintenanceProcessor } from './calendar/calendar-feed-maintenance.processor';
@@ -111,8 +109,9 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
 import { AnalyticsModule } from './analytics/analytics.module';
 import { VotingIntegrationController } from './voting-integration/controller';
 import { VotingIntegrationService } from './voting-integration/service';
-import { ReceiptUploadTurnstileGuard } from './turnstile/receipt-upload-turnstile.guard';
 import { TurnstileService } from './turnstile/turnstile.service';
+import { RateLimitGuard } from './rate-limit/rate-limit.guard';
+import { RateLimitService } from './rate-limit/rate-limit.service';
 
 @Module({
   imports: [
@@ -135,27 +134,6 @@ import { TurnstileService } from './turnstile/turnstile.service';
     }),
     BullModule.registerQueue({
       name: CALENDAR_FEED_MAINTENANCE_QUEUE,
-    }),
-    ThrottlerModule.forRoot({
-      setHeaders: false,
-      throttlers: [
-        {
-          ttl: 60_000,
-          limit: 100,
-        },
-        {
-          name: 'publicCertificateValidation',
-          limit: 20,
-          ttl: 60_000,
-          blockDuration: 60_000,
-        },
-        {
-          name: 'publicEvents',
-          limit: 60,
-          ttl: 60_000,
-          blockDuration: 60_000,
-        },
-      ],
     }),
     GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
@@ -275,13 +253,13 @@ import { TurnstileService } from './turnstile/turnstile.service';
     WeatherProcessor,
     FrozenResourceService,
     VotingIntegrationService,
-    ReceiptUploadTurnstileGuard,
     TurnstileService,
+    RateLimitGuard,
+    RateLimitService,
     {
       provide: Redis,
       useFactory: () => new Redis(getRedisConnectionOptions()),
     },
-    GqlThrottlerGuard,
     {
       provide: APP_GUARD,
       useClass: KeycloakScopeGuard,

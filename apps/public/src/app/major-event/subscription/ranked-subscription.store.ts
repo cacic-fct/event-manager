@@ -8,13 +8,13 @@ import type { EventType, PublicEvent } from '@cacic-fct/event-manager-public-con
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import {
-  TURNSTILE_ACTIONS,
   formatDateRange,
   getEventTypeLabel,
   getSubscriptionStatusLabel,
 } from '@cacic-fct/shared-utils';
 import { finalize, map } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
+import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
 import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from './subscription-api.service';
 import {
@@ -49,11 +49,11 @@ export class RankedSubscriptionStore {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly subscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly isSubmitting = signal(false);
-  readonly turnstileAction = TURNSTILE_ACTIONS.majorEventSubscription;
-  readonly turnstileToken = signal<string | null>(null);
+  readonly subscriptionCooldownSeconds = this.subscriptionCooldown.seconds;
   readonly pageState = signal<RankedSubscriptionPageState>({ status: 'loading' });
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
   readonly selectedEventIds = signal<ReadonlySet<string>>(new Set());
@@ -119,7 +119,7 @@ export class RankedSubscriptionStore {
         this.initializedMajorEventId.set(null);
         this.pendingRealtimeDelta.set(null);
         this.selectedPriceTierName.set(null);
-        this.turnstileToken.set(null);
+        this.subscriptionCooldown.clear();
       });
 
       const initialSubscription = this.api.getSubscriptionPage(majorEventId).subscribe({
@@ -230,7 +230,7 @@ export class RankedSubscriptionStore {
     this.selectedPriceTierName.set(tierName);
   }
 
-  submit(resetTurnstile?: () => void): void {
+  submit(): void {
     const data = this.data();
     if (!data || this.isSubmitting()) {
       return;
@@ -253,9 +253,10 @@ export class RankedSubscriptionStore {
       return;
     }
 
-    const turnstileToken = this.turnstileToken();
-    if (!turnstileToken) {
-      this.snackBar.open('Conclua a verificação anti-spam.', 'OK', { duration: 3000 });
+    if (this.subscriptionCooldownSeconds() > 0) {
+      this.snackBar.open(`Aguarde ${this.subscriptionCooldownSeconds()}s para alterar a inscrição.`, 'OK', {
+        duration: 3000,
+      });
       return;
     }
 
@@ -275,7 +276,7 @@ export class RankedSubscriptionStore {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((confirmed) => {
         if (confirmed) {
-          this.confirmSubscription(data, rankedEventIds, selectedPaymentTier ?? null, turnstileToken, resetTurnstile);
+          this.confirmSubscription(data, rankedEventIds, selectedPaymentTier ?? null);
         }
       });
   }
@@ -321,8 +322,6 @@ export class RankedSubscriptionStore {
     data: PublicMajorEventSubscriptionPage,
     eventIds: string[],
     paymentTier: string | null,
-    turnstileToken: string,
-    resetTurnstile?: () => void,
   ): void {
     this.isSubmitting.set(true);
     this.api
@@ -335,14 +334,9 @@ export class RankedSubscriptionStore {
           desiredUncategorized: this.desiredUncategorized(),
         },
         paymentTier,
-        turnstileToken,
       )
       .pipe(
-        finalize(() => {
-          this.isSubmitting.set(false);
-          this.turnstileToken.set(null);
-          resetTurnstile?.();
-        }),
+        finalize(() => this.isSubmitting.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -364,6 +358,9 @@ export class RankedSubscriptionStore {
           }
         },
         error: (error: unknown) => {
+          if (error instanceof RateLimitError) {
+            this.subscriptionCooldown.start(error.retryAfterSeconds);
+          }
           this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível concluir a inscrição.', 'OK', {
             duration: 5000,
           });

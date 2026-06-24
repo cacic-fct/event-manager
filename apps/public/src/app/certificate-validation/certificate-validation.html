@@ -42,14 +42,22 @@
       <button
         mat-flat-button
         type="submit"
-        [disabled]="certificateIdControl.invalid || currentState.status === 'loading' || !turnstileToken()">
+        [disabled]="
+          certificateIdControl.invalid ||
+          currentState.status === 'loading' ||
+          !turnstileToken() ||
+          validationCooldownSeconds() > 0
+        ">
         <mat-icon>search</mat-icon>
         Validar
       </button>
-      <button matIconButton type="button" (click)="scanCode()">
+      <button matIconButton type="button" [disabled]="validationCooldownSeconds() > 0" (click)="scanCode()">
         <mat-icon>qr_code_scanner</mat-icon>
       </button>
     </div>
+    @if (validationCooldownSeconds() > 0) {
+    <p class="error-text">Muitas tentativas. Aguarde {{ validationCooldownSeconds() }}s para validar novamente.</p>
+    }
   </form>
 
   @if (currentState.status === 'loading') {
@@ -99,7 +107,11 @@
     </mat-list>
 
     <div class="actions">
-      <button mat-flat-button type="button" [disabled]="downloading()" (click)="download(certificate)">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="downloading() || downloadCooldownSeconds() > 0"
+        (click)="download(certificate)">
         <mat-icon>download</mat-icon>
         Baixar certificado
       </button>
@@ -107,6 +119,9 @@
 
     @if (downloadError()) {
     <p class="error-text" aria-live="polite">{{ downloadError() }}</p>
+    }
+    @if (downloadCooldownSeconds() > 0) {
+    <p class="error-text" aria-live="polite">Aguarde {{ downloadCooldownSeconds() }}s para baixar novamente.</p>
     }
   </section>
 

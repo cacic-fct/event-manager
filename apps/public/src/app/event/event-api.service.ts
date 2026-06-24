@@ -12,6 +12,7 @@ import {
 } from '@cacic-fct/event-manager-public-contracts';
 import type { CurrentUserEventAttendance, CurrentUserEventSubscription } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
+import { graphqlError } from '../shared/rate-limit-error';
 
 export type { PublicEventSubscriptionSummary, PublicEventWeather } from '@cacic-fct/event-manager-public-contracts';
 
@@ -78,16 +79,16 @@ export class EventApiService {
     );
   }
 
-  subscribeToEvent(eventId: string, turnstileToken: string): Observable<PublicEvent> {
+  subscribeToEvent(eventId: string): Observable<PublicEvent> {
     return this.query<{ subscribeCurrentUserStandaloneEvent: PublicEvent }>(
       `
-        mutation SubscribeCurrentUserStandaloneEvent($eventId: String!, $turnstileToken: String) {
-          subscribeCurrentUserStandaloneEvent(eventId: $eventId, turnstileToken: $turnstileToken) {
+        mutation SubscribeCurrentUserStandaloneEvent($eventId: String!) {
+          subscribeCurrentUserStandaloneEvent(eventId: $eventId) {
             id
           }
         }
       `,
-      { eventId, turnstileToken },
+      { eventId },
     ).pipe(map((data) => data.subscribeCurrentUserStandaloneEvent));
   }
 
@@ -104,19 +105,19 @@ export class EventApiService {
     ).pipe(map((data) => data.unsubscribeCurrentUserStandaloneEvent));
   }
 
-  confirmAttendance(eventId: string, code: string, turnstileToken: string): Observable<CurrentUserEventAttendance> {
+  confirmAttendance(eventId: string, code: string): Observable<CurrentUserEventAttendance> {
     return this.query<{
       confirmCurrentUserOnlineAttendance: CurrentUserEventAttendance;
     }>(
       `
-        mutation ConfirmCurrentUserOnlineAttendance($eventId: String!, $code: String!, $turnstileToken: String) {
-          confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code, turnstileToken: $turnstileToken }) {
+        mutation ConfirmCurrentUserOnlineAttendance($eventId: String!, $code: String!) {
+          confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code }) {
             eventId
             attendedAt
           }
         }
       `,
-      { eventId, code, turnstileToken },
+      { eventId, code },
     ).pipe(map((data) => data.confirmCurrentUserOnlineAttendance));
   }
 
@@ -124,7 +125,7 @@ export class EventApiService {
     return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
       map((response) => {
         if (response.errors?.length) {
-          throw new Error(response.errors.map((error) => error.message).join('\n'));
+          throw graphqlError(response.errors);
         }
 
         if (!response.data) {

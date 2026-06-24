@@ -5,9 +5,6 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     assertEventMutable: jest.fn().mockResolvedValue(undefined),
     assertEventGroupMutable: jest.fn().mockResolvedValue(undefined),
   };
-  const turnstile = {
-    assertValidToken: jest.fn().mockResolvedValue(undefined),
-  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -37,7 +34,6 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       mapper as never,
       {} as never,
       frozenResources as never,
-      turnstile as never,
     );
 
     await expect(
@@ -80,7 +76,6 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       {} as never,
       {} as never,
       frozenResources as never,
-      turnstile as never,
     );
 
     await expect(
@@ -132,7 +127,6 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       mapper as never,
       {} as never,
       frozenResources as never,
-      turnstile as never,
     );
 
     await expect(
