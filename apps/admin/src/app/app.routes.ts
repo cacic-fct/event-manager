@@ -1,6 +1,10 @@
 import { Route } from '@angular/router';
 import { WORKSPACE_ENTRY_PERMISSIONS } from '@cacic-fct/shared-permissions';
-import { authGuard, redirectAuthenticatedGuard, requiredPermissionsGuard } from '@cacic-fct/shared-angular';
+import {
+  authGuard,
+  redirectAuthenticatedGuard,
+  requiredPermissionsGuard,
+} from '@cacic-fct/shared-angular';
 
 export const appRoutes: Route[] = [
   {

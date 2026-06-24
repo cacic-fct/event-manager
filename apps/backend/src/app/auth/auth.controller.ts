@@ -44,6 +44,13 @@ type RequestWithCookies = Request & {
   cookies?: Record<string, unknown>;
 };
 
+const CACIC_TRACKING_COOKIE_NAMES = [
+  'cacic-analytics-id',
+  'cacic-analytics-consent',
+  'cacic-purr',
+  'cacic-purr-quick',
+] as const;
+
 type PermissionEvaluationBody = {
   permissions?: unknown;
 };
@@ -424,6 +431,7 @@ export class AuthController {
       secure: this.isSecureRequest(request),
       path: '/',
     });
+    this.clearCacicTrackingCookies(response, request);
 
     return this.keycloakAuthService.logout({
       refreshToken: body?.refreshToken ?? sessionLogoutInput?.refreshToken,
@@ -549,6 +557,24 @@ export class AuthController {
 
   private resolveCookieMaxAge(expiresAt: number): number {
     return Math.max(expiresAt - Date.now(), 0);
+  }
+
+  private clearCacicTrackingCookies(response: Response, request: Request): void {
+    const secure = this.isSecureRequest(request);
+
+    for (const cookieName of CACIC_TRACKING_COOKIE_NAMES) {
+      response.clearCookie(cookieName, {
+        domain: '.cacic.dev.br',
+        sameSite: 'lax',
+        secure,
+        path: '/',
+      });
+      response.clearCookie(cookieName, {
+        sameSite: 'lax',
+        secure,
+        path: '/',
+      });
+    }
   }
 
   private async consumeAuthorizationState(

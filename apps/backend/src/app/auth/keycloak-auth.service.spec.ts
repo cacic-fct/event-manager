@@ -33,7 +33,7 @@ describe('KeycloakAuthService', () => {
     process.env.KEYCLOAK_CLIENT_ID = 'event-manager';
     process.env.KEYCLOAK_CLIENT_SECRET = 'secret';
     process.env.KEYCLOAK_REDIRECT_URI = 'https://app.example/api/auth/callback';
-    process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI = 'https://app.example/logout';
+    process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI = 'https://app.example/';
     process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS = '5000';
     delete process.env.KEYCLOAK_M2M_AUDIENCE;
     delete process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS;
@@ -107,7 +107,7 @@ describe('KeycloakAuthService', () => {
     ).resolves.toEqual({
       refreshTokenRevoked: true,
       logoutUrl:
-        'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&id_token_hint=id-token&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2Flogout',
+        'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&id_token_hint=id-token&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2F',
     });
 
     expect(mockedAxios.post).toHaveBeenNthCalledWith(

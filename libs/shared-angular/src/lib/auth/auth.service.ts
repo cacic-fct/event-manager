@@ -11,9 +11,12 @@ import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforceme
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly accountLoginUrl = 'https://account.cacic.dev.br/api/auth/login';
+  private readonly accountTrackingClearUrl = 'https://account.cacic.dev.br/api/tracking/clear';
+  private readonly accountTrackingSessionUrl = 'https://account.cacic.dev.br/api/tracking/session';
   private readonly onboardingReturnStorageKey = 'cacic-eventos:onboarding-return-url';
   private readonly onboardingRefreshAttemptStorageKey = 'cacic-eventos:onboarding-refresh-attempted';
   private readonly silentSsoAttemptStorageKey = 'cacic-eventos:silent-sso-attempted';
+  private readonly postLogoutRedirectStorageKey = 'cacic-eventos:post-logout-redirect';
 
   private readonly http = inject(HttpClient);
   private readonly document = inject(DOCUMENT);
@@ -57,6 +60,8 @@ export class AuthService {
       return;
     }
 
+    this.removeSessionStorageItem(this.postLogoutRedirectStorageKey);
+    this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
     window.location.assign(this.buildLoginRedirectUrl(options));
   }
 
@@ -86,23 +91,33 @@ export class AuthService {
     this.clearRefreshTimer();
 
     if (isPlatformBrowser(this.platformId)) {
+      const postLogoutRedirectUri = this.getPostLogoutRedirectUri();
+
       try {
         const { logoutUrl } = await firstValueFrom(
           this.http.post<{ logoutUrl?: string }>('/api/auth/logout', {
-            postLogoutRedirectUri: window.location.origin,
+            postLogoutRedirectUri,
           }),
         );
 
+        await this.clearAccountTrackingCookies();
         this.clearSession();
+        this.markPostLogoutRedirect();
 
         if (logoutUrl) {
           window.location.assign(logoutUrl);
+          return;
         }
 
-        return;
       } catch (error) {
         this.logUnexpectedAuthError('Logout failed', error);
       }
+
+      await this.clearAccountTrackingCookies();
+      this.clearSession();
+      this.markPostLogoutRedirect();
+      window.location.assign(postLogoutRedirectUri);
+      return;
     }
 
     this.clearSession();
@@ -135,7 +150,12 @@ export class AuthService {
       tap(({ expiresAt }) => this.scheduleRefresh(expiresAt)),
       switchMap((result) =>
         this.http.get<AuthenticatedUser | null>('/api/auth/me').pipe(
-          tap((user) => this.user.set(user)),
+          tap((user) => {
+            this.user.set(user);
+            if (user) {
+              void this.refreshAccountTrackingCookies();
+            }
+          }),
           tap((user) => this.scheduleRefreshFromUser(user)),
           map(() => result),
         ),
@@ -166,6 +186,19 @@ export class AuthService {
     this.user.set(null);
   }
 
+  consumePostLogoutRedirect(): boolean {
+    if (!isPlatformBrowser(this.platformId)) {
+      return false;
+    }
+
+    if (!this.getSessionStorageItem(this.postLogoutRedirectStorageKey)) {
+      return false;
+    }
+
+    this.removeSessionStorageItem(this.postLogoutRedirectStorageKey);
+    return true;
+  }
+
   private async loadCurrentUser(): Promise<boolean> {
     try {
       const user = await firstValueFrom(this.http.get<AuthenticatedUser | null>('/api/auth/me'));
@@ -174,6 +207,8 @@ export class AuthService {
 
       if (user) {
         this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
+        this.removeSessionStorageItem(this.postLogoutRedirectStorageKey);
+        void this.refreshAccountTrackingCookies();
       }
 
       this.scheduleRefreshFromUser(user);
@@ -343,10 +378,40 @@ export class AuthService {
     }
   }
 
+  private getPostLogoutRedirectUri(): string {
+    return new URL(this.getBasePath(), window.location.origin).toString();
+  }
+
   private buildAccountOnboardingRedirectUrl(returnTo: string): string {
     const url = new URL(this.accountLoginUrl);
     url.searchParams.set('ru', returnTo);
     return url.toString();
+  }
+
+  private async refreshAccountTrackingCookies(): Promise<void> {
+    await this.callAccountTrackingEndpoint(this.accountTrackingSessionUrl, 'GET');
+  }
+
+  private async clearAccountTrackingCookies(): Promise<void> {
+    await this.callAccountTrackingEndpoint(this.accountTrackingClearUrl, 'POST');
+  }
+
+  private async callAccountTrackingEndpoint(
+    url: string,
+    method: 'GET' | 'POST',
+  ): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    try {
+      await fetch(url, {
+        credentials: 'include',
+        method,
+      });
+    } catch {
+      return;
+    }
   }
 
   private clearRefreshTimer(): void {
@@ -402,6 +467,11 @@ export class AuthService {
     } catch {
       return;
     }
+  }
+
+  private markPostLogoutRedirect(): void {
+    this.setSessionStorageItem(this.postLogoutRedirectStorageKey, 'true');
+    this.setSessionStorageItem(this.silentSsoAttemptStorageKey, 'true');
   }
 
   private logUnexpectedAuthError(message: string, error: unknown): void {
