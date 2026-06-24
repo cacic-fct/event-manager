@@ -1,6 +1,7 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { EventManagerPermissionGrantScope } from '@prisma/client';
+import { createHmac } from 'node:crypto';
 import { CalendarService } from './calendar.service';
 import {
   ADMIN_CALENDAR_FEED_DISABLED_NO_CURRENT_TARGETS,
@@ -12,6 +13,11 @@ import {
 
 describe('CalendarService', () => {
   const now = new Date('2026-06-23T12:00:00.000Z');
+  const deriveFeedKey = (feedKeyNonce: string): string =>
+    createHmac('sha512', 'development-calendar-feed-key-pepper')
+      .update('calendar-feed-url-key', 'utf8')
+      .update(feedKeyNonce, 'utf8')
+      .digest('base64url');
   const publicEvent = {
     id: 'event-1',
     name: 'Oficina de TypeScript',
@@ -169,7 +175,7 @@ describe('CalendarService', () => {
     const prisma = createPrismaMock({
       userCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
-          feedKey: 'private-key',
+          feedKeyNonce: 'private-key',
           feedKeyHash: 'hashed-private-key',
           enabled: true,
           disabledAt: null,
@@ -184,7 +190,7 @@ describe('CalendarService', () => {
 
     await expect(service.getCurrentUserCalendarFeedSettings('user-1')).resolves.toEqual({
       enabled: true,
-      feedPath: '/api/calendar/feeds/private-key.ics',
+      feedPath: `/api/calendar/feeds/${deriveFeedKey('private-key')}.ics`,
       disabledAt: null,
       disabledReason: null,
       lastFetchedAt: null,
@@ -198,7 +204,7 @@ describe('CalendarService', () => {
       userCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({
-          feedKey: 'new-private-key',
+          feedKeyNonce: 'new-private-key',
           feedKeyHash: 'hashed-new-private-key',
           enabled: true,
           disabledAt: null,
@@ -230,10 +236,10 @@ describe('CalendarService', () => {
         enabled: true,
         rotatedAt: now,
         feedKeyHash: expect.any(String),
-        feedKey: expect.any(String),
+        feedKeyNonce: expect.any(String),
       }),
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
       }),
     });
@@ -243,11 +249,11 @@ describe('CalendarService', () => {
     const prisma = createPrismaMock({
       userCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
-          feedKey: 'existing-private-key',
+          feedKeyNonce: 'existing-private-key',
           feedKeyHash: 'hashed-existing-private-key',
         }),
         update: jest.fn().mockResolvedValue({
-          feedKey: 'existing-private-key',
+          feedKeyNonce: 'existing-private-key',
           feedKeyHash: 'hashed-existing-private-key',
           enabled: true,
           disabledAt: null,
@@ -266,7 +272,7 @@ describe('CalendarService', () => {
 
     await expect(service.setCurrentUserCalendarFeedEnabled('user-1', true)).resolves.toEqual({
       enabled: true,
-      feedPath: '/api/calendar/feeds/existing-private-key.ics',
+      feedPath: `/api/calendar/feeds/${deriveFeedKey('existing-private-key')}.ics`,
       disabledAt: null,
       disabledReason: null,
       lastFetchedAt: new Date('2026-06-22T12:00:00.000Z'),
@@ -285,7 +291,7 @@ describe('CalendarService', () => {
         disabledReason: null,
       },
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
       }),
     });
@@ -383,7 +389,7 @@ describe('CalendarService', () => {
         userId: 'admin-user',
       },
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
         lastCheckedAt: true,
       }),
@@ -394,7 +400,7 @@ describe('CalendarService', () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
-          feedKey: 'admin-key',
+          feedKeyNonce: 'admin-key',
           feedKeyHash: 'hashed-admin-key',
           enabled: true,
           disabledAt: null,
@@ -405,7 +411,7 @@ describe('CalendarService', () => {
           updatedAt: now,
         }),
         update: jest.fn().mockResolvedValue({
-          feedKey: 'admin-key',
+          feedKeyNonce: 'admin-key',
           feedKeyHash: 'hashed-admin-key',
           enabled: true,
           disabledAt: null,
@@ -421,7 +427,7 @@ describe('CalendarService', () => {
 
     await expect(service.getCurrentUserAdminCalendarFeedSettings('admin-user')).resolves.toEqual({
       enabled: true,
-      feedPath: '/api/calendar/admin/feeds/admin-key.ics',
+      feedPath: `/api/calendar/admin/feeds/${deriveFeedKey('admin-key')}.ics`,
       disabledAt: null,
       disabledReason: null,
       lastFetchedAt: null,
@@ -484,7 +490,7 @@ describe('CalendarService', () => {
         lastCheckedAt: now,
       },
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
         lastCheckedAt: true,
       }),
@@ -530,7 +536,7 @@ describe('CalendarService', () => {
       userAdminCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({
-          feedKey: 'enabled-admin-key',
+          feedKeyNonce: 'enabled-admin-key',
           feedKeyHash: 'hashed-enabled-key',
           enabled: true,
           disabledAt: null,
@@ -587,10 +593,10 @@ describe('CalendarService', () => {
         lastCheckedAt: now,
         rotatedAt: now,
         feedKeyHash: expect.any(String),
-        feedKey: expect.any(String),
+        feedKeyNonce: expect.any(String),
       }),
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
         lastCheckedAt: true,
       }),
@@ -603,11 +609,11 @@ describe('CalendarService', () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
-          feedKey: 'existing-admin-key',
+          feedKeyNonce: 'existing-admin-key',
           feedKeyHash: 'hashed-existing-admin-key',
         }),
         update: jest.fn().mockResolvedValue({
-          feedKey: 'existing-admin-key',
+          feedKeyNonce: 'existing-admin-key',
           feedKeyHash: 'hashed-existing-admin-key',
           enabled: true,
           disabledAt: null,
@@ -638,7 +644,7 @@ describe('CalendarService', () => {
 
     await expect(service.setCurrentUserAdminCalendarFeedEnabled('admin-user', true)).resolves.toEqual({
       enabled: true,
-      feedPath: '/api/calendar/admin/feeds/existing-admin-key.ics',
+      feedPath: `/api/calendar/admin/feeds/${deriveFeedKey('existing-admin-key')}.ics`,
       disabledAt: null,
       disabledReason: null,
       lastFetchedAt: previousFetchedAt,
@@ -659,7 +665,7 @@ describe('CalendarService', () => {
         lastCheckedAt: now,
       },
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
       }),
     });
@@ -969,7 +975,7 @@ describe('CalendarService', () => {
     const prisma = createPrismaMock({
       superAdminCalendarFeedSettings: {
         upsert: jest.fn().mockResolvedValue({
-          feedKey: 'super-key',
+          feedKeyNonce: 'super-key',
           feedKeyHash: 'hashed-super-key',
           enabled: true,
           lastFetchedAt: null,
@@ -982,7 +988,7 @@ describe('CalendarService', () => {
 
     await expect(service.getSuperAdminCalendarFeedSettings()).resolves.toEqual({
       enabled: true,
-      feedPath: '/api/calendar/admin/super-admin/super-key.ics',
+      feedPath: `/api/calendar/admin/super-admin/${deriveFeedKey('super-key')}.ics`,
       lastFetchedAt: null,
       rotatedAt: null,
       updatedAt: now,
@@ -996,13 +1002,13 @@ describe('CalendarService', () => {
         id: SUPER_ADMIN_CALENDAR_FEED_ID,
         enabled: true,
         feedKeyHash: expect.any(String),
-        feedKey: expect.any(String),
+        feedKeyNonce: expect.any(String),
       }),
       update: {
         enabled: true,
       },
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
       }),
     });
@@ -1015,7 +1021,7 @@ describe('CalendarService', () => {
           rotatedAt: new Date('2026-06-21T12:00:00.000Z'),
         }),
         upsert: jest.fn().mockResolvedValue({
-          feedKey: 'rotated-super-key',
+          feedKeyNonce: 'rotated-super-key',
           feedKeyHash: 'hashed-rotated-super-key',
           enabled: true,
           lastFetchedAt: null,
@@ -1043,17 +1049,17 @@ describe('CalendarService', () => {
         enabled: true,
         rotatedAt: now,
         feedKeyHash: expect.any(String),
-        feedKey: expect.any(String),
+        feedKeyNonce: expect.any(String),
       }),
       update: expect.objectContaining({
         enabled: true,
         lastFetchedAt: null,
         rotatedAt: now,
         feedKeyHash: expect.any(String),
-        feedKey: expect.any(String),
+        feedKeyNonce: expect.any(String),
       }),
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
       }),
     });

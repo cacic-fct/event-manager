@@ -18,7 +18,7 @@ import {
   SuperAdminCalendarFeedSettings,
 } from './calendar.models';
 
-const CALENDAR_FEED_KEY_BYTES = 64;
+const CALENDAR_FEED_KEY_NONCE_BYTES = 32;
 const CALENDAR_FEED_KEY_ROTATION_COOLDOWN_HOURS = 24;
 const PRIVATE_FEED_LAST_FETCH_WRITE_INTERVAL_HOURS = 6;
 const PRIVATE_FEED_LOOKBACK_MONTHS = 1;
@@ -68,7 +68,7 @@ const CALENDAR_EVENT_SELECT = {
 } satisfies Prisma.EventSelect;
 
 const CALENDAR_FEED_SETTINGS_SELECT = {
-  feedKey: true,
+  feedKeyNonce: true,
   feedKeyHash: true,
   enabled: true,
   disabledAt: true,
@@ -79,7 +79,7 @@ const CALENDAR_FEED_SETTINGS_SELECT = {
 } satisfies Prisma.UserCalendarFeedSettingsSelect;
 
 const ADMIN_CALENDAR_FEED_SETTINGS_SELECT = {
-  feedKey: true,
+  feedKeyNonce: true,
   feedKeyHash: true,
   enabled: true,
   disabledAt: true,
@@ -91,7 +91,7 @@ const ADMIN_CALENDAR_FEED_SETTINGS_SELECT = {
 } satisfies Prisma.UserAdminCalendarFeedSettingsSelect;
 
 const SUPER_ADMIN_CALENDAR_FEED_SETTINGS_SELECT = {
-  feedKey: true,
+  feedKeyNonce: true,
   feedKeyHash: true,
   enabled: true,
   lastFetchedAt: true,
@@ -234,7 +234,8 @@ export class CalendarService {
     });
     this.assertFeedKeyRotationAllowed(currentSettings?.rotatedAt ?? null, now);
 
-    const feedKey = this.generateFeedKey();
+    const feedKeyNonce = this.generateFeedKeyNonce();
+    const feedKey = this.deriveFeedKey(feedKeyNonce);
     const feedKeyHash = this.hashFeedKey(feedKey);
     const settings = await this.prisma.userCalendarFeedSettings.upsert({
       where: {
@@ -242,13 +243,13 @@ export class CalendarService {
       },
       create: {
         userId,
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         enabled: false,
         rotatedAt: now,
       },
       update: {
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         rotatedAt: now,
         lastFetchedAt: null,
@@ -317,14 +318,15 @@ export class CalendarService {
         userId,
       },
       select: {
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
       },
     });
 
     if (currentSettings) {
-      const feedKey = currentSettings.feedKey ?? this.generateFeedKey();
-      const shouldRecoverMissingFeedKey = !currentSettings.feedKey;
+      const feedKeyNonce = currentSettings.feedKeyNonce ?? this.generateFeedKeyNonce();
+      const feedKey = this.deriveFeedKey(feedKeyNonce);
+      const shouldRecoverMissingFeedKey = !currentSettings.feedKeyNonce;
       const settings = await this.prisma.userAdminCalendarFeedSettings.update({
         where: {
           userId,
@@ -336,7 +338,7 @@ export class CalendarService {
           lastCheckedAt: now,
           ...(shouldRecoverMissingFeedKey
             ? {
-                feedKey,
+                feedKeyNonce,
                 feedKeyHash: this.hashFeedKey(feedKey),
                 rotatedAt: now,
                 lastFetchedAt: null,
@@ -349,12 +351,13 @@ export class CalendarService {
       return this.mapAdminSettings(settings, feedKey);
     }
 
-    const feedKey = this.generateFeedKey();
+    const feedKeyNonce = this.generateFeedKeyNonce();
+    const feedKey = this.deriveFeedKey(feedKeyNonce);
     const feedKeyHash = this.hashFeedKey(feedKey);
     const settings = await this.prisma.userAdminCalendarFeedSettings.create({
       data: {
         userId,
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         enabled: true,
         rotatedAt: now,
@@ -378,7 +381,8 @@ export class CalendarService {
     });
     this.assertFeedKeyRotationAllowed(currentSettings?.rotatedAt ?? null, now);
 
-    const feedKey = this.generateFeedKey();
+    const feedKeyNonce = this.generateFeedKeyNonce();
+    const feedKey = this.deriveFeedKey(feedKeyNonce);
     const feedKeyHash = this.hashFeedKey(feedKey);
     const settings = await this.prisma.userAdminCalendarFeedSettings.upsert({
       where: {
@@ -386,14 +390,14 @@ export class CalendarService {
       },
       create: {
         userId,
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         enabled: false,
         rotatedAt: now,
         lastCheckedAt: now,
       },
       update: {
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         rotatedAt: now,
         lastFetchedAt: null,
@@ -422,7 +426,8 @@ export class CalendarService {
     });
     this.assertFeedKeyRotationAllowed(currentSettings?.rotatedAt ?? null, now);
 
-    const feedKey = this.generateFeedKey();
+    const feedKeyNonce = this.generateFeedKeyNonce();
+    const feedKey = this.deriveFeedKey(feedKeyNonce);
     const feedKeyHash = this.hashFeedKey(feedKey);
     const settings = await this.prisma.superAdminCalendarFeedSettings.upsert({
       where: {
@@ -430,13 +435,13 @@ export class CalendarService {
       },
       create: {
         id: SUPER_ADMIN_CALENDAR_FEED_ID,
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         enabled: true,
         rotatedAt: now,
       },
       update: {
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         enabled: true,
         lastFetchedAt: null,
@@ -628,14 +633,15 @@ export class CalendarService {
         userId,
       },
       select: {
-        feedKey: true,
+        feedKeyNonce: true,
         feedKeyHash: true,
       },
     });
 
     if (currentSettings) {
-      const feedKey = currentSettings.feedKey ?? this.generateFeedKey();
-      const shouldRecoverMissingFeedKey = !currentSettings.feedKey;
+      const feedKeyNonce = currentSettings.feedKeyNonce ?? this.generateFeedKeyNonce();
+      const feedKey = this.deriveFeedKey(feedKeyNonce);
+      const shouldRecoverMissingFeedKey = !currentSettings.feedKeyNonce;
       const [, settings] = await this.prisma.$transaction([
         this.prisma.user.update({
           where: {
@@ -658,7 +664,7 @@ export class CalendarService {
             disabledReason: null,
             ...(shouldRecoverMissingFeedKey
               ? {
-                  feedKey,
+                  feedKeyNonce,
                   feedKeyHash: this.hashFeedKey(feedKey),
                   rotatedAt: now,
                   lastFetchedAt: null,
@@ -672,7 +678,8 @@ export class CalendarService {
       return { feedKey, settings };
     }
 
-    const feedKey = this.generateFeedKey();
+    const feedKeyNonce = this.generateFeedKeyNonce();
+    const feedKey = this.deriveFeedKey(feedKeyNonce);
     const feedKeyHash = this.hashFeedKey(feedKey);
 
     const [, settings] = await this.prisma.$transaction([
@@ -690,7 +697,7 @@ export class CalendarService {
       this.prisma.userCalendarFeedSettings.create({
         data: {
           userId,
-          feedKey,
+          feedKeyNonce,
           feedKeyHash,
           enabled: true,
           rotatedAt: now,
@@ -1296,7 +1303,7 @@ export class CalendarService {
   }
 
   private mapSettings(settings: CalendarFeedSettingsRecord | null, feedKey?: string): CurrentUserCalendarFeedSettings {
-    const resolvedFeedKey = feedKey ?? settings?.feedKey;
+    const resolvedFeedKey = feedKey ?? this.deriveStoredFeedKey(settings?.feedKeyNonce);
 
     return {
       enabled: settings?.enabled ?? false,
@@ -1313,7 +1320,7 @@ export class CalendarService {
     settings: AdminCalendarFeedSettingsRecord | null,
     feedKey?: string,
   ): CurrentUserAdminCalendarFeedSettings {
-    const resolvedFeedKey = feedKey ?? settings?.feedKey;
+    const resolvedFeedKey = feedKey ?? this.deriveStoredFeedKey(settings?.feedKeyNonce);
 
     return {
       enabled: settings?.enabled ?? false,
@@ -1332,7 +1339,7 @@ export class CalendarService {
     settings: SuperAdminCalendarFeedSettingsRecord | null,
     feedKey?: string,
   ): SuperAdminCalendarFeedSettings {
-    const resolvedFeedKey = feedKey ?? settings?.feedKey;
+    const resolvedFeedKey = feedKey ?? this.deriveStoredFeedKey(settings?.feedKeyNonce);
 
     return {
       enabled: settings?.enabled ?? false,
@@ -1350,7 +1357,8 @@ export class CalendarService {
     feedKey?: string;
     settings: SuperAdminCalendarFeedSettingsRecord;
   }> {
-    const feedKey = this.generateFeedKey();
+    const feedKeyNonce = this.generateFeedKeyNonce();
+    const feedKey = this.deriveFeedKey(feedKeyNonce);
     const feedKeyHash = this.hashFeedKey(feedKey);
     const settings = await this.prisma.superAdminCalendarFeedSettings.upsert({
       where: {
@@ -1358,7 +1366,7 @@ export class CalendarService {
       },
       create: {
         id: SUPER_ADMIN_CALENDAR_FEED_ID,
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         enabled: true,
       },
@@ -1368,9 +1376,9 @@ export class CalendarService {
       select: SUPER_ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
     });
 
-    if (settings.feedKey) {
+    if (settings.feedKeyNonce) {
       return {
-        feedKey: settings.feedKey,
+        feedKey: this.deriveFeedKey(settings.feedKeyNonce),
         settings,
       };
     }
@@ -1381,12 +1389,12 @@ export class CalendarService {
       },
       create: {
         id: SUPER_ADMIN_CALENDAR_FEED_ID,
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         enabled: true,
       },
       update: {
-        feedKey,
+        feedKeyNonce,
         feedKeyHash,
         enabled: true,
         lastFetchedAt: null,
@@ -1550,8 +1558,19 @@ export class CalendarService {
     }
   }
 
-  private generateFeedKey(): string {
-    return randomBytes(CALENDAR_FEED_KEY_BYTES).toString('base64url');
+  private generateFeedKeyNonce(): string {
+    return randomBytes(CALENDAR_FEED_KEY_NONCE_BYTES).toString('base64url');
+  }
+
+  private deriveStoredFeedKey(feedKeyNonce: string | null | undefined): string | undefined {
+    return feedKeyNonce ? this.deriveFeedKey(feedKeyNonce) : undefined;
+  }
+
+  private deriveFeedKey(feedKeyNonce: string): string {
+    return createHmac('sha512', this.calendarFeedKeyPepper)
+      .update('calendar-feed-url-key', 'utf8')
+      .update(feedKeyNonce, 'utf8')
+      .digest('base64url');
   }
 
   private hashFeedKey(feedKey: string): string {
