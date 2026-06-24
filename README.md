@@ -31,28 +31,6 @@ O aplicativo é construído com Angular e pode ser acessado em [eventos.cacic.de
 
 Antes de começar, instale o [Bun](https://bun.sh/).
 
-#### Autenticação local no GitHub Packages
-
-Algumas dependências do monorepo são pacotes publicados no GitHub Packages. Sem autenticação local, comandos como `bun install` retornam erro `401` ao acessar `https://npm.pkg.github.com`.
-
-[Crie um token do GitHub](https://github.com/settings/tokens) com permissão `read:packages`.
-
-Adicione o token ao arquivo `.env` local:
-
-```bash
-NODE_AUTH_TOKEN=ghp_seu_token_aqui
-NPM_CONFIG_TOKEN=${NODE_AUTH_TOKEN}
-```
-
-O arquivo `.env` é ignorado pelo Git.  
-`NODE_AUTH_TOKEN`e `NPM_CONFIG_TOKEN` são variáveis de ambiente usadas para autenticação com o GitHub Packages. A variável `NPM_CONFIG_TOKEN` é a que o Bun usa para resolver o token referenciado no `.npmrc`:
-
-```ini
-//npm.pkg.github.com/:_authToken=${NPM_CONFIG_TOKEN}
-```
-
-
-
 #### Iniciando o desenvolvimento
 
 Instale as dependências do monorepo:

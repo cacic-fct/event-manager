@@ -4,8 +4,8 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "build:packages": "bunx nx run-many --target=build --projects=event-manager-m2m-contracts,event-manager-public-contracts",
-    "publish:event-manager-m2m-contracts": "bunx nx build event-manager-m2m-contracts && cd dist/libs/event-manager-m2m-contracts && bun publish",
-    "publish:event-manager-public-contracts": "bunx nx build event-manager-public-contracts && cd dist/libs/event-manager-public-contracts && bun publish",
+    "publish:event-manager-m2m-contracts": "bunx nx build event-manager-m2m-contracts && cd dist/libs/event-manager-m2m-contracts && bun publish --access public",
+    "publish:event-manager-public-contracts": "bunx nx build event-manager-public-contracts && cd dist/libs/event-manager-public-contracts && bun publish --access public",
     "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts"
   },
   "private": true,

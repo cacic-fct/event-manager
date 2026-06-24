@@ -7,13 +7,7 @@ request/response DTO types used by CACiC Voto.
 
 ## Install
 
-Configure GitHub Packages for the CACiC FCT scope:
-
-```ini
-@cacic-fct:registry=https://npm.pkg.github.com
-```
-
-Then install with Bun:
+Install from the public npm registry with Bun:
 
 ```bash
 bun add @cacic-fct/event-manager-m2m-contracts
@@ -42,4 +36,5 @@ This package has an independent release cycle. Bump this package's own
 `version` before merging changes that should be published.
 
 Run `bun run publish:event-manager-m2m-contracts` from the repository root when
-publishing manually.
+publishing manually. The CI workflow publishes this package to npm through
+Trusted Publishing.
