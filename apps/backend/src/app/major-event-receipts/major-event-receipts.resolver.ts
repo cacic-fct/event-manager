@@ -65,7 +65,10 @@ export class MajorEventReceiptsResolver {
     name: 'approveAdminReceipt',
   })
   @RequirePermissions(RECEIPT_APPROVE_PERMISSION)
-  async approveAdminReceipt(@Args('input') input: ApproveReceiptInput, @Context() context: GraphqlContext) {
+  async approveAdminReceipt(
+    @Args('input', { type: () => ApproveReceiptInput }) input: ApproveReceiptInput,
+    @Context() context: GraphqlContext,
+  ) {
     const user = this.requireAuthenticatedUser(context);
     await this.frozenResources.assertMajorEventSubscriptionMutable(input.subscriptionId, user, 'edit');
     return this.receipts.approveReceipt(
@@ -80,7 +83,10 @@ export class MajorEventReceiptsResolver {
     name: 'rejectAdminReceipt',
   })
   @RequirePermissions(RECEIPT_REJECT_PERMISSION)
-  async rejectAdminReceipt(@Args('input') input: RejectReceiptInput, @Context() context: GraphqlContext) {
+  async rejectAdminReceipt(
+    @Args('input', { type: () => RejectReceiptInput }) input: RejectReceiptInput,
+    @Context() context: GraphqlContext,
+  ) {
     const user = this.requireAuthenticatedUser(context);
     await this.frozenResources.assertMajorEventSubscriptionMutable(input.subscriptionId, user, 'edit');
     return this.receipts.rejectReceipt(
