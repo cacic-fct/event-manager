@@ -14,7 +14,6 @@ export class AccountManagerPrivacySyncService {
   private readonly audience?: string;
   private readonly clientId?: string;
   private readonly clientSecret?: string;
-  private readonly scope?: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -26,7 +25,6 @@ export class AccountManagerPrivacySyncService {
     this.audience = this.configService.get<string>('ACCOUNT_MANAGER_M2M_AUDIENCE');
     this.clientId = this.configService.get<string>('KEYCLOAK_M2M_CLIENT_ID');
     this.clientSecret = this.configService.get<string>('KEYCLOAK_M2M_CLIENT_SECRET');
-    this.scope = this.configService.get<string>('ACCOUNT_MANAGER_M2M_SCOPE');
   }
 
   async recordCookieConsent(userId: string): Promise<void> {
@@ -66,7 +64,6 @@ export class AccountManagerPrivacySyncService {
       audience: this.audience,
       clientId: this.clientId,
       clientSecret: this.clientSecret,
-      scope: this.scope,
     });
   }
 }
