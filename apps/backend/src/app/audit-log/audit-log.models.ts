@@ -24,61 +24,61 @@ registerEnumType(AuditLogRevertMode, {
 
 @ObjectType()
 export class AuditLogChange {
-  @Field()
+  @Field(() => String)
   field!: string;
 
-  @Field()
+  @Field(() => String)
   label!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   beforeValue?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   afterValue?: string | null;
 }
 
 @ObjectType()
 export class AuditLogEntry {
-  @Field()
+  @Field(() => String)
   id!: string;
 
   @Field(() => AuditLogEntityType)
   entityType!: AuditLogEntityType;
 
-  @Field()
+  @Field(() => String)
   entityId!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   entityLabel?: string | null;
 
   @Field(() => AuditLogOperation)
   operation!: AuditLogOperation;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   summary?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   actorId?: string | null;
 
-  @Field()
+  @Field(() => String)
   actorName!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   actorEmail?: string | null;
 
   @Field(() => AuditLogActorType)
   actorType!: AuditLogActorType;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   permission?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   eventId?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   majorEventId?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   eventGroupId?: string | null;
 
   @Field(() => [AuditLogChange])
@@ -90,34 +90,34 @@ export class AuditLogEntry {
   @Field(() => Int)
   groupedCount!: number;
 
-  @Field()
+  @Field(() => Date)
   firstRecordedAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   lastRecordedAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   revertedAt?: Date | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   revertedById?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   revertedByName?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   revertedByEntryId?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   revertTargetId?: string | null;
 
   @Field(() => AuditLogRevertMode, { nullable: true })
   revertMode?: AuditLogRevertMode | null;
 
-  @Field()
+  @Field(() => Boolean)
   canRevert!: boolean;
 }
 
@@ -126,13 +126,13 @@ export class AuditLogEntityHistoryInput {
   @Field(() => AuditLogEntityType)
   entityType!: AuditLogEntityType;
 
-  @Field()
+  @Field(() => String)
   entityId!: string;
 }
 
 @InputType()
 export class AuditLogRevertInput {
-  @Field()
+  @Field(() => String)
   entryId!: string;
 
   @Field(() => AuditLogRevertMode)
