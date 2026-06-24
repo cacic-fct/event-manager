@@ -10,7 +10,7 @@ import { isPlatformBrowser, registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { provideRouter } from '@angular/router';
 import { appRoutes } from './app.routes';
-import { provideClientHydration, withEventReplay, withNoIncrementalHydration } from '@angular/platform-browser';
+import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   AuthService,
@@ -25,7 +25,7 @@ import { CookieBannerFeatureFlagService } from './feature-flags/cookie-banner-fe
 
 registerLocaleData(localePt);
 
-const accountPrivacyApiBaseUrl = 'https://account.cacic.dev.br/api';
+const accountPrivacyApiBaseUrl = '/api';
 const accountPrivacy = () => inject(CacicAccountPrivacyService);
 const isAccountAnalyticsEnabled = () => accountPrivacy().isAnalyticsEnabled();
 const isAccountDiagnosticsEnabled = () => accountPrivacy().isErrorDebuggingEnabled();

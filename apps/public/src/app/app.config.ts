@@ -56,7 +56,7 @@ const publicFeatureFlagConfig: PublicFeatureFlagConfig = {
   disableMetrics: true,
 };
 
-const accountPrivacyApiBaseUrl = 'https://account.cacic.dev.br/api';
+const accountPrivacyApiBaseUrl = '/api';
 const turnstileSiteKey =
   readRuntimeConfigValue('cacic-turnstile-site-key', 'turnstileSiteKey', 'TURNSTILE_SITE_KEY') ||
   (isDevMode() ? TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS : '');
