@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { CurrentUserEventAttendance } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
+import { graphqlError } from '../../shared/rate-limit-error';
 
 interface GraphqlResponse<TData> {
   data?: TData;
@@ -46,20 +47,20 @@ export class OnlineAttendanceApiService {
     ).pipe(map((data) => data.currentUserPendingOnlineAttendanceEvents));
   }
 
-  confirmAttendance(eventId: string, code: string, turnstileToken: string): Observable<CurrentUserEventAttendance> {
+  confirmAttendance(eventId: string, code: string): Observable<CurrentUserEventAttendance> {
     return this.query<{
       confirmCurrentUserOnlineAttendance: CurrentUserEventAttendance;
     }>(
       `
-        mutation ConfirmCurrentUserOnlineAttendance($eventId: String!, $code: String!, $turnstileToken: String) {
-          confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code, turnstileToken: $turnstileToken }) {
+        mutation ConfirmCurrentUserOnlineAttendance($eventId: String!, $code: String!) {
+          confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code }) {
             eventId
             attendedAt
             createdAt
           }
         }
       `,
-      { eventId, code, turnstileToken },
+      { eventId, code },
     ).pipe(map((data) => data.confirmCurrentUserOnlineAttendance));
   }
 
@@ -67,7 +68,7 @@ export class OnlineAttendanceApiService {
     return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
       map((response) => {
         if (response.errors?.length) {
-          throw new Error(response.errors.map((error) => error.message).join('\n'));
+          throw graphqlError(response.errors);
         }
 
         if (!response.data) {

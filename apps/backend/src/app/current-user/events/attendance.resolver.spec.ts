@@ -15,9 +15,6 @@ describe('CurrentUserEventAttendanceResolver', () => {
     const frozenResources = {
       assertEventMutable: jest.fn().mockResolvedValue(undefined),
     };
-    const turnstile = {
-      assertValidToken: jest.fn().mockResolvedValue(undefined),
-    };
     const resolver = new CurrentUserEventAttendanceResolver(
       prisma as never,
       currentUserContext as never,
@@ -26,7 +23,6 @@ describe('CurrentUserEventAttendanceResolver', () => {
       {} as never,
       frozenResources as never,
       {} as never,
-      turnstile as never,
     );
 
     await expect(
@@ -45,10 +41,5 @@ describe('CurrentUserEventAttendanceResolver', () => {
       select: expect.any(Object),
     });
     expect(frozenResources.assertEventMutable).not.toHaveBeenCalled();
-    expect(turnstile.assertValidToken).toHaveBeenCalledWith(
-      undefined,
-      { user: { sub: 'user-1' } },
-      'online_attendance',
-    );
   });
 });

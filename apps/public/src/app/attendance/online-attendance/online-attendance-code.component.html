@@ -56,9 +56,11 @@
         <p class="field-error">Informe os 4 caracteres do código.</p>
       }
 
-      <lib-cloudflare-turnstile [action]="turnstileAction" (tokenChange)="turnstileToken.set($event)" />
+      @if (cooldownSeconds() > 0) {
+        <p class="field-error">Muitas tentativas. Aguarde {{ cooldownSeconds() }}s para tentar novamente.</p>
+      }
 
-      <button mat-flat-button type="submit" [disabled]="codeControl.invalid || isSubmitting() || !turnstileToken()">
+      <button mat-flat-button type="submit" [disabled]="codeControl.invalid || isSubmitting() || cooldownSeconds() > 0">
         <mat-icon>how_to_reg</mat-icon>
         Confirmar
       </button>

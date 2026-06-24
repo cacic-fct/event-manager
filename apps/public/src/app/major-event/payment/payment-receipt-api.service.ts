@@ -1,7 +1,7 @@
 import { HttpClient, HttpEvent, HttpEventType } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { TURNSTILE_TOKEN_HEADER } from '@cacic-fct/shared-utils';
-import { Observable, filter, map } from 'rxjs';
+import { Observable, catchError, filter, map, throwError } from 'rxjs';
+import { graphqlError, rateLimitFromHttpError } from '../../shared/rate-limit-error';
 
 export interface PaymentReceipt {
   id: string;
@@ -49,15 +49,12 @@ export class PaymentReceiptApiService {
     ).pipe(map((data) => data.currentUserMajorEventReceipt));
   }
 
-  uploadReceipt(majorEventId: string, file: File, turnstileToken: string): Observable<ReceiptUploadEvent> {
+  uploadReceipt(majorEventId: string, file: File): Observable<ReceiptUploadEvent> {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
     return this.http
       .post<PaymentReceipt>(`/api/major-event-receipts/major-events/${majorEventId}`, formData, {
-        headers: {
-          [TURNSTILE_TOKEN_HEADER]: turnstileToken,
-        },
         observe: 'events',
         reportProgress: true,
       })
@@ -81,6 +78,7 @@ export class PaymentReceiptApiService {
           return null;
         }),
         filter((event): event is ReceiptUploadEvent => event !== null),
+        catchError((error: unknown) => throwError(() => rateLimitFromHttpError(error) ?? error)),
       );
   }
 
@@ -88,7 +86,7 @@ export class PaymentReceiptApiService {
     return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
       map((response) => {
         if (response.errors?.length) {
-          throw new Error(response.errors.map((error) => error.message).join('\n'));
+          throw graphqlError(response.errors);
         }
 
         if (!response.data) {

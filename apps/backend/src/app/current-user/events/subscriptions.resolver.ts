@@ -1,6 +1,5 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver, createUnionType } from '@nestjs/graphql';
-import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import {
   CurrentUserEventGroupSubscription,
   CurrentUserEventSubscription,
@@ -19,7 +18,9 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublicEvent } from '../../public-events/models';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
-import { TurnstileService } from '../../turnstile/turnstile.service';
+import { RateLimit } from '../../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 
 export const SubscribedItemUnion = createUnionType({
   name: 'SubscribedItem',
@@ -45,7 +46,6 @@ export class CurrentUserEventSubscriptionsResolver {
     private readonly mapper: CurrentUserEventMapperService,
     private readonly eventSubscriptions: CurrentUserEventSubscriptionService,
     private readonly frozenResources: FrozenResourceService,
-    private readonly turnstile: TurnstileService,
   ) {}
 
   @Query(() => [PublicEvent], {
@@ -152,23 +152,21 @@ export class CurrentUserEventSubscriptionsResolver {
   }
 
   @Mutation(() => PublicEvent, { name: 'subscribeCurrentUserStandaloneEvent' })
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.standaloneEventSubscription, [{ source: 'args', path: 'eventId' }])
   async subscribeCurrentUserStandaloneEvent(
     @Args('eventId', { type: () => String }) eventId: string,
-    @Args('turnstileToken', { type: () => String, nullable: true }) turnstileToken: string | null | undefined,
     @Context() context: GraphqlContext,
   ): Promise<PublicEvent> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    await this.turnstile.assertValidToken(
-      turnstileToken,
-      context.req ?? context.request,
-      TURNSTILE_ACTIONS.standaloneEventSubscription,
-    );
     await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId, authenticatedUser);
   }
 
   @Mutation(() => PublicEvent, { name: 'unsubscribeCurrentUserStandaloneEvent' })
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.standaloneEventSubscription, [{ source: 'args', path: 'eventId' }])
   async unsubscribeCurrentUserStandaloneEvent(
     @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,

@@ -3,8 +3,6 @@ import {
   ConflictException,
   ForbiddenException,
   GoneException,
-  HttpException,
-  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -36,8 +34,6 @@ import {
   assertReceiptBufferWithinProcessingLimits,
   isReceiptImageProcessingError,
 } from '../utils/receipt-image-processing.utils';
-
-const RECEIPT_UPLOAD_INTERVAL_MS = 60_000;
 
 @Injectable()
 export class ReceiptUploadService {
@@ -118,7 +114,6 @@ export class ReceiptUploadService {
       throw new BadRequestException(`Subscription for major event ${majorEventId} is canceled.`);
     }
 
-    await this.assertUploadRateLimit(subscription.id);
     await this.assertReceiptImageCanBeProcessed(file.buffer);
 
     const receiptId = randomUUID();
@@ -237,24 +232,6 @@ export class ReceiptUploadService {
       contentType: file.contentType ?? receipt.mimeType,
       contentLength: file.contentLength,
     };
-  }
-
-  private async assertUploadRateLimit(subscriptionId: string): Promise<void> {
-    const latestReceipt = await this.prisma.majorEventReceipt.findFirst({
-      where: {
-        subscriptionId,
-      },
-      select: {
-        uploadedAt: true,
-      },
-      orderBy: {
-        uploadedAt: 'desc',
-      },
-    });
-
-    if (latestReceipt && latestReceipt.uploadedAt.getTime() > Date.now() - RECEIPT_UPLOAD_INTERVAL_MS) {
-      throw new HttpException('Wait a moment before sending another receipt.', HttpStatus.TOO_MANY_REQUESTS);
-    }
   }
 
   private async assertReceiptImageCanBeProcessed(buffer: Buffer): Promise<void> {

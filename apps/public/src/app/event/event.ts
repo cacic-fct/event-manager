@@ -8,15 +8,13 @@ import {
   effect,
   inject,
   signal,
-  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import type { PublicEvent, PublicLecturerProfile } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, CloudflareTurnstileComponent, MailtoService } from '@cacic-fct/shared-angular';
+import { AuthService, MailtoService } from '@cacic-fct/shared-angular';
 import {
-  TURNSTILE_ACTIONS,
   formatDateRange,
   getEventTypeLabel,
   isOnlineAttendanceRegistrationOpen,
@@ -36,6 +34,7 @@ import { EventLocationMap } from './components/event-location-map';
 import { EventSubscriptionRealtimeService } from './event-subscription-realtime.service';
 import { EmojiService } from '../shared/emoji.service';
 import { NetworkStatusService } from '../shared/network-status.service';
+import { RateLimitError, createRateLimitCooldown } from '../shared/rate-limit-error';
 
 type EventPageState =
   | { status: 'loading' }
@@ -56,7 +55,6 @@ type EventPageState =
     MatSnackBarModule,
     MatToolbarModule,
     MatTooltipModule,
-    CloudflareTurnstileComponent,
   ],
   templateUrl: './event.html',
   styleUrl: './event.css',
@@ -74,7 +72,7 @@ export class Event {
   private readonly realtime = inject(EventSubscriptionRealtimeService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly mailto = inject(MailtoService);
-  private readonly standaloneSubscriptionTurnstile = viewChild(CloudflareTurnstileComponent);
+  private readonly standaloneSubscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
@@ -84,11 +82,11 @@ export class Event {
   readonly isSubscribing = signal(false);
   readonly isUnsubscribing = signal(false);
   readonly isConfirmingAttendance = signal(false);
-  readonly standaloneSubscriptionTurnstileAction = TURNSTILE_ACTIONS.standaloneEventSubscription;
-  readonly standaloneSubscriptionTurnstileToken = signal<string | null>(null);
+  readonly standaloneSubscriptionCooldownSeconds = this.standaloneSubscriptionCooldown.seconds;
 
   private readonly reloadCounter = signal(0);
   private readonly realtimeAvailability = signal<{ eventId: string; hasAvailableSlots: boolean } | null>(null);
+  private readonly cooldownEventId = signal<string | null>(null);
 
   private readonly returnUrl = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('back') || params.get('returnUrl') || '/menu')),
@@ -127,15 +125,18 @@ export class Event {
     onCleanup(() => subscription.unsubscribe());
   });
 
-  private readonly turnstileResetWatcher = effect(() => {
+  private readonly cooldownResetWatcher = effect(() => {
     const currentState = this.eventState();
     if (currentState.status !== 'ready') {
-      this.standaloneSubscriptionTurnstileToken.set(null);
+      this.standaloneSubscriptionCooldown.clear();
       return;
     }
 
-    this.standaloneSubscriptionTurnstileToken.set(null);
-    this.standaloneSubscriptionTurnstile()?.reset();
+    const eventId = currentState.data.event.id;
+    if (this.cooldownEventId() !== eventId) {
+      this.cooldownEventId.set(eventId);
+      this.standaloneSubscriptionCooldown.clear();
+    }
   });
 
   goBack(): void {
@@ -165,26 +166,16 @@ export class Event {
       return;
     }
 
-    if (!this.canSubscribe(data) || this.isSubscribing()) {
-      return;
-    }
-
-    const turnstileToken = this.standaloneSubscriptionTurnstileToken();
-    if (!turnstileToken) {
-      this.snackBar.open('Conclua a verificação anti-spam.', 'OK', { duration: 3000 });
+    if (!this.canSubscribe(data) || this.isSubscribing() || this.standaloneSubscriptionCooldownSeconds() > 0) {
       return;
     }
 
     this.isSubscribing.set(true);
 
     this.api
-      .subscribeToEvent(data.event.id, turnstileToken)
+      .subscribeToEvent(data.event.id)
       .pipe(
-        finalize(() => {
-          this.isSubscribing.set(false);
-          this.standaloneSubscriptionTurnstileToken.set(null);
-          this.standaloneSubscriptionTurnstile()?.reset();
-        }),
+        finalize(() => this.isSubscribing.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -197,7 +188,12 @@ export class Event {
   }
 
   unsubscribe(data: EventPageData): void {
-    if (!this.isBrowser || !this.canUnsubscribe(data) || this.isUnsubscribing()) {
+    if (
+      !this.isBrowser ||
+      !this.canUnsubscribe(data) ||
+      this.isUnsubscribing() ||
+      this.standaloneSubscriptionCooldownSeconds() > 0
+    ) {
       return;
     }
 
@@ -436,6 +432,9 @@ export class Event {
   }
 
   private showError(error: unknown): void {
+    if (error instanceof RateLimitError) {
+      this.standaloneSubscriptionCooldown.start(error.retryAfterSeconds);
+    }
     this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível concluir.', 'OK', { duration: 5000 });
   }
 }

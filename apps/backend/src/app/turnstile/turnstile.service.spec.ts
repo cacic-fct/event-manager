@@ -17,7 +17,7 @@ describe('TurnstileService', () => {
     const service = new TurnstileService(configService({}) as never);
 
     await expect(
-      service.assertValidToken(undefined, undefined, TURNSTILE_ACTIONS.majorEventSubscription),
+      service.assertValidToken(undefined, undefined, TURNSTILE_ACTIONS.certificateValidation),
     ).resolves.toBeUndefined();
   });
 
@@ -25,7 +25,7 @@ describe('TurnstileService', () => {
     const service = new TurnstileService(configService({ TURNSTILE_ENABLED: 'false' }) as never);
 
     await expect(
-      service.assertValidToken(undefined, undefined, TURNSTILE_ACTIONS.majorEventSubscription),
+      service.assertValidToken(undefined, undefined, TURNSTILE_ACTIONS.certificateValidation),
     ).resolves.toBeUndefined();
   });
 
@@ -35,7 +35,7 @@ describe('TurnstileService', () => {
     );
 
     await expect(
-      service.assertValidToken('', undefined, TURNSTILE_ACTIONS.majorEventSubscription),
+      service.assertValidToken('', undefined, TURNSTILE_ACTIONS.certificateValidation),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -44,7 +44,7 @@ describe('TurnstileService', () => {
     const service = new TurnstileService(configService({ NODE_ENV: 'production' }) as never);
 
     await expect(
-      service.assertValidToken('token', undefined, TURNSTILE_ACTIONS.majorEventSubscription),
+      service.assertValidToken('token', undefined, TURNSTILE_ACTIONS.certificateValidation),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
@@ -53,7 +53,7 @@ describe('TurnstileService', () => {
       ok: true,
       json: jest.fn().mockResolvedValue({
         success: true,
-        action: TURNSTILE_ACTIONS.majorEventSubscription,
+        action: TURNSTILE_ACTIONS.certificateValidation,
         hostname: 'eventos.example.com',
       }),
     });
@@ -75,7 +75,7 @@ describe('TurnstileService', () => {
             'cf-connecting-ip': '203.0.113.10',
           },
         } as never,
-        TURNSTILE_ACTIONS.majorEventSubscription,
+        TURNSTILE_ACTIONS.certificateValidation,
       ),
     ).resolves.toBeUndefined();
 
@@ -96,7 +96,7 @@ describe('TurnstileService', () => {
       ok: true,
       json: jest.fn().mockResolvedValue({
         success: true,
-        action: TURNSTILE_ACTIONS.receiptUpload,
+        action: 'receipt_upload',
       }),
     }) as never;
     const service = new TurnstileService(
@@ -104,7 +104,7 @@ describe('TurnstileService', () => {
     );
 
     await expect(
-      service.assertValidToken('token', undefined, TURNSTILE_ACTIONS.majorEventSubscription),
+      service.assertValidToken('token', undefined, TURNSTILE_ACTIONS.certificateValidation),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

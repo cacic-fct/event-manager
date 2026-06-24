@@ -75,18 +75,14 @@
     <button
       mat-stroked-button
       type="button"
-      [disabled]="!canUnsubscribe(data) || isUnsubscribing()"
+      [disabled]="!canUnsubscribe(data) || isUnsubscribing() || standaloneSubscriptionCooldownSeconds() > 0"
       (click)="unsubscribe(data)">
       <mat-icon>event_busy</mat-icon>
       Cancelar inscrição
     </button>
     } @else if (hasStandaloneSubscription(event)) {
-    @if (isAuthenticated() && canSubscribe(data)) {
-    <div class="turnstile-action">
-      <lib-cloudflare-turnstile
-        [action]="standaloneSubscriptionTurnstileAction"
-        (tokenChange)="standaloneSubscriptionTurnstileToken.set($event)" />
-    </div>
+    @if (standaloneSubscriptionCooldownSeconds() > 0) {
+    <p class="rate-limit-message">Aguarde {{ standaloneSubscriptionCooldownSeconds() }}s para alterar sua inscrição novamente.</p>
     }
     <button
       mat-flat-button
@@ -95,7 +91,7 @@
         !isOnline() ||
         !canSubscribe(data) ||
         isSubscribing() ||
-        (isAuthenticated() && !standaloneSubscriptionTurnstileToken())
+        standaloneSubscriptionCooldownSeconds() > 0
       "
       (click)="subscribe(data)">
       <mat-icon>event_available</mat-icon>

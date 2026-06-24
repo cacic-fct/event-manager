@@ -38,6 +38,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { RateLimitError, createRateLimitCooldown } from '../shared/rate-limit-error';
 
 type ValidationState =
   | { status: 'idle' }
@@ -81,6 +82,8 @@ export class CertificateValidation {
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   private readonly turnstileWidget = viewChild(CloudflareTurnstileComponent);
+  private readonly validationCooldown = createRateLimitCooldown(this.destroyRef);
+  private readonly downloadCooldown = createRateLimitCooldown(this.destroyRef);
 
   private platformId = inject(PLATFORM_ID);
   private activeValidation: Subscription | null = null;
@@ -102,6 +105,8 @@ export class CertificateValidation {
   readonly downloadError = signal<string | null>(null);
   readonly turnstileAction = TURNSTILE_ACTIONS.certificateValidation;
   readonly turnstileToken = signal<string | null>(null);
+  readonly validationCooldownSeconds = this.validationCooldown.seconds;
+  readonly downloadCooldownSeconds = this.downloadCooldown.seconds;
 
   constructor() {
     combineLatest([this.route.paramMap, this.route.queryParamMap])
@@ -151,6 +156,14 @@ export class CertificateValidation {
 
   submit(source: ValidationSource = 'manual'): void {
     const certificateId = this.certificateIdControl.value.trim();
+    if (this.validationCooldownSeconds() > 0) {
+      this.state.set({
+        status: 'error',
+        message: `Aguarde ${this.validationCooldownSeconds()}s para validar outro certificado.`,
+      });
+      return;
+    }
+
     if (!certificateId) {
       this.certificateIdControl.markAsTouched();
       this.certificateIdControl.updateValueAndValidity();
@@ -172,6 +185,11 @@ export class CertificateValidation {
   }
 
   download(certificate: PublicCertificateValidation): void {
+    if (this.downloadCooldownSeconds() > 0) {
+      this.downloadError.set(`Aguarde ${this.downloadCooldownSeconds()}s para baixar novamente.`);
+      return;
+    }
+
     this.downloadError.set(null);
     this.downloading.set(true);
 
@@ -187,6 +205,9 @@ export class CertificateValidation {
           this.fileDownload.save(download);
         },
         error: (error: unknown) => {
+          if (error instanceof RateLimitError) {
+            this.downloadCooldown.start(error.retryAfterSeconds);
+          }
           this.downloadError.set(this.getDownloadErrorMessage(error));
         },
       });
@@ -312,11 +333,15 @@ export class CertificateValidation {
             certificate,
           });
         },
-        error: (error: unknown) =>
+        error: (error: unknown) => {
+          if (error instanceof RateLimitError) {
+            this.validationCooldown.start(error.retryAfterSeconds);
+          }
           this.state.set({
             status: 'error',
             message: this.getErrorMessage(error),
-          }),
+          });
+        },
       });
   }
 

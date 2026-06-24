@@ -7,8 +7,6 @@ import {
   effect,
   inject,
   signal,
-  untracked,
-  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,13 +19,13 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, CloudflareTurnstileComponent } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
-import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { filter, finalize, map } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
+import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
 import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from './subscription-api.service';
 import { SubscriptionEventList } from './subscription-event-list';
@@ -55,7 +53,6 @@ type SubscriptionPageState =
     MatToolbarModule,
     RouterLink,
     RouterOutlet,
-    CloudflareTurnstileComponent,
     SubscriptionEventList,
   ],
   templateUrl: './subscription.html',
@@ -72,13 +69,12 @@ export class MajorEventSubscription {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
-  private readonly turnstileWidget = viewChild(CloudflareTurnstileComponent);
+  private readonly subscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly isSubmitting = signal(false);
-  readonly turnstileAction = TURNSTILE_ACTIONS.majorEventSubscription;
-  readonly turnstileToken = signal<string | null>(null);
+  readonly subscriptionCooldownSeconds = this.subscriptionCooldown.seconds;
   readonly pageState = signal<SubscriptionPageState>({ status: 'loading' });
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
   readonly selectedEventIds = signal<Set<string>>(new Set());
@@ -186,8 +182,7 @@ export class MajorEventSubscription {
       this.initializedMajorEventId.set(null);
       this.pendingRealtimeDelta.set(null);
       this.selectedPriceTierName.set(null);
-      this.turnstileToken.set(null);
-      untracked(() => this.turnstileWidget()?.reset());
+      this.subscriptionCooldown.clear();
 
       const initialSubscription = this.api
         .getSubscriptionPage(majorEventId)
@@ -391,21 +386,18 @@ export class MajorEventSubscription {
   }
 
   private confirmSubscription(data: PublicMajorEventSubscriptionPage, paymentTier: string | null): void {
-    const turnstileToken = this.turnstileToken();
-    if (!turnstileToken) {
-      this.snackBar.open('Conclua a verificação anti-spam.', 'OK', { duration: 3000 });
+    if (this.subscriptionCooldownSeconds() > 0) {
+      this.snackBar.open(`Aguarde ${this.subscriptionCooldownSeconds()}s para alterar a inscrição.`, 'OK', {
+        duration: 3000,
+      });
       return;
     }
 
     this.isSubmitting.set(true);
     this.api
-      .upsertSubscription(data.majorEvent.id, [...this.effectiveSelectedEventIds()], paymentTier, turnstileToken)
+      .upsertSubscription(data.majorEvent.id, [...this.effectiveSelectedEventIds()], paymentTier)
       .pipe(
-        finalize(() => {
-          this.isSubmitting.set(false);
-          this.turnstileToken.set(null);
-          this.turnstileWidget()?.reset();
-        }),
+        finalize(() => this.isSubmitting.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -426,6 +418,9 @@ export class MajorEventSubscription {
           }
         },
         error: (error: unknown) => {
+          if (error instanceof RateLimitError) {
+            this.subscriptionCooldown.start(error.retryAfterSeconds);
+          }
           this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível concluir a inscrição.', 'OK', {
             duration: 5000,
           });

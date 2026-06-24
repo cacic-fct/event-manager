@@ -117,9 +117,9 @@
     </div>
     <mat-divider></mat-divider>
     } @if (canUpload()) {
-    <lib-cloudflare-turnstile
-      [action]="receiptUploadTurnstileAction"
-      (tokenChange)="turnstileToken.set($event)" />
+    @if (uploadCooldownSeconds() > 0) {
+    <p class="upload-cooldown">Aguarde {{ uploadCooldownSeconds() }}s para enviar outro comprovante.</p>
+    }
     <input
       #fileInput
       class="file-input"
@@ -131,7 +131,7 @@
       class="upload-box"
       type="button"
       [class.dragging]="isDragging()"
-      [disabled]="!turnstileToken()"
+      [disabled]="uploadCooldownSeconds() > 0"
       (click)="fileInput.click()"
       (dragover)="onDragOver($event)"
       (dragleave)="onDragLeave($event)"

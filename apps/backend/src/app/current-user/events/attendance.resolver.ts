@@ -1,9 +1,8 @@
 import { isValidCPF } from '@cacic-fct/shared-utils';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod } from '@prisma/client';
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
-import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import {
   ConfirmCurrentUserOnlineAttendanceInput,
   CurrentUserEventAttendance,
@@ -19,7 +18,9 @@ import { CurrentUserOnlineAttendanceRealtimeService } from './attendance-realtim
 import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
-import { TurnstileService } from '../../turnstile/turnstile.service';
+import { RateLimit } from '../../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 
 @Resolver()
 export class CurrentUserEventAttendanceResolver {
@@ -31,7 +32,6 @@ export class CurrentUserEventAttendanceResolver {
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
-    private readonly turnstile: TurnstileService,
   ) {}
 
   @Query(() => [CurrentUserEventAttendance], {
@@ -95,16 +95,13 @@ export class CurrentUserEventAttendanceResolver {
   @Mutation(() => CurrentUserEventAttendance, {
     name: 'confirmCurrentUserOnlineAttendance',
   })
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.onlineAttendanceConfirmation, [{ source: 'args', path: 'input.eventId' }])
   async confirmCurrentUserOnlineAttendance(
     @Args('input', { type: () => ConfirmCurrentUserOnlineAttendanceInput })
     input: ConfirmCurrentUserOnlineAttendanceInput,
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserEventAttendance> {
-    await this.turnstile.assertValidToken(
-      input.turnstileToken,
-      context.req ?? context.request,
-      TURNSTILE_ACTIONS.onlineAttendance,
-    );
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const normalizedCode = input.code.trim();
     if (!normalizedCode) {
