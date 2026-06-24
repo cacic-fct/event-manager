@@ -3,7 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import type { Permission } from '@cacic-fct/shared-permissions';
-import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError } from 'rxjs';
+import { EMPTY, Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError, timeout } from 'rxjs';
 import { AuthOnlineStatusService } from './auth-online-status.service';
 import { AuthenticatedUser, AuthRefreshResult } from './auth.types';
 import type { LoginOptions } from './auth.types';
@@ -16,6 +16,7 @@ export class AuthService {
   private readonly onboardingRefreshAttemptStorageKey = 'cacic-eventos:onboarding-refresh-attempted';
   private readonly silentSsoAttemptStorageKey = 'cacic-eventos:silent-sso-attempted';
   private readonly postLogoutRedirectStorageKey = 'cacic-eventos:post-logout-redirect';
+  private readonly accountTrackingSyncTimeoutMs = 2_000;
 
   private readonly http = inject(HttpClient);
   private readonly accountPrivacy = inject(CacicAccountPrivacyService);
@@ -100,22 +101,24 @@ export class AuthService {
           }),
         );
 
-        await this.clearAccountTrackingCookies();
         this.clearSession();
         this.markPostLogoutRedirect();
+        this.clearAccountTrackingCookiesBestEffort();
 
         if (logoutUrl) {
           window.location.assign(logoutUrl);
           return;
         }
 
+        window.location.assign(postLogoutRedirectUri);
+        return;
       } catch (error) {
         this.logUnexpectedAuthError('Logout failed', error);
       }
 
-      await this.clearAccountTrackingCookies();
       this.clearSession();
       this.markPostLogoutRedirect();
+      this.clearAccountTrackingCookiesBestEffort();
       window.location.assign(postLogoutRedirectUri);
       return;
     }
@@ -153,7 +156,7 @@ export class AuthService {
           tap((user) => {
             this.user.set(user);
             if (user) {
-              void this.refreshAccountTrackingCookies();
+              this.refreshAccountTrackingCookiesBestEffort();
             }
           }),
           tap((user) => this.scheduleRefreshFromUser(user)),
@@ -208,7 +211,7 @@ export class AuthService {
       if (user) {
         this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
         this.removeSessionStorageItem(this.postLogoutRedirectStorageKey);
-        void this.refreshAccountTrackingCookies();
+        this.refreshAccountTrackingCookiesBestEffort();
       }
 
       this.scheduleRefreshFromUser(user);
@@ -388,12 +391,25 @@ export class AuthService {
     return url.toString();
   }
 
-  private async refreshAccountTrackingCookies(): Promise<void> {
-    await firstValueFrom(this.accountPrivacy.refreshTrackingCookies());
+  private refreshAccountTrackingCookiesBestEffort(): void {
+    this.runAccountTrackingSyncBestEffort(() => this.accountPrivacy.refreshTrackingCookies());
   }
 
-  private async clearAccountTrackingCookies(): Promise<void> {
-    await firstValueFrom(this.accountPrivacy.clearTrackingCookies());
+  private clearAccountTrackingCookiesBestEffort(): void {
+    this.runAccountTrackingSyncBestEffort(() => this.accountPrivacy.clearTrackingCookies());
+  }
+
+  private runAccountTrackingSyncBestEffort(createRequest: () => Observable<unknown>): void {
+    try {
+      createRequest()
+        .pipe(
+          timeout({ first: this.accountTrackingSyncTimeoutMs }),
+          catchError(() => EMPTY),
+        )
+        .subscribe();
+    } catch {
+      return;
+    }
   }
 
   private clearRefreshTimer(): void {

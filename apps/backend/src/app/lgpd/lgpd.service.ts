@@ -62,6 +62,7 @@ export class LgpdService {
       receiptValidationActions,
       mergeOperations,
       mergeCandidates,
+      auditLogEntries,
     ] = await Promise.all([
       this.prisma.user.findMany({
         where: { id: { in: userIds } },
@@ -151,6 +152,10 @@ export class LgpdService {
         },
         orderBy: { createdAt: 'desc' },
       }) : Promise.resolve([]),
+      this.prisma.auditLogEntry.findMany({
+        where: this.buildAuditLogSubjectWhere(dataSubject),
+        orderBy: { lastRecordedAt: 'desc' },
+      }),
     ]);
 
     return {
@@ -175,6 +180,7 @@ export class LgpdService {
         accountUserMerges,
         externalAccountMergeOperations,
       },
+      auditHistory: { records: auditLogEntries },
     };
   }
 
@@ -332,47 +338,20 @@ export class LgpdService {
     dataSubject: DataSubjectResolution,
     anonymizedSubjectId: string,
   ): Promise<void> {
-    const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
-    const emails = this.getDataSubjectEmails(dataSubject.people);
-    const jsonIdentityConditions: Prisma.AuditLogEntryWhereInput[] = identifiers.flatMap((identifier) =>
-      [...AUDIT_IDENTITY_FIELDS].flatMap((field) => [
-        { before: { path: [field], equals: identifier } },
-        { after: { path: [field], equals: identifier } },
-      ]),
-    );
-    const eventAttendanceEntityConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap(
-      (personId) => [
-        {
-          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-          entityId: { startsWith: `${personId}:` },
-        },
-        {
-          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-          entityId: { startsWith: `${encodeURIComponent(personId)}:` },
-        },
-      ],
-    );
     const entries = await tx.auditLogEntry.findMany({
-      where: {
-        OR: [
-          { actorId: { in: dataSubject.userIds } },
-          ...(emails.length > 0 ? [{ actorEmail: { in: emails, mode: 'insensitive' as const } }] : []),
-          {
-            entityType: AuditLogEntityType.PERSON,
-            entityId: { in: dataSubject.personIds },
-          },
-          ...eventAttendanceEntityConditions,
-          ...jsonIdentityConditions,
-        ],
-      },
+      where: this.buildAuditLogSubjectWhere(dataSubject),
     });
+    const emails = this.getDataSubjectEmails(dataSubject.people);
+    const names = new Set(this.getDataSubjectNames(dataSubject.people).map((name) => name.toLowerCase()));
+    const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
     const sensitiveValues = this.getSensitiveAuditValues(dataSubject);
     const identityValues = new Set(identifiers);
 
     const auditEntryUpdates = entries.map((entry) => {
       const actorMatches =
         (entry.actorId != null && dataSubject.userIds.includes(entry.actorId)) ||
-        (entry.actorEmail != null && emails.includes(entry.actorEmail.toLowerCase()));
+        (entry.actorEmail != null && emails.includes(entry.actorEmail.toLowerCase())) ||
+        names.has(entry.actorName.toLowerCase());
       const entitySubjectMatches =
         (entry.entityType === AuditLogEntityType.PERSON && dataSubject.personIds.includes(entry.entityId)) ||
         this.isEventAttendanceAuditEntityForPerson(entry.entityType, entry.entityId, dataSubject.personIds);
@@ -430,6 +409,48 @@ export class LgpdService {
     });
 
     await Promise.all(auditEntryUpdates);
+  }
+
+  private buildAuditLogSubjectWhere(dataSubject: DataSubjectResolution): Prisma.AuditLogEntryWhereInput {
+    const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
+    const emails = this.getDataSubjectEmails(dataSubject.people);
+    const names = this.getDataSubjectNames(dataSubject.people);
+    const jsonIdentityConditions: Prisma.AuditLogEntryWhereInput[] = identifiers.flatMap((identifier) =>
+      [...AUDIT_IDENTITY_FIELDS].flatMap((field) => [
+        { before: { path: [field], equals: identifier } },
+        { after: { path: [field], equals: identifier } },
+      ]),
+    );
+    const eventAttendanceEntityConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap(
+      (personId) => [
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+          entityId: { startsWith: `${personId}:` },
+        },
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+          entityId: { startsWith: `${encodeURIComponent(personId)}:` },
+        },
+      ],
+    );
+
+    return {
+      OR: [
+        ...(dataSubject.userIds.length > 0 ? [{ actorId: { in: dataSubject.userIds } }] : []),
+        ...(emails.length > 0 ? [{ actorEmail: { in: emails, mode: 'insensitive' as const } }] : []),
+        ...(names.length > 0 ? [{ actorName: { in: names, mode: 'insensitive' as const } }] : []),
+        ...(dataSubject.personIds.length > 0
+          ? [
+              {
+                entityType: AuditLogEntityType.PERSON,
+                entityId: { in: dataSubject.personIds },
+              },
+            ]
+          : []),
+        ...eventAttendanceEntityConditions,
+        ...jsonIdentityConditions,
+      ],
+    };
   }
 
   private anonymizeAuditEntityId(
@@ -496,6 +517,16 @@ export class LgpdService {
           .flatMap((person) => [person.email, ...person.secondaryEmails, person.user?.email])
           .map((email) => this.normalizeEmail(email))
           .filter((email): email is string => Boolean(email)),
+      ),
+    ];
+  }
+
+  private getDataSubjectNames(people: DataSubjectResolution['people']): string[] {
+    return [
+      ...new Set(
+        people
+          .flatMap((person) => [person.name, person.user?.name])
+          .filter((name): name is string => typeof name === 'string' && name.length > 0),
       ),
     ];
   }

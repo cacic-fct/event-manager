@@ -19,7 +19,7 @@ type TestComponent = {
   isSuperAdmin: () => boolean;
   personalFeedUrl: () => string | null;
   rotateSuperAdminKey: () => Promise<void>;
-  setPersonalEnabled: (change: { checked: boolean; source: { checked: boolean } }) => void;
+  setPersonalEnabled: (change: { checked: boolean; source: { checked: boolean } }) => Promise<void>;
   superAdminFeedUrl: () => string | null;
 };
 
@@ -127,11 +127,61 @@ describe('WorkspacePreferencesTabComponent', () => {
     const { component } = await createComponent();
     const source = { checked: true };
 
-    component.setPersonalEnabled({ checked: true, source });
+    await component.setPersonalEnabled({ checked: true, source });
 
     expect(api.setCurrentUserAdminEnabled).toHaveBeenCalledWith(true);
     expect(source.checked).toBe(false);
     expect(snackBar.open).toHaveBeenCalledWith('Sem eventos atuais.', 'OK', { duration: 5000 });
+  });
+
+  it('asks before re-enabling and keeps the current admin link when selected', async () => {
+    roles.set(['admin']);
+    api.getCurrentUserAdminSettings.mockReturnValueOnce(of(disabledAdminSettingsFixture()));
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () => of('keep'),
+    });
+    const { component } = await createComponent();
+
+    await component.setPersonalEnabled({ checked: true, source: { checked: true } });
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({ feedName: 'o feed administrativo' }),
+      }),
+    );
+    expect(api.rotateCurrentUserAdminKey).not.toHaveBeenCalled();
+    expect(api.setCurrentUserAdminEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it('rotates the admin key before re-enabling when selected', async () => {
+    roles.set(['admin']);
+    api.getCurrentUserAdminSettings.mockReturnValueOnce(of(disabledAdminSettingsFixture()));
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () => of('rotate'),
+    });
+    const { component } = await createComponent();
+
+    await component.setPersonalEnabled({ checked: true, source: { checked: true } });
+
+    expect(api.rotateCurrentUserAdminKey).toHaveBeenCalledTimes(1);
+    expect(api.setCurrentUserAdminEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it('reverts the admin toggle when the re-enable dialog is canceled', async () => {
+    roles.set(['admin']);
+    api.getCurrentUserAdminSettings.mockReturnValueOnce(of(disabledAdminSettingsFixture()));
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () => of(false),
+    });
+    const { component } = await createComponent();
+    const source = { checked: true };
+
+    await component.setPersonalEnabled({ checked: true, source });
+
+    expect(source.checked).toBe(false);
+    expect(api.rotateCurrentUserAdminKey).not.toHaveBeenCalled();
+    expect(api.setCurrentUserAdminEnabled).not.toHaveBeenCalled();
   });
 
   it('confirms shared super-admin key rotation before reloading', async () => {
@@ -170,6 +220,15 @@ describe('WorkspacePreferencesTabComponent', () => {
     };
   }
 });
+
+function disabledAdminSettingsFixture(): CurrentUserAdminCalendarFeedSettings {
+  return adminSettingsFixture({
+    enabled: false,
+    feedPath: null,
+    disabledAt: '2026-06-23T12:00:00.000Z',
+    disabledReason: null,
+  });
+}
 
 function adminSettingsFixture(overrides: Partial<CurrentUserAdminCalendarFeedSettings> = {}): CurrentUserAdminCalendarFeedSettings {
   return {

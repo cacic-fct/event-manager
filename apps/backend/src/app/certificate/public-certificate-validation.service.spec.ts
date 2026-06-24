@@ -1,4 +1,5 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
+import { GraphQLISODateTime } from '@nestjs/graphql';
 import { PublicCertificateValidationService } from './public-certificate-validation.service';
 
 describe('PublicCertificateValidationService', () => {
@@ -16,6 +17,8 @@ describe('PublicCertificateValidationService', () => {
     const result = await service.validateCertificate('certificate-1');
 
     expect(result?.targetName).toBe('Evento publico');
+    expect(result?.issuedAt).toBe(issuedAt);
+    expect(GraphQLISODateTime.serialize(result?.issuedAt)).toBe('2026-06-01T12:00:00.000Z');
     expect(result?.sections).toEqual([
       {
         title: 'Evento',
@@ -25,13 +28,16 @@ describe('PublicCertificateValidationService', () => {
             id: 'visible-event',
             name: 'Evento publico',
             emoji: 'event',
-            startDate: visibleEvent.startDate.toISOString(),
-            endDate: visibleEvent.endDate.toISOString(),
+            startDate: visibleEvent.startDate,
+            endDate: visibleEvent.endDate,
             creditMinutes: 90,
           },
         ],
       },
     ]);
+    const [serializedEvent] = result?.sections[0]?.events ?? [];
+    expect(GraphQLISODateTime.serialize(serializedEvent?.startDate)).toBe('2026-06-01T13:00:00.000Z');
+    expect(GraphQLISODateTime.serialize(serializedEvent?.endDate)).toBe('2026-06-01T14:30:00.000Z');
     expect(result?.totalCreditMinutes).toBe(90);
 
     prisma.certificate.findFirst.mockResolvedValue(certificateRecord(issuedAt, hiddenEvent));

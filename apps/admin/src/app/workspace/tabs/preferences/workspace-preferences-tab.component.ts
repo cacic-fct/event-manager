@@ -11,7 +11,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, CalendarFeedReenableChoice, CalendarFeedReenableDialogComponent } from '@cacic-fct/shared-angular';
 import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import { Observable, catchError, combineLatest, finalize, firstValueFrom, map, of, startWith, switchMap } from 'rxjs';
 import {
@@ -104,14 +104,20 @@ export class WorkspacePreferencesTabComponent {
     this.reloadCounter.update((value) => value + 1);
   }
 
-  protected setPersonalEnabled(change: MatSlideToggleChange): void {
+  protected async setPersonalEnabled(change: MatSlideToggleChange): Promise<void> {
     if (this.isSavingPersonal()) {
       return;
     }
 
+    const reenableChoice =
+      change.checked && this.shouldConfirmPersonalReenable() ? await this.getPersonalReenableChoice() : 'keep';
+    if (!reenableChoice) {
+      change.source.checked = false;
+      return;
+    }
+
     this.isSavingPersonal.set(true);
-    this.api
-      .setCurrentUserAdminEnabled(change.checked)
+    this.setPersonalEnabledRequest(change.checked, reenableChoice)
       .pipe(
         finalize(() => this.isSavingPersonal.set(false)),
         takeUntilDestroyed(this.destroyRef),
@@ -238,6 +244,41 @@ export class WorkspacePreferencesTabComponent {
         );
       }),
     );
+  }
+
+  private getPersonalReenableChoice(): Promise<CalendarFeedReenableChoice | null> {
+    return firstValueFrom(
+      this.dialog
+        .open(CalendarFeedReenableDialogComponent, {
+          data: {
+            feedName: 'o feed administrativo',
+          },
+          width: '520px',
+        })
+        .afterClosed(),
+    ).then((choice: unknown) =>
+      choice === 'rotate' || choice === 'keep' ? choice : null,
+    );
+  }
+
+  private setPersonalEnabledRequest(
+    enabled: boolean,
+    reenableChoice: CalendarFeedReenableChoice,
+  ): Observable<CurrentUserAdminCalendarFeedSettings> {
+    if (!enabled) {
+      return this.api.setCurrentUserAdminEnabled(false);
+    }
+
+    if (reenableChoice === 'rotate') {
+      return this.api.rotateCurrentUserAdminKey().pipe(switchMap(() => this.api.setCurrentUserAdminEnabled(true)));
+    }
+
+    return this.api.setCurrentUserAdminEnabled(true);
+  }
+
+  private shouldConfirmPersonalReenable(): boolean {
+    const state = this.personalFeedState();
+    return state.status === 'ready' && !state.settings.enabled && Boolean(state.settings.disabledAt);
   }
 
   private createSuperAdminFeedState(): Observable<SuperAdminFeedState> {

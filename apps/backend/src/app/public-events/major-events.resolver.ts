@@ -1,9 +1,12 @@
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, UseGuards } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { PUBLIC_MAJOR_EVENT_SELECT, PublicMajorEvent, mapPublicMajorEvent } from './models';
 
@@ -18,8 +21,10 @@ export class PublicMajorEventsResolver {
   @Query(() => [PublicMajorEvent], {
     name: 'publicMajorEvents',
     description:
-      'Lists non-deleted public-facing major events for landing, search, and subscription entry points. Supports optional date range, text search, and pagination; results are ordered by newest start date unless search relevance is available.',
+      'Lists non-deleted public-facing major events for landing, search, and subscription entry points. Supports optional date range, text search, and pagination; results are ordered by newest start date unless search relevance is available. Rate limited to 60 requests per minute.',
   })
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.publicEvents)
   async publicMajorEvents(
     @Args('query', {
       type: () => String,
@@ -72,10 +77,10 @@ export class PublicMajorEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        const searchResult = await this.typesenseSearch.searchMajorEvents(
-          normalizedQuery,
-          pagination.skip + pagination.take,
-        );
+        const searchResult = await this.typesenseSearch.searchMajorEvents(normalizedQuery, {
+          limit: pagination.take,
+          offset: pagination.skip,
+        });
         if (searchResult.available) {
           prioritizedIds = searchResult.ids;
           if (prioritizedIds.length === 0) {
@@ -111,8 +116,7 @@ export class PublicMajorEventsResolver {
       .sort(
         (left, right) =>
           (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-      )
-      .slice(pagination.skip, pagination.skip + pagination.take);
+      );
   }
 
   @Query(() => PublicMajorEvent, {

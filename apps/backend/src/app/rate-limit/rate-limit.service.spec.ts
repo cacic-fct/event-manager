@@ -53,7 +53,7 @@ describe('RateLimitService', () => {
     expect(decision.wouldBlock).toBe(true);
   });
 
-  it('keys authenticated requests by user and preferred Cloudflare IP header', async () => {
+  it('keys authenticated requests by user without IP headers', async () => {
     const redis = {
       eval: jest.fn().mockResolvedValue([1, 1, 3, 0, 120, 0]),
     };
@@ -73,7 +73,74 @@ describe('RateLimitService', () => {
     });
 
     const expectedHash = createHash('sha256')
-      .update(`${policy.name}|user:user-1|ip:2001:db8::1|event-1`)
+      .update(`${policy.name}|user:user-1|event-1`)
+      .digest('hex');
+    expect(redis.eval).toHaveBeenCalledWith(
+      expect.any(String),
+      1,
+      `cacic:rate-limit:${policy.name}:${expectedHash}`,
+      expect.any(String),
+      policy.windowMs.toString(),
+      policy.freeAttempts.toString(),
+      '0',
+      policy.baseCooldownMs.toString(),
+      policy.maxCooldownMs.toString(),
+    );
+  });
+
+  it('keys authenticated requests by email without IP headers when sub is unavailable', async () => {
+    const redis = {
+      eval: jest.fn().mockResolvedValue([1, 1, 3, 0, 120, 0]),
+    };
+    const service = new RateLimitService(redis as unknown as Redis, configService('production') as never);
+
+    await service.consume({
+      policy,
+      request: {
+        headers: {
+          'cf-connecting-ip': '203.0.113.10',
+        },
+      } as never,
+      authenticatedUser: { email: 'user@example.com' } as never,
+      resourceParts: ['event-1'],
+    });
+
+    const expectedHash = createHash('sha256')
+      .update(`${policy.name}|email:user@example.com|event-1`)
+      .digest('hex');
+    expect(redis.eval).toHaveBeenCalledWith(
+      expect.any(String),
+      1,
+      `cacic:rate-limit:${policy.name}:${expectedHash}`,
+      expect.any(String),
+      policy.windowMs.toString(),
+      policy.freeAttempts.toString(),
+      '0',
+      policy.baseCooldownMs.toString(),
+      policy.maxCooldownMs.toString(),
+    );
+  });
+
+  it('keys anonymous requests by preferred Cloudflare IP header', async () => {
+    const redis = {
+      eval: jest.fn().mockResolvedValue([1, 1, 3, 0, 120, 0]),
+    };
+    const service = new RateLimitService(redis as unknown as Redis, configService('production') as never);
+
+    await service.consume({
+      policy,
+      request: {
+        headers: {
+          'cf-connecting-ipv6': '2001:db8::1',
+          'cf-connecting-ip': '203.0.113.10',
+          'cf-pseudo-ipv4': '192.0.2.44',
+        },
+      } as never,
+      resourceParts: ['event-1'],
+    });
+
+    const expectedHash = createHash('sha256')
+      .update(`${policy.name}|ip:2001:db8::1|event-1`)
       .digest('hex');
     expect(redis.eval).toHaveBeenCalledWith(
       expect.any(String),
