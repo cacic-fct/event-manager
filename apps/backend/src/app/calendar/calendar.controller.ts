@@ -5,10 +5,15 @@ import { Public } from '../auth/decorators/public.decorator';
 import { CalendarDownload } from './calendar.models';
 import { CalendarService } from './calendar.service';
 
+const ICALENDAR_RESPONSE_EXAMPLE =
+  'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//CACiC FCT//CACiC Eventos//PT-BR\r\nBEGIN:VEVENT\r\nSUMMARY:Oficina de TypeScript\r\nDTSTART:20260701T130000Z\r\nDTEND:20260701T150000Z\r\nEND:VEVENT\r\nEND:VCALENDAR';
+
 @ApiTags('Calendar')
 @Public()
 @Controller('calendar')
 export class CalendarController {
+  private readonly configuredPublicAppOrigin = this.readConfiguredPublicAppOrigin();
+
   constructor(private readonly calendars: CalendarService) {}
 
   @Get('events/:eventId.ics')
@@ -20,9 +25,17 @@ export class CalendarController {
   @ApiParam({
     name: 'eventId',
     description: 'Public event identifier.',
+    example: 'event_01jz0ev6c5w1kt2f0f8r6f0q7x',
   })
   @ApiProduces('text/calendar')
-  @ApiResponse({ status: 200, description: 'iCalendar file generated for the public event.' })
+  @ApiResponse({
+    status: 200,
+    description: 'iCalendar file generated for the public event.',
+    schema: {
+      type: 'string',
+      example: ICALENDAR_RESPONSE_EXAMPLE,
+    },
+  })
   async downloadPublicEventCalendar(
     @Param('eventId') eventId: string,
     @Req() request: Request,
@@ -41,9 +54,17 @@ export class CalendarController {
   @ApiParam({
     name: 'feedKey',
     description: 'Long private calendar feed key generated for one user.',
+    example: 'jEjZmuQLMUP00vg2oMz5Gt5F2cVr9SzUwN9jOxy9gFXeTWNaeMpd3UoZ8uM0K1KFY66OOpNfKg1cVim41LqN8Q',
   })
   @ApiProduces('text/calendar')
-  @ApiResponse({ status: 200, description: 'Private iCalendar feed generated for the key owner.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Private iCalendar feed generated for the key owner.',
+    schema: {
+      type: 'string',
+      example: ICALENDAR_RESPONSE_EXAMPLE,
+    },
+  })
   async downloadPrivateUserCalendarFeed(
     @Param('feedKey') feedKey: string,
     @Req() request: Request,
@@ -62,9 +83,17 @@ export class CalendarController {
   @ApiParam({
     name: 'feedKey',
     description: 'Long private administrative calendar feed key generated for one admin user.',
+    example: 'l3pfU9NsasNe0S8oPd2kF2P4TEUvJx85n2CVWmFxEQLjEvXSipxHk49e6ksfS4CoXtdAAosbNUZPtuUFkB93_g',
   })
   @ApiProduces('text/calendar')
-  @ApiResponse({ status: 200, description: 'Private admin iCalendar feed generated for the key owner.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Private admin iCalendar feed generated for the key owner.',
+    schema: {
+      type: 'string',
+      example: ICALENDAR_RESPONSE_EXAMPLE,
+    },
+  })
   async downloadPrivateAdminCalendarFeed(
     @Param('feedKey') feedKey: string,
     @Req() request: Request,
@@ -83,9 +112,17 @@ export class CalendarController {
   @ApiParam({
     name: 'feedKey',
     description: 'Long shared private calendar feed key for super-admin users.',
+    example: 'W9PrrUZAuAVyJXJHh4cRXMu88XB0vqz8f3KSCdA_jzAMVG0fYryYLzRohXoz2X8YROpRp8Rh8Su5sr7mLjCzNQ',
   })
   @ApiProduces('text/calendar')
-  @ApiResponse({ status: 200, description: 'Shared super-admin iCalendar feed generated for the key.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Shared super-admin iCalendar feed generated for the key.',
+    schema: {
+      type: 'string',
+      example: ICALENDAR_RESPONSE_EXAMPLE,
+    },
+  })
   async downloadSuperAdminCalendarFeed(
     @Param('feedKey') feedKey: string,
     @Req() request: Request,
@@ -103,16 +140,22 @@ export class CalendarController {
   }
 
   private getRequestOrigin(request: Request): string {
-    const forwardedProto = this.readForwardedHeader(request, 'x-forwarded-proto')?.split(',')[0]?.trim();
-    const forwardedHost = this.readForwardedHeader(request, 'x-forwarded-host')?.split(',')[0]?.trim();
-    const protocol = forwardedProto || request.protocol;
-    const host = forwardedHost || request.get('host') || 'localhost';
+    if (this.configuredPublicAppOrigin) {
+      return this.configuredPublicAppOrigin;
+    }
+
+    const protocol = request.protocol;
+    const host = request.get('host') || 'localhost';
 
     return `${protocol}://${host}`;
   }
 
-  private readForwardedHeader(request: Request, header: string): string | undefined {
-    const value = request.headers[header];
-    return Array.isArray(value) ? value[0] : value;
+  private readConfiguredPublicAppOrigin(): string | null {
+    const rawOrigin = process.env.PUBLIC_APP_ORIGIN?.trim();
+    if (!rawOrigin) {
+      return null;
+    }
+
+    return new URL(rawOrigin).origin;
   }
 }

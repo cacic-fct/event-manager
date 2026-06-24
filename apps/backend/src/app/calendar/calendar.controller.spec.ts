@@ -1,7 +1,18 @@
 import { CalendarController } from './calendar.controller';
 
 describe('CalendarController', () => {
-  it('downloads public event calendars with forwarded origin and public cache headers', async () => {
+  const originalPublicAppOrigin = process.env.PUBLIC_APP_ORIGIN;
+
+  afterEach(() => {
+    if (originalPublicAppOrigin === undefined) {
+      delete process.env.PUBLIC_APP_ORIGIN;
+    } else {
+      process.env.PUBLIC_APP_ORIGIN = originalPublicAppOrigin;
+    }
+  });
+
+  it('downloads public event calendars with the configured public origin and public cache headers', async () => {
+    process.env.PUBLIC_APP_ORIGIN = 'https://eventos.cacic.dev.br/app';
     const calendars = {
       buildPublicEventCalendar: jest.fn().mockResolvedValue({
         content: 'BEGIN:VCALENDAR',
@@ -29,6 +40,33 @@ describe('CalendarController', () => {
     expect(response.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="oficina.ics"');
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=3600');
     expect(response.send).toHaveBeenCalledWith('BEGIN:VCALENDAR');
+  });
+
+  it('ignores forged forwarded origin headers when no public origin is configured', async () => {
+    delete process.env.PUBLIC_APP_ORIGIN;
+    const calendars = {
+      buildPublicEventCalendar: jest.fn().mockResolvedValue({
+        content: 'BEGIN:VCALENDAR',
+        fileName: 'oficina.ics',
+      }),
+    };
+    const controller = new CalendarController(calendars as never);
+    const response = createResponse();
+
+    await controller.downloadPublicEventCalendar(
+      'event-1',
+      createRequest({
+        protocol: 'http',
+        host: 'internal.local',
+        headers: {
+          'x-forwarded-proto': 'https',
+          'x-forwarded-host': 'evil.example',
+        },
+      }),
+      response as never,
+    );
+
+    expect(calendars.buildPublicEventCalendar).toHaveBeenCalledWith('event-1', 'http://internal.local');
   });
 
   it('downloads private user feeds with private cache headers', async () => {

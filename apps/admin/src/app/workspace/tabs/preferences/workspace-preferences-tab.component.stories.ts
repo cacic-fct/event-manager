@@ -343,10 +343,10 @@ function feedPath(kind: CalendarFeedProfile, args: WorkspacePreferencesStoryArgs
   const token = faker.string.uuid();
 
   if (kind === 'super-admin') {
-    return `/api/calendar/super-admin-feed/${calendarSlug}.ics?key=${token}`;
+    return `/api/calendar/admin/super-admin/${encodeURIComponent(`${calendarSlug}-${token}`)}.ics`;
   }
 
-  return `/api/calendar/admin-feed/${calendarSlug}.ics?key=${token}`;
+  return `/api/calendar/admin/feeds/${encodeURIComponent(`${calendarSlug}-${token}`)}.ics`;
 }
 
 function storySeed(args: WorkspacePreferencesStoryArgs, offset = 0): number {

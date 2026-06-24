@@ -51,12 +51,18 @@ export class CalendarPreferences {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly snackBar = inject(MatSnackBar);
   private readonly reloadCounter = signal(0);
+  private readonly settingsOverride = signal<CurrentUserCalendarFeedSettings | null>(null);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private readonly loadedSettingsState = toSignal(this.createSettingsState(), {
+    initialValue: { status: 'loading' } satisfies CalendarPreferencesState,
+  });
 
   readonly isSaving = signal(false);
   readonly isRotating = signal(false);
-  readonly settingsState = toSignal(this.createSettingsState(), {
-    initialValue: { status: 'loading' } satisfies CalendarPreferencesState,
+  readonly settingsState = computed(() => {
+    const state = this.loadedSettingsState();
+    const settings = this.settingsOverride();
+    return state.status === 'ready' && settings ? ({ status: 'ready', settings } satisfies CalendarPreferencesState) : state;
   });
   readonly feedUrl = computed(() => {
     const state = this.settingsState();
@@ -68,6 +74,7 @@ export class CalendarPreferences {
   });
 
   reload(): void {
+    this.settingsOverride.set(null);
     this.reloadCounter.update((value) => value + 1);
   }
 
@@ -84,11 +91,11 @@ export class CalendarPreferences {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
+        next: (settings) => {
+          this.settingsOverride.set(settings);
           this.snackBar.open(change.checked ? 'Feed do calendário ativado.' : 'Feed do calendário desativado.', 'OK', {
             duration: 3000,
           });
-          this.reload();
         },
         error: (error: unknown) => {
           change.source.checked = !change.checked;
@@ -110,22 +117,26 @@ export class CalendarPreferences {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
+        next: (settings) => {
+          this.settingsOverride.set(settings);
           this.snackBar.open('Chave do calendário rotacionada.', 'OK', { duration: 3000 });
-          this.reload();
         },
         error: (error: unknown) => this.showError(error),
       });
   }
 
-  copyFeedUrl(): void {
+  async copyFeedUrl(): Promise<void> {
     const url = this.feedUrl();
     if (!url || !this.isBrowser || !navigator.clipboard) {
       return;
     }
 
-    void navigator.clipboard.writeText(url);
-    this.snackBar.open('Link do calendário copiado.', 'OK', { duration: 3000 });
+    try {
+      await navigator.clipboard.writeText(url);
+      this.snackBar.open('Link do calendário copiado.', 'OK', { duration: 3000 });
+    } catch {
+      this.snackBar.open('Não foi possível copiar o link do calendário.', 'OK', { duration: 5000 });
+    }
   }
 
   disabledReasonMessage(settings: CurrentUserCalendarFeedSettings): string | null {

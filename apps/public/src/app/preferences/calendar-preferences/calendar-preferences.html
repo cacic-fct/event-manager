@@ -81,6 +81,13 @@
               <div matListItemTitle>Link privado indisponível</div>
             </mat-list-item>
           </mat-list>
+
+          <div class="feed-actions">
+            <button mat-stroked-button type="button" [disabled]="isRotating()" (click)="rotateKey()">
+              <mat-icon>sync</mat-icon>
+              Gerar novo link
+            </button>
+          </div>
         }
       </section>
     }

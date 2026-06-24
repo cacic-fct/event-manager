@@ -114,6 +114,39 @@ describe('CurrentUserContextService', () => {
     );
   });
 
+  it('refreshes last login when returning an existing matched user', async () => {
+    const authenticatedUser = createAuthenticatedUser();
+    const staleUser = createUserRecord({
+      lastLoginAt: new Date('2024-06-23T12:00:00.000Z'),
+    });
+    const refreshedUser = createUserRecord({
+      lastLoginAt: new Date('2026-06-23T12:00:00.000Z'),
+    });
+    const linkedPerson = createPersonRecord({
+      userId: refreshedUser.id,
+      user: refreshedUser,
+    });
+
+    prisma.user.findUnique.mockResolvedValue(staleUser);
+    prisma.user.update.mockResolvedValue(refreshedUser);
+    prisma.people.findMany.mockResolvedValue([linkedPerson]);
+
+    const result = await service.resolveCurrentUserContext(authenticatedUser, true);
+
+    expect(result.user).toEqual(refreshedUser);
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: {
+        id: 'keycloak-sub',
+      },
+      data: expect.objectContaining({
+        lastLoginAt: expect.any(Date),
+      }),
+      select: expect.objectContaining({
+        lastLoginAt: true,
+      }),
+    });
+  });
+
   it('matches an existing person by email before creating a new person', async () => {
     const authenticatedUser = createAuthenticatedUser();
     const user = createUserRecord();
@@ -364,6 +397,8 @@ function createAuthenticatedUser(overrides: Partial<AuthenticatedUser> = {}): Au
 }
 
 function createUserRecord(overrides: Partial<UserRecord> = {}): UserRecord {
+  const { lastLoginAt = null, ...rest } = overrides;
+
   return {
     id: 'keycloak-sub',
     email: 'student@example.edu',
@@ -372,11 +407,12 @@ function createUserRecord(overrides: Partial<UserRecord> = {}): UserRecord {
     academicId: '20240001',
     unespRole: ['aluno-graduacao'],
     role: 'USER',
+    lastLoginAt,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     createdById: null,
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedById: null,
-    ...overrides,
+    ...rest,
   };
 }
 

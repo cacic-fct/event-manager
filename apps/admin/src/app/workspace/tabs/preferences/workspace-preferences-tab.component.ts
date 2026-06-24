@@ -35,6 +35,7 @@ type SuperAdminFeedState =
   | { status: 'error'; message: string };
 
 const NO_CURRENT_TARGETS_DISABLED_REASON = 'NO_CURRENT_ADMIN_TARGETS';
+const STALE_ADMIN_ACCESS_DISABLED_REASON = 'STALE_ADMIN_ACCESS';
 
 @Component({
   selector: 'app-workspace-preferences-tab',
@@ -64,17 +65,29 @@ export class WorkspacePreferencesTabComponent {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly snackBar = inject(MatSnackBar);
   private readonly reloadCounter = signal(0);
+  private readonly personalFeedSettingsOverride = signal<CurrentUserAdminCalendarFeedSettings | null>(null);
+  private readonly superAdminFeedSettingsOverride = signal<SuperAdminCalendarFeedSettings | null>(null);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private readonly personalFeedStateSource = toSignal(this.createPersonalFeedState(), {
+    initialValue: { status: 'loading' } satisfies PersonalFeedState,
+  });
+  private readonly superAdminFeedStateSource = toSignal(this.createSuperAdminFeedState(), {
+    initialValue: { status: 'hidden' } satisfies SuperAdminFeedState,
+  });
 
   protected readonly isSavingPersonal = signal(false);
   protected readonly isRotatingPersonal = signal(false);
   protected readonly isRotatingSuperAdmin = signal(false);
   protected readonly isSuperAdmin = computed(() => this.auth.roles().includes(EventManagerKeycloakRole.SuperAdmin));
-  protected readonly personalFeedState = toSignal(this.createPersonalFeedState(), {
-    initialValue: { status: 'loading' } satisfies PersonalFeedState,
+  protected readonly personalFeedState = computed(() => {
+    const state = this.personalFeedStateSource();
+    const settings = this.personalFeedSettingsOverride();
+    return state.status === 'ready' && settings ? ({ status: 'ready', settings } satisfies PersonalFeedState) : state;
   });
-  protected readonly superAdminFeedState = toSignal(this.createSuperAdminFeedState(), {
-    initialValue: { status: 'hidden' } satisfies SuperAdminFeedState,
+  protected readonly superAdminFeedState = computed(() => {
+    const state = this.superAdminFeedStateSource();
+    const settings = this.superAdminFeedSettingsOverride();
+    return state.status === 'ready' && settings ? ({ status: 'ready', settings } satisfies SuperAdminFeedState) : state;
   });
   protected readonly personalFeedUrl = computed(() => {
     const state = this.personalFeedState();
@@ -86,6 +99,8 @@ export class WorkspacePreferencesTabComponent {
   });
 
   protected reload(): void {
+    this.personalFeedSettingsOverride.set(null);
+    this.superAdminFeedSettingsOverride.set(null);
     this.reloadCounter.update((value) => value + 1);
   }
 
@@ -102,11 +117,11 @@ export class WorkspacePreferencesTabComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
+        next: (settings) => {
+          this.personalFeedSettingsOverride.set(settings);
           this.snackBar.open(change.checked ? 'Feed administrativo ativado.' : 'Feed administrativo desativado.', 'OK', {
             duration: 3000,
           });
-          this.reload();
         },
         error: (error: unknown) => {
           change.source.checked = !change.checked;
@@ -128,9 +143,9 @@ export class WorkspacePreferencesTabComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
+        next: (settings) => {
+          this.personalFeedSettingsOverride.set(settings);
           this.snackBar.open('Chave do feed administrativo rotacionada.', 'OK', { duration: 3000 });
-          this.reload();
         },
         error: (error: unknown) => this.showError(error, 'Não foi possível rotacionar a chave.'),
       });
@@ -166,26 +181,34 @@ export class WorkspacePreferencesTabComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
+        next: (settings) => {
+          this.superAdminFeedSettingsOverride.set(settings);
           this.snackBar.open('Chave compartilhada dos super-admins rotacionada.', 'OK', { duration: 3500 });
-          this.reload();
         },
         error: (error: unknown) => this.showError(error, 'Não foi possível rotacionar a chave compartilhada.'),
       });
   }
 
-  protected copyFeedUrl(url: string | null): void {
+  protected async copyFeedUrl(url: string | null): Promise<void> {
     if (!url || !this.isBrowser || !navigator.clipboard) {
       return;
     }
 
-    void navigator.clipboard.writeText(url);
-    this.snackBar.open('Link do calendário copiado.', 'OK', { duration: 3000 });
+    try {
+      await navigator.clipboard.writeText(url);
+      this.snackBar.open('Link do calendário copiado.', 'OK', { duration: 3000 });
+    } catch {
+      this.snackBar.open('Não foi possível copiar o link do calendário.', 'OK', { duration: 5000 });
+    }
   }
 
   protected disabledReasonMessage(settings: CurrentUserAdminCalendarFeedSettings): string | null {
     if (settings.disabledReason === NO_CURRENT_TARGETS_DISABLED_REASON) {
       return 'O feed foi desativado automaticamente porque não havia eventos, grupos ou grandes eventos atuais sob sua responsabilidade.';
+    }
+
+    if (settings.disabledReason === STALE_ADMIN_ACCESS_DISABLED_REASON) {
+      return 'O feed foi desativado automaticamente porque seu acesso administrativo não foi confirmado recentemente.';
     }
 
     return null;

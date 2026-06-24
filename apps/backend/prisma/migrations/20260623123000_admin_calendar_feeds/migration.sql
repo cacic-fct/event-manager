@@ -1,6 +1,6 @@
 CREATE TABLE "user_admin_calendar_feed_settings" (
     "userId" TEXT NOT NULL,
-    "feedKey" TEXT NOT NULL,
+    "feedKeyHash" TEXT NOT NULL,
     "enabled" BOOLEAN NOT NULL DEFAULT false,
     "disabledAt" TIMESTAMP(3),
     "disabledReason" TEXT,
@@ -15,7 +15,7 @@ CREATE TABLE "user_admin_calendar_feed_settings" (
 
 CREATE TABLE "super_admin_calendar_feed_settings" (
     "id" TEXT NOT NULL,
-    "feedKey" TEXT NOT NULL,
+    "feedKeyHash" TEXT NOT NULL,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
     "lastFetchedAt" TIMESTAMP(3),
     "rotatedAt" TIMESTAMP(3),
@@ -25,11 +25,11 @@ CREATE TABLE "super_admin_calendar_feed_settings" (
     CONSTRAINT "super_admin_calendar_feed_settings_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "user_admin_calendar_feed_settings_feedKey_key" ON "user_admin_calendar_feed_settings"("feedKey");
+CREATE UNIQUE INDEX "user_admin_calendar_feed_settings_feedKeyHash_key" ON "user_admin_calendar_feed_settings"("feedKeyHash");
 CREATE INDEX "user_admin_calendar_feed_settings_enabled_idx" ON "user_admin_calendar_feed_settings"("enabled");
 CREATE INDEX "user_admin_calendar_feed_settings_lastCheckedAt_idx" ON "user_admin_calendar_feed_settings"("lastCheckedAt");
 CREATE INDEX "user_admin_calendar_feed_settings_lastFetchedAt_idx" ON "user_admin_calendar_feed_settings"("lastFetchedAt");
-CREATE UNIQUE INDEX "super_admin_calendar_feed_settings_feedKey_key" ON "super_admin_calendar_feed_settings"("feedKey");
+CREATE UNIQUE INDEX "super_admin_calendar_feed_settings_feedKeyHash_key" ON "super_admin_calendar_feed_settings"("feedKeyHash");
 CREATE INDEX "super_admin_calendar_feed_settings_enabled_idx" ON "super_admin_calendar_feed_settings"("enabled");
 CREATE INDEX "super_admin_calendar_feed_settings_lastFetchedAt_idx" ON "super_admin_calendar_feed_settings"("lastFetchedAt");
 

@@ -110,6 +110,8 @@
     "test": {
       "executor": "@angular/build:unit-test",
       "options": {
+        "buildTarget": "public:build-application:development",
+        "isolate": true,
         "watch": false,
         "coverage": true
       }

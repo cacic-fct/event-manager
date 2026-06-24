@@ -24,12 +24,11 @@ export class CookieBannerSyncService {
     });
   }
 
-  acceptCookieBanner(): Observable<boolean> {
+  acceptCookieBanner(syncedUserId = this.auth.user()?.sub): Observable<boolean> {
     return this.http.post<{ synced: boolean }>('/api/privacy/cookie-banner/accept', {}).pipe(
       tap((response) => {
-        const userId = this.auth.user()?.sub;
-        if (response.synced && userId) {
-          this.markSynced(userId);
+        if (response.synced && syncedUserId) {
+          this.markSynced(syncedUserId);
         }
       }),
       map((response) => response.synced),
@@ -43,7 +42,7 @@ export class CookieBannerSyncService {
     }
 
     this.syncingUserIds.add(userId);
-    this.acceptCookieBanner().subscribe({
+    this.acceptCookieBanner(userId).subscribe({
       next: () => this.syncingUserIds.delete(userId),
       error: () => this.syncingUserIds.delete(userId),
     });

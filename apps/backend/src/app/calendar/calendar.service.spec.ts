@@ -4,6 +4,7 @@ import { EventManagerPermissionGrantScope } from '@prisma/client';
 import { CalendarService } from './calendar.service';
 import {
   ADMIN_CALENDAR_FEED_DISABLED_NO_CURRENT_TARGETS,
+  ADMIN_CALENDAR_FEED_DISABLED_STALE_ACCESS,
   CALENDAR_FEED_DISABLED_BY_USER,
   CALENDAR_FEED_DISABLED_STALE_LOGIN,
   SUPER_ADMIN_CALENDAR_FEED_ID,
@@ -107,7 +108,7 @@ describe('CalendarService', () => {
         findUnique: jest.fn().mockResolvedValue({
           userId: 'user-1',
           enabled: true,
-          feedKey: 'private-key',
+          feedKeyHash: 'hashed-private-key',
           lastFetchedAt: null,
           user: {
             name: 'Student',
@@ -141,7 +142,7 @@ describe('CalendarService', () => {
     const prisma = createPrismaMock({
       userCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
-          feedKey: 'disabled-key',
+          feedKeyHash: 'hashed-disabled-key',
           enabled: false,
           disabledAt: now,
           disabledReason: CALENDAR_FEED_DISABLED_BY_USER,
@@ -186,7 +187,7 @@ describe('CalendarService', () => {
         findUnique: jest.fn().mockResolvedValue({
           userId: 'user-1',
           enabled: true,
-          feedKey: 'private-key',
+          feedKeyHash: 'hashed-private-key',
           lastFetchedAt: null,
           user: {
             name: 'Student',
@@ -256,7 +257,58 @@ describe('CalendarService', () => {
         userId: 'admin-user',
       },
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyHash: true,
+        lastCheckedAt: true,
+      }),
+    });
+  });
+
+  it('refreshes current admin feed access checks when settings are read by an authenticated admin', async () => {
+    const prisma = createPrismaMock({
+      userAdminCalendarFeedSettings: {
+        findUnique: jest.fn().mockResolvedValue({
+          feedKeyHash: 'hashed-admin-key',
+          enabled: true,
+          disabledAt: null,
+          disabledReason: null,
+          lastFetchedAt: null,
+          lastCheckedAt: new Date('2026-06-22T12:00:00.000Z'),
+          rotatedAt: null,
+          updatedAt: now,
+        }),
+        update: jest.fn().mockResolvedValue({
+          feedKeyHash: 'hashed-admin-key',
+          enabled: true,
+          disabledAt: null,
+          disabledReason: null,
+          lastFetchedAt: null,
+          lastCheckedAt: now,
+          rotatedAt: null,
+          updatedAt: now,
+        }),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    await expect(service.getCurrentUserAdminCalendarFeedSettings('admin-user')).resolves.toEqual({
+      enabled: true,
+      feedPath: null,
+      disabledAt: null,
+      disabledReason: null,
+      lastFetchedAt: null,
+      lastCheckedAt: now,
+      rotatedAt: null,
+      updatedAt: now,
+    });
+
+    expect(prisma.userAdminCalendarFeedSettings.update).toHaveBeenCalledWith({
+      where: {
+        userId: 'admin-user',
+      },
+      data: {
+        lastCheckedAt: now,
+      },
+      select: expect.objectContaining({
         lastCheckedAt: true,
       }),
     });
@@ -267,7 +319,7 @@ describe('CalendarService', () => {
       userAdminCalendarFeedSettings: {
         updateManyAndReturn: jest.fn().mockResolvedValue([
           {
-            feedKey: 'admin key/with slash',
+            feedKeyHash: 'hashed-admin-key',
             enabled: false,
             disabledAt: now,
             disabledReason: CALENDAR_FEED_DISABLED_BY_USER,
@@ -303,7 +355,7 @@ describe('CalendarService', () => {
         lastCheckedAt: now,
       },
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyHash: true,
         lastCheckedAt: true,
       }),
     });
@@ -347,7 +399,7 @@ describe('CalendarService', () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         upsert: jest.fn().mockResolvedValue({
-          feedKey: 'enabled-key',
+          feedKeyHash: 'hashed-enabled-key',
           enabled: true,
           disabledAt: null,
           disabledReason: null,
@@ -376,7 +428,7 @@ describe('CalendarService', () => {
 
     await expect(service.setCurrentUserAdminCalendarFeedEnabled('admin-user', true)).resolves.toEqual({
       enabled: true,
-      feedPath: '/api/calendar/admin/feeds/enabled-key.ics',
+      feedPath: expect.stringMatching(/^\/api\/calendar\/admin\/feeds\/[^/]+\.ics$/),
       disabledAt: null,
       disabledReason: null,
       lastFetchedAt: null,
@@ -404,16 +456,19 @@ describe('CalendarService', () => {
         userId: 'admin-user',
         enabled: true,
         lastCheckedAt: now,
-        feedKey: expect.any(String),
+        feedKeyHash: expect.any(String),
       }),
       update: {
+        feedKeyHash: expect.any(String),
         enabled: true,
         disabledAt: null,
         disabledReason: null,
+        lastFetchedAt: null,
         lastCheckedAt: now,
+        rotatedAt: now,
       },
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyHash: true,
         lastCheckedAt: true,
       }),
     });
@@ -425,13 +480,24 @@ describe('CalendarService', () => {
       id: 'admin-event-1',
       name: 'Reunião interna',
     };
+    const adminEventGroupWithPastEvent = {
+      ...adminEventGroup,
+      events: [
+        {
+          startDate: new Date('2026-06-01T13:00:00.000Z'),
+          endDate: new Date('2026-06-01T15:00:00.000Z'),
+        },
+        ...adminEventGroup.events,
+      ],
+    };
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
           userId: 'admin-user',
           enabled: true,
-          feedKey: 'admin-key',
+          feedKeyHash: 'hashed-admin-key',
           lastFetchedAt: null,
+          lastCheckedAt: now,
           user: {
             name: 'Admin User',
           },
@@ -441,21 +507,21 @@ describe('CalendarService', () => {
       eventManagerPermissionGrant: {
         findMany: jest.fn().mockResolvedValue([
           {
-            permission: Permission.Event.Update,
+            permission: Permission.Event.Read,
             scope: EventManagerPermissionGrantScope.EVENT,
             eventId: 'admin-event-1',
             majorEventId: null,
             eventGroupId: null,
           },
           {
-            permission: Permission.EventGroup.Update,
+            permission: Permission.EventGroup.Read,
             scope: EventManagerPermissionGrantScope.EVENT_GROUP,
             eventId: null,
             majorEventId: null,
             eventGroupId: 'group-1',
           },
           {
-            permission: Permission.MajorEvent.Update,
+            permission: Permission.MajorEvent.Read,
             scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
             eventId: null,
             majorEventId: 'major-1',
@@ -467,7 +533,7 @@ describe('CalendarService', () => {
         findMany: jest.fn().mockResolvedValue([adminOnlyEvent]),
       },
       eventGroup: {
-        findMany: jest.fn().mockResolvedValue([adminEventGroup]),
+        findMany: jest.fn().mockResolvedValue([adminEventGroupWithPastEvent]),
       },
       majorEvent: {
         findMany: jest.fn().mockResolvedValue([adminMajorEvent]),
@@ -482,7 +548,7 @@ describe('CalendarService', () => {
         userId: 'admin-user',
         deletedAt: null,
         permission: {
-          in: expect.arrayContaining([Permission.Event.Read, Permission.Event.Update, Permission.MajorEvent.Delete]),
+          in: [Permission.Event.Read, Permission.EventGroup.Read, Permission.MajorEvent.Read],
         },
         OR: [{ validFrom: null }, { validFrom: { lte: now } }],
         AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
@@ -522,6 +588,9 @@ describe('CalendarService', () => {
     expect(download.content).toContain('SUMMARY:Reunião interna');
     expect(download.content).toContain('SUMMARY:Trilha de oficinas');
     expect(download.content).toContain('SUMMARY:Congresso CACiC');
+    expect(download.content).toContain('DTSTART:20260901T130000Z');
+    expect(download.content).toContain('DTEND:20260902T150000Z');
+    expect(download.content).not.toContain('DTSTART:20260601T130000Z');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/events/admin-event-1');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/groups/group-1');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/major-events/major-1');
@@ -534,8 +603,9 @@ describe('CalendarService', () => {
         findUnique: jest.fn().mockResolvedValue({
           userId: 'admin-user',
           enabled: true,
-          feedKey: 'admin-key',
+          feedKeyHash: 'hashed-admin-key',
           lastFetchedAt: now,
+          lastCheckedAt: now,
           user: {
             name: 'Admin User',
           },
@@ -581,14 +651,55 @@ describe('CalendarService', () => {
     expect(download.content).not.toContain('SUMMARY:Trilha de oficinas');
   });
 
+  it('disables private admin feeds when authenticated admin access was not checked recently', async () => {
+    const prisma = createPrismaMock({
+      userAdminCalendarFeedSettings: {
+        findUnique: jest.fn().mockResolvedValue({
+          userId: 'admin-user',
+          enabled: true,
+          feedKeyHash: 'hashed-admin-key',
+          lastFetchedAt: null,
+          lastCheckedAt: new Date('2026-06-22T11:59:59.000Z'),
+          user: {
+            name: 'Admin User',
+          },
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      eventManagerPermissionGrant: {
+        findMany: jest.fn(),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    await expect(service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.dev.br')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+    expect(prisma.userAdminCalendarFeedSettings.updateMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'admin-user',
+        enabled: true,
+      },
+      data: {
+        enabled: false,
+        disabledAt: now,
+        disabledReason: ADMIN_CALENDAR_FEED_DISABLED_STALE_ACCESS,
+        lastCheckedAt: now,
+      },
+    });
+  });
+
   it('disables private admin feeds when no current permission target remains', async () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
           userId: 'admin-user',
           enabled: true,
-          feedKey: 'admin-key',
+          feedKeyHash: 'hashed-admin-key',
           lastFetchedAt: null,
+          lastCheckedAt: now,
           user: {
             name: 'Admin User',
           },
@@ -623,7 +734,7 @@ describe('CalendarService', () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         findMany: jest.fn().mockResolvedValue([{ userId: 'past-admin' }, { userId: 'current-admin' }]),
-        update: jest.fn().mockResolvedValue({ userId: 'current-admin' }),
+        update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       eventManagerPermissionGrant: {
@@ -660,24 +771,14 @@ describe('CalendarService', () => {
         }),
       }),
     );
-    expect(prisma.userAdminCalendarFeedSettings.update).toHaveBeenCalledWith({
-      where: {
-        userId: 'current-admin',
-      },
-      data: {
-        lastCheckedAt: now,
-      },
-      select: {
-        userId: true,
-      },
-    });
+    expect(prisma.userAdminCalendarFeedSettings.update).not.toHaveBeenCalled();
   });
 
-  it('gets or creates shared super-admin feed settings with an enabled feed path', async () => {
+  it('gets or creates shared super-admin feed settings without exposing stored keys', async () => {
     const prisma = createPrismaMock({
       superAdminCalendarFeedSettings: {
         upsert: jest.fn().mockResolvedValue({
-          feedKey: 'super key/with slash',
+          feedKeyHash: 'hashed-super-key',
           enabled: true,
           lastFetchedAt: null,
           rotatedAt: null,
@@ -689,7 +790,7 @@ describe('CalendarService', () => {
 
     await expect(service.getSuperAdminCalendarFeedSettings()).resolves.toEqual({
       enabled: true,
-      feedPath: '/api/calendar/admin/super-admin/super%20key%2Fwith%20slash.ics',
+      feedPath: null,
       lastFetchedAt: null,
       rotatedAt: null,
       updatedAt: now,
@@ -702,13 +803,13 @@ describe('CalendarService', () => {
       create: expect.objectContaining({
         id: SUPER_ADMIN_CALENDAR_FEED_ID,
         enabled: true,
-        feedKey: expect.any(String),
+        feedKeyHash: expect.any(String),
       }),
       update: {
         enabled: true,
       },
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyHash: true,
       }),
     });
   });
@@ -720,7 +821,7 @@ describe('CalendarService', () => {
           rotatedAt: new Date('2026-06-21T12:00:00.000Z'),
         }),
         upsert: jest.fn().mockResolvedValue({
-          feedKey: 'rotated-super-key',
+          feedKeyHash: 'hashed-rotated-super-key',
           enabled: true,
           lastFetchedAt: null,
           rotatedAt: now,
@@ -732,7 +833,7 @@ describe('CalendarService', () => {
 
     await expect(service.rotateSuperAdminCalendarFeedKey()).resolves.toEqual({
       enabled: true,
-      feedPath: '/api/calendar/admin/super-admin/rotated-super-key.ics',
+      feedPath: expect.stringMatching(/^\/api\/calendar\/admin\/super-admin\/[^/]+\.ics$/),
       lastFetchedAt: null,
       rotatedAt: now,
       updatedAt: now,
@@ -746,16 +847,16 @@ describe('CalendarService', () => {
         id: SUPER_ADMIN_CALENDAR_FEED_ID,
         enabled: true,
         rotatedAt: now,
-        feedKey: expect.any(String),
+        feedKeyHash: expect.any(String),
       }),
       update: expect.objectContaining({
         enabled: true,
         lastFetchedAt: null,
         rotatedAt: now,
-        feedKey: expect.any(String),
+        feedKeyHash: expect.any(String),
       }),
       select: expect.objectContaining({
-        feedKey: true,
+        feedKeyHash: true,
       }),
     });
   });
@@ -782,7 +883,7 @@ describe('CalendarService', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: SUPER_ADMIN_CALENDAR_FEED_ID,
           enabled: true,
-          feedKey: 'super-key',
+          feedKeyHash: 'hashed-super-key',
           lastFetchedAt: new Date('2026-06-23T10:00:00.000Z'),
         }),
         updateMany: jest.fn(),
@@ -852,7 +953,7 @@ describe('CalendarService', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: SUPER_ADMIN_CALENDAR_FEED_ID,
           enabled: true,
-          feedKey: 'super-key',
+          feedKeyHash: 'hashed-super-key',
           lastFetchedAt: new Date('2026-06-22T10:00:00.000Z'),
         }),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -868,7 +969,7 @@ describe('CalendarService', () => {
     expect(prisma.superAdminCalendarFeedSettings.updateMany).toHaveBeenCalledWith({
       where: {
         id: SUPER_ADMIN_CALENDAR_FEED_ID,
-        feedKey: 'super-key',
+        feedKeyHash: 'hashed-super-key',
         enabled: true,
       },
       data: {

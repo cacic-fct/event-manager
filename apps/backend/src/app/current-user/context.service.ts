@@ -304,10 +304,7 @@ export class CurrentUserContextService {
 
   private async backfillMatchedUser(user: UserRecord, authenticatedUser: AuthenticatedUser): Promise<UserRecord> {
     const data = this.authenticatedUserSync.buildUserUpdateData(user, authenticatedUser);
-
-    if (Object.keys(data).length === 0) {
-      return user;
-    }
+    data.lastLoginAt = new Date();
 
     return this.prisma.user.update({
       where: {

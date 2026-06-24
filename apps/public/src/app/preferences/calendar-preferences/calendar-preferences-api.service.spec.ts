@@ -79,6 +79,14 @@ describe('CalendarPreferencesApiService', () => {
 
     await expect(responsePromise).rejects.toThrow('Feed indisponível.\nTente novamente.');
   });
+
+  it('throws when the GraphQL response is missing data', async () => {
+    const responsePromise = firstValueFrom(service.setEnabled(true));
+
+    httpTesting.expectOne('/api/graphql').flush({});
+
+    await expect(responsePromise).rejects.toThrow('Resposta GraphQL sem dados.');
+  });
 });
 
 function settingsFixture(overrides: Record<string, unknown> = {}) {

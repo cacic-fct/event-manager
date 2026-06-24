@@ -115,6 +115,13 @@
                   <span matListItemTitle>Link privado indisponível</span>
                 </mat-list-item>
               </mat-list>
+
+              <div class="actions">
+                <button mat-stroked-button type="button" [disabled]="isRotatingPersonal()" (click)="rotatePersonalKey()">
+                  <mat-icon>sync</mat-icon>
+                  Gerar novo link
+                </button>
+              </div>
             }
           }
         }
@@ -152,6 +159,20 @@
                   Baixar feed
                 </a>
               }
+              <button mat-flat-button type="button" [disabled]="isRotatingSuperAdmin()" (click)="rotateSuperAdminKey()">
+                <mat-icon>sync_problem</mat-icon>
+                Invalidar para todos
+              </button>
+            </div>
+          } @else {
+            <mat-list>
+              <mat-list-item>
+                <mat-icon matListItemIcon>link_off</mat-icon>
+                <span matListItemTitle>Link compartilhado indisponível</span>
+              </mat-list-item>
+            </mat-list>
+
+            <div class="actions">
               <button mat-flat-button type="button" [disabled]="isRotatingSuperAdmin()" (click)="rotateSuperAdminKey()">
                 <mat-icon>sync_problem</mat-icon>
                 Invalidar para todos

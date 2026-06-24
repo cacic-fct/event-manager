@@ -1,3 +1,5 @@
+import { provideRouter } from '@angular/router';
+import { applicationConfig } from '@storybook/angular';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { Preferences } from './preferences';
@@ -10,6 +12,11 @@ const meta: Meta<Preferences> = {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
   },
+  decorators: [
+    applicationConfig({
+      providers: [provideRouter([])],
+    }),
+  ],
 };
 
 export default meta;

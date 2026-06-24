@@ -6,6 +6,33 @@ describe('CalendarResolver', () => {
   const authenticatedUser = { sub: 'keycloak|admin-user' };
   const user = { id: 'admin-user' };
 
+  it('delegates private calendar feed operations for regular users', async () => {
+    const { calendars, currentUserContext, resolver } = createResolver();
+    currentUserContext.getAuthenticatedUser.mockReturnValue(authenticatedUser);
+    currentUserContext.resolveCurrentUserContext.mockResolvedValue({ user });
+    calendars.getCurrentUserCalendarFeedSettings.mockResolvedValue({ enabled: true });
+    calendars.setCurrentUserCalendarFeedEnabled.mockResolvedValue({ enabled: false });
+    calendars.rotateCurrentUserCalendarFeedKey.mockResolvedValue({ enabled: true });
+
+    await expect(resolver.currentUserCalendarFeedSettings(context)).resolves.toEqual({ enabled: true });
+    await expect(resolver.setCurrentUserCalendarFeedEnabled(false, context)).resolves.toEqual({ enabled: false });
+    await expect(resolver.rotateCurrentUserCalendarFeedKey(context)).resolves.toEqual({ enabled: true });
+
+    expect(calendars.getCurrentUserCalendarFeedSettings).toHaveBeenCalledWith('admin-user');
+    expect(calendars.setCurrentUserCalendarFeedEnabled).toHaveBeenCalledWith('admin-user', false);
+    expect(calendars.rotateCurrentUserCalendarFeedKey).toHaveBeenCalledWith('admin-user');
+  });
+
+  it('rejects private calendar feed operations when the current user cannot be resolved', async () => {
+    const { calendars, currentUserContext, resolver } = createResolver();
+    currentUserContext.getAuthenticatedUser.mockReturnValue(authenticatedUser);
+    currentUserContext.resolveCurrentUserContext.mockResolvedValue({ user: null });
+
+    await expect(resolver.currentUserCalendarFeedSettings(context)).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(calendars.getCurrentUserCalendarFeedSettings).not.toHaveBeenCalled();
+  });
+
   it('delegates personal admin feed settings for current non-super-admin event managers', async () => {
     const { authorizationPolicy, calendars, currentUserContext, resolver } = createResolver();
     authorizationPolicy.hasEventManagerAccess.mockReturnValue(true);
@@ -86,6 +113,9 @@ function createResolver() {
     isSuperAdmin: jest.fn(),
   };
   const calendars = {
+    getCurrentUserCalendarFeedSettings: jest.fn(),
+    setCurrentUserCalendarFeedEnabled: jest.fn(),
+    rotateCurrentUserCalendarFeedKey: jest.fn(),
     getCurrentUserAdminCalendarFeedSettings: jest.fn(),
     setCurrentUserAdminCalendarFeedEnabled: jest.fn(),
     rotateCurrentUserAdminCalendarFeedKey: jest.fn(),

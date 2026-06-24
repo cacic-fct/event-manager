@@ -86,6 +86,12 @@ describe('WorkspacePreferencesTabComponent', () => {
         disabledReason: 'NO_CURRENT_ADMIN_TARGETS',
       }),
     ).toContain('não havia eventos');
+    expect(
+      component.disabledReasonMessage({
+        ...adminSettingsFixture(),
+        disabledReason: 'STALE_ADMIN_ACCESS',
+      }),
+    ).toContain('acesso administrativo');
   });
 
   it('hides the personal admin feed URL while the feed is disabled', async () => {

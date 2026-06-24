@@ -32,8 +32,7 @@ export class CalendarResolver {
 
   @Mutation(() => CurrentUserCalendarFeedSettings, {
     name: 'setCurrentUserCalendarFeedEnabled',
-    description:
-      'Enable or disable the current user private calendar feed. Re-enabling preserves any existing private key.',
+    description: 'Enable or disable the current user private calendar feed. Enabling issues a new private key.',
   })
   async setCurrentUserCalendarFeedEnabled(
     @Args('enabled', {
@@ -71,7 +70,7 @@ export class CalendarResolver {
   @Mutation(() => CurrentUserAdminCalendarFeedSettings, {
     name: 'setCurrentUserAdminCalendarFeedEnabled',
     description:
-      'Enable or disable the current admin private calendar feed. Re-enabling preserves any existing private key.',
+      'Enable or disable the current admin private calendar feed. Enabling issues a new private key.',
   })
   async setCurrentUserAdminCalendarFeedEnabled(
     @Args('enabled', {

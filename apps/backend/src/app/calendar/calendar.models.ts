@@ -3,6 +3,7 @@ import { Field, ObjectType } from '@nestjs/graphql';
 export const CALENDAR_FEED_DISABLED_STALE_LOGIN = 'STALE_LOGIN';
 export const CALENDAR_FEED_DISABLED_BY_USER = 'USER_DISABLED';
 export const ADMIN_CALENDAR_FEED_DISABLED_NO_CURRENT_TARGETS = 'NO_CURRENT_ADMIN_TARGETS';
+export const ADMIN_CALENDAR_FEED_DISABLED_STALE_ACCESS = 'STALE_ADMIN_ACCESS';
 export const SUPER_ADMIN_CALENDAR_FEED_ID = 'super-admin';
 export const CALENDAR_FEED_MAINTENANCE_QUEUE = 'calendar-feed-maintenance';
 export const DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB = 'disable-stale-admin-calendar-feeds';
@@ -18,7 +19,8 @@ export class CurrentUserCalendarFeedSettings {
 
   @Field(() => String, {
     nullable: true,
-    description: 'Private feed path. The frontend turns this into an absolute URL before showing it to the user.',
+    description:
+      'Private feed path revealed only immediately after a key is created or rotated. The frontend turns this into an absolute URL.',
   })
   feedPath?: string | null;
 
@@ -64,7 +66,8 @@ export class CurrentUserAdminCalendarFeedSettings {
 
   @Field(() => String, {
     nullable: true,
-    description: 'Private admin feed path. The frontend turns this into an absolute URL before showing it.',
+    description:
+      'Private admin feed path revealed only immediately after a key is created or rotated. The frontend turns this into an absolute URL.',
   })
   feedPath?: string | null;
 
@@ -116,7 +119,8 @@ export class SuperAdminCalendarFeedSettings {
 
   @Field(() => String, {
     nullable: true,
-    description: 'Shared super-admin feed path. Rotating it invalidates the calendar for all super-admin users.',
+    description:
+      'Shared super-admin feed path revealed only immediately after a key is created or rotated. Rotating it invalidates the calendar for all super-admin users.',
   })
   feedPath?: string | null;
 
