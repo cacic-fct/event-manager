@@ -33,7 +33,20 @@ export const authInterceptor: HttpInterceptorFn = (
 };
 
 function shouldSkipRefresh(req: HttpRequest<unknown>): boolean {
+  const url = getRequestUrl(req.url);
+  if (!url || url.origin !== window.location.origin || !url.pathname.startsWith('/api/')) {
+    return true;
+  }
+
   return (
-    req.url.includes('/api/auth/refresh') || req.url.includes('/api/auth/me') || req.url.includes('/api/auth/logout')
+    url.pathname === '/api/auth/refresh' || url.pathname === '/api/auth/me' || url.pathname === '/api/auth/logout'
   );
+}
+
+function getRequestUrl(url: string): URL | null {
+  try {
+    return new URL(url, window.location.origin);
+  } catch {
+    return null;
+  }
 }
