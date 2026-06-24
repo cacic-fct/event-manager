@@ -7,6 +7,7 @@ describe('workspace nav', () => {
     expect(findWorkspaceNavItemForUrl('/workspace/subscriptions').id).toBe('subscriptions');
     expect(findWorkspaceNavItemForUrl('/workspace/attendances/event/event-1').id).toBe('attendances');
     expect(findWorkspaceNavItemForUrl('/workspace/permissions?tab=scopes').id).toBe('permissions');
+    expect(findWorkspaceNavItemForUrl('/workspace/preferences').id).toBe('preferences');
   });
 
   it('uses unique ids for repeated divider entries', () => {

@@ -79,6 +79,15 @@ type TypesenseNodeConfig = {
 };
 
 const TYPESENSE_MAX_PER_PAGE = 250;
+const TYPESENSE_COLLECTION_PREFIX = 'cacic_event_manager_';
+const TYPESENSE_COLLECTIONS = {
+  events: `${TYPESENSE_COLLECTION_PREFIX}events`,
+  majorEvents: `${TYPESENSE_COLLECTION_PREFIX}major_events`,
+  eventGroups: `${TYPESENSE_COLLECTION_PREFIX}event_groups`,
+  people: `${TYPESENSE_COLLECTION_PREFIX}people`,
+  placePresets: `${TYPESENSE_COLLECTION_PREFIX}place_presets`,
+  certificateTemplates: `${TYPESENSE_COLLECTION_PREFIX}certificate_templates`,
+} as const;
 
 @Injectable()
 export class TypesenseSearchService implements OnModuleInit {
@@ -107,7 +116,7 @@ export class TypesenseSearchService implements OnModuleInit {
 
   async searchEvents(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<EventSearchDocument>(
-      'events',
+      TYPESENSE_COLLECTIONS.events,
       query,
       'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
       options,
@@ -115,16 +124,21 @@ export class TypesenseSearchService implements OnModuleInit {
   }
 
   async searchMajorEvents(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
-    return this.searchDocumentIds<MajorEventSearchDocument>('major_events', query, 'name,description', options);
+    return this.searchDocumentIds<MajorEventSearchDocument>(
+      TYPESENSE_COLLECTIONS.majorEvents,
+      query,
+      'name,description',
+      options,
+    );
   }
 
   async searchEventGroups(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
-    return this.searchDocumentIds<EventGroupSearchDocument>('event_groups', query, 'name', options);
+    return this.searchDocumentIds<EventGroupSearchDocument>(TYPESENSE_COLLECTIONS.eventGroups, query, 'name', options);
   }
 
   async searchPeople(query: string, take = 50): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<PersonSearchDocument>(
-      'people',
+      TYPESENSE_COLLECTIONS.people,
       query,
       'name,email,secondaryEmails,phone,identityDocument,academicId',
       take,
@@ -133,7 +147,7 @@ export class TypesenseSearchService implements OnModuleInit {
 
   async searchPlacePresets(query: string, take = 50): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<PlacePresetSearchDocument>(
-      'place_presets',
+      TYPESENSE_COLLECTIONS.placePresets,
       query,
       'name,locationDescription',
       take,
@@ -145,7 +159,7 @@ export class TypesenseSearchService implements OnModuleInit {
     options: number | TypesenseSearchOptions = 50,
   ): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<CertificateTemplateSearchDocument>(
-      'certificate_templates',
+      TYPESENSE_COLLECTIONS.certificateTemplates,
       query,
       'name,description',
       options,
@@ -176,7 +190,7 @@ export class TypesenseSearchService implements OnModuleInit {
       this.resolveEventGroupContext(input.eventGroupId),
     ]);
 
-    await this.upsertDocument<EventSearchDocument>('events', {
+    await this.upsertDocument<EventSearchDocument>(TYPESENSE_COLLECTIONS.events, {
       id: input.id,
       name: input.name,
       emoji: input.emoji,
@@ -201,7 +215,7 @@ export class TypesenseSearchService implements OnModuleInit {
   }
 
   async deleteEvent(id: string): Promise<void> {
-    await this.deleteDocument('events', id);
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.events, id);
   }
 
   async upsertMajorEvent(input: {
@@ -215,7 +229,7 @@ export class TypesenseSearchService implements OnModuleInit {
       return;
     }
 
-    await this.upsertDocument<MajorEventSearchDocument>('major_events', {
+    await this.upsertDocument<MajorEventSearchDocument>(TYPESENSE_COLLECTIONS.majorEvents, {
       id: input.id,
       name: input.name,
       description: this.toOptionalString(input.description),
@@ -226,7 +240,7 @@ export class TypesenseSearchService implements OnModuleInit {
   }
 
   async deleteMajorEvent(id: string): Promise<void> {
-    await this.deleteDocument('major_events', id);
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.majorEvents, id);
     await this.reindexEventsByMajorEventId(id);
   }
 
@@ -235,7 +249,7 @@ export class TypesenseSearchService implements OnModuleInit {
       return;
     }
 
-    await this.upsertDocument<EventGroupSearchDocument>('event_groups', {
+    await this.upsertDocument<EventGroupSearchDocument>(TYPESENSE_COLLECTIONS.eventGroups, {
       id: input.id,
       name: input.name,
     });
@@ -243,7 +257,7 @@ export class TypesenseSearchService implements OnModuleInit {
   }
 
   async deleteEventGroup(id: string): Promise<void> {
-    await this.deleteDocument('event_groups', id);
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.eventGroups, id);
     await this.reindexEventsByEventGroupId(id);
   }
 
@@ -257,7 +271,7 @@ export class TypesenseSearchService implements OnModuleInit {
     academicId?: string | null;
     userId?: string | null;
   }): Promise<void> {
-    await this.upsertDocument<PersonSearchDocument>('people', {
+    await this.upsertDocument<PersonSearchDocument>(TYPESENSE_COLLECTIONS.people, {
       id: input.id,
       name: input.name,
       email: this.toOptionalString(input.email),
@@ -270,7 +284,7 @@ export class TypesenseSearchService implements OnModuleInit {
   }
 
   async deletePerson(id: string): Promise<void> {
-    await this.deleteDocument('people', id);
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.people, id);
   }
 
   async upsertPlacePreset(input: {
@@ -278,7 +292,7 @@ export class TypesenseSearchService implements OnModuleInit {
     name: string;
     locationDescription?: string | null;
   }): Promise<void> {
-    await this.upsertDocument<PlacePresetSearchDocument>('place_presets', {
+    await this.upsertDocument<PlacePresetSearchDocument>(TYPESENSE_COLLECTIONS.placePresets, {
       id: input.id,
       name: input.name,
       locationDescription: this.toOptionalString(input.locationDescription),
@@ -286,7 +300,7 @@ export class TypesenseSearchService implements OnModuleInit {
   }
 
   async deletePlacePreset(id: string): Promise<void> {
-    await this.deleteDocument('place_presets', id);
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.placePresets, id);
   }
 
   async upsertCertificateTemplate(input: {
@@ -296,7 +310,7 @@ export class TypesenseSearchService implements OnModuleInit {
     version: number;
     isActive: boolean;
   }): Promise<void> {
-    await this.upsertDocument<CertificateTemplateSearchDocument>('certificate_templates', {
+    await this.upsertDocument<CertificateTemplateSearchDocument>(TYPESENSE_COLLECTIONS.certificateTemplates, {
       id: input.id,
       name: input.name,
       description: this.toOptionalString(input.description),
@@ -306,7 +320,7 @@ export class TypesenseSearchService implements OnModuleInit {
   }
 
   async deleteCertificateTemplate(id: string): Promise<void> {
-    await this.deleteDocument('certificate_templates', id);
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.certificateTemplates, id);
   }
 
   private buildClient(): TypesenseClient | null {
@@ -382,7 +396,7 @@ export class TypesenseSearchService implements OnModuleInit {
     }
 
     const schemas = [
-      this.createCollectionSchema('events', [
+      this.createCollectionSchema(TYPESENSE_COLLECTIONS.events, [
         { name: 'id', type: 'string' },
         { name: 'name', type: 'string' },
         { name: 'emoji', type: 'string', optional: true },
@@ -399,18 +413,18 @@ export class TypesenseSearchService implements OnModuleInit {
         { name: 'publiclyVisible', type: 'bool', optional: true, facet: true },
         { name: 'isIssuableCertificateEvent', type: 'bool', optional: true, facet: true },
       ]),
-      this.createCollectionSchema('major_events', [
+      this.createCollectionSchema(TYPESENSE_COLLECTIONS.majorEvents, [
         { name: 'id', type: 'string' },
         { name: 'name', type: 'string' },
         { name: 'description', type: 'string', optional: true },
         { name: 'startDate', type: 'int64', sort: true },
         { name: 'endDate', type: 'int64', sort: true },
       ]),
-      this.createCollectionSchema('event_groups', [
+      this.createCollectionSchema(TYPESENSE_COLLECTIONS.eventGroups, [
         { name: 'id', type: 'string' },
         { name: 'name', type: 'string' },
       ]),
-      this.createCollectionSchema('people', [
+      this.createCollectionSchema(TYPESENSE_COLLECTIONS.people, [
         { name: 'id', type: 'string' },
         { name: 'name', type: 'string' },
         { name: 'email', type: 'string', optional: true },
@@ -420,12 +434,12 @@ export class TypesenseSearchService implements OnModuleInit {
         { name: 'academicId', type: 'string', optional: true, facet: true },
         { name: 'userId', type: 'string', optional: true, facet: true },
       ]),
-      this.createCollectionSchema('place_presets', [
+      this.createCollectionSchema(TYPESENSE_COLLECTIONS.placePresets, [
         { name: 'id', type: 'string' },
         { name: 'name', type: 'string' },
         { name: 'locationDescription', type: 'string', optional: true },
       ]),
-      this.createCollectionSchema('certificate_templates', [
+      this.createCollectionSchema(TYPESENSE_COLLECTIONS.certificateTemplates, [
         { name: 'id', type: 'string' },
         { name: 'name', type: 'string' },
         { name: 'description', type: 'string', optional: true },
@@ -560,7 +574,7 @@ export class TypesenseSearchService implements OnModuleInit {
 
     await Promise.all([
       this.replaceCollectionDocuments<EventSearchDocument>(
-        'events',
+        TYPESENSE_COLLECTIONS.events,
         events.map((event) => ({
           id: event.id,
           name: event.name,
@@ -580,7 +594,7 @@ export class TypesenseSearchService implements OnModuleInit {
         })),
       ),
       this.replaceCollectionDocuments<MajorEventSearchDocument>(
-        'major_events',
+        TYPESENSE_COLLECTIONS.majorEvents,
         majorEvents.map((majorEvent) => ({
           id: majorEvent.id,
           name: majorEvent.name,
@@ -590,14 +604,14 @@ export class TypesenseSearchService implements OnModuleInit {
         })),
       ),
       this.replaceCollectionDocuments<EventGroupSearchDocument>(
-        'event_groups',
+        TYPESENSE_COLLECTIONS.eventGroups,
         eventGroups.map((eventGroup) => ({
           id: eventGroup.id,
           name: eventGroup.name,
         })),
       ),
       this.replaceCollectionDocuments<PersonSearchDocument>(
-        'people',
+        TYPESENSE_COLLECTIONS.people,
         people.map((person) => ({
           id: person.id,
           name: person.name,
@@ -610,7 +624,7 @@ export class TypesenseSearchService implements OnModuleInit {
         })),
       ),
       this.replaceCollectionDocuments<PlacePresetSearchDocument>(
-        'place_presets',
+        TYPESENSE_COLLECTIONS.placePresets,
         placePresets.map((placePreset) => ({
           id: placePreset.id,
           name: placePreset.name,
@@ -618,7 +632,7 @@ export class TypesenseSearchService implements OnModuleInit {
         })),
       ),
       this.replaceCollectionDocuments<CertificateTemplateSearchDocument>(
-        'certificate_templates',
+        TYPESENSE_COLLECTIONS.certificateTemplates,
         certificateTemplates.map((certificateTemplate) => ({
           id: certificateTemplate.id,
           name: certificateTemplate.name,
@@ -681,7 +695,7 @@ export class TypesenseSearchService implements OnModuleInit {
 
     await Promise.all(
       events.map((event) =>
-        this.upsertDocument<EventSearchDocument>('events', {
+        this.upsertDocument<EventSearchDocument>(TYPESENSE_COLLECTIONS.events, {
           id: event.id,
           name: event.name,
           emoji: event.emoji,

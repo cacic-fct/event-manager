@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import type { People } from '@prisma/client';
 import { MergeCandidateOperationsService } from './operations.service';
 
 describe('MergeCandidateOperationsService', () => {
@@ -346,16 +347,16 @@ function createTransaction() {
   };
 }
 
-type PersonMock = ReturnType<typeof personShape>;
+type PersonMock = People;
 
-function person(overrides: Partial<PersonMock>): PersonMock {
+function person(overrides: Partial<PersonMock> = {}): PersonMock {
   return {
     ...personShape(),
     ...overrides,
   };
 }
 
-function personShape() {
+function personShape(): PersonMock {
   return {
     id: 'person-a',
     name: 'Person Name',

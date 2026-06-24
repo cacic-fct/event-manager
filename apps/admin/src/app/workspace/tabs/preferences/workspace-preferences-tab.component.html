@@ -1,0 +1,213 @@
+<section class="section workspace-tab-shell">
+  <section class="panel panel-stack">
+    <div class="panel-heading">
+      <div>
+        <h3>Preferências</h3>
+        <p>Ajustes administrativos da sua conta no Event Manager.</p>
+      </div>
+    </div>
+
+    <div class="two-columns">
+      <mat-nav-list aria-label="Preferências administrativas">
+        <mat-list-item aria-current="page">
+          <mat-icon matListItemIcon>calendar_month</mat-icon>
+          <span matListItemTitle>Calendário</span>
+          <span matListItemLine>Feeds privados de calendário</span>
+        </mat-list-item>
+      </mat-nav-list>
+
+      <section class="surface panel-stack">
+        <div class="surface-heading">
+          <div>
+            <h4>Calendário</h4>
+            <span>Feeds iCal com eventos administrados por você.</span>
+          </div>
+        </div>
+
+        @let personalState = personalFeedState();
+        @let superState = superAdminFeedState();
+
+        @if (personalState.status === 'loading' || superState.status === 'loading') {
+          <mat-progress-bar mode="indeterminate" />
+        }
+
+        @if (personalState.status === 'error') {
+          <mat-list>
+            <mat-list-item>
+              <mat-icon matListItemIcon>error</mat-icon>
+              <span matListItemTitle>{{ personalState.message }}</span>
+              <button matIconButton matListItemMeta type="button" matTooltip="Tentar novamente" (click)="reload()">
+                <mat-icon>refresh</mat-icon>
+              </button>
+            </mat-list-item>
+          </mat-list>
+        }
+
+        @if (superState.status === 'error') {
+          <mat-list>
+            <mat-list-item>
+              <mat-icon matListItemIcon>error</mat-icon>
+              <span matListItemTitle>{{ superState.message }}</span>
+              <button matIconButton matListItemMeta type="button" matTooltip="Tentar novamente" (click)="reload()">
+                <mat-icon>refresh</mat-icon>
+              </button>
+            </mat-list-item>
+          </mat-list>
+        }
+
+        @if (personalState.status === 'ready') {
+          @let settings = personalState.settings;
+          @let url = personalFeedUrl();
+
+          <mat-list>
+            <h3 matSubheader>Feed administrativo</h3>
+            <mat-list-item>
+              <mat-icon matListItemIcon>calendar_month</mat-icon>
+              <span matListItemTitle>Feed privado</span>
+              <span matListItemLine>Eventos, grupos e grandes eventos atuais sob sua responsabilidade.</span>
+              <mat-slide-toggle
+                matListItemMeta
+                aria-label="Ativar feed administrativo"
+                [checked]="settings.enabled"
+                [disabled]="isSavingPersonal()"
+                (change)="setPersonalEnabled($event)" />
+            </mat-list-item>
+          </mat-list>
+
+          @if (disabledReasonMessage(settings); as disabledMessage) {
+            <mat-list>
+              <mat-list-item>
+                <mat-icon matListItemIcon>info</mat-icon>
+                <span matListItemTitle>Feed desativado automaticamente</span>
+                <span matListItemLine>{{ disabledMessage }}</span>
+              </mat-list-item>
+            </mat-list>
+          }
+
+          @if (settings.enabled) {
+            @if (url) {
+              <mat-form-field appearance="outline">
+                <mat-label>Link privado</mat-label>
+                <input matInput readonly [value]="url" />
+                <button matIconButton matSuffix type="button" matTooltip="Copiar link" aria-label="Copiar link" (click)="copyFeedUrl(url)">
+                  <mat-icon>content_copy</mat-icon>
+                </button>
+              </mat-form-field>
+
+              <div class="actions">
+                <button mat-stroked-button type="button" (click)="copyFeedUrl(url)">
+                  <mat-icon>content_copy</mat-icon>
+                  Copiar link
+                </button>
+                <a mat-stroked-button [href]="url">
+                  <mat-icon>download</mat-icon>
+                  Baixar feed
+                </a>
+                <button mat-stroked-button type="button" [disabled]="isRotatingPersonal()" (click)="rotatePersonalKey()">
+                  <mat-icon>sync</mat-icon>
+                  Rotacionar chave
+                </button>
+              </div>
+            } @else {
+              <mat-list>
+                <mat-list-item>
+                  <mat-icon matListItemIcon>link_off</mat-icon>
+                  <span matListItemTitle>Link privado indisponível</span>
+                </mat-list-item>
+              </mat-list>
+
+              <div class="actions">
+                <button mat-stroked-button type="button" [disabled]="isRotatingPersonal()" (click)="rotatePersonalKey()">
+                  <mat-icon>sync</mat-icon>
+                  Gerar novo link
+                </button>
+              </div>
+            }
+          }
+        }
+
+        @if (superState.status === 'ready') {
+          @let settings = superState.settings;
+          @let url = superAdminFeedUrl();
+
+          <mat-list>
+            <h3 matSubheader>Feed compartilhado de super-admins</h3>
+            <mat-list-item>
+              <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+              <span matListItemTitle>Calendário de todos os eventos</span>
+              <span matListItemLine>Este link é compartilhado entre todos os super-admins.</span>
+            </mat-list-item>
+          </mat-list>
+
+          @if (url) {
+            <mat-form-field appearance="outline">
+              <mat-label>Link compartilhado</mat-label>
+              <input matInput readonly [value]="url" />
+              <button matIconButton matSuffix type="button" matTooltip="Copiar link" aria-label="Copiar link" (click)="copyFeedUrl(url)">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </mat-form-field>
+
+            <div class="actions">
+              <button mat-stroked-button type="button" (click)="copyFeedUrl(url)">
+                <mat-icon>content_copy</mat-icon>
+                Copiar link
+              </button>
+              @if (settings.enabled) {
+                <a mat-stroked-button [href]="url">
+                  <mat-icon>download</mat-icon>
+                  Baixar feed
+                </a>
+              }
+              <button mat-flat-button type="button" [disabled]="isRotatingSuperAdmin()" (click)="rotateSuperAdminKey()">
+                <mat-icon>sync_problem</mat-icon>
+                Invalidar para todos
+              </button>
+            </div>
+          } @else {
+            <mat-list>
+              <mat-list-item>
+                <mat-icon matListItemIcon>link_off</mat-icon>
+                <span matListItemTitle>Link compartilhado indisponível</span>
+              </mat-list-item>
+            </mat-list>
+
+            <div class="actions">
+              <button mat-flat-button type="button" [disabled]="isRotatingSuperAdmin()" (click)="rotateSuperAdminKey()">
+                <mat-icon>sync_problem</mat-icon>
+                Invalidar para todos
+              </button>
+            </div>
+          }
+
+          @if (settings.lastFetchedAt || settings.rotatedAt || settings.updatedAt) {
+            <mat-list>
+              <h3 matSubheader>Atividade</h3>
+              @if (settings.lastFetchedAt) {
+                <mat-list-item>
+                  <mat-icon matListItemIcon>event_available</mat-icon>
+                  <span matListItemTitle>Última leitura</span>
+                  <span matListItemLine>{{ settings.lastFetchedAt | date: 'short' }}</span>
+                </mat-list-item>
+              }
+              @if (settings.rotatedAt) {
+                <mat-list-item>
+                  <mat-icon matListItemIcon>key</mat-icon>
+                  <span matListItemTitle>Última rotação</span>
+                  <span matListItemLine>{{ settings.rotatedAt | date: 'short' }}</span>
+                </mat-list-item>
+              }
+              @if (settings.updatedAt) {
+                <mat-list-item>
+                  <mat-icon matListItemIcon>update</mat-icon>
+                  <span matListItemTitle>Última alteração</span>
+                  <span matListItemLine>{{ settings.updatedAt | date: 'short' }}</span>
+                </mat-list-item>
+              }
+            </mat-list>
+          }
+        }
+      </section>
+    </div>
+  </section>
+</section>

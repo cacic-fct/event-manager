@@ -303,22 +303,43 @@ describe('PlacePresetsResolver', () => {
   });
 });
 
-function createPrismaMock() {
-  const prisma = {
+type PlacePresetMutationArgs = {
+  data: {
+    name?: string | null;
+    locationDescription?: string | null;
+  };
+};
+
+type PlacePresetPrismaMock = {
+  event: {
+    updateMany: jest.Mock;
+  };
+  placePreset: {
+    findMany: jest.Mock;
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+    findUniqueOrThrow: jest.Mock;
+  };
+  $transaction: jest.Mock;
+};
+
+function createPrismaMock(): PlacePresetPrismaMock {
+  const prisma: PlacePresetPrismaMock = {
     event: {
       updateMany: jest.fn(),
     },
     placePreset: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue({ id: 'place-1' }),
-      create: jest.fn().mockImplementation(({ data }) =>
+      create: jest.fn().mockImplementation(({ data }: PlacePresetMutationArgs) =>
         Promise.resolve({
           id: 'place-1',
           name: data.name,
           locationDescription: data.locationDescription,
         }),
       ),
-      update: jest.fn().mockImplementation(({ data }) =>
+      update: jest.fn().mockImplementation(({ data }: PlacePresetMutationArgs) =>
         Promise.resolve({
           id: 'place-1',
           name: data.name ?? 'Sala 2',
@@ -327,8 +348,11 @@ function createPrismaMock() {
       ),
       findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'target-place', name: 'Sala final' }),
     },
-    $transaction: jest.fn(async (callback: (tx: unknown) => Promise<void>) => callback(prisma)),
+    $transaction: jest.fn(),
   };
+  prisma.$transaction.mockImplementation(async (callback: (tx: PlacePresetPrismaMock) => Promise<unknown>) =>
+    callback(prisma),
+  );
 
   return prisma;
 }

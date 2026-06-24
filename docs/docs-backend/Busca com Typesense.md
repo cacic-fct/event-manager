@@ -40,12 +40,12 @@ TYPESENSE_API_KEY="<chave-real>"
 
 O backend cria e atualiza automaticamente as coleções necessárias na inicialização:
 
-- `events`
-- `major_events`
-- `event_groups`
-- `people`
-- `place_presets`
-- `certificate_templates`
+- `cacic_event_manager_events`
+- `cacic_event_manager_major_events`
+- `cacic_event_manager_event_groups`
+- `cacic_event_manager_people`
+- `cacic_event_manager_place_presets`
+- `cacic_event_manager_certificate_templates`
 
 Na inicialização, o backend reindexa os registros ativos dessas coleções. Registros com `deletedAt` preenchido não são enviados ao Typesense.
 

@@ -21,6 +21,7 @@ import {
 } from '@cacic-fct/shared-angular';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
+import { CookieBannerFeatureFlagService } from './feature-flags/cookie-banner-feature-flag.service';
 
 registerLocaleData(localePt);
 
@@ -75,6 +76,7 @@ export const appConfig: ApplicationConfig = {
       const registry = inject(MatIconRegistry);
       registry.setDefaultFontSetClass('material-symbols-outlined');
     }),
+    provideAppInitializer(() => inject(CookieBannerFeatureFlagService).initialize()),
     provideAppInitializer(() => {
       const authService = inject(AuthService);
       return authService.initialize();

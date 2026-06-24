@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { developmentOnlyGuard, redirectAuthenticatedGuard } from '@cacic-fct/shared-angular';
+import { authGuard, developmentOnlyGuard, redirectAuthenticatedGuard } from '@cacic-fct/shared-angular';
 import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,
@@ -125,6 +125,12 @@ export const appRoutes: Route[] = [
   {
     path: 'profile',
     loadChildren: () => import('./profile/profile.routes').then((m) => m.routes),
+  },
+  {
+    path: 'preferences',
+    loadChildren: () => import('./preferences/preferences.routes').then((m) => m.routes),
+    title: 'Preferências',
+    canActivate: [authGuard],
   },
   {
     path: 'about',

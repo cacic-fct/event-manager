@@ -24,6 +24,7 @@ export enum WorkspacePermissionTab {
   GlobalOperations = 9,
   Permissions = 10,
   Notifications = 11,
+  Preferences = 12,
 }
 
 const TAB_PERMISSIONS = WORKSPACE_TAB_PERMISSIONS;

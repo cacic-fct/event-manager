@@ -89,6 +89,13 @@
         <span matListItemTitle>Validar certificado</span>
       </a>
 
+      @if (authService.isAuthenticated()) {
+        <a mat-list-item routerLink="/preferences">
+          <mat-icon matListItemIcon>tune</mat-icon>
+          <span matListItemTitle>Preferências</span>
+        </a>
+      }
+
       <a mat-list-item routerLink="/help" (click)="$event.preventDefault()">
         <mat-icon matListItemIcon>help</mat-icon>
         <span matListItemTitle>Ajuda</span>

@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { OfflineFeatureFlagCacheRecord, OfflinePublicDatabaseProvider } from '@cacic-fct/offline-public-data-access';
 import { UnleashClient, type IToggle, type IVariant, type IStorageProvider } from 'unleash-proxy-client';
 import { PUBLIC_FEATURE_FLAG_CONFIG } from './public-feature-flag.config';
@@ -13,6 +13,7 @@ import {
 
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 92;
 const UNLEASH_REPOSITORY_KEY = 'repo';
+const DEVELOPMENT_COOKIE_BANNER_ENABLED_STORAGE_KEY = 'cacic.cookieBanner.enabled';
 
 @Injectable({ providedIn: 'root' })
 export class PublicFeatureFlagService {
@@ -66,6 +67,13 @@ export class PublicFeatureFlagService {
   }
 
   booleanValue(key: PublicFeatureFlagKey): boolean {
+    if (key === 'cookieBannerEnabled') {
+      const developmentValue = this.readDevelopmentCookieBannerEnabled();
+      if (developmentValue !== null) {
+        return developmentValue;
+      }
+    }
+
     const value = this.valuesSignal()[key];
     return typeof value === 'boolean' ? value : Boolean(PUBLIC_FEATURE_FLAG_DEFAULTS[key]);
   }
@@ -208,6 +216,24 @@ export class PublicFeatureFlagService {
 
   private isExpired(record: OfflineFeatureFlagCacheRecord): boolean {
     return record.key !== 'sessionId' && record.updatedAt < Date.now() - CACHE_TTL_MS;
+  }
+
+  private readDevelopmentCookieBannerEnabled(): boolean | null {
+    if (!isDevMode() || !isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+
+    try {
+      const value = globalThis.localStorage?.getItem(DEVELOPMENT_COOKIE_BANNER_ENABLED_STORAGE_KEY) ?? null;
+      if (value === null) {
+        globalThis.localStorage?.setItem(DEVELOPMENT_COOKIE_BANNER_ENABLED_STORAGE_KEY, 'true');
+        return true;
+      }
+
+      return value !== 'false';
+    } catch {
+      return true;
+    }
   }
 
   private readonly fetchWithoutConsoleNoise: typeof fetch = async (input, init) => {

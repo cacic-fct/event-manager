@@ -4,6 +4,11 @@
   </button>
   <span>Evento</span>
   <span class="toolbar-spacer"></span>
+  @if (calendarDownloadUrl(); as calendarUrl) {
+  <a matIconButton [href]="calendarUrl" matTooltip="Baixar calendário" aria-label="Baixar calendário do evento">
+    <mat-icon>event</mat-icon>
+  </a>
+  }
   <button matIconButton type="button" matTooltip="Compartilhar" aria-label="Compartilhar evento" (click)="shareEvent()">
     <mat-icon>ios_share</mat-icon>
   </button>

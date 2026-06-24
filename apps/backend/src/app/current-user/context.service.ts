@@ -176,6 +176,7 @@ export class CurrentUserContextService {
         identityDocument: profile.identityDocument ?? null,
         academicId: profile.academicId ?? null,
         unespRole: profile.unespRole,
+        lastLoginAt: new Date(),
       },
       select: USER_SELECT,
     });
@@ -303,10 +304,7 @@ export class CurrentUserContextService {
 
   private async backfillMatchedUser(user: UserRecord, authenticatedUser: AuthenticatedUser): Promise<UserRecord> {
     const data = this.authenticatedUserSync.buildUserUpdateData(user, authenticatedUser);
-
-    if (Object.keys(data).length === 0) {
-      return user;
-    }
+    data.lastLoginAt = new Date();
 
     return this.prisma.user.update({
       where: {

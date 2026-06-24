@@ -16,6 +16,7 @@ const subscriptionsData = getWorkspaceRouteData('subscriptions');
 const notificationsData = getWorkspaceRouteData('notifications');
 const globalOperationsData = getWorkspaceRouteData('global-operations');
 const permissionsData = getWorkspaceRouteData('permissions');
+const preferencesData = getWorkspaceRouteData('preferences');
 
 function getWorkspaceRouteData(id: WorkspaceNavLinkId) {
   return workspaceNavLinkItems.find((item) => item.id === id)!;
@@ -175,6 +176,11 @@ export const workspaceRoutes: Route[] = [
       ),
       ...guardedWorkspaceTabRoute(notificationsData.path, notificationsData, () =>
         Promise.resolve(WorkspaceNotificationsTabComponent),
+      ),
+      ...guardedWorkspaceTabRoute(preferencesData.path, preferencesData, () =>
+        import('./tabs/preferences/workspace-preferences-tab.component').then(
+          (m) => m.WorkspacePreferencesTabComponent,
+        ),
       ),
     ],
   },

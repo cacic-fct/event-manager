@@ -31,9 +31,7 @@ export class AuthenticatedUserSyncService {
       }
 
       const data = this.buildUserUpdateData(existingUser, user);
-      if (Object.keys(data).length === 0) {
-        return;
-      }
+      data.lastLoginAt = new Date();
 
       await this.prisma.user.updateMany({
         where: {
@@ -147,6 +145,7 @@ export type UserClaimSyncUpdateData = {
   identityDocument?: string;
   academicId?: string;
   unespRole?: string[];
+  lastLoginAt?: Date;
 };
 
 export type InferredAuthenticatedProfile = {
