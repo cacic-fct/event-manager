@@ -36,11 +36,9 @@ export class App {
       }
 
       const synced = await firstValueFrom(this.cookieBannerSync.acceptCookieBanner());
-      if (!synced) {
-        return false;
+      if (synced) {
+        await firstValueFrom(this.accountPrivacy.refresh());
       }
-
-      await firstValueFrom(this.accountPrivacy.refresh());
       return;
     },
   };
