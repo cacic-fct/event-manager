@@ -317,6 +317,7 @@ export class CalendarService {
         userId,
         feedKeyHash,
         enabled: true,
+        rotatedAt: now,
         lastCheckedAt: now,
       },
       update: {

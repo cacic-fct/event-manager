@@ -405,7 +405,7 @@ describe('CalendarService', () => {
           disabledReason: null,
           lastFetchedAt: null,
           lastCheckedAt: now,
-          rotatedAt: null,
+          rotatedAt: now,
           updatedAt: now,
         }),
       },
@@ -433,7 +433,7 @@ describe('CalendarService', () => {
       disabledReason: null,
       lastFetchedAt: null,
       lastCheckedAt: now,
-      rotatedAt: null,
+      rotatedAt: now,
       updatedAt: now,
     });
 
@@ -456,6 +456,7 @@ describe('CalendarService', () => {
         userId: 'admin-user',
         enabled: true,
         lastCheckedAt: now,
+        rotatedAt: now,
         feedKeyHash: expect.any(String),
       }),
       update: {

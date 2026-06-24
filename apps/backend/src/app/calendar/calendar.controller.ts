@@ -1,10 +1,11 @@
-import { Controller, Get, Param, Req, Res } from '@nestjs/common';
+import { Controller, Get, Param, Res } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
 import { CalendarDownload } from './calendar.models';
 import { CalendarService } from './calendar.service';
 
+const DEFAULT_PUBLIC_APP_ORIGIN = 'http://localhost:4200';
 const ICALENDAR_RESPONSE_EXAMPLE =
   'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//CACiC FCT//CACiC Eventos//PT-BR\r\nBEGIN:VEVENT\r\nSUMMARY:Oficina de TypeScript\r\nDTSTART:20260701T130000Z\r\nDTEND:20260701T150000Z\r\nEND:VEVENT\r\nEND:VCALENDAR';
 
@@ -12,7 +13,7 @@ const ICALENDAR_RESPONSE_EXAMPLE =
 @Public()
 @Controller('calendar')
 export class CalendarController {
-  private readonly configuredPublicAppOrigin = this.readConfiguredPublicAppOrigin();
+  private readonly publicAppOrigin = this.readPublicAppOrigin();
 
   constructor(private readonly calendars: CalendarService) {}
 
@@ -38,10 +39,9 @@ export class CalendarController {
   })
   async downloadPublicEventCalendar(
     @Param('eventId') eventId: string,
-    @Req() request: Request,
     @Res() response: Response,
   ): Promise<void> {
-    const download = await this.calendars.buildPublicEventCalendar(eventId, this.getRequestOrigin(request));
+    const download = await this.calendars.buildPublicEventCalendar(eventId, this.publicAppOrigin);
     this.sendCalendar(response, download, 'public, max-age=3600');
   }
 
@@ -67,10 +67,9 @@ export class CalendarController {
   })
   async downloadPrivateUserCalendarFeed(
     @Param('feedKey') feedKey: string,
-    @Req() request: Request,
     @Res() response: Response,
   ): Promise<void> {
-    const download = await this.calendars.buildPrivateUserCalendarFeed(feedKey, this.getRequestOrigin(request));
+    const download = await this.calendars.buildPrivateUserCalendarFeed(feedKey, this.publicAppOrigin);
     this.sendCalendar(response, download, 'private, max-age=900');
   }
 
@@ -96,10 +95,9 @@ export class CalendarController {
   })
   async downloadPrivateAdminCalendarFeed(
     @Param('feedKey') feedKey: string,
-    @Req() request: Request,
     @Res() response: Response,
   ): Promise<void> {
-    const download = await this.calendars.buildPrivateAdminCalendarFeed(feedKey, this.getRequestOrigin(request));
+    const download = await this.calendars.buildPrivateAdminCalendarFeed(feedKey, this.publicAppOrigin);
     this.sendCalendar(response, download, 'private, max-age=900');
   }
 
@@ -125,10 +123,9 @@ export class CalendarController {
   })
   async downloadSuperAdminCalendarFeed(
     @Param('feedKey') feedKey: string,
-    @Req() request: Request,
     @Res() response: Response,
   ): Promise<void> {
-    const download = await this.calendars.buildSuperAdminCalendarFeed(feedKey, this.getRequestOrigin(request));
+    const download = await this.calendars.buildSuperAdminCalendarFeed(feedKey, this.publicAppOrigin);
     this.sendCalendar(response, download, 'private, max-age=900');
   }
 
@@ -139,21 +136,10 @@ export class CalendarController {
     response.send(download.content);
   }
 
-  private getRequestOrigin(request: Request): string {
-    if (this.configuredPublicAppOrigin) {
-      return this.configuredPublicAppOrigin;
-    }
-
-    const protocol = request.protocol;
-    const host = request.get('host') || 'localhost';
-
-    return `${protocol}://${host}`;
-  }
-
-  private readConfiguredPublicAppOrigin(): string | null {
+  private readPublicAppOrigin(): string {
     const rawOrigin = process.env.PUBLIC_APP_ORIGIN?.trim();
     if (!rawOrigin) {
-      return null;
+      return DEFAULT_PUBLIC_APP_ORIGIN;
     }
 
     return new URL(rawOrigin).origin;

@@ -24,14 +24,6 @@ describe('CalendarController', () => {
 
     await controller.downloadPublicEventCalendar(
       'event-1',
-      createRequest({
-        protocol: 'http',
-        host: 'internal.local',
-        headers: {
-          'x-forwarded-proto': 'https, http',
-          'x-forwarded-host': 'eventos.cacic.dev.br, internal.local',
-        },
-      }),
       response as never,
     );
 
@@ -42,7 +34,7 @@ describe('CalendarController', () => {
     expect(response.send).toHaveBeenCalledWith('BEGIN:VCALENDAR');
   });
 
-  it('ignores forged forwarded origin headers when no public origin is configured', async () => {
+  it('uses the local default origin when no public origin is configured', async () => {
     delete process.env.PUBLIC_APP_ORIGIN;
     const calendars = {
       buildPublicEventCalendar: jest.fn().mockResolvedValue({
@@ -55,21 +47,14 @@ describe('CalendarController', () => {
 
     await controller.downloadPublicEventCalendar(
       'event-1',
-      createRequest({
-        protocol: 'http',
-        host: 'internal.local',
-        headers: {
-          'x-forwarded-proto': 'https',
-          'x-forwarded-host': 'evil.example',
-        },
-      }),
       response as never,
     );
 
-    expect(calendars.buildPublicEventCalendar).toHaveBeenCalledWith('event-1', 'http://internal.local');
+    expect(calendars.buildPublicEventCalendar).toHaveBeenCalledWith('event-1', 'http://localhost:4200');
   });
 
   it('downloads private user feeds with private cache headers', async () => {
+    process.env.PUBLIC_APP_ORIGIN = 'https://eventos.cacic.dev.br';
     const calendars = {
       buildPrivateUserCalendarFeed: jest.fn().mockResolvedValue({
         content: 'PRIVATE:VCALENDAR',
@@ -81,7 +66,6 @@ describe('CalendarController', () => {
 
     await controller.downloadPrivateUserCalendarFeed(
       'private-key',
-      createRequest({ protocol: 'https', host: 'eventos.cacic.dev.br' }),
       response as never,
     );
 
@@ -93,6 +77,7 @@ describe('CalendarController', () => {
   });
 
   it('downloads private admin feeds with private cache headers', async () => {
+    process.env.PUBLIC_APP_ORIGIN = 'https://eventos.cacic.dev.br';
     const calendars = {
       buildPrivateAdminCalendarFeed: jest.fn().mockResolvedValue({
         content: 'ADMIN:VCALENDAR',
@@ -104,7 +89,6 @@ describe('CalendarController', () => {
 
     await controller.downloadPrivateAdminCalendarFeed(
       'admin-key',
-      createRequest({ protocol: 'https', host: 'eventos.cacic.dev.br' }),
       response as never,
     );
 
@@ -118,6 +102,7 @@ describe('CalendarController', () => {
   });
 
   it('downloads shared super-admin feeds with private cache headers', async () => {
+    process.env.PUBLIC_APP_ORIGIN = 'https://eventos.cacic.dev.br';
     const calendars = {
       buildSuperAdminCalendarFeed: jest.fn().mockResolvedValue({
         content: 'SUPER:VCALENDAR',
@@ -129,7 +114,6 @@ describe('CalendarController', () => {
 
     await controller.downloadSuperAdminCalendarFeed(
       'super-key',
-      createRequest({ protocol: 'https', host: 'eventos.cacic.dev.br' }),
       response as never,
     );
 
@@ -142,14 +126,6 @@ describe('CalendarController', () => {
     expect(response.send).toHaveBeenCalledWith('SUPER:VCALENDAR');
   });
 });
-
-function createRequest(input: { protocol: string; host: string; headers?: Record<string, string> }) {
-  return {
-    protocol: input.protocol,
-    headers: input.headers ?? {},
-    get: jest.fn((header: string) => (header.toLowerCase() === 'host' ? input.host : undefined)),
-  } as never;
-}
 
 function createResponse() {
   return {
