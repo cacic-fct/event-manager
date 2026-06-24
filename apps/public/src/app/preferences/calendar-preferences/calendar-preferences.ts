@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, 
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -12,7 +13,8 @@ import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/sl
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Observable, catchError, finalize, map, of, startWith, switchMap } from 'rxjs';
+import { CalendarFeedReenableChoice, CalendarFeedReenableDialogComponent } from '@cacic-fct/shared-angular';
+import { Observable, catchError, finalize, firstValueFrom, map, of, startWith, switchMap } from 'rxjs';
 import {
   CalendarPreferencesApiService,
   CurrentUserCalendarFeedSettings,
@@ -30,6 +32,7 @@ const STALE_LOGIN_DISABLED_REASON = 'STALE_LOGIN';
   imports: [
     RouterLink,
     MatButtonModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -47,6 +50,7 @@ const STALE_LOGIN_DISABLED_REASON = 'STALE_LOGIN';
 export class CalendarPreferences {
   private readonly api = inject(CalendarPreferencesApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly snackBar = inject(MatSnackBar);
@@ -78,14 +82,19 @@ export class CalendarPreferences {
     this.reloadCounter.update((value) => value + 1);
   }
 
-  setEnabled(change: MatSlideToggleChange): void {
+  async setEnabled(change: MatSlideToggleChange): Promise<void> {
     if (this.isSaving()) {
       return;
     }
 
+    const reenableChoice = change.checked && this.shouldConfirmReenable() ? await this.getReenableChoice() : 'keep';
+    if (!reenableChoice) {
+      change.source.checked = false;
+      return;
+    }
+
     this.isSaving.set(true);
-    this.api
-      .setEnabled(change.checked)
+    this.setEnabledRequest(change.checked, reenableChoice)
       .pipe(
         finalize(() => this.isSaving.set(false)),
         takeUntilDestroyed(this.destroyRef),
@@ -167,6 +176,38 @@ export class CalendarPreferences {
         ),
       ),
     );
+  }
+
+  private getReenableChoice(): Promise<CalendarFeedReenableChoice | null> {
+    return firstValueFrom(
+      this.dialog
+        .open(CalendarFeedReenableDialogComponent, {
+          data: {
+            feedName: 'o feed do calendário',
+          },
+          width: '520px',
+        })
+        .afterClosed(),
+    ).then((choice: unknown) =>
+      choice === 'rotate' || choice === 'keep' ? choice : null,
+    );
+  }
+
+  private setEnabledRequest(enabled: boolean, reenableChoice: CalendarFeedReenableChoice): Observable<CurrentUserCalendarFeedSettings> {
+    if (!enabled) {
+      return this.api.setEnabled(false);
+    }
+
+    if (reenableChoice === 'rotate') {
+      return this.api.rotateKey().pipe(switchMap(() => this.api.setEnabled(true)));
+    }
+
+    return this.api.setEnabled(true);
+  }
+
+  private shouldConfirmReenable(): boolean {
+    const state = this.settingsState();
+    return state.status === 'ready' && !state.settings.enabled && Boolean(state.settings.disabledAt);
   }
 
   private baseOrigin(): string {

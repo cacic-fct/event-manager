@@ -22,6 +22,8 @@ import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 
+const CSV_FORMULA_PREFIX_PATTERN = /^[=+\-@\t\r\n]/;
+
 @Resolver()
 export class CurrentUserEventAttendanceResolver {
   constructor(
@@ -475,11 +477,12 @@ export class CurrentUserEventAttendanceResolver {
   }
 
   private escapeCsvValue(value: string): string {
-    if (!/[",\n\r]/.test(value)) {
-      return value;
+    const safeValue = CSV_FORMULA_PREFIX_PATTERN.test(value) ? `'${value}` : value;
+    if (!/[",\n\r]/.test(safeValue)) {
+      return safeValue;
     }
 
-    return `"${value.replace(/"/g, '""')}"`;
+    return `"${safeValue.replace(/"/g, '""')}"`;
   }
 
   private slugifyFileName(value: string): string {

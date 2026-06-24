@@ -230,15 +230,15 @@ export class RateLimitService {
 
   private identity(request: RequestWithUser | undefined, authenticatedUser: AuthenticatedUser | undefined): string {
     const user = authenticatedUser ?? request?.user;
-    const ip = this.clientIp(request) ?? 'unknown';
     if (user?.sub) {
-      return `user:${user.sub}|ip:${ip}`;
+      return `user:${user.sub}`;
     }
 
     if (user?.email) {
-      return `email:${user.email}|ip:${ip}`;
+      return `email:${user.email}`;
     }
 
+    const ip = this.clientIp(request) ?? 'unknown';
     return `ip:${ip}`;
   }
 

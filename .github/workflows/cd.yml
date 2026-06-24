@@ -68,18 +68,10 @@ jobs:
 
           HEAD="${{ github.event.workflow_run.head_sha }}"
 
-          git fetch --tags origin
-
-          BASE="$(
-            git rev-list \
-              --tags \
-              --max-count=1 \
-              --first-parent \
-              2>/dev/null || true
-          )"
+          BASE="$(git rev-parse "${HEAD}^" 2>/dev/null || true)"
 
           if [ -z "$BASE" ]; then
-            echo "No previous release tag found."
+            echo "No parent commit found."
             echo "Publishing all deployable apps."
 
             DEPLOYABLE="$(printf '%s\n' \

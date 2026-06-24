@@ -89,6 +89,19 @@ describe('LgpdService', () => {
         changes: [{ field: 'updatedById', before: 'old-user', after: 'new-user' }],
         metadata: null,
       },
+      {
+        id: 'audit-actor-name-only',
+        entityType: 'EVENT',
+        entityId: 'event-3',
+        entityLabel: 'Edited by Source Person',
+        actorId: null,
+        actorName: 'Source Person',
+        actorEmail: null,
+        before: { name: 'Event 3' },
+        after: { name: 'Event 3' },
+        changes: [],
+        metadata: null,
+      },
     ]);
 
     await expect(
@@ -133,6 +146,7 @@ describe('LgpdService', () => {
             entityType: 'EVENT_ATTENDANCE',
             entityId: { startsWith: 'source-person:' },
           },
+          { actorName: { in: expect.arrayContaining(['Source Person', 'Old User']), mode: 'insensitive' } },
         ]),
       },
     });
@@ -240,6 +254,16 @@ describe('LgpdService', () => {
         ]),
       }),
     });
+    expect(tx.auditLogEntry.update).toHaveBeenCalledWith({
+      where: { id: 'audit-actor-name-only' },
+      data: expect.objectContaining({
+        actorId: null,
+        actorName: 'Usuário anonimizado',
+        actorEmail: null,
+        entityId: 'event-3',
+        entityLabel: 'Dados anonimizados',
+      }),
+    });
     expect(s3.deleteFile).toHaveBeenCalledWith('receipts/old.png');
     expect(tx.majorEventReceiptValidationAction.deleteMany).toHaveBeenCalledWith({
       where: { subscription: { personId: { in: ['source-person', 'target-person'] } } },
@@ -262,7 +286,21 @@ describe('LgpdService', () => {
   });
 
   it('exports merged source and target identities when the request uses the final user id', async () => {
+    const auditLogEntries = [
+      {
+        id: 'audit-person',
+        entityType: 'PERSON',
+        entityId: 'source-person',
+        actorId: 'admin-user',
+        actorName: 'Admin User',
+        actorEmail: 'admin@example.com',
+        before: { id: 'source-person', name: 'Source Person', email: 'old@example.com' },
+        after: { id: 'target-person', name: 'Target Person', email: 'new@example.com' },
+        changes: [{ field: 'email', before: 'old@example.com', after: 'new@example.com' }],
+      },
+    ];
     prisma.eventSubscription.findMany.mockResolvedValue([{ id: 'moved-subscription' }]);
+    prisma.auditLogEntry.findMany.mockResolvedValue(auditLogEntries);
     prisma.majorEventReceipt.findMany.mockResolvedValueOnce([
       {
         id: 'receipt-1',
@@ -332,6 +370,7 @@ describe('LgpdService', () => {
         },
       ],
     });
+    expect(result.auditHistory).toEqual({ records: auditLogEntries });
     expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { personId: { in: ['source-person', 'target-person'] } },
@@ -345,6 +384,35 @@ describe('LgpdService', () => {
         }),
       }),
     );
+    expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith({
+      where: {
+        OR: expect.arrayContaining([
+          { actorId: { in: expect.arrayContaining(['old-user', 'new-user']) } },
+          { actorEmail: { in: expect.arrayContaining(['old@example.com', 'new@example.com']), mode: 'insensitive' } },
+          {
+            actorName: {
+              in: expect.arrayContaining(['Source Person', 'Old User', 'Target Person', 'New User']),
+              mode: 'insensitive',
+            },
+          },
+          {
+            entityType: 'PERSON',
+            entityId: { in: ['source-person', 'target-person'] },
+          },
+          {
+            entityType: 'EVENT_ATTENDANCE',
+            entityId: { startsWith: 'source-person:' },
+          },
+          {
+            before: { path: ['personId'], equals: 'source-person' },
+          },
+          {
+            after: { path: ['userId'], equals: 'new-user' },
+          },
+        ]),
+      },
+      orderBy: { lastRecordedAt: 'desc' },
+    });
     expect(prisma.majorEventReceiptValidationAction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { subscription: { personId: { in: ['source-person', 'target-person'] } } },
@@ -549,6 +617,7 @@ function createPrismaMock() {
     },
     peopleMergeOperation: findManyDelegate(),
     mergeCandidate: findManyDelegate(),
+    auditLogEntry: findManyDelegate(),
     $queryRaw: jest.fn(),
     $transaction: jest.fn(),
   };

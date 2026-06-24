@@ -8,6 +8,7 @@ export * from './lib/aztec-scanner/aztec-scanner.component';
 export * from './lib/aztec-scanner/aztec-scanner-dialog.component';
 export * from './lib/aztec-scanner/scanner-feedback.service';
 export * from './lib/aztec-scanner/scanner-sounds.service';
+export * from './lib/calendar-feed-reenable-dialog.component';
 export * from './lib/duplicate-person-warning-dialog.component';
 export * from './lib/cacic-logo/cacic-logo.component';
 export * from './lib/cacic-logo/cacic-miniature.component';

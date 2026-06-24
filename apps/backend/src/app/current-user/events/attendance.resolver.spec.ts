@@ -42,4 +42,65 @@ describe('CurrentUserEventAttendanceResolver', () => {
     });
     expect(frozenResources.assertEventMutable).not.toHaveBeenCalled();
   });
+
+  it.each(['=', '+', '-', '@', '\t', '\r'])(
+    'prefixes subscriber CSV values starting with %s to prevent spreadsheet formula execution',
+    async (prefix) => {
+      const prisma = {
+        event: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'event-1',
+            name: 'Evento de teste',
+            endDate: new Date('2099-01-01T00:00:00.000Z'),
+            shouldProvideSubscriberListToLecturer: true,
+            lecturers: [{ personId: 'lecturer-1' }],
+          }),
+        },
+        eventSubscription: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              person: {
+                id: 'person-1',
+                name: `${prefix}HYPERLINK("https://example.com")`,
+                identityDocument: `${prefix}SUM(1,2)`,
+              },
+            },
+          ]),
+        },
+        majorEventSubscriptionEventSelection: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+      };
+      const currentUserContext = {
+        requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'lecturer-1' }),
+      };
+      const authorizationPolicy = {
+        assertLecturerCanViewSubscriberList: jest.fn(),
+      };
+      const resolver = new CurrentUserEventAttendanceResolver(
+        prisma as never,
+        currentUserContext as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        authorizationPolicy as never,
+      );
+
+      const result = await resolver.downloadCurrentUserEventSubscriberList('event-1', {} as never);
+      const csv = Buffer.from(result.contentBase64, 'base64').toString('utf8');
+
+      expect(csv).toBe(
+        `\uFEFFNome,CPF\n${escapeExpectedCsvCell(`'${prefix}HYPERLINK("https://example.com")`)},${escapeExpectedCsvCell(`'${prefix}SUM(1,2)`)}\n`,
+      );
+    },
+  );
 });
+
+function escapeExpectedCsvCell(value: string): string {
+  if (!/[",\n\r]/.test(value)) {
+    return value;
+  }
+
+  return `"${value.replace(/"/g, '""')}"`;
+}

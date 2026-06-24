@@ -1,9 +1,11 @@
-import type {
+import {
+  CertificateIssuedTo,
+  CertificateScope,
+  EventType,
   PublicCertificateValidation,
   PublicCertificateValidationEvent,
   PublicCertificateValidationEventSection,
-} from '@cacic-fct/event-manager-public-contracts';
-import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
+} from '@cacic-fct/shared-data-types';
 import { isValidCPF } from '@cacic-fct/shared-utils';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -101,7 +103,7 @@ export class PublicCertificateValidationService {
 
     return {
       id: certificate.id,
-      issuedAt: certificate.issuedAt.toISOString(),
+      issuedAt: certificate.issuedAt,
       personName: certificate.person.name,
       maskedIdentityDocument: this.maskCpf(certificate.person.identityDocument, certificate.person.isCPF),
       scope: certificate.config.scope as CertificateScope,
@@ -412,8 +414,8 @@ export class PublicCertificateValidationService {
       name: event.name,
       id: event.id,
       emoji: event.emoji,
-      startDate: event.startDate.toISOString(),
-      endDate: event.endDate.toISOString(),
+      startDate: event.startDate,
+      endDate: event.endDate,
       creditMinutes: event.creditMinutes ?? undefined,
     };
   }
