@@ -28,9 +28,10 @@ model UserCalendarFeedSettings {
   userId String @id
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  feedKey     String?
-  feedKeyHash String  @unique
-  enabled Boolean @default(false)
+  /// Non-secret nonce used with the server-side calendar feed pepper to derive the displayed bearer URL key.
+  feedKeyNonce String? @map("feedKey")
+  feedKeyHash  String  @unique
+  enabled      Boolean @default(false)
 
   disabledAt     DateTime?
   disabledReason String?
@@ -49,9 +50,10 @@ model UserAdminCalendarFeedSettings {
   userId String @id
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  feedKey     String?
-  feedKeyHash String  @unique
-  enabled Boolean @default(false)
+  /// Non-secret nonce used with the server-side calendar feed pepper to derive the displayed bearer URL key.
+  feedKeyNonce String? @map("feedKey")
+  feedKeyHash  String  @unique
+  enabled      Boolean @default(false)
 
   disabledAt     DateTime?
   disabledReason String?
@@ -71,9 +73,10 @@ model UserAdminCalendarFeedSettings {
 model SuperAdminCalendarFeedSettings {
   id String @id
 
-  feedKey     String?
-  feedKeyHash String  @unique
-  enabled Boolean @default(true)
+  /// Non-secret nonce used with the server-side calendar feed pepper to derive the displayed bearer URL key.
+  feedKeyNonce String? @map("feedKey")
+  feedKeyHash  String  @unique
+  enabled      Boolean @default(true)
 
   lastFetchedAt DateTime?
   rotatedAt     DateTime?
