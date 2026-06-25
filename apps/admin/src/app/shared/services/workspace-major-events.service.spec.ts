@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
@@ -6,6 +7,7 @@ import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { MajorEvent, MajorEventInput } from '../../graphql/models';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 describe('WorkspaceMajorEventsService', () => {
   let service: WorkspaceMajorEventsService;
@@ -37,8 +39,10 @@ describe('WorkspaceMajorEventsService', () => {
         WorkspaceMajorEventsService,
         { provide: MajorEventApiService, useValue: api },
         { provide: EventApiService, useValue: { listEvents: vi.fn(() => of([])) } },
+        { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: WorkspacePermissionsService, useValue: { hasAll: vi.fn(() => true) } },
       ],
     }).compileComponents();
 

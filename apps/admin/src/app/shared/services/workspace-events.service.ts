@@ -3,15 +3,18 @@ import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@ang
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { Event, EventGroup, EventInput, Person, PlacePresetInput } from '../../graphql/models';
+import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-create-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
 import { WorkspaceUiService } from './workspace-ui.service';
 
@@ -61,6 +64,7 @@ export class WorkspaceEventsService {
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
+  private readonly permissions = inject(WorkspacePermissionsService);
   readonly placePresetsService = inject(WorkspacePlacePresetsService);
   private readonly ui = inject(WorkspaceUiService);
 
@@ -294,6 +298,37 @@ export class WorkspaceEventsService {
     await this.deleteEventById(eventItem.id);
   }
 
+  async cloneEvent(eventItem: Event): Promise<void> {
+    const result = await this.openCloneDialog(eventItem);
+    if (!result) {
+      return;
+    }
+
+    this.ui.loading.set(true);
+    try {
+      const created = await firstValueFrom(
+        this.api.cloneEvent(eventItem.id, {
+          name: result.name,
+          parts: {
+            lecturers: Boolean(result.parts.lecturers),
+            certificateConfig: Boolean(result.parts.certificateConfig),
+            subscriptionSettings: Boolean(result.parts.subscriptionSettings),
+            attendanceSettings: Boolean(result.parts.attendanceSettings),
+            place: Boolean(result.parts.place),
+            visibility: Boolean(result.parts.visibility),
+          },
+        }),
+      );
+      this.snackbar.open('Evento duplicado.', 'Fechar', { duration: 2500 });
+      await this.loadEvents();
+      await this.selectEventById(created.id);
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar o evento.'), 'Fechar', { duration: 5000 });
+    } finally {
+      this.ui.loading.set(false);
+    }
+  }
+
   async searchEventGroupsForEvent(): Promise<void> {
     const query = this.eventGroupLookupForm.controls.query.value.trim();
     if (!query) {
@@ -458,6 +493,69 @@ export class WorkspaceEventsService {
         name: lecturer.person?.name ?? lecturer.personId,
       })),
     );
+  }
+
+  private async openCloneDialog(eventItem: Event): Promise<CloneAssetDialogResult | null | undefined> {
+    const canCopyLecturers = this.permissions.hasAll([Permission.EventLecturer.Read, Permission.EventLecturer.Create]);
+    const canCopyCertificateConfig = this.permissions.hasAll([
+      Permission.CertificateConfig.Read,
+      Permission.CertificateConfig.Create,
+    ]);
+
+    const dialogRef = this.dialog.open(CloneAssetDialogComponent, {
+      width: '52rem',
+      maxWidth: '95vw',
+      data: {
+        title: 'Duplicar evento',
+        sourceLabel: 'Evento existente',
+        sourceName: eventItem.name,
+        defaultName: `${eventItem.name} (cópia)`,
+        parts: [
+          {
+            key: 'lecturers',
+            label: 'Ministrantes',
+            description: 'Copia os vínculos com pessoas ministrantes.',
+            defaultSelected: true,
+            disabled: !canCopyLecturers,
+            disabledReason: 'Exige permissão para visualizar e criar ministrantes do evento.',
+          },
+          {
+            key: 'certificateConfig',
+            label: 'Configuração de certificado',
+            description: 'Copia regras de emissão e modelos de certificado.',
+            defaultSelected: true,
+            disabled: !canCopyCertificateConfig,
+            disabledReason: 'Exige permissão para visualizar e criar configurações de certificado.',
+          },
+          {
+            key: 'subscriptionSettings',
+            label: 'Inscrições',
+            description: 'Copia janela, vagas e regras administrativas de inscrição.',
+            defaultSelected: true,
+          },
+          {
+            key: 'attendanceSettings',
+            label: 'Presença',
+            description: 'Copia coleta e janelas de presença, sem copiar o código de presença.',
+            defaultSelected: true,
+          },
+          {
+            key: 'place',
+            label: 'Local',
+            description: 'Copia coordenadas e descrição do local.',
+            defaultSelected: true,
+          },
+          {
+            key: 'visibility',
+            label: 'Visibilidade',
+            description: 'Copia se o evento aparece para usuários.',
+            defaultSelected: true,
+          },
+        ],
+      },
+    });
+
+    return firstValueFrom(dialogRef.afterClosed());
   }
 
   private async loadEventAttendanceCollectors(eventId: string): Promise<void> {

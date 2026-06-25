@@ -51,6 +51,16 @@
                 <mat-icon>edit</mat-icon>
               </button>
             }
+            @if (canCloneGroup()) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Duplicar grupo"
+                matTooltip="Duplicar"
+                (click)="$event.stopPropagation(); workspace.cloneEventGroup(group)">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            }
             @if (canDeleteGroup(group)) {
               <button
                 matIconButton
@@ -99,6 +109,12 @@
               <mat-icon>history</mat-icon>
               Histórico
             </button>
+            @if (canCloneGroup()) {
+              <button mat-stroked-button type="button" (click)="workspace.cloneEventGroup(selectedEventGroup)">
+                <mat-icon>content_copy</mat-icon>
+                Duplicar
+              </button>
+            }
           }
           <button mat-button type="button" (click)="workspace.startNewEventGroup()">
             <mat-icon>restart_alt</mat-icon>

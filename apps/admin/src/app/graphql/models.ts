@@ -611,6 +611,17 @@ export interface MajorEventInput {
   price?: MajorEventPriceInput | null;
 }
 
+export interface MajorEventClonePartsInput {
+  certificateConfig?: boolean;
+  subscriptionSettings?: boolean;
+  paymentSettings?: boolean;
+}
+
+export interface MajorEventCloneInput {
+  name?: string;
+  parts?: MajorEventClonePartsInput;
+}
+
 export interface PaymentInfoInput {
   bankName: string;
   agency: string;
@@ -641,6 +652,15 @@ export interface EventGroupInput {
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
   shouldIssueCertificateForEachEvent?: boolean;
   shouldIssuePartialCertificate?: boolean;
+}
+
+export interface EventGroupClonePartsInput {
+  certificateConfig?: boolean;
+}
+
+export interface EventGroupCloneInput {
+  name?: string;
+  parts?: EventGroupClonePartsInput;
 }
 
 export interface CertificateConfigInput {
@@ -693,6 +713,20 @@ export interface EventInput {
   buttonLink?: string | null;
   lecturerPersonIds?: string[] | null;
   attendanceCollectorPersonIds?: string[] | null;
+}
+
+export interface EventClonePartsInput {
+  lecturers?: boolean;
+  certificateConfig?: boolean;
+  subscriptionSettings?: boolean;
+  attendanceSettings?: boolean;
+  place?: boolean;
+  visibility?: boolean;
+}
+
+export interface EventCloneInput {
+  name?: string;
+  parts?: EventClonePartsInput;
 }
 
 export interface PlacePresetInput {

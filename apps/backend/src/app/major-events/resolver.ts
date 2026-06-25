@@ -1,5 +1,6 @@
 import {
   DeletionResult,
+  MajorEventCloneInput,
   MajorEventPriceInput,
   MajorEvent,
   MajorEventCreateInput,
@@ -9,7 +10,7 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -84,6 +85,24 @@ const MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT = {
     select: PAYMENT_INFO_SELECT,
   },
 } satisfies Prisma.MajorEventSelect;
+
+type PaymentInfoCloneRecord = Prisma.PaymentInfoGetPayload<{ select: typeof PAYMENT_INFO_SELECT }>;
+
+const MAJOR_EVENT_CERTIFICATE_CONFIG_CLONE_SELECT = {
+  where: {
+    deletedAt: null,
+  },
+  select: {
+    name: true,
+    certificateTemplateId: true,
+    certificateText: true,
+    shouldAutofillSecondPage: true,
+    secondPageText: true,
+    isActive: true,
+    issuedTo: true,
+    certificateFields: true,
+  },
+} satisfies Prisma.CertificateConfigFindManyArgs;
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -335,6 +354,129 @@ export class MajorEventsResolver {
     return updatedMajorEvent;
   }
 
+  @Mutation(() => MajorEvent, { name: 'cloneMajorEvent' })
+  @RequirePermissions(Permission.MajorEvent.Read)
+  async cloneMajorEvent(
+    @Args('id', { type: () => String }) id: string,
+    @Args('input', { type: () => MajorEventCloneInput, nullable: true }) input: MajorEventCloneInput | null,
+    @Context() context: GraphqlContext,
+  ) {
+    const paymentInfoTableExists = await this.hasPaymentInfoTable();
+    const source = await this.prisma.majorEvent.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: this.getMajorEventCloneSourceSelect(paymentInfoTableExists),
+    });
+
+    if (!source) {
+      throw new NotFoundException(`Major event ${id} was not found.`);
+    }
+
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.MajorEvent.Create]);
+    const parts = input?.parts;
+    const shouldCopyCertificateConfig = Boolean(parts?.certificateConfig);
+    if (shouldCopyCertificateConfig) {
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
+        majorEventId: source.id,
+      });
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Create]);
+    }
+
+    const sourcePrice = source.majorEventPrices[0];
+    const sourcePaymentInfo =
+      paymentInfoTableExists && 'paymentInfo' in source
+        ? (source.paymentInfo as PaymentInfoCloneRecord | null)
+        : null;
+    const cloneInput: MajorEventCreateInput = {
+      name: this.buildCloneName(input?.name, source.name),
+      emoji: source.emoji,
+      startDate: source.startDate,
+      endDate: source.endDate,
+      description: source.description ?? undefined,
+      buttonText: source.buttonText ?? undefined,
+      buttonLink: source.buttonLink ?? undefined,
+      contactInfo: source.contactInfo ?? undefined,
+      contactType: source.contactType ?? undefined,
+      ...(parts?.subscriptionSettings
+        ? {
+            subscriptionStartDate: source.subscriptionStartDate ?? undefined,
+            subscriptionEndDate: source.subscriptionEndDate ?? undefined,
+            maxCoursesPerAttendee: source.maxCoursesPerAttendee ?? undefined,
+            maxLecturesPerAttendee: source.maxLecturesPerAttendee ?? undefined,
+            maxUncategorizedPerAttendee: source.maxUncategorizedPerAttendee ?? undefined,
+            rankedSubscriptionEnabled: source.rankedSubscriptionEnabled,
+          }
+        : {}),
+      ...(shouldCopyCertificateConfig
+        ? {
+            shouldIssueCertificateForNonPayingAttendees: source.shouldIssueCertificateForNonPayingAttendees,
+            shouldIssueCertificateForNonSubscribedAttendees: source.shouldIssueCertificateForNonSubscribedAttendees,
+          }
+        : {}),
+      ...(parts?.paymentSettings
+        ? {
+            isPaymentRequired: source.isPaymentRequired,
+            additionalPaymentInfo: source.additionalPaymentInfo ?? undefined,
+            paymentInfo: sourcePaymentInfo
+              ? {
+                  bankName: sourcePaymentInfo.bankName,
+                  agency: sourcePaymentInfo.agency,
+                  account: sourcePaymentInfo.account,
+                  holder: sourcePaymentInfo.holder,
+                  document: sourcePaymentInfo.document,
+                  pixKey: sourcePaymentInfo.pixKey ?? undefined,
+                  pixCity: sourcePaymentInfo.pixCity ?? undefined,
+                }
+              : undefined,
+            price: sourcePrice
+              ? {
+                  type: sourcePrice.type,
+                  tiers: sourcePrice.tiers.map((tier) => ({
+                    name: tier.name,
+                    value: tier.value,
+                  })),
+                }
+              : undefined,
+          }
+        : {}),
+    };
+    const data = this.buildMajorEventCreateData(cloneInput, paymentInfoTableExists);
+
+    const majorEvent = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.majorEvent.create({
+        data,
+        select: this.getMajorEventSelect(paymentInfoTableExists),
+      });
+      if (shouldCopyCertificateConfig) {
+        await this.cloneCertificateConfigsForMajorEvent(tx, source.certificateConfigs, created.id);
+      }
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MAJOR_EVENT,
+          entityId: created.id,
+          entityLabel: created.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: created,
+          scope: { permission: Permission.MajorEvent.Create, majorEventId: created.id },
+          summary: `Grande evento criado como cópia de ${source.name}.`,
+        },
+        tx,
+      );
+      return created;
+    });
+    await this.typesenseSearch.upsertMajorEvent({
+      id: majorEvent.id,
+      name: majorEvent.name,
+      description: majorEvent.description,
+      startDate: majorEvent.startDate,
+      endDate: majorEvent.endDate,
+    });
+    return majorEvent;
+  }
+
   @Mutation(() => DeletionResult, { name: 'deleteMajorEvent' })
   @RequirePermissions(Permission.MajorEvent.Delete)
   async deleteMajorEvent(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
@@ -538,6 +680,13 @@ export class MajorEventsResolver {
     return MAJOR_EVENT_SELECT;
   }
 
+  private getMajorEventCloneSourceSelect(paymentInfoTableExists: boolean) {
+    return {
+      ...this.getMajorEventSelect(paymentInfoTableExists),
+      certificateConfigs: MAJOR_EVENT_CERTIFICATE_CONFIG_CLONE_SELECT,
+    } satisfies Prisma.MajorEventSelect;
+  }
+
   private async hasPaymentInfoTable(): Promise<boolean> {
     if (!this.paymentInfoTableExistsPromise) {
       this.paymentInfoTableExistsPromise = this.prisma.$queryRaw<Array<{ exists: boolean }>>`
@@ -692,5 +841,45 @@ export class MajorEventsResolver {
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
     return context.req?.user ?? context.request?.user;
+  }
+
+  private async cloneCertificateConfigsForMajorEvent(
+    tx: Prisma.TransactionClient,
+    configs: Array<{
+      name: string;
+      certificateTemplateId: string;
+      certificateText: string | null;
+      shouldAutofillSecondPage: boolean;
+      secondPageText: string | null;
+      isActive: boolean;
+      issuedTo: Prisma.CertificateConfigCreateInput['issuedTo'];
+      certificateFields: Prisma.JsonValue;
+    }>,
+    majorEventId: string,
+  ): Promise<void> {
+    for (const config of configs) {
+      await tx.certificateConfig.create({
+        data: {
+          name: config.name,
+          scope: CertificateScope.MAJOR_EVENT,
+          majorEventId,
+          certificateTemplateId: config.certificateTemplateId,
+          certificateText: config.certificateText,
+          shouldAutofillSecondPage: config.shouldAutofillSecondPage,
+          secondPageText: config.secondPageText,
+          isActive: config.isActive,
+          issuedTo: config.issuedTo,
+          certificateFields:
+            config.certificateFields === null
+              ? Prisma.DbNull
+              : (config.certificateFields as Prisma.InputJsonValue),
+        },
+      });
+    }
+  }
+
+  private buildCloneName(inputName: string | null | undefined, sourceName: string): string {
+    const name = inputName?.trim();
+    return name || `${sourceName} (cópia)`;
   }
 }

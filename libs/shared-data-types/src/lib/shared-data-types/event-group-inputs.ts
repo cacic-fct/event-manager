@@ -50,3 +50,18 @@ export class EventGroupUpdateInput {
   @Field(() => Boolean, { nullable: true })
   shouldIssuePartialCertificate?: boolean;
 }
+
+@InputType()
+export class EventGroupClonePartsInput {
+  @Field(() => Boolean, { nullable: true })
+  certificateConfig?: boolean;
+}
+
+@InputType()
+export class EventGroupCloneInput {
+  @Field(() => String, { nullable: true })
+  name?: string;
+
+  @Field(() => EventGroupClonePartsInput, { nullable: true })
+  parts?: EventGroupClonePartsInput;
+}

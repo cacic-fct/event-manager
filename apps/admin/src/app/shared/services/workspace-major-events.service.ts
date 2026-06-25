@@ -1,12 +1,16 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { Event, MajorEvent, MajorEventInput, PriceType } from '../../graphql/models';
+import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 @Injectable({
   providedIn: 'root',
@@ -14,8 +18,10 @@ import { getErrorMessage } from '../error-message';
 export class WorkspaceMajorEventsService {
   private readonly api = inject(MajorEventApiService);
   private readonly eventsApi = inject(EventApiService);
+  private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly permissions = inject(WorkspacePermissionsService);
   private readonly router = inject(Router);
 
   readonly majorEvents = signal<MajorEvent[]>([]);
@@ -256,6 +262,33 @@ export class WorkspaceMajorEventsService {
     }
   }
 
+  async cloneMajorEvent(majorEvent: MajorEvent): Promise<void> {
+    const result = await this.openCloneDialog(majorEvent);
+    if (!result) {
+      return;
+    }
+
+    try {
+      const created = await firstValueFrom(
+        this.api.cloneMajorEvent(majorEvent.id, {
+          name: result.name,
+          parts: {
+            certificateConfig: Boolean(result.parts.certificateConfig),
+            subscriptionSettings: Boolean(result.parts.subscriptionSettings),
+            paymentSettings: Boolean(result.parts.paymentSettings),
+          },
+        }),
+      );
+      this.snackbar.open('Grande evento duplicado.', 'Fechar', { duration: 2500 });
+      await this.loadMajorEvents();
+      await this.pickMajorEvent(created);
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar o grande evento.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
+  }
+
   async searchEventsForSelectedMajorEvent(): Promise<void> {
     const selectedMajorEvent = this.selectedMajorEvent();
     if (!selectedMajorEvent) {
@@ -470,5 +503,46 @@ export class WorkspaceMajorEventsService {
 
     nonPayingControl.enable({ emitEvent: false });
     nonSubscribedControl.enable({ emitEvent: false });
+  }
+
+  private async openCloneDialog(majorEvent: MajorEvent): Promise<CloneAssetDialogResult | null | undefined> {
+    const canCopyCertificateConfig = this.permissions.hasAll([
+      Permission.CertificateConfig.Read,
+      Permission.CertificateConfig.Create,
+    ]);
+    const dialogRef = this.dialog.open(CloneAssetDialogComponent, {
+      width: '52rem',
+      maxWidth: '95vw',
+      data: {
+        title: 'Duplicar grande evento',
+        sourceLabel: 'Grande evento existente',
+        sourceName: majorEvent.name,
+        defaultName: `${majorEvent.name} (cópia)`,
+        parts: [
+          {
+            key: 'certificateConfig',
+            label: 'Configuração de certificado',
+            description: 'Copia modelos e exceções de emissão do grande evento.',
+            defaultSelected: true,
+            disabled: !canCopyCertificateConfig,
+            disabledReason: 'Exige permissão para visualizar e criar configurações de certificado.',
+          },
+          {
+            key: 'subscriptionSettings',
+            label: 'Inscrições',
+            description: 'Copia janela, limites e voto preferencial.',
+            defaultSelected: true,
+          },
+          {
+            key: 'paymentSettings',
+            label: 'Pagamento',
+            description: 'Copia cobrança, dados bancários, Pix, informações adicionais e preços.',
+            defaultSelected: true,
+          },
+        ],
+      },
+    });
+
+    return firstValueFrom(dialogRef.afterClosed());
   }
 }

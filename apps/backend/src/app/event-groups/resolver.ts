@@ -1,8 +1,14 @@
-import { DeletionResult, EventGroup, EventGroupCreateInput, EventGroupUpdateInput } from '@cacic-fct/shared-data-types';
+import {
+  DeletionResult,
+  EventGroup,
+  EventGroupCloneInput,
+  EventGroupCreateInput,
+  EventGroupUpdateInput,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -17,6 +23,32 @@ type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
   request?: { user?: AuthenticatedUser };
 };
+
+const EVENT_GROUP_CLONE_SOURCE_SELECT = {
+  id: true,
+  name: true,
+  emoji: true,
+  shouldIssueCertificate: true,
+  shouldIssueCertificateForNonPayingAttendees: true,
+  shouldIssueCertificateForNonSubscribedAttendees: true,
+  shouldIssueCertificateForEachEvent: true,
+  shouldIssuePartialCertificate: true,
+  certificateConfigs: {
+    where: {
+      deletedAt: null,
+    },
+    select: {
+      name: true,
+      certificateTemplateId: true,
+      certificateText: true,
+      shouldAutofillSecondPage: true,
+      secondPageText: true,
+      isActive: true,
+      issuedTo: true,
+      certificateFields: true,
+    },
+  },
+} satisfies Prisma.EventGroupSelect;
 
 @Resolver(() => EventGroup)
 export class EventGroupsResolver {
@@ -222,6 +254,75 @@ export class EventGroupsResolver {
     return eventGroup;
   }
 
+  @Mutation(() => EventGroup, { name: 'cloneEventGroup' })
+  @RequirePermissions(Permission.EventGroup.Read)
+  async cloneEventGroup(
+    @Args('id', { type: () => String }) id: string,
+    @Args('input', { type: () => EventGroupCloneInput, nullable: true }) input: EventGroupCloneInput | null,
+    @Context() context: GraphqlContext,
+  ) {
+    const source = await this.prisma.eventGroup.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: EVENT_GROUP_CLONE_SOURCE_SELECT,
+    });
+
+    if (!source) {
+      throw new NotFoundException(`Event group ${id} was not found.`);
+    }
+
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventGroup.Create]);
+    const shouldCopyCertificateConfig = Boolean(input?.parts?.certificateConfig);
+    if (shouldCopyCertificateConfig) {
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
+        eventGroupId: source.id,
+      });
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Create]);
+    }
+
+    const normalizedInput = this.normalizeEventGroupCertificateInput({
+      name: this.buildCloneName(input?.name, source.name),
+      emoji: source.emoji,
+      ...(shouldCopyCertificateConfig
+        ? {
+            shouldIssueCertificate: source.shouldIssueCertificate,
+            shouldIssueCertificateForNonPayingAttendees: source.shouldIssueCertificateForNonPayingAttendees,
+            shouldIssueCertificateForNonSubscribedAttendees: source.shouldIssueCertificateForNonSubscribedAttendees,
+            shouldIssueCertificateForEachEvent: source.shouldIssueCertificateForEachEvent,
+            shouldIssuePartialCertificate: source.shouldIssuePartialCertificate,
+          }
+        : {}),
+    });
+
+    const eventGroup = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.eventGroup.create({ data: normalizedInput });
+      if (shouldCopyCertificateConfig) {
+        await this.cloneCertificateConfigsForEventGroup(tx, source.certificateConfigs, created.id);
+      }
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_GROUP,
+          entityId: created.id,
+          entityLabel: created.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: created,
+          scope: { permission: Permission.EventGroup.Create, eventGroupId: created.id },
+          summary: `Grupo de eventos criado como cópia de ${source.name}.`,
+        },
+        tx,
+      );
+      return created;
+    });
+    await this.typesenseSearch.upsertEventGroup({
+      id: eventGroup.id,
+      name: eventGroup.name,
+    });
+    return eventGroup;
+  }
+
   @Mutation(() => DeletionResult, { name: 'deleteEventGroup' })
   @RequirePermissions(Permission.EventGroup.Delete)
   async deleteEventGroup(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
@@ -290,6 +391,46 @@ export class EventGroupsResolver {
     });
 
     return count > 0;
+  }
+
+  private async cloneCertificateConfigsForEventGroup(
+    tx: Prisma.TransactionClient,
+    configs: Array<{
+      name: string;
+      certificateTemplateId: string;
+      certificateText: string | null;
+      shouldAutofillSecondPage: boolean;
+      secondPageText: string | null;
+      isActive: boolean;
+      issuedTo: Prisma.CertificateConfigCreateInput['issuedTo'];
+      certificateFields: Prisma.JsonValue;
+    }>,
+    eventGroupId: string,
+  ): Promise<void> {
+    for (const config of configs) {
+      await tx.certificateConfig.create({
+        data: {
+          name: config.name,
+          scope: CertificateScope.EVENT_GROUP,
+          eventGroupId,
+          certificateTemplateId: config.certificateTemplateId,
+          certificateText: config.certificateText,
+          shouldAutofillSecondPage: config.shouldAutofillSecondPage,
+          secondPageText: config.secondPageText,
+          isActive: config.isActive,
+          issuedTo: config.issuedTo,
+          certificateFields:
+            config.certificateFields === null
+              ? Prisma.DbNull
+              : (config.certificateFields as Prisma.InputJsonValue),
+        },
+      });
+    }
+  }
+
+  private buildCloneName(inputName: string | null | undefined, sourceName: string): string {
+    const name = inputName?.trim();
+    return name || `${sourceName} (cópia)`;
   }
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {

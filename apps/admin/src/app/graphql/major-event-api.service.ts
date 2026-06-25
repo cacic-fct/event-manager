@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { DeletionResult, MajorEvent, MajorEventInput, MajorEventUserAttendance } from './models';
+import { DeletionResult, MajorEvent, MajorEventCloneInput, MajorEventInput, MajorEventUserAttendance } from './models';
 import { MAJOR_EVENT_DETAIL_FIELDS, MAJOR_EVENT_LIST_FIELDS, PERSON_EXPORT_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
@@ -76,6 +76,19 @@ export class MajorEventApiService {
         { id, input },
       )
       .pipe(map((data) => data.updateMajorEvent));
+  }
+
+  cloneMajorEvent(id: string, input: MajorEventCloneInput) {
+    return this.graphqlHttp
+      .request<{ cloneMajorEvent: MajorEvent }>(
+        `mutation CloneMajorEvent($id: String!, $input: MajorEventCloneInput) {
+          cloneMajorEvent(id: $id, input: $input) {
+            ${MAJOR_EVENT_DETAIL_FIELDS}
+          }
+        }`,
+        { id, input },
+      )
+      .pipe(map((data) => data.cloneMajorEvent));
   }
 
   deleteMajorEvent(id: string) {

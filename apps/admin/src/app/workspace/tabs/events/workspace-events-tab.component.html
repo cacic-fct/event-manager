@@ -40,6 +40,16 @@
                 <mat-icon>edit</mat-icon>
               </button>
             }
+            @if (canCloneEvent()) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Duplicar evento"
+                matTooltip="Duplicar"
+                (click)="$event.stopPropagation(); workspace.cloneEvent(eventItem)">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            }
             @if (canDeleteEvent(eventItem)) {
               <button
                 matIconButton
@@ -88,6 +98,12 @@
               <mat-icon>history</mat-icon>
               Histórico
             </button>
+            @if (canCloneEvent()) {
+              <button mat-stroked-button type="button" (click)="workspace.cloneEvent(selectedEvent)">
+                <mat-icon>content_copy</mat-icon>
+                Duplicar
+              </button>
+            }
           }
           <button mat-button type="button" (click)="workspace.resetEventForm()">
             <mat-icon>restart_alt</mat-icon>

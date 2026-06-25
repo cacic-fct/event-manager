@@ -93,6 +93,10 @@ export class WorkspaceEventsTabComponent {
     );
   }
 
+  protected canCloneEvent(): boolean {
+    return this.permissions.hasAll([Permission.Event.Read, Permission.Event.Create]);
+  }
+
   protected canEditSelectedEventRelation(
     scope:
       | typeof Permission.EventAttendanceCollector.Create
