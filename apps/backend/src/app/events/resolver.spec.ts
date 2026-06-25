@@ -273,4 +273,171 @@ describe('EventsResolver', () => {
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
   });
+
+  it('clones selected reusable event settings without copying the online attendance code', async () => {
+    const source = {
+      id: 'event-source',
+      name: 'Oficina de Git',
+      creditMinutes: 120,
+      startDate: new Date('2026-07-01T12:00:00.000Z'),
+      endDate: new Date('2026-07-01T14:00:00.000Z'),
+      type: 'MINICURSO',
+      emoji: '🧪',
+      description: 'Descrição',
+      shortDescription: 'Resumo',
+      latitude: -22.1,
+      longitude: -51.4,
+      locationDescription: 'Laboratório 1',
+      majorEventId: 'major-1',
+      eventGroupId: 'group-1',
+      allowSubscription: true,
+      subscriptionStartDate: new Date('2026-06-01T12:00:00.000Z'),
+      subscriptionEndDate: new Date('2026-06-30T12:00:00.000Z'),
+      slots: 40,
+      autoSubscribe: true,
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: true,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
+      shouldCollectAttendance: true,
+      isOnlineAttendanceAllowed: true,
+      shouldProvideSubscriberListToLecturer: true,
+      onlineAttendanceCode: 'ABCD',
+      onlineAttendanceStartDate: new Date('2026-07-01T12:00:00.000Z'),
+      onlineAttendanceEndDate: new Date('2026-07-01T14:00:00.000Z'),
+      publiclyVisible: false,
+      youtubeCode: 'video',
+      buttonText: 'Abrir',
+      buttonLink: 'https://example.com',
+      deletedAt: null,
+      createdAt: new Date('2026-06-01T12:00:00.000Z'),
+      createdById: 'creator',
+      updatedAt: new Date('2026-06-01T12:00:00.000Z'),
+      updatedById: 'creator',
+      lecturers: [{ personId: 'person-1' }],
+      certificateConfigs: [
+        {
+          name: 'Participante',
+          certificateTemplateId: 'template-1',
+          certificateText: 'Texto',
+          shouldAutofillSecondPage: true,
+          secondPageText: 'Verso',
+          isActive: true,
+          issuedTo: 'ATTENDEE',
+          certificateFields: { workload: '2h' },
+        },
+      ],
+    };
+    const created = {
+      ...source,
+      id: 'event-clone',
+      name: 'Oficina de Git 2027',
+      onlineAttendanceCode: null,
+      lecturers: [],
+      attendances: [],
+    };
+    const tx = {
+      event: {
+        create: jest.fn().mockResolvedValue(created),
+      },
+      eventGroup: {
+        updateMany: jest.fn(),
+      },
+      certificateConfig: {
+        create: jest.fn(),
+      },
+    };
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(source),
+      },
+      eventGroup: {
+        findFirst: jest.fn().mockResolvedValue({
+          shouldIssueCertificate: true,
+          shouldIssueCertificateForNonPayingAttendees: true,
+          shouldIssueCertificateForNonSubscribedAttendees: true,
+        }),
+      },
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const typesenseSearch = {
+      upsertEvent: jest.fn(),
+    };
+    const frozenResources = {
+      assertEventCreateTargetsMutable: jest.fn(),
+    };
+    const authorizationPolicy = {
+      assertPermissions: jest.fn(),
+    };
+    const auditLog = {
+      record: jest.fn(),
+    };
+    const resolver = new EventsResolver(
+      prisma as never,
+      typesenseSearch as never,
+      {} as never,
+      frozenResources as never,
+      authorizationPolicy as never,
+      auditLog as never,
+    );
+
+    await expect(
+      resolver.cloneEvent(
+        'event-source',
+        {
+          name: 'Oficina de Git 2027',
+          parts: {
+            lecturers: true,
+            certificateConfig: true,
+            subscriptionSettings: true,
+            attendanceSettings: true,
+            place: true,
+            visibility: true,
+          },
+        },
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).resolves.toBe(created);
+
+    expect(tx.event.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'Oficina de Git 2027',
+          allowSubscription: true,
+          shouldCollectAttendance: true,
+          onlineAttendanceCode: null,
+          onlineAttendanceStartDate: source.onlineAttendanceStartDate,
+          onlineAttendanceEndDate: source.onlineAttendanceEndDate,
+          publiclyVisible: false,
+          lecturers: {
+            create: [
+              {
+                person: {
+                  connect: {
+                    id: 'person-1',
+                  },
+                },
+                createdById: 'admin-1',
+              },
+            ],
+          },
+        }),
+      }),
+    );
+    expect(tx.certificateConfig.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        name: 'Participante',
+        scope: 'EVENT',
+        eventId: 'event-clone',
+        certificateTemplateId: 'template-1',
+      }),
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(2);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'event-clone',
+        summary: 'Evento criado como cópia de Oficina de Git.',
+      }),
+      tx,
+    );
+  });
 });

@@ -184,3 +184,24 @@ export class MajorEventUpdateInput {
   @Field(() => MajorEventPriceInput, { nullable: true })
   price?: MajorEventPriceInput | null;
 }
+
+@InputType()
+export class MajorEventClonePartsInput {
+  @Field(() => Boolean, { nullable: true })
+  certificateConfig?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  subscriptionSettings?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  paymentSettings?: boolean;
+}
+
+@InputType()
+export class MajorEventCloneInput {
+  @Field(() => String, { nullable: true })
+  name?: string;
+
+  @Field(() => MajorEventClonePartsInput, { nullable: true })
+  parts?: MajorEventClonePartsInput;
+}

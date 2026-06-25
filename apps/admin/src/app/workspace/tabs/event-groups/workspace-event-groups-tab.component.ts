@@ -70,6 +70,10 @@ export class WorkspaceEventGroupsTabComponent {
     );
   }
 
+  protected canCloneGroup(): boolean {
+    return this.permissions.hasAll([Permission.EventGroup.Read, Permission.EventGroup.Create]);
+  }
+
   protected canEditSelectedGroupEvents(): boolean {
     return this.canEditGroup(this.workspace.selectedEventGroup());
   }

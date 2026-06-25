@@ -1,8 +1,8 @@
-import { DeletionResult, Event, EventCreateInput, EventUpdateInput } from '@cacic-fct/shared-data-types';
+import { DeletionResult, Event, EventCloneInput, EventCreateInput, EventUpdateInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -154,6 +154,30 @@ const EVENT_DETAIL_SELECT = {
   ...EVENT_BASE_SELECT,
   attendances: true,
   lecturers: true,
+} satisfies Prisma.EventSelect;
+
+const EVENT_CLONE_SOURCE_SELECT = {
+  ...EVENT_AUDIT_SELECT,
+  lecturers: {
+    select: {
+      personId: true,
+    },
+  },
+  certificateConfigs: {
+    where: {
+      deletedAt: null,
+    },
+    select: {
+      name: true,
+      certificateTemplateId: true,
+      certificateText: true,
+      shouldAutofillSecondPage: true,
+      secondPageText: true,
+      isActive: true,
+      issuedTo: true,
+      certificateFields: true,
+    },
+  },
 } satisfies Prisma.EventSelect;
 
 @Resolver(() => Event)
@@ -448,6 +472,166 @@ export class EventsResolver {
     return event;
   }
 
+  @Mutation(() => Event, { name: 'cloneEvent' })
+  @RequirePermissions(Permission.Event.Read, Permission.Event.Create)
+  async cloneEvent(
+    @Args('id', { type: () => String }) id: string,
+    @Args('input', { type: () => EventCloneInput, nullable: true }) input: EventCloneInput | null,
+    @Context() context: GraphqlContext,
+  ) {
+    const source = await this.prisma.event.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: EVENT_CLONE_SOURCE_SELECT,
+    });
+
+    if (!source) {
+      throw new NotFoundException(`Event ${id} was not found.`);
+    }
+
+    const parts = input?.parts;
+    const shouldCopyLecturers = Boolean(parts?.lecturers);
+    const shouldCopyCertificateConfig = Boolean(parts?.certificateConfig);
+    if (shouldCopyLecturers) {
+      await this.authorizationPolicy.assertPermissions(
+        this.getUser(context),
+        [Permission.EventLecturer.Read, Permission.EventLecturer.Create],
+        { eventId: source.id },
+      );
+    }
+    if (shouldCopyCertificateConfig) {
+      await this.authorizationPolicy.assertPermissions(
+        this.getUser(context),
+        [Permission.CertificateConfig.Read, Permission.CertificateConfig.Create],
+        { eventId: source.id },
+      );
+    }
+
+    const cloneInput: EventCreateInput = {
+      name: this.buildCloneName(input?.name, source.name),
+      creditMinutes: source.creditMinutes ?? undefined,
+      startDate: source.startDate,
+      endDate: source.endDate,
+      type: source.type,
+      emoji: source.emoji,
+      description: source.description ?? undefined,
+      shortDescription: source.shortDescription ?? undefined,
+      majorEventId: source.majorEventId ?? undefined,
+      eventGroupId: source.eventGroupId ?? undefined,
+      youtubeCode: source.youtubeCode ?? undefined,
+      buttonText: source.buttonText ?? undefined,
+      buttonLink: source.buttonLink ?? undefined,
+      ...(parts?.place
+        ? {
+            latitude: source.latitude ?? undefined,
+            longitude: source.longitude ?? undefined,
+            locationDescription: source.locationDescription ?? undefined,
+          }
+        : {}),
+      ...(parts?.subscriptionSettings
+        ? {
+            allowSubscription: source.allowSubscription,
+            subscriptionStartDate: source.subscriptionStartDate ?? undefined,
+            subscriptionEndDate: source.subscriptionEndDate ?? undefined,
+            slots: source.slots ?? undefined,
+            autoSubscribe: source.autoSubscribe,
+          }
+        : {}),
+      ...(shouldCopyCertificateConfig
+        ? {
+            shouldIssueCertificate: source.shouldIssueCertificate,
+            shouldIssueCertificateForNonPayingAttendees: source.shouldIssueCertificateForNonPayingAttendees,
+            shouldIssueCertificateForNonSubscribedAttendees: source.shouldIssueCertificateForNonSubscribedAttendees,
+          }
+        : {}),
+      ...(parts?.attendanceSettings
+        ? {
+            shouldCollectAttendance: source.shouldCollectAttendance,
+            isOnlineAttendanceAllowed: source.isOnlineAttendanceAllowed,
+            shouldProvideSubscriberListToLecturer: source.shouldProvideSubscriberListToLecturer,
+            onlineAttendanceStartDate: source.onlineAttendanceStartDate ?? undefined,
+            onlineAttendanceEndDate: source.onlineAttendanceEndDate ?? undefined,
+          }
+        : {}),
+      ...(parts?.visibility ? { publiclyVisible: source.publiclyVisible } : {}),
+      lecturerPersonIds: shouldCopyLecturers ? source.lecturers.map((lecturer) => lecturer.personId) : undefined,
+    };
+
+    await this.frozenResources.assertEventCreateTargetsMutable(cloneInput, this.getUser(context));
+    const normalizedInput = await this.normalizeEventCertificateInput(cloneInput);
+    const eventInput = { ...normalizedInput };
+    const lecturerPersonIds = eventInput.lecturerPersonIds;
+    delete eventInput.lecturerPersonIds;
+    delete eventInput.attendanceCollectorPersonIds;
+    const actorId = context.req?.user?.sub ?? context.request?.user?.sub;
+    const uniqueLecturerPersonIds = [...new Set(lecturerPersonIds ?? [])];
+    const event = await this.prisma.$transaction(async (tx) => {
+      const createdEvent = await tx.event.create({
+        data: {
+          ...eventInput,
+          onlineAttendanceCode: null,
+          lecturers:
+            uniqueLecturerPersonIds.length > 0
+              ? {
+                  create: uniqueLecturerPersonIds.map((personId) => ({
+                    person: {
+                      connect: {
+                        id: personId,
+                      },
+                    },
+                    createdById: actorId,
+                  })),
+                }
+              : undefined,
+        },
+        select: EVENT_DETAIL_SELECT,
+      });
+
+      if (shouldCopyCertificateConfig) {
+        await this.cloneCertificateConfigsForEvent(tx, source.certificateConfigs, createdEvent.id);
+      }
+
+      await this.disableGroupPerEventModeForMajorEvent(createdEvent, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT,
+          entityId: createdEvent.id,
+          entityLabel: createdEvent.name,
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: createdEvent,
+          scope: {
+            permission: Permission.Event.Create,
+            eventId: createdEvent.id,
+            majorEventId: createdEvent.majorEventId,
+            eventGroupId: createdEvent.eventGroupId,
+          },
+          summary: `Evento criado como cópia de ${source.name}.`,
+        },
+        tx,
+      );
+      return createdEvent;
+    });
+    await this.typesenseSearch.upsertEvent({
+      id: event.id,
+      name: event.name,
+      emoji: event.emoji,
+      type: event.type,
+      description: event.description,
+      shortDescription: event.shortDescription,
+      locationDescription: event.locationDescription,
+      majorEventId: event.majorEventId,
+      eventGroupId: event.eventGroupId,
+      shouldIssueCertificate: event.shouldIssueCertificate,
+      publiclyVisible: event.publiclyVisible,
+      startDate: event.startDate,
+      endDate: event.endDate,
+    });
+    return event;
+  }
+
   @Mutation(() => DeletionResult, { name: 'deleteEvent' })
   @RequirePermissions(Permission.Event.Delete)
   async deleteEvent(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
@@ -590,6 +774,46 @@ export class EventsResolver {
       input.onlineAttendanceStartDate !== undefined ||
       input.onlineAttendanceEndDate !== undefined
     );
+  }
+
+  private async cloneCertificateConfigsForEvent(
+    tx: Prisma.TransactionClient,
+    configs: Array<{
+      name: string;
+      certificateTemplateId: string;
+      certificateText: string | null;
+      shouldAutofillSecondPage: boolean;
+      secondPageText: string | null;
+      isActive: boolean;
+      issuedTo: Prisma.CertificateConfigCreateInput['issuedTo'];
+      certificateFields: Prisma.JsonValue;
+    }>,
+    eventId: string,
+  ): Promise<void> {
+    for (const config of configs) {
+      await tx.certificateConfig.create({
+        data: {
+          name: config.name,
+          scope: CertificateScope.EVENT,
+          eventId,
+          certificateTemplateId: config.certificateTemplateId,
+          certificateText: config.certificateText,
+          shouldAutofillSecondPage: config.shouldAutofillSecondPage,
+          secondPageText: config.secondPageText,
+          isActive: config.isActive,
+          issuedTo: config.issuedTo,
+          certificateFields:
+            config.certificateFields === null
+              ? Prisma.DbNull
+              : (config.certificateFields as Prisma.InputJsonValue),
+        },
+      });
+    }
+  }
+
+  private buildCloneName(inputName: string | null | undefined, sourceName: string): string {
+    const name = inputName?.trim();
+    return name || `${sourceName} (cópia)`;
   }
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {

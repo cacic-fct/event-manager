@@ -74,6 +74,10 @@ export class WorkspaceMajorEventsTabComponent {
     );
   }
 
+  protected canCloneMajorEvent(): boolean {
+    return this.permissions.hasAll([Permission.MajorEvent.Read, Permission.MajorEvent.Create]);
+  }
+
   protected canEditSelectedMajorEventEvents(): boolean {
     const selectedMajorEvent = this.workspace.selectedMajorEvent();
     return (

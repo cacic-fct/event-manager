@@ -1,7 +1,15 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { DeletionResult, Event, EventAttendanceCollector, EventInput, EventLecturer, EventSummary } from './models';
+import {
+  DeletionResult,
+  Event,
+  EventAttendanceCollector,
+  EventCloneInput,
+  EventInput,
+  EventLecturer,
+  EventSummary,
+} from './models';
 import { EVENT_DETAIL_FIELDS, EVENT_LIST_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
@@ -110,6 +118,19 @@ export class EventApiService {
         { id, input },
       )
       .pipe(map((data) => data.updateEvent));
+  }
+
+  cloneEvent(id: string, input: EventCloneInput) {
+    return this.graphqlHttp
+      .request<{ cloneEvent: Pick<Event, 'id'> }>(
+        `mutation CloneEvent($id: String!, $input: EventCloneInput) {
+          cloneEvent(id: $id, input: $input) {
+            id
+          }
+        }`,
+        { id, input },
+      )
+      .pipe(map((data) => data.cloneEvent));
   }
 
   deleteEvent(id: string) {

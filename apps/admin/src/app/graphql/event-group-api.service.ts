@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { DeletionResult, EventGroup, EventGroupInput } from './models';
+import { DeletionResult, EventGroup, EventGroupCloneInput, EventGroupInput } from './models';
 import { EVENT_GROUP_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
@@ -58,6 +58,19 @@ export class EventGroupApiService {
         { id, input },
       )
       .pipe(map((data) => data.updateEventGroup));
+  }
+
+  cloneEventGroup(id: string, input: EventGroupCloneInput) {
+    return this.graphqlHttp
+      .request<{ cloneEventGroup: EventGroup }>(
+        `mutation CloneEventGroup($id: String!, $input: EventGroupCloneInput) {
+          cloneEventGroup(id: $id, input: $input) {
+            ${EVENT_GROUP_FIELDS}
+          }
+        }`,
+        { id, input },
+      )
+      .pipe(map((data) => data.cloneEventGroup));
   }
 
   deleteEventGroup(id: string) {

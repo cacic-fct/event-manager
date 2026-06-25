@@ -205,3 +205,33 @@ export class EventUpdateInput {
   @Field(() => String, { nullable: true })
   buttonLink?: string;
 }
+
+@InputType()
+export class EventClonePartsInput {
+  @Field(() => Boolean, { nullable: true })
+  lecturers?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  certificateConfig?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  subscriptionSettings?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  attendanceSettings?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  place?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  visibility?: boolean;
+}
+
+@InputType()
+export class EventCloneInput {
+  @Field(() => String, { nullable: true })
+  name?: string;
+
+  @Field(() => EventClonePartsInput, { nullable: true })
+  parts?: EventClonePartsInput;
+}

@@ -1,13 +1,17 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { Event, EventGroup, EventGroupInput, EventSummary } from '../../graphql/models';
+import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { WorkspaceEventsService } from './workspace-events.service';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 const DEFAULT_EVENT_GROUP_EMOJI = '❔';
 
@@ -17,9 +21,11 @@ const DEFAULT_EVENT_GROUP_EMOJI = '❔';
 export class WorkspaceEventGroupsService {
   private readonly api = inject(EventGroupApiService);
   private readonly eventsApi = inject(EventApiService);
+  private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
   private readonly eventsService = inject(WorkspaceEventsService);
+  private readonly permissions = inject(WorkspacePermissionsService);
   private readonly router = inject(Router);
 
   readonly eventGroups = signal<EventGroup[]>([]);
@@ -224,6 +230,29 @@ export class WorkspaceEventGroupsService {
     }
   }
 
+  async cloneEventGroup(group: EventGroup): Promise<void> {
+    const result = await this.openCloneDialog(group);
+    if (!result) {
+      return;
+    }
+
+    try {
+      const created = await firstValueFrom(
+        this.api.cloneEventGroup(group.id, {
+          name: result.name,
+          parts: {
+            certificateConfig: Boolean(result.parts.certificateConfig),
+          },
+        }),
+      );
+      this.snackbar.open('Grupo duplicado.', 'Fechar', { duration: 2500 });
+      await this.loadEventGroups();
+      await this.pickEventGroup(created);
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar o grupo.'), 'Fechar', { duration: 5000 });
+    }
+  }
+
   async searchEventsForSelectedGroup(): Promise<void> {
     const selectedGroup = this.selectedEventGroup();
     if (!selectedGroup) {
@@ -330,5 +359,34 @@ export class WorkspaceEventGroupsService {
     }
 
     forEachControl.enable({ emitEvent: false });
+  }
+
+  private async openCloneDialog(group: EventGroup): Promise<CloneAssetDialogResult | null | undefined> {
+    const canCopyCertificateConfig = this.permissions.hasAll([
+      Permission.CertificateConfig.Read,
+      Permission.CertificateConfig.Create,
+    ]);
+    const dialogRef = this.dialog.open(CloneAssetDialogComponent, {
+      width: '52rem',
+      maxWidth: '95vw',
+      data: {
+        title: 'Duplicar grupo de eventos',
+        sourceLabel: 'Grupo existente',
+        sourceName: group.name,
+        defaultName: `${group.name} (cópia)`,
+        parts: [
+          {
+            key: 'certificateConfig',
+            label: 'Configuração de certificado',
+            description: 'Copia regras de emissão e modelos de certificado do grupo.',
+            defaultSelected: true,
+            disabled: !canCopyCertificateConfig,
+            disabledReason: 'Exige permissão para visualizar e criar configurações de certificado.',
+          },
+        ],
+      },
+    });
+
+    return firstValueFrom(dialogRef.afterClosed());
   }
 }
