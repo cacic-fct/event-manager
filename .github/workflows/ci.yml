@@ -21,9 +21,37 @@ jobs:
     name: Lint, test, and build
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: fct_app_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fct_app_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     permissions:
       contents: read
       packages: read
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_test
+      REDIS_URL: redis://localhost:6379
 
     if: >
       github.event_name == 'push' ||
@@ -68,6 +96,33 @@ jobs:
 
       - name: Run unit tests with coverage
         run: bunx nx run-many --target=test --all --parallel=3
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run frontend auth e2e tests
+        run: |
+          E2E_START_SERVER=true bunx nx e2e public-e2e -- --project=chromium
+          E2E_START_SERVER=true bunx nx e2e admin-e2e -- --project=chromium
+
+      - name: Run backend auth e2e tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          bunx nx serve backend > /tmp/fct-app-backend.log 2>&1 &
+          backend_pid="$!"
+
+          cleanup() {
+            kill "$backend_pid" 2>/dev/null || true
+            wait "$backend_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          if ! bunx nx e2e backend-e2e --runInBand; then
+            cat /tmp/fct-app-backend.log
+            exit 1
+          fi
 
       - name: Build deployable apps
         run: bunx nx run-many -t build -p admin,backend,public --configuration=production --parallel=3
@@ -174,11 +229,39 @@ jobs:
     name: Untrusted PR checks
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: fct_app_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fct_app_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     needs:
       - prepare-untrusted-pr
 
     permissions:
       contents: read
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_test
+      REDIS_URL: redis://localhost:6379
 
     if: >
       github.event_name == 'pull_request' &&
@@ -217,6 +300,33 @@ jobs:
 
       - name: Run unit tests with coverage
         run: bunx nx affected -t test --parallel=3 --coverage
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run frontend auth e2e tests
+        run: |
+          E2E_START_SERVER=true bunx nx e2e public-e2e -- --project=chromium
+          E2E_START_SERVER=true bunx nx e2e admin-e2e -- --project=chromium
+
+      - name: Run backend auth e2e tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          bunx nx serve backend > /tmp/fct-app-backend.log 2>&1 &
+          backend_pid="$!"
+
+          cleanup() {
+            kill "$backend_pid" 2>/dev/null || true
+            wait "$backend_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          if ! bunx nx e2e backend-e2e --runInBand; then
+            cat /tmp/fct-app-backend.log
+            exit 1
+          fi
 
       - name: Build deployable apps
         run: bunx nx run-many -t build -p admin,backend,public --configuration=production --parallel=3

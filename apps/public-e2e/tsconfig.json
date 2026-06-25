@@ -4,6 +4,7 @@
     "allowJs": true,
     "outDir": "../../dist/out-tsc",
     "sourceMap": false,
+    "types": ["node"],
     "module": "Node16",
     "moduleResolution": "node16",
     "strict": true,
