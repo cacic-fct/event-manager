@@ -1,0 +1,125 @@
+.tree-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-height: 42rem;
+  overflow: hidden;
+  padding: 1rem 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0.25rem 0 0;
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.9rem;
+  }
+
+  mat-list-item {
+    --mdc-list-list-item-one-line-container-height: auto;
+    --mdc-list-list-item-two-line-container-height: auto;
+    width: 100%;
+    min-height: 4.25rem;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-block: 0.125rem;
+    padding-block: 0.45rem;
+  }
+
+  .level-1 {
+    width: calc(100% - 1.25rem);
+    margin-left: 1.25rem;
+  }
+
+  .level-2 {
+    width: calc(100% - 2.4rem);
+    margin-left: 2.4rem;
+  }
+
+  .mdc-list-item__content {
+    min-width: 0;
+    align-self: center;
+    overflow: visible;
+  }
+
+  .mdc-list-item__primary-text,
+  .mdc-list-item__secondary-text {
+    display: block;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    -webkit-box-orient: initial;
+    -webkit-line-clamp: unset;
+  }
+
+  .hidden {
+    opacity: 0.65;
+  }
+
+  .warning mat-icon {
+    color: var(--mat-sys-error);
+  }
+}
+
+.publication-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tree-heading {
+  flex: 0 0 auto;
+  padding: 0 0.5rem 0.5rem;
+}
+
+.publication-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.75rem;
+
+  mat-form-field {
+    min-width: 0;
+  }
+
+  button {
+    align-self: center;
+  }
+}
+
+.publication-pager {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding: 0.75rem 0.5rem 0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}
+
+.publication-list-title,
+.publication-list-line {
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.publication-list-line {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.selected-list-item {
+  background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+}

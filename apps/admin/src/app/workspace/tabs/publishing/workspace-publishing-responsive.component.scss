@@ -1,0 +1,45 @@
+@media (max-width: 860px) {
+  .publication-header,
+  .selected-summary {
+    flex-direction: column;
+  }
+
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tree-panel {
+    max-height: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .publication-header button,
+  .action-grid button,
+  .schedule-form button,
+  .preview-form button,
+  .schedule-form mat-form-field,
+  .preview-form mat-form-field {
+    width: 100%;
+    max-width: none;
+    white-space: normal;
+  }
+
+  .tree-panel {
+    padding-inline: 0.375rem;
+  }
+
+  .tree-panel .level-1 {
+    width: calc(100% - 0.75rem);
+    margin-left: 0.75rem;
+  }
+
+  .tree-panel .level-2 {
+    width: calc(100% - 1.25rem);
+    margin-left: 1.25rem;
+  }
+
+  .publication-filter {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+}

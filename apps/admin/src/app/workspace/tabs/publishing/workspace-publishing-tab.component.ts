@@ -54,7 +54,13 @@ import {
     MatTooltipModule,
   ],
   templateUrl: './workspace-publishing-tab.component.html',
-  styleUrl: './workspace-publishing-tab.component.scss',
+  styleUrls: [
+    '../workspace-tab.shared.scss',
+    './workspace-publishing-tab.component.scss',
+    './workspace-publishing-tree.component.scss',
+    './workspace-publishing-detail.component.scss',
+    './workspace-publishing-responsive.component.scss',
+  ],
   encapsulation: ViewEncapsulation.None,
 })
 export class WorkspacePublicationTabComponent {
