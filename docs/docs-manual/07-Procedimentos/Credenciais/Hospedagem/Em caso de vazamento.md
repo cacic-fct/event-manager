@@ -9,5 +9,5 @@ Caso algum administrador tenha alguma conta invadida ou tenha o seu computador s
 Em qualquer caso, notifique todos que possuírem cargos altos no projeto, incluindo _founding lead developers_.
 
 :::tip[Dica]
-Confira as seções [responsabilidades](http://cacic.dev.br/docs/Recursos/Servidores/FCTDTIWEBXP01#encarregados) e [consequências](/Geral/Antes%20de%20colaborar/Erros%20e%20consequências).
+Confira as seções [responsabilidades](https://cacic.dev.br/docs/Recursos/Servidores/FCTDTIWEBXP01#encarregados) e [consequências](/Geral/Antes%20de%20colaborar/Erros%20e%20consequências).
 :::
