@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, PublicContentPreviewTargetType } from '@prisma/client';
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
@@ -14,7 +14,7 @@ import {
   resolvePublicationActorId,
   resolvePublicationActorName,
 } from './publishing-auth';
-import { PREVIEW_TRIM_DAYS, PREVIEW_TTL_SECONDS } from './publishing.constants';
+import { PREVIEW_TOKEN_SECRET, PREVIEW_TRIM_DAYS, PREVIEW_TTL_SECONDS } from './publishing.constants';
 import { PublicationPreviewContentService } from './publishing-preview-content.service';
 import {
   PublicContentPreviewInput,
@@ -61,12 +61,14 @@ export class PublicationPreviewService {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + PREVIEW_TTL_SECONDS * 1000);
     const trimAfter = new Date(now.getTime() + PREVIEW_TRIM_DAYS * 24 * 60 * 60 * 1000);
-    const previewToken = await this.findOrCreatePreviewToken(
+    const previewToken = this.buildPreviewToken(
       input.targetType as PublicContentPreviewTargetType,
       input.targetId,
       actorId,
     );
-    const redisKey = previewRedisKey(previewToken);
+    const previewTokenHash = this.hashPreviewToken(previewToken);
+    const redisKey = previewRedisKey(previewTokenHash);
+    const persistedPublicPath = previewPath(input.targetType, previewTokenHash);
     const publicPath = previewPath(input.targetType, previewToken);
     const previewAt = input.previewAt ?? now;
 
@@ -79,12 +81,12 @@ export class PublicationPreviewService {
         },
       },
       create: {
-        previewToken,
+        previewTokenHash,
         targetType: input.targetType as PublicContentPreviewTargetType,
         targetId: input.targetId,
         targetLabel: target.label,
         previewAt,
-        publicPath,
+        publicPath: persistedPublicPath,
         redisKey,
         createdById: actorId,
         createdByName: resolvePublicationActorName(user),
@@ -95,7 +97,7 @@ export class PublicationPreviewService {
       update: {
         targetLabel: target.label,
         previewAt,
-        publicPath,
+        publicPath: persistedPublicPath,
         redisKey,
         createdByName: resolvePublicationActorName(user),
         createdByEmail: user?.email ?? null,
@@ -115,7 +117,7 @@ export class PublicationPreviewService {
       summary: 'Pré-visualização criada.',
       metadata: {
         previewId: preview.id,
-        previewPath: publicPath,
+        previewPath: preview.publicPath,
         expiresAt: expiresAt.toISOString(),
         previewAt: previewAt.toISOString(),
       },
@@ -135,7 +137,7 @@ export class PublicationPreviewService {
     const user = getPublicationUser(context);
     const actorId = resolvePublicationActorId(user);
     const preview = await this.prisma.publicContentPreview.findUnique({
-      where: { previewToken },
+      where: { previewTokenHash: this.hashPreviewToken(previewToken) },
     });
 
     if (!preview || preview.expiresAt <= new Date()) {
@@ -171,21 +173,22 @@ export class PublicationPreviewService {
     });
   }
 
-  private async findOrCreatePreviewToken(
+  private buildPreviewToken(
     targetType: PublicContentPreviewTargetType,
     targetId: string,
     actorId: string,
-  ): Promise<string> {
-    const existing = await this.prisma.publicContentPreview.findUnique({
-      where: {
-        targetType_targetId_createdById: {
-          targetType,
-          targetId,
-          createdById: actorId,
-        },
-      },
-    });
-    return existing?.previewToken ?? randomBytes(24).toString('base64url');
+  ): string {
+    return createHmac('sha256', PREVIEW_TOKEN_SECRET)
+      .update(targetType)
+      .update('\0')
+      .update(targetId)
+      .update('\0')
+      .update(actorId)
+      .digest('base64url');
+  }
+
+  private hashPreviewToken(previewToken: string): string {
+    return createHash('sha256').update(previewToken).digest('hex');
   }
 
   private async storePreviewSession(

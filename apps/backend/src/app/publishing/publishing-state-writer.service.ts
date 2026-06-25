@@ -69,6 +69,96 @@ export class PublicationStateWriterService {
     return { eventIds: [event.id], majorEventIds: [] };
   }
 
+  async updateTargetsPublicationState(input: {
+    eventIds?: string[];
+    majorEventIds?: string[];
+    state: PublicationState;
+    scheduledPublishAt: Date | null;
+    user: AuthenticatedUser | undefined;
+  }): Promise<TargetSync> {
+    const now = new Date();
+    const data = this.buildPublicationUpdateData(input.state, input.scheduledPublishAt, input.user, now);
+    const eventIds = [...new Set(input.eventIds ?? [])];
+    const majorEventIds = [...new Set(input.majorEventIds ?? [])];
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedEventIds: string[] = [];
+      const updatedMajorEventIds: string[] = [];
+
+      for (const eventId of eventIds) {
+        const previous = await tx.event.findFirst({
+          where: { id: eventId, deletedAt: null },
+          select: PUBLICATION_EVENT_SELECT,
+        });
+        if (!previous) {
+          throw new NotFoundException(`Event ${eventId} was not found.`);
+        }
+        const updated = await tx.event.update({
+          where: { id: eventId },
+          data,
+          select: PUBLICATION_EVENT_SELECT,
+        });
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.EVENT,
+            entityId: updated.id,
+            entityLabel: updated.name,
+            operation: AuditLogOperation.UPDATE,
+            actor: input.user,
+            before: previous,
+            after: updated,
+            scope: {
+              permission: Permission.Event.Update,
+              eventId: updated.id,
+              majorEventId: updated.majorEventId,
+              eventGroupId: updated.eventGroupId,
+            },
+            summary: publicationSummary(input.state),
+            squashWindowMs: 0,
+          },
+          tx,
+        );
+        updatedEventIds.push(updated.id);
+      }
+
+      for (const majorEventId of majorEventIds) {
+        const previous = await tx.majorEvent.findFirst({
+          where: { id: majorEventId, deletedAt: null },
+          select: PUBLICATION_MAJOR_EVENT_SELECT,
+        });
+        if (!previous) {
+          throw new NotFoundException(`Major event ${majorEventId} was not found.`);
+        }
+        const updated = await tx.majorEvent.update({
+          where: { id: majorEventId },
+          data,
+          select: PUBLICATION_MAJOR_EVENT_SELECT,
+        });
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.MAJOR_EVENT,
+            entityId: updated.id,
+            entityLabel: updated.name,
+            operation: AuditLogOperation.UPDATE,
+            actor: input.user,
+            before: previous,
+            after: updated,
+            scope: {
+              permission: Permission.MajorEvent.Update,
+              majorEventId: updated.id,
+            },
+            summary: publicationSummary(input.state),
+            squashWindowMs: 0,
+          },
+          tx,
+        );
+        updatedMajorEventIds.push(updated.id);
+      }
+
+      return { eventIds: updatedEventIds, majorEventIds: updatedMajorEventIds };
+    });
+  }
+
   async updateMajorEventPublicationState(
     majorEventId: string,
     state: PublicationState,

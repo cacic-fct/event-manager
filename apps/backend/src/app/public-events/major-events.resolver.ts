@@ -75,8 +75,15 @@ export class PublicMajorEventsResolver {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
+        const filters = ['publicationState:=PUBLISHED'];
+        if (startDateFrom) {
+          filters.push(`startDate:>=${toTypesenseTimestamp(startDateFrom)}`);
+        }
+        if (startDateUntil) {
+          filters.push(`startDate:<=${toTypesenseTimestamp(startDateUntil)}`);
+        }
         const searchResult = await this.typesenseSearch.searchMajorEvents(normalizedQuery, {
-          filterBy: 'publicationState:=PUBLISHED',
+          filterBy: filters.join(' && '),
           limit: pagination.take,
           offset: pagination.skip,
         });
@@ -144,4 +151,8 @@ export class PublicMajorEventsResolver {
 
     return mapPublicMajorEvent(majorEvent);
   }
+}
+
+function toTypesenseTimestamp(date: Date): number {
+  return Math.floor(date.getTime() / 1000);
 }

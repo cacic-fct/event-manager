@@ -2,7 +2,13 @@ import { DeletionResult, Event, EventCloneInput, EventCreateInput, EventUpdateIn
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  CertificateScope,
+  Prisma,
+  PublicationState as PrismaPublicationState,
+} from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -16,6 +22,7 @@ import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+import { resolvePublicationActorId } from '../publishing/publishing-auth';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -433,7 +440,13 @@ export class EventsResolver {
         select: EVENT_AUDIT_SELECT,
       });
       if (!previousEvent) throw new NotFoundException(`Event ${id} was not found.`);
-      const updatedCount = await tx.event.updateMany({ where: { id, deletedAt: null }, data: normalizedInput });
+      const updatedCount = await tx.event.updateMany({
+        where: { id, deletedAt: null },
+        data: {
+          ...normalizedInput,
+          ...this.buildPublicationInvalidation(previousEvent, this.getUser(context)),
+        },
+      });
       if (updatedCount.count !== 1) {
         throw new NotFoundException(`Event ${id} was not found.`);
       }
@@ -770,6 +783,24 @@ export class EventsResolver {
     }
 
     return normalizedInput;
+  }
+
+  private buildPublicationInvalidation(
+    event: { publicationState: PrismaPublicationState },
+    user: AuthenticatedUser | undefined,
+  ): Prisma.EventUpdateManyMutationInput {
+    if (
+      event.publicationState !== PrismaPublicationState.PUBLISHED &&
+      event.publicationState !== PrismaPublicationState.SCHEDULED
+    ) {
+      return {};
+    }
+
+    return {
+      publicationState: PrismaPublicationState.DRAFT,
+      scheduledPublishAt: null,
+      publicationUpdatedBy: resolvePublicationActorId(user),
+    };
   }
 
   private applyEventCreateDefaults(

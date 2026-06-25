@@ -124,11 +124,19 @@
                 <mat-label>Publicar em</mat-label>
                 <input matInput type="datetime-local" formControlName="scheduledPublishAt" />
               </mat-form-field>
-              <button mat-stroked-button type="button" (click)="scheduleSelected()" [disabled]="loading()">
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="scheduleSelected()"
+                [disabled]="loading() || actionForm.controls.scheduledPublishAt.invalid">
                 <mat-icon>schedule</mat-icon>
                 Agendar selecionado
               </button>
-              <button mat-stroked-button type="button" (click)="scheduleBundle()" [disabled]="loading()">
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="scheduleBundle()"
+                [disabled]="loading() || actionForm.controls.scheduledPublishAt.invalid">
                 <mat-icon>account_tree</mat-icon>
                 Agendar conjunto
               </button>
@@ -158,7 +166,11 @@
               <mat-label>Pré-visualizar em</mat-label>
               <input matInput type="datetime-local" formControlName="previewAt" />
             </mat-form-field>
-            <button mat-flat-button type="button" (click)="previewSelected()" [disabled]="loading()">
+            <button
+              mat-flat-button
+              type="button"
+              (click)="previewSelected()"
+              [disabled]="loading() || actionForm.controls.previewAt.invalid">
               <mat-icon>preview</mat-icon>
               Pré-visualizar como público
             </button>

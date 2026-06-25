@@ -10,7 +10,13 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  CertificateScope,
+  Prisma,
+  PublicationState as PrismaPublicationState,
+} from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -20,6 +26,7 @@ import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import { resolvePublicationActorId } from '../publishing/publishing-auth';
 
 const PAYMENT_INFO_SELECT = {
   id: true,
@@ -306,12 +313,15 @@ export class MajorEventsResolver {
     const hasExistingPaymentInfo =
       paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
 
-    const data = this.buildMajorEventUpdateData(
-      input,
-      majorEvent.isPaymentRequired,
-      hasExistingPaymentInfo,
-      paymentInfoTableExists,
-    );
+    const data = {
+      ...this.buildMajorEventUpdateData(
+        input,
+        majorEvent.isPaymentRequired,
+        hasExistingPaymentInfo,
+        paymentInfoTableExists,
+      ),
+      ...this.buildPublicationInvalidation(majorEvent, this.getUser(context)),
+    };
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
       const persisted = await tx.majorEvent.update({
@@ -692,6 +702,24 @@ export class MajorEventsResolver {
     return data;
   }
 
+  private buildPublicationInvalidation(
+    majorEvent: { publicationState: PrismaPublicationState },
+    user: AuthenticatedUser | undefined,
+  ): Prisma.MajorEventUpdateInput {
+    if (
+      majorEvent.publicationState !== PrismaPublicationState.PUBLISHED &&
+      majorEvent.publicationState !== PrismaPublicationState.SCHEDULED
+    ) {
+      return {};
+    }
+
+    return {
+      publicationState: PrismaPublicationState.DRAFT,
+      scheduledPublishAt: null,
+      publicationUpdatedBy: resolvePublicationActorId(user),
+    };
+  }
+
   private getMajorEventSelect(paymentInfoTableExists: boolean) {
     if (paymentInfoTableExists) {
       return MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT;
@@ -851,12 +879,16 @@ export class MajorEventsResolver {
   }
 
   private buildPriceTierPayloads(input: MajorEventPriceInput): Prisma.PriceTierCreateWithoutPriceInput[] {
-    return input.tiers
-      .map((tier) => ({
-        name: tier.name?.trim() ?? '',
-        value: Math.round(tier.value),
-      }))
-      .filter((tier) => tier.name.length > 0);
+    const tiers = input.tiers.map((tier) => ({
+      name: tier.name?.trim() ?? '',
+      value: Math.round(tier.value),
+    }));
+
+    if (tiers.some((tier) => tier.name.length === 0)) {
+      throw new BadRequestException('Price tier names are required.');
+    }
+
+    return tiers;
   }
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {

@@ -104,11 +104,19 @@
             Limpar
           </button>
           @if (canEditMajorEvent(workspace.selectedMajorEvent())) {
-            <button mat-stroked-button type="button" (click)="workspace.saveMajorEvent('SCHEDULE')">
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.saveMajorEvent('SCHEDULE')"
+              [disabled]="workspace.loading()">
               <mat-icon>schedule</mat-icon>
               Agendar
             </button>
-            <button mat-stroked-button type="button" (click)="workspace.saveMajorEvent('DRAFT')">
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.saveMajorEvent('DRAFT')"
+              [disabled]="workspace.loading()">
               <mat-icon>edit_note</mat-icon>
               Salvar rascunho
             </button>
@@ -116,7 +124,7 @@
               mat-flat-button
               type="button"
               (click)="workspace.saveMajorEvent('PUBLISH')"
-              [disabled]="workspace.majorEventForm.invalid">
+              [disabled]="workspace.loading() || workspace.majorEventForm.invalid">
               <mat-icon>publish</mat-icon>
               Publicar
             </button>

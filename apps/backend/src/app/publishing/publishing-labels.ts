@@ -35,7 +35,9 @@ function affectedItemsLabel(total: number): string {
 
 export function publicationStateLabel(state: PublicationState, scheduledPublishAt?: Date | null): string {
   if (state === PrismaPublicationState.SCHEDULED && scheduledPublishAt) {
-    return `Agendado para ${scheduledPublishAt.toLocaleString('pt-BR')}`;
+    return `Agendado para ${scheduledPublishAt.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+    })}`;
   }
 
   const labels: Record<PublicationState, string> = {

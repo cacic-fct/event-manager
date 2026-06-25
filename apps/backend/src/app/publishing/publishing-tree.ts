@@ -101,7 +101,7 @@ function mapEventNode(event: PublicationEventRecord, parentLabel: string | null 
 }
 
 function deriveGroupState(events: PublicationEventRecord[]): PublicationState {
-  if (events.some((event) => event.publicationState === PrismaPublicationState.PUBLISHED && event.publiclyVisible)) {
+  if (events.some((event) => event.publicationState === PrismaPublicationState.PUBLISHED)) {
     return PrismaPublicationState.PUBLISHED;
   }
   if (events.some((event) => event.publicationState === PrismaPublicationState.SCHEDULED)) {

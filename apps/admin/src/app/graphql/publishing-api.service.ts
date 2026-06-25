@@ -137,6 +137,15 @@ export class PublicationApiService {
               relatedEventId
               personId
             }
+            tree {
+              ${PUBLIC_CONTENT_NODE_FIELDS}
+              children {
+                ${PUBLIC_CONTENT_NODE_FIELDS}
+                children {
+                  ${PUBLIC_CONTENT_NODE_FIELDS}
+                }
+              }
+            }
             items {
               ${PUBLIC_CONTENT_NODE_FIELDS}
               children {

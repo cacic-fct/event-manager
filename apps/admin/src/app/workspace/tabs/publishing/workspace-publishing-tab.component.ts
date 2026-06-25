@@ -1,5 +1,13 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  PLATFORM_ID,
+  ViewEncapsulation,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -47,6 +55,7 @@ import {
   ],
   templateUrl: './workspace-publishing-tab.component.html',
   styleUrl: './workspace-publishing-tab.component.scss',
+  encapsulation: ViewEncapsulation.None,
 })
 export class WorkspacePublicationTabComponent {
   private readonly api = inject(PublicationApiService);
@@ -63,7 +72,7 @@ export class WorkspacePublicationTabComponent {
   readonly pageSize = 50;
   readonly query = signal('');
   private readonly requestedNode = signal<Pick<PublicContentNode, 'targetType' | 'id'> | null>(null);
-  readonly workspaceItems = computed(() => this.workspace()?.items ?? this.workspace()?.tree ?? []);
+  readonly workspaceItems = computed(() => flattenPublicationNodes(this.workspace()?.tree ?? this.workspace()?.items ?? []));
   readonly hasPreviousPage = computed(() => this.pageIndex() > 0);
   readonly hasNextPage = computed(() => this.workspace()?.hasMore ?? false);
   readonly paginationLabel = computed(() => {
@@ -170,7 +179,13 @@ export class WorkspacePublicationTabComponent {
   }
 
   async scheduleSelected(): Promise<void> {
-    const scheduledPublishAt = this.actionForm.controls.scheduledPublishAt.value;
+    const scheduledPublishAtControl = this.actionForm.controls.scheduledPublishAt;
+    scheduledPublishAtControl.markAsTouched();
+    if (scheduledPublishAtControl.invalid) {
+      return;
+    }
+
+    const scheduledPublishAt = scheduledPublishAtControl.value;
     await this.setSelectedState('SCHEDULED', scheduledPublishAt);
   }
 
@@ -179,6 +194,12 @@ export class WorkspacePublicationTabComponent {
   }
 
   async scheduleBundle(): Promise<void> {
+    const scheduledPublishAtControl = this.actionForm.controls.scheduledPublishAt;
+    scheduledPublishAtControl.markAsTouched();
+    if (scheduledPublishAtControl.invalid) {
+      return;
+    }
+
     await this.runBulkOperation('SCHEDULE_BUNDLE');
   }
 
@@ -191,6 +212,12 @@ export class WorkspacePublicationTabComponent {
   }
 
   async previewSelected(): Promise<void> {
+    const previewAtControl = this.actionForm.controls.previewAt;
+    previewAtControl.markAsTouched();
+    if (previewAtControl.invalid) {
+      return;
+    }
+
     const selected = this.selectedNode();
     if (!selected) {
       return;
@@ -202,7 +229,7 @@ export class WorkspacePublicationTabComponent {
         this.api.createPreview({
           targetType: selected.targetType,
           targetId: selected.id,
-          previewAt: localDateTimeInputToIso(this.actionForm.controls.previewAt.value),
+          previewAt: localDateTimeInputToIso(previewAtControl.value),
         }),
       );
       this.snackbar.open(result.message, 'Fechar', { duration: 5000 });
@@ -327,7 +354,7 @@ export class WorkspacePublicationTabComponent {
     }
 
     return (
-      flattenPublicationNodes(workspace.items ?? workspace.tree).find(
+      flattenPublicationNodes(workspace.tree ?? workspace.items).find(
         (node) => node.id === requested.id && node.targetType === requested.targetType,
       ) ?? null
     );
@@ -347,6 +374,11 @@ export class WorkspacePublicationTabComponent {
   private async setSelectedState(state: PublicationState, scheduledPublishAt?: string): Promise<void> {
     const selected = this.selectedNode();
     if (!selected) {
+      return;
+    }
+
+    if (state === 'SCHEDULED' && !scheduledPublishAt) {
+      this.actionForm.controls.scheduledPublishAt.markAsTouched();
       return;
     }
 
@@ -375,6 +407,14 @@ export class WorkspacePublicationTabComponent {
       return;
     }
 
+    const scheduledPublishAtControl = this.actionForm.controls.scheduledPublishAt;
+    if (operation === 'SCHEDULE_BUNDLE') {
+      scheduledPublishAtControl.markAsTouched();
+      if (scheduledPublishAtControl.invalid) {
+        return;
+      }
+    }
+
     this.loading.set(true);
     try {
       const result = await firstValueFrom(
@@ -384,7 +424,7 @@ export class WorkspacePublicationTabComponent {
           operation,
           scheduledPublishAt:
             operation === 'SCHEDULE_BUNDLE'
-              ? localDateTimeInputToIso(this.actionForm.controls.scheduledPublishAt.value)
+              ? localDateTimeInputToIso(scheduledPublishAtControl.value)
               : null,
         }),
       );

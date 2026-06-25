@@ -227,6 +227,15 @@ describe('DashboardInsightsService generation', () => {
         'LECTURER_SELF_SUBSCRIBED',
         'LECTURER_SELF_ATTENDED',
         'LECTURER_DOUBLE_BOOKED',
+        'PUBLISHED_MAJOR_EVENT_WITHOUT_VISIBLE_CHILDREN',
+      ]),
+    );
+    expect(result.inconsistencies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          targetId: 'published-major-without-visible-children',
+          type: 'PUBLISHED_MAJOR_EVENT_WITHOUT_VISIBLE_CHILDREN',
+        }),
       ]),
     );
     expect(prisma.event.findMany.mock.calls[3]?.[0].where).not.toHaveProperty('shouldCollectAttendance');

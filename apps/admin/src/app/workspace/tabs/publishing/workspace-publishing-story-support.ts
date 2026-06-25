@@ -141,7 +141,7 @@ function groupNode(id: string, parentLabel: string | null, args: PublicationStor
 function eventNode(id: string, parentLabel: string | null, index: number, args: PublicationStoryArgs) {
   const hidden = args.includeHiddenEvents && index === 3;
   const states = ['PUBLISHED', 'SCHEDULED', 'UNPUBLISHED', 'DRAFT'] as const;
-  const publicationState = states[index % states.length];
+  const publicationState = hidden ? 'PUBLISHED' : states[index % states.length];
   return {
     targetType: 'EVENT' as const,
     id,

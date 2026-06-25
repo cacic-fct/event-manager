@@ -21,6 +21,10 @@ export class PublicationTransitionService {
     input: PublicationStateInput,
     user: AuthenticatedUser | undefined,
   ): Promise<PublicationTransitionOutcome> {
+    if (input.state === PrismaPublicationState.SCHEDULED && !input.scheduledPublishAt) {
+      throw new BadRequestException('Escolha a data e hora de publicação.');
+    }
+
     const sync = await this.applyTargetState({
       targetType: input.targetType,
       targetId: input.targetId,
@@ -123,12 +127,12 @@ export class PublicationTransitionService {
     const eventIds = await this.targets.resolveChildEventIds(input.targetType, input.targetId, {
       requireChildren: true,
     });
-    const updates = await Promise.all(
-      eventIds.map((eventId) =>
-        this.stateWriter.updateEventPublicationState(eventId, input.state, input.scheduledPublishAt, input.user),
-      ),
-    );
-    return this.mergeSync(updates);
+    return this.stateWriter.updateTargetsPublicationState({
+      eventIds,
+      state: input.state,
+      scheduledPublishAt: input.scheduledPublishAt,
+      user: input.user,
+    });
   }
 
   private async publishMissingChildren(
@@ -138,12 +142,12 @@ export class PublicationTransitionService {
     const eventIds = await this.targets.resolveChildEventIds(input.targetType, input.targetId, {
       onlyMissingPublication: true,
     });
-    const updates = await Promise.all(
-      eventIds.map((eventId) =>
-        this.stateWriter.updateEventPublicationState(eventId, PrismaPublicationState.PUBLISHED, null, user),
-      ),
-    );
-    return this.mergeSync(updates);
+    return this.stateWriter.updateTargetsPublicationState({
+      eventIds,
+      state: PrismaPublicationState.PUBLISHED,
+      scheduledPublishAt: null,
+      user,
+    });
   }
 
   private async scheduleBundle(
@@ -157,27 +161,13 @@ export class PublicationTransitionService {
     const eventIds = await this.targets.resolveChildEventIds(input.targetType, input.targetId, {
       includeTargetEvent: true,
     });
-    const updates = await Promise.all(
-      eventIds.map((eventId) =>
-        this.stateWriter.updateEventPublicationState(
-          eventId,
-          PrismaPublicationState.SCHEDULED,
-          input.scheduledPublishAt ?? null,
-          user,
-        ),
-      ),
-    );
-    if (input.targetType === PublicationTargetType.MAJOR_EVENT) {
-      updates.push(
-        await this.stateWriter.updateMajorEventPublicationState(
-          input.targetId,
-          PrismaPublicationState.SCHEDULED,
-          input.scheduledPublishAt,
-          user,
-        ),
-      );
-    }
-    return this.mergeSync(updates);
+    return this.stateWriter.updateTargetsPublicationState({
+      eventIds,
+      majorEventIds: input.targetType === PublicationTargetType.MAJOR_EVENT ? [input.targetId] : [],
+      state: PrismaPublicationState.SCHEDULED,
+      scheduledPublishAt: input.scheduledPublishAt,
+      user,
+    });
   }
 
   private async unpublishBundle(
@@ -187,21 +177,12 @@ export class PublicationTransitionService {
     const eventIds = await this.targets.resolveChildEventIds(input.targetType, input.targetId, {
       includeTargetEvent: true,
     });
-    const updates = await Promise.all(
-      eventIds.map((eventId) =>
-        this.stateWriter.updateEventPublicationState(eventId, PrismaPublicationState.UNPUBLISHED, null, user),
-      ),
-    );
-    if (input.targetType === PublicationTargetType.MAJOR_EVENT) {
-      updates.push(
-        await this.stateWriter.updateMajorEventPublicationState(
-          input.targetId,
-          PrismaPublicationState.UNPUBLISHED,
-          null,
-          user,
-        ),
-      );
-    }
-    return this.mergeSync(updates);
+    return this.stateWriter.updateTargetsPublicationState({
+      eventIds,
+      majorEventIds: input.targetType === PublicationTargetType.MAJOR_EVENT ? [input.targetId] : [],
+      state: PrismaPublicationState.UNPUBLISHED,
+      scheduledPublishAt: null,
+      user,
+    });
   }
 }

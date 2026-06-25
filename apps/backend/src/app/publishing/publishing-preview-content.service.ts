@@ -36,6 +36,8 @@ export class PublicationPreviewContentService {
             select: {
               publicationState: true,
               deletedAt: true,
+              publishedAt: true,
+              updatedAt: true,
             },
           },
         },
@@ -44,7 +46,10 @@ export class PublicationPreviewContentService {
         event?.publicationState === PrismaPublicationState.PUBLISHED &&
         event.publiclyVisible &&
         (!event.majorEvent ||
-          (!event.majorEvent.deletedAt && event.majorEvent.publicationState === PrismaPublicationState.PUBLISHED)) &&
+          (!event.majorEvent.deletedAt &&
+            event.majorEvent.publicationState === PrismaPublicationState.PUBLISHED &&
+            event.majorEvent.publishedAt &&
+            event.majorEvent.updatedAt <= event.majorEvent.publishedAt)) &&
         event.publishedAt &&
         event.updatedAt <= event.publishedAt
       ) {

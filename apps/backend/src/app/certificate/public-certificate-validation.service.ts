@@ -67,6 +67,7 @@ const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
           id: true,
           name: true,
           emoji: true,
+          deletedAt: true,
           publicationState: true,
         },
       },
@@ -439,7 +440,7 @@ export class PublicCertificateValidationService {
 
     if (
       certificate.config.scope === CertificateScope.MAJOR_EVENT &&
-      certificate.config.majorEvent?.publicationState !== 'PUBLISHED'
+      !this.isCertificateMajorEventPublic(certificate)
     ) {
       return undefined;
     }
@@ -462,7 +463,7 @@ export class PublicCertificateValidationService {
 
     if (
       certificate.config.scope === CertificateScope.MAJOR_EVENT &&
-      certificate.config.majorEvent?.publicationState !== 'PUBLISHED'
+      !this.isCertificateMajorEventPublic(certificate)
     ) {
       return undefined;
     }
@@ -477,6 +478,13 @@ export class PublicCertificateValidationService {
         event.publicationState === 'PUBLISHED' &&
         (!event.majorEventId ||
           Boolean(event.majorEvent && event.majorEvent.deletedAt == null && event.majorEvent.publicationState === 'PUBLISHED')),
+    );
+  }
+
+  private isCertificateMajorEventPublic(certificate: PublicCertificateValidationRecord): boolean {
+    return (
+      certificate.config.majorEvent?.deletedAt == null &&
+      certificate.config.majorEvent?.publicationState === 'PUBLISHED'
     );
   }
 

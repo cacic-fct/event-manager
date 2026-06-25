@@ -22,7 +22,16 @@ UPDATE "major_events"
 SET
   "publicationState" = 'PUBLISHED',
   "publishedAt" = COALESCE("updatedAt", "createdAt", CURRENT_TIMESTAMP)
-WHERE "deletedAt" IS NULL;
+WHERE
+  "deletedAt" IS NULL
+  AND EXISTS (
+    SELECT 1
+    FROM "events"
+    WHERE
+      "events"."majorEventId" = "major_events"."id"
+      AND "events"."deletedAt" IS NULL
+      AND "events"."publiclyVisible" = true
+  );
 
 UPDATE "events"
 SET
@@ -47,7 +56,7 @@ CREATE INDEX "major_events_scheduledPublishAt_idx" ON "major_events"("scheduledP
 
 CREATE TABLE "public_content_previews" (
   "id" TEXT NOT NULL,
-  "previewToken" TEXT NOT NULL,
+  "previewTokenHash" TEXT NOT NULL,
   "targetType" "PublicContentPreviewTargetType" NOT NULL,
   "targetId" TEXT NOT NULL,
   "targetLabel" TEXT NOT NULL,
@@ -66,8 +75,8 @@ CREATE TABLE "public_content_previews" (
   CONSTRAINT "public_content_previews_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "public_content_previews_previewToken_key"
-ON "public_content_previews"("previewToken");
+CREATE UNIQUE INDEX "public_content_previews_previewTokenHash_key"
+ON "public_content_previews"("previewTokenHash");
 
 CREATE UNIQUE INDEX "public_content_previews_targetType_targetId_createdById_key"
 ON "public_content_previews"("targetType", "targetId", "createdById");

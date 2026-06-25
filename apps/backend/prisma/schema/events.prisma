@@ -137,10 +137,10 @@ model EventLecturer {
 model PublicContentPreview {
   id String @id @default(uuid(7))
 
-  previewToken String @unique
-  targetType   PublicContentPreviewTargetType
-  targetId     String
-  targetLabel  String
+  previewTokenHash String @unique
+  targetType        PublicContentPreviewTargetType
+  targetId          String
+  targetLabel       String
 
   previewAt DateTime?
   publicPath String

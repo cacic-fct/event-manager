@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PublicationState } from '@cacic-fct/shared-data-types';
 import { PublicationState as PrismaPublicationState } from '@prisma/client';
 import { Queue } from 'bullmq';
@@ -15,6 +15,8 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class PublicationJobsService {
+  private readonly logger = new Logger(PublicationJobsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly transitions: PublicationTransitionService,
@@ -30,7 +32,7 @@ export class PublicationJobsService {
       {
         jobId: `publication:${RECONCILE_PUBLICATION_STATES_JOB}`,
         repeat: {
-          pattern: '30 3 * * *',
+          pattern: '*/5 * * * *',
           tz: 'America/Sao_Paulo',
         },
         removeOnComplete: true,
@@ -111,16 +113,44 @@ export class PublicationJobsService {
       }),
     ]);
 
-    const eventSync = await Promise.all(events.map((event) => this.transitions.publishEventById(event.id, null)));
-    const majorSync = await Promise.all(
+    const eventResults = await Promise.allSettled(
+      events.map((event) => this.transitions.publishEventById(event.id, null)),
+    );
+    const majorResults = await Promise.allSettled(
       majorEvents.map((majorEvent) => this.transitions.publishMajorEventById(majorEvent.id, null)),
     );
+    this.reportPublicationFailures('EVENT', events, eventResults);
+    this.reportPublicationFailures('MAJOR_EVENT', majorEvents, majorResults);
+    const eventSync = eventResults
+      .filter((result): result is PromiseFulfilledResult<TargetSync> => result.status === 'fulfilled')
+      .map((result) => result.value);
+    const majorSync = majorResults
+      .filter((result): result is PromiseFulfilledResult<TargetSync> => result.status === 'fulfilled')
+      .map((result) => result.value);
+
     await Promise.all([
       this.searchSync.syncSearch(this.transitions.mergeSync([...eventSync, ...majorSync])),
       this.prisma.publicContentPreview.deleteMany({
         where: { trimAfter: { lte: now } },
       }),
     ]);
+  }
+
+  private reportPublicationFailures(
+    targetType: PublicationJobData['targetType'],
+    targets: { id: string }[],
+    results: PromiseSettledResult<TargetSync>[],
+  ): void {
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        return;
+      }
+
+      this.logger.error(
+        `Failed to publish scheduled ${targetType} ${targets[index]?.id ?? 'unknown'}.`,
+        result.reason instanceof Error ? result.reason.stack : String(result.reason),
+      );
+    });
   }
 
   private async enqueueScheduledTarget(

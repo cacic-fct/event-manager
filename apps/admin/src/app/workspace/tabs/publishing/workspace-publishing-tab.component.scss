@@ -17,7 +17,7 @@
 
   p {
     margin: 0.35rem 0 0;
-    color: color-mix(in srgb, currentColor 72%, transparent);
+    color: color-mix(in srgb, currentcolor 72%, transparent);
   }
 }
 
@@ -65,13 +65,13 @@
     padding-left: 2.4rem;
   }
 
-  ::ng-deep .mdc-list-item__content {
+  .mdc-list-item__content {
     min-width: 0;
     align-self: center;
   }
 
-  ::ng-deep .mdc-list-item__primary-text,
-  ::ng-deep .mdc-list-item__secondary-text {
+  .mdc-list-item__primary-text,
+  .mdc-list-item__secondary-text {
     white-space: normal;
   }
 
@@ -150,7 +150,7 @@
 
   p {
     margin-top: 0.35rem;
-    color: color-mix(in srgb, currentColor 70%, transparent);
+    color: color-mix(in srgb, currentcolor 70%, transparent);
   }
 }
 
@@ -270,7 +270,7 @@
 .preview-panel p,
 .warnings-panel p {
   margin: 0.75rem 0 0;
-  color: color-mix(in srgb, currentColor 72%, transparent);
+  color: color-mix(in srgb, currentcolor 72%, transparent);
   font-size: 0.92rem;
 }
 

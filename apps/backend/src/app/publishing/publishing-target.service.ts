@@ -30,6 +30,8 @@ export class PublicationTargetService {
       return [event.id];
     }
 
+    await this.assertTargetExists(targetType, targetId);
+
     const where: Prisma.EventWhereInput = {
       deletedAt: null,
       ...(targetType === PublicationTargetType.MAJOR_EVENT ? { majorEventId: targetId } : { eventGroupId: targetId }),
@@ -41,7 +43,6 @@ export class PublicationTargetService {
       orderBy: { startDate: 'asc' },
     });
     if (events.length === 0) {
-      await this.assertTargetExists(targetType, targetId);
       if (options.requireChildren && targetType === PublicationTargetType.EVENT_GROUP) {
         throw new NotFoundException(`Event group ${targetId} has no active events.`);
       }

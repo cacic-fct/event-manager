@@ -144,6 +144,15 @@ export class WorkspaceEventGroupsService {
           this.snackbar.open('Grupo publicado.', 'Fechar', { duration: 2500 });
         }
       } else {
+        if (this.eventGroupEvents().length > 0) {
+          await firstValueFrom(
+            this.publicationApi.setPublicationState({
+              targetType: 'EVENT_GROUP',
+              targetId: savedGroup.id,
+              state: 'DRAFT',
+            }),
+          );
+        }
         this.snackbar.open(action === 'SCHEDULE' ? 'Grupo salvo como rascunho.' : 'Rascunho salvo.', 'Fechar', {
           duration: 2500,
         });

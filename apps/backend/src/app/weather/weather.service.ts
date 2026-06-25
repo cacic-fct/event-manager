@@ -32,14 +32,18 @@ export class WeatherService {
   ) {}
 
   async getPublicEventWeather(eventId: string): Promise<PublicEventWeather | null> {
-    const event = await this.getWeatherEvent(eventId);
-    if (!event) {
+    if (!(await this.publicWeatherEventExists(eventId))) {
       throw new NotFoundException(`Event ${eventId} was not found.`);
     }
 
     const cached = await this.getCachedWeather(eventId);
     if (cached) {
       return cached;
+    }
+
+    const event = await this.getWeatherEvent(eventId);
+    if (!event) {
+      throw new NotFoundException(`Event ${eventId} was not found.`);
     }
 
     await this.scheduleRefreshForEvent(event);
@@ -152,6 +156,16 @@ export class WeatherService {
       },
       select: PUBLIC_EVENT_SELECT,
     });
+  }
+
+  private async publicWeatherEventExists(eventId: string): Promise<boolean> {
+    const event = await this.prisma.event.findFirst({
+      where: {
+        AND: [PUBLIC_EVENT_WHERE, { id: eventId }],
+      },
+      select: { id: true },
+    });
+    return Boolean(event);
   }
 
   private async refreshEventWeather(event: WeatherEvent): Promise<PublicEventWeather | null> {

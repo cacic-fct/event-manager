@@ -12,6 +12,7 @@ import { Event, MajorEvent, MajorEventInput, PriceType } from '../../graphql/mod
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
+import { WorkspaceUiService } from './workspace-ui.service';
 
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 const DEFAULT_DRAFT_MAJOR_EVENT_NAME = 'Grande evento sem título';
@@ -30,7 +31,9 @@ export class WorkspaceMajorEventsService {
   private readonly formBuilder = inject(FormBuilder);
   private readonly permissions = inject(WorkspacePermissionsService);
   private readonly router = inject(Router);
+  private readonly ui = inject(WorkspaceUiService);
 
+  readonly loading = this.ui.loading;
   readonly majorEvents = signal<MajorEvent[]>([]);
   readonly selectedMajorEvent = signal<MajorEvent | null>(null);
   readonly majorEventEvents = signal<Event[]>([]);
@@ -69,7 +72,11 @@ export class WorkspaceMajorEventsService {
       priceTiers: this.formBuilder.array([this.createPriceTierGroup('Preço único', '')]),
     },
     {
-      validators: [this.requireBothOrNeither('buttonText', 'buttonLink'), this.validatePaymentInfo()],
+      validators: [
+        this.requireBothOrNeither('buttonText', 'buttonLink'),
+        this.validatePaymentInfo(),
+        this.rejectDraftPlaceholders(),
+      ],
     },
   );
 
@@ -122,6 +129,7 @@ export class WorkspaceMajorEventsService {
     const raw = this.majorEventForm.getRawValue();
     const payload = this.buildMajorEventPayload({ allowIncompleteDraft: action !== 'PUBLISH' });
 
+    this.ui.loading.set(true);
     try {
       let savedMajorEvent: MajorEvent;
       if (raw.id) {
@@ -130,6 +138,8 @@ export class WorkspaceMajorEventsService {
       } else {
         savedMajorEvent = await firstValueFrom(this.api.createMajorEvent(payload));
       }
+      this.majorEventForm.controls.id.setValue(savedMajorEvent.id, { emitEvent: false });
+      this.selectedMajorEvent.set(savedMajorEvent);
 
       if (action === 'PUBLISH') {
         await firstValueFrom(
@@ -172,6 +182,8 @@ export class WorkspaceMajorEventsService {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grande evento.'), 'Fechar', {
         duration: 5000,
       });
+    } finally {
+      this.ui.loading.set(false);
     }
   }
 
@@ -566,6 +578,17 @@ export class WorkspaceMajorEventsService {
       }
 
       return null;
+    };
+  }
+
+  private rejectDraftPlaceholders() {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const name = control.get('name')?.value?.toString().trim();
+      const emoji = control.get('emoji')?.value?.toString().trim();
+
+      return name === DEFAULT_DRAFT_MAJOR_EVENT_NAME || emoji === DEFAULT_DRAFT_MAJOR_EVENT_EMOJI
+        ? { draftPlaceholder: true }
+        : null;
     };
   }
 

@@ -25,6 +25,7 @@ import {
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
+import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-events/models';
 
 @Resolver()
 export class CurrentUserMajorEventSubscriptionsResolver {
@@ -174,8 +175,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
+        ...PUBLIC_MAJOR_EVENT_WHERE,
         id: input.majorEventId,
-        deletedAt: null,
       },
       select: this.publicEvents.getMajorEventSelect(paymentInfoTableExists),
     });
@@ -189,9 +190,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     const isRankedSubscription = majorEvent.rankedSubscriptionEnabled;
     const allSubscriptionEvents = await this.prisma.event.findMany({
       where: {
-        majorEventId: input.majorEventId,
-        deletedAt: null,
-        allowSubscription: true,
+        AND: [PUBLIC_EVENT_WHERE, { majorEventId: input.majorEventId, allowSubscription: true }],
       },
       select: EVENT_SELECT,
       orderBy: {
@@ -230,12 +229,16 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
     const allGroupedEvents = await this.prisma.event.findMany({
       where: {
-        majorEventId: input.majorEventId,
-        deletedAt: null,
-        allowSubscription: true,
-        eventGroupId: {
-          not: null,
-        },
+        AND: [
+          PUBLIC_EVENT_WHERE,
+          {
+            majorEventId: input.majorEventId,
+            allowSubscription: true,
+            eventGroupId: {
+              not: null,
+            },
+          },
+        ],
       },
       select: {
         id: true,

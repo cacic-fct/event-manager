@@ -487,7 +487,7 @@ export class DashboardInsightsService {
             take: 30,
           })
         : Promise.resolve([]),
-      shouldBuildInconsistencies
+      shouldBuildMajorEventInconsistencies
         ? this.prisma.majorEvent.findMany({
             where: {
               deletedAt: null,

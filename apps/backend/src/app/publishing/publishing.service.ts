@@ -79,14 +79,19 @@ const PUBLICATION_WORKSPACE_EVENT_SELECT = {
   scheduledPublishAt: true,
   publishedAt: true,
   unpublishedAt: true,
+  majorEventId: true,
+  eventGroupId: true,
   majorEvent: {
     select: {
+      id: true,
       name: true,
     },
   },
   eventGroup: {
     select: {
+      id: true,
       name: true,
+      deletedAt: true,
     },
   },
 } satisfies Prisma.EventSelect;
@@ -215,15 +220,10 @@ export class PublicationService {
       this.listMajorEvents(majorEventWhere, windows[0]),
       this.listEventGroups(eventGroupWhere, windows[1]),
       this.listEvents(eventWhere, windows[2]),
-      this.prisma.event.findMany({
-        where: accessibleTreeEventWhere,
-        select: PUBLICATION_WARNING_EVENT_SELECT,
-      }),
-      this.prisma.majorEvent.findMany({
-        where: majorEventBaseWhere,
-        select: this.buildWarningMajorEventSelect(activeEventWhere),
-      }),
+      this.listWarningEvents(accessibleTreeEventWhere, windows[2]),
+      this.listWarningMajorEvents(majorEventBaseWhere, activeEventWhere, windows[0]),
     ]);
+    const treeEvents = await this.listTreeEvents(accessibleTreeEventWhere, majorEvents, eventGroups);
 
     const pageItems = [
       ...majorEvents.map((majorEvent) => this.mapMajorEventNode(majorEvent)),
@@ -243,7 +243,7 @@ export class PublicationService {
 
     return {
       generatedAt: now,
-      tree: items,
+      tree: this.buildTree(majorEvents, eventGroups, events, treeEvents),
       items,
       totalCount,
       skip: pagination.skip,
@@ -362,6 +362,61 @@ export class PublicationService {
     });
   }
 
+  private listWarningEvents(where: Prisma.EventWhereInput, window: SectionWindow) {
+    if (window.take === 0) {
+      return Promise.resolve([]);
+    }
+
+    return this.prisma.event.findMany({
+      where,
+      select: PUBLICATION_WARNING_EVENT_SELECT,
+      orderBy: { startDate: 'desc' },
+      skip: window.skip,
+      take: window.take,
+    });
+  }
+
+  private listWarningMajorEvents(
+    majorEventWhere: Prisma.MajorEventWhereInput,
+    eventWhere: Prisma.EventWhereInput,
+    window: SectionWindow,
+  ) {
+    if (window.take === 0) {
+      return Promise.resolve([]);
+    }
+
+    return this.prisma.majorEvent.findMany({
+      where: majorEventWhere,
+      select: this.buildWarningMajorEventSelect(eventWhere),
+      orderBy: { startDate: 'desc' },
+      skip: window.skip,
+      take: window.take,
+    });
+  }
+
+  private listTreeEvents(
+    accessibleTreeEventWhere: Prisma.EventWhereInput,
+    majorEvents: PublicationWorkspaceMajorEventRecord[],
+    eventGroups: PublicationWorkspaceEventGroupRecord[],
+  ): Promise<PublicationWorkspaceEventRecord[]> {
+    const majorEventIds = majorEvents.map((majorEvent) => majorEvent.id);
+    const eventGroupIds = eventGroups.map((eventGroup) => eventGroup.id);
+    if (majorEventIds.length === 0 && eventGroupIds.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    return this.prisma.event.findMany({
+      where: this.andWhere<Prisma.EventWhereInput>(accessibleTreeEventWhere, {
+        OR: [
+          ...(majorEventIds.length > 0 ? [{ majorEventId: { in: majorEventIds } }] : []),
+          ...(eventGroupIds.length > 0 ? [{ majorEventId: null, eventGroupId: { in: eventGroupIds } }] : []),
+        ],
+      }),
+      select: PUBLICATION_WORKSPACE_EVENT_SELECT,
+      orderBy: { startDate: 'asc' },
+    });
+  }
+
   private buildNameSearchWhere<TWhere>(query: string | null): TWhere | null {
     if (!query) {
       return null;
@@ -429,7 +484,56 @@ export class PublicationService {
     return event ? this.mapEventNode(event) : null;
   }
 
-  private mapMajorEventNode(majorEvent: PublicationWorkspaceMajorEventRecord): PublicContentNode {
+  private buildTree(
+    majorEvents: PublicationWorkspaceMajorEventRecord[],
+    eventGroups: PublicationWorkspaceEventGroupRecord[],
+    events: PublicationWorkspaceEventRecord[],
+    treeEvents: PublicationWorkspaceEventRecord[],
+  ): PublicContentNode[] {
+    const majorEventChildren = new Map<string, PublicationWorkspaceEventRecord[]>();
+    const standaloneGroupChildren = new Map<string, PublicationWorkspaceEventRecord[]>();
+    for (const event of treeEvents) {
+      if (event.majorEventId) {
+        const children = majorEventChildren.get(event.majorEventId) ?? [];
+        children.push(event);
+        majorEventChildren.set(event.majorEventId, children);
+      } else if (event.eventGroupId) {
+        const children = standaloneGroupChildren.get(event.eventGroupId) ?? [];
+        children.push(event);
+        standaloneGroupChildren.set(event.eventGroupId, children);
+      }
+    }
+
+    return [
+      ...majorEvents.map((majorEvent) =>
+        this.mapMajorEventNode(majorEvent, majorEventChildren.get(majorEvent.id) ?? []),
+      ),
+      ...eventGroups.map((eventGroup) =>
+        this.mapEventGroupNode(eventGroup, standaloneGroupChildren.get(eventGroup.id) ?? []),
+      ),
+      ...events.map((event) => this.mapEventNode(event)),
+    ];
+  }
+
+  private mapMajorEventNode(
+    majorEvent: PublicationWorkspaceMajorEventRecord,
+    children: PublicationWorkspaceEventRecord[] = [],
+  ): PublicContentNode {
+    const directEvents = children.filter((event) => !event.eventGroupId);
+    const groupedEvents = new Map<string, PublicationWorkspaceEventRecord[]>();
+    for (const event of children) {
+      if (!event.eventGroupId || !event.eventGroup || event.eventGroup.deletedAt) {
+        continue;
+      }
+      const events = groupedEvents.get(event.eventGroupId) ?? [];
+      events.push(event);
+      groupedEvents.set(event.eventGroupId, events);
+    }
+    const childNodes = [
+      ...[...groupedEvents.values()].map((events) => this.mapNestedEventGroupNode(events, majorEvent.name)),
+      ...directEvents.map((event) => this.mapEventNode(event, majorEvent.name)),
+    ];
+
     return {
       targetType: PublicationTargetType.MAJOR_EVENT,
       id: majorEvent.id,
@@ -441,29 +545,64 @@ export class PublicationService {
       unpublishedAt: majorEvent.unpublishedAt,
       publiclyVisible: null,
       parentLabel: null,
-      childCount: majorEvent._count.events,
-      children: [],
+      childCount: childNodes.length || majorEvent._count.events,
+      children: childNodes,
     };
   }
 
-  private mapEventGroupNode(eventGroup: PublicationWorkspaceEventGroupRecord): PublicContentNode {
+  private mapEventGroupNode(
+    eventGroup: PublicationWorkspaceEventGroupRecord,
+    children: PublicationWorkspaceEventRecord[] = [],
+  ): PublicContentNode {
+    const publicationState = children.length > 0 ? this.deriveGroupState(children) : 'DRAFT';
+    const scheduledPublishAt = this.deriveGroupSchedule(children);
+
     return {
       targetType: PublicationTargetType.EVENT_GROUP,
       id: eventGroup.id,
       label: eventGroup.name,
-      publicationState: 'DRAFT',
-      statusLabel: 'Controla eventos vinculados',
-      scheduledPublishAt: null,
+      publicationState,
+      statusLabel:
+        children.length > 0 ? publicationStateLabel(publicationState, scheduledPublishAt) : 'Controla eventos vinculados',
+      scheduledPublishAt,
       publishedAt: null,
       unpublishedAt: null,
       publiclyVisible: null,
       parentLabel: null,
       childCount: eventGroup._count.events,
-      children: [],
+      children: children.map((event) => this.mapEventNode(event, eventGroup.name)),
     };
   }
 
-  private mapEventNode(event: PublicationWorkspaceEventRecord): PublicContentNode {
+  private mapNestedEventGroupNode(
+    events: PublicationWorkspaceEventRecord[],
+    parentLabel: string,
+  ): PublicContentNode {
+    const firstEvent = events[0];
+    const publicationState = this.deriveGroupState(events);
+    const scheduledPublishAt = this.deriveGroupSchedule(events);
+    const label = firstEvent?.eventGroup?.name ?? 'Grupo de eventos';
+
+    return {
+      targetType: PublicationTargetType.EVENT_GROUP,
+      id: firstEvent?.eventGroupId ?? '',
+      label,
+      publicationState,
+      statusLabel: publicationStateLabel(publicationState, scheduledPublishAt),
+      scheduledPublishAt,
+      publishedAt: null,
+      unpublishedAt: null,
+      publiclyVisible: null,
+      parentLabel,
+      childCount: events.length,
+      children: events.map((event) => this.mapEventNode(event, label)),
+    };
+  }
+
+  private mapEventNode(
+    event: PublicationWorkspaceEventRecord,
+    parentLabel = this.eventParentLabel(event),
+  ): PublicContentNode {
     return {
       targetType: PublicationTargetType.EVENT,
       id: event.id,
@@ -474,10 +613,31 @@ export class PublicationService {
       publishedAt: event.publishedAt,
       unpublishedAt: event.unpublishedAt,
       publiclyVisible: event.publiclyVisible,
-      parentLabel: this.eventParentLabel(event),
+      parentLabel,
       childCount: 0,
       children: [],
     };
+  }
+
+  private deriveGroupState(events: PublicationWorkspaceEventRecord[]): PublicContentNode['publicationState'] {
+    if (events.some((event) => event.publicationState === 'PUBLISHED')) {
+      return 'PUBLISHED';
+    }
+    if (events.some((event) => event.publicationState === 'SCHEDULED')) {
+      return 'SCHEDULED';
+    }
+    if (events.length > 0 && events.every((event) => event.publicationState === 'UNPUBLISHED')) {
+      return 'UNPUBLISHED';
+    }
+    return 'DRAFT';
+  }
+
+  private deriveGroupSchedule(events: PublicationWorkspaceEventRecord[]): Date | null {
+    const scheduledDates = events
+      .map((event) => event.scheduledPublishAt)
+      .filter((date): date is Date => date != null)
+      .sort((left, right) => left.getTime() - right.getTime());
+    return scheduledDates[0] ?? null;
   }
 
   private eventParentLabel(event: PublicationWorkspaceEventRecord): string | null {

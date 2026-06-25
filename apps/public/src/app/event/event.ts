@@ -92,14 +92,14 @@ export class Event {
     this.route.queryParamMap.pipe(map((params) => params.get('back') || params.get('returnUrl') || '/menu')),
     { initialValue: '/menu' },
   );
+  private readonly previewToken = toSignal(this.route.paramMap.pipe(map((params) => params.get('previewToken') ?? '')), {
+    initialValue: '',
+  });
 
   readonly eventState = toSignal(this.createEventState(), {
     initialValue: { status: 'loading' } satisfies EventPageState,
   });
-  readonly isPreview = computed(() => {
-    const currentState = this.eventState();
-    return currentState.status === 'ready' && Boolean(currentState.data.preview);
-  });
+  readonly isPreview = computed(() => Boolean(this.previewToken()));
   readonly calendarDownloadUrl = computed(() => {
     const currentState = this.eventState();
     if (currentState.status !== 'ready' || currentState.data.preview) {
@@ -332,6 +332,10 @@ export class Event {
   subscriptionStatusLine(data: EventPageData): string {
     if (!this.hasStandaloneSubscription(data.event)) {
       return '';
+    }
+
+    if (data.preview) {
+      return 'Pré-visualização: inscrições ficam desativadas neste link.';
     }
 
     if (data.currentUserSubscription) {

@@ -1,4 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { BadRequestException } from '@nestjs/common';
 import { Job } from 'bullmq';
 import {
   PUBLICATION_QUEUE,
@@ -16,15 +17,19 @@ export class PublicationProcessor extends WorkerHost {
 
   async process(job: Job<PublicationQueueData>): Promise<void> {
     if (job.name === PUBLISH_SCHEDULED_CONTENT_JOB) {
-      if (this.isPublicationJobData(job.data)) {
-        await this.publicationJobs.processScheduledPublication(job.data);
+      if (!this.isPublicationJobData(job.data)) {
+        throw new BadRequestException(`Invalid publication job payload for ${job.name}.`);
       }
+      await this.publicationJobs.processScheduledPublication(job.data);
       return;
     }
 
     if (job.name === RECONCILE_PUBLICATION_STATES_JOB) {
       await this.publicationJobs.reconcileScheduledPublications();
+      return;
     }
+
+    throw new BadRequestException(`Unsupported publication job: ${job.name}.`);
   }
 
   private isPublicationJobData(data: PublicationQueueData): data is PublicationJobData {

@@ -144,6 +144,8 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   allowSubscription
   subscriptionStartDate
   subscriptionEndDate
+  slots
+  slotsAvailable
   shouldIssueCertificate
   shouldCollectAttendance
   isOnlineAttendanceAllowed
