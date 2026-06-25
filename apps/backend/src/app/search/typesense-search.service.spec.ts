@@ -18,9 +18,6 @@ describe('TypesenseSearchService', () => {
     process.env = { ...originalEnv };
     delete process.env.TYPESENSE_ENABLED;
     delete process.env.TYPESENSE_URL;
-    delete process.env.TYPESENSE_HOST;
-    delete process.env.TYPESENSE_PORT;
-    delete process.env.TYPESENSE_PROTOCOL;
     delete process.env.TYPESENSE_API_KEY;
   });
 
@@ -49,6 +46,24 @@ describe('TypesenseSearchService', () => {
       ],
       connectionTimeoutSeconds: 5,
     });
+  });
+
+  it('keeps search unavailable when enabled without a valid TYPESENSE_URL', () => {
+    process.env.TYPESENSE_ENABLED = 'true';
+    process.env.TYPESENSE_URL = '';
+    process.env.TYPESENSE_API_KEY = 'secret';
+
+    const missingUrlService = new TypesenseSearchService(createPrismaMock() as never);
+
+    expect(missingUrlService.isEnabled()).toBe(false);
+    expect(typesenseClientConstructor).not.toHaveBeenCalled();
+
+    process.env.TYPESENSE_URL = 'postgresql://search.example.com';
+
+    const invalidProtocolService = new TypesenseSearchService(createPrismaMock() as never);
+
+    expect(invalidProtocolService.isEnabled()).toBe(false);
+    expect(typesenseClientConstructor).not.toHaveBeenCalled();
   });
 
   it('keeps search unavailable when disabled or queried with blank text', async () => {

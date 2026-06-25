@@ -118,6 +118,7 @@ app.get('/app/sitemap.xml', (req, res) => {
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
  */
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
+  validateServerEnvironment();
   const port = process.env['PORT'] || 4000;
   app.listen(port, () => {
     console.log(`Node Express server listening on http://localhost:${port}`);
@@ -160,4 +161,10 @@ function escapeHtmlAttribute(value: string): string {
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+function validateServerEnvironment(): void {
+  if (process.env['NODE_ENV'] === 'production' && !turnstileSiteKey) {
+    throw new Error('TURNSTILE_SITE_KEY must be set for the production public app server.');
+  }
 }

@@ -329,38 +329,21 @@ export class TypesenseSearchService implements OnModuleInit {
     }
 
     const urlConfig = this.buildNodeConfigFromUrl(process.env.TYPESENSE_URL);
-    const host = process.env.TYPESENSE_HOST;
-    const protocol = process.env.TYPESENSE_PROTOCOL;
     const apiKey = process.env.TYPESENSE_API_KEY;
-    const portRaw = process.env.TYPESENSE_PORT;
 
     if (!apiKey) {
       this.logger.warn('Typesense is enabled but TYPESENSE_API_KEY is missing. Disabling search indexing.');
       return null;
     }
 
-    if (urlConfig) {
-      return new Typesense.Client({
-        apiKey,
-        nodes: [urlConfig],
-        connectionTimeoutSeconds: 5,
-      });
-    }
-
-    if (!host || !protocol || !portRaw) {
-      this.logger.warn('Typesense is enabled but configuration is incomplete. Disabling search indexing.');
-      return null;
-    }
-
-    const port = Number(portRaw);
-    if (!Number.isFinite(port)) {
-      this.logger.warn('Typesense port is invalid. Disabling search indexing.');
+    if (!urlConfig) {
+      this.logger.warn('Typesense is enabled but TYPESENSE_URL is missing or invalid. Disabling search indexing.');
       return null;
     }
 
     return new Typesense.Client({
       apiKey,
-      nodes: [{ host, port, protocol }],
+      nodes: [urlConfig],
       connectionTimeoutSeconds: 5,
     });
   }
@@ -375,7 +358,7 @@ export class TypesenseSearchService implements OnModuleInit {
       const parsed = new URL(value);
       const protocol = parsed.protocol.replace(':', '');
       if (protocol !== 'http' && protocol !== 'https') {
-        this.logger.warn('Typesense URL protocol must be http or https. Falling back to host settings.');
+        this.logger.warn('Typesense URL protocol must be http or https.');
         return null;
       }
 
@@ -385,7 +368,7 @@ export class TypesenseSearchService implements OnModuleInit {
         protocol,
       };
     } catch {
-      this.logger.warn('Typesense URL is invalid. Falling back to host settings.');
+      this.logger.warn('Typesense URL is invalid.');
       return null;
     }
   }
