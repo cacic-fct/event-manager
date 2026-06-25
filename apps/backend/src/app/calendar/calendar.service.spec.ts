@@ -108,6 +108,59 @@ describe('CalendarService', () => {
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/app/event/event-1');
   });
 
+  it('downloads the whole event group when a public event belongs to a group', async () => {
+    const prisma = createPrismaMock({
+      event: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...publicEvent,
+          eventGroup: {
+            id: 'group-1',
+            name: 'Trilha de TypeScript',
+            createdAt: new Date('2026-06-01T10:00:00.000Z'),
+            updatedAt: new Date('2026-06-20T10:00:00.000Z'),
+            events: [
+              {
+                startDate: new Date('2026-07-01T13:00:00.000Z'),
+                endDate: new Date('2026-07-01T15:00:00.000Z'),
+              },
+              {
+                startDate: new Date('2026-07-02T13:00:00.000Z'),
+                endDate: new Date('2026-07-02T16:00:00.000Z'),
+              },
+            ],
+          },
+        }),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    const download = await service.buildPublicEventCalendar('event-1', 'https://eventos.cacic.dev.br');
+
+    expect(download.fileName).toBe('trilha-de-typescript.ics');
+    expect(download.content).toContain('UID:event-group-group-1@eventos.cacic.dev.br');
+    expect(download.content).toContain('SUMMARY:Trilha de TypeScript');
+    expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 2 evento(s).');
+    expect(download.content).toContain('DTSTART:20260701T130000Z');
+    expect(download.content).toContain('DTEND:20260702T160000Z');
+    expect(download.content).not.toContain('SUMMARY:Oficina de TypeScript');
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          eventGroup: expect.objectContaining({
+            select: expect.objectContaining({
+              events: expect.objectContaining({
+                where: {
+                  deletedAt: null,
+                  publiclyVisible: true,
+                },
+              }),
+            }),
+          }),
+        }),
+      }),
+    );
+  });
+
   it('disables private feeds when the user last login is older than two years', async () => {
     const prisma = createPrismaMock({
       userCalendarFeedSettings: {

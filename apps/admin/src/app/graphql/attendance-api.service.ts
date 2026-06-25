@@ -144,10 +144,10 @@ export class AttendanceApiService {
       .pipe(map((data) => data.eventAttendances));
   }
 
-  listOfflineEventAttendanceSubmissions(eventId?: string) {
+  listOfflineEventAttendanceSubmissions(eventId: string) {
     return this.graphqlHttp
       .request<{ offlineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(
-        `query OfflineEventAttendanceSubmissions($eventId: String) {
+        `query OfflineEventAttendanceSubmissions($eventId: String!) {
           offlineEventAttendanceSubmissions(eventId: $eventId) {
             id
             clientId
