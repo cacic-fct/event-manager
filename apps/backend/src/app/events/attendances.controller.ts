@@ -25,6 +25,7 @@ interface EventAttendanceScannerFeedItem {
   attendedAt: Date | null;
   createdByMethod: AttendanceCreationMethod | null;
   collectedByFirstName: string | null;
+  committedByFirstName: string | null;
 }
 
 class EventAttendanceScannerFeedItemDto {
@@ -86,6 +87,14 @@ class EventAttendanceScannerFeedItemDto {
     nullable: true,
   })
   collectedByFirstName!: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      'First name of the user who synchronized the attendance, when it differs from the original collector.',
+    example: 'Maria',
+    nullable: true,
+  })
+  committedByFirstName!: string | null;
 }
 
 class EventAttendanceScannerFeedEventDataDto {
@@ -167,6 +176,7 @@ export class EventAttendancesController {
         eventId: true,
         attendedAt: true,
         createdById: true,
+        committedById: true,
         createdByMethod: true,
         person: {
           select: {
@@ -195,7 +205,11 @@ export class EventAttendancesController {
     const personIds = attendances.map((attendance) => attendance.personId);
 
     const collectorIds = [
-      ...new Set(attendances.map((attendance) => attendance.createdById).filter((id): id is string => Boolean(id))),
+      ...new Set(
+        attendances
+          .flatMap((attendance) => [attendance.createdById, attendance.committedById])
+          .filter((id): id is string => Boolean(id)),
+      ),
     ];
 
     const [subscriptions, collectors] = await Promise.all([
@@ -248,6 +262,10 @@ export class EventAttendancesController {
       collectedByFirstName: attendance.createdById
         ? (collectorFirstNameById.get(attendance.createdById) ?? null)
         : null,
+      committedByFirstName:
+        attendance.committedById && attendance.committedById !== attendance.createdById
+          ? (collectorFirstNameById.get(attendance.committedById) ?? null)
+          : null,
     }));
   }
 

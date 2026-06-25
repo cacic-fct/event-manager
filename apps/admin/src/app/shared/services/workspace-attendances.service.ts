@@ -16,6 +16,7 @@ import {
   EventAttendance,
   MajorEventPriceTier,
   MajorEventUserAttendance,
+  OfflineEventAttendanceSubmission,
   Person,
   SubscriptionStatus,
 } from '../../graphql/models';
@@ -24,6 +25,8 @@ import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialog
 import { SubscriberCsvExportDialogComponent } from '../../workspace/dialogs/subscriber-csv-export-dialog.component';
 import { WorkspaceAttendanceInfoDialogComponent } from '../../workspace/dialogs/workspace-attendance-info-dialog.component';
 import { WorkspaceAttendanceScannerDialogComponent } from '../../workspace/dialogs/workspace-attendance-scanner-dialog.component';
+import { WorkspaceOfflineAttendanceSubmissionDialogComponent } from '../../workspace/dialogs/workspace-offline-attendance-submission-dialog.component';
+import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { buildSubscriberCsv } from '../subscriber-csv-export';
@@ -37,13 +40,20 @@ type AttendanceListItem = {
   attendedAt: string;
   createdAt: string;
   createdById?: string | null;
+  committedById?: string | null;
   createdByMethod: string;
   collectedByFullName?: string | null;
+  committedByFullName?: string | null;
   collectedLatitude?: number | null;
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
   category: AttendanceCategory;
   person?: Person | null;
+};
+
+type OfflineAttendanceSubmissionListItem = OfflineEventAttendanceSubmission & {
+  eventName: string;
+  personName: string;
 };
 
 type AttendanceCategoryGroup = {
@@ -105,6 +115,7 @@ export class WorkspaceAttendancesService {
   readonly selectedAttendanceEvent = signal<Event | null>(null);
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
+  readonly offlineAttendanceSubmissions = signal<OfflineAttendanceSubmissionListItem[]>([]);
   readonly attendanceGroups = computed(() => {
     const groups = new Map<AttendanceCategory, AttendanceListItem[]>(
       ATTENDANCE_CATEGORY_ORDER.map((category) => [category, []]),
@@ -355,9 +366,13 @@ export class WorkspaceAttendancesService {
   async loadAttendances(eventId: string): Promise<void> {
     if (!eventId) {
       this.attendances.set([]);
+      this.offlineAttendanceSubmissions.set([]);
       return;
     }
-    const data = await firstValueFrom(this.api.listEventAttendances(eventId, { take: EXPORT_PAGE_SIZE }));
+    const [data, submissions] = await Promise.all([
+      firstValueFrom(this.api.listEventAttendances(eventId, { take: EXPORT_PAGE_SIZE })),
+      firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
+    ]);
     this.attendances.set(
       data.map((attendance) => ({
         eventId: attendance.eventId,
@@ -367,13 +382,22 @@ export class WorkspaceAttendancesService {
         attendedAt: attendance.attendedAt,
         createdAt: attendance.createdAt,
         createdById: attendance.createdById,
+        committedById: attendance.committedById,
         createdByMethod: attendance.createdByMethod,
         collectedByFullName: attendance.collectedByFullName,
+        committedByFullName: attendance.committedByFullName,
         collectedLatitude: attendance.collectedLatitude,
         collectedLongitude: attendance.collectedLongitude,
         collectedAccuracyMeters: attendance.collectedAccuracyMeters,
         category: attendance.category,
         person: attendance.person,
+      })),
+    );
+    this.offlineAttendanceSubmissions.set(
+      submissions.map((submission) => ({
+        ...submission,
+        eventName: submission.event?.name ?? submission.eventId,
+        personName: submission.person?.name ?? submission.manualValue ?? submission.scannerCode ?? submission.personId ?? 'Pessoa não resolvida',
       })),
     );
   }
@@ -396,6 +420,117 @@ export class WorkspaceAttendancesService {
 
     await this.loadAttendances(attendance.eventId);
     this.snackbar.open('Presença removida.', 'Fechar', { duration: 2500 });
+  }
+
+  async approveOfflineAttendanceSubmission(submission: OfflineAttendanceSubmissionListItem): Promise<void> {
+    await firstValueFrom(this.api.approveOfflineEventAttendanceSubmission(submission.id));
+    await this.loadAttendances(submission.eventId);
+    this.snackbar.open('Presença off-line aprovada.', 'Fechar', { duration: 2500 });
+  }
+
+  async approveAllOfflineAttendanceSubmissions(): Promise<void> {
+    const submissions = this.offlineAttendanceSubmissions().filter((submission) => !submission.resolutionError);
+    if (submissions.length === 0) {
+      this.snackbar.open('Não há presenças off-line prontas para aprovação.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open(ConfirmationDialogComponent, {
+          width: 'min(28rem, 94vw)',
+          data: {
+            title: 'Aprovar presenças off-line',
+            message: `Aprovar ${submissions.length} presença(s) off-line em revisão?`,
+            confirmLabel: 'Aprovar',
+          },
+        })
+        .afterClosed(),
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    await firstValueFrom(this.api.approveOfflineEventAttendanceSubmissions(submissions.map((submission) => submission.id)));
+    await this.loadAttendances(submissions[0].eventId);
+    this.snackbar.open('Presenças off-line aprovadas.', 'Fechar', { duration: 2500 });
+  }
+
+  async rejectOfflineAttendanceSubmission(submission: OfflineAttendanceSubmissionListItem): Promise<void> {
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open(ConfirmationDialogComponent, {
+          width: 'min(28rem, 94vw)',
+          data: {
+            title: 'Rejeitar presença off-line',
+            message: `Rejeitar a presença enviada para ${submission.personName}?`,
+            confirmLabel: 'Rejeitar',
+          },
+        })
+        .afterClosed(),
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    await firstValueFrom(this.api.rejectOfflineEventAttendanceSubmission(submission.id));
+    await this.loadAttendances(submission.eventId);
+    this.snackbar.open('Presença off-line rejeitada.', 'Fechar', { duration: 2500 });
+  }
+
+  async rejectAllOfflineAttendanceSubmissions(): Promise<void> {
+    const submissions = this.offlineAttendanceSubmissions();
+    if (submissions.length === 0) {
+      this.snackbar.open('Não há presenças off-line para rejeitar.', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open(ConfirmationDialogComponent, {
+          width: 'min(28rem, 94vw)',
+          data: {
+            title: 'Rejeitar presenças off-line',
+            message: `Rejeitar ${submissions.length} presença(s) off-line em revisão?`,
+            confirmLabel: 'Rejeitar',
+          },
+        })
+        .afterClosed(),
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    await firstValueFrom(
+      this.api.rejectOfflineEventAttendanceSubmissions(
+        submissions.map((submission) => submission.id),
+        'Rejeitada em lote pelo painel administrativo.',
+      ),
+    );
+    await this.loadAttendances(submissions[0].eventId);
+    this.snackbar.open('Presenças off-line rejeitadas.', 'Fechar', { duration: 2500 });
+  }
+
+  async inspectOfflineAttendanceSubmission(submission: OfflineAttendanceSubmissionListItem): Promise<void> {
+    const action = await firstValueFrom(
+      this.dialog
+        .open(WorkspaceOfflineAttendanceSubmissionDialogComponent, {
+          width: 'min(38rem, 96vw)',
+          maxWidth: '96vw',
+          data: {
+            submission,
+            canReview: true,
+          },
+        })
+        .afterClosed(),
+    );
+
+    if (action === 'approve') {
+      await this.approveOfflineAttendanceSubmission(submission);
+    }
+    if (action === 'reject') {
+      await this.rejectOfflineAttendanceSubmission(submission);
+    }
   }
 
   async loadMajorEventUserAttendances(): Promise<void> {
@@ -579,8 +714,10 @@ export class WorkspaceAttendancesService {
         attendedAt: attendance.attendedAt,
         createdAt: attendance.createdAt,
         createdById: attendance.createdById,
+        committedById: attendance.committedById,
         createdByMethod: attendance.createdByMethod,
         collectedByFullName: attendance.collectedByFullName,
+        committedByFullName: attendance.committedByFullName,
         collectedLatitude: attendance.collectedLatitude,
         collectedLongitude: attendance.collectedLongitude,
         collectedAccuracyMeters: attendance.collectedAccuracyMeters,

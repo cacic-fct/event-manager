@@ -182,6 +182,27 @@ export class DashboardPendingReceiptMajorEvent {
 }
 
 @ObjectType()
+export class DashboardPendingOfflineAttendanceEvent {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  emoji!: string;
+
+  @Field(() => Date)
+  startDate!: Date;
+
+  @Field(() => Date)
+  endDate!: Date;
+
+  @Field(() => Int)
+  pendingCount!: number;
+}
+
+@ObjectType()
 export class DashboardInconsistency {
   @Field(() => DashboardInconsistencyType)
   type!: DashboardInconsistencyType;
@@ -263,6 +284,12 @@ export class WorkspaceDashboardInsights {
 
   @Field(() => [DashboardPendingReceiptMajorEvent])
   pendingReceiptMajorEvents!: DashboardPendingReceiptMajorEvent[];
+
+  @Field(() => Int)
+  pendingOfflineAttendancesCount!: number;
+
+  @Field(() => [DashboardPendingOfflineAttendanceEvent])
+  pendingOfflineAttendanceEvents!: DashboardPendingOfflineAttendanceEvent[];
 
   @Field(() => [DashboardInconsistency])
   inconsistencies!: DashboardInconsistency[];

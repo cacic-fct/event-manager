@@ -53,6 +53,31 @@ registerEnumType(AttendanceCreationMethod, {
   name: 'AttendanceCreationMethod',
 });
 
+export const OfflineEventAttendanceCommitStatus = {
+  CREATED: 'CREATED',
+  STAGED: 'STAGED',
+  DUPLICATE: 'DUPLICATE',
+  CONFLICT: 'CONFLICT',
+  FORBIDDEN: 'FORBIDDEN',
+  FAILED: 'FAILED',
+} as const;
+export type OfflineEventAttendanceCommitStatus =
+  (typeof OfflineEventAttendanceCommitStatus)[keyof typeof OfflineEventAttendanceCommitStatus];
+registerEnumType(OfflineEventAttendanceCommitStatus, {
+  name: 'OfflineEventAttendanceCommitStatus',
+});
+
+export const OfflineEventAttendanceSubmissionStatus = {
+  PENDING: 'PENDING',
+  COMMITTED: 'COMMITTED',
+  REJECTED: 'REJECTED',
+} as const;
+export type OfflineEventAttendanceSubmissionStatus =
+  (typeof OfflineEventAttendanceSubmissionStatus)[keyof typeof OfflineEventAttendanceSubmissionStatus];
+registerEnumType(OfflineEventAttendanceSubmissionStatus, {
+  name: 'OfflineEventAttendanceSubmissionStatus',
+});
+
 export const SubscriptionCreationMethod = {
   ADMIN_DASHBOARD: 'ADMIN_DASHBOARD',
   SELF_SUBSCRIPTION: 'SELF_SUBSCRIPTION',

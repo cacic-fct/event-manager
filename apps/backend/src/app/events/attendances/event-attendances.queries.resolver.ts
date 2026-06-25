@@ -1,4 +1,10 @@
-import { EventAttendance, EventAttendanceScannerFeedItem, MajorEventUserAttendance } from '@cacic-fct/shared-data-types';
+import {
+  EventAttendance,
+  EventAttendanceScannerFeedItem,
+  MajorEventUserAttendance,
+  OfflineEventAttendanceSubmission,
+  OfflineEventAttendanceSubmissionStatus,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
@@ -42,6 +48,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         attendedAt: true,
         createdAt: true,
         createdById: true,
+        committedById: true,
         createdByMethod: true,
         collectedLatitude: true,
         collectedLongitude: true,
@@ -62,11 +69,15 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     const collectorIds = [
       ...new Set(attendances.map((attendance) => attendance.createdById).filter((id): id is string => Boolean(id))),
     ];
-    const collectors = collectorIds.length
+    const committerIds = [
+      ...new Set(attendances.map((attendance) => attendance.committedById).filter((id): id is string => Boolean(id))),
+    ];
+    const actorIds = [...new Set([...collectorIds, ...committerIds])];
+    const collectors = actorIds.length
       ? await this.prisma.user.findMany({
           where: {
             id: {
-              in: collectorIds,
+              in: actorIds,
             },
           },
           select: {
@@ -80,6 +91,10 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     return attendances.map((attendance) => ({
       ...attendance,
       collectedByFullName: attendance.createdById ? (collectorNameById.get(attendance.createdById) ?? undefined) : undefined,
+      committedByFullName:
+        attendance.committedById && attendance.committedById !== attendance.createdById
+          ? (collectorNameById.get(attendance.committedById) ?? undefined)
+          : undefined,
     }));
   }
 
@@ -87,6 +102,31 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   @RequirePermissions(Permission.EventAttendance.Read)
   eventAttendanceScannerFeed(@Args('eventId', { type: () => String }) eventId: string) {
     return this.getScannerFeed(eventId);
+  }
+
+  @Query(() => [OfflineEventAttendanceSubmission], { name: 'offlineEventAttendanceSubmissions' })
+  @RequirePermissions(Permission.EventAttendance.Read)
+  async offlineEventAttendanceSubmissions(
+    @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
+    @Args('status', { type: () => OfflineEventAttendanceSubmissionStatus, nullable: true })
+    status?: OfflineEventAttendanceSubmissionStatus,
+  ): Promise<OfflineEventAttendanceSubmission[]> {
+    const submissions = await this.prisma.offlineEventAttendanceSubmission.findMany({
+      where: {
+        ...(eventId ? { eventId } : {}),
+        status: status ?? 'PENDING',
+      },
+      include: {
+        event: true,
+        person: true,
+      },
+      orderBy: {
+        submittedAt: 'desc',
+      },
+      take: 500,
+    });
+
+    return this.withOfflineSubmissionActorNames(submissions);
   }
 
   @Query(() => [MajorEventUserAttendance], {
@@ -240,6 +280,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         attendedAt: true,
         createdAt: true,
         createdById: true,
+        committedById: true,
         createdByMethod: true,
         category: true,
         person: true,
@@ -254,5 +295,87 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }
 
     return attendance;
+  }
+
+  private async withOfflineSubmissionActorNames(
+    submissions: Array<{
+      id: string;
+      clientId: string;
+      eventId: string;
+      event?: OfflineEventAttendanceSubmission['event'] | null;
+      personId: string | null;
+      person?: OfflineEventAttendanceSubmission['person'] | null;
+      status: OfflineEventAttendanceSubmissionStatus;
+      createdByMethod: OfflineEventAttendanceSubmission['createdByMethod'];
+      scannerCode: string | null;
+      manualValue: string | null;
+      collectedAt: Date;
+      authorUserId: string | null;
+      authorName: string | null;
+      authorEmail: string | null;
+      submittedById: string;
+      submittedAt: Date;
+      stagedReason: string | null;
+      resolutionError: string | null;
+      collectedLatitude: number | null;
+      collectedLongitude: number | null;
+      collectedAccuracyMeters: number | null;
+      committedAt: Date | null;
+      committedById: string | null;
+      rejectedAt: Date | null;
+      rejectedById: string | null;
+      rejectionReason: string | null;
+    }>,
+  ): Promise<OfflineEventAttendanceSubmission[]> {
+    const actorIds = [
+      ...new Set(
+        submissions
+          .flatMap((submission) => [
+            submission.submittedById,
+            submission.committedById,
+            submission.rejectedById,
+          ])
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const actors = actorIds.length
+      ? await this.prisma.user.findMany({
+          where: {
+            id: {
+              in: actorIds,
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+          },
+        })
+      : [];
+    const actorNameById = new Map(actors.map((actor) => [actor.id, actor.name]));
+
+    return submissions.map((submission) => ({
+      ...submission,
+      event: submission.event ?? undefined,
+      personId: submission.personId ?? undefined,
+      person: submission.person ?? undefined,
+      scannerCode: submission.scannerCode ?? undefined,
+      manualValue: submission.manualValue ?? undefined,
+      authorUserId: submission.authorUserId ?? undefined,
+      authorName: submission.authorName ?? undefined,
+      authorEmail: submission.authorEmail ?? undefined,
+      submittedByFullName: actorNameById.get(submission.submittedById),
+      stagedReason: submission.stagedReason ?? undefined,
+      resolutionError: submission.resolutionError ?? undefined,
+      collectedLatitude: submission.collectedLatitude ?? undefined,
+      collectedLongitude: submission.collectedLongitude ?? undefined,
+      collectedAccuracyMeters: submission.collectedAccuracyMeters ?? undefined,
+      committedAt: submission.committedAt ?? undefined,
+      committedById: submission.committedById ?? undefined,
+      committedByFullName: submission.committedById ? actorNameById.get(submission.committedById) : undefined,
+      rejectedAt: submission.rejectedAt ?? undefined,
+      rejectedById: submission.rejectedById ?? undefined,
+      rejectedByFullName: submission.rejectedById ? actorNameById.get(submission.rejectedById) : undefined,
+      rejectionReason: submission.rejectionReason ?? undefined,
+    }));
   }
 }

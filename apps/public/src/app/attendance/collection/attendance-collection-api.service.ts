@@ -26,6 +26,7 @@ export interface AttendanceScannerFeedItem {
   attendedAt?: string | null;
   createdByMethod?: AttendanceCreationMethod | null;
   collectedByFirstName?: string | null;
+  committedByFirstName?: string | null;
 }
 
 export interface AttendanceRegistrationResult {
@@ -35,15 +36,30 @@ export interface AttendanceRegistrationResult {
   category: AttendanceCategory;
 }
 
-type GraphqlVariable =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | AttendanceCollectionLocation
-  | { eventId: string; code?: string; value?: string; location?: AttendanceCollectionLocation };
-type GraphqlVariables = Record<string, GraphqlVariable>;
+export type OfflineAttendanceCommitStatus = 'CREATED' | 'STAGED' | 'DUPLICATE' | 'CONFLICT' | 'FORBIDDEN' | 'FAILED';
+
+export interface OfflineAttendanceCommitPayload {
+  clientId: string;
+  eventId: string;
+  createdByMethod: Extract<AttendanceCreationMethod, 'SCANNER' | 'MANUAL_INPUT'>;
+  code?: string;
+  value?: string;
+  location: AttendanceCollectionLocation;
+  collectedAt: string;
+  authorUserId?: string | null;
+  authorName?: string | null;
+  authorEmail?: string | null;
+}
+
+export interface OfflineAttendanceCommitResult {
+  clientId: string;
+  eventId: string;
+  status: OfflineAttendanceCommitStatus;
+  message?: string | null;
+  attendance?: AttendanceRegistrationResult | null;
+}
+
+type GraphqlVariables = Record<string, unknown>;
 
 interface GraphqlResponse<TData> {
   data?: TData;
@@ -103,6 +119,7 @@ export class AttendanceCollectionApiService {
             attendedAt
             createdByMethod
             collectedByFirstName
+            committedByFirstName
           }
         }
       `,
@@ -175,6 +192,33 @@ export class AttendanceCollectionApiService {
       `,
       { input: { eventId, value, location } },
     ).pipe(map((data) => data.collectCurrentUserManualAttendance));
+  }
+
+  commitOfflineAttendances(items: readonly OfflineAttendanceCommitPayload[]): Observable<OfflineAttendanceCommitResult[]> {
+    return this.query<{ commitCurrentUserOfflineAttendances: OfflineAttendanceCommitResult[] }>(
+      `
+        mutation CommitCurrentUserOfflineAttendances($input: CommitOfflineEventAttendancesInput!) {
+          commitCurrentUserOfflineAttendances(input: $input) {
+            clientId
+            eventId
+            status
+            message
+            attendance {
+              eventId
+              personId
+              attendedAt
+              category
+            }
+            stagedSubmission {
+              id
+              eventId
+              status
+            }
+          }
+        }
+      `,
+      { input: { attendances: items } },
+    ).pipe(map((data) => data.commitCurrentUserOfflineAttendances));
   }
 
   private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {

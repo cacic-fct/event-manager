@@ -33,6 +33,7 @@ export type AttendanceSnapshot = {
   attendedAt: string;
   createdAt: string;
   createdById: string | null;
+  committedById: string | null;
 };
 
 export type LectureSnapshot = {

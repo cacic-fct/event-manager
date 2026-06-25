@@ -64,6 +64,15 @@ export class DashboardApiService {
               endDate
               pendingCount
             }
+            pendingOfflineAttendancesCount
+            pendingOfflineAttendanceEvents {
+              eventId
+              name
+              emoji
+              startDate
+              endDate
+              pendingCount
+            }
             inconsistencies {
               type
               action

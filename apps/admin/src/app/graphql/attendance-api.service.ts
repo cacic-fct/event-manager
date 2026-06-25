@@ -9,6 +9,7 @@ import {
   EventAttendanceCsvImportResult,
   MajorEventSubscriptionCsvImportResult,
   MajorEventUserAttendance,
+  OfflineEventAttendanceSubmission,
   SubscriptionStatus,
 } from './models';
 import { PERSON_EXPORT_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
@@ -120,9 +121,11 @@ export class AttendanceApiService {
             attendedAt
             createdAt
             createdById
+            committedById
             category
             createdByMethod
             collectedByFullName
+            committedByFullName
             collectedLatitude
             collectedLongitude
             collectedAccuracyMeters
@@ -139,6 +142,122 @@ export class AttendanceApiService {
         { eventId, skip: filters?.skip, take: filters?.take },
       )
       .pipe(map((data) => data.eventAttendances));
+  }
+
+  listOfflineEventAttendanceSubmissions(eventId?: string) {
+    return this.graphqlHttp
+      .request<{ offlineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(
+        `query OfflineEventAttendanceSubmissions($eventId: String) {
+          offlineEventAttendanceSubmissions(eventId: $eventId) {
+            id
+            clientId
+            eventId
+            status
+            createdByMethod
+            scannerCode
+            manualValue
+            collectedAt
+            authorUserId
+            authorName
+            authorEmail
+            submittedById
+            submittedByFullName
+            submittedAt
+            stagedReason
+            resolutionError
+            collectedLatitude
+            collectedLongitude
+            collectedAccuracyMeters
+            event {
+              id
+              name
+              emoji
+              startDate
+            }
+            person {
+              ${PERSON_EXPORT_FIELDS}
+            }
+          }
+        }`,
+        { eventId },
+      )
+      .pipe(map((data) => data.offlineEventAttendanceSubmissions));
+  }
+
+  approveOfflineEventAttendanceSubmission(submissionId: string) {
+    return this.graphqlHttp
+      .request<{ approveOfflineEventAttendanceSubmission: OfflineEventAttendanceSubmission }>(
+        `mutation ApproveOfflineEventAttendanceSubmission($submissionId: String!) {
+          approveOfflineEventAttendanceSubmission(submissionId: $submissionId) {
+            id
+            eventId
+            personId
+            status
+            committedAt
+            committedById
+            committedByFullName
+          }
+        }`,
+        { submissionId },
+      )
+      .pipe(map((data) => data.approveOfflineEventAttendanceSubmission));
+  }
+
+  approveOfflineEventAttendanceSubmissions(submissionIds: string[]) {
+    return this.graphqlHttp
+      .request<{ approveOfflineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(
+        `mutation ApproveOfflineEventAttendanceSubmissions($submissionIds: [String!]!) {
+          approveOfflineEventAttendanceSubmissions(submissionIds: $submissionIds) {
+            id
+            eventId
+            personId
+            status
+            committedAt
+            committedById
+            committedByFullName
+          }
+        }`,
+        { submissionIds },
+      )
+      .pipe(map((data) => data.approveOfflineEventAttendanceSubmissions));
+  }
+
+  rejectOfflineEventAttendanceSubmission(submissionId: string, reason?: string | null) {
+    return this.graphqlHttp
+      .request<{ rejectOfflineEventAttendanceSubmission: OfflineEventAttendanceSubmission }>(
+        `mutation RejectOfflineEventAttendanceSubmission($submissionId: String!, $reason: String) {
+          rejectOfflineEventAttendanceSubmission(submissionId: $submissionId, reason: $reason) {
+            id
+            eventId
+            status
+            rejectedAt
+            rejectedById
+            rejectedByFullName
+            rejectionReason
+          }
+        }`,
+        { submissionId, reason },
+      )
+      .pipe(map((data) => data.rejectOfflineEventAttendanceSubmission));
+  }
+
+  rejectOfflineEventAttendanceSubmissions(submissionIds: string[], reason?: string | null) {
+    return this.graphqlHttp
+      .request<{ rejectOfflineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(
+        `mutation RejectOfflineEventAttendanceSubmissions($submissionIds: [String!]!, $reason: String) {
+          rejectOfflineEventAttendanceSubmissions(submissionIds: $submissionIds, reason: $reason) {
+            id
+            eventId
+            status
+            rejectedAt
+            rejectedById
+            rejectedByFullName
+            rejectionReason
+          }
+        }`,
+        { submissionIds, reason },
+      )
+      .pipe(map((data) => data.rejectOfflineEventAttendanceSubmissions));
   }
 
   deleteEventAttendance(input: { eventId: string; personId: string }) {
@@ -169,6 +288,7 @@ export class AttendanceApiService {
             attendedAt
             createdByMethod
             collectedByFirstName
+            committedByFirstName
           }
         }`,
         { eventId },

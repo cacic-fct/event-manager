@@ -25,6 +25,7 @@ import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-f
 import { MatIconRegistry } from '@angular/material/icon';
 import { AnalyticsService } from './analytics/analytics.service';
 import { OnlineAttendanceCoordinatorService } from './attendance/online-attendance/online-attendance-coordinator.service';
+import { AttendanceOfflineSyncService } from './attendance/collection/attendance-offline-sync.service';
 import { OfflineUserDataService } from './shared/offline-user-data.service';
 import { NetworkStatusService } from './shared/network-status.service';
 import { NetworkStatusSnackbarService } from './shared/network-status-snackbar.service';
@@ -163,6 +164,7 @@ export const appConfig: ApplicationConfig = {
     }),
     provideAppInitializer(() => {
       inject(OnlineAttendanceCoordinatorService).start();
+      inject(AttendanceOfflineSyncService).start();
     }),
     provideAppInitializer(() => {
       inject(NetworkStatusService).start();

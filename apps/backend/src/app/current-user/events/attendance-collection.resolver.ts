@@ -1,11 +1,14 @@
 import {
+  CommitOfflineEventAttendancesInput,
   EventAttendance,
   EventAttendanceManualInput,
   EventAttendanceScannerCodeInput,
   EventAttendanceScannerFeedItem,
+  OfflineEventAttendanceCommitResult,
+  OfflineEventAttendanceSubmission,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { CurrentUserAttendanceCollectionEvent } from '../models';
@@ -18,8 +21,10 @@ import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
+import { DashboardInsightsService } from '../../dashboard/insights.service';
 
 const MAX_LOCATION_ACCURACY_METERS = 200;
+const MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE = 150;
 
 @Resolver(() => CurrentUserAttendanceCollectionEvent)
 export class CurrentUserAttendanceCollectionResolver {
@@ -32,11 +37,15 @@ export class CurrentUserAttendanceCollectionResolver {
     } as unknown as FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService = {
       assertAttendanceCollectorForEvent: async () => undefined,
+      assertPermissions: async () => undefined,
     } as unknown as AuthorizationPolicyService,
     private readonly auditLog: AuditLogService = {
       record: async () => undefined,
       buildCompositeEntityId: (parts: readonly string[]) => parts.join(':'),
     } as unknown as AuditLogService,
+    private readonly dashboardInsights: DashboardInsightsService = {
+      invalidateCachedInsights: async () => undefined,
+    } as unknown as DashboardInsightsService,
   ) {}
 
   @Query(() => [CurrentUserAttendanceCollectionEvent], {
@@ -128,6 +137,7 @@ export class CurrentUserAttendanceCollectionResolver {
         personId: person.id,
         createdByMethod: AttendanceCreationMethod.SCANNER,
         createdById: this.getActorId(context) ?? collector.userId ?? undefined,
+        committedById: this.getActorId(context) ?? collector.userId ?? undefined,
         location: input.location,
       },
       (attendance, tx) =>
@@ -151,11 +161,32 @@ export class CurrentUserAttendanceCollectionResolver {
         personId: person.id,
         createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
         createdById: this.getActorId(context) ?? collector.userId ?? undefined,
+        committedById: this.getActorId(context) ?? collector.userId ?? undefined,
         location: input.location,
       },
       (attendance, tx) =>
         this.recordAttendanceCreate(attendance, context, 'Presença registrada pelo coletor manualmente.', tx),
     );
+  }
+
+  @Mutation(() => [OfflineEventAttendanceCommitResult], { name: 'commitCurrentUserOfflineAttendances' })
+  async commitCurrentUserOfflineAttendances(
+    @Args('input', { type: () => CommitOfflineEventAttendancesInput })
+    input: CommitOfflineEventAttendancesInput,
+    @Context() context: GraphqlContext,
+  ): Promise<OfflineEventAttendanceCommitResult[]> {
+    if (input.attendances.length > MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE) {
+      throw new BadRequestException(
+        `Envie no máximo ${MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE} presenças off-line por sincronização.`,
+      );
+    }
+
+    const results: OfflineEventAttendanceCommitResult[] = [];
+    for (const item of input.attendances) {
+      results.push(await this.commitOfflineAttendance(item, context));
+    }
+
+    return results;
   }
 
   private async requireCollector(eventId: string, context: GraphqlContext, enforceCollectionWindow: boolean) {
@@ -185,6 +216,7 @@ export class CurrentUserAttendanceCollectionResolver {
         eventId: true,
         attendedAt: true,
         createdById: true,
+        committedById: true,
         createdByMethod: true,
         person: {
           select: {
@@ -212,7 +244,11 @@ export class CurrentUserAttendanceCollectionResolver {
     const majorEventId = attendances.find((attendance) => attendance.event.majorEventId)?.event.majorEventId;
     const personIds = attendances.map((attendance) => attendance.personId);
     const collectorIds = [
-      ...new Set(attendances.map((attendance) => attendance.createdById).filter((id): id is string => Boolean(id))),
+      ...new Set(
+        attendances
+          .flatMap((attendance) => [attendance.createdById, attendance.committedById])
+          .filter((id): id is string => Boolean(id)),
+      ),
     ];
 
     const standaloneEventIds = [
@@ -294,6 +330,10 @@ export class CurrentUserAttendanceCollectionResolver {
       collectedByFirstName: attendance.createdById
         ? (collectorFirstNameById.get(attendance.createdById) ?? undefined)
         : undefined,
+      committedByFirstName:
+        attendance.committedById && attendance.committedById !== attendance.createdById
+          ? (collectorFirstNameById.get(attendance.committedById) ?? undefined)
+          : undefined,
     }));
   }
 
@@ -306,6 +346,8 @@ export class CurrentUserAttendanceCollectionResolver {
     personId: string;
     createdByMethod: AttendanceCreationMethod;
     createdById?: string;
+    committedById?: string;
+    attendedAt?: Date;
     location?: { latitude: number; longitude: number; accuracyMeters: number };
   }, afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>) {
     const locationData = this.getRequiredLocationData(input.location);
@@ -316,7 +358,9 @@ export class CurrentUserAttendanceCollectionResolver {
           data: {
             eventId: input.eventId,
             personId: input.personId,
+            attendedAt: input.attendedAt,
             createdById: input.createdById,
+            committedById: input.committedById,
             createdByMethod: input.createdByMethod,
             ...locationData,
           },
@@ -350,6 +394,7 @@ export class CurrentUserAttendanceCollectionResolver {
     context: GraphqlContext,
     summary: string,
     prisma: PrismaService | Prisma.TransactionClient = this.prisma,
+    metadata?: Record<string, unknown>,
   ): Promise<void> {
     await this.auditLog.record({
       entityType: AuditLogEntityType.EVENT_ATTENDANCE,
@@ -363,7 +408,385 @@ export class CurrentUserAttendanceCollectionResolver {
         eventId: attendance.eventId,
       },
       summary,
+      metadata,
     }, prisma);
+  }
+
+  private async commitOfflineAttendance(
+    item: CommitOfflineEventAttendancesInput['attendances'][number],
+    context: GraphqlContext,
+  ): Promise<OfflineEventAttendanceCommitResult> {
+    const sender = await this.currentUserContext.requireCurrentPerson(context);
+    const submittedById = this.getActorId(context) ?? sender.userId;
+    if (!submittedById) {
+      throw new BadRequestException('Usuário autenticado sem identificador de conta.');
+    }
+    const createdById = this.normalizeOptionalString(item.authorUserId) ?? submittedById;
+    const canCommitWithPermission = await this.canCommitOfflineAttendanceWithPermission(item.eventId, context);
+
+    try {
+      if (!canCommitWithPermission) {
+        await this.authorizationPolicy.assertAttendanceCollectorForEvent(item.eventId, sender.id, {
+          enforceCollectionWindow: true,
+        });
+      }
+      const authenticatedUser = this.getAuthenticatedUser(context);
+      await this.frozenResources.assertEventMutable(item.eventId, authenticatedUser, 'edit');
+
+      const person = await this.resolveOfflineAttendancePerson(item);
+      const attendance = await this.createAttendance(
+        {
+          eventId: item.eventId,
+          personId: person.id,
+          createdByMethod: item.createdByMethod,
+          createdById,
+          committedById: submittedById,
+          attendedAt: item.collectedAt,
+          location: item.location,
+        },
+        (attendance, tx) =>
+          this.recordAttendanceCreate(
+            attendance,
+            context,
+            'Presença coletada off-line e sincronizada depois.',
+            tx,
+            {
+              offlineClientId: item.clientId,
+              offlineAttendanceAuthor: {
+                userId: createdById ?? null,
+                name: this.normalizeOptionalString(item.authorName) ?? null,
+                email: this.normalizeOptionalString(item.authorEmail) ?? null,
+              },
+              submittedById,
+              committedById: submittedById,
+            },
+          ),
+      );
+
+      return {
+        clientId: item.clientId,
+        eventId: item.eventId,
+        status: 'CREATED',
+        attendance: this.toEventAttendance(attendance),
+      };
+    } catch (error: unknown) {
+      if (
+        !canCommitWithPermission &&
+        await this.shouldStageOfflineAttendance(item.eventId, sender.id, error)
+      ) {
+        const stagedSubmission = await this.stageOfflineAttendance(item, context, {
+          createdById,
+          submittedById,
+          stagedReason: this.errorMessage(error),
+        });
+
+        return {
+          clientId: item.clientId,
+          eventId: item.eventId,
+          status: 'STAGED',
+          message: 'Presença off-line enviada para revisão administrativa.',
+          stagedSubmission,
+        };
+      }
+
+      return {
+        clientId: item.clientId,
+        eventId: item.eventId,
+        status: this.commitStatusForError(error),
+        message: this.errorMessage(error),
+      };
+    }
+  }
+
+  private async canCommitOfflineAttendanceWithPermission(eventId: string, context: GraphqlContext): Promise<boolean> {
+    const user = this.getAuthenticatedUser(context);
+    if (!user) {
+      return false;
+    }
+
+    try {
+      await this.authorizationPolicy.assertPermissions(user, [Permission.EventAttendance.Collect], {
+        eventId,
+      });
+      return true;
+    } catch (error: unknown) {
+      if (error instanceof ForbiddenException) {
+        return false;
+      }
+
+      throw error;
+    }
+  }
+
+  private async shouldStageOfflineAttendance(
+    eventId: string,
+    senderPersonId: string,
+    error: unknown,
+  ): Promise<boolean> {
+    if (!(error instanceof HttpException)) {
+      return false;
+    }
+
+    if (error instanceof ConflictException && this.errorMessage(error).includes('Presença já registrada')) {
+      return false;
+    }
+
+    if (![400, 403, 404].includes(error.getStatus())) {
+      return false;
+    }
+
+    const event = await this.prisma.event.findFirst({
+      where: {
+        id: eventId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (!event) {
+      return false;
+    }
+
+    try {
+      await this.authorizationPolicy.assertAttendanceCollectorForEvent(eventId, senderPersonId, {
+        enforceCollectionWindow: false,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async stageOfflineAttendance(
+    item: CommitOfflineEventAttendancesInput['attendances'][number],
+    context: GraphqlContext,
+    metadata: {
+      createdById: string;
+      submittedById: string;
+      stagedReason: string;
+    },
+  ) {
+    const resolvedPerson = await this.tryResolveOfflineAttendancePerson(item);
+    const locationData = this.getRequiredLocationData(item.location);
+    const submission = await this.prisma.offlineEventAttendanceSubmission.upsert({
+      where: {
+        submittedById_clientId: {
+          submittedById: metadata.submittedById,
+          clientId: item.clientId,
+        },
+      },
+      create: {
+        clientId: item.clientId,
+        eventId: item.eventId,
+        personId: resolvedPerson.personId,
+        createdByMethod: item.createdByMethod,
+        scannerCode: this.normalizeOptionalString(item.code),
+        manualValue: this.normalizeOptionalString(item.value),
+        collectedAt: item.collectedAt,
+        authorUserId: metadata.createdById,
+        authorName: this.normalizeOptionalString(item.authorName),
+        authorEmail: this.normalizeOptionalString(item.authorEmail),
+        submittedById: metadata.submittedById,
+        stagedReason: metadata.stagedReason,
+        resolutionError: resolvedPerson.errorMessage,
+        ...locationData,
+      },
+      update: {
+        stagedReason: metadata.stagedReason,
+        resolutionError: resolvedPerson.errorMessage,
+        personId: resolvedPerson.personId,
+        scannerCode: this.normalizeOptionalString(item.code),
+        manualValue: this.normalizeOptionalString(item.value),
+        collectedLatitude: locationData.collectedLatitude,
+        collectedLongitude: locationData.collectedLongitude,
+        collectedAccuracyMeters: locationData.collectedAccuracyMeters,
+      },
+      include: {
+        event: true,
+        person: true,
+      },
+    });
+
+    await this.auditLog.record({
+      entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+      entityId: submission.personId
+        ? this.auditLog.buildCompositeEntityId([submission.personId, submission.eventId])
+        : `offline:${submission.id}`,
+      entityLabel: submission.person?.name ?? submission.manualValue ?? submission.scannerCode ?? submission.id,
+      operation: AuditLogOperation.CREATE,
+      actor: this.getAuthenticatedUser(context),
+      after: {
+        id: submission.id,
+        clientId: submission.clientId,
+        eventId: submission.eventId,
+        personId: submission.personId,
+        authorUserId: submission.authorUserId,
+        submittedById: submission.submittedById,
+        stagedReason: submission.stagedReason,
+        resolutionError: submission.resolutionError,
+      },
+      scope: {
+        permission: Permission.EventAttendance.Collect,
+        eventId: submission.eventId,
+      },
+      summary: 'Presença off-line enviada para revisão administrativa.',
+    });
+    await this.dashboardInsights.invalidateCachedInsights();
+
+    return this.toOfflineSubmission(submission);
+  }
+
+  private async tryResolveOfflineAttendancePerson(
+    item: CommitOfflineEventAttendancesInput['attendances'][number],
+  ): Promise<{ personId: string | null; errorMessage?: string }> {
+    try {
+      const person = await this.resolveOfflineAttendancePerson(item);
+      return { personId: person.id };
+    } catch (error: unknown) {
+      return { personId: null, errorMessage: this.errorMessage(error) };
+    }
+  }
+
+  private async resolveOfflineAttendancePerson(
+    item: CommitOfflineEventAttendancesInput['attendances'][number],
+  ): Promise<{ id: string }> {
+    switch (item.createdByMethod) {
+      case AttendanceCreationMethod.SCANNER: {
+        const userId = item.code ? this.parseUserAztecCode(item.code) : null;
+        if (!userId) {
+          throw new BadRequestException('Código Aztec incompatível.');
+        }
+
+        const person = await this.prisma.people.findFirst({
+          where: {
+            userId,
+            deletedAt: null,
+            mergedIntoId: null,
+          },
+          select: {
+            id: true,
+          },
+        });
+        if (!person) {
+          throw new NotFoundException(`Person for user ${userId} was not found.`);
+        }
+
+        return person;
+      }
+      case AttendanceCreationMethod.MANUAL_INPUT:
+        return this.findSinglePersonForManualInput(item.value ?? '');
+      default:
+        throw new BadRequestException('Origem da presença off-line incompatível.');
+    }
+  }
+
+  private toEventAttendance(attendance: {
+    personId: string;
+    eventId: string;
+    category: EventAttendance['category'];
+    attendedAt: Date;
+    createdAt: Date;
+    createdById: string | null;
+    committedById: string | null;
+    createdByMethod: EventAttendance['createdByMethod'];
+    collectedLatitude: number | null;
+    collectedLongitude: number | null;
+    collectedAccuracyMeters: number | null;
+  }): EventAttendance {
+    return {
+      ...attendance,
+      createdById: attendance.createdById ?? undefined,
+      committedById: attendance.committedById ?? undefined,
+      collectedLatitude: attendance.collectedLatitude ?? undefined,
+      collectedLongitude: attendance.collectedLongitude ?? undefined,
+      collectedAccuracyMeters: attendance.collectedAccuracyMeters ?? undefined,
+    };
+  }
+
+  private toOfflineSubmission(submission: {
+    id: string;
+    clientId: string;
+    eventId: string;
+    event?: OfflineEventAttendanceSubmission['event'] | null;
+    personId: string | null;
+    person?: OfflineEventAttendanceSubmission['person'] | null;
+    status: OfflineEventAttendanceSubmission['status'];
+    createdByMethod: EventAttendance['createdByMethod'];
+    scannerCode: string | null;
+    manualValue: string | null;
+    collectedAt: Date;
+    authorUserId: string | null;
+    authorName: string | null;
+    authorEmail: string | null;
+    submittedById: string;
+    submittedAt: Date;
+    stagedReason: string | null;
+    resolutionError: string | null;
+    collectedLatitude: number | null;
+    collectedLongitude: number | null;
+    collectedAccuracyMeters: number | null;
+    committedAt: Date | null;
+    committedById: string | null;
+    rejectedAt: Date | null;
+    rejectedById: string | null;
+    rejectionReason: string | null;
+  }): OfflineEventAttendanceSubmission {
+    return {
+      ...submission,
+      event: submission.event ?? undefined,
+      personId: submission.personId ?? undefined,
+      person: submission.person ?? undefined,
+      scannerCode: submission.scannerCode ?? undefined,
+      manualValue: submission.manualValue ?? undefined,
+      authorUserId: submission.authorUserId ?? undefined,
+      authorName: submission.authorName ?? undefined,
+      authorEmail: submission.authorEmail ?? undefined,
+      stagedReason: submission.stagedReason ?? undefined,
+      resolutionError: submission.resolutionError ?? undefined,
+      collectedLatitude: submission.collectedLatitude ?? undefined,
+      collectedLongitude: submission.collectedLongitude ?? undefined,
+      collectedAccuracyMeters: submission.collectedAccuracyMeters ?? undefined,
+      committedAt: submission.committedAt ?? undefined,
+      committedById: submission.committedById ?? undefined,
+      rejectedAt: submission.rejectedAt ?? undefined,
+      rejectedById: submission.rejectedById ?? undefined,
+      rejectionReason: submission.rejectionReason ?? undefined,
+    };
+  }
+
+  private commitStatusForError(error: unknown): OfflineEventAttendanceCommitResult['status'] {
+    if (error instanceof ConflictException) {
+      return this.errorMessage(error).includes('Presença já registrada') ? 'DUPLICATE' : 'CONFLICT';
+    }
+
+    if (error instanceof HttpException && [401, 403].includes(error.getStatus())) {
+      return 'FORBIDDEN';
+    }
+
+    return 'FAILED';
+  }
+
+  private errorMessage(error: unknown): string {
+    if (error instanceof HttpException) {
+      const response = error.getResponse();
+      if (typeof response === 'string') {
+        return response;
+      }
+
+      if (typeof response === 'object' && response && 'message' in response) {
+        const message = (response as { message?: unknown }).message;
+        if (Array.isArray(message)) {
+          return message.filter((item): item is string => typeof item === 'string').join('\n');
+        }
+
+        if (typeof message === 'string') {
+          return message;
+        }
+      }
+    }
+
+    return error instanceof Error ? error.message : 'Não foi possível sincronizar a presença.';
   }
 
   private async findSinglePersonForManualInput(rawValue: string): Promise<{ id: string }> {
@@ -477,6 +900,11 @@ export class CurrentUserAttendanceCollectionResolver {
 
   private getActorId(context: GraphqlContext): string | undefined {
     return context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+  }
+
+  private normalizeOptionalString(value: string | null | undefined): string | undefined {
+    const normalized = value?.trim();
+    return normalized || undefined;
   }
 
   private getFirstName(name: string): string {

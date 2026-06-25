@@ -19,6 +19,7 @@ const AUDIT_IDENTITY_FIELDS = new Set([
   'personId',
   'userId',
   'createdById',
+  'committedById',
   'updatedById',
   'revertedById',
   'receiptValidatedBy',

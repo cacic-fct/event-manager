@@ -404,11 +404,47 @@ export interface EventAttendance {
   attendedAt: string;
   createdAt: string;
   createdById?: string | null;
+  committedById?: string | null;
   createdByMethod: AttendanceCreationMethod;
   collectedByFullName?: string | null;
+  committedByFullName?: string | null;
   collectedLatitude?: number | null;
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
+}
+
+export type OfflineEventAttendanceSubmissionStatus = 'PENDING' | 'COMMITTED' | 'REJECTED';
+
+export interface OfflineEventAttendanceSubmission {
+  id: string;
+  clientId: string;
+  eventId: string;
+  event?: Event | null;
+  personId?: string | null;
+  person?: Person | null;
+  status: OfflineEventAttendanceSubmissionStatus;
+  createdByMethod: AttendanceCreationMethod;
+  scannerCode?: string | null;
+  manualValue?: string | null;
+  collectedAt: string;
+  authorUserId?: string | null;
+  authorName?: string | null;
+  authorEmail?: string | null;
+  submittedById: string;
+  submittedByFullName?: string | null;
+  submittedAt: string;
+  stagedReason?: string | null;
+  resolutionError?: string | null;
+  collectedLatitude?: number | null;
+  collectedLongitude?: number | null;
+  collectedAccuracyMeters?: number | null;
+  committedAt?: string | null;
+  committedById?: string | null;
+  committedByFullName?: string | null;
+  rejectedAt?: string | null;
+  rejectedById?: string | null;
+  rejectedByFullName?: string | null;
+  rejectionReason?: string | null;
 }
 
 export interface EventAttendanceCollector {

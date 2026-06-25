@@ -25,6 +25,11 @@ self.addEventListener('install', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     event.waitUntil(skipWaitingForTrustedClient(event));
+    return;
+  }
+
+  if (event.data?.type === 'CACHE_ATTENDANCE_SCANNER') {
+    event.waitUntil(cacheAttendanceScannerUrls(event.data.urls));
   }
 });
 
@@ -55,6 +60,9 @@ const isAuthPath = (url) =>
 const isGraphqlPath = (url) => url.pathname === '/api/graphql';
 const isCertificateDownload = (url) =>
   url.pathname.toLowerCase().includes('certificate') || url.pathname.toLowerCase().endsWith('.pdf');
+const isZxingWasmUrl = (url) =>
+  ['https://fastly.jsdelivr.net', 'https://cdn.jsdelivr.net'].includes(url.origin) &&
+  /^\/npm\/zxing-wasm@[^/]+\/dist\/full\/zxing_full\.wasm$/.test(url.pathname);
 const hasPrivateCacheControl = (response) => {
   const cacheControl = response.headers.get('Cache-Control')?.toLowerCase() ?? '';
   return cacheControl.includes('no-store') || cacheControl.includes('private');
@@ -157,6 +165,23 @@ workbox.routing.registerRoute(
   }),
 );
 
+workbox.routing.registerRoute(
+  ({ request, url }) => request.method === 'GET' && isZxingWasmUrl(url),
+  new workbox.strategies.CacheFirst({
+    cacheName: 'zxing-wasm',
+    plugins: [
+      new workbox.cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 4,
+        maxAgeSeconds: 60 * 60 * 24 * 30,
+        purgeOnQuotaError: true,
+      }),
+    ],
+  }),
+);
+
 async function appShellFallback() {
   const precachedResponse = await workbox.precaching.matchPrecache(appShellUrl);
   if (precachedResponse) {
@@ -165,4 +190,61 @@ async function appShellFallback() {
 
   const cachedResponse = await caches.match(appShellUrl);
   return cachedResponse ?? Response.error();
+}
+
+async function cacheAttendanceScannerUrls(urls) {
+  if (!Array.isArray(urls)) {
+    return;
+  }
+
+  await Promise.allSettled(
+    urls
+      .filter((url) => typeof url === 'string')
+      .map((url) => cacheAttendanceScannerUrl(url)),
+  );
+}
+
+async function cacheAttendanceScannerUrl(rawUrl) {
+  const url = new URL(rawUrl, self.location.origin);
+  if (!sameOrigin(url) && !isZxingWasmUrl(url)) {
+    return;
+  }
+
+  const request = new Request(url.toString(), {
+    credentials: sameOrigin(url) ? 'same-origin' : 'omit',
+    mode: sameOrigin(url) ? 'same-origin' : 'cors',
+  });
+  const response = await fetch(request);
+  if (!response || ![0, 200].includes(response.status) || hasPrivateCacheControl(response)) {
+    return;
+  }
+
+  const cache = await caches.open(sameOrigin(url) ? 'ssr-html' : 'zxing-wasm');
+  await cache.put(request, response);
+}
+
+self.addEventListener('notificationclick', (event) => {
+  const url = event.notification.data?.url;
+  event.notification.close();
+  if (typeof url !== 'string') {
+    return;
+  }
+
+  event.waitUntil(openTrustedClientUrl(url));
+});
+
+async function openTrustedClientUrl(rawUrl) {
+  const url = new URL(rawUrl, self.location.origin);
+  if (!sameOrigin(url)) {
+    return;
+  }
+
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const existing = clients.find((client) => new URL(client.url).pathname === url.pathname);
+  if (existing) {
+    await existing.focus();
+    return;
+  }
+
+  await self.clients.openWindow(url.toString());
 }

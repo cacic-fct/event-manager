@@ -6,6 +6,7 @@ export type CertificateScope = 'MAJOR_EVENT' | 'EVENT_GROUP' | 'EVENT' | 'OTHER'
 export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
 export type SubscriptionCreationMethod = 'ADMIN_DASHBOARD' | 'SELF_SUBSCRIPTION' | 'UNKNOWN';
 export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
+export type OfflineEventAttendanceSubmissionStatus = 'PENDING' | 'COMMITTED' | 'REJECTED';
 export type SubscriptionStatus =
   | 'WAITING_RECEIPT_UPLOAD'
   | 'RECEIPT_UNDER_REVIEW'
@@ -315,11 +316,45 @@ export interface EventAttendance {
   attendedAt: string;
   createdAt: string;
   createdById?: string | null;
+  committedById?: string | null;
   createdByMethod: AttendanceCreationMethod;
   collectedByFullName?: string | null;
+  committedByFullName?: string | null;
   collectedLatitude?: number | null;
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
+}
+
+export interface OfflineEventAttendanceSubmission {
+  id: string;
+  clientId: string;
+  eventId: string;
+  event?: Event | null;
+  personId?: string | null;
+  person?: Person | null;
+  status: OfflineEventAttendanceSubmissionStatus;
+  createdByMethod: AttendanceCreationMethod;
+  scannerCode?: string | null;
+  manualValue?: string | null;
+  collectedAt: string;
+  authorUserId?: string | null;
+  authorName?: string | null;
+  authorEmail?: string | null;
+  submittedById: string;
+  submittedByFullName?: string | null;
+  submittedAt: string;
+  stagedReason?: string | null;
+  resolutionError?: string | null;
+  collectedLatitude?: number | null;
+  collectedLongitude?: number | null;
+  collectedAccuracyMeters?: number | null;
+  committedAt?: string | null;
+  committedById?: string | null;
+  committedByFullName?: string | null;
+  rejectedAt?: string | null;
+  rejectedById?: string | null;
+  rejectedByFullName?: string | null;
+  rejectionReason?: string | null;
 }
 
 export interface EventAttendanceCollector {

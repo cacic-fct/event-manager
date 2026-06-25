@@ -11,9 +11,10 @@ model People {
   user   User?   @relation(fields: [userId], references: [id])
   userId String?
 
-  attendances             EventAttendance[]
-  lectures                EventLecturer[]
-  attendanceCollectorFor  EventAttendanceCollector[]
+  attendances                   EventAttendance[]
+  lectures                      EventLecturer[]
+  attendanceCollectorFor        EventAttendanceCollector[]
+  offlineAttendanceSubmissions  OfflineEventAttendanceSubmission[]
   eventSubscriptions      EventSubscription[]
   eventGroupSubscriptions EventGroupSubscription[]
   majorEventSubscriptions MajorEventSubscription[]

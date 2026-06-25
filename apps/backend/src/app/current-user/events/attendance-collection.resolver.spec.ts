@@ -197,6 +197,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         eventId: 'event-1',
         personId: 'person-1',
         createdById: 'collector-user',
+        committedById: 'collector-user',
         createdByMethod: AttendanceCreationMethod.SCANNER,
         collectedLatitude: -22.12,
         collectedLongitude: -51.4,
@@ -223,6 +224,219 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         context as never,
       ),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('commits offline attendances with claimed author and current sender separated', async () => {
+    const attendance = { personId: 'person-1', eventId: 'event-1', createdById: 'offline-user', committedById: 'collector-user' };
+    const { resolver, prisma } = createCollectionResolver({
+      collector: collectorPerson(),
+      people: [{ id: 'person-1' }],
+      transactionResult: attendance,
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-1',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.SCANNER,
+              code: 'user:user-1',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+              authorUserId: 'offline-user',
+              authorName: 'Offline Collector',
+              authorEmail: 'offline@example.com',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      {
+        clientId: 'queue-1',
+        eventId: 'event-1',
+        status: 'CREATED',
+        attendance,
+      },
+    ]);
+
+    const tx = prisma.$transaction.mock.calls[0][0] as (tx: TxMock) => Promise<unknown>;
+    const txMock = createTxMock(attendance);
+    await tx(txMock);
+    expect(txMock.eventAttendance.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventId: 'event-1',
+        personId: 'person-1',
+        createdById: 'offline-user',
+        committedById: 'collector-user',
+        attendedAt: new Date('2026-05-23T14:00:00.000Z'),
+      }),
+    });
+  });
+
+  it('stages offline attendances when send-time collection authorization has expired', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
+    const { resolver, prisma } = createCollectionResolver({
+      collector: collectorPerson({
+        event: {
+          startDate: new Date('2026-05-20T12:00:00.000Z'),
+          endDate: new Date('2026-05-20T13:00:00.000Z'),
+          deletedAt: null,
+          publiclyVisible: true,
+          shouldCollectAttendance: true,
+        },
+      }),
+      people: [{ id: 'person-1' }],
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-1',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.SCANNER,
+              code: 'user:user-1',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-20T12:30:00.000Z'),
+              authorUserId: 'offline-user',
+              authorName: 'Offline Collector',
+              authorEmail: 'offline@example.com',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        clientId: 'queue-1',
+        eventId: 'event-1',
+        status: 'STAGED',
+        stagedSubmission: expect.objectContaining({
+          clientId: 'queue-1',
+          eventId: 'event-1',
+          personId: 'person-1',
+          authorUserId: 'offline-user',
+          submittedById: 'collector-user',
+          collectedLatitude: -22.12,
+          collectedLongitude: -51.4,
+          collectedAccuracyMeters: 15,
+        }),
+      }),
+    ]);
+
+    expect(prisma.offlineEventAttendanceSubmission.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          clientId: 'queue-1',
+          eventId: 'event-1',
+          personId: 'person-1',
+          authorUserId: 'offline-user',
+          submittedById: 'collector-user',
+          collectedAt: new Date('2026-05-20T12:30:00.000Z'),
+          collectedLatitude: -22.12,
+          collectedLongitude: -51.4,
+          collectedAccuracyMeters: 15,
+        }),
+      }),
+    );
+    jest.useRealTimers();
+  });
+
+  it('commits expired offline attendances directly for users with attendance collection permission', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
+    const attendance = { personId: 'person-1', eventId: 'event-1', createdById: 'offline-user', committedById: 'collector-user' };
+    const { resolver, prisma, authorizationPolicy } = createCollectionResolver({
+      collector: collectorPerson({
+        event: {
+          startDate: new Date('2026-05-20T12:00:00.000Z'),
+          endDate: new Date('2026-05-20T13:00:00.000Z'),
+          deletedAt: null,
+          publiclyVisible: true,
+          shouldCollectAttendance: true,
+        },
+      }),
+      people: [{ id: 'person-1' }],
+      transactionResult: attendance,
+      grantsAttendancePermission: true,
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-1',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.SCANNER,
+              code: 'user:user-1',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-20T12:30:00.000Z'),
+              authorUserId: 'offline-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      {
+        clientId: 'queue-1',
+        eventId: 'event-1',
+        status: 'CREATED',
+        attendance,
+      },
+    ]);
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      context.req.user,
+      ['event-attendance#collect'],
+      { eventId: 'event-1' },
+    );
+    expect(authorizationPolicy.assertAttendanceCollectorForEvent).not.toHaveBeenCalled();
+    expect(prisma.offlineEventAttendanceSubmission.upsert).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it('skips duplicate offline attendances without staging them', async () => {
+    const duplicateError = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+      code: 'P2002',
+      clientVersion: 'test',
+    });
+    const { resolver, prisma } = createCollectionResolver({
+      collector: collectorPerson(),
+      people: [{ id: 'person-1' }],
+      transactionError: duplicateError,
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-1',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.SCANNER,
+              code: 'user:user-1',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+              authorUserId: 'offline-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      {
+        clientId: 'queue-1',
+        eventId: 'event-1',
+        status: 'DUPLICATE',
+        message: 'Presença já registrada para este evento.',
+      },
+    ]);
+    expect(prisma.offlineEventAttendanceSubmission.upsert).not.toHaveBeenCalled();
   });
 
   it('finds manual input matches by normalized phone and resolves merged people', async () => {
@@ -312,6 +526,30 @@ type ScannerFeedItem = {
   collectedByFirstName?: string;
 };
 
+type OfflineSubmissionCreateInput = {
+  clientId: string;
+  eventId: string;
+  personId?: string | null;
+  createdByMethod: AttendanceCreationMethod;
+  scannerCode?: string | null;
+  manualValue?: string | null;
+  collectedAt: Date;
+  authorUserId?: string | null;
+  authorName?: string | null;
+  authorEmail?: string | null;
+  submittedById: string;
+  stagedReason?: string | null;
+  resolutionError?: string | null;
+  collectedLatitude?: number | null;
+  collectedLongitude?: number | null;
+  collectedAccuracyMeters?: number | null;
+};
+
+type OfflineSubmissionUpsertArgs = {
+  create: OfflineSubmissionCreateInput;
+  update?: Partial<OfflineSubmissionCreateInput>;
+};
+
 function scannerAttendance(input: {
   personId: string;
   eventId: string;
@@ -324,6 +562,7 @@ function scannerAttendance(input: {
     eventId: input.eventId,
     attendedAt: new Date('2026-05-20T12:00:00.000Z'),
     createdById: input.createdById ?? null,
+    committedById: null,
     createdByMethod: 'SCANNER',
     person: {
       name: input.personId,
@@ -353,6 +592,38 @@ function createPrisma(input: {
     },
     eventAttendance: {
       findMany: jest.fn().mockResolvedValue(input.attendances),
+    },
+    event: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }),
+    },
+    offlineEventAttendanceSubmission: {
+      upsert: jest.fn(async (args: OfflineSubmissionUpsertArgs) => {
+        const create = args.create;
+        return {
+          ...create,
+          id: 'submission-1',
+          personId: create.personId ?? null,
+          status: 'PENDING',
+          scannerCode: create.scannerCode ?? null,
+          manualValue: create.manualValue ?? null,
+          authorUserId: create.authorUserId ?? null,
+          authorName: create.authorName ?? null,
+          authorEmail: create.authorEmail ?? null,
+          submittedAt: new Date('2026-05-23T15:30:00.000Z'),
+          stagedReason: create.stagedReason ?? null,
+          resolutionError: create.resolutionError ?? null,
+          collectedLatitude: create.collectedLatitude ?? null,
+          collectedLongitude: create.collectedLongitude ?? null,
+          collectedAccuracyMeters: create.collectedAccuracyMeters ?? null,
+          committedAt: null,
+          committedById: null,
+          rejectedAt: null,
+          rejectedById: null,
+          rejectionReason: null,
+          event: { id: create.eventId, name: 'Evento' },
+          person: create.personId ? { id: create.personId, name: 'Pessoa' } : null,
+        };
+      }),
     },
     people: {
       findFirst: jest.fn().mockResolvedValue(input.people[0] ?? null),
@@ -391,6 +662,7 @@ function createCollectionResolver(input: {
   transactionError?: unknown;
   attendanceCategories?: { refreshForAttendance: jest.Mock };
   frozenResources?: { assertEventMutable: jest.Mock };
+  grantsAttendancePermission?: boolean;
 }) {
   const prisma = createPrisma({
     attendances: [],
@@ -421,6 +693,11 @@ function createCollectionResolver(input: {
     assertEventMutable: jest.fn().mockResolvedValue(undefined),
   };
   const authorizationPolicy = {
+    assertPermissions: jest.fn(async () => {
+      if (!input.grantsAttendancePermission) {
+        throw new ForbiddenException('Missing Event Manager permission grants: event-attendance#collect.');
+      }
+    }),
     assertAttendanceCollectorForEvent: jest.fn(async (eventId: string, personId: string, options: {
       enforceCollectionWindow?: boolean;
     }) => {
@@ -458,6 +735,7 @@ function createCollectionResolver(input: {
     ),
     prisma,
     frozenResources,
+    authorizationPolicy,
   };
 }
 

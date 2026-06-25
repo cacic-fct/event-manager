@@ -59,6 +59,8 @@ describe('DashboardInsightsService cache and jobs', () => {
         ],
         pendingReceiptValidationsCount: 0,
         pendingReceiptMajorEvents: [],
+        pendingOfflineAttendancesCount: 0,
+        pendingOfflineAttendanceEvents: [],
         inconsistencies: [],
         duplicatePeopleCount: 0,
         permissions: [],
@@ -102,9 +104,9 @@ describe('DashboardInsightsService cache and jobs', () => {
     const { queue, redis, service } = createInsightsServiceTestContext();
     redis.scanStream.mockReturnValue(
       (async function* scan() {
-        yield ['dashboard:workspace:v4:event#update', 'dashboard:workspace:v4:none'];
+        yield ['dashboard:workspace:v5:event#update', 'dashboard:workspace:v5:none'];
         yield [];
-        yield ['dashboard:workspace:v4:certificate#issue'];
+        yield ['dashboard:workspace:v5:certificate#issue'];
       })(),
     );
 
@@ -127,7 +129,7 @@ describe('DashboardInsightsService cache and jobs', () => {
         repeat: { pattern: '*/30 * * * *' },
       }),
     );
-    expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v4:event#update', 'dashboard:workspace:v4:none');
-    expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v4:certificate#issue');
+    expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v5:event#update', 'dashboard:workspace:v5:none');
+    expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v5:certificate#issue');
   });
 });

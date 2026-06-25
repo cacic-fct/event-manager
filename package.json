@@ -56,6 +56,7 @@
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "date-fns": "^4.4.0",
+    "detectincognitojs": "^1.7.0",
     "dexie": "^4.4.4",
     "express": "^5.2.1",
     "graphql": "^16.14.2",

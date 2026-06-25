@@ -8,6 +8,8 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
     personId: string;
     createdByMethod: AttendanceCreationMethod;
     createdById?: string;
+    committedById?: string;
+    attendedAt?: Date;
     location?: { latitude: number; longitude: number; accuracyMeters: number };
   }, afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>) {
     const locationData = input.location
@@ -24,7 +26,9 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
           data: {
             eventId: input.eventId,
             personId: input.personId,
+            attendedAt: input.attendedAt,
             createdById: input.createdById,
+            committedById: input.committedById,
             createdByMethod: input.createdByMethod,
             ...locationData,
           },
@@ -43,6 +47,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
             attendedAt: true,
             createdAt: true,
             createdById: true,
+            committedById: true,
             createdByMethod: true,
             category: true,
             collectedLatitude: true,

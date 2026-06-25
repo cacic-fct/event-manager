@@ -71,6 +71,9 @@ export function createPrismaMock() {
     majorEventSubscription: {
       count: jest.fn(),
     },
+    offlineEventAttendanceSubmission: {
+      count: jest.fn(),
+    },
   };
 }
 
