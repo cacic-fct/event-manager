@@ -341,17 +341,12 @@ export class LgpdService {
     const entries = await tx.auditLogEntry.findMany({
       where: this.buildAuditLogSubjectWhere(dataSubject),
     });
-    const emails = this.getDataSubjectEmails(dataSubject.people);
-    const names = new Set(this.getDataSubjectNames(dataSubject.people).map((name) => name.toLowerCase()));
     const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
     const sensitiveValues = this.getSensitiveAuditValues(dataSubject);
     const identityValues = new Set(identifiers);
 
     const auditEntryUpdates = entries.map((entry) => {
-      const actorMatches =
-        (entry.actorId != null && dataSubject.userIds.includes(entry.actorId)) ||
-        (entry.actorEmail != null && emails.includes(entry.actorEmail.toLowerCase())) ||
-        names.has(entry.actorName.toLowerCase());
+      const actorMatches = entry.actorId != null && dataSubject.userIds.includes(entry.actorId);
       const entitySubjectMatches =
         (entry.entityType === AuditLogEntityType.PERSON && dataSubject.personIds.includes(entry.entityId)) ||
         this.isEventAttendanceAuditEntityForPerson(entry.entityType, entry.entityId, dataSubject.personIds);
@@ -413,8 +408,6 @@ export class LgpdService {
 
   private buildAuditLogSubjectWhere(dataSubject: DataSubjectResolution): Prisma.AuditLogEntryWhereInput {
     const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
-    const emails = this.getDataSubjectEmails(dataSubject.people);
-    const names = this.getDataSubjectNames(dataSubject.people);
     const jsonIdentityConditions: Prisma.AuditLogEntryWhereInput[] = identifiers.flatMap((identifier) =>
       [...AUDIT_IDENTITY_FIELDS].flatMap((field) => [
         { before: { path: [field], equals: identifier } },
@@ -437,8 +430,6 @@ export class LgpdService {
     return {
       OR: [
         ...(dataSubject.userIds.length > 0 ? [{ actorId: { in: dataSubject.userIds } }] : []),
-        ...(emails.length > 0 ? [{ actorEmail: { in: emails, mode: 'insensitive' as const } }] : []),
-        ...(names.length > 0 ? [{ actorName: { in: names, mode: 'insensitive' as const } }] : []),
         ...(dataSubject.personIds.length > 0
           ? [
               {
@@ -508,27 +499,6 @@ export class LgpdService {
     } catch {
       return segment;
     }
-  }
-
-  private getDataSubjectEmails(people: DataSubjectResolution['people']): string[] {
-    return [
-      ...new Set(
-        people
-          .flatMap((person) => [person.email, ...person.secondaryEmails, person.user?.email])
-          .map((email) => this.normalizeEmail(email))
-          .filter((email): email is string => Boolean(email)),
-      ),
-    ];
-  }
-
-  private getDataSubjectNames(people: DataSubjectResolution['people']): string[] {
-    return [
-      ...new Set(
-        people
-          .flatMap((person) => [person.name, person.user?.name])
-          .filter((name): name is string => typeof name === 'string' && name.length > 0),
-      ),
-    ];
   }
 
   private getSensitiveAuditValues(dataSubject: DataSubjectResolution): Set<string> {

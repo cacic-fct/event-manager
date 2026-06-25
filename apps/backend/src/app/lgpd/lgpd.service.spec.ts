@@ -140,16 +140,23 @@ describe('LgpdService', () => {
     expect(tx.auditLogEntry.findMany).toHaveBeenCalledWith({
       where: {
         OR: expect.arrayContaining([
+          { actorId: { in: expect.arrayContaining(['old-user', 'new-user']) } },
           { before: { path: ['createdById'], equals: 'old-user' } },
           { after: { path: ['updatedById'], equals: 'new-user' } },
           {
             entityType: 'EVENT_ATTENDANCE',
             entityId: { startsWith: 'source-person:' },
           },
-          { actorName: { in: expect.arrayContaining(['Source Person', 'Old User']), mode: 'insensitive' } },
         ]),
       },
     });
+    const hardDeleteAuditWhere = tx.auditLogEntry.findMany.mock.calls[0]?.[0]?.where;
+    expect(hardDeleteAuditWhere.OR).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ actorEmail: expect.anything() })]),
+    );
+    expect(hardDeleteAuditWhere.OR).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ actorName: expect.anything() })]),
+    );
     expect(tx.auditLogEntry.update).toHaveBeenCalledWith({
       where: { id: 'audit-1' },
       data: expect.objectContaining({
@@ -258,10 +265,10 @@ describe('LgpdService', () => {
       where: { id: 'audit-actor-name-only' },
       data: expect.objectContaining({
         actorId: null,
-        actorName: 'Usuário anonimizado',
+        actorName: 'Source Person',
         actorEmail: null,
         entityId: 'event-3',
-        entityLabel: 'Dados anonimizados',
+        entityLabel: 'Edited by Source Person',
       }),
     });
     expect(s3.deleteFile).toHaveBeenCalledWith('receipts/old.png');
@@ -388,13 +395,6 @@ describe('LgpdService', () => {
       where: {
         OR: expect.arrayContaining([
           { actorId: { in: expect.arrayContaining(['old-user', 'new-user']) } },
-          { actorEmail: { in: expect.arrayContaining(['old@example.com', 'new@example.com']), mode: 'insensitive' } },
-          {
-            actorName: {
-              in: expect.arrayContaining(['Source Person', 'Old User', 'Target Person', 'New User']),
-              mode: 'insensitive',
-            },
-          },
           {
             entityType: 'PERSON',
             entityId: { in: ['source-person', 'target-person'] },
@@ -413,6 +413,13 @@ describe('LgpdService', () => {
       },
       orderBy: { lastRecordedAt: 'desc' },
     });
+    const exportAuditWhere = prisma.auditLogEntry.findMany.mock.calls[0]?.[0]?.where;
+    expect(exportAuditWhere.OR).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ actorEmail: expect.anything() })]),
+    );
+    expect(exportAuditWhere.OR).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ actorName: expect.anything() })]),
+    );
     expect(prisma.majorEventReceiptValidationAction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { subscription: { personId: { in: ['source-person', 'target-person'] } } },
