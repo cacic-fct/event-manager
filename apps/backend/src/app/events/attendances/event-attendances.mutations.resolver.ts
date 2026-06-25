@@ -39,7 +39,7 @@ const EVENT_ATTENDANCE_AUDIT_SELECT = {
   collectedAccuracyMeters: true,
 } satisfies Prisma.EventAttendanceSelect;
 
-const MAX_OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE = 100;
+const MAX_OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE = 1000;
 
 @Resolver(() => EventAttendance)
 export class EventAttendancesMutationsResolver extends EventAttendancesResolverBase {

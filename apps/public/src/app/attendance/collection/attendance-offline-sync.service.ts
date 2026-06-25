@@ -67,14 +67,19 @@ export class AttendanceOfflineSyncService {
       return;
     }
 
-    const items = await this.queue.listPending();
+    const userId = this.auth.user()?.sub;
+    if (!userId) {
+      return;
+    }
+
+    const items = await this.queue.listPending(userId);
     if (items.length === 0) {
       return;
     }
 
     this.syncRunning = true;
     try {
-      await this.syncWithRetries(items);
+      await this.syncWithRetries(userId, items);
     } finally {
       this.syncRunning = false;
     }
@@ -125,26 +130,27 @@ export class AttendanceOfflineSyncService {
     };
   }
 
-  private async syncWithRetries(items: readonly OfflineAttendanceQueueItem[]): Promise<void> {
+  private async syncWithRetries(userId: string, items: readonly OfflineAttendanceQueueItem[]): Promise<void> {
     let remaining = [...items];
     const successfulResults: OfflineAttendanceCommitResult[] = [];
     const finalFailures = new Map<string, { item: OfflineAttendanceQueueItem; message: string }>();
 
     for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS && remaining.length > 0; attempt++) {
       const clientIds = remaining.map((item) => item.clientId);
-      await this.queue.markSyncing(clientIds);
+      await this.queue.markSyncing(userId, clientIds);
 
       try {
         const results = await firstValueFrom(
           this.api.commitOfflineAttendances(remaining.map((item) => this.toPayload(item))),
         );
-        await this.queue.applyCommitResults(results);
+        await this.queue.applyCommitResults(userId, results);
         successfulResults.push(...results.filter((result) => this.isDurableResult(result)));
 
         const resultByClientId = new Map(results.map((result) => [result.clientId, result]));
         const missingAcknowledgements = remaining.filter((item) => !resultByClientId.has(item.clientId));
         if (missingAcknowledgements.length > 0) {
           await this.queue.recordSyncFailure(
+            userId,
             missingAcknowledgements.map((item) => item.clientId),
             'O servidor não confirmou o recebimento desta presença.',
           );
@@ -189,7 +195,7 @@ export class AttendanceOfflineSyncService {
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Falha de sincronização.';
-        await this.queue.recordSyncFailure(clientIds, message);
+        await this.queue.recordSyncFailure(userId, clientIds, message);
         remaining.forEach((item) =>
           finalFailures.set(item.clientId, {
             item,
@@ -243,7 +249,12 @@ export class AttendanceOfflineSyncService {
   }
 
   private async remindPending(force = false): Promise<void> {
-    const count = await this.queue.countPending();
+    const userId = this.auth.user()?.sub;
+    if (!userId) {
+      return;
+    }
+
+    const count = await this.queue.countPending(userId);
     if (count === 0) {
       return;
     }

@@ -74,6 +74,7 @@ export interface OfflineAttendanceQueueLocation {
 
 export interface OfflineAttendanceQueueItem {
   clientId: string;
+  queuedByUserId: string;
   eventId: string;
   eventName: string;
   createdByMethod: Extract<AttendanceCreationMethod, 'SCANNER' | 'MANUAL_INPUT'>;
@@ -136,5 +137,35 @@ export class OfflinePublicDataDatabase extends Dexie {
       attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
       attendanceQueue: 'clientId, eventId, status, queuedAt, updatedAt, [eventId+status]',
     });
+
+    this.version(5)
+      .stores({
+        calendarEvents: 'id, startDate, cachedAt',
+        syncMetadata: 'key',
+        userSnapshots: 'userId, updatedAt',
+        attendanceFeeds: 'key, userId, updatedAt',
+        attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+        featureFlagCache: 'key, updatedAt',
+        attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+        attendanceQueue: [
+          'clientId',
+          'queuedByUserId',
+          'eventId',
+          'status',
+          'queuedAt',
+          'updatedAt',
+          '[queuedByUserId+eventId]',
+          '[queuedByUserId+status]',
+          '[eventId+status]',
+        ].join(', '),
+      })
+      .upgrade((transaction) =>
+        transaction
+          .table<OfflineAttendanceQueueItem, string>('attendanceQueue')
+          .toCollection()
+          .modify((item) => {
+            item.queuedByUserId = item.queuedByUserId ?? item.authorUserId ?? '';
+          }),
+      );
   }
 }

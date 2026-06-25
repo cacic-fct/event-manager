@@ -65,6 +65,7 @@ type AttendanceCategoryGroup = {
 
 const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
 const EXPORT_PAGE_SIZE = 1000;
+const OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE = 1000;
 const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
 
 const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; description: string }> = {
@@ -451,7 +452,10 @@ export class WorkspaceAttendancesService {
       return;
     }
 
-    await firstValueFrom(this.api.approveOfflineEventAttendanceSubmissions(submissions.map((submission) => submission.id)));
+    await this.reviewOfflineAttendanceSubmissionBatches(
+      submissions.map((submission) => submission.id),
+      (submissionIds) => firstValueFrom(this.api.approveOfflineEventAttendanceSubmissions(submissionIds)),
+    );
     await this.loadAttendances(submissions[0].eventId);
     this.snackbar.open('Presenças off-line aprovadas.', 'Fechar', { duration: 2500 });
   }
@@ -501,11 +505,15 @@ export class WorkspaceAttendancesService {
       return;
     }
 
-    await firstValueFrom(
-      this.api.rejectOfflineEventAttendanceSubmissions(
-        submissions.map((submission) => submission.id),
-        'Rejeitada em lote pelo painel administrativo.',
-      ),
+    await this.reviewOfflineAttendanceSubmissionBatches(
+      submissions.map((submission) => submission.id),
+      (submissionIds) =>
+        firstValueFrom(
+          this.api.rejectOfflineEventAttendanceSubmissions(
+            submissionIds,
+            'Rejeitada em lote pelo painel administrativo.',
+          ),
+        ),
     );
     await this.loadAttendances(submissions[0].eventId);
     this.snackbar.open('Presenças off-line rejeitadas.', 'Fechar', { duration: 2500 });
@@ -533,6 +541,15 @@ export class WorkspaceAttendancesService {
     }
     if (action === 'reject') {
       await this.rejectOfflineAttendanceSubmission(submission);
+    }
+  }
+
+  private async reviewOfflineAttendanceSubmissionBatches(
+    submissionIds: readonly string[],
+    reviewBatch: (submissionIds: string[]) => Promise<unknown>,
+  ): Promise<void> {
+    for (let index = 0; index < submissionIds.length; index += OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE) {
+      await reviewBatch(submissionIds.slice(index, index + OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE));
     }
   }
 
