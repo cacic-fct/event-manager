@@ -218,3 +218,15 @@ SECOMPP
 - Pode ser gratuito ou pago;
 - Funciona como agregador;
 - Pode conter Events e Event Groups.
+
+---
+
+# Duplicação
+
+Eventos, grupos de eventos e grandes eventos podem ser duplicados para acelerar a criação de eventos parecidos ou eventos de grupos.
+
+A duplicação serve para copiar configuração reutilizável, não histórico operacional. Inscrições, presenças, comprovantes, certificados emitidos, revisões e dados de auditoria não são copiados.
+
+Em eventos, o código de presença on-line não é copiado. Gere ou configure um novo código antes de liberar a coleta na cópia.
+
+Copiar ministrantes, certificados, inscrição, pagamento, presença, local ou visibilidade depende das opções escolhidas no diálogo e das permissões do usuário. Quem copia precisa de permissões para ler a parte copiada no item original e para criar essa parte no destino.

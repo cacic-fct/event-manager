@@ -18,6 +18,16 @@ Na visão por evento, selecione uma atividade e carregue as presenças antes de 
 
 Presenças importadas por CSV dependem da coluna escolhida para localizar pessoas. Revise o resumo da importação e registre manualmente os valores que não foram encontrados.
 
+## Revisão de presenças off-line
+
+Presenças coletadas no app público sem conexão podem chegar como pendências de revisão. Isso acontece quando o servidor não consegue confirmar com segurança a pessoa vinculada, quando há conflito ou quando a submissão precisa de validação administrativa.
+
+Ao aprovar uma pendência, o painel registra a presença real do evento e preserva quem coletou originalmente e quem aprovou. Se a presença já existir, a revisão é marcada como resolvida sem duplicar o registro.
+
+Ao dispensar uma pendência, informe o motivo quando ele ajudar a auditoria futura. Dispensar não apaga o histórico da submissão off-line.
+
+Revise em lote apenas quando as pendências possuem o mesmo contexto e o mesmo grau de confiança. Em caso de dúvida, abra o detalhe da submissão antes de aprovar.
+
 ## Categorias
 
 As presenças podem aparecer agrupadas por categoria, como participante regular, não inscrito, não pagante ou desconhecido.
