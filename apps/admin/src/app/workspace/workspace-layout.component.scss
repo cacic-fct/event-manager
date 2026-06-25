@@ -1,4 +1,9 @@
 :host {
+  --workspace-nav-rail-width: 72px;
+  --workspace-nav-expanded-width: 17.5rem;
+  --workspace-nav-item-size: 48px;
+  --workspace-nav-transition: 180ms ease-out;
+
   display: block;
   min-height: 100dvh;
   background: var(--mat-sys-surface);
@@ -13,31 +18,126 @@
 
 .layout {
   height: calc(100dvh - 64px);
+  background: var(--mat-sys-surface);
 }
 
 .sidenav {
-  width: 72px;
+  width: var(--workspace-nav-rail-width);
+  overflow: visible;
+  border-right: 0;
+  background: transparent;
+}
+
+.sidenav.nav-mode-full {
+  width: var(--workspace-nav-expanded-width);
+}
+
+:host ::ng-deep .sidenav .mat-drawer-inner-container {
+  overflow: visible;
+}
+
+.sidenav-shell {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto 0 0;
+
+  display: flex;
+  flex-direction: column;
+
+  width: var(--workspace-nav-rail-width);
+  overflow: hidden;
   border-right: 1px solid var(--mat-sys-outline-variant);
+
   background: var(--mat-sys-surface-container);
+  transition: box-shadow var(--workspace-nav-transition);
+}
+
+.sidenav.nav-mode-full .sidenav-shell,
+.sidenav.nav-mode-auto:hover .sidenav-shell,
+.sidenav.nav-mode-auto:has(:focus-visible) .sidenav-shell {
+  width: var(--workspace-nav-expanded-width);
+}
+
+.sidenav.nav-mode-auto:hover .sidenav-shell,
+.sidenav.nav-mode-auto:has(:focus-visible) .sidenav-shell {
+  box-shadow: 4px 0 8px color-mix(in srgb, var(--mat-sys-shadow) 16%, transparent);
 }
 
 .nav-list {
-  display: grid;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  flex-direction: column;
   gap: 0.25rem;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 0.75rem 0.5rem;
+}
+
+.sidenav.nav-mode-icons .nav-list,
+.sidenav.nav-mode-auto:not(:hover):not(:has(:focus-visible)) .nav-list {
+  scrollbar-width: none;
+}
+
+.sidenav.nav-mode-icons .nav-list::-webkit-scrollbar,
+.sidenav.nav-mode-auto:not(:hover):not(:has(:focus-visible)) .nav-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.sidenav.nav-mode-full .nav-list,
+.sidenav.nav-mode-auto:hover .nav-list,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-list {
+  align-items: stretch;
+}
+
+.nav-list mat-divider {
+  align-self: stretch;
+}
+
+.nav-group-label {
+  display: none;
+  overflow: hidden;
+  max-height: 0;
+  max-width: 0;
+  margin: 0 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  opacity: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    max-width var(--workspace-nav-transition),
+    opacity var(--workspace-nav-transition);
+}
+
+.sidenav.nav-mode-full .nav-group-label,
+.sidenav.nav-mode-auto:hover .nav-group-label,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-group-label {
+  display: block;
+  max-height: 1rem;
+  max-width: 12rem;
+  margin: 0.5rem 0.75rem 0.125rem;
+  opacity: 1;
 }
 
 .nav-item {
   position: relative;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+
+  width: var(--workspace-nav-item-size);
   min-width: 0;
-  height: 48px;
+  height: var(--workspace-nav-item-size);
   padding: 0;
   border-radius: 999px;
   color: var(--mat-sys-on-surface-variant);
   text-decoration: none;
 
   mat-icon {
+    flex: 0 0 auto;
     margin: 0;
   }
 
@@ -45,6 +145,66 @@
     background: var(--mat-sys-secondary-container);
     color: var(--mat-sys-on-secondary-container);
   }
+}
+
+.nav-item.mat-mdc-button,
+.nav-mode-button.mat-mdc-button {
+  height: var(--workspace-nav-item-size);
+  min-height: var(--workspace-nav-item-size);
+}
+
+.sidenav.nav-mode-full .nav-item,
+.sidenav.nav-mode-auto:hover .nav-item,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-item {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  padding: 0 1rem;
+}
+
+:host ::ng-deep .nav-item .mdc-button__label,
+:host ::ng-deep .nav-mode-button .mdc-button__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  gap: 0;
+}
+
+:host ::ng-deep .sidenav.nav-mode-full .nav-item .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-auto:hover .nav-item .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-auto:has(:focus-visible) .nav-item .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-full .nav-mode-button .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-auto:hover .nav-mode-button .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-auto:has(:focus-visible) .nav-mode-button .mdc-button__label {
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+.nav-label {
+  display: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  visibility: hidden;
+  white-space: nowrap;
+  transition:
+    max-width var(--workspace-nav-transition),
+    opacity var(--workspace-nav-transition);
+}
+
+.sidenav.nav-mode-full .nav-label,
+.sidenav.nav-mode-auto:hover .nav-label,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-label {
+  display: block;
+  max-width: 12rem;
+  opacity: 1;
+  visibility: visible;
 }
 
 .nav-warning {
@@ -69,13 +229,54 @@
   line-height: 1;
 }
 
-.page {
-  padding: 1rem;
+.sidenav.nav-mode-full .nav-warning,
+.sidenav.nav-mode-auto:hover .nav-warning,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-warning {
+  position: static;
+  margin-left: auto;
 }
 
-.content-card {
-  min-height: calc(100dvh - 96px);
-  overflow: hidden;
+.nav-mode-control {
+  display: flex;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 0.5rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.sidenav.nav-mode-full .nav-mode-control,
+.sidenav.nav-mode-auto:hover .nav-mode-control,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-mode-control {
+  justify-content: stretch;
+}
+
+.nav-mode-button {
+  display: flex;
+  justify-content: center;
+  width: var(--workspace-nav-item-size);
+  min-width: 0;
+  height: var(--workspace-nav-item-size);
+  padding: 0;
+  border-radius: 999px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.sidenav.nav-mode-full .nav-mode-button,
+.sidenav.nav-mode-auto:hover .nav-mode-button,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-mode-button {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  padding: 0 1rem;
+}
+
+.page {
+  padding: 0;
+}
+
+.content-shell {
+  min-height: calc(100dvh - 64px);
+  background: var(--mat-sys-surface);
 }
 
 .page-header {
@@ -185,8 +386,8 @@
   padding: 2px 8px;
   border-radius: 12px;
 
-  background: var(--mat-sys-error-container);
-  color: var(--mat-sys-on-error-container);
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
 
   font-size: 0.75rem;
   font-weight: 600;
@@ -213,9 +414,28 @@ lib-cacic-logo {
     width: 280px;
   }
 
+  .sidenav-shell {
+    width: 280px;
+  }
+
   .nav-list {
     margin-top: 4rem;
     padding: 0.75rem;
+  }
+
+  .nav-group-label {
+    display: block;
+    max-height: 1rem;
+    max-width: 12rem;
+    margin: 0.5rem 0.75rem 0.125rem;
+    opacity: 1;
+  }
+
+  .nav-label {
+    display: block;
+    max-width: 12rem;
+    opacity: 1;
+    visibility: visible;
   }
 
   .nav-item {
@@ -223,13 +443,10 @@ lib-cacic-logo {
     gap: 0.75rem;
 
     height: 48px;
+    min-height: 48px;
+    width: 100%;
     padding: 0 1rem;
     border-radius: 1rem;
-  }
-
-  .nav-label {
-    flex: 1;
-    text-align: left;
   }
 
   .nav-warning {
@@ -238,11 +455,11 @@ lib-cacic-logo {
   }
 
   .page {
-    padding: 0.75rem;
+    padding: 0;
   }
 
-  .content-card {
-    min-height: calc(100dvh - 80px);
+  .content-shell {
+    min-height: calc(100dvh - 56px);
   }
 
   .page-header {
@@ -259,5 +476,11 @@ lib-cacic-logo {
 
   .user {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host {
+    --workspace-nav-transition: 0ms;
   }
 }

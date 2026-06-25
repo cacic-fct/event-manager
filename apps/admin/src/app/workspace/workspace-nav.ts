@@ -7,12 +7,14 @@ type WorkspaceNavLink = {
   label: string;
   description: string;
   icon: string;
-  helpLink: string;
+  group: string;
+  helpLink: string | undefined;
 };
 
 type WorkspaceNavDivider = {
   kind: 'divider';
   id: string;
+  label: string;
 };
 
 export type WorkspaceNavItem = WorkspaceNavLink | WorkspaceNavDivider;
@@ -25,6 +27,7 @@ export const workspaceNavItems = [
     label: 'Eventos',
     description: 'Gerencie eventos individuais, datas, locais e inscrições.',
     icon: 'event',
+    group: 'Estrutura do evento',
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20evento',
   },
   {
@@ -34,6 +37,7 @@ export const workspaceNavItems = [
     label: 'Grupos',
     description: 'Gerencie agrupamentos de eventos e suas relações.',
     icon: 'folder',
+    group: 'Estrutura do evento',
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grupo%20de%20eventos',
   },
   {
@@ -43,6 +47,7 @@ export const workspaceNavItems = [
     label: 'Grandes eventos',
     description: 'Organize eventos maiores compostos por várias atividades.',
     icon: 'festival',
+    group: 'Estrutura do evento',
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grande%20evento',
   },
   {
@@ -52,11 +57,13 @@ export const workspaceNavItems = [
     label: 'Publicação',
     description: 'Orquestre rascunhos, agendamentos, publicação e pré-visualizações.',
     icon: 'campaign',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Estrutura do evento',
+    helpLink: undefined,
   },
   {
     kind: 'divider',
     id: 'divider-events-participation',
+    label: 'Participação',
   },
   {
     kind: 'link',
@@ -65,7 +72,8 @@ export const workspaceNavItems = [
     label: 'Inscrições',
     description: 'Consulte e ajuste inscrições em eventos e grandes eventos.',
     icon: 'how_to_reg',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Participação',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Inscrições',
   },
   {
     kind: 'link',
@@ -74,7 +82,8 @@ export const workspaceNavItems = [
     label: 'Presenças',
     description: 'Controle presença, check-ins e registros de participação.',
     icon: 'fact_check',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Participação',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Presenças',
   },
   {
     kind: 'link',
@@ -83,11 +92,13 @@ export const workspaceNavItems = [
     label: 'Certificados',
     description: 'Gerencie modelos, emissões e validações de certificados.',
     icon: 'workspace_premium',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Participação',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Certificados',
   },
   {
     kind: 'divider',
     id: 'divider-participation-people',
+    label: 'Pessoas',
   },
   {
     kind: 'link',
@@ -96,7 +107,8 @@ export const workspaceNavItems = [
     label: 'Pessoas',
     description: 'Consulte e gerencie participantes, palestrantes e usuários.',
     icon: 'groups',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Pessoas',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20pessoas/Painel%20de%20pessoas',
   },
   {
     kind: 'link',
@@ -105,11 +117,13 @@ export const workspaceNavItems = [
     label: 'Pessoas duplicadas',
     description: 'Analise possíveis duplicidades e consolide registros.',
     icon: 'merge_type',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Pessoas',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20pessoas/Mesclar%20pessoas',
   },
   {
     kind: 'divider',
     id: 'divider-people-admin',
+    label: 'Administração',
   },
   {
     kind: 'link',
@@ -118,7 +132,8 @@ export const workspaceNavItems = [
     label: 'Notificações',
     description: 'Acompanhe avisos e preferências de comunicação.',
     icon: 'notifications',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Administração',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Notificações',
   },
   {
     kind: 'link',
@@ -127,7 +142,8 @@ export const workspaceNavItems = [
     label: 'Locais',
     description: 'Gerencie presets de locais usados nos eventos.',
     icon: 'place',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Administração',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Locais',
   },
   {
     kind: 'link',
@@ -136,7 +152,8 @@ export const workspaceNavItems = [
     label: 'Operações globais',
     description: 'Execute ações administrativas com efeitos amplos.',
     icon: 'language',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Administração',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Operações%20globais',
   },
   {
     kind: 'link',
@@ -145,7 +162,8 @@ export const workspaceNavItems = [
     label: 'Permissões',
     description: 'Consulte os acessos concedidos para este usuário.',
     icon: 'admin_panel_settings',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Administração',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Permissões%20e%20recursos%20congelados',
   },
   {
     kind: 'link',
@@ -154,7 +172,8 @@ export const workspaceNavItems = [
     label: 'Preferências',
     description: 'Ajuste preferências administrativas da sua conta.',
     icon: 'settings',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/',
+    group: 'Administração',
+    helpLink: undefined,
   },
 ] as const satisfies readonly WorkspaceNavItem[];
 

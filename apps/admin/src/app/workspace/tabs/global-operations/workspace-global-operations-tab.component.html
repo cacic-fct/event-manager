@@ -1,18 +1,34 @@
 <section class="section workspace-tab-shell">
-  <section class="panel panel-stack">
+  <section class="panel panel-stack risk-panel">
     <div class="panel-heading">
       <div>
-        <h3>Certificados</h3>
-        <p>Reprocessa emissões pendentes e correções em todas as configurações.</p>
+        <h3>Reemissão global de certificados</h3>
+        <p>Use somente quando uma correção precisa ser aplicada a todas as configurações de certificado.</p>
       </div>
 
       <div class="panel-actions">
         @if (permissions.canEdit(Permission.Certificate.Reissue) && permissions.has(Permission.Frozen.Update)) {
-          <button mat-flat-button type="button" [disabled]="reissuingCertificates()" (click)="reissueAllCertificates()">
+          <button
+            mat-flat-button
+            color="warn"
+            type="button"
+            [disabled]="reissuingCertificates()"
+            (click)="reissueAllCertificates()">
             <mat-icon>workspace_premium</mat-icon>
             Reemitir certificados
           </button>
         }
+      </div>
+    </div>
+
+    <div class="risk-summary" role="note">
+      <mat-icon>warning</mat-icon>
+      <div>
+        <strong>Escopo amplo</strong>
+        <p>
+          A operação percorre todas as configurações ativas, reprocessa emissões pendentes e pode substituir arquivos
+          gerados anteriormente. Execute fora de janelas críticas de atendimento.
+        </p>
       </div>
     </div>
 

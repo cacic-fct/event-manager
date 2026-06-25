@@ -24,201 +24,295 @@
 </mat-card>
 } @else if (insights(); as dashboard) {
 <section class="dashboard-stack">
-  @if (dashboard.suggestions.length > 0) {
-  <section class="quick-actions">
-    @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT_GROUP')) {
-    <a matButton="outlined" [routerLink]="navMap()['groups']?.path">
-      <mat-icon>{{ navMap()['groups']?.icon }}</mat-icon>
-      Novo grupo de eventos
-    </a>
-    } @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT')) {
-
-    <a matButton="filled" [routerLink]="navMap()['events']?.path">
-      <mat-icon>{{ navMap()['events']?.icon }}</mat-icon>
-      Novo evento
-    </a>
-    } @if (hasSuggestion(dashboard.suggestions, 'CREATE_MAJOR_EVENT')) {
-
-    <a matButton="outlined" [routerLink]="navMap()['major-events']?.path">
-      <mat-icon>{{ navMap()['major-events']?.icon }}</mat-icon>
-      Novo grande evento
-    </a>
-    }
-  </section>
-  } @if (dashboard.calendarEvents.length > 0) {
   <section class="dashboard-section">
     <div class="section-title">
       <div>
-        <h2>{{ calendarHeadline() }}</h2>
+        <h2>Visão geral</h2>
+        <p>{{ calendarHeadline() }}</p>
       </div>
     </div>
 
-    @if (todayEvents().length > 0) {
-    <h3>Hoje</h3>
-    <mat-list class="event-list">
-      @for (event of todayEvents(); track event.id) {
-      <ng-container [ngTemplateOutlet]="eventItem" [ngTemplateOutletContext]="{ event: event }" />
-      }
-    </mat-list>
-    } @if (upcomingEvents().length > 0) {
-    <h3>Próximos dias</h3>
-    <mat-list class="event-list">
-      @for (event of upcomingEvents(); track event.id) {
-      <ng-container [ngTemplateOutlet]="eventItem" [ngTemplateOutletContext]="{ event: event }" />
-      }
-    </mat-list>
+    @if (dashboard.suggestions.length > 0) {
+      <div class="quick-actions" aria-label="Atalhos de criação">
+        @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT_GROUP')) {
+          <a matButton="outlined" [routerLink]="navMap()['groups']?.path">
+            <mat-icon>{{ navMap()['groups']?.icon }}</mat-icon>
+            Novo grupo de eventos
+          </a>
+        }
+        @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT')) {
+          <a matButton="filled" [routerLink]="navMap()['events']?.path">
+            <mat-icon>{{ navMap()['events']?.icon }}</mat-icon>
+            Novo evento
+          </a>
+        }
+        @if (hasSuggestion(dashboard.suggestions, 'CREATE_MAJOR_EVENT')) {
+          <a matButton="outlined" [routerLink]="navMap()['major-events']?.path">
+            <mat-icon>{{ navMap()['major-events']?.icon }}</mat-icon>
+            Novo grande evento
+          </a>
+        }
+      </div>
     }
   </section>
-  } @if (dashboard.weatherAlerts.length > 0) {
-  <section class="dashboard-section">
-    <h2>Clima</h2>
-    <mat-list class="compact-list">
-      @for (alert of dashboard.weatherAlerts; track alert.eventId) {
-      <mat-list-item>
-        <mat-icon matListItemIcon>{{ alert.materialIcon }}</mat-icon>
-        <span matListItemTitle>{{ alert.eventName }}</span>
-        <span matListItemLine>
-          {{ alert.summary }} · {{ alert.temperature }}°C · {{ alert.forecastTime | date: 'EEE, HH:mm' }}
-        </span>
-      </mat-list-item>
+
+  @if (todayEvents().length > 0) {
+    <section class="dashboard-section today-section">
+      <div class="section-title">
+        <div>
+          <h2>Hoje</h2>
+          <p>{{ eventDayHeadline() }} {{ eventDayActionSummary() }}</p>
+        </div>
+      </div>
+
+      <mat-list class="event-list">
+        @for (event of todayEvents(); track event.id) {
+          <ng-container [ngTemplateOutlet]="eventItem" [ngTemplateOutletContext]="{ event: event }" />
+        }
+      </mat-list>
+    </section>
+  }
+
+  @if (hasActionQueue()) {
+    <section class="dashboard-section">
+      <div class="section-title">
+        <div>
+          <h2>Precisa de ação</h2>
+          <p>Itens que podem bloquear atendimento, inscrição ou correção operacional.</p>
+        </div>
+      </div>
+
+      <section class="dashboard-grid">
+        @if (dashboard.pendingOfflineAttendanceEvents.length > 0) {
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>pending_actions</mat-icon>
+              <mat-card-title>Presenças off-line pendentes</mat-card-title>
+              <mat-card-subtitle>
+                {{ offlineAttendanceSummary(dashboard.pendingOfflineAttendancesCount) }} aguardando revisão.
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-list class="compact-list embedded-list">
+                @for (item of dashboard.pendingOfflineAttendanceEvents; track item.eventId) {
+                  <mat-list-item>
+                    <span matListItemTitle class="list-title">
+                      <app-twemoji [emoji]="item.emoji" />
+                      <span>{{ item.name }}</span>
+                    </span>
+                    <span matListItemLine>
+                      {{ offlineAttendanceSummary(item.pendingCount) }} · {{ item.startDate | date: 'shortDate' }}
+                    </span>
+                    <a
+                      matIconButton
+                      matListItemMeta
+                      aria-label="Revisar presenças off-line"
+                      matTooltip="Revisar presenças off-line"
+                      [routerLink]="offlineAttendanceLink(item)">
+                      <mat-icon>arrow_forward</mat-icon>
+                    </a>
+                  </mat-list-item>
+                }
+              </mat-list>
+            </mat-card-content>
+          </mat-card>
+        }
+
+        @if (dashboard.pendingReceiptMajorEvents.length > 0) {
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>receipt_long</mat-icon>
+              <mat-card-title>Comprovantes pendentes</mat-card-title>
+              <mat-card-subtitle>
+                Há {{ dashboard.pendingReceiptValidationsCount }} comprovantes aguardando validação.
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-list class="compact-list embedded-list">
+                @for (item of dashboard.pendingReceiptMajorEvents; track item.majorEventId) {
+                  <mat-list-item>
+                    <span matListItemTitle class="list-title">
+                      <app-twemoji [emoji]="item.emoji" />
+                      <span>{{ item.name }}</span>
+                    </span>
+                    <span matListItemLine>
+                      {{ receiptMajorEventSummary(item.pendingCount) }} · {{ item.startDate | date: 'shortDate' }}
+                    </span>
+                    <a
+                      matIconButton
+                      matListItemMeta
+                      aria-label="Validar comprovantes"
+                      matTooltip="Validar comprovantes"
+                      [routerLink]="receiptValidationLink(item)">
+                      <mat-icon>arrow_forward</mat-icon>
+                    </a>
+                  </mat-list-item>
+                }
+              </mat-list>
+            </mat-card-content>
+          </mat-card>
+        }
+
+        @if (criticalInconsistencies().length > 0) {
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>priority_high</mat-icon>
+              <mat-card-title>Inconsistências críticas</mat-card-title>
+              <mat-card-subtitle>Resolva antes da divulgação, presença ou emissão de certificados.</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-list class="compact-list embedded-list">
+                @for (issue of criticalInconsistencies(); track issue.type + issue.eventId + issue.relatedEventId + issue.personId) {
+                  <mat-list-item>
+                    <mat-icon matListItemIcon>priority_high</mat-icon>
+                    <span matListItemTitle>{{ issue.title }}</span>
+                    <span matListItemLine>{{ issue.description }}</span>
+                    <a
+                      matIconButton
+                      matListItemMeta
+                      aria-label="Abrir correção"
+                      matTooltip="Abrir correção"
+                      [routerLink]="routerLinkForInconsistency(issue)">
+                      <mat-icon>arrow_forward</mat-icon>
+                    </a>
+                  </mat-list-item>
+                }
+              </mat-list>
+            </mat-card-content>
+          </mat-card>
+        }
+      </section>
+    </section>
+  }
+
+  @if (hasMonitoring()) {
+    <section class="dashboard-section">
+      <div class="section-title">
+        <div>
+          <h2>Acompanhar</h2>
+          <p>Próximos eventos e sinais externos que podem exigir ajuste de operação.</p>
+        </div>
+      </div>
+
+      @if (upcomingEvents().length > 0) {
+        <h3>Próximos dias</h3>
+        <mat-list class="event-list">
+          @for (event of upcomingEvents(); track event.id) {
+            <ng-container [ngTemplateOutlet]="eventItem" [ngTemplateOutletContext]="{ event: event }" />
+          }
+        </mat-list>
       }
-    </mat-list>
-  </section>
-  } @if ( dashboard.pendingCertificates.length > 0 || dashboard.duplicatePeopleCount > 0 ||
-  dashboard.pendingReceiptMajorEvents.length > 0 || dashboard.pendingOfflineAttendanceEvents.length > 0 ) {
-  <section class="dashboard-grid">
-    @if (dashboard.pendingOfflineAttendanceEvents.length > 0) {
-    <mat-card appearance="outlined">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>pending_actions</mat-icon>
-        <mat-card-title>Presenças off-line pendentes</mat-card-title>
-        <mat-card-subtitle>
-          {{ offlineAttendanceSummary(dashboard.pendingOfflineAttendancesCount) }} aguardando revisão administrativa.
-        </mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <mat-list class="compact-list embedded-list">
-          @for (item of dashboard.pendingOfflineAttendanceEvents; track item.eventId; let index = $index) {
-          <mat-list-item>
-            <span matListItemIcon class="rank-badge">{{ index + 1 }}</span>
-            <span matListItemTitle class="list-title">
-              <app-twemoji [emoji]="item.emoji" />
-              <span>{{ item.name }}</span>
-            </span>
-            <span matListItemLine>
-              {{ offlineAttendanceSummary(item.pendingCount) }} · {{ item.startDate | date: 'shortDate' }}
-            </span>
-            <a
-              matIconButton
-              matListItemMeta
-              aria-label="Revisar presenças off-line"
-              matTooltip="Revisar presenças off-line"
-              [routerLink]="offlineAttendanceLink(item)">
-              <mat-icon>arrow_forward</mat-icon>
-            </a>
-          </mat-list-item>
+
+      @if (dashboard.weatherAlerts.length > 0) {
+        <h3>Clima</h3>
+        <mat-list class="compact-list">
+          @for (alert of dashboard.weatherAlerts; track alert.eventId) {
+            <mat-list-item>
+              <mat-icon matListItemIcon>{{ alert.materialIcon }}</mat-icon>
+              <span matListItemTitle>{{ alert.eventName }}</span>
+              <span matListItemLine>
+                {{ alert.summary }} · {{ alert.temperature }}°C · {{ alert.forecastTime | date: 'EEE, HH:mm' }}
+              </span>
+            </mat-list-item>
           }
         </mat-list>
-      </mat-card-content>
-    </mat-card>
-    } @if (dashboard.pendingReceiptMajorEvents.length > 0) {
-    <mat-card appearance="outlined">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>receipt_long</mat-icon>
-        <mat-card-title>Comprovantes pendentes</mat-card-title>
-        <mat-card-subtitle>
-          Há {{ dashboard.pendingReceiptValidationsCount }} comprovantes aguardando validação.
-        </mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <mat-list class="compact-list embedded-list">
-          @for (item of dashboard.pendingReceiptMajorEvents; track item.majorEventId) {
-          <mat-list-item>
-            <span matListItemTitle class="list-title">
-              <app-twemoji [emoji]="item.emoji" />
-              <span>{{ item.name }}</span>
-            </span>
-            <span matListItemLine>
-              {{ receiptMajorEventSummary(item.pendingCount) }} · {{ item.startDate | date: 'shortDate' }}
-            </span>
-            <a
-              matIconButton
-              matListItemMeta
-              aria-label="Validar comprovantes"
-              matTooltip="Validar comprovantes"
-              [routerLink]="receiptValidationLink(item)">
-              <mat-icon>arrow_forward</mat-icon>
-            </a>
-          </mat-list-item>
-          }
-        </mat-list>
-      </mat-card-content>
-    </mat-card>
-    } @if (dashboard.pendingCertificates.length > 0) {
-    <mat-card appearance="outlined">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>workspace_premium</mat-icon>
-        <mat-card-title>Certificados pendentes</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <mat-list class="compact-list embedded-list">
-          @for (item of dashboard.pendingCertificates; track item.targetType + item.targetId) {
-          <mat-list-item>
-            <span matListItemTitle>{{ item.title }}</span>
-            <span matListItemLine> {{ item.subtitle }} · finalizado em {{ item.finishedAt | date: 'short' }} </span>
-            <a
-              matIconButton
-              matListItemMeta
-              aria-label="Abrir certificados"
-              matTooltip="Abrir certificados"
-              [routerLink]="certificateLink(item)">
-              <mat-icon>arrow_forward</mat-icon>
-            </a>
-          </mat-list-item>
-          }
-        </mat-list>
-      </mat-card-content>
-    </mat-card>
-    } @if (dashboard.duplicatePeopleCount > 0) {
-    <mat-card appearance="outlined">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>merge_type</mat-icon>
-        <mat-card-title>Pessoas duplicadas</mat-card-title>
-        <mat-card-subtitle> Há {{ dashboard.duplicatePeopleCount }} pessoas com dados duplicados. </mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-actions align="end">
-        <a matButton="filled" [routerLink]="navMap()['merge-candidates']?.path">
-          <mat-icon>merge_type</mat-icon>
-          Ver detalhes
-        </a>
-      </mat-card-actions>
-    </mat-card>
-    }
-  </section>
-  } @if (dashboard.inconsistencies.length > 0) {
-  <section class="dashboard-section">
-    <h2>Inconsistências</h2>
-    <mat-list class="compact-list">
-      @for (issue of dashboard.inconsistencies; track issue.type + issue.eventId + issue.relatedEventId +
-      issue.personId) {
-      <mat-list-item>
-        <mat-icon matListItemIcon>
-          {{ issue.severity === 'CRITICAL' ? 'priority_high' : issue.severity === 'WARNING' ? 'warning' : 'info' }}
-        </mat-icon>
-        <span matListItemTitle>{{ issue.title }}</span>
-        <span matListItemLine>{{ issue.description }}</span>
-        <a
-          matIconButton
-          matListItemMeta
-          aria-label="Abrir correção"
-          matTooltip="Abrir correção"
-          [routerLink]="routerLinkForInconsistency(issue)">
-          <mat-icon>arrow_forward</mat-icon>
-        </a>
-      </mat-list-item>
       }
-    </mat-list>
-  </section>
+    </section>
+  }
+
+  @if (hasSystemHealth()) {
+    <section class="dashboard-section">
+      <div class="section-title">
+        <div>
+          <h2>Saúde do sistema</h2>
+          <p>Pendências importantes, mas menos urgentes que a operação de hoje.</p>
+        </div>
+      </div>
+
+      <section class="dashboard-grid">
+        @if (dashboard.pendingCertificates.length > 0) {
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>workspace_premium</mat-icon>
+              <mat-card-title>Certificados pendentes</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-list class="compact-list embedded-list">
+                @for (item of dashboard.pendingCertificates; track item.targetType + item.targetId) {
+                  <mat-list-item>
+                    <span matListItemTitle>{{ item.title }}</span>
+                    <span matListItemLine> {{ item.subtitle }} · finalizado em {{ item.finishedAt | date: 'short' }} </span>
+                    <a
+                      matIconButton
+                      matListItemMeta
+                      aria-label="Abrir certificados"
+                      matTooltip="Abrir certificados"
+                      [routerLink]="certificateLink(item)">
+                      <mat-icon>arrow_forward</mat-icon>
+                    </a>
+                  </mat-list-item>
+                }
+              </mat-list>
+            </mat-card-content>
+          </mat-card>
+        }
+
+        @if (dashboard.duplicatePeopleCount > 0) {
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>merge_type</mat-icon>
+              <mat-card-title>Pessoas duplicadas</mat-card-title>
+              <mat-card-subtitle>
+                Há {{ dashboard.duplicatePeopleCount }} pessoas com dados duplicados.
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-actions align="end">
+              <a matButton="filled" [routerLink]="navMap()['merge-candidates']?.path">
+                <mat-icon>merge_type</mat-icon>
+                Ver detalhes
+              </a>
+            </mat-card-actions>
+          </mat-card>
+        }
+
+        @if (followUpInconsistencies().length > 0) {
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>warning</mat-icon>
+              <mat-card-title>Inconsistências para revisar</mat-card-title>
+              <mat-card-subtitle>Problemas que merecem correção antes do fechamento do evento.</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-list class="compact-list embedded-list">
+                @for (issue of followUpInconsistencies(); track issue.type + issue.eventId + issue.relatedEventId + issue.personId) {
+                  <mat-list-item>
+                    <mat-icon matListItemIcon>{{ issue.severity === 'WARNING' ? 'warning' : 'info' }}</mat-icon>
+                    <span matListItemTitle>{{ issue.title }}</span>
+                    <span matListItemLine>{{ issue.description }}</span>
+                    <a
+                      matIconButton
+                      matListItemMeta
+                      aria-label="Abrir correção"
+                      matTooltip="Abrir correção"
+                      [routerLink]="routerLinkForInconsistency(issue)">
+                      <mat-icon>arrow_forward</mat-icon>
+                    </a>
+                  </mat-list-item>
+                }
+              </mat-list>
+            </mat-card-content>
+          </mat-card>
+        }
+      </section>
+    </section>
+  }
+
+  @if (!hasActionQueue() && !hasMonitoring() && !hasSystemHealth() && todayEvents().length === 0) {
+    <section class="empty-state">
+      <mat-icon>task_alt</mat-icon>
+      <h3>Nada exige atenção agora</h3>
+      <p>Use os atalhos acima para preparar novos eventos ou revisar cadastros existentes.</p>
+    </section>
   }
 </section>
 }

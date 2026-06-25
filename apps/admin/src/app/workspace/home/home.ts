@@ -63,9 +63,38 @@ export class Home implements OnInit, OnDestroy {
   readonly greetings: Signal<string> = computed(() => this.getGreetings());
   readonly navMap = computed(() => Object.fromEntries(workspaceNavLinkItems.map((item) => [item.id, item])));
   readonly todayEvents = computed(() => this.insights()?.calendarEvents.filter((event) => this.isToday(event)) ?? []);
+  readonly todayAttendanceEvents = computed(() => this.todayEvents().filter((event) => event.canCollectAttendanceNow));
   readonly upcomingEvents = computed(
     () => this.insights()?.calendarEvents.filter((event) => !this.isToday(event)) ?? [],
   );
+  readonly criticalInconsistencies = computed(
+    () => this.insights()?.inconsistencies.filter((issue) => issue.severity === 'CRITICAL') ?? [],
+  );
+  readonly followUpInconsistencies = computed(
+    () => this.insights()?.inconsistencies.filter((issue) => issue.severity !== 'CRITICAL') ?? [],
+  );
+  readonly hasActionQueue = computed(() => {
+    const dashboard = this.insights();
+    return Boolean(
+      dashboard &&
+        (dashboard.pendingOfflineAttendanceEvents.length > 0 ||
+          dashboard.pendingReceiptMajorEvents.length > 0 ||
+          this.criticalInconsistencies().length > 0),
+    );
+  });
+  readonly hasMonitoring = computed(() => {
+    const dashboard = this.insights();
+    return Boolean(dashboard && (this.upcomingEvents().length > 0 || dashboard.weatherAlerts.length > 0));
+  });
+  readonly hasSystemHealth = computed(() => {
+    const dashboard = this.insights();
+    return Boolean(
+      dashboard &&
+        (dashboard.pendingCertificates.length > 0 ||
+          dashboard.duplicatePeopleCount > 0 ||
+          this.followUpInconsistencies().length > 0),
+    );
+  });
   readonly calendarHeadline = computed(() => {
     const count = this.insights()?.calendarEvents.length ?? 0;
     if (count === 0) {
@@ -73,6 +102,22 @@ export class Home implements OnInit, OnDestroy {
     }
 
     return `${count} ${count === 1 ? 'evento acontecerá' : 'eventos acontecerão'} esta semana.`;
+  });
+  readonly eventDayHeadline = computed(() => {
+    const count = this.todayEvents().length;
+    if (count === 0) {
+      return 'Nenhum evento marcado para hoje.';
+    }
+
+    return `${count} ${count === 1 ? 'evento acontece' : 'eventos acontecem'} hoje.`;
+  });
+  readonly eventDayActionSummary = computed(() => {
+    const count = this.todayAttendanceEvents().length;
+    if (count === 0) {
+      return 'Sem coleta de presença aberta neste momento.';
+    }
+
+    return `${count} ${count === 1 ? 'atividade precisa' : 'atividades precisam'} de atenção agora.`;
   });
 
   ngOnInit(): void {

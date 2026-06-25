@@ -15,78 +15,100 @@
   <button mat-button type="button" (click)="logout()">Sair</button>
 </mat-toolbar>
 
-<mat-sidenav-container class="layout">
+<mat-sidenav-container class="layout" [autosize]="!isMobile()">
   <mat-sidenav
     #sidenav
     class="sidenav"
+    [class.nav-mode-icons]="navMode() === 'icons'"
+    [class.nav-mode-full]="navMode() === 'full'"
+    [class.nav-mode-auto]="navMode() === 'auto'"
     [mode]="isMobile() ? 'over' : 'side'"
     [opened]="!isMobile()"
     [fixedInViewport]="isMobile()">
-    <nav class="nav-list" aria-label="Navegação interna">
-      @for (item of navItems; track item.id) {
-        @if (item.kind === 'divider') {
-          <mat-divider></mat-divider>
-        } @else {
-          <a
-            mat-button
-            class="nav-item"
-            [class.active]="activeNavId() === item.id"
-            [attr.aria-label]="item.label"
-            [matTooltip]="item.label"
-            [matTooltipDisabled]="isMobile()"
-            matTooltipPosition="right"
-            [routerLink]="item.path"
-            (click)="closeSidenavIfMobile(sidenav)">
-            @if (item.id === 'notifications') {
-              <lib-novu-notification-badge>
+    <div class="sidenav-shell">
+      <nav class="nav-list" aria-label="Navegação interna">
+        <span class="nav-group-label">Estrutura do evento</span>
+        @for (item of navItems; track item.id) {
+          @if (item.kind === 'divider') {
+            <mat-divider></mat-divider>
+            <span class="nav-group-label">{{ item.label }}</span>
+          } @else {
+            <a
+              mat-button
+              class="nav-item"
+              [class.active]="activeNavId() === item.id"
+              [attr.aria-label]="item.label"
+              [matTooltip]="item.label"
+              [matTooltipDisabled]="isMobile()"
+              matTooltipPosition="right"
+              [routerLink]="item.path"
+              (click)="closeSidenavIfMobile(sidenav)">
+              @if (item.id === 'notifications') {
+                <lib-novu-notification-badge>
+                  <mat-icon>{{ item.icon }}</mat-icon>
+                </lib-novu-notification-badge>
+              } @else {
                 <mat-icon>{{ item.icon }}</mat-icon>
-              </lib-novu-notification-badge>
-            } @else {
-              <mat-icon>{{ item.icon }}</mat-icon>
-            }
+              }
 
-            @if (isMobile()) {
               <span class="nav-label">{{ item.label }}</span>
-            }
 
-            @if (permissions.missingReadForTab(item.id).length > 0) {
-              <span class="nav-warning">
-                {{ permissions.missingReadForTab(item.id).length }}
-              </span>
-            }
-          </a>
+              @if (permissions.missingReadForTab(item.id).length > 0) {
+                <span class="nav-warning">
+                  {{ permissions.missingReadForTab(item.id).length }}
+                </span>
+              }
+            </a>
+          }
         }
+      </nav>
+
+      @if (!isMobile()) {
+        <div class="nav-mode-control">
+          <button
+            mat-button
+            type="button"
+            class="nav-mode-button"
+            [attr.aria-label]="navModeTooltip()"
+            [matTooltip]="navModeTooltip()"
+            matTooltipPosition="right"
+            (click)="cycleNavMode()">
+            <mat-icon>{{ navModeIcon() }}</mat-icon>
+            <span class="nav-label">{{ navModeLabel() }}</span>
+          </button>
+        </div>
       }
-    </nav>
+    </div>
   </mat-sidenav>
 
   <mat-sidenav-content>
     <main class="page">
-      <mat-card class="content-card">
+      <div class="content-shell">
         @if (shell.loading()) {
           <div class="loading">
             <mat-progress-bar mode="indeterminate"></mat-progress-bar>
           </div>
         }
 
-        @if (router.url !== '/') {
+        @if (showPageHeader()) {
           <header class="page-header">
             <div>
               <h1>{{ activeNavItem().label }}</h1>
               <p>{{ activeNavItem().description }}</p>
             </div>
 
-            <div>
+            @if (activeNavItem().helpLink; as helpLink) {
               <a
                 matIconButton
                 type="button"
-                [href]="activeNavItem().helpLink"
+                [href]="helpLink"
                 target="_blank"
+                rel="noreferrer"
                 matTooltip="Documentação"
                 aria-label="Documentação">
                 <mat-icon>help</mat-icon>
               </a>
-            </div>
+            }
           </header>
         }
 
@@ -106,7 +128,7 @@
         <section class="content">
           <router-outlet></router-outlet>
         </section>
-      </mat-card>
+      </div>
     </main>
   </mat-sidenav-content>
 </mat-sidenav-container>

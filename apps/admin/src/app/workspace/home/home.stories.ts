@@ -32,6 +32,10 @@ type DashboardStoryState = 'loaded' | 'empty' | 'loading' | 'error';
 interface HomeStoryArgs {
   state: DashboardStoryState;
   organizerName: string;
+  showTodayEvents: boolean;
+  showActionQueue: boolean;
+  showMonitoring: boolean;
+  showSystemHealth: boolean;
   todayEvents: number;
   upcomingEvents: number;
   attendanceActions: boolean;
@@ -45,12 +49,17 @@ interface HomeStoryArgs {
   criticalInconsistencies: boolean;
 }
 
-const now = new Date('2026-05-24T10:30:00.000-03:00');
+const now = new Date();
+now.setHours(10, 30, 0, 0);
 let activeArgs: HomeStoryArgs;
 
 const defaultArgs: HomeStoryArgs = {
   state: 'loaded',
   organizerName: 'Ana Clara',
+  showTodayEvents: true,
+  showActionQueue: true,
+  showMonitoring: true,
+  showSystemHealth: true,
   todayEvents: 2,
   upcomingEvents: 3,
   attendanceActions: true,
@@ -99,6 +108,10 @@ const meta: Meta<HomeStoryArgs> = {
       options: ['loaded', 'empty', 'loading', 'error'],
     },
     organizerName: { control: 'text' },
+    showTodayEvents: { control: 'boolean' },
+    showActionQueue: { control: 'boolean' },
+    showMonitoring: { control: 'boolean' },
+    showSystemHealth: { control: 'boolean' },
     todayEvents: { control: { type: 'range', min: 0, max: 8, step: 1 } },
     upcomingEvents: { control: { type: 'range', min: 0, max: 12, step: 1 } },
     attendanceActions: { control: 'boolean' },
@@ -176,6 +189,11 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
+export const AllStatesAtOnce: Story = {
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
 export const Playground: Story = {
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -184,6 +202,10 @@ export const Playground: Story = {
 export const EmptyDashboard: Story = {
   args: {
     state: 'empty',
+    showTodayEvents: false,
+    showActionQueue: false,
+    showMonitoring: false,
+    showSystemHealth: false,
     todayEvents: 0,
     upcomingEvents: 0,
     suggestions: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT'],
@@ -218,34 +240,53 @@ export const ErrorState: Story = {
 
 function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsights {
   const empty = args.state === 'empty';
+  const todayEventsCount = empty || !args.showTodayEvents ? 0 : args.todayEvents;
+  const upcomingEventsCount = empty || !args.showMonitoring ? 0 : args.upcomingEvents;
+  const weatherAlertsCount = empty || !args.showMonitoring ? 0 : args.weatherAlerts;
+  const pendingCertificatesCount = empty || !args.showSystemHealth ? 0 : args.pendingCertificates;
+  const pendingOfflineAttendancesCount = empty || !args.showActionQueue ? 0 : args.pendingOfflineAttendancesCount;
+  const pendingReceiptValidationsCount = empty || !args.showActionQueue ? 0 : args.pendingReceiptValidationsCount;
+  const duplicatePeopleCount = empty || !args.showSystemHealth ? 0 : args.duplicatePeopleCount;
 
   return {
     generatedAt: now.toISOString(),
     summary: {
-      eventsCount: empty ? 0 : args.todayEvents + args.upcomingEvents,
+      eventsCount: todayEventsCount + upcomingEventsCount,
       eventGroupsCount: empty ? 0 : 4,
       majorEventsCount: empty ? 0 : 2,
     },
     suggestions: buildSuggestions(args.suggestions),
-    calendarEvents: empty
+    calendarEvents: empty || (!args.showTodayEvents && !args.showMonitoring)
       ? []
       : [
-          ...Array.from({ length: args.todayEvents }, (_, index) => buildCalendarEvent(index, 0, args)),
-          ...Array.from({ length: args.upcomingEvents }, (_, index) => buildCalendarEvent(index, index + 1, args)),
+          ...Array.from({ length: todayEventsCount }, (_, index) => buildCalendarEvent(index, 0, args)),
+          ...Array.from({ length: upcomingEventsCount }, (_, index) => buildCalendarEvent(index, index + 1, args)),
         ],
-    weatherAlerts: empty ? [] : Array.from({ length: args.weatherAlerts }, (_, index) => buildWeatherAlert(index)),
-    pendingCertificates: empty
+    weatherAlerts: Array.from({ length: weatherAlertsCount }, (_, index) => buildWeatherAlert(index)),
+    pendingCertificates: pendingCertificatesCount === 0
       ? []
-      : Array.from({ length: args.pendingCertificates }, (_, index) => buildPendingCertificate(index)),
-    pendingOfflineAttendancesCount: empty ? 0 : args.pendingOfflineAttendancesCount,
-    pendingOfflineAttendanceEvents: empty ? [] : buildPendingOfflineAttendanceEvents(args.pendingOfflineAttendancesCount),
-    pendingReceiptValidationsCount: empty ? 0 : args.pendingReceiptValidationsCount,
-    pendingReceiptMajorEvents: empty ? [] : buildPendingReceiptMajorEvents(args.pendingReceiptValidationsCount),
-    inconsistencies: empty
-      ? []
-      : Array.from({ length: args.inconsistencies }, (_, index) => buildInconsistency(index, args)),
-    duplicatePeopleCount: empty ? 0 : args.duplicatePeopleCount,
+      : Array.from({ length: pendingCertificatesCount }, (_, index) => buildPendingCertificate(index)),
+    pendingOfflineAttendancesCount,
+    pendingOfflineAttendanceEvents: buildPendingOfflineAttendanceEvents(pendingOfflineAttendancesCount),
+    pendingReceiptValidationsCount,
+    pendingReceiptMajorEvents: buildPendingReceiptMajorEvents(pendingReceiptValidationsCount),
+    inconsistencies: buildInconsistencies(args),
+    duplicatePeopleCount,
   };
+}
+
+function buildInconsistencies(args: HomeStoryArgs): DashboardInconsistency[] {
+  if (args.state === 'empty' || (!args.showActionQueue && !args.showSystemHealth)) {
+    return [];
+  }
+
+  const criticalCount = args.showActionQueue && args.criticalInconsistencies && args.inconsistencies > 0 ? 1 : 0;
+  const followUpCount = args.showSystemHealth ? Math.max(0, args.inconsistencies - criticalCount) : 0;
+
+  return [
+    ...Array.from({ length: criticalCount }, (_, index) => buildInconsistency(index, args, 'CRITICAL')),
+    ...Array.from({ length: followUpCount }, (_, index) => buildInconsistency(index + criticalCount, args)),
+  ];
 }
 
 function buildSuggestions(actions: DashboardInsightAction[]): DashboardActionLink[] {
@@ -349,11 +390,16 @@ function buildPendingOfflineAttendanceEvents(totalCount: number): DashboardPendi
   }));
 }
 
-function buildInconsistency(index: number, args: HomeStoryArgs): DashboardInconsistency {
+function buildInconsistency(
+  index: number,
+  args: HomeStoryArgs,
+  forcedSeverity?: DashboardInsightSeverity,
+): DashboardInconsistency {
   const severity: DashboardInsightSeverity =
-    args.criticalInconsistencies && index === 0
+    forcedSeverity ??
+    (args.criticalInconsistencies && index === 0
       ? 'CRITICAL'
-      : faker.helpers.arrayElement<DashboardInsightSeverity>(['INFO', 'WARNING']);
+      : faker.helpers.arrayElement<DashboardInsightSeverity>(['INFO', 'WARNING']));
 
   return {
     type: faker.helpers.arrayElement([

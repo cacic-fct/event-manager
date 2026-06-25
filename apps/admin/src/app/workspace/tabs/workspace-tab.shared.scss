@@ -356,6 +356,31 @@
   color: var(--mat-sys-primary);
 }
 
+.risk-summary {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  border: 1px solid color-mix(in srgb, var(--mat-sys-error) 35%, var(--mat-sys-outline-variant));
+  border-radius: 8px;
+  padding: 0.875rem;
+  background: color-mix(in srgb, var(--mat-sys-error) 7%, var(--mat-sys-surface));
+}
+
+.risk-summary mat-icon {
+  flex: 0 0 auto;
+  color: var(--mat-sys-error);
+}
+
+.risk-summary strong,
+.risk-summary p {
+  margin: 0;
+}
+
+.risk-summary p {
+  margin-top: 0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

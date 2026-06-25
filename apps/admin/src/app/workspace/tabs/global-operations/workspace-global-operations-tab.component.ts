@@ -32,9 +32,15 @@ export class WorkspaceGlobalOperationsTabComponent {
       this.dialog
         .open(ConfirmationDialogComponent, {
           data: {
-            title: 'Confirmar operação global',
-            actionDescription: 'a reemissão de certificados de todas as configurações',
-            confirmLabel: 'Reemitir',
+            title: 'Reemitir todos os certificados?',
+            message: 'Esta operação tem escopo global e pode reprocessar arquivos já gerados.',
+            details: [
+              'Escopo: todas as configurações de certificado ativas.',
+              'Use quando uma correção precisa ser refletida em todo o sistema.',
+              'Evite executar durante atendimento, validação ou emissão manual em andamento.',
+            ],
+            confirmLabel: 'Reemitir certificados',
+            tone: 'danger',
           },
           width: '420px',
         })

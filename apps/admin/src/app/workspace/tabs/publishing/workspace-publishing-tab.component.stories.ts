@@ -68,6 +68,8 @@ export const Playground: Story = {
     await expect(await canvas.findByText('Itens publicáveis')).toBeVisible();
     const buttons = await canvas.findAllByRole('button');
     await userEvent.hover(buttons[0]);
+    await userEvent.click(await canvas.findByRole('button', { name: /despublicar conjunto/i }));
+    await expect(await within(document.body).findByText(/Despublicar conjunto/)).toBeVisible();
   },
 };
 

@@ -12,6 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -20,6 +21,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../shared/components/confirmation-dialog.component';
 import {
   PublicContentNode,
   PublicContentWorkspace,
@@ -66,6 +68,7 @@ import {
 export class WorkspacePublicationTabComponent {
   private readonly api = inject(PublicationApiService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -425,6 +428,12 @@ export class WorkspacePublicationTabComponent {
       }
     }
 
+    const scheduledPublishAt = operation === 'SCHEDULE_BUNDLE' ? scheduledPublishAtControl.value : null;
+    const confirmed = await this.confirmBulkOperation(operation, selected, scheduledPublishAt);
+    if (!confirmed) {
+      return;
+    }
+
     this.loading.set(true);
     try {
       const result = await firstValueFrom(
@@ -432,10 +441,7 @@ export class WorkspacePublicationTabComponent {
           targetType: selected.targetType,
           targetId: selected.id,
           operation,
-          scheduledPublishAt:
-            operation === 'SCHEDULE_BUNDLE'
-              ? localDateTimeInputToIso(scheduledPublishAtControl.value)
-              : null,
+          scheduledPublishAt: scheduledPublishAt ? localDateTimeInputToIso(scheduledPublishAt) : null,
         }),
       );
       this.snackbar.open(result.message, 'Fechar', { duration: 4000 });
@@ -444,6 +450,68 @@ export class WorkspacePublicationTabComponent {
       this.snackbar.open(publicationErrorMessage(error), 'Fechar', { duration: 6000 });
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private async confirmBulkOperation(
+    operation: PublicationBulkOperation,
+    selected: PublicContentNode,
+    scheduledPublishAt: string | null,
+  ): Promise<boolean> {
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open(ConfirmationDialogComponent, {
+          data: this.bulkOperationConfirmationData(operation, selected, scheduledPublishAt),
+          width: '460px',
+        })
+        .afterClosed(),
+    );
+
+    return confirmed === true;
+  }
+
+  private bulkOperationConfirmationData(
+    operation: PublicationBulkOperation,
+    selected: PublicContentNode,
+    scheduledPublishAt: string | null,
+  ): ConfirmationDialogData {
+    const scope = selected.childCount > 0 ? `${selected.childCount} item(ns) vinculado(s)` : 'itens vinculados';
+
+    switch (operation) {
+      case 'SCHEDULE_BUNDLE':
+        return {
+          title: `Agendar conjunto de ${selected.label}?`,
+          message: 'Esta ação agenda o item selecionado e os itens vinculados para publicação pública.',
+          details: [
+            `Escopo: ${publicationTargetLabel(selected.targetType).toLowerCase()} selecionado e ${scope}.`,
+            `Horário escolhido: ${scheduledPublishAt}.`,
+            'A fila de publicação pode atrasar alguns minutos em períodos de carga.',
+          ],
+          confirmLabel: 'Agendar conjunto',
+        };
+      case 'PUBLISH_MISSING_CHILDREN':
+        return {
+          title: `Publicar pendentes de ${selected.label}?`,
+          message: 'Esta ação publica itens vinculados que ainda não estão visíveis ao público.',
+          details: [
+            `Escopo: ${scope}.`,
+            'Itens já publicados permanecem como estão.',
+            'Revise o checklist de consistência antes de confirmar.',
+          ],
+          confirmLabel: 'Publicar pendentes',
+        };
+      case 'UNPUBLISH_BUNDLE':
+        return {
+          title: `Despublicar conjunto de ${selected.label}?`,
+          message: 'Esta ação remove o item selecionado e os itens vinculados da visualização pública.',
+          details: [
+            `Escopo: ${publicationTargetLabel(selected.targetType).toLowerCase()} selecionado e ${scope}.`,
+            'Participantes deixam de ver esses itens até nova publicação.',
+            'Use esta ação para correções amplas, não para ajustes pontuais.',
+          ],
+          confirmLabel: 'Despublicar conjunto',
+          tone: 'danger',
+        };
     }
   }
 }
