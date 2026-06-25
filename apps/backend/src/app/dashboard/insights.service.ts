@@ -492,6 +492,22 @@ export class DashboardInsightsService {
         ? this.prisma.majorEvent.findMany({
             where: {
               deletedAt: null,
+              OR: [
+                {
+                  publicationState: 'PUBLISHED',
+                  events: {
+                    none: {
+                      deletedAt: null,
+                      publicationState: 'PUBLISHED',
+                      publiclyVisible: true,
+                    },
+                  },
+                },
+                {
+                  publicationState: 'SCHEDULED',
+                  scheduledPublishAt: { lte: now },
+                },
+              ],
             },
             select: {
               id: true,
@@ -508,6 +524,7 @@ export class DashboardInsightsService {
               },
             },
             orderBy: { startDate: 'asc' },
+            take: DASHBOARD_INCONSISTENCY_LIMIT,
           })
         : Promise.resolve([]),
     ]);

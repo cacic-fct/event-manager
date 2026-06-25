@@ -64,12 +64,26 @@ export class PublicationPreviewContentService {
           publicationState: true,
           publishedAt: true,
           updatedAt: true,
+          events: {
+            where: { deletedAt: null, publiclyVisible: true },
+            select: {
+              publicationState: true,
+              publishedAt: true,
+              updatedAt: true,
+            },
+          },
         },
       });
       if (
         majorEvent?.publicationState === PrismaPublicationState.PUBLISHED &&
         majorEvent.publishedAt &&
-        majorEvent.updatedAt <= majorEvent.publishedAt
+        majorEvent.updatedAt <= majorEvent.publishedAt &&
+        majorEvent.events.every(
+          (event) =>
+            event.publicationState === PrismaPublicationState.PUBLISHED &&
+            event.publishedAt &&
+            event.updatedAt <= event.publishedAt,
+        )
       ) {
         return publicUrl('/major-event');
       }

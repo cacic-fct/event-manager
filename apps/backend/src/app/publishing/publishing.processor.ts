@@ -1,5 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { BadRequestException } from '@nestjs/common';
+import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { Job } from 'bullmq';
 import {
   PUBLICATION_QUEUE,
@@ -7,7 +8,16 @@ import {
   RECONCILE_PUBLICATION_STATES_JOB,
 } from './publishing.constants';
 import { PublicationJobsService } from './publishing-jobs.service';
-import { PublicationJobData, PublicationQueueData } from './publishing.types';
+import {
+  PublicationJobData,
+  PublicationQueueData,
+  SchedulablePublicationTargetType,
+} from './publishing.types';
+
+const SCHEDULABLE_PUBLICATION_TARGET_TYPES = new Set<SchedulablePublicationTargetType>([
+  PublicationTargetType.EVENT,
+  PublicationTargetType.MAJOR_EVENT,
+]);
 
 @Processor(PUBLICATION_QUEUE)
 export class PublicationProcessor extends WorkerHost {
@@ -37,7 +47,7 @@ export class PublicationProcessor extends WorkerHost {
       typeof data === 'object' &&
       data !== null &&
       'targetType' in data &&
-      (data.targetType === 'EVENT' || data.targetType === 'MAJOR_EVENT') &&
+      SCHEDULABLE_PUBLICATION_TARGET_TYPES.has(data.targetType as SchedulablePublicationTargetType) &&
       'targetId' in data &&
       typeof data.targetId === 'string'
     );

@@ -1,4 +1,4 @@
-import { createHash, createHmac } from 'crypto';
+import { createHash, createHmac, randomBytes } from 'crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, PublicContentPreviewTargetType } from '@prisma/client';
 import Redis from 'ioredis';
@@ -170,6 +170,8 @@ export class PublicationPreviewService {
       .update(targetId)
       .update('\0')
       .update(actorId)
+      .update('\0')
+      .update(randomBytes(32))
       .digest('base64url');
   }
 

@@ -234,6 +234,7 @@ export class PublicationStateWriterService {
         scheduledPublishAt: null,
         publishedAt: now,
         unpublishedAt: null,
+        publicationScheduledBy: null,
         publicationUpdatedBy: actorId,
       };
     }
@@ -244,6 +245,7 @@ export class PublicationStateWriterService {
         scheduledPublishAt: null,
         publishedAt: null,
         unpublishedAt: now,
+        publicationScheduledBy: null,
         publicationUpdatedBy: actorId,
       };
     }
@@ -253,6 +255,7 @@ export class PublicationStateWriterService {
       scheduledPublishAt: null,
       publishedAt: null,
       unpublishedAt: null,
+      publicationScheduledBy: null,
       publicationUpdatedBy: actorId,
     };
   }

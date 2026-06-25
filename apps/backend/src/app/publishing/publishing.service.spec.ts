@@ -107,8 +107,64 @@ describe('PublicationService', () => {
     expect(JSON.stringify(eventCountCall[0].where)).toContain('event-1');
     expect(JSON.stringify(eventsCall[0].where)).toContain('event-1');
     expect(JSON.stringify(warningEventsCall[0].where)).toContain('event-1');
+    expect(JSON.stringify(warningEventsCall[0].where)).toContain('SCHEDULED');
+    expect(JSON.stringify(warningEventsCall[0].where)).toContain('publiclyVisible');
     expect(JSON.stringify(warningMajorEventsCall[0].where)).toContain('major-1');
+    expect(JSON.stringify(warningMajorEventsCall[0].where)).toContain('SCHEDULED');
+    expect(JSON.stringify(warningMajorEventsCall[0].where)).toContain('events');
     expect(JSON.stringify(warningMajorEventsCall[0].select.events.where)).toContain('event-1');
+  });
+
+  it('builds flat event-group items from the same tree children as the hierarchy', async () => {
+    const { prisma, service } = createService();
+    prisma.majorEvent.count.mockResolvedValue(0);
+    prisma.eventGroup.count.mockResolvedValue(1);
+    prisma.event.count.mockResolvedValue(0);
+    prisma.eventGroup.findMany.mockResolvedValue([
+      {
+        id: 'group-1',
+        name: 'Grupo',
+        _count: { events: 1 },
+      },
+    ]);
+    prisma.event.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'event-1',
+          name: 'Evento publicado',
+          publiclyVisible: true,
+          publicationState: PublicationState.PUBLISHED,
+          scheduledPublishAt: null,
+          publishedAt: new Date('2026-06-25T10:00:00.000Z'),
+          unpublishedAt: null,
+          majorEventId: null,
+          eventGroupId: 'group-1',
+          majorEvent: null,
+          eventGroup: {
+            id: 'group-1',
+            name: 'Grupo',
+            deletedAt: null,
+          },
+        },
+      ]);
+
+    await expect(service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never)).resolves.toMatchObject({
+      tree: [
+        {
+          id: 'group-1',
+          publicationState: PublicationState.PUBLISHED,
+          children: [{ id: 'event-1' }],
+        },
+      ],
+      items: [
+        {
+          id: 'group-1',
+          publicationState: PublicationState.PUBLISHED,
+          children: [{ id: 'event-1' }],
+        },
+      ],
+    });
   });
 
   it('paginates publication workspace sections without loading every target', async () => {

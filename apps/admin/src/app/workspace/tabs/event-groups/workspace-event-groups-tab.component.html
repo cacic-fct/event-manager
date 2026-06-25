@@ -129,7 +129,7 @@
               mat-stroked-button
               type="button"
               (click)="workspace.saveEventGroup('SCHEDULE')"
-              [disabled]="workspace.savingEventGroup()">
+              [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid">
               <mat-icon>schedule</mat-icon>
               Agendar
             </button>

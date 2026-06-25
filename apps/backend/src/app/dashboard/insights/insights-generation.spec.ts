@@ -238,6 +238,17 @@ describe('DashboardInsightsService generation', () => {
         }),
       ]),
     );
+    expect(prisma.majorEvent.findMany.mock.calls[2]?.[0]).toEqual(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            expect.objectContaining({ publicationState: 'PUBLISHED' }),
+            expect.objectContaining({ publicationState: 'SCHEDULED' }),
+          ]),
+        }),
+        take: 30,
+      }),
+    );
     expect(prisma.event.findMany.mock.calls[3]?.[0].where).not.toHaveProperty('shouldCollectAttendance');
     expect(result.permissions).toEqual(
       expect.arrayContaining([

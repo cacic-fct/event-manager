@@ -146,6 +146,11 @@ type SectionWindow = {
   take: number;
 };
 
+type PublicationTreeChildren = {
+  majorEventChildren: Map<string, PublicationWorkspaceEventRecord[]>;
+  standaloneGroupChildren: Map<string, PublicationWorkspaceEventRecord[]>;
+};
+
 @Injectable()
 export class PublicationService {
   constructor(
@@ -222,14 +227,17 @@ export class PublicationService {
       this.listMajorEvents(majorEventWhere, windows[0]),
       this.listEventGroups(eventGroupWhere, windows[1]),
       this.listEvents(eventWhere, windows[2]),
-      this.listWarningEvents(accessibleTreeEventWhere),
-      this.listWarningMajorEvents(majorEventBaseWhere, activeEventWhere),
+      this.listWarningEvents(accessibleTreeEventWhere, now),
+      this.listWarningMajorEvents(majorEventBaseWhere, activeEventWhere, now),
     ]);
     const treeEvents = await this.listTreeEvents(accessibleTreeEventWhere, majorEvents, eventGroups);
+    const treeChildren = this.groupTreeEvents(treeEvents);
 
     const pageItems = [
       ...majorEvents.map((majorEvent) => this.mapMajorEventNode(majorEvent)),
-      ...eventGroups.map((eventGroup) => this.mapEventGroupNode(eventGroup)),
+      ...eventGroups.map((eventGroup) =>
+        this.mapEventGroupNode(eventGroup, treeChildren.standaloneGroupChildren.get(eventGroup.id) ?? []),
+      ),
       ...events.map((event) => this.mapEventNode(event)),
     ];
     const focusedNode = await this.findFocusedNode(input, {
@@ -245,7 +253,7 @@ export class PublicationService {
 
     return {
       generatedAt: now,
-      tree: this.buildTree(majorEvents, eventGroups, events, treeEvents),
+      tree: this.buildTree(majorEvents, eventGroups, events, treeChildren),
       items,
       totalCount,
       skip: pagination.skip,
@@ -356,9 +364,9 @@ export class PublicationService {
     });
   }
 
-  private listWarningEvents(where: Prisma.EventWhereInput) {
+  private listWarningEvents(where: Prisma.EventWhereInput, now: Date) {
     return this.prisma.event.findMany({
-      where,
+      where: this.buildWarningEventWhere(where, now),
       select: PUBLICATION_WARNING_EVENT_SELECT,
       orderBy: { startDate: 'desc' },
       take: PUBLICATION_WORKSPACE_WARNING_TAKE,
@@ -368,9 +376,10 @@ export class PublicationService {
   private listWarningMajorEvents(
     majorEventWhere: Prisma.MajorEventWhereInput,
     eventWhere: Prisma.EventWhereInput,
+    now: Date,
   ) {
     return this.prisma.majorEvent.findMany({
-      where: majorEventWhere,
+      where: this.buildWarningMajorEventWhere(majorEventWhere, eventWhere, now),
       select: this.buildWarningMajorEventSelect(eventWhere),
       orderBy: { startDate: 'desc' },
       take: PUBLICATION_WORKSPACE_WARNING_TAKE,
@@ -432,6 +441,54 @@ export class PublicationService {
     } satisfies Prisma.MajorEventSelect;
   }
 
+  private buildWarningEventWhere(where: Prisma.EventWhereInput, now: Date): Prisma.EventWhereInput {
+    return this.andWhere(where, {
+      OR: [
+        { publicationState: 'PUBLISHED', publiclyVisible: false },
+        { publicationState: { not: 'PUBLISHED' }, publiclyVisible: true },
+        {
+          publicationState: 'PUBLISHED',
+          majorEvent: {
+            deletedAt: null,
+            publicationState: { not: 'PUBLISHED' },
+          },
+        },
+        {
+          publicationState: 'SCHEDULED',
+          scheduledPublishAt: { lte: now },
+        },
+      ],
+    });
+  }
+
+  private buildWarningMajorEventWhere(
+    majorEventWhere: Prisma.MajorEventWhereInput,
+    eventWhere: Prisma.EventWhereInput,
+    now: Date,
+  ): Prisma.MajorEventWhereInput {
+    return this.andWhere(majorEventWhere, {
+      OR: [
+        {
+          publicationState: 'SCHEDULED',
+          scheduledPublishAt: { lte: now },
+        },
+        {
+          publicationState: 'PUBLISHED',
+          events: {
+            none: this.buildVisiblePublishedEventWhere(eventWhere),
+          },
+        },
+      ],
+    });
+  }
+
+  private buildVisiblePublishedEventWhere(eventWhere: Prisma.EventWhereInput): Prisma.EventWhereInput {
+    return this.andWhere(eventWhere, {
+      publicationState: 'PUBLISHED',
+      publiclyVisible: true,
+    });
+  }
+
   private async findFocusedNode(
     input: PublicationWorkspaceInput,
     wheres: {
@@ -471,8 +528,20 @@ export class PublicationService {
     majorEvents: PublicationWorkspaceMajorEventRecord[],
     eventGroups: PublicationWorkspaceEventGroupRecord[],
     events: PublicationWorkspaceEventRecord[],
-    treeEvents: PublicationWorkspaceEventRecord[],
+    treeChildren: PublicationTreeChildren,
   ): PublicContentNode[] {
+    return [
+      ...majorEvents.map((majorEvent) =>
+        this.mapMajorEventNode(majorEvent, treeChildren.majorEventChildren.get(majorEvent.id) ?? []),
+      ),
+      ...eventGroups.map((eventGroup) =>
+        this.mapEventGroupNode(eventGroup, treeChildren.standaloneGroupChildren.get(eventGroup.id) ?? []),
+      ),
+      ...events.map((event) => this.mapEventNode(event)),
+    ];
+  }
+
+  private groupTreeEvents(treeEvents: PublicationWorkspaceEventRecord[]): PublicationTreeChildren {
     const majorEventChildren = new Map<string, PublicationWorkspaceEventRecord[]>();
     const standaloneGroupChildren = new Map<string, PublicationWorkspaceEventRecord[]>();
     for (const event of treeEvents) {
@@ -487,15 +556,7 @@ export class PublicationService {
       }
     }
 
-    return [
-      ...majorEvents.map((majorEvent) =>
-        this.mapMajorEventNode(majorEvent, majorEventChildren.get(majorEvent.id) ?? []),
-      ),
-      ...eventGroups.map((eventGroup) =>
-        this.mapEventGroupNode(eventGroup, standaloneGroupChildren.get(eventGroup.id) ?? []),
-      ),
-      ...events.map((event) => this.mapEventNode(event)),
-    ];
+    return { majorEventChildren, standaloneGroupChildren };
   }
 
   private mapMajorEventNode(
