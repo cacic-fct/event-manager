@@ -1,15 +1,28 @@
 {
   "name": "shared-environment",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "libs/shared-environment",
   "sourceRoot": "libs/shared-environment/src",
   "projectType": "library",
   "tags": [],
   "targets": {
     "lint": {
-      "executor": "@nx/eslint:lint",
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/.eslintrc.json",
+        "{workspaceRoot}/.eslintignore",
+        "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/tools/eslint-rules/**/*",
+        {
+          "externalDependencies": [
+            "eslint"
+          ]
+        }
+      ],
       "options": {
-        "lintFilePatterns": ["libs/shared-environment/**/*.ts"]
+        "args": [
+          "**/*.ts"
+        ]
       }
     }
   }

@@ -17,6 +17,7 @@
       "outputs": [
         "{workspaceRoot}/dist/apps/public"
       ],
+      "defaultConfiguration": "production",
       "options": {
         "commands": [
           "node apps/public/workbox/build-public-workbox.mjs"
@@ -36,14 +37,14 @@
           ],
           "parallel": false
         }
-      },
-      "defaultConfiguration": "production"
+      }
     },
     "build-application": {
       "executor": "@angular/build:application",
       "outputs": [
         "{options.outputPath}"
       ],
+      "defaultConfiguration": "production",
       "options": {
         "baseHref": "/app/",
         "outputPath": "dist/apps/public",
@@ -89,12 +90,12 @@
           "extractLicenses": false,
           "sourceMap": true
         }
-      },
-      "defaultConfiguration": "production"
+      }
     },
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
       "options": {
         "proxyConfig": "apps/admin/src/proxy.conf.json"
       },
@@ -105,11 +106,22 @@
         "development": {
           "buildTarget": "public:build-application:development"
         }
-      },
-      "defaultConfiguration": "development"
+      }
     },
     "lint": {
-      "executor": "@nx/eslint:lint"
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/.eslintrc.json",
+        "{workspaceRoot}/.eslintignore",
+        "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/tools/eslint-rules/**/*",
+        {
+          "externalDependencies": [
+            "eslint"
+          ]
+        }
+      ]
     },
     "test": {
       "executor": "@angular/build:unit-test",

@@ -1,16 +1,29 @@
 {
   "name": "offline-public-data-access",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "libs/offline-public-data-access",
   "sourceRoot": "libs/offline-public-data-access/src",
   "prefix": "lib",
   "projectType": "library",
   "tags": [],
   "targets": {
     "lint": {
-      "executor": "@nx/eslint:lint",
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/.eslintrc.json",
+        "{workspaceRoot}/.eslintignore",
+        "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/tools/eslint-rules/**/*",
+        {
+          "externalDependencies": [
+            "eslint"
+          ]
+        }
+      ],
       "options": {
-        "lintFilePatterns": ["libs/offline-public-data-access/**/*.ts"]
+        "args": [
+          "**/*.ts"
+        ]
       }
     }
   }

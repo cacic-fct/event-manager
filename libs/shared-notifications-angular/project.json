@@ -1,16 +1,30 @@
 {
   "name": "shared-notifications-angular",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "libs/shared-notifications-angular",
   "sourceRoot": "libs/shared-notifications-angular/src",
   "prefix": "lib",
   "projectType": "library",
   "tags": [],
   "targets": {
     "lint": {
-      "executor": "@nx/eslint:lint",
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/.eslintrc.json",
+        "{workspaceRoot}/.eslintignore",
+        "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/tools/eslint-rules/**/*",
+        {
+          "externalDependencies": [
+            "eslint"
+          ]
+        }
+      ],
       "options": {
-        "lintFilePatterns": ["libs/shared-notifications-angular/**/*.ts", "libs/shared-notifications-angular/**/*.html"]
+        "args": [
+          "**/*.ts",
+          "**/*.html"
+        ]
       }
     }
   }
