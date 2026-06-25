@@ -123,6 +123,10 @@ describe('MajorEventsResolver', () => {
 
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
       { sub: 'admin-1' },
+      [Permission.MajorEvent.Create],
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
       [Permission.CertificateConfig.Read, Permission.CertificateConfig.Create],
       { majorEventId: 'major-source' },
     );

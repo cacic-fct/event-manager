@@ -431,7 +431,15 @@ describe('EventsResolver', () => {
         certificateTemplateId: 'template-1',
       }),
     });
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(2);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.Event.Create],
+      {
+        majorEventId: 'major-1',
+        eventGroupId: 'group-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(3);
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
         entityId: 'event-clone',

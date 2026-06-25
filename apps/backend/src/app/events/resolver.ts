@@ -473,7 +473,7 @@ export class EventsResolver {
   }
 
   @Mutation(() => Event, { name: 'cloneEvent' })
-  @RequirePermissions(Permission.Event.Read, Permission.Event.Create)
+  @RequirePermissions(Permission.Event.Read)
   async cloneEvent(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => EventCloneInput, nullable: true }) input: EventCloneInput | null,
@@ -559,6 +559,10 @@ export class EventsResolver {
       lecturerPersonIds: shouldCopyLecturers ? source.lecturers.map((lecturer) => lecturer.personId) : undefined,
     };
 
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.Event.Create], {
+      majorEventId: cloneInput.majorEventId,
+      eventGroupId: cloneInput.eventGroupId,
+    });
     await this.frozenResources.assertEventCreateTargetsMutable(cloneInput, this.getUser(context));
     const normalizedInput = await this.normalizeEventCertificateInput(cloneInput);
     const eventInput = { ...normalizedInput };

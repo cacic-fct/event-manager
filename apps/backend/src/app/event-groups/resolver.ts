@@ -255,7 +255,7 @@ export class EventGroupsResolver {
   }
 
   @Mutation(() => EventGroup, { name: 'cloneEventGroup' })
-  @RequirePermissions(Permission.EventGroup.Read, Permission.EventGroup.Create)
+  @RequirePermissions(Permission.EventGroup.Read)
   async cloneEventGroup(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => EventGroupCloneInput, nullable: true }) input: EventGroupCloneInput | null,
@@ -273,6 +273,7 @@ export class EventGroupsResolver {
       throw new NotFoundException(`Event group ${id} was not found.`);
     }
 
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventGroup.Create]);
     const shouldCopyCertificateConfig = Boolean(input?.parts?.certificateConfig);
     if (shouldCopyCertificateConfig) {
       await this.authorizationPolicy.assertPermissions(

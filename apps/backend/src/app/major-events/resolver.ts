@@ -355,7 +355,7 @@ export class MajorEventsResolver {
   }
 
   @Mutation(() => MajorEvent, { name: 'cloneMajorEvent' })
-  @RequirePermissions(Permission.MajorEvent.Read, Permission.MajorEvent.Create)
+  @RequirePermissions(Permission.MajorEvent.Read)
   async cloneMajorEvent(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => MajorEventCloneInput, nullable: true }) input: MajorEventCloneInput | null,
@@ -374,6 +374,7 @@ export class MajorEventsResolver {
       throw new NotFoundException(`Major event ${id} was not found.`);
     }
 
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.MajorEvent.Create]);
     const parts = input?.parts;
     const shouldCopyCertificateConfig = Boolean(parts?.certificateConfig);
     if (shouldCopyCertificateConfig) {
