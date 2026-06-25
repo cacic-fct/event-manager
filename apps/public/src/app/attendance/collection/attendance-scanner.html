@@ -47,7 +47,7 @@
 
     <mat-list>
       @for (item of queuedAttendances(); track item.clientId) {
-      <mat-list-item [class.needs-review]="item.status === 'CONFLICT' || item.status === 'DUPLICATE'">
+      <mat-list-item [class.needs-review]="item.status === 'CONFLICT' || item.status === 'DUPLICATE' || item.status === 'FORBIDDEN'">
         <span matListItemTitle>{{ methodLabel(item.createdByMethod) }} · {{ queueStatusLabel(item.status) }}</span>
         <span matListItemLine>{{ item.collectedAt | date: 'shortTime' }} · {{ item.authorName || 'autor não identificado' }}</span>
         @if (item.lastError) {
@@ -59,7 +59,7 @@
             <mat-icon>refresh</mat-icon>
           </button>
           }
-          @if (item.status === 'DUPLICATE' || item.status === 'CONFLICT') {
+          @if (item.status === 'DUPLICATE' || item.status === 'CONFLICT' || item.status === 'FORBIDDEN') {
           <button matIconButton type="button" aria-label="Remover pendência" (click)="removeQueuedAttendance(item)">
             <mat-icon>done</mat-icon>
           </button>

@@ -244,6 +244,8 @@ export class AttendanceScanner implements OnInit {
         return 'já registrada';
       case 'CONFLICT':
         return 'conflito';
+      case 'FORBIDDEN':
+        return 'sem permissão';
       case 'FAILED':
         return 'falhou';
     }

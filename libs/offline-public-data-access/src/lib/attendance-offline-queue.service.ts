@@ -18,6 +18,7 @@ export interface OfflineAttendanceCommitResultLike {
 @Injectable({ providedIn: 'root' })
 export class AttendanceOfflineQueueService {
   private readonly databaseProvider = inject(OfflinePublicDatabaseProvider);
+  private startupSyncingReset: Promise<void> | null = null;
 
   async replaceCollectionEvents(
     userId: string,
@@ -117,6 +118,7 @@ export class AttendanceOfflineQueueService {
   }
 
   async listPending(limit = 80): Promise<OfflineAttendanceQueueItem[]> {
+    await this.ensureStartupSyncingReset();
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return [];
@@ -130,6 +132,7 @@ export class AttendanceOfflineQueueService {
   }
 
   async countPending(): Promise<number> {
+    await this.ensureStartupSyncingReset();
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return 0;
@@ -153,8 +156,32 @@ export class AttendanceOfflineQueueService {
     await this.updateStatus(clientIds, 'SYNCING');
   }
 
-  async resetSyncing(clientIds: readonly string[], message: string): Promise<void> {
-    await this.updateStatus(clientIds, 'FAILED', message);
+  async resetSyncing(
+    clientIds?: readonly string[],
+    message = 'Sincronização interrompida. Tente enviar novamente.',
+  ): Promise<void> {
+    const database = this.databaseProvider.getDatabase();
+    if (!database) {
+      return;
+    }
+
+    const now = Date.now();
+    await database.transaction('rw', database.attendanceQueue, async () => {
+      const items = clientIds?.length
+        ? await database.attendanceQueue.bulkGet([...clientIds])
+        : await database.attendanceQueue.where('status').equals('SYNCING').toArray();
+      for (const item of items) {
+        if (!item || item.status !== 'SYNCING') {
+          continue;
+        }
+
+        await database.attendanceQueue.update(item.clientId, {
+          status: 'FAILED',
+          updatedAt: now,
+          lastError: message,
+        });
+      }
+    });
   }
 
   async recordSyncFailure(clientIds: readonly string[], message: string): Promise<void> {
@@ -255,6 +282,7 @@ export class AttendanceOfflineQueueService {
       case 'CONFLICT':
         return 'CONFLICT';
       case 'FORBIDDEN':
+        return 'FORBIDDEN';
       case 'FAILED':
       case 'CREATED':
       case 'STAGED':
@@ -268,6 +296,8 @@ export class AttendanceOfflineQueueService {
         return 'Presença já registrada no servidor.';
       case 'CONFLICT':
         return 'Conflito encontrado. Revise antes de reenviar.';
+      case 'FORBIDDEN':
+        return 'Sem permissão para sincronizar esta presença.';
       case 'FAILED':
         return 'Não foi possível sincronizar.';
       case 'PENDING':
@@ -286,5 +316,10 @@ export class AttendanceOfflineQueueService {
 
   private collectionEventKey(userId: string, eventId: string): string {
     return `${userId}:${eventId}`;
+  }
+
+  private async ensureStartupSyncingReset(): Promise<void> {
+    this.startupSyncingReset ??= this.resetSyncing();
+    await this.startupSyncingReset;
   }
 }

@@ -57,6 +57,11 @@ export interface OfflineAttendanceCommitResult {
   status: OfflineAttendanceCommitStatus;
   message?: string | null;
   attendance?: AttendanceRegistrationResult | null;
+  stagedSubmission?: {
+    id: string;
+    eventId: string;
+    status: 'PENDING' | 'COMMITTED' | 'REJECTED';
+  } | null;
 }
 
 type GraphqlVariables = Record<string, unknown>;

@@ -53,6 +53,16 @@ registerEnumType(AttendanceCreationMethod, {
   name: 'AttendanceCreationMethod',
 });
 
+export const OfflineAttendanceCreationMethod = {
+  MANUAL_INPUT: AttendanceCreationMethod.MANUAL_INPUT,
+  SCANNER: AttendanceCreationMethod.SCANNER,
+} as const;
+export type OfflineAttendanceCreationMethod =
+  (typeof OfflineAttendanceCreationMethod)[keyof typeof OfflineAttendanceCreationMethod];
+registerEnumType(OfflineAttendanceCreationMethod, {
+  name: 'OfflineAttendanceCreationMethod',
+});
+
 export const OfflineEventAttendanceCommitStatus = {
   CREATED: 'CREATED',
   STAGED: 'STAGED',

@@ -29,9 +29,17 @@ self.addEventListener('message', (event) => {
   }
 
   if (event.data?.type === 'CACHE_ATTENDANCE_SCANNER') {
-    event.waitUntil(cacheAttendanceScannerUrls(event.data.urls));
+    event.waitUntil(cacheAttendanceScannerUrlsForClient(event));
   }
 });
+
+async function cacheAttendanceScannerUrlsForClient(event) {
+  const ok = await cacheAttendanceScannerUrls(event.data.urls);
+  event.ports?.[0]?.postMessage({
+    type: 'CACHE_ATTENDANCE_SCANNER_RESULT',
+    ok,
+  });
+}
 
 async function skipWaitingForTrustedClient(event) {
   if (!event.source?.id) {
@@ -66,6 +74,11 @@ const isZxingWasmUrl = (url) =>
 const hasPrivateCacheControl = (response) => {
   const cacheControl = response.headers.get('Cache-Control')?.toLowerCase() ?? '';
   return cacheControl.includes('no-store') || cacheControl.includes('private');
+};
+const zxingWasmCacheName = 'zxing-wasm';
+const zxingWasmExpirationConfig = {
+  maxEntries: 4,
+  maxAgeSeconds: 60 * 60 * 24 * 30,
 };
 
 const networkOnly = new workbox.strategies.NetworkOnly();
@@ -168,14 +181,13 @@ workbox.routing.registerRoute(
 workbox.routing.registerRoute(
   ({ request, url }) => request.method === 'GET' && isZxingWasmUrl(url),
   new workbox.strategies.CacheFirst({
-    cacheName: 'zxing-wasm',
+    cacheName: zxingWasmCacheName,
     plugins: [
       new workbox.cacheableResponse.CacheableResponsePlugin({
         statuses: [0, 200],
       }),
       new workbox.expiration.ExpirationPlugin({
-        maxEntries: 4,
-        maxAgeSeconds: 60 * 60 * 24 * 30,
+        ...zxingWasmExpirationConfig,
         purgeOnQuotaError: true,
       }),
     ],
@@ -194,20 +206,21 @@ async function appShellFallback() {
 
 async function cacheAttendanceScannerUrls(urls) {
   if (!Array.isArray(urls)) {
-    return;
+    return false;
   }
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     urls
       .filter((url) => typeof url === 'string')
       .map((url) => cacheAttendanceScannerUrl(url)),
   );
+  return results.every((result) => result.status === 'fulfilled' && result.value);
 }
 
 async function cacheAttendanceScannerUrl(rawUrl) {
   const url = new URL(rawUrl, self.location.origin);
   if (!sameOrigin(url) && !isZxingWasmUrl(url)) {
-    return;
+    return false;
   }
 
   const request = new Request(url.toString(), {
@@ -216,11 +229,17 @@ async function cacheAttendanceScannerUrl(rawUrl) {
   });
   const response = await fetch(request);
   if (!response || ![0, 200].includes(response.status) || hasPrivateCacheControl(response)) {
-    return;
+    return false;
   }
 
-  const cache = await caches.open(sameOrigin(url) ? 'ssr-html' : 'zxing-wasm');
+  const cacheName = sameOrigin(url) ? 'ssr-html' : zxingWasmCacheName;
+  const cache = await caches.open(cacheName);
   await cache.put(request, response);
+  if (cacheName === zxingWasmCacheName) {
+    const expiration = new workbox.expiration.CacheExpiration(cacheName, zxingWasmExpirationConfig);
+    await expiration.updateTimestamp(request.url);
+  }
+  return true;
 }
 
 self.addEventListener('notificationclick', (event) => {

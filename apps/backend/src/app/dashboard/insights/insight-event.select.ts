@@ -7,6 +7,8 @@ export const EVENT_INSIGHT_SELECT = {
   type: true,
   startDate: true,
   endDate: true,
+  description: true,
+  shortDescription: true,
   locationDescription: true,
   latitude: true,
   longitude: true,
@@ -35,6 +37,9 @@ export const EVENT_INSIGHT_SELECT = {
   },
   shouldCollectAttendance: true,
   shouldIssueCertificate: true,
+  allowSubscription: true,
+  subscriptionStartDate: true,
+  subscriptionEndDate: true,
   certificateConfigs: {
     where: { deletedAt: null, isActive: true },
     select: { id: true },
