@@ -212,7 +212,7 @@
                 <img [src]="item.receipt.imageUrl" alt="Comprovante enviado" (error)="onImageError()" />
               </div>
             } @else if (item.receipt?.ocrText) {
-              <pre class="ocr-fallback">{{ item.receipt?.ocrText }}</pre>
+              <pre class="ocr-fallback">{{ item.receipt.ocrText }}</pre>
             } @else {
               <div class="missing-receipt">
                 <mat-icon>image_not_supported</mat-icon>
