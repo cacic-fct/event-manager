@@ -147,6 +147,109 @@ describe('EventGroupsResolver authorization', () => {
     });
   });
 
+  it('clones event group certificate settings with separate source read and destination create permissions', async () => {
+    const source = {
+      id: 'group-source',
+      name: 'Trilhas',
+      emoji: '📚',
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: true,
+      shouldIssueCertificateForNonSubscribedAttendees: false,
+      shouldIssueCertificateForEachEvent: true,
+      shouldIssuePartialCertificate: false,
+      certificateConfigs: [
+        {
+          name: 'Participante',
+          certificateTemplateId: 'template-1',
+          certificateText: 'Texto',
+          shouldAutofillSecondPage: true,
+          secondPageText: null,
+          isActive: true,
+          issuedTo: 'ATTENDEE',
+          certificateFields: null,
+        },
+      ],
+    };
+    const created = {
+      ...source,
+      id: 'group-clone',
+      name: 'Trilhas 2027',
+      certificateConfigs: [],
+    };
+    const tx = {
+      eventGroup: {
+        create: jest.fn().mockResolvedValue(created),
+      },
+      certificateConfig: {
+        create: jest.fn(),
+      },
+    };
+    const prisma = {
+      eventGroup: {
+        findFirst: jest.fn().mockResolvedValue(source),
+      },
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const typesenseSearch = {
+      upsertEventGroup: jest.fn(),
+    };
+    const authorizationPolicy = {
+      assertPermissions: jest.fn(),
+    };
+    const auditLog = {
+      record: jest.fn(),
+    };
+    const resolver = new EventGroupsResolver(
+      prisma as never,
+      typesenseSearch as never,
+      {} as never,
+      authorizationPolicy as never,
+      auditLog as never,
+    );
+
+    await expect(
+      resolver.cloneEventGroup(
+        'group-source',
+        {
+          name: 'Trilhas 2027',
+          parts: {
+            certificateConfig: true,
+          },
+        },
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).resolves.toBe(created);
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.EventGroup.Create],
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.CertificateConfig.Read],
+      { eventGroupId: 'group-source' },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.CertificateConfig.Create],
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(3);
+    expect(tx.certificateConfig.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        scope: 'EVENT_GROUP',
+        eventGroupId: 'group-clone',
+        certificateTemplateId: 'template-1',
+      }),
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'group-clone',
+        summary: 'Grupo de eventos criado como cópia de Trilhas.',
+      }),
+      tx,
+    );
+  });
+
   it('records event group updates and cascades disabled certificate settings inside the transaction', async () => {
     const previous = {
       id: 'group-1',

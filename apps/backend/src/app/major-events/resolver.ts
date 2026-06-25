@@ -378,11 +378,10 @@ export class MajorEventsResolver {
     const parts = input?.parts;
     const shouldCopyCertificateConfig = Boolean(parts?.certificateConfig);
     if (shouldCopyCertificateConfig) {
-      await this.authorizationPolicy.assertPermissions(
-        this.getUser(context),
-        [Permission.CertificateConfig.Read, Permission.CertificateConfig.Create],
-        { majorEventId: source.id },
-      );
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
+        majorEventId: source.id,
+      });
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Create]);
     }
 
     const sourcePrice = source.majorEventPrices[0];

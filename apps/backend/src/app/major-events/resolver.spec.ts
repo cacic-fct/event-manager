@@ -127,9 +127,14 @@ describe('MajorEventsResolver', () => {
     );
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
       { sub: 'admin-1' },
-      [Permission.CertificateConfig.Read, Permission.CertificateConfig.Create],
+      [Permission.CertificateConfig.Read],
       { majorEventId: 'major-source' },
     );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.CertificateConfig.Create],
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(3);
     expect(tx.majorEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

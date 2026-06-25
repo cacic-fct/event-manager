@@ -433,13 +433,43 @@ describe('EventsResolver', () => {
     });
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
       { sub: 'admin-1' },
+      [Permission.EventLecturer.Read],
+      {
+        eventId: 'event-source',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.CertificateConfig.Read],
+      {
+        eventId: 'event-source',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
       [Permission.Event.Create],
       {
         majorEventId: 'major-1',
         eventGroupId: 'group-1',
       },
     );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(3);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.EventLecturer.Create],
+      {
+        majorEventId: 'major-1',
+        eventGroupId: 'group-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.CertificateConfig.Create],
+      {
+        majorEventId: 'major-1',
+        eventGroupId: 'group-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(5);
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
         entityId: 'event-clone',

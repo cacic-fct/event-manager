@@ -495,18 +495,14 @@ export class EventsResolver {
     const shouldCopyLecturers = Boolean(parts?.lecturers);
     const shouldCopyCertificateConfig = Boolean(parts?.certificateConfig);
     if (shouldCopyLecturers) {
-      await this.authorizationPolicy.assertPermissions(
-        this.getUser(context),
-        [Permission.EventLecturer.Read, Permission.EventLecturer.Create],
-        { eventId: source.id },
-      );
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventLecturer.Read], {
+        eventId: source.id,
+      });
     }
     if (shouldCopyCertificateConfig) {
-      await this.authorizationPolicy.assertPermissions(
-        this.getUser(context),
-        [Permission.CertificateConfig.Read, Permission.CertificateConfig.Create],
-        { eventId: source.id },
-      );
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
+        eventId: source.id,
+      });
     }
 
     const cloneInput: EventCreateInput = {
@@ -559,10 +555,25 @@ export class EventsResolver {
       lecturerPersonIds: shouldCopyLecturers ? source.lecturers.map((lecturer) => lecturer.personId) : undefined,
     };
 
-    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.Event.Create], {
+    const cloneTargetContext = {
       majorEventId: cloneInput.majorEventId,
       eventGroupId: cloneInput.eventGroupId,
-    });
+    };
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.Event.Create], cloneTargetContext);
+    if (shouldCopyLecturers) {
+      await this.authorizationPolicy.assertPermissions(
+        this.getUser(context),
+        [Permission.EventLecturer.Create],
+        cloneTargetContext,
+      );
+    }
+    if (shouldCopyCertificateConfig) {
+      await this.authorizationPolicy.assertPermissions(
+        this.getUser(context),
+        [Permission.CertificateConfig.Create],
+        cloneTargetContext,
+      );
+    }
     await this.frozenResources.assertEventCreateTargetsMutable(cloneInput, this.getUser(context));
     const normalizedInput = await this.normalizeEventCertificateInput(cloneInput);
     const eventInput = { ...normalizedInput };

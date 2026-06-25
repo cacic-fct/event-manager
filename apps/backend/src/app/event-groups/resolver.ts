@@ -276,11 +276,10 @@ export class EventGroupsResolver {
     await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventGroup.Create]);
     const shouldCopyCertificateConfig = Boolean(input?.parts?.certificateConfig);
     if (shouldCopyCertificateConfig) {
-      await this.authorizationPolicy.assertPermissions(
-        this.getUser(context),
-        [Permission.CertificateConfig.Read, Permission.CertificateConfig.Create],
-        { eventGroupId: source.id },
-      );
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
+        eventGroupId: source.id,
+      });
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Create]);
     }
 
     const normalizedInput = this.normalizeEventGroupCertificateInput({
