@@ -47,7 +47,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: read
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fct_app_test
@@ -76,7 +75,6 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || github.token }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Remove package registry auth material
@@ -163,7 +161,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: read
 
     if: >
       github.event_name == 'pull_request' &&
@@ -202,7 +199,6 @@ jobs:
       - name: Install dependencies without lifecycle scripts
         run: bun install --frozen-lockfile --ignore-scripts
         env:
-          NPM_CONFIG_TOKEN: ${{ github.token }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Remove package registry auth material
@@ -212,7 +208,6 @@ jobs:
           rm -f ~/.bunfig.toml
           rm -f bunfig.toml
           rm -f .npmrc
-          unset NPM_CONFIG_TOKEN
 
       - name: Upload prepared dependencies
         uses: actions/upload-artifact@v6

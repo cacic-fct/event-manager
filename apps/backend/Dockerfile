@@ -16,9 +16,7 @@ COPY package.json bun.lock ./
 COPY .npmrc ./
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=NPM_CONFIG_TOKEN,required=true \
     set -eu; \
-    export NPM_CONFIG_TOKEN="$(cat /run/secrets/NPM_CONFIG_TOKEN)"; \
     bun install --frozen-lockfile
 
 FROM deps AS playwright
@@ -52,9 +50,7 @@ COPY package.json bun.lock ./
 COPY .npmrc ./
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=NPM_CONFIG_TOKEN,required=true \
     set -eu; \
-    export NPM_CONFIG_TOKEN="$(cat /run/secrets/NPM_CONFIG_TOKEN)"; \
     bun install --frozen-lockfile --production
 
 COPY --from=prisma-deps /workspace/node_modules/.prisma ./node_modules/.prisma

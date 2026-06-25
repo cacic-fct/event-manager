@@ -27,7 +27,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: read
 
     if: >
       github.event.workflow_run.conclusion == 'success' &&
@@ -57,7 +56,6 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
         env:
-          NPM_CONFIG_TOKEN: ${{ github.token }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Detect affected apps
@@ -183,7 +181,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: read
 
     if: needs.detect-affected.outputs.has_apps == 'true'
 
@@ -210,8 +207,6 @@ jobs:
             APP_VERSION=${{ needs.prepare-release.outputs.version }}
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
-          secrets: |
-            "NPM_CONFIG_TOKEN=${{ github.token }}"
 
   publish:
     name: Publish app images
@@ -263,8 +258,6 @@ jobs:
           context: .
           file: apps/${{ matrix.app }}/Dockerfile
           push: true
-          secrets: |
-            "NPM_CONFIG_TOKEN=${{ github.token }}"
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |

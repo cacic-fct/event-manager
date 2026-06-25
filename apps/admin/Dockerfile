@@ -14,9 +14,7 @@ COPY .npmrc ./
 COPY eslint.config.mjs jest.config.ts jest.preset.js ./
 COPY apps/admin/project.json apps/admin/tsconfig*.json ./apps/admin/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=NPM_CONFIG_TOKEN,required=true \
     set -eu; \
-    export NPM_CONFIG_TOKEN="$(cat /run/secrets/NPM_CONFIG_TOKEN)"; \
     bun install --frozen-lockfile
 
 FROM deps AS builder
@@ -28,9 +26,7 @@ FROM base AS production-deps
 COPY package.json bun.lock ./
 COPY .npmrc ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    --mount=type=secret,id=NPM_CONFIG_TOKEN,required=true \
     set -eu; \
-    export NPM_CONFIG_TOKEN="$(cat /run/secrets/NPM_CONFIG_TOKEN)"; \
     bun install --frozen-lockfile --production
 
 FROM node:26-alpine AS runtime

@@ -64,7 +64,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: read
 
     steps:
       - name: Checkout
@@ -81,7 +80,6 @@ jobs:
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || github.token }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Install docs dependencies
