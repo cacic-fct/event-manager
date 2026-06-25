@@ -81,9 +81,6 @@ const PUBLIC_CONTENT_NODE_FIELDS = `
   label
   publicationState
   statusLabel
-  scheduledPublishAt
-  publishedAt
-  unpublishedAt
   publiclyVisible
   parentLabel
   childCount
@@ -148,9 +145,6 @@ export class PublicationApiService {
             }
             items {
               ${PUBLIC_CONTENT_NODE_FIELDS}
-              children {
-                ${PUBLIC_CONTENT_NODE_FIELDS}
-              }
             }
           }
         }`,

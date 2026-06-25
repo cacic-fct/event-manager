@@ -1,18 +1,28 @@
 import { PublicContentNode } from '../../../graphql/publishing-api.service';
-import { PublicationState, PublicationTargetType } from '../../../graphql/models';
+import { PublicationTargetType } from '../../../graphql/models';
+
+export interface PublicationListItem {
+  key: string;
+  level: number;
+  node: PublicContentNode;
+}
 
 export function flattenPublicationNodes(nodes: PublicContentNode[]): PublicContentNode[] {
   return nodes.flatMap((node) => [node, ...flattenPublicationNodes(node.children)]);
 }
 
-export function publicationStatusLabel(state: PublicationState): string {
-  const labels: Record<PublicationState, string> = {
-    DRAFT: 'Rascunho',
-    SCHEDULED: 'Agendado',
-    PUBLISHED: 'Publicado',
-    UNPUBLISHED: 'Despublicado',
-  };
-  return labels[state];
+export function flattenPublicationListItems(
+  nodes: PublicContentNode[],
+  level = 0,
+  lineage = '',
+): PublicationListItem[] {
+  return nodes.flatMap((node, index) => {
+    const key = `${lineage}/${node.targetType}:${node.id}:${index}`;
+    return [
+      { key, level, node },
+      ...flattenPublicationListItems(node.children, level + 1, key),
+    ];
+  });
 }
 
 export function publicationTargetIcon(targetType: PublicationTargetType): string {

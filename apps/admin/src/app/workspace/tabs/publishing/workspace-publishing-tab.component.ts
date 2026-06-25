@@ -30,11 +30,11 @@ import {
 import { PublicationState, PublicationTargetType } from '../../../graphql/models';
 import {
   defaultScheduledPublicationDate,
+  flattenPublicationListItems,
   flattenPublicationNodes,
   localDateTimeInputToIso,
   publicationChildCountLabel,
   publicationErrorMessage,
-  publicationStatusLabel,
   publicationTargetIcon,
   publicationTargetLabel,
   toDateTimeInputValue,
@@ -72,7 +72,9 @@ export class WorkspacePublicationTabComponent {
   readonly pageSize = 50;
   readonly query = signal('');
   private readonly requestedNode = signal<Pick<PublicContentNode, 'targetType' | 'id'> | null>(null);
-  readonly workspaceItems = computed(() => flattenPublicationNodes(this.workspace()?.tree ?? this.workspace()?.items ?? []));
+  readonly workspaceTree = computed(() => this.workspace()?.tree ?? this.workspace()?.items ?? []);
+  readonly workspaceItems = computed(() => flattenPublicationNodes(this.workspaceTree()));
+  readonly workspaceListItems = computed(() => flattenPublicationListItems(this.workspaceTree()));
   readonly hasPreviousPage = computed(() => this.pageIndex() > 0);
   readonly hasNextPage = computed(() => this.workspace()?.hasMore ?? false);
   readonly paginationLabel = computed(() => {
@@ -123,7 +125,7 @@ export class WorkspacePublicationTabComponent {
       const nextSelection =
         requestedSelection ??
         (currentSelection
-          ? flattenPublicationNodes(this.workspaceItems()).find(
+          ? this.workspaceItems().find(
               (node) => node.id === currentSelection.id && node.targetType === currentSelection.targetType,
             )
           : null) ??
@@ -262,10 +264,6 @@ export class WorkspacePublicationTabComponent {
     void this.router.navigate(['/events', selected.id]);
   }
 
-  statusLabel(state: PublicationState): string {
-    return publicationStatusLabel(state);
-  }
-
   targetIcon(targetType: PublicationTargetType): string {
     return publicationTargetIcon(targetType);
   }
@@ -274,12 +272,18 @@ export class WorkspacePublicationTabComponent {
     return publicationTargetLabel(targetType);
   }
 
-  targetDescription(node: PublicContentNode): string {
+  targetDescription(node: PublicContentNode, level = 0): string {
     const hiddenFromUsers = node.publiclyVisible === false && !node.statusLabel.toLowerCase().includes('oculto');
+    const targetLabel = level > 0 && node.targetType === 'EVENT_GROUP' ? 'Conjunto' : publicationTargetLabel(node.targetType);
+    const parentLabel = node.parentLabel
+      ? node.targetType === 'EVENT_GROUP'
+        ? `Conjunto de ${node.parentLabel}`
+        : `Dentro de ${node.parentLabel}`
+      : null;
     return [
-      publicationTargetLabel(node.targetType),
+      targetLabel,
       node.statusLabel,
-      node.parentLabel ? `Em ${node.parentLabel}` : null,
+      parentLabel,
       node.childCount > 0 ? publicationChildCountLabel(node.childCount) : null,
       hiddenFromUsers ? 'Oculto dos usuários' : null,
     ]
