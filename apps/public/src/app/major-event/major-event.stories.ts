@@ -55,7 +55,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();
@@ -129,7 +131,7 @@ function buildMajorEvent(args: MajorEventStoryArgs) {
   faker.seed(20260803);
   return {
     id: 'major-preview',
-    name: faker.helpers.arrayElement(['SECOMP 2026', 'CACiC 2026']),
+    name: faker.helpers.arrayElement(['SECOMPP 2026', 'CACiC 2026']),
     emoji: '💻',
     startDate: '2026-08-01T12:00:00.000Z',
     endDate: '2026-08-04T21:00:00.000Z',

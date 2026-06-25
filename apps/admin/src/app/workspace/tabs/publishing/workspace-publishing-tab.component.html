@@ -2,9 +2,7 @@
   <header class="tab-header publication-header">
     <div>
       <h1>Publicação</h1>
-      <p>
-        Orquestre rascunhos, agendamentos, pré-visualizações e publicação pública sem sair dos editores atuais.
-      </p>
+      <p>Orquestre rascunhos, agendamentos, pré-visualizações e publicação pública sem sair dos editores atuais.</p>
     </div>
     <button mat-stroked-button type="button" (click)="refresh()" [disabled]="loading()">
       <mat-icon>refresh</mat-icon>
@@ -29,7 +27,12 @@
           <button mat-icon-button type="submit" [disabled]="loading()" matTooltip="Buscar">
             <mat-icon>search</mat-icon>
           </button>
-          <button mat-icon-button type="button" (click)="clearSearch()" [disabled]="loading()" matTooltip="Limpar busca">
+          <button
+            mat-icon-button
+            type="button"
+            (click)="clearSearch()"
+            [disabled]="loading()"
+            matTooltip="Limpar busca">
             <mat-icon>close</mat-icon>
           </button>
         </form>
@@ -45,8 +48,7 @@
             [class.warning]="isWarning(node)"
             (click)="selectNode(node)"
             (keydown.enter)="selectNode(node)"
-            (keydown.space)="$event.preventDefault(); selectNode(node)"
-          >
+            (keydown.space)="$event.preventDefault(); selectNode(node)">
             <mat-icon matListItemIcon>{{ targetIcon(node.targetType) }}</mat-icon>
             <span matListItemTitle class="publication-list-title">{{ node.label }}</span>
             <span matListItemLine class="publication-list-line">{{ targetDescription(node) }}</span>
@@ -59,11 +61,21 @@
         }
       </mat-list>
       <div class="publication-pager" aria-label="Paginação dos itens publicáveis">
-        <button mat-icon-button type="button" (click)="previousPage()" [disabled]="loading() || !hasPreviousPage()" matTooltip="Página anterior">
+        <button
+          mat-icon-button
+          type="button"
+          (click)="previousPage()"
+          [disabled]="loading() || !hasPreviousPage()"
+          matTooltip="Página anterior">
           <mat-icon>chevron_left</mat-icon>
         </button>
         <span>{{ paginationLabel() }}</span>
-        <button mat-icon-button type="button" (click)="nextPage()" [disabled]="loading() || !hasNextPage()" matTooltip="Próxima página">
+        <button
+          mat-icon-button
+          type="button"
+          (click)="nextPage()"
+          [disabled]="loading() || !hasNextPage()"
+          matTooltip="Próxima página">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </div>
@@ -99,13 +111,13 @@
                 <mat-icon>publish</mat-icon>
                 Publicar
               </button>
-              <button mat-stroked-button type="button" (click)="draftSelected()" [disabled]="loading()">
-                <mat-icon>edit_note</mat-icon>
-                Rascunho
-              </button>
               <button mat-stroked-button type="button" (click)="unpublishSelected()" [disabled]="loading()">
                 <mat-icon>visibility_off</mat-icon>
                 Despublicar
+              </button>
+              <button mat-stroked-button type="button" (click)="draftSelected()" [disabled]="loading()">
+                <mat-icon>edit_note</mat-icon>
+                Salvar como rascunho
               </button>
               <button mat-stroked-button type="button" (click)="openEditor()">
                 <mat-icon>open_in_new</mat-icon>

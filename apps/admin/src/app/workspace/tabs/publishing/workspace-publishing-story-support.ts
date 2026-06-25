@@ -101,7 +101,7 @@ function majorEventNode(index: number, args: PublicationStoryArgs) {
   return {
     targetType: 'MAJOR_EVENT' as const,
     id: `major-${index}`,
-    label: `SECOMP ${2026 + index}`,
+    label: `SECOMPP ${2026 + index}`,
     publicationState: index % 2 === 0 ? ('SCHEDULED' as const) : ('PUBLISHED' as const),
     statusLabel: index % 2 === 0 ? 'Agendado para 01/08/2026 09:00' : 'Publicado',
     scheduledPublishAt: index % 2 === 0 ? '2026-08-01T12:00:00.000Z' : null,
@@ -112,7 +112,7 @@ function majorEventNode(index: number, args: PublicationStoryArgs) {
     childCount: 3,
     children: [
       eventNode(`major-${index}-opening`, 'Abertura', 0, args),
-      groupNode(`major-${index}-group`, `SECOMP ${2026 + index}`, args),
+      groupNode(`major-${index}-group`, `SECOMPP ${2026 + index}`, args),
       eventNode(`major-${index}-ceremony`, 'Encerramento', 2, args),
     ],
   };
@@ -214,7 +214,7 @@ function buildWarnings(args: PublicationStoryArgs) {
       targetId: 'major-0-opening',
       severity: 'CRITICAL' as const,
       title: 'Evento publicado em grande evento não publicado',
-      description: 'Abertura está publicada, mas SECOMP 2026 ainda não está publicada.',
+      description: 'Abertura está publicada, mas SECOMPP 2026 ainda não está publicada.',
       eventId: 'major-0-opening',
       relatedEventId: null,
       personId: null,
@@ -255,21 +255,11 @@ function findNode(
 }
 
 function isPublicationStateInput(input: unknown): input is PublicationStateInput {
-  return (
-    input != null &&
-    typeof input === 'object' &&
-    'targetType' in input &&
-    'targetId' in input &&
-    'state' in input
-  );
+  return input != null && typeof input === 'object' && 'targetType' in input && 'targetId' in input && 'state' in input;
 }
 
 function isPublicationBulkInput(input: unknown): input is PublicationBulkInput {
   return (
-    input != null &&
-    typeof input === 'object' &&
-    'targetType' in input &&
-    'targetId' in input &&
-    'operation' in input
+    input != null && typeof input === 'object' && 'targetType' in input && 'targetId' in input && 'operation' in input
   );
 }

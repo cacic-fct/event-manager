@@ -136,7 +136,7 @@ function buildEvent(args: EventStoryArgs) {
   const majorEvent = args.includeMajorEvent
     ? {
         id: 'major-preview',
-        name: 'SECOMP 2026',
+        name: 'SECOMPP 2026',
         emoji: '💻',
         startDate: '2026-08-01T12:00:00.000Z',
         endDate: '2026-08-04T21:00:00.000Z',

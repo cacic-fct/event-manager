@@ -149,7 +149,7 @@ function buildPreview(args: GroupPreviewStoryArgs) {
       majorEvent: args.includeMajorEvent
         ? {
             id: 'major-preview',
-            name: 'SECOMP 2026',
+            name: 'SECOMPP 2026',
             subscriptionStartDate: null,
             subscriptionEndDate: null,
           }
