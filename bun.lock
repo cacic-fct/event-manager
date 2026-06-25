@@ -24,9 +24,9 @@
         "@bwip-js/browser": "^4.11.1",
         "@bwip-js/node": "^4.11.1",
         "@cacic-fct/account-manager-cookie-banner": "^0.1.1",
-        "@cacic-fct/account-manager-m2m-contracts": "0.1.1",
-        "@cacic-fct/account-manager-privacy": "0.1.1",
-        "@cacic-fct/ngx-umami": "^0.1.2",
+        "@cacic-fct/account-manager-m2m-contracts": "^0.1.1",
+        "@cacic-fct/account-manager-privacy": "^0.1.1",
+        "@cacic-fct/ngx-umami": "^1.2.3",
         "@fontsource-variable/inter": "^5.2.8",
         "@fontsource-variable/source-code-pro": "^5.2.7",
         "@fontsource/material-symbols-outlined": "^5.2.45",
@@ -598,7 +598,7 @@
 
     "@cacic-fct/account-manager-privacy": ["@cacic-fct/account-manager-privacy@0.1.1", "", { "dependencies": { "@cacic-fct/account-manager-m2m-contracts": "^0.1.1", "tslib": "^2.8.0" }, "peerDependencies": { "@angular/common": ">=19", "@angular/core": ">=19", "rxjs": "^7.8.0" }, "optionalPeers": ["@angular/common", "@angular/core", "rxjs"] }, "sha512-RutMod2JSCOF0sUK9U4eBQqfZJo7a5e8s67GqOifsIYiGRTidxZqS4frjftDBsC9n5f+N/mRFM7uVQpmje62uQ=="],
 
-    "@cacic-fct/ngx-umami": ["@cacic-fct/ngx-umami@0.1.2", "", { "dependencies": { "@angular/common": "21.2.12", "@angular/core": "21.2.12", "@angular/router": "21.2.12", "rxjs": "^7.4.0", "tslib": "2.8.1" } }, "sha512-BjivYVtKmXbiiSFF31LCBWxoCyuWdAovJLT7aK3GgqGm38i2LKz419ZvVemn1IR45OBlO6DgPH8Qkrg7EhIcVw=="],
+    "@cacic-fct/ngx-umami": ["@cacic-fct/ngx-umami@1.2.3", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/common": ">=17.0.0", "@angular/core": ">=17.0.0", "@angular/router": ">=17.0.0" }, "optionalPeers": ["@angular/router"] }, "sha512-F/cCZR+Dyheg95Qc5cB0LqCCa+AJNNr2owZ8hZXgOeTG+Cj78cHcTLjgGxFZ9vdQKEPO5W6CDVWjn01yzgzo0A=="],
 
     "@chevrotain/types": ["@chevrotain/types@11.1.2", "", {}, "sha512-U+HFai5+zmJCkK86QsaJtoITlboZHBqrVketcO2ROv865xfCMSFpELQoz1GkX5GzME8pTa+3kbKrZHQtI0gdbw=="],
 
@@ -4569,12 +4569,6 @@
     "@babel/preset-env/semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 
     "@babel/traverse/@babel/generator": ["@babel/generator@7.29.7", "", { "dependencies": { "@babel/parser": "^7.29.7", "@babel/types": "^7.29.7", "@jridgewell/gen-mapping": "^0.3.12", "@jridgewell/trace-mapping": "^0.3.28", "jsesc": "^3.0.2" } }, "sha512-DkXD5OJQaAQIdZ1bt3UZdEnHAn9Imd3IVBdX03UFe+ony9Ojw5pzr9YVKGDY1jt+Gcn/FnGkNf8r+Vj5NOJWtQ=="],
-
-    "@cacic-fct/ngx-umami/@angular/common": ["@angular/common@21.2.12", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/core": "21.2.12", "rxjs": "^6.5.3 || ^7.4.0" } }, "sha512-b7IRSM9fWPmZ1SLN0utVcW87IkhiRte3Wsnwr2nEsjum2soRMfvKqHwtEFGfCztlwOmZLgKiGW9pqKpzBkIjnQ=="],
-
-    "@cacic-fct/ngx-umami/@angular/core": ["@angular/core@21.2.12", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/compiler": "21.2.12", "rxjs": "^6.5.3 || ^7.4.0", "zone.js": "~0.15.0 || ~0.16.0" }, "optionalPeers": ["@angular/compiler", "zone.js"] }, "sha512-wcD6tzE30nwg58KmAU19347Jf/1F/vFg2CEd9Qcu5cA1Z4s3umzvaqs/7988ne4HaS4iJEpvTbRvGss7EYZEfA=="],
-
-    "@cacic-fct/ngx-umami/@angular/router": ["@angular/router@21.2.12", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/common": "21.2.12", "@angular/core": "21.2.12", "@angular/platform-browser": "21.2.12", "rxjs": "^6.5.3 || ^7.4.0" } }, "sha512-2/RDHt3GdW2ABNRVrgLX7IxgJLdF7u8Sbh11kAUn04QhNI/GObxIV4M5Hm/NTeDoi+hCXavkaHVBlj/dG5ANbw=="],
 
     "@compodoc/compodoc/@angular-devkit/schematics": ["@angular-devkit/schematics@21.1.0", "", { "dependencies": { "@angular-devkit/core": "21.1.0", "jsonc-parser": "3.3.1", "magic-string": "0.30.21", "ora": "9.0.0", "rxjs": "7.8.2" } }, "sha512-sVgTntCZCOV7mOpHzj6V14KOAoy4B9Ur9yHNRFZVgL2yD77TYRrJ0qwq+l7Im9fSjMCar6csjboqCvyAEpfV1g=="],
 
