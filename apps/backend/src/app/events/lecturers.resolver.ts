@@ -20,6 +20,8 @@ type GraphqlContext = {
   request?: { user?: AuthenticatedUser };
 };
 
+type EnsureLecturerProfilePrismaClient = Pick<Prisma.TransactionClient, 'people' | 'lecturerProfile'>;
+
 const MAJOR_EVENT_SELECT = {
   id: true,
   name: true,
@@ -189,12 +191,18 @@ export class EventLecturersResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
-    return this.prisma.eventLecturer.create({
-      data: {
-        eventId: input.eventId,
-        personId: input.personId,
-        createdById: this.getActorId(context),
-      },
+    const actorId = this.getActorId(context);
+
+    return this.prisma.$transaction(async (prisma) => {
+      await this.ensureLecturerProfile(input.personId, actorId, prisma);
+
+      return prisma.eventLecturer.create({
+        data: {
+          eventId: input.eventId,
+          personId: input.personId,
+          createdById: actorId,
+        },
+      });
     });
   }
 
@@ -217,17 +225,24 @@ export class EventLecturersResolver {
     }
     const nextEventId = input.eventId ?? eventId;
     const nextPersonId = input.personId ?? personId;
-    const { count } = await this.prisma.eventLecturer.updateMany({
-      where: {
-        eventId,
-        personId,
-      },
-      data: this.buildEventLecturerUpdateData(input),
-    });
+    const actorId = this.getActorId(context);
+    await this.prisma.$transaction(async (prisma) => {
+      if (input.personId) {
+        await this.ensureLecturerProfile(input.personId, actorId, prisma);
+      }
 
-    if (count === 0) {
-      throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
-    }
+      const { count } = await prisma.eventLecturer.updateMany({
+        where: {
+          eventId,
+          personId,
+        },
+        data: this.buildEventLecturerUpdateData(input),
+      });
+
+      if (count === 0) {
+        throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
+      }
+    });
 
     return this.prisma.eventLecturer.findUnique({
       where: {
@@ -273,6 +288,45 @@ export class EventLecturersResolver {
       eventId,
       personId,
     };
+  }
+
+  private async ensureLecturerProfile(
+    personId: string,
+    actorId: string | undefined,
+    prisma: EnsureLecturerProfilePrismaClient = this.prisma,
+  ): Promise<void> {
+    const person = await prisma.people.findFirst({
+      where: {
+        id: personId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!person) {
+      throw new NotFoundException(`Person ${personId} was not found.`);
+    }
+
+    await prisma.lecturerProfile.upsert({
+      where: {
+        personId,
+      },
+      create: {
+        personId,
+        displayName: person.name,
+        publishGoogleUserPicture: false,
+        googleUserPicture: null,
+        createdById: actorId,
+        updatedById: actorId,
+      },
+      update: {},
+      select: {
+        id: true,
+      },
+    });
   }
 
   private buildEventLecturerUpdateData(input: EventLecturerUpdateInput): Prisma.EventLecturerUncheckedUpdateManyInput {

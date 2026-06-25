@@ -434,12 +434,11 @@ export class PublicEventGroup {
 }
 
 @ObjectType({
-  description:
-    'Public lecturer details attached to an event. Profile fields are included when the lecturer has a public profile.',
+  description: 'Public lecturer profile details attached to an event.',
 })
 export class PublicLecturerProfile {
   @Field(() => String, {
-    description: 'Public lecturer identifier. Uses the profile identifier when available, otherwise the person identifier.',
+    description: 'Public lecturer profile identifier.',
   })
   id!: string;
 

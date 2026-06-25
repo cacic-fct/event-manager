@@ -26,8 +26,6 @@ const PUBLIC_EVENT_LECTURER_PROFILE_SELECT = {
   eventId: true,
   person: {
     select: {
-      id: true,
-      name: true,
       lecturerProfile: {
         select: {
           id: true,
@@ -46,8 +44,6 @@ const PUBLIC_EVENT_LECTURER_PROFILE_SELECT = {
 type PublicEventLecturerProfileRecord = Prisma.EventLecturerGetPayload<{
   select: typeof PUBLIC_EVENT_LECTURER_PROFILE_SELECT;
 }>;
-
-type PublicLecturerProfileRecord = NonNullable<PublicEventLecturerProfileRecord['person']['lecturerProfile']>;
 
 type PendingPublicEventLecturerProfileLoad = {
   resolve: (profiles: PublicLecturerProfile[]) => void;
@@ -120,6 +116,9 @@ class PublicEventLecturerProfileLoader {
         },
         person: {
           deletedAt: null,
+          lecturerProfile: {
+            isNot: null,
+          },
         },
       },
       select: PUBLIC_EVENT_LECTURER_PROFILE_SELECT,
@@ -147,18 +146,10 @@ class PublicEventLecturerProfileLoader {
 }
 
 function mapPublicLecturerProfiles(lecturers: PublicEventLecturerProfileRecord[]): PublicLecturerProfile[] {
-  return lecturers.map((lecturer) => {
+  return lecturers.flatMap((lecturer) => {
     const profile = lecturer.person.lecturerProfile;
     if (!profile) {
-      return {
-        id: lecturer.person.id,
-        displayName: lecturer.person.name,
-        biography: null,
-        publishGoogleUserPicture: false,
-        googleUserPicture: null,
-        email: null,
-        whatsapp: null,
-      };
+      return [];
     }
 
     return {
