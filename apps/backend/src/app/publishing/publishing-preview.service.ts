@@ -1,7 +1,6 @@
 import { createHash, createHmac } from 'crypto';
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, PublicContentPreviewTargetType } from '@prisma/client';
-import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import Redis from 'ioredis';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -133,9 +132,7 @@ export class PublicationPreviewService {
     };
   }
 
-  async getPreviewPayload(previewToken: string, context: GraphqlContext): Promise<PublicContentPreviewPayload> {
-    const user = getPublicationUser(context);
-    const actorId = resolvePublicationActorId(user);
+  async getPreviewPayload(previewToken: string): Promise<PublicContentPreviewPayload> {
     const preview = await this.prisma.publicContentPreview.findUnique({
       where: { previewTokenHash: this.hashPreviewToken(previewToken) },
     });
@@ -144,22 +141,11 @@ export class PublicationPreviewService {
       throw new NotFoundException('Preview expired or not found.');
     }
 
-    if (preview.createdById !== actorId) {
-      throw new ForbiddenException('This preview link belongs to another administrator.');
-    }
-
     const redisPayload = await this.redis.get(preview.redisKey);
     if (!redisPayload) {
       throw new NotFoundException('Preview expired or not found.');
     }
 
-    await assertPublicationTargetPermission(
-      this.authorizationPolicy,
-      user,
-      preview.targetType as PublicationTargetType,
-      preview.targetId,
-      readPublicationPermission(preview.targetType as PublicationTargetType),
-    );
     await this.prisma.publicContentPreview.update({
       where: { id: preview.id },
       data: { lastUsedAt: new Date() },

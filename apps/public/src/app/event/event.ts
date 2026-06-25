@@ -148,7 +148,7 @@ export class Event {
   }
 
   async shareEvent(): Promise<void> {
-    if (!this.isBrowser || !navigator.clipboard) {
+    if (!this.isBrowser || !navigator.clipboard || this.isPreview()) {
       return;
     }
     const url = new URL(this.router.url, document.baseURI).toString().split('?')[0].split('#')[0];

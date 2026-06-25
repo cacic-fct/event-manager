@@ -1,4 +1,4 @@
-import { PublicationState } from '@cacic-fct/shared-data-types';
+import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { PublicationActionResult } from './publishing.models';
 
 export type TargetSync = {
@@ -6,12 +6,16 @@ export type TargetSync = {
   majorEventIds: string[];
 };
 
+export type SchedulablePublicationTargetType =
+  | typeof PublicationTargetType.EVENT
+  | typeof PublicationTargetType.MAJOR_EVENT;
+
 export type PublicationJobData = {
-  targetType: 'EVENT' | 'MAJOR_EVENT';
+  targetType: SchedulablePublicationTargetType;
   targetId: string;
 };
 
-export type PublicationQueueData = PublicationJobData | Record<string, never>;
+export type PublicationQueueData = PublicationJobData | Record<string, unknown> | null;
 
 export type PublicationTransitionOutcome = {
   result: PublicationActionResult;

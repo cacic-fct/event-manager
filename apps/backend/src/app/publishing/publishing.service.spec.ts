@@ -1,4 +1,6 @@
+import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { PublicationBulkOperation } from './publishing.models';
 import { PublicationService } from './publishing.service';
 
 describe('PublicationService', () => {
@@ -26,15 +28,36 @@ describe('PublicationService', () => {
       accessibleMajorEventIds: jest.fn().mockResolvedValue(null),
       accessibleEventGroupIds: jest.fn().mockResolvedValue(null),
     };
+    const transitionOutcome = {
+      result: {
+        ok: true,
+        message: 'ok',
+        affectedEventIds: [],
+        affectedMajorEventIds: [],
+      },
+      sync: {
+        eventIds: [],
+        majorEventIds: [],
+      },
+      scheduledState: null,
+      scheduledPublishAt: null,
+    };
+    const transitions = {
+      setPublicationState: jest.fn().mockResolvedValue(transitionOutcome),
+      runBulkOperation: jest.fn().mockResolvedValue(transitionOutcome),
+    };
+    const jobs = {
+      enqueueScheduledJobs: jest.fn().mockResolvedValue(undefined),
+    };
     const service = new PublicationService(
       prisma as never,
       authorizationPolicy as never,
+      transitions as never,
       {} as never,
-      {} as never,
-      {} as never,
+      jobs as never,
     );
 
-    return { authorizationPolicy, prisma, service };
+    return { authorizationPolicy, jobs, prisma, service, transitions };
   }
 
   it('filters publication workspace queries to scoped grant targets', async () => {
@@ -120,5 +143,63 @@ describe('PublicationService', () => {
         take: 5,
       }),
     );
+  });
+
+  it('requires event update permission when an event-group state change writes child events', async () => {
+    const { authorizationPolicy, service, transitions } = createService();
+    const user = { sub: 'admin-1' };
+    const input = {
+      targetType: PublicationTargetType.EVENT_GROUP,
+      targetId: 'group-1',
+      state: PublicationState.PUBLISHED,
+    };
+
+    await expect(service.setPublicationState(input, { req: { user } } as never)).resolves.toMatchObject({
+      ok: true,
+    });
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      1,
+      user,
+      [Permission.EventGroup.Update],
+      { eventGroupId: 'group-1' },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      2,
+      user,
+      [Permission.Event.Update],
+      { eventGroupId: 'group-1' },
+    );
+    expect(transitions.setPublicationState).toHaveBeenCalledWith(input, user);
+  });
+
+  it('requires event update permission when a major-event bulk operation writes child events', async () => {
+    const { authorizationPolicy, service, transitions } = createService();
+    const user = { sub: 'admin-1' };
+    const scheduledPublishAt = new Date('2026-06-26T12:00:00.000Z');
+    const input = {
+      targetType: PublicationTargetType.MAJOR_EVENT,
+      targetId: 'major-1',
+      operation: PublicationBulkOperation.SCHEDULE_BUNDLE,
+      scheduledPublishAt,
+    };
+
+    await expect(service.runBulkOperation(input, { req: { user } } as never)).resolves.toMatchObject({
+      ok: true,
+    });
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      1,
+      user,
+      [Permission.MajorEvent.Update],
+      { majorEventId: 'major-1' },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      2,
+      user,
+      [Permission.Event.Update],
+      { majorEventId: 'major-1' },
+    );
+    expect(transitions.runBulkOperation).toHaveBeenCalledWith(input, user);
   });
 });

@@ -114,7 +114,7 @@ export class EventApiService {
           event,
           subscriptionSummary: {
             eventId: event.id,
-            hasAvailableSlots: event.slotsAvailable == null || event.slotsAvailable > 0,
+            hasAvailableSlots: true,
           },
           weather: null,
           currentUserSubscription: null,

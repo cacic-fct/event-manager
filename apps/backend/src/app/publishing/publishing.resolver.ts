@@ -73,12 +73,11 @@ export class PublicationResolver {
 
   @Query(() => PublicContentPreviewPayload, {
     name: 'publicContentPreview',
-    description: 'Loads the temporary preview payload for an authenticated administrator.',
+    description: 'Loads a temporary preview payload authorized by its token and expiration.',
   })
   publicContentPreview(
     @Args('previewToken', { type: () => String }) previewToken: string,
-    @Context() context: GraphqlContext,
   ): Promise<PublicContentPreviewPayload> {
-    return this.publication.getPreviewPayload(previewToken, context);
+    return this.publication.getPreviewPayload(previewToken);
   }
 }

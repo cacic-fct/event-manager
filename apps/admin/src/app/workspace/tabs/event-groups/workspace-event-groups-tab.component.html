@@ -125,11 +125,19 @@
             Limpar
           </button>
           @if (canEditGroup(workspace.selectedEventGroup())) {
-            <button mat-stroked-button type="button" (click)="workspace.saveEventGroup('SCHEDULE')">
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.saveEventGroup('SCHEDULE')"
+              [disabled]="workspace.savingEventGroup()">
               <mat-icon>schedule</mat-icon>
               Agendar
             </button>
-            <button mat-stroked-button type="button" (click)="workspace.saveEventGroup('DRAFT')">
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.saveEventGroup('DRAFT')"
+              [disabled]="workspace.savingEventGroup()">
               <mat-icon>edit_note</mat-icon>
               Salvar rascunho
             </button>
@@ -137,7 +145,7 @@
               mat-flat-button
               type="button"
               (click)="workspace.saveEventGroup('PUBLISH')"
-              [disabled]="workspace.eventGroupForm.invalid">
+              [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid">
               <mat-icon>publish</mat-icon>
               Publicar
             </button>

@@ -3,6 +3,7 @@ import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
+import { of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { MajorEvent } from './major-event';
 
@@ -11,14 +12,18 @@ interface MajorEventStoryArgs {
   rankedSubscriptionEnabled: boolean;
 }
 
-let activeArgs: MajorEventStoryArgs;
-
 const defaultArgs: MajorEventStoryArgs = {
   requiresPayment: false,
   rankedSubscriptionEnabled: true,
 };
 
+interface MajorEventStoryContext {
+  args: MajorEventStoryArgs;
+}
+
 const previewRoute = {
+  paramMap: of(convertToParamMap({ previewToken: 'storybook-major-preview' })),
+  queryParamMap: of(convertToParamMap({})),
   snapshot: {
     paramMap: convertToParamMap({ previewToken: 'storybook-major-preview' }),
     queryParamMap: convertToParamMap({}),
@@ -34,10 +39,6 @@ const meta: Meta<MajorEventStoryArgs> = {
     requiresPayment: { control: 'boolean' },
     rankedSubscriptionEnabled: { control: 'boolean' },
   },
-  render: (args) => {
-    activeArgs = args;
-    return { props: {} };
-  },
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -47,6 +48,8 @@ const meta: Meta<MajorEventStoryArgs> = {
 export default meta;
 
 type Story = StoryObj<MajorEventStoryArgs>;
+
+const previewContext = createStoryContext();
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
@@ -78,12 +81,33 @@ export const OfflineFallback: Story = {
 export const PreviewLink: Story = {
   args: defaultArgs,
   globals: { theme: 'light', network: 'online' },
+  render: (args) => renderStory(args, previewContext),
   decorators: [
     applicationConfig({
       providers: [{ provide: ActivatedRoute, useValue: previewRoute }],
     }),
   ],
-  parameters: {
+  parameters: previewParameters(previewContext),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Pré-Visualização')).toBeVisible();
+    await expect(await canvas.findByText(/Pré-visualização temporária/)).toBeVisible();
+  },
+};
+
+function createStoryContext(args: Partial<MajorEventStoryArgs> = {}): MajorEventStoryContext {
+  return {
+    args: { ...defaultArgs, ...args },
+  };
+}
+
+function renderStory(args: MajorEventStoryArgs, context: MajorEventStoryContext) {
+  context.args = { ...defaultArgs, ...args };
+  return { props: {} };
+}
+
+function previewParameters(context: MajorEventStoryContext) {
+  return {
     msw: {
       handlers: [
         http.post('/api/graphql', () =>
@@ -91,20 +115,15 @@ export const PreviewLink: Story = {
             data: {
               publicContentPreview: {
                 expiresAt: '2026-08-01T13:00:00.000Z',
-                majorEvent: buildMajorEvent(activeArgs ?? defaultArgs),
+                majorEvent: buildMajorEvent(context.args),
               },
             },
           }),
         ),
       ],
     },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Pré-Visualização')).toBeVisible();
-    await expect(await canvas.findByText(/Pré-visualização temporária/)).toBeVisible();
-  },
-};
+  };
+}
 
 function buildMajorEvent(args: MajorEventStoryArgs) {
   faker.seed(20260803);

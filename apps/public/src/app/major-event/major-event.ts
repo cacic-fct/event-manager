@@ -1,6 +1,6 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -12,7 +12,7 @@ import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, map, of } from 'rxjs';
 import { EmojiService } from '../shared/emoji.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from './subscription/subscription-api.service';
@@ -62,6 +62,9 @@ export class MajorEvent {
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly pageState = signal<MajorEventPageState>({ status: 'loading' });
+  private readonly previewToken = toSignal(this.route.paramMap.pipe(map((params) => params.get('previewToken') ?? '')), {
+    initialValue: '',
+  });
 
   readonly majorEvents = computed(() => {
     const state = this.pageState();
@@ -80,10 +83,7 @@ export class MajorEvent {
 
     return new Map(state.subscriptions.map((subscription) => [subscription.majorEventId, subscription]));
   });
-  readonly isPreview = computed(() => {
-    const state = this.pageState();
-    return state.status === 'ready' && Boolean(state.preview);
-  });
+  readonly isPreview = computed(() => Boolean(this.previewToken()));
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {

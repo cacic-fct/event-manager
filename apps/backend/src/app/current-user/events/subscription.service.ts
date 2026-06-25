@@ -184,7 +184,8 @@ export class CurrentUserEventSubscriptionService {
     const event = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const targetEvent = await tx.event.findFirst({
         where: {
-          AND: [PUBLIC_EVENT_WHERE, { id: eventId }],
+          id: eventId,
+          deletedAt: null,
         },
         select: EVENT_SELECT,
       });
@@ -310,7 +311,7 @@ export class CurrentUserEventSubscriptionService {
           in: eventGroupSubscriptionIds,
         },
         event: {
-          AND: [PUBLIC_EVENT_WHERE],
+          deletedAt: null,
         },
       },
       select: {
@@ -336,7 +337,8 @@ export class CurrentUserEventSubscriptionService {
           personId,
           deletedAt: null,
           event: {
-            AND: [PUBLIC_EVENT_WHERE, { majorEventId: null }],
+            deletedAt: null,
+            majorEventId: null,
           },
         },
         select: {
@@ -425,7 +427,9 @@ export class CurrentUserEventSubscriptionService {
           personId,
           deletedAt: null,
           event: {
-            AND: [PUBLIC_EVENT_WHERE, { eventGroupId, majorEventId: null }],
+            deletedAt: null,
+            eventGroupId,
+            majorEventId: null,
           },
         },
         select: {
@@ -538,7 +542,7 @@ export class CurrentUserEventSubscriptionService {
         deletedAt: null,
         eventGroupSubscriptionId: subscription.id,
         event: {
-          AND: [PUBLIC_EVENT_WHERE],
+          deletedAt: null,
         },
       },
       select: {
@@ -610,7 +614,7 @@ export class CurrentUserEventSubscriptionService {
         deletedAt: null,
         eventGroupSubscriptionId,
         event: {
-          AND: [PUBLIC_EVENT_WHERE],
+          deletedAt: null,
         },
       },
       select: {

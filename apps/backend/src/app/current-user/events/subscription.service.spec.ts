@@ -92,7 +92,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     });
   });
 
-  it('requires standalone event unsubscriptions to target publicly visible events', async () => {
+  it('requires standalone event unsubscriptions to target existing non-deleted events', async () => {
     const tx = {
       event: {
         findFirst: jest.fn().mockResolvedValue(null),
@@ -114,13 +114,14 @@ describe('CurrentUserEventSubscriptionService', () => {
 
     expect(tx.event.findFirst).toHaveBeenCalledWith({
       where: {
-        AND: [PUBLIC_EVENT_WHERE, { id: 'hidden-event' }],
+        id: 'hidden-event',
+        deletedAt: null,
       },
       select: expect.any(Object),
     });
   });
 
-  it('loads subscribed group events only through publicly visible events', async () => {
+  it('loads subscribed group events through active events', async () => {
     const prisma = {
       eventSubscription: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -145,7 +146,7 @@ describe('CurrentUserEventSubscriptionService', () => {
           in: ['subscription-1'],
         },
         event: {
-          AND: [PUBLIC_EVENT_WHERE],
+          deletedAt: null,
         },
       },
       select: expect.any(Object),
@@ -157,7 +158,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     });
   });
 
-  it('subscribes to event groups using only publicly visible child events', async () => {
+  it('subscribes to event groups using publicly visible child events while preserving active child subscriptions', async () => {
     const tx = {
       event: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -200,7 +201,9 @@ describe('CurrentUserEventSubscriptionService', () => {
         personId: 'person-1',
         deletedAt: null,
         event: {
-          AND: [PUBLIC_EVENT_WHERE, { eventGroupId: 'group-1', majorEventId: null }],
+          deletedAt: null,
+          eventGroupId: 'group-1',
+          majorEventId: null,
         },
       },
       select: expect.any(Object),

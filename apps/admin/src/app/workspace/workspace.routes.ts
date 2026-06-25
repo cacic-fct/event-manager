@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Route } from '@angular/router';
 import { canValidateReceiptsGuard, workspaceCanReadTabGuard } from './workspace.guard';
 import { WorkspaceNavLinkId, WorkspaceNavLinkItem, workspaceNavLinkItems } from './workspace-nav';
@@ -20,7 +19,11 @@ const permissionsData = getWorkspaceRouteData('permissions');
 const preferencesData = getWorkspaceRouteData('preferences');
 
 function getWorkspaceRouteData(id: WorkspaceNavLinkId) {
-  return workspaceNavLinkItems.find((item) => item.id === id)!;
+  const item = workspaceNavLinkItems.find((navItem) => navItem.id === id);
+  if (!item) {
+    throw new Error(`Workspace navigation item ${id} is not registered.`);
+  }
+  return item;
 }
 
 function guardedWorkspaceTabRoute(

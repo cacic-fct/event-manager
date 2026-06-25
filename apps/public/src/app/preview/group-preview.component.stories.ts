@@ -13,12 +13,14 @@ interface GroupPreviewStoryArgs {
   includeMajorEvent: boolean;
 }
 
-let activeArgs: GroupPreviewStoryArgs;
-
 const defaultArgs: GroupPreviewStoryArgs = {
   eventCount: 3,
   includeMajorEvent: true,
 };
+
+interface GroupPreviewStoryContext {
+  args: GroupPreviewStoryArgs;
+}
 
 const meta: Meta<GroupPreviewStoryArgs> = {
   component: GroupPreviewComponent,
@@ -47,24 +49,9 @@ const meta: Meta<GroupPreviewStoryArgs> = {
     eventCount: { control: { type: 'range', min: 1, max: 8, step: 1 } },
     includeMajorEvent: { control: 'boolean' },
   },
-  render: (args) => {
-    activeArgs = args;
-    return { props: {} };
-  },
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
-    msw: {
-      handlers: [
-        http.post('/api/graphql', () =>
-          HttpResponse.json({
-            data: {
-              publicContentPreview: buildPreview(activeArgs ?? defaultArgs),
-            },
-          }),
-        ),
-      ],
-    },
   },
 };
 
@@ -72,14 +59,65 @@ export default meta;
 
 type Story = StoryObj<GroupPreviewStoryArgs>;
 
+const playgroundContext = createStoryContext();
+const noMajorEventContext = createStoryContext({ includeMajorEvent: false });
+const singleEventContext = createStoryContext({ eventCount: 1 });
+
 export const Playground: Story = {
   globals: { theme: 'light' },
+  render: (args) => renderStory(args, playgroundContext),
+  parameters: storyParameters(playgroundContext),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Pré-Visualização')).toBeVisible();
     await expect(await canvas.findByText('Grupo de eventos')).toBeVisible();
   },
 };
+
+export const SemGrandeEvento: Story = {
+  args: {
+    includeMajorEvent: false,
+  },
+  globals: { theme: 'light' },
+  render: (args) => renderStory(args, noMajorEventContext),
+  parameters: storyParameters(noMajorEventContext),
+};
+
+export const EventoUnico: Story = {
+  args: {
+    eventCount: 1,
+  },
+  globals: { theme: 'light' },
+  render: (args) => renderStory(args, singleEventContext),
+  parameters: storyParameters(singleEventContext),
+};
+
+function createStoryContext(args: Partial<GroupPreviewStoryArgs> = {}): GroupPreviewStoryContext {
+  return {
+    args: { ...defaultArgs, ...args },
+  };
+}
+
+function renderStory(args: GroupPreviewStoryArgs, context: GroupPreviewStoryContext) {
+  context.args = { ...defaultArgs, ...args };
+  return { props: {} };
+}
+
+function storyParameters(context: GroupPreviewStoryContext) {
+  return {
+    msw: {
+      handlers: [
+        http.post('/api/graphql', () =>
+          HttpResponse.json({
+            data: {
+              publicContentPreview: buildPreview(context.args),
+            },
+          }),
+        ),
+      ],
+    },
+  };
+}
 
 function buildPreview(args: GroupPreviewStoryArgs) {
   faker.seed(20260802);

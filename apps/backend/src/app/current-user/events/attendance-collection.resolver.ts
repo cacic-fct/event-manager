@@ -15,7 +15,7 @@ import { CurrentUserAttendanceCollectionEvent } from '../models';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE } from '../../public-events/models';
+import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -66,16 +66,12 @@ export class CurrentUserAttendanceCollectionResolver {
       where: {
         personId: person.id,
         event: {
-          AND: [
-            PUBLIC_EVENT_WHERE,
-            {
-              shouldCollectAttendance: true,
-              startDate: {
-                gte: visibleFrom,
-                lte: endOfToday,
-              },
-            },
-          ],
+          deletedAt: null,
+          shouldCollectAttendance: true,
+          startDate: {
+            gte: visibleFrom,
+            lte: endOfToday,
+          },
         },
       },
       select: {

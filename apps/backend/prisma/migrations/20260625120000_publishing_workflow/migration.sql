@@ -23,36 +23,19 @@ SET
   "publicationState" = 'PUBLISHED',
   "publishedAt" = COALESCE("updatedAt", "createdAt", CURRENT_TIMESTAMP)
 WHERE
-  "deletedAt" IS NULL
-  AND EXISTS (
-    SELECT 1
-    FROM "events"
-    WHERE
-      "events"."majorEventId" = "major_events"."id"
-      AND "events"."deletedAt" IS NULL
-      AND "events"."publiclyVisible" = true
-  );
+  "deletedAt" IS NULL;
 
 UPDATE "events"
 SET
   "publicationState" = 'PUBLISHED',
   "publishedAt" = COALESCE("updatedAt", "createdAt", CURRENT_TIMESTAMP)
 WHERE
-  "deletedAt" IS NULL
-  AND "publiclyVisible" = true
-  AND (
-    "majorEventId" IS NULL
-    OR "majorEventId" IN (
-      SELECT "id"
-      FROM "major_events"
-      WHERE "deletedAt" IS NULL
-    )
-  );
+  "deletedAt" IS NULL;
 
-CREATE INDEX "events_publicationState_idx" ON "events"("publicationState");
-CREATE INDEX "events_scheduledPublishAt_idx" ON "events"("scheduledPublishAt");
-CREATE INDEX "major_events_publicationState_idx" ON "major_events"("publicationState");
-CREATE INDEX "major_events_scheduledPublishAt_idx" ON "major_events"("scheduledPublishAt");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "events_publicationState_idx" ON "events"("publicationState");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "events_scheduledPublishAt_idx" ON "events"("scheduledPublishAt");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "major_events_publicationState_idx" ON "major_events"("publicationState");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "major_events_scheduledPublishAt_idx" ON "major_events"("scheduledPublishAt");
 
 CREATE TABLE "public_content_previews" (
   "id" TEXT NOT NULL,

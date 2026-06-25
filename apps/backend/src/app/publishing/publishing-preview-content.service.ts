@@ -147,7 +147,7 @@ export class PublicationPreviewContentService {
         throw new NotFoundException(`Major event ${preview.targetId} was not found.`);
       }
       const events = await this.prisma.event.findMany({
-        where: { majorEventId: preview.targetId, deletedAt: null },
+        where: { majorEventId: preview.targetId, deletedAt: null, publiclyVisible: true },
         select: PUBLIC_EVENT_SELECT,
         orderBy: { startDate: 'asc' },
       });
@@ -171,7 +171,7 @@ export class PublicationPreviewContentService {
       throw new NotFoundException(`Event group ${preview.targetId} was not found.`);
     }
     const events = await this.prisma.event.findMany({
-      where: { eventGroupId: preview.targetId, deletedAt: null },
+      where: { eventGroupId: preview.targetId, deletedAt: null, publiclyVisible: true },
       select: PUBLIC_EVENT_SELECT,
       orderBy: { startDate: 'asc' },
     });

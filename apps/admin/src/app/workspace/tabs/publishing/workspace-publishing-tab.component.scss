@@ -1,4 +1,4 @@
-@use '../workspace-tab.shared.scss';
+@use '../workspace-tab.shared';
 
 :host {
   display: block;
@@ -17,7 +17,7 @@
 
   p {
     margin: 0.35rem 0 0;
-    color: color-mix(in srgb, currentcolor 72%, transparent);
+    color: color-mix(in srgb, currentColor 72%, transparent);
   }
 }
 
@@ -150,7 +150,7 @@
 
   p {
     margin-top: 0.35rem;
-    color: color-mix(in srgb, currentcolor 70%, transparent);
+    color: color-mix(in srgb, currentColor 70%, transparent);
   }
 }
 
@@ -270,7 +270,7 @@
 .preview-panel p,
 .warnings-panel p {
   margin: 0.75rem 0 0;
-  color: color-mix(in srgb, currentcolor 72%, transparent);
+  color: color-mix(in srgb, currentColor 72%, transparent);
   font-size: 0.92rem;
 }
 

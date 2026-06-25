@@ -26,6 +26,8 @@ type PublicationConsistencyMajorEvent = {
   }[];
 };
 
+const PUBLICATION_WARNING_TIME_ZONE = 'America/Sao_Paulo';
+
 export function buildPublicationConsistencyWarnings(input: {
   now: Date;
   events: PublicationConsistencyEvent[];
@@ -82,7 +84,7 @@ export function buildPublicationConsistencyWarnings(input: {
         eventId: event.id,
         severity: 'WARNING',
         title: 'Publicação agendada atrasada',
-        description: `${event.name} deveria ter sido publicado em ${event.scheduledPublishAt.toLocaleString('pt-BR')}.`,
+        description: `${event.name} deveria ter sido publicado em ${formatPublicationWarningDate(event.scheduledPublishAt)}.`,
       });
     }
   }
@@ -99,7 +101,7 @@ export function buildPublicationConsistencyWarnings(input: {
         targetId: majorEvent.id,
         severity: 'WARNING',
         title: 'Grande evento agendado atrasado',
-        description: `${majorEvent.name} deveria ter sido publicado em ${majorEvent.scheduledPublishAt.toLocaleString('pt-BR')}.`,
+        description: `${majorEvent.name} deveria ter sido publicado em ${formatPublicationWarningDate(majorEvent.scheduledPublishAt)}.`,
       });
     }
 
@@ -123,4 +125,8 @@ export function buildPublicationConsistencyWarnings(input: {
   }
 
   return warnings;
+}
+
+function formatPublicationWarningDate(date: Date): string {
+  return date.toLocaleString('pt-BR', { timeZone: PUBLICATION_WARNING_TIME_ZONE });
 }

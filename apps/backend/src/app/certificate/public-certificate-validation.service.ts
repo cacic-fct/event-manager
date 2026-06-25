@@ -118,7 +118,7 @@ export class PublicCertificateValidationService {
       maskedIdentityDocument: this.maskCpf(certificate.person.identityDocument, certificate.person.isCPF),
       scope: certificate.config.scope as CertificateScope,
       certificateName: certificate.config.name,
-      targetName: this.getTargetName(certificate),
+      targetName: this.getTargetName(certificate, publiclyVisibleEvents),
       targetEmoji: this.getTargetEmoji(certificate),
       sections,
       totalCreditMinutes: this.sumCreditMinutes(publiclyVisibleEvents),
@@ -430,7 +430,10 @@ export class PublicCertificateValidationService {
     };
   }
 
-  private getTargetName(certificate: PublicCertificateValidationRecord): string | undefined {
+  private getTargetName(
+    certificate: PublicCertificateValidationRecord,
+    publiclyVisibleEvents: CertificateValidationEventRecord[],
+  ): string | undefined {
     if (
       certificate.config.scope === CertificateScope.EVENT &&
       !this.isCertificateEventPublic(certificate.config.event)
@@ -442,6 +445,10 @@ export class PublicCertificateValidationService {
       certificate.config.scope === CertificateScope.MAJOR_EVENT &&
       !this.isCertificateMajorEventPublic(certificate)
     ) {
+      return undefined;
+    }
+
+    if (certificate.config.scope === CertificateScope.EVENT_GROUP && publiclyVisibleEvents.length === 0) {
       return undefined;
     }
 

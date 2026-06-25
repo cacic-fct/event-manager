@@ -221,6 +221,8 @@ export class PublicationStateWriterService {
       return {
         publicationState: state,
         scheduledPublishAt,
+        publishedAt: null,
+        unpublishedAt: null,
         publicationScheduledBy: actorId,
         publicationUpdatedBy: actorId,
       };
@@ -240,6 +242,7 @@ export class PublicationStateWriterService {
       return {
         publicationState: state,
         scheduledPublishAt: null,
+        publishedAt: null,
         unpublishedAt: now,
         publicationUpdatedBy: actorId,
       };
@@ -248,6 +251,8 @@ export class PublicationStateWriterService {
     return {
       publicationState: PrismaPublicationState.DRAFT,
       scheduledPublishAt: null,
+      publishedAt: null,
+      unpublishedAt: null,
       publicationUpdatedBy: actorId,
     };
   }

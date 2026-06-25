@@ -33,6 +33,13 @@ export class PublicationProcessor extends WorkerHost {
   }
 
   private isPublicationJobData(data: PublicationQueueData): data is PublicationJobData {
-    return 'targetType' in data && 'targetId' in data;
+    return (
+      typeof data === 'object' &&
+      data !== null &&
+      'targetType' in data &&
+      (data.targetType === 'EVENT' || data.targetType === 'MAJOR_EVENT') &&
+      'targetId' in data &&
+      typeof data.targetId === 'string'
+    );
   }
 }

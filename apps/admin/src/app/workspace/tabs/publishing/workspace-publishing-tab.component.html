@@ -153,8 +153,8 @@
             </div>
             <p class="queue-note">
               O horário agendado depende da fila de tarefas. Normalmente a publicação acontece perto do horário
-              escolhido, mas pode atrasar alguns minutos se houver muitas tarefas. Um reconciliador roda de madrugada
-              para corrigir transições perdidas.
+              escolhido, mas pode atrasar alguns minutos se houver muitas tarefas. Um reconciliador roda a cada poucos
+              minutos para corrigir transições perdidas.
             </p>
           </div>
         </section>
@@ -175,7 +175,7 @@
               Pré-visualizar como público
             </button>
           </form>
-          <p>Links temporários expiram em 1 hora e exigem autenticação administrativa no site público.</p>
+          <p>Links temporários expiram em 1 hora e podem ser abertos por qualquer pessoa com o token.</p>
         </section>
       } @else {
         <section class="empty-state surface">

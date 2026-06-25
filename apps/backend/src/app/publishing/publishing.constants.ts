@@ -21,8 +21,7 @@ function resolvePublicAppOrigin(): string {
 }
 
 function resolvePreviewTokenSecret(): string {
-  const configuredSecret =
-    process.env.PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET?.trim() || process.env.CALENDAR_FEED_KEY_PEPPER?.trim();
+  const configuredSecret = process.env.PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET?.trim();
   if (configuredSecret) {
     return configuredSecret;
   }
@@ -35,5 +34,5 @@ function resolvePreviewTokenSecret(): string {
 }
 
 function isLocalRuntime(): boolean {
-  return !process.env.NODE_ENV || process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+  return process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 }

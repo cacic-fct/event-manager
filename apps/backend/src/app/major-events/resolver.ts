@@ -353,8 +353,8 @@ export class MajorEventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: majorEvent,
-          after: updated,
+          before: this.omitPublicationAuditFields(majorEvent),
+          after: this.omitPublicationAuditFields(updated),
           scope: { permission: Permission.MajorEvent.Update, majorEventId: updated.id },
           summary: 'Grande evento atualizado.',
         },
@@ -718,6 +718,18 @@ export class MajorEventsResolver {
       scheduledPublishAt: null,
       publicationUpdatedBy: resolvePublicationActorId(user),
     };
+  }
+
+  private omitPublicationAuditFields<T extends Record<string, unknown>>(majorEvent: T) {
+    const contentFields: Record<string, unknown> = { ...majorEvent };
+    delete contentFields.publicationState;
+    delete contentFields.scheduledPublishAt;
+    delete contentFields.publishedAt;
+    delete contentFields.unpublishedAt;
+    delete contentFields.publicationScheduledBy;
+    delete contentFields.publicationUpdatedBy;
+
+    return contentFields;
   }
 
   private getMajorEventSelect(paymentInfoTableExists: boolean) {

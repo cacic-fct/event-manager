@@ -9,9 +9,11 @@
     <mat-icon>event</mat-icon>
   </a>
   }
+  @if (!isPreview()) {
   <button matIconButton type="button" matTooltip="Compartilhar" aria-label="Compartilhar evento" (click)="shareEvent()">
     <mat-icon>ios_share</mat-icon>
   </button>
+  }
 </mat-toolbar>
 
 <main class="event-page">

@@ -37,6 +37,7 @@ export class WorkspaceEventGroupsService {
   readonly selectedEventGroup = signal<EventGroup | null>(null);
   readonly eventGroupEvents = signal<Event[]>([]);
   readonly eventGroupEventSearchResults = signal<Event[]>([]);
+  readonly savingEventGroup = signal(false);
   readonly selectedEventGroupHasMajorEventEvents = computed(() =>
     this.eventGroupEvents().some((eventItem) => eventItem.majorEventId),
   );
@@ -112,6 +113,10 @@ export class WorkspaceEventGroupsService {
   }
 
   async saveEventGroup(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
+    if (this.savingEventGroup()) {
+      return;
+    }
+
     if (action === 'PUBLISH' && this.eventGroupForm.invalid) {
       this.eventGroupForm.markAllAsTouched();
       return;
@@ -120,6 +125,7 @@ export class WorkspaceEventGroupsService {
     const raw = this.eventGroupForm.getRawValue();
     const payload = this.buildEventGroupPayload(action !== 'PUBLISH');
 
+    this.savingEventGroup.set(true);
     try {
       let savedGroup: EventGroup;
       if (raw.id) {
@@ -127,6 +133,8 @@ export class WorkspaceEventGroupsService {
       } else {
         savedGroup = await firstValueFrom(this.api.createEventGroup(payload));
       }
+      this.eventGroupForm.controls.id.setValue(savedGroup.id, { emitEvent: false });
+      this.selectedEventGroup.set(savedGroup);
 
       if (action === 'PUBLISH') {
         if (this.eventGroupEvents().length === 0) {
@@ -168,6 +176,10 @@ export class WorkspaceEventGroupsService {
         shouldIssueCertificateForEachEvent: false,
         shouldIssuePartialCertificate: false,
       });
+      if (!raw.id && action !== 'SCHEDULE') {
+        this.selectedEventGroup.set(null);
+        this.eventGroupEvents.set([]);
+      }
       this.syncCertificateRuleControls();
       await this.loadEventGroups();
       if (action === 'SCHEDULE') {
@@ -180,6 +192,8 @@ export class WorkspaceEventGroupsService {
       }
     } catch (error) {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grupo.'), 'Fechar', { duration: 5000 });
+    } finally {
+      this.savingEventGroup.set(false);
     }
   }
 

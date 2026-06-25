@@ -6,6 +6,7 @@ import {
   AccessibleEventGrantTargets,
   AuthorizationPolicyService,
 } from '../authorization/authorization-policy.service';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { resolvePagination } from '../common/pagination';
 import { GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
@@ -30,6 +31,7 @@ import { PublicationTransitionService } from './publishing-transition.service';
 import { publicationStateLabel } from './publishing-labels';
 
 const PUBLICATION_WORKSPACE_MAX_TAKE = 100;
+const PUBLICATION_WORKSPACE_WARNING_TAKE = 500;
 
 type PublicationWorkspaceInput = {
   query?: string | null;
@@ -220,8 +222,8 @@ export class PublicationService {
       this.listMajorEvents(majorEventWhere, windows[0]),
       this.listEventGroups(eventGroupWhere, windows[1]),
       this.listEvents(eventWhere, windows[2]),
-      this.listWarningEvents(accessibleTreeEventWhere, windows[2]),
-      this.listWarningMajorEvents(majorEventBaseWhere, activeEventWhere, windows[0]),
+      this.listWarningEvents(accessibleTreeEventWhere),
+      this.listWarningMajorEvents(majorEventBaseWhere, activeEventWhere),
     ]);
     const treeEvents = await this.listTreeEvents(accessibleTreeEventWhere, majorEvents, eventGroups);
 
@@ -260,13 +262,9 @@ export class PublicationService {
 
   async setPublicationState(input: PublicationStateInput, context: GraphqlContext): Promise<PublicationActionResult> {
     const user = getPublicationUser(context);
-    await assertPublicationTargetPermission(
-      this.authorizationPolicy,
-      user,
-      input.targetType,
-      input.targetId,
-      this.updatePermission(input.targetType),
-    );
+    await this.assertPublicationWritePermissions(input, user, {
+      writesChildEvents: input.targetType === PublicationTargetType.EVENT_GROUP,
+    });
 
     const outcome = await this.transitions.setPublicationState(input, user);
     await this.jobs.enqueueScheduledJobs(outcome.scheduledState, outcome.scheduledPublishAt, outcome.sync);
@@ -275,13 +273,9 @@ export class PublicationService {
 
   async runBulkOperation(input: PublicationBulkInput, context: GraphqlContext): Promise<PublicationActionResult> {
     const user = getPublicationUser(context);
-    await assertPublicationTargetPermission(
-      this.authorizationPolicy,
-      user,
-      input.targetType,
-      input.targetId,
-      this.updatePermission(input.targetType),
-    );
+    await this.assertPublicationWritePermissions(input, user, {
+      writesChildEvents: input.targetType !== PublicationTargetType.EVENT,
+    });
 
     const outcome = await this.transitions.runBulkOperation(input, user);
     await this.jobs.enqueueScheduledJobs(outcome.scheduledState, outcome.scheduledPublishAt, outcome.sync);
@@ -295,8 +289,8 @@ export class PublicationService {
     return this.previews.createPreview(input, context);
   }
 
-  getPreviewPayload(previewToken: string, context: GraphqlContext): Promise<PublicContentPreviewPayload> {
-    return this.previews.getPreviewPayload(previewToken, context);
+  getPreviewPayload(previewToken: string): Promise<PublicContentPreviewPayload> {
+    return this.previews.getPreviewPayload(previewToken);
   }
 
   private resolveWorkspacePagination(skip?: number, take?: number): { skip: number; take: number } {
@@ -362,35 +356,24 @@ export class PublicationService {
     });
   }
 
-  private listWarningEvents(where: Prisma.EventWhereInput, window: SectionWindow) {
-    if (window.take === 0) {
-      return Promise.resolve([]);
-    }
-
+  private listWarningEvents(where: Prisma.EventWhereInput) {
     return this.prisma.event.findMany({
       where,
       select: PUBLICATION_WARNING_EVENT_SELECT,
       orderBy: { startDate: 'desc' },
-      skip: window.skip,
-      take: window.take,
+      take: PUBLICATION_WORKSPACE_WARNING_TAKE,
     });
   }
 
   private listWarningMajorEvents(
     majorEventWhere: Prisma.MajorEventWhereInput,
     eventWhere: Prisma.EventWhereInput,
-    window: SectionWindow,
   ) {
-    if (window.take === 0) {
-      return Promise.resolve([]);
-    }
-
     return this.prisma.majorEvent.findMany({
       where: majorEventWhere,
       select: this.buildWarningMajorEventSelect(eventWhere),
       orderBy: { startDate: 'desc' },
-      skip: window.skip,
-      take: window.take,
+      take: PUBLICATION_WORKSPACE_WARNING_TAKE,
     });
   }
 
@@ -726,5 +709,38 @@ export class PublicationService {
       return Permission.EventGroup.Update;
     }
     return Permission.Event.Update;
+  }
+
+  private async assertPublicationWritePermissions(
+    input: Pick<PublicationStateInput | PublicationBulkInput, 'targetType' | 'targetId'>,
+    user: AuthenticatedUser | undefined,
+    options: { writesChildEvents: boolean },
+  ): Promise<void> {
+    await assertPublicationTargetPermission(
+      this.authorizationPolicy,
+      user,
+      input.targetType,
+      input.targetId,
+      this.updatePermission(input.targetType),
+    );
+
+    if (!options.writesChildEvents || input.targetType === PublicationTargetType.EVENT) {
+      return;
+    }
+
+    await this.authorizationPolicy.assertPermissions(
+      user,
+      [Permission.Event.Update],
+      this.childEventWriteContext(input.targetType, input.targetId),
+    );
+  }
+
+  private childEventWriteContext(
+    targetType: PublicationTargetType,
+    targetId: string,
+  ): { majorEventId?: string; eventGroupId?: string } {
+    return targetType === PublicationTargetType.MAJOR_EVENT
+      ? { majorEventId: targetId }
+      : { eventGroupId: targetId };
   }
 }

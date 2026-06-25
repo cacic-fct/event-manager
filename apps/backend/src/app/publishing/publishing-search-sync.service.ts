@@ -35,9 +35,13 @@ export class PublicationSearchSyncService {
           })
         : Promise.resolve([]),
     ]);
+    const majorEventIdSet = new Set(majorEventIds);
+    const directlyUpsertedEvents = events.filter(
+      (event) => !event.majorEventId || !majorEventIdSet.has(event.majorEventId),
+    );
 
     await Promise.all([
-      ...events.map((event) =>
+      ...directlyUpsertedEvents.map((event) =>
         this.typesenseSearch.upsertEvent({
           id: event.id,
           name: event.name,

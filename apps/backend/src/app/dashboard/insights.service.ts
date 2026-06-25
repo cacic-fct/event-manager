@@ -22,6 +22,7 @@ import { buildWeatherAlerts } from './insights/weather-alerts';
 import { buildPublicationConsistencyWarnings } from '../publishing/publishing-consistency';
 
 export const DASHBOARD_INSIGHTS_QUEUE = 'dashboard-insights';
+const DASHBOARD_INCONSISTENCY_LIMIT = 30;
 
 @Injectable()
 export class DashboardInsightsService {
@@ -564,7 +565,7 @@ export class DashboardInsightsService {
               events: consistencyEvents,
               majorEvents: publicationMajorEvents,
             }),
-          ]
+          ].slice(0, DASHBOARD_INCONSISTENCY_LIMIT)
         : [],
       duplicatePeopleCount: canManageMergeCandidates ? duplicatePeopleCount : 0,
       permissions: formatPermissions(permissions),

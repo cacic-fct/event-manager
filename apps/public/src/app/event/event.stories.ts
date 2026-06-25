@@ -12,12 +12,14 @@ interface EventStoryArgs {
   includeMajorEvent: boolean;
 }
 
-let activeArgs: EventStoryArgs;
-
 const defaultArgs: EventStoryArgs = {
   allowSubscription: true,
   includeMajorEvent: true,
 };
+
+interface EventStoryContext {
+  args: EventStoryArgs;
+}
 
 const previewRoute = {
   paramMap: of(convertToParamMap({ previewToken: 'storybook-event-preview' })),
@@ -37,10 +39,6 @@ const meta: Meta<EventStoryArgs> = {
     allowSubscription: { control: 'boolean' },
     includeMajorEvent: { control: 'boolean' },
   },
-  render: (args) => {
-    activeArgs = args;
-    return { props: {} };
-  },
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -50,6 +48,8 @@ const meta: Meta<EventStoryArgs> = {
 export default meta;
 
 type Story = StoryObj<EventStoryArgs>;
+
+const previewContext = createStoryContext();
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
@@ -81,30 +81,46 @@ export const OfflineFallback: Story = {
 export const PreviewLink: Story = {
   args: defaultArgs,
   globals: { theme: 'light', network: 'online' },
+  render: (args) => renderStory(args, previewContext),
   decorators: [
     applicationConfig({
       providers: [{ provide: ActivatedRoute, useValue: previewRoute }],
     }),
   ],
-  parameters: {
-    msw: {
-      handlers: [
-        http.post('/api/graphql', () =>
-          HttpResponse.json({
-            data: {
-              publicContentPreview: buildPreview(activeArgs ?? defaultArgs),
-            },
-          }),
-        ),
-      ],
-    },
-  },
+  parameters: previewParameters(previewContext),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Pré-Visualização')).toBeVisible();
     await expect(await canvas.findByText(/Pré-visualização temporária/)).toBeVisible();
   },
 };
+
+function createStoryContext(args: Partial<EventStoryArgs> = {}): EventStoryContext {
+  return {
+    args: { ...defaultArgs, ...args },
+  };
+}
+
+function renderStory(args: EventStoryArgs, context: EventStoryContext) {
+  context.args = { ...defaultArgs, ...args };
+  return { props: {} };
+}
+
+function previewParameters(context: EventStoryContext) {
+  return {
+    msw: {
+      handlers: [
+        http.post('/api/graphql', () =>
+          HttpResponse.json({
+            data: {
+              publicContentPreview: buildPreview(context.args),
+            },
+          }),
+        ),
+      ],
+    },
+  };
+}
 
 function buildPreview(args: EventStoryArgs) {
   faker.seed(20260804);
