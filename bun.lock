@@ -23,9 +23,9 @@
         "@aws-sdk/lib-storage": "^3.1075.0",
         "@bwip-js/browser": "^4.11.1",
         "@bwip-js/node": "^4.11.1",
-        "@cacic-fct/account-manager-cookie-banner": "^0.1.0",
-        "@cacic-fct/account-manager-m2m-contracts": "0.1.0",
-        "@cacic-fct/account-manager-privacy": "0.1.0",
+        "@cacic-fct/account-manager-cookie-banner": "^0.1.1",
+        "@cacic-fct/account-manager-m2m-contracts": "0.1.1",
+        "@cacic-fct/account-manager-privacy": "0.1.1",
         "@cacic-fct/ngx-umami": "^0.1.2",
         "@fontsource-variable/inter": "^5.2.8",
         "@fontsource-variable/source-code-pro": "^5.2.7",
@@ -43,7 +43,7 @@
         "@novu/js": "^3.17.0",
         "@prisma/adapter-pg": "^7.8.0",
         "@prisma/client": "^7.8.0",
-        "@sentry/angular": "^10.60.0",
+        "@sentry/angular": "^10.61.0",
         "@twemoji/parser": "^17.0.2",
         "axios": "^1.18.1",
         "bullmq": "^5.79.1",
@@ -62,7 +62,7 @@
         "passport-http-bearer": "^1.0.1",
         "passport-oauth2": "^1.8.0",
         "pg": "^8.22.0",
-        "playwright": "^1.61.0",
+        "playwright": "^1.61.1",
         "redis": "^5.12.1",
         "reflect-metadata": "^0.1.14",
         "rxjs": "~7.8.2",
@@ -103,7 +103,7 @@
         "@nx/webpack": "23.0.1",
         "@nx/workspace": "23.0.1",
         "@oxc-project/runtime": "^0.115.0",
-        "@playwright/test": "^1.61.0",
+        "@playwright/test": "^1.61.1",
         "@schematics/angular": "22.0.2",
         "@storybook/addon-a11y": "^10.4.6",
         "@storybook/angular": "10.4.0",
@@ -132,7 +132,7 @@
         "prettier": "~3.6.2",
         "prisma": "^7.8.0",
         "prisma-erd-generator": "^2.4.3",
-        "puppeteer": "^25.2.0",
+        "puppeteer": "^25.2.1",
         "storybook": "10.4.0",
         "ts-jest": "^29.4.11",
         "ts-node": "10.9.1",
@@ -592,11 +592,11 @@
 
     "@bwip-js/node": ["@bwip-js/node@4.11.1", "", {}, "sha512-jViMtIAlJws/FGc2qZa4gxCs3xBZDtS/wcQ4X2bxclPuxIsJWSo+QkaioqlWimn01IYGzRCSns5BjBLJ74wHDA=="],
 
-    "@cacic-fct/account-manager-cookie-banner": ["@cacic-fct/account-manager-cookie-banner@0.1.0", "", {}, "sha512-vEzIG0JQqdnyXtsZ/3VvigvDVWewIwi3BQb46eyw3a4ihuQ4EJKVsaHNLMHtfxx85DkvTgiAS35NpnHuk/XD4Q=="],
+    "@cacic-fct/account-manager-cookie-banner": ["@cacic-fct/account-manager-cookie-banner@0.1.1", "", {}, "sha512-fNB2dT9isAClyALbWUtry8lwT/mK2UtbldgW/eGGPkYHoJ7/e8ZLdk1IjHhiRmwLUwvgOs082vY17iYmgXmoLw=="],
 
-    "@cacic-fct/account-manager-m2m-contracts": ["@cacic-fct/account-manager-m2m-contracts@0.1.0", "", {}, "sha512-WetpuCAidV0kj9NbXRPnfsrEB2spYcS/lv+MtuCiYu3iiVmCj2OgNTL8fhUE7rU+5xa8O7JmEaFNbhgLvgnh1g=="],
+    "@cacic-fct/account-manager-m2m-contracts": ["@cacic-fct/account-manager-m2m-contracts@0.1.1", "", {}, "sha512-SIdm6j4wMO1PiW1pwG2RDm0n6//dgBMWb+Oiwk6KREaqlfFGHJqzrsAFZs7tHD09CU44wYJAb4BxCXozAYH3LA=="],
 
-    "@cacic-fct/account-manager-privacy": ["@cacic-fct/account-manager-privacy@0.1.0", "", { "dependencies": { "@cacic-fct/account-manager-m2m-contracts": "^0.1.0", "tslib": "^2.8.0" }, "peerDependencies": { "@angular/common": ">=19", "@angular/core": ">=19", "rxjs": "^7.8.0" }, "optionalPeers": ["@angular/common", "@angular/core", "rxjs"] }, "sha512-SXWB1lGiQeHrR7VAHvx93lO+npofP1VlVywef3qtdz4WsrAud1dRiePyR7kuwbCtc4jX0mVJK9h57S8cK6LlyQ=="],
+    "@cacic-fct/account-manager-privacy": ["@cacic-fct/account-manager-privacy@0.1.1", "", { "dependencies": { "@cacic-fct/account-manager-m2m-contracts": "^0.1.1", "tslib": "^2.8.0" }, "peerDependencies": { "@angular/common": ">=19", "@angular/core": ">=19", "rxjs": "^7.8.0" }, "optionalPeers": ["@angular/common", "@angular/core", "rxjs"] }, "sha512-RutMod2JSCOF0sUK9U4eBQqfZJo7a5e8s67GqOifsIYiGRTidxZqS4frjftDBsC9n5f+N/mRFM7uVQpmje62uQ=="],
 
     "@cacic-fct/ngx-umami": ["@cacic-fct/ngx-umami@0.1.2", "", { "dependencies": { "@angular/common": "21.2.12", "@angular/core": "21.2.12", "@angular/router": "21.2.12", "rxjs": "^7.4.0", "tslib": "2.8.1" } }, "sha512-BjivYVtKmXbiiSFF31LCBWxoCyuWdAovJLT7aK3GgqGm38i2LKz419ZvVemn1IR45OBlO6DgPH8Qkrg7EhIcVw=="],
 
