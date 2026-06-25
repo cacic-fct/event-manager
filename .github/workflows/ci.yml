@@ -294,7 +294,7 @@ jobs:
         run: bunx prisma generate --schema apps/backend/prisma/schema
 
       - name: Apply database migrations
-        run: bunx prisma migrate deploy --schema apps/backend/prisma/schema
+        run: bunx prisma migrate deploy --config apps/backend/prisma.config.ts
 
       - name: Run backend auth e2e tests
         shell: bash
@@ -688,7 +688,7 @@ jobs:
         run: bunx prisma generate --schema apps/backend/prisma/schema
 
       - name: Apply database migrations
-        run: bunx prisma migrate deploy --schema apps/backend/prisma/schema
+        run: bunx prisma migrate deploy --config apps/backend/prisma.config.ts
 
       - name: Run backend auth e2e tests
         shell: bash
