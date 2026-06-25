@@ -4,6 +4,19 @@ enum EventType {
   OTHER
 }
 
+enum PublicationState {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  UNPUBLISHED
+}
+
+enum PublicContentPreviewTargetType {
+  EVENT
+  EVENT_GROUP
+  MAJOR_EVENT
+}
+
 model Event {
   id            String    @id @default(uuid(7))
   name          String
@@ -59,6 +72,13 @@ model Event {
   // If event should be visible to users or if it's only for internal (admin) use
   publiclyVisible Boolean @default(true)
 
+  publicationState      PublicationState @default(DRAFT)
+  scheduledPublishAt    DateTime?
+  publishedAt           DateTime?
+  unpublishedAt         DateTime?
+  publicationScheduledBy String?
+  publicationUpdatedBy   String?
+
   youtubeCode String?
   buttonText  String?
   buttonLink  String?
@@ -75,6 +95,8 @@ model Event {
   @@index([majorEventId])
   @@index([eventGroupId])
   @@index([deletedAt])
+  @@index([publicationState])
+  @@index([scheduledPublishAt])
   @@map("events")
 }
 
@@ -110,4 +132,33 @@ model EventLecturer {
   @@id([eventId, personId])
   @@index([personId])
   @@map("event_lecturers")
+}
+
+model PublicContentPreview {
+  id String @id @default(uuid(7))
+
+  previewToken String @unique
+  targetType   PublicContentPreviewTargetType
+  targetId     String
+  targetLabel  String
+
+  previewAt DateTime?
+  publicPath String
+  redisKey   String
+
+  createdById    String
+  createdByName  String?
+  createdByEmail String?
+
+  expiresAt  DateTime
+  trimAfter  DateTime
+  lastUsedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([targetType, targetId, createdById])
+  @@index([targetType, targetId])
+  @@index([expiresAt])
+  @@index([trimAfter])
+  @@map("public_content_previews")
 }

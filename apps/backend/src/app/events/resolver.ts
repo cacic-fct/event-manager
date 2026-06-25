@@ -100,6 +100,10 @@ const EVENT_BASE_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,
@@ -140,6 +144,10 @@ const EVENT_AUDIT_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,
@@ -179,6 +187,9 @@ const EVENT_CLONE_SOURCE_SELECT = {
     },
   },
 } satisfies Prisma.EventSelect;
+
+const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
+const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
 
 @Resolver(() => Event)
 export class EventsResolver {
@@ -325,7 +336,7 @@ export class EventsResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventCreateTargetsMutable(input, this.getUser(context));
-    const normalizedInput = await this.normalizeEventCertificateInput(input);
+    const normalizedInput = this.applyEventCreateDefaults(await this.normalizeEventCertificateInput(input));
     const eventInput = { ...normalizedInput };
     const lecturerPersonIds = eventInput.lecturerPersonIds;
     const attendanceCollectorPersonIds = eventInput.attendanceCollectorPersonIds;
@@ -400,6 +411,7 @@ export class EventsResolver {
       eventGroupId: event.eventGroupId,
       shouldIssueCertificate: event.shouldIssueCertificate,
       publiclyVisible: event.publiclyVisible,
+      publicationState: event.publicationState,
       startDate: event.startDate,
       endDate: event.endDate,
     });
@@ -462,6 +474,7 @@ export class EventsResolver {
         eventGroupId: event.eventGroupId,
         shouldIssueCertificate: event.shouldIssueCertificate,
         publiclyVisible: event.publiclyVisible,
+        publicationState: event.publicationState,
         startDate: event.startDate,
         endDate: event.endDate,
       });
@@ -575,7 +588,7 @@ export class EventsResolver {
       );
     }
     await this.frozenResources.assertEventCreateTargetsMutable(cloneInput, this.getUser(context));
-    const normalizedInput = await this.normalizeEventCertificateInput(cloneInput);
+    const normalizedInput = this.applyEventCreateDefaults(await this.normalizeEventCertificateInput(cloneInput));
     const eventInput = { ...normalizedInput };
     const lecturerPersonIds = eventInput.lecturerPersonIds;
     delete eventInput.lecturerPersonIds;
@@ -641,6 +654,7 @@ export class EventsResolver {
       eventGroupId: event.eventGroupId,
       shouldIssueCertificate: event.shouldIssueCertificate,
       publiclyVisible: event.publiclyVisible,
+      publicationState: event.publicationState,
       startDate: event.startDate,
       endDate: event.endDate,
     });
@@ -756,6 +770,30 @@ export class EventsResolver {
     }
 
     return normalizedInput;
+  }
+
+  private applyEventCreateDefaults(
+    input: EventCreateInput,
+  ): EventCreateInput & { name: string; startDate: Date; endDate: Date; emoji: string } {
+    const startDate = input.startDate ?? this.defaultEventStartDate(input.endDate);
+    const endDate = input.endDate ?? new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MS);
+
+    return {
+      ...input,
+      name: input.name?.trim() || DEFAULT_DRAFT_EVENT_NAME,
+      startDate,
+      endDate,
+      emoji: input.emoji?.trim() || '❔',
+      type: input.type ?? 'OTHER',
+    };
+  }
+
+  private defaultEventStartDate(endDate: Date | undefined): Date {
+    if (endDate) {
+      return new Date(endDate.getTime() - DEFAULT_EVENT_DURATION_MS);
+    }
+
+    return new Date();
   }
 
   private async disableGroupPerEventModeForMajorEvent(

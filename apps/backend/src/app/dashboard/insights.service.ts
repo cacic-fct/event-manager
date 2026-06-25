@@ -19,6 +19,7 @@ import { formatPermissions, resolveDashboardPermissions } from './insights/permi
 import { buildPendingCertificates } from './insights/pending-certificates';
 import { buildSuggestions } from './insights/suggestions';
 import { buildWeatherAlerts } from './insights/weather-alerts';
+import { buildPublicationConsistencyWarnings } from '../publishing/publishing-consistency';
 
 export const DASHBOARD_INSIGHTS_QUEUE = 'dashboard-insights';
 
@@ -179,6 +180,7 @@ export class DashboardInsightsService {
       mismatchingCertificateGroupEvents,
       pastCertificateEventsWithoutAttendance,
       pastCertificateEventsWithoutAttendanceCollection,
+      publicationMajorEvents,
     ] = await Promise.all([
       canReadEvents ? this.prisma.event.count({ where: { deletedAt: null } }) : Promise.resolve(0),
       canReadEvents ? this.prisma.eventGroup.count({ where: { deletedAt: null } }) : Promise.resolve(0),
@@ -485,6 +487,28 @@ export class DashboardInsightsService {
             take: 30,
           })
         : Promise.resolve([]),
+      shouldBuildInconsistencies
+        ? this.prisma.majorEvent.findMany({
+            where: {
+              deletedAt: null,
+            },
+            select: {
+              id: true,
+              name: true,
+              publicationState: true,
+              scheduledPublishAt: true,
+              events: {
+                where: { deletedAt: null },
+                select: {
+                  id: true,
+                  publiclyVisible: true,
+                  publicationState: true,
+                },
+              },
+            },
+            orderBy: { startDate: 'asc' },
+          })
+        : Promise.resolve([]),
     ]);
 
     return {
@@ -525,15 +549,22 @@ export class DashboardInsightsService {
           }))
         : [],
       inconsistencies: shouldBuildInconsistencies
-        ? buildInconsistencies({
-            now,
-            events: consistencyEvents,
-            majorEventsWithSubscriptionDates,
-            singleEventGroups,
-            mismatchingCertificateGroupEvents,
-            pastCertificateEventsWithoutAttendance,
-            pastCertificateEventsWithoutAttendanceCollection,
-          })
+        ? [
+            ...buildInconsistencies({
+              now,
+              events: consistencyEvents,
+              majorEventsWithSubscriptionDates,
+              singleEventGroups,
+              mismatchingCertificateGroupEvents,
+              pastCertificateEventsWithoutAttendance,
+              pastCertificateEventsWithoutAttendanceCollection,
+            }),
+            ...buildPublicationConsistencyWarnings({
+              now,
+              events: consistencyEvents,
+              majorEvents: publicationMajorEvents,
+            }),
+          ]
         : [],
       duplicatePeopleCount: canManageMergeCandidates ? duplicatePeopleCount : 0,
       permissions: formatPermissions(permissions),

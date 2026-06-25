@@ -1,5 +1,11 @@
 import { Route } from '@angular/router';
-import { authGuard, developmentOnlyGuard, redirectAuthenticatedGuard } from '@cacic-fct/shared-angular';
+import { Permission } from '@cacic-fct/shared-permissions';
+import {
+  authGuard,
+  developmentOnlyGuard,
+  redirectAuthenticatedGuard,
+  requiredPermissionsGuard,
+} from '@cacic-fct/shared-angular';
 import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,
@@ -48,6 +54,24 @@ export const appRoutes: Route[] = [
     loadChildren: () => import('./development-tools/development-tools.routes').then((m) => m.routes),
     title: 'Ferramentas de desenvolvimento',
     canActivate: [developmentOnlyGuard],
+  },
+  {
+    path: 'preview/:previewToken/event',
+    loadComponent: () => import('./event/event').then((m) => m.Event),
+    title: 'Pré-Visualização',
+    canActivate: [requiredPermissionsGuard([Permission.Event.Read], '/')],
+  },
+  {
+    path: 'preview/:previewToken/major-event',
+    loadComponent: () => import('./major-event/major-event').then((m) => m.MajorEvent),
+    title: 'Pré-Visualização',
+    canActivate: [requiredPermissionsGuard([Permission.MajorEvent.Read], '/')],
+  },
+  {
+    path: 'preview/:previewToken/group',
+    loadComponent: () => import('./preview/group-preview.component').then((m) => m.GroupPreviewComponent),
+    title: 'Pré-Visualização',
+    canActivate: [requiredPermissionsGuard([Permission.EventGroup.Read], '/')],
   },
   {
     path: 'event/:eventId',

@@ -35,6 +35,13 @@ model MajorEvent {
 
   certificateConfigs CertificateConfig[]
 
+  publicationState      PublicationState @default(DRAFT)
+  scheduledPublishAt    DateTime?
+  publishedAt           DateTime?
+  unpublishedAt         DateTime?
+  publicationScheduledBy String?
+  publicationUpdatedBy   String?
+
   createdAt   DateTime  @default(now())
   createdById String?
   updatedAt   DateTime  @updatedAt
@@ -44,6 +51,8 @@ model MajorEvent {
   @@index([startDate])
   @@index([endDate])
   @@index([deletedAt])
+  @@index([publicationState])
+  @@index([scheduledPublishAt])
   @@map("major_events")
 }
 

@@ -4,7 +4,7 @@ import Redis from 'ioredis';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
-import { PUBLIC_EVENT_SELECT } from '../public-events/models';
+import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE } from '../public-events/models';
 import { PublicEventWeather } from './models';
 
 type WeatherEvent = Prisma.EventGetPayload<{
@@ -32,14 +32,14 @@ export class WeatherService {
   ) {}
 
   async getPublicEventWeather(eventId: string): Promise<PublicEventWeather | null> {
-    const cached = await this.getCachedWeather(eventId);
-    if (cached) {
-      return cached;
-    }
-
     const event = await this.getWeatherEvent(eventId);
     if (!event) {
       throw new NotFoundException(`Event ${eventId} was not found.`);
+    }
+
+    const cached = await this.getCachedWeather(eventId);
+    if (cached) {
+      return cached;
     }
 
     await this.scheduleRefreshForEvent(event);
@@ -62,14 +62,17 @@ export class WeatherService {
 
     const events = await this.prisma.event.findMany({
       where: {
-        deletedAt: null,
-        publiclyVisible: true,
-        latitude: { not: null },
-        longitude: { not: null },
-        startDate: {
-          gt: now,
-          lte: horizon,
-        },
+        AND: [
+          PUBLIC_EVENT_WHERE,
+          {
+            latitude: { not: null },
+            longitude: { not: null },
+            startDate: {
+              gt: now,
+              lte: horizon,
+            },
+          },
+        ],
       },
       select: PUBLIC_EVENT_SELECT,
       orderBy: {
@@ -145,9 +148,7 @@ export class WeatherService {
   private async getWeatherEvent(eventId: string): Promise<WeatherEvent | null> {
     return this.prisma.event.findFirst({
       where: {
-        id: eventId,
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { id: eventId }],
       },
       select: PUBLIC_EVENT_SELECT,
     });

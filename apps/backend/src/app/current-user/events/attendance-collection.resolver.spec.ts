@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
 
 describe('CurrentUserAttendanceCollectionResolver scanner feed', () => {
@@ -109,15 +110,18 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     ]);
 
     const findManyArgs = prisma.eventAttendanceCollector.findMany.mock.calls[0][0];
-    const startDateFilter = findManyArgs.where.event.startDate;
+    const startDateFilter = findManyArgs.where.event.AND[1].startDate;
     expect(findManyArgs).toEqual(
       expect.objectContaining({
         where: expect.objectContaining({
           personId: 'collector-person',
           event: expect.objectContaining({
-            deletedAt: null,
-            publiclyVisible: true,
-            shouldCollectAttendance: true,
+            AND: [
+              PUBLIC_EVENT_WHERE,
+              expect.objectContaining({
+                shouldCollectAttendance: true,
+              }),
+            ],
           }),
         }),
       }),

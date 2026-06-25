@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
+import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { Event, EventGroup, EventInput, Person, PlacePresetInput } from '../../graphql/models';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-create-dialog.component';
@@ -51,12 +52,17 @@ const BANNED_ATTENDANCE_CODES = new Set([
   'PENS',
   'ANWS',
 ]);
+type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
+const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
+const DEFAULT_DRAFT_EVENT_EMOJI = '❔';
+const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
 
 @Injectable({
   providedIn: 'root',
 })
 export class WorkspaceEventsService {
   private readonly api = inject(EventApiService);
+  private readonly publicationApi = inject(PublicationApiService);
   private readonly eventGroupsApi = inject(EventGroupApiService);
   private readonly peopleApi = inject(PeopleApiService);
   private readonly snackbar = inject(MatSnackBar);
@@ -261,37 +267,72 @@ export class WorkspaceEventsService {
     this.eventForm.controls.onlineAttendanceCode.setValue(code);
   }
 
-  async saveEvent(): Promise<void> {
-    if (this.eventForm.invalid) {
+  async saveEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
+    if (action === 'PUBLISH' && this.eventForm.invalid) {
       this.eventForm.markAllAsTouched();
       return;
     }
 
     const eventId = this.eventForm.controls.id.value;
-    const payload = this.buildEventPayload(!eventId);
+    const payload = this.buildEventPayload(!eventId, { allowIncompleteDraft: action !== 'PUBLISH' });
     const manualPlace = this.buildManualPlacePresetPayload();
 
     this.ui.loading.set(true);
     try {
+      let savedEventId = eventId;
       if (eventId) {
-        await firstValueFrom(this.api.updateEvent(eventId, payload));
-        this.snackbar.open('Evento atualizado.', 'Fechar', {
-          duration: 2500,
-        });
+        const updated = await firstValueFrom(this.api.updateEvent(eventId, payload));
+        savedEventId = updated.id;
       } else {
-        await firstValueFrom(this.api.createEvent(payload));
-        this.snackbar.open('Evento criado.', 'Fechar', { duration: 2500 });
+        const created = await firstValueFrom(this.api.createEvent(payload));
+        savedEventId = created.id;
       }
       if (manualPlace) {
         await this.placePresetsService.ensurePresetForManualLocation(manualPlace);
       }
+
+      if (action === 'PUBLISH') {
+        await firstValueFrom(
+          this.publicationApi.setPublicationState({
+            targetType: 'EVENT',
+            targetId: savedEventId,
+            state: 'PUBLISHED',
+          }),
+        );
+        this.snackbar.open('Evento publicado.', 'Fechar', { duration: 2500 });
+      } else {
+        await firstValueFrom(
+          this.publicationApi.setPublicationState({
+            targetType: 'EVENT',
+            targetId: savedEventId,
+            state: 'DRAFT',
+          }),
+        );
+        this.snackbar.open(action === 'SCHEDULE' ? 'Evento salvo como rascunho.' : 'Rascunho salvo.', 'Fechar', {
+          duration: 2500,
+        });
+      }
+
       await this.loadEvents();
+      if (action === 'SCHEDULE') {
+        void this.router.navigate(this.eventPublicationRoute(savedEventId));
+        return;
+      }
       this.resetEventForm();
     } catch (error) {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o evento.'), 'Fechar', { duration: 5000 });
     } finally {
       this.ui.loading.set(false);
     }
+  }
+
+  openEventPublication(): void {
+    const selectedEvent = this.selectedEvent();
+    if (!selectedEvent) {
+      return;
+    }
+
+    void this.router.navigate(this.eventPublicationRoute(selectedEvent.id));
   }
 
   async deleteEventFromList(eventItem: Event): Promise<void> {
@@ -643,23 +684,29 @@ export class WorkspaceEventsService {
     }
   }
 
-  private buildEventPayload(includePeople: boolean): EventInput {
+  private buildEventPayload(
+    includePeople: boolean,
+    options: { allowIncompleteDraft?: boolean } = {},
+  ): EventInput {
     const raw = this.eventForm.getRawValue();
     const creditValue = this.toOptionalNumber(raw.creditValue);
+    const dates = this.resolveEventDates(raw.startDate, raw.endDate, options.allowIncompleteDraft === true);
     const creditMinutes =
       creditValue == null
-        ? this.calculateDurationMinutes(raw.startDate, raw.endDate)
+        ? raw.startDate && raw.endDate
+          ? this.calculateDurationMinutes(raw.startDate, raw.endDate)
+          : null
         : raw.creditDisplayMode === 'hours'
           ? Math.round(creditValue * 60)
           : Math.round(creditValue);
     const isOnlineAttendanceAllowed = raw.isOnlineAttendanceAllowed;
 
     const payload: EventInput = {
-      name: raw.name.trim(),
+      name: raw.name.trim() || (options.allowIncompleteDraft ? DEFAULT_DRAFT_EVENT_NAME : ''),
       creditMinutes,
-      startDate: this.toIsoDateTime(raw.startDate),
-      endDate: this.toIsoDateTime(raw.endDate),
-      emoji: raw.emoji.trim(),
+      startDate: dates.startDate,
+      endDate: dates.endDate,
+      emoji: raw.emoji.trim() || (options.allowIncompleteDraft ? DEFAULT_DRAFT_EVENT_EMOJI : ''),
       type: raw.type as EventInput['type'],
       description: raw.description.trim() || null,
       shortDescription: raw.shortDescription.trim() || null,
@@ -723,6 +770,45 @@ export class WorkspaceEventsService {
       longitude: raw.longitude ? Number(raw.longitude) : null,
       locationDescription: name,
     };
+  }
+
+  private resolveEventDates(
+    rawStartDate: string,
+    rawEndDate: string,
+    allowIncompleteDraft: boolean,
+  ): { startDate: string; endDate: string } {
+    if (!allowIncompleteDraft || (rawStartDate && rawEndDate)) {
+      return {
+        startDate: this.toIsoDateTime(rawStartDate),
+        endDate: this.toIsoDateTime(rawEndDate),
+      };
+    }
+
+    if (rawStartDate) {
+      const startDate = new Date(rawStartDate);
+      return {
+        startDate: startDate.toISOString(),
+        endDate: new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MS).toISOString(),
+      };
+    }
+
+    if (rawEndDate) {
+      const endDate = new Date(rawEndDate);
+      return {
+        startDate: new Date(endDate.getTime() - DEFAULT_EVENT_DURATION_MS).toISOString(),
+        endDate: endDate.toISOString(),
+      };
+    }
+
+    const startDate = new Date();
+    return {
+      startDate: startDate.toISOString(),
+      endDate: new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MS).toISOString(),
+    };
+  }
+
+  private eventPublicationRoute(eventId: string): string[] {
+    return ['/publication', 'event', eventId];
   }
 
   private addPendingLecturer(person: Person): void {

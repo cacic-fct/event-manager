@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { CurrentUserEventAttendanceResolver } from './attendance.resolver';
 
 describe('CurrentUserEventAttendanceResolver', () => {
@@ -34,9 +35,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
 
     expect(prisma.event.findFirst).toHaveBeenCalledWith({
       where: {
-        id: 'hidden-event',
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { id: 'hidden-event' }],
       },
       select: expect.any(Object),
     });

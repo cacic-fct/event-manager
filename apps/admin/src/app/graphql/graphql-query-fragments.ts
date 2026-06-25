@@ -10,6 +10,10 @@ export const EVENT_LIST_FIELDS = `
   shouldIssueCertificate
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees
+  publicationState
+  scheduledPublishAt
+  publishedAt
+  unpublishedAt
   createdAt
   majorEvent {
     id
@@ -47,6 +51,10 @@ export const EVENT_DETAIL_FIELDS = `
   onlineAttendanceStartDate
   onlineAttendanceEndDate
   publiclyVisible
+  publicationState
+  scheduledPublishAt
+  publishedAt
+  unpublishedAt
   youtubeCode
   buttonText
   buttonLink
@@ -95,6 +103,10 @@ export const MAJOR_EVENT_LIST_FIELDS = `
   startDate
   endDate
   isPaymentRequired
+  publicationState
+  scheduledPublishAt
+  publishedAt
+  unpublishedAt
   createdAt
   majorEventPrices {
     id
@@ -128,6 +140,10 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees
   additionalPaymentInfo
+  publicationState
+  scheduledPublishAt
+  publishedAt
+  unpublishedAt
   paymentInfo {
     id
     bankName

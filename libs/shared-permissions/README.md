@@ -10,6 +10,7 @@ This package is the source of truth for permission names used by the backend and
 - `EVENT_MANAGER_PERMISSION_CATALOG`: the complete list of valid Event Manager permissions.
 - `EventManagerKeycloakRole`: coarse Keycloak roles used by the Event Manager authorization layer.
 - `EventManagerPermissionGrantScope`: grant scopes supported by the DB-backed permission system.
+- `WorkspacePermissionTab`: stable tab identifiers used to connect admin navigation to tab permission requirements.
 - `WORKSPACE_TAB_PERMISSIONS`: permission requirements used by admin workspace tabs.
 - `WORKSPACE_PERMISSION_EVALUATION_SET`: permissions the frontend asks the backend to evaluate for the current user.
 - `EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS`: permissions that cannot be scoped to one event, event group, or major event.

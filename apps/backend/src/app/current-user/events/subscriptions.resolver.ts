@@ -17,6 +17,7 @@ import {
 } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublicEvent } from '../../public-events/models';
+import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
@@ -63,9 +64,7 @@ export class CurrentUserEventSubscriptionsResolver {
         personId: person.id,
         deletedAt: null,
         event: {
-          deletedAt: null,
-          publiclyVisible: true,
-          majorEventId: null,
+          AND: [PUBLIC_EVENT_WHERE, { majorEventId: null }],
         },
       },
       select: {
@@ -103,8 +102,7 @@ export class CurrentUserEventSubscriptionsResolver {
         personId: person.id,
         deletedAt: null,
         event: {
-          deletedAt: null,
-          publiclyVisible: true,
+          AND: [PUBLIC_EVENT_WHERE],
         },
       },
       select: CURRENT_USER_EVENT_SUBSCRIPTION_SELECT,
@@ -135,9 +133,7 @@ export class CurrentUserEventSubscriptionsResolver {
         personId: person.id,
         deletedAt: null,
         event: {
-          majorEventId,
-          deletedAt: null,
-          publiclyVisible: true,
+          AND: [PUBLIC_EVENT_WHERE, { majorEventId }],
         },
       },
       select: CURRENT_USER_EVENT_SUBSCRIPTION_SELECT,
@@ -308,6 +304,7 @@ export class CurrentUserEventSubscriptionsResolver {
       where: {
         id: majorEventId,
         deletedAt: null,
+        publicationState: 'PUBLISHED',
       },
       select: {
         id: true,
@@ -320,9 +317,7 @@ export class CurrentUserEventSubscriptionsResolver {
 
     return this.prisma.event.findMany({
       where: {
-        majorEventId,
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { majorEventId }],
         ...(onlySubscribable ? { allowSubscription: true } : {}),
       },
       select: EVENT_SELECT,

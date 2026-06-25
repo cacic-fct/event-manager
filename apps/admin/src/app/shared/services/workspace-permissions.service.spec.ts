@@ -2,8 +2,8 @@ import { PLATFORM_ID } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { Permission, getPermissionIncludedDataSummary } from '@cacic-fct/shared-permissions';
-import { WorkspacePermissionsService, WorkspacePermissionTab } from './workspace-permissions.service';
+import { Permission, WorkspacePermissionTab, getPermissionIncludedDataSummary } from '@cacic-fct/shared-permissions';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 describe('WorkspacePermissionsService', () => {
   let service: WorkspacePermissionsService;

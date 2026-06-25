@@ -1,7 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
+  PUBLIC_EVENT_PAGE_FIELDS,
   PUBLIC_MAJOR_EVENTS_QUERY,
+  PUBLIC_MAJOR_EVENT_CARD_FIELDS,
   PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS,
   PUBLIC_MAJOR_EVENT_SUBSCRIPTION_PAGE_QUERY,
   PUBLIC_SUBSCRIPTION_EVENT_FIELDS,
@@ -9,6 +11,8 @@ import {
   type GraphqlVariables,
   type PublicMajorEventsQuery,
   type PublicMajorEventsQueryVariables,
+  type PublicEvent,
+  type PublicEventGroup,
   type PublicMajorEvent,
   type PublicMajorEventSubscriptionPage,
   type PublicMajorEventSubscriptionPageQuery,
@@ -19,6 +23,13 @@ import { graphqlError } from '../../shared/rate-limit-error';
 
 export type { PublicEventSubscriptionSummary, PublicMajorEventSubscriptionPage } from '@cacic-fct/event-manager-public-contracts';
 
+export interface PublicContentGroupPreview {
+  previewAt: string;
+  expiresAt: string;
+  eventGroup: PublicEventGroup;
+  events: PublicEvent[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class MajorEventSubscriptionApiService {
   private readonly http = inject(HttpClient);
@@ -27,6 +38,74 @@ export class MajorEventSubscriptionApiService {
     const variables: PublicMajorEventsQueryVariables = { startDateFrom };
     return this.query<PublicMajorEventsQuery>(PUBLIC_MAJOR_EVENTS_QUERY, variables).pipe(
       map((data) => data.publicMajorEvents),
+    );
+  }
+
+  getPreviewMajorEvents(previewToken: string): Observable<{ events: PublicMajorEvent[]; expiresAt: string }> {
+    return this.query<{
+      publicContentPreview: {
+        expiresAt: string;
+        majorEvent: PublicMajorEvent | null;
+      };
+    }>(
+      `
+        query PublicContentPreviewMajorEvent($previewToken: String!) {
+          publicContentPreview(previewToken: $previewToken) {
+            expiresAt
+            majorEvent {
+              ${PUBLIC_MAJOR_EVENT_CARD_FIELDS}
+            }
+          }
+        }
+      `,
+      { previewToken },
+    ).pipe(
+      map((data) => {
+        const majorEvent = data.publicContentPreview.majorEvent;
+        if (!majorEvent) {
+          throw new Error('Pré-visualização sem grande evento.');
+        }
+
+        return {
+          events: [majorEvent],
+          expiresAt: data.publicContentPreview.expiresAt,
+        };
+      }),
+    );
+  }
+
+  getPreviewGroup(previewToken: string): Observable<PublicContentGroupPreview> {
+    return this.query<{
+      publicContentPreview: PublicContentGroupPreview;
+    }>(
+      `
+        query PublicContentPreviewGroup($previewToken: String!) {
+          publicContentPreview(previewToken: $previewToken) {
+            previewAt
+            expiresAt
+            eventGroup {
+              id
+              name
+              emoji
+              shouldIssueCertificate
+              shouldIssueCertificateForEachEvent
+              shouldIssuePartialCertificate
+            }
+            events {
+              ${PUBLIC_EVENT_PAGE_FIELDS}
+            }
+          }
+        }
+      `,
+      { previewToken },
+    ).pipe(
+      map((data) => {
+        if (!data.publicContentPreview.eventGroup) {
+          throw new Error('Pré-visualização sem grupo de eventos.');
+        }
+
+        return data.publicContentPreview;
+      }),
     );
   }
 

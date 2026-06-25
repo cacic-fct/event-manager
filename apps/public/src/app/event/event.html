@@ -2,7 +2,7 @@
   <button matIconButton type="button" (click)="goBack()" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
-  <span>Evento</span>
+  <span>{{ isPreview() ? 'Pré-Visualização' : 'Evento' }}</span>
   <span class="toolbar-spacer"></span>
   @if (calendarDownloadUrl(); as calendarUrl) {
   <a matIconButton [href]="calendarUrl" matTooltip="Baixar calendário" aria-label="Baixar calendário do evento">
@@ -29,6 +29,15 @@
     <p>{{ currentState.message }}</p>
   </section>
   } @else { @let data = currentState.data; @let event = data.event;
+
+  @if (data.preview) {
+  <section class="preview-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">visibility</mat-icon>
+    <p>
+      Pré-visualização temporária. Este link expira em {{ data.preview.expiresAt | date: 'dd/MM/yyyy HH:mm' }}.
+    </p>
+  </section>
+  }
 
   <header class="event-header">
     <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus, @angular-eslint/template/click-events-have-key-events -->

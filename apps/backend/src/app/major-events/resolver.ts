@@ -72,6 +72,10 @@ const MAJOR_EVENT_SELECT = {
   majorEventPrices: {
     select: MAJOR_EVENT_PRICE_SELECT,
   },
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   deletedAt: true,
   createdAt: true,
   createdById: true,
@@ -87,6 +91,9 @@ const MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT = {
 } satisfies Prisma.MajorEventSelect;
 
 type PaymentInfoCloneRecord = Prisma.PaymentInfoGetPayload<{ select: typeof PAYMENT_INFO_SELECT }>;
+
+const DEFAULT_DRAFT_MAJOR_EVENT_NAME = 'Grande evento sem título';
+const DEFAULT_MAJOR_EVENT_DURATION_MS = 24 * 60 * 60 * 1000;
 
 const MAJOR_EVENT_CERTIFICATE_CONFIG_CLONE_SELECT = {
   where: {
@@ -269,6 +276,7 @@ export class MajorEventsResolver {
       description: majorEvent.description,
       startDate: majorEvent.startDate,
       endDate: majorEvent.endDate,
+      publicationState: majorEvent.publicationState,
     });
     return majorEvent;
   }
@@ -350,6 +358,7 @@ export class MajorEventsResolver {
       description: updatedMajorEvent.description,
       startDate: updatedMajorEvent.startDate,
       endDate: updatedMajorEvent.endDate,
+      publicationState: updatedMajorEvent.publicationState,
     });
     return updatedMajorEvent;
   }
@@ -473,6 +482,7 @@ export class MajorEventsResolver {
       description: majorEvent.description,
       startDate: majorEvent.startDate,
       endDate: majorEvent.endDate,
+      publicationState: majorEvent.publicationState,
     });
     return majorEvent;
   }
@@ -517,11 +527,13 @@ export class MajorEventsResolver {
     input: MajorEventCreateInput,
     paymentInfoTableExists: boolean,
   ): Prisma.MajorEventCreateInput {
+    const startDate = input.startDate ?? this.defaultMajorEventStartDate(input.endDate);
+    const endDate = input.endDate ?? new Date(startDate.getTime() + DEFAULT_MAJOR_EVENT_DURATION_MS);
     const data: Prisma.MajorEventCreateInput = {
-      name: input.name,
+      name: input.name?.trim() || DEFAULT_DRAFT_MAJOR_EVENT_NAME,
       emoji: input.emoji?.trim() || '📌',
-      startDate: input.startDate,
-      endDate: input.endDate,
+      startDate,
+      endDate,
     };
 
     if (input.id !== undefined) data.id = input.id;
@@ -585,6 +597,14 @@ export class MajorEventsResolver {
     }
 
     return data;
+  }
+
+  private defaultMajorEventStartDate(endDate: Date | undefined): Date {
+    if (endDate) {
+      return new Date(endDate.getTime() - DEFAULT_MAJOR_EVENT_DURATION_MS);
+    }
+
+    return new Date();
   }
 
   private buildMajorEventUpdateData(
@@ -833,7 +853,7 @@ export class MajorEventsResolver {
   private buildPriceTierPayloads(input: MajorEventPriceInput): Prisma.PriceTierCreateWithoutPriceInput[] {
     return input.tiers
       .map((tier) => ({
-        name: tier.name.trim(),
+        name: tier.name?.trim() ?? '',
         value: Math.round(tier.value),
       }))
       .filter((tier) => tier.name.length > 0);

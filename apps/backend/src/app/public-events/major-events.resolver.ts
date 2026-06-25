@@ -8,7 +8,7 @@ import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { TypesenseSearchService } from '../search/typesense-search.service';
-import { PUBLIC_MAJOR_EVENT_SELECT, PublicMajorEvent, mapPublicMajorEvent } from './models';
+import { PUBLIC_MAJOR_EVENT_SELECT, PUBLIC_MAJOR_EVENT_WHERE, PublicMajorEvent, mapPublicMajorEvent } from './models';
 
 @Public()
 @Resolver(() => PublicMajorEvent)
@@ -59,9 +59,7 @@ export class PublicMajorEventsResolver {
     take?: number,
   ) {
     const pagination = resolvePagination(skip, take);
-    const where: Prisma.MajorEventWhereInput = {
-      deletedAt: null,
-    };
+    const where: Prisma.MajorEventWhereInput = { ...PUBLIC_MAJOR_EVENT_WHERE };
     const normalizedQuery = query?.trim();
 
     if (startDateFrom || startDateUntil) {
@@ -78,6 +76,7 @@ export class PublicMajorEventsResolver {
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
         const searchResult = await this.typesenseSearch.searchMajorEvents(normalizedQuery, {
+          filterBy: 'publicationState:=PUBLISHED',
           limit: pagination.take,
           offset: pagination.skip,
         });
@@ -133,8 +132,8 @@ export class PublicMajorEventsResolver {
   ) {
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
+        ...PUBLIC_MAJOR_EVENT_WHERE,
         id,
-        deletedAt: null,
       },
       select: PUBLIC_MAJOR_EVENT_SELECT,
     });

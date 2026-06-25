@@ -89,5 +89,7 @@ function eventRecord(id: string, name: string, publiclyVisible: boolean, creditM
     creditMinutes,
     type: EventType.OTHER,
     publiclyVisible,
+    publicationState: 'PUBLISHED',
+    majorEvent: null,
   };
 }

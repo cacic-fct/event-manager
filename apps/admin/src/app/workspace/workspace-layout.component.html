@@ -49,9 +49,9 @@
               <span class="nav-label">{{ item.label }}</span>
             }
 
-            @if (permissions.missingReadForTab(item.permissionTab).length > 0) {
+            @if (permissions.missingReadForTab(item.id).length > 0) {
               <span class="nav-warning">
-                {{ permissions.missingReadForTab(item.permissionTab).length }}
+                {{ permissions.missingReadForTab(item.id).length }}
               </span>
             }
           </a>
@@ -90,13 +90,13 @@
           </header>
         }
 
-        @if (permissions.missingReadForTab(activeNavItem().permissionTab).length > 0) {
+        @if (permissions.missingReadForTab(activeNavItem().id).length > 0) {
           <div class="permission-summary" role="status">
             <strong>Permissões ausentes nesta seção</strong>
             <span> Sem permissões de leitura, a página não pode carregar dados com segurança. </span>
 
             <div class="permission-list">
-              @for (scope of permissions.missingReadForTab(activeNavItem().permissionTab); track scope) {
+              @for (scope of permissions.missingReadForTab(activeNavItem().id); track scope) {
                 <span class="permission-chip">{{ scope }}</span>
               }
             </div>

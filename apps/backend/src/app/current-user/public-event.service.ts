@@ -5,7 +5,9 @@ import { MAJOR_EVENT_BASE_SELECT, MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT } from '.
 import {
   PUBLIC_EVENT_GROUP_SELECT,
   PUBLIC_EVENT_SELECT,
+  PUBLIC_EVENT_WHERE,
   PUBLIC_MAJOR_EVENT_SELECT,
+  PUBLIC_MAJOR_EVENT_WHERE,
   PublicEvent,
   PublicEventGroup,
   PublicMajorEvent,
@@ -21,8 +23,7 @@ export class CurrentUserPublicEventService {
   async requirePublicEvent(eventId: string): Promise<PublicEvent> {
     const event = await this.prisma.event.findFirst({
       where: {
-        id: eventId,
-        deletedAt: null,
+        AND: [PUBLIC_EVENT_WHERE, { id: eventId }],
       },
       select: PUBLIC_EVENT_SELECT,
     });
@@ -39,6 +40,9 @@ export class CurrentUserPublicEventService {
       where: {
         id: eventGroupId,
         deletedAt: null,
+        events: {
+          some: PUBLIC_EVENT_WHERE,
+        },
       },
       select: PUBLIC_EVENT_GROUP_SELECT,
     });
@@ -53,8 +57,8 @@ export class CurrentUserPublicEventService {
   async requirePublicMajorEvent(majorEventId: string): Promise<PublicMajorEvent> {
     const majorEvent = await this.prisma.majorEvent.findFirst({
       where: {
+        ...PUBLIC_MAJOR_EVENT_WHERE,
         id: majorEventId,
-        deletedAt: null,
       },
       select: PUBLIC_MAJOR_EVENT_SELECT,
     });

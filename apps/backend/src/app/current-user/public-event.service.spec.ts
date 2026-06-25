@@ -1,7 +1,13 @@
 import { NotFoundException } from '@nestjs/common';
 import { CurrentUserPublicEventService } from './public-event.service';
 import { MAJOR_EVENT_BASE_SELECT, MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT } from './selects';
-import { PUBLIC_EVENT_GROUP_SELECT, PUBLIC_EVENT_SELECT, PUBLIC_MAJOR_EVENT_SELECT } from '../public-events/models';
+import {
+  PUBLIC_EVENT_GROUP_SELECT,
+  PUBLIC_EVENT_SELECT,
+  PUBLIC_EVENT_WHERE,
+  PUBLIC_MAJOR_EVENT_SELECT,
+  PUBLIC_MAJOR_EVENT_WHERE,
+} from '../public-events/models';
 
 describe('CurrentUserPublicEventService', () => {
   let prisma: {
@@ -28,7 +34,7 @@ describe('CurrentUserPublicEventService', () => {
 
     await expect(service.requirePublicEvent('event-1')).resolves.toBe(event);
     expect(prisma.event.findFirst).toHaveBeenCalledWith({
-      where: { id: 'event-1', deletedAt: null },
+      where: { AND: [PUBLIC_EVENT_WHERE, { id: 'event-1' }] },
       select: PUBLIC_EVENT_SELECT,
     });
   });
@@ -55,11 +61,11 @@ describe('CurrentUserPublicEventService', () => {
     );
 
     expect(prisma.eventGroup.findFirst).toHaveBeenCalledWith({
-      where: { id: 'group-1', deletedAt: null },
+      where: { id: 'group-1', deletedAt: null, events: { some: PUBLIC_EVENT_WHERE } },
       select: PUBLIC_EVENT_GROUP_SELECT,
     });
     expect(prisma.majorEvent.findFirst).toHaveBeenCalledWith({
-      where: { id: 'major-event-1', deletedAt: null },
+      where: { ...PUBLIC_MAJOR_EVENT_WHERE, id: 'major-event-1' },
       select: PUBLIC_MAJOR_EVENT_SELECT,
     });
   });

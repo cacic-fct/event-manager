@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { WeatherService } from './weather.service';
+import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 
 describe('WeatherService', () => {
   const originalFetch = global.fetch;
@@ -55,6 +56,7 @@ describe('WeatherService', () => {
   });
 
   it('returns cached weather with date fields restored', async () => {
+    prisma.event.findFirst.mockResolvedValue(weatherEventFixture());
     redis.get.mockResolvedValue(
       JSON.stringify({
         eventId: 'event-1',
@@ -77,7 +79,14 @@ describe('WeatherService', () => {
         fetchedAt: new Date('2026-05-21T12:00:00.000Z'),
       }),
     );
-    expect(prisma.event.findFirst).not.toHaveBeenCalled();
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [PUBLIC_EVENT_WHERE, { id: 'event-1' }],
+        },
+      }),
+    );
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('throws when a requested public event does not exist', async () => {
@@ -141,11 +150,15 @@ describe('WeatherService', () => {
 
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          publiclyVisible: true,
-          latitude: { not: null },
-          longitude: { not: null },
-        }),
+        where: {
+          AND: [
+            PUBLIC_EVENT_WHERE,
+            expect.objectContaining({
+              latitude: { not: null },
+              longitude: { not: null },
+            }),
+          ],
+        },
         orderBy: { startDate: 'asc' },
       }),
     );

@@ -6,28 +6,16 @@ import {
   Permission,
   WORKSPACE_PERMISSION_EVALUATION_SET,
   WORKSPACE_TAB_PERMISSIONS,
+  type WorkspacePermissionTab,
+  type WorkspaceTabPermission,
 } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 
 export type WorkspacePermissionScope = Permission;
 
-export enum WorkspacePermissionTab {
-  Events = 0,
-  MajorEvents = 1,
-  Groups = 2,
-  People = 3,
-  MergeCandidates = 4,
-  Certificates = 5,
-  Attendances = 6,
-  Subscriptions = 7,
-  Places = 8,
-  GlobalOperations = 9,
-  Permissions = 10,
-  Notifications = 11,
-  Preferences = 12,
-}
-
-const TAB_PERMISSIONS = WORKSPACE_TAB_PERMISSIONS;
+const TAB_PERMISSIONS_BY_ID = new Map<WorkspacePermissionTab, WorkspaceTabPermission>(
+  WORKSPACE_TAB_PERMISSIONS.map((tab) => [tab.id, tab]),
+);
 
 @Injectable({
   providedIn: 'root',
@@ -36,7 +24,7 @@ export class WorkspacePermissionsService {
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
 
-  readonly tabs = TAB_PERMISSIONS;
+  readonly tabs = WORKSPACE_TAB_PERMISSIONS;
   private readonly evaluatedPermissions = signal<Set<Permission>>(new Set());
   private workspacePermissionsEvaluated = false;
   private evaluationPromise: Promise<void> | null = null;
@@ -59,11 +47,13 @@ export class WorkspacePermissionsService {
   }
 
   canReadTab(tab: WorkspacePermissionTab): boolean {
-    return this.hasAll(this.tabs[tab]?.read ?? []);
+    const permissions = TAB_PERMISSIONS_BY_ID.get(tab);
+
+    return permissions ? this.hasAll(permissions.read) : false;
   }
 
   missingReadForTab(tab: WorkspacePermissionTab): WorkspacePermissionScope[] {
-    return this.missing(this.tabs[tab]?.read ?? []);
+    return this.missing(TAB_PERMISSIONS_BY_ID.get(tab)?.read ?? []);
   }
 
   canEdit(...scopes: WorkspacePermissionScope[]): boolean {

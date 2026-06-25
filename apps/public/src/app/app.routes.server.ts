@@ -82,6 +82,18 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'preview/:previewToken/event',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'preview/:previewToken/major-event',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'preview/:previewToken/group',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: '**',
     renderMode: RenderMode.Prerender,
   },

@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { MajorEvent, MajorEventInput } from '../../graphql/models';
+import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 
@@ -39,6 +40,7 @@ describe('WorkspaceMajorEventsService', () => {
         WorkspaceMajorEventsService,
         { provide: MajorEventApiService, useValue: api },
         { provide: EventApiService, useValue: { listEvents: vi.fn(() => of([])) } },
+        { provide: PublicationApiService, useValue: { setPublicationState: vi.fn(() => of({ ok: true })) } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
@@ -157,6 +159,7 @@ function createMajorEvent(input: MajorEventInput): MajorEvent {
     contactInfo: input.contactInfo,
     contactType: input.contactType,
     isPaymentRequired: input.isPaymentRequired ?? false,
+    publicationState: 'DRAFT',
     shouldIssueCertificateForNonPayingAttendees: input.shouldIssueCertificateForNonPayingAttendees ?? false,
     shouldIssueCertificateForNonSubscribedAttendees: input.shouldIssueCertificateForNonSubscribedAttendees ?? false,
     additionalPaymentInfo: input.additionalPaymentInfo,

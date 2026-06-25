@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType } from '@prisma/client';
 import { CurrentUserEventSubscriptionService } from './subscription.service';
+import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 
 describe('CurrentUserEventSubscriptionService', () => {
   it('records group subscriptions with their own audit entity type', async () => {
@@ -85,9 +86,7 @@ describe('CurrentUserEventSubscriptionService', () => {
 
     expect(tx.event.findFirst).toHaveBeenCalledWith({
       where: {
-        id: 'hidden-event',
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { id: 'hidden-event' }],
       },
       select: expect.any(Object),
     });
@@ -115,9 +114,7 @@ describe('CurrentUserEventSubscriptionService', () => {
 
     expect(tx.event.findFirst).toHaveBeenCalledWith({
       where: {
-        id: 'hidden-event',
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { id: 'hidden-event' }],
       },
       select: expect.any(Object),
     });
@@ -148,8 +145,7 @@ describe('CurrentUserEventSubscriptionService', () => {
           in: ['subscription-1'],
         },
         event: {
-          deletedAt: null,
-          publiclyVisible: true,
+          AND: [PUBLIC_EVENT_WHERE],
         },
       },
       select: expect.any(Object),
@@ -192,9 +188,7 @@ describe('CurrentUserEventSubscriptionService', () => {
 
     expect(tx.event.findMany).toHaveBeenCalledWith({
       where: {
-        eventGroupId: 'group-1',
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { eventGroupId: 'group-1' }],
       },
       select: expect.any(Object),
       orderBy: {
@@ -206,10 +200,7 @@ describe('CurrentUserEventSubscriptionService', () => {
         personId: 'person-1',
         deletedAt: null,
         event: {
-          eventGroupId: 'group-1',
-          deletedAt: null,
-          publiclyVisible: true,
-          majorEventId: null,
+          AND: [PUBLIC_EVENT_WHERE, { eventGroupId: 'group-1', majorEventId: null }],
         },
       },
       select: expect.any(Object),

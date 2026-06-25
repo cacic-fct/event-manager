@@ -93,8 +93,6 @@ export class WorkspacePermissionDeniedComponent {
   });
 
   protected readonly missingPermissions = computed(() => {
-    const permissionTab = this.navItem().permissionTab;
-
-    return this.permissions.missingReadForTab(permissionTab);
+    return this.permissions.missingReadForTab(this.navItem().id);
   });
 }

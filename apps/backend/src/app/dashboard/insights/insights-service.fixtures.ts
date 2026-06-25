@@ -55,15 +55,15 @@ export function createPrismaMock() {
   return {
     event: {
       count: jest.fn(),
-      findMany: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     eventGroup: {
       count: jest.fn(),
-      findMany: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     majorEvent: {
       count: jest.fn(),
-      findMany: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     mergeCandidate: {
       count: jest.fn(),

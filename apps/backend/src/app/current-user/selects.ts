@@ -73,6 +73,10 @@ export const MAJOR_EVENT_BASE_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   certificateConfigs: {
     where: {
       deletedAt: null,
@@ -199,6 +203,10 @@ export const EVENT_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,

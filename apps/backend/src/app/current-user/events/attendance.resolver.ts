@@ -15,7 +15,7 @@ import { CURRENT_USER_EVENT_ATTENDANCE_SELECT, GraphqlContext } from '../selects
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from './attendance-realtime.service';
-import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
+import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
@@ -112,9 +112,7 @@ export class CurrentUserEventAttendanceResolver {
 
     const event = await this.prisma.event.findFirst({
       where: {
-        id: input.eventId,
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { id: input.eventId }],
       },
       select: {
         id: true,

@@ -100,6 +100,18 @@ import { NovuNotificationsController } from './notifications/novu-notifications.
 import { AccountManagerPrivacySyncService } from './privacy/account-manager-privacy-sync.service';
 import { PrivacyController } from './privacy/privacy.controller';
 import { TrackingController } from './privacy/tracking.controller';
+import { PublicationProcessor } from './publishing/publishing.processor';
+import { PublicationResolver } from './publishing/publishing.resolver';
+import { PublicationScheduler } from './publishing/publishing.scheduler';
+import { PUBLICATION_QUEUE } from './publishing/publishing.constants';
+import { PublicationJobsService } from './publishing/publishing-jobs.service';
+import { PublicationPreviewContentService } from './publishing/publishing-preview-content.service';
+import { PublicationPreviewService } from './publishing/publishing-preview.service';
+import { PublicationSearchSyncService } from './publishing/publishing-search-sync.service';
+import { PublicationService } from './publishing/publishing.service';
+import { PublicationStateWriterService } from './publishing/publishing-state-writer.service';
+import { PublicationTargetService } from './publishing/publishing-target.service';
+import { PublicationTransitionService } from './publishing/publishing-transition.service';
 import { getRedisConnectionOptions } from './weather/redis-connection';
 import { WeatherProcessor } from './weather/weather.processor';
 import { WeatherResolver } from './weather/weather.resolver';
@@ -134,6 +146,9 @@ import { RateLimitService } from './rate-limit/rate-limit.service';
     }),
     BullModule.registerQueue({
       name: CALENDAR_FEED_MAINTENANCE_QUEUE,
+    }),
+    BullModule.registerQueue({
+      name: PUBLICATION_QUEUE,
     }),
     GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
@@ -197,6 +212,17 @@ import { RateLimitService } from './rate-limit/rate-limit.service';
     CalendarService,
     CalendarFeedMaintenanceScheduler,
     CalendarFeedMaintenanceProcessor,
+    PublicationResolver,
+    PublicationService,
+    PublicationTransitionService,
+    PublicationPreviewService,
+    PublicationJobsService,
+    PublicationSearchSyncService,
+    PublicationStateWriterService,
+    PublicationTargetService,
+    PublicationPreviewContentService,
+    PublicationScheduler,
+    PublicationProcessor,
     CurrentUserContextService,
     CurrentUserEventMapperService,
     CurrentUserPublicEventService,

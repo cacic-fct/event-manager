@@ -1,4 +1,5 @@
 import { CurrentUserEventSubscriptionsResolver } from './subscriptions.resolver';
+import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 
 describe('CurrentUserEventSubscriptionsResolver', () => {
   const frozenResources = {
@@ -45,9 +46,7 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
         personId: 'person-1',
         deletedAt: null,
         event: {
-          deletedAt: null,
-          publiclyVisible: true,
-          majorEventId: null,
+          AND: [PUBLIC_EVENT_WHERE, { majorEventId: null }],
         },
       },
       select: expect.any(Object),
@@ -88,8 +87,7 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
         personId: 'person-1',
         deletedAt: null,
         event: {
-          deletedAt: null,
-          publiclyVisible: true,
+          AND: [PUBLIC_EVENT_WHERE],
         },
       },
       select: expect.any(Object),
@@ -144,9 +142,7 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
         personId: 'person-1',
         deletedAt: null,
         event: {
-          majorEventId: 'major-1',
-          deletedAt: null,
-          publiclyVisible: true,
+          AND: [PUBLIC_EVENT_WHERE, { majorEventId: 'major-1' }],
         },
       },
       select: expect.any(Object),

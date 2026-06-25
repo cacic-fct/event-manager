@@ -24,6 +24,14 @@ const CERTIFICATE_VALIDATION_EVENT_SELECT = {
   creditMinutes: true,
   type: true,
   publiclyVisible: true,
+  publicationState: true,
+  majorEventId: true,
+  majorEvent: {
+    select: {
+      deletedAt: true,
+      publicationState: true,
+    },
+  },
 } satisfies Prisma.EventSelect;
 
 const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
@@ -59,6 +67,7 @@ const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
           id: true,
           name: true,
           emoji: true,
+          publicationState: true,
         },
       },
     },
@@ -98,7 +107,7 @@ export class PublicCertificateValidationService {
     }
 
     const events = await this.resolveCertificateEvents(certificate);
-    const publiclyVisibleEvents = events.filter((event) => event.publiclyVisible);
+    const publiclyVisibleEvents = events.filter((event) => this.isCertificateEventPublic(event));
     const sections = this.buildSections(certificate, publiclyVisibleEvents);
 
     return {
@@ -421,7 +430,17 @@ export class PublicCertificateValidationService {
   }
 
   private getTargetName(certificate: PublicCertificateValidationRecord): string | undefined {
-    if (certificate.config.scope === CertificateScope.EVENT && !certificate.config.event?.publiclyVisible) {
+    if (
+      certificate.config.scope === CertificateScope.EVENT &&
+      !this.isCertificateEventPublic(certificate.config.event)
+    ) {
+      return undefined;
+    }
+
+    if (
+      certificate.config.scope === CertificateScope.MAJOR_EVENT &&
+      certificate.config.majorEvent?.publicationState !== 'PUBLISHED'
+    ) {
       return undefined;
     }
 
@@ -434,11 +453,31 @@ export class PublicCertificateValidationService {
   }
 
   private getTargetEmoji(certificate: PublicCertificateValidationRecord): string | undefined {
-    if (certificate.config.scope === CertificateScope.EVENT && !certificate.config.event?.publiclyVisible) {
+    if (
+      certificate.config.scope === CertificateScope.EVENT &&
+      !this.isCertificateEventPublic(certificate.config.event)
+    ) {
+      return undefined;
+    }
+
+    if (
+      certificate.config.scope === CertificateScope.MAJOR_EVENT &&
+      certificate.config.majorEvent?.publicationState !== 'PUBLISHED'
+    ) {
       return undefined;
     }
 
     return certificate.config.majorEvent?.emoji ?? certificate.config.event?.emoji ?? undefined;
+  }
+
+  private isCertificateEventPublic(event?: CertificateValidationEventRecord | null): event is CertificateValidationEventRecord {
+    return Boolean(
+      event &&
+        event.publiclyVisible &&
+        event.publicationState === 'PUBLISHED' &&
+        (!event.majorEventId ||
+          Boolean(event.majorEvent && event.majorEvent.deletedAt == null && event.majorEvent.publicationState === 'PUBLISHED')),
+    );
   }
 
   private sumCreditMinutes(events: CertificateValidationEventRecord[]): number {

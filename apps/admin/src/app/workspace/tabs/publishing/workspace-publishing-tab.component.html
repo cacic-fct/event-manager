@@ -1,0 +1,194 @@
+<section class="section workspace-tab-shell publication-shell">
+  <header class="tab-header publication-header">
+    <div>
+      <h1>Publicação</h1>
+      <p>
+        Orquestre rascunhos, agendamentos, pré-visualizações e publicação pública sem sair dos editores atuais.
+      </p>
+    </div>
+    <button mat-stroked-button type="button" (click)="refresh()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Atualizar
+    </button>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <section class="workspace-grid">
+    <aside class="tree-panel panel" aria-label="Itens publicáveis">
+      <div class="tree-heading">
+        <h2>Itens publicáveis</h2>
+        <p>Escolha o item que terá a publicação controlada.</p>
+        <form class="publication-filter" [formGroup]="filterForm" (ngSubmit)="applySearch()">
+          <mat-form-field appearance="outline">
+            <mat-label>Buscar</mat-label>
+            <input matInput formControlName="query" />
+          </mat-form-field>
+          <button mat-icon-button type="submit" [disabled]="loading()" matTooltip="Buscar">
+            <mat-icon>search</mat-icon>
+          </button>
+          <button mat-icon-button type="button" (click)="clearSearch()" [disabled]="loading()" matTooltip="Limpar busca">
+            <mat-icon>close</mat-icon>
+          </button>
+        </form>
+      </div>
+      <mat-list class="publication-list">
+        @for (node of workspaceItems(); track node.targetType + node.id) {
+          <mat-list-item
+            role="button"
+            tabindex="0"
+            [attr.aria-selected]="isSelected(node)"
+            [class.selected-list-item]="isSelected(node)"
+            [class.hidden]="node.publiclyVisible === false"
+            [class.warning]="isWarning(node)"
+            (click)="selectNode(node)"
+            (keydown.enter)="selectNode(node)"
+            (keydown.space)="$event.preventDefault(); selectNode(node)"
+          >
+            <mat-icon matListItemIcon>{{ targetIcon(node.targetType) }}</mat-icon>
+            <span matListItemTitle class="publication-list-title">{{ node.label }}</span>
+            <span matListItemLine class="publication-list-line">{{ targetDescription(node) }}</span>
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            <span matListItemTitle>Nenhum item publicável</span>
+            <span matListItemLine>Crie eventos, grupos ou grandes eventos nos editores ou ajuste a busca.</span>
+          </mat-list-item>
+        }
+      </mat-list>
+      <div class="publication-pager" aria-label="Paginação dos itens publicáveis">
+        <button mat-icon-button type="button" (click)="previousPage()" [disabled]="loading() || !hasPreviousPage()" matTooltip="Página anterior">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <span>{{ paginationLabel() }}</span>
+        <button mat-icon-button type="button" (click)="nextPage()" [disabled]="loading() || !hasNextPage()" matTooltip="Próxima página">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </aside>
+
+    <main class="detail-panel panel-stack">
+      @if (selectedNode(); as selected) {
+        <section class="selected-summary surface">
+          <div>
+            <span class="eyebrow">{{ targetLabel(selected.targetType) }}</span>
+            <h2>{{ selected.label }}</h2>
+            <p>{{ selected.statusLabel }}</p>
+            @if (selected.childCount > 0) {
+              <p class="child-count">{{ childCountLabel(selected.childCount) }}</p>
+            }
+          </div>
+          <div class="summary-flags" aria-label="Status selecionado">
+            <span>{{ statusLabel(selected.publicationState) }}</span>
+            @if (selected.publiclyVisible === false) {
+              <span class="summary-flag-warning">Oculto dos usuários</span>
+            }
+          </div>
+        </section>
+
+        <section class="actions-panel surface">
+          <div class="action-group">
+            <div class="action-group-heading">
+              <h3>Item selecionado</h3>
+              <p>Altere somente o estado de publicação deste item.</p>
+            </div>
+            <div class="action-grid">
+              <button mat-flat-button type="button" (click)="publishSelected()" [disabled]="loading()">
+                <mat-icon>publish</mat-icon>
+                Publicar
+              </button>
+              <button mat-stroked-button type="button" (click)="draftSelected()" [disabled]="loading()">
+                <mat-icon>edit_note</mat-icon>
+                Rascunho
+              </button>
+              <button mat-stroked-button type="button" (click)="unpublishSelected()" [disabled]="loading()">
+                <mat-icon>visibility_off</mat-icon>
+                Despublicar
+              </button>
+              <button mat-stroked-button type="button" (click)="openEditor()">
+                <mat-icon>open_in_new</mat-icon>
+                Abrir no editor
+              </button>
+            </div>
+          </div>
+
+          <div class="action-group">
+            <div class="action-group-heading">
+              <h3>Agendamento e conjunto</h3>
+              <p>Use estas ações para programar publicações ou sincronizar itens vinculados.</p>
+            </div>
+            <form class="schedule-form" [formGroup]="actionForm">
+              <mat-form-field appearance="outline">
+                <mat-label>Publicar em</mat-label>
+                <input matInput type="datetime-local" formControlName="scheduledPublishAt" />
+              </mat-form-field>
+              <button mat-stroked-button type="button" (click)="scheduleSelected()" [disabled]="loading()">
+                <mat-icon>schedule</mat-icon>
+                Agendar selecionado
+              </button>
+              <button mat-stroked-button type="button" (click)="scheduleBundle()" [disabled]="loading()">
+                <mat-icon>account_tree</mat-icon>
+                Agendar conjunto
+              </button>
+            </form>
+            <div class="action-grid">
+              <button mat-stroked-button type="button" (click)="publishMissingChildren()" [disabled]="loading()">
+                <mat-icon>playlist_add_check</mat-icon>
+                Publicar pendentes vinculados
+              </button>
+              <button mat-stroked-button type="button" (click)="unpublishBundle()" [disabled]="loading()">
+                <mat-icon>layers_clear</mat-icon>
+                Despublicar conjunto
+              </button>
+            </div>
+            <p class="queue-note">
+              O horário agendado depende da fila de tarefas. Normalmente a publicação acontece perto do horário
+              escolhido, mas pode atrasar alguns minutos se houver muitas tarefas. Um reconciliador roda de madrugada
+              para corrigir transições perdidas.
+            </p>
+          </div>
+        </section>
+
+        <section class="preview-panel surface">
+          <h3>Pré-visualização</h3>
+          <form class="preview-form" [formGroup]="actionForm">
+            <mat-form-field appearance="outline">
+              <mat-label>Pré-visualizar em</mat-label>
+              <input matInput type="datetime-local" formControlName="previewAt" />
+            </mat-form-field>
+            <button mat-flat-button type="button" (click)="previewSelected()" [disabled]="loading()">
+              <mat-icon>preview</mat-icon>
+              Pré-visualizar como público
+            </button>
+          </form>
+          <p>Links temporários expiram em 1 hora e exigem autenticação administrativa no site público.</p>
+        </section>
+      } @else {
+        <section class="empty-state surface">
+          <mat-icon>campaign</mat-icon>
+          <h2>Nenhum conteúdo encontrado</h2>
+          <p>Crie eventos, grupos ou grandes eventos nos editores para começar a publicar.</p>
+        </section>
+      }
+
+      <section class="warnings-panel surface">
+        <h3>Checklist de consistência</h3>
+        @if (selectedWarnings().length === 0) {
+          <p>Nenhum aviso para o item selecionado.</p>
+        } @else {
+          <mat-list>
+            @for (warning of selectedWarnings(); track warning.type + warning.targetId + warning.description) {
+              <mat-list-item>
+                <mat-icon matListItemIcon>{{ warning.severity === 'CRITICAL' ? 'error' : 'warning' }}</mat-icon>
+                <span matListItemTitle class="warning-title">{{ warning.title }}</span>
+                <span matListItemLine class="warning-description">{{ warning.description }}</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        }
+      </section>
+    </main>
+  </section>
+</section>

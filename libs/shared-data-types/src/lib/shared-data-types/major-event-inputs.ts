@@ -31,8 +31,8 @@ export class PriceTierInput {
   @Field(() => String, { nullable: true })
   id?: string;
 
-  @Field(() => String)
-  name!: string;
+  @Field(() => String, { nullable: true })
+  name?: string;
 
   @Field(() => Int)
   value!: number;
@@ -52,17 +52,17 @@ export class MajorEventCreateInput {
   @Field(() => String, { nullable: true })
   id?: string;
 
-  @Field(() => String)
-  name!: string;
+  @Field(() => String, { nullable: true })
+  name?: string;
 
   @Field(() => String, { nullable: true })
   emoji?: string;
 
-  @Field(() => Date)
-  startDate!: Date;
+  @Field(() => Date, { nullable: true })
+  startDate?: Date;
 
-  @Field(() => Date)
-  endDate!: Date;
+  @Field(() => Date, { nullable: true })
+  endDate?: Date;
 
   @Field(() => String, { nullable: true })
   description?: string;

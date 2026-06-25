@@ -132,6 +132,15 @@ describe('DashboardInsightsService generation', () => {
       ])
       .mockResolvedValueOnce([
         {
+          id: 'published-major-without-visible-children',
+          name: 'Published major without visible children',
+          publicationState: 'PUBLISHED',
+          scheduledPublishAt: null,
+          events: [],
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
           id: 'pending-major',
           name: 'Pending major',
           endDate: new Date('2026-05-18T10:00:00.000Z'),

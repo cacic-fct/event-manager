@@ -7,7 +7,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
@@ -19,7 +19,12 @@ import { MajorEventSubscriptionApiService } from './subscription/subscription-ap
 
 type MajorEventPageState =
   | { status: 'loading' }
-  | { status: 'ready'; events: PublicMajorEvent[]; subscriptions: CurrentUserMajorEventSubscription[] }
+  | {
+      status: 'ready';
+      events: PublicMajorEvent[];
+      subscriptions: CurrentUserMajorEventSubscription[];
+      preview?: { expiresAt: string } | null;
+    }
   | { status: 'error'; message: string };
 
 const RECEIPT_UPLOAD_STATUSES = new Set([
@@ -52,6 +57,7 @@ export class MajorEvent {
   private readonly analytics = inject(AnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly route = inject(ActivatedRoute);
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.auth.isAuthenticated;
@@ -73,6 +79,10 @@ export class MajorEvent {
     }
 
     return new Map(state.subscriptions.map((subscription) => [subscription.majorEventId, subscription]));
+  });
+  readonly isPreview = computed(() => {
+    const state = this.pageState();
+    return state.status === 'ready' && Boolean(state.preview);
   });
 
   constructor() {
@@ -115,10 +125,32 @@ export class MajorEvent {
   }
 
   login(): void {
+    if (this.isPreview()) {
+      return;
+    }
+
     void this.auth.login({ returnTo: '/major-event' });
   }
 
   private loadPage(): void {
+    const previewToken = this.route.snapshot.paramMap.get('previewToken');
+    if (previewToken) {
+      this.pageState.set({ status: 'loading' });
+      this.api
+        .getPreviewMajorEvents(previewToken)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: ({ events, expiresAt }) =>
+            this.pageState.set({ status: 'ready', events, subscriptions: [], preview: { expiresAt } }),
+          error: (error: unknown) =>
+            this.pageState.set({
+              status: 'error',
+              message: error instanceof Error ? error.message : 'Não foi possível carregar a pré-visualização.',
+            }),
+        });
+      return;
+    }
+
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setHours(0, 0, 0, 0);
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);

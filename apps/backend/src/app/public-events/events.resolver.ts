@@ -12,7 +12,9 @@ import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import {
   PUBLIC_MAJOR_EVENT_SELECT,
+  PUBLIC_MAJOR_EVENT_WHERE,
   PUBLIC_EVENT_SELECT,
+  PUBLIC_EVENT_WHERE,
   PublicEvent,
   PublicLecturerProfile,
   PublicMajorEventSubscriptionPage,
@@ -175,17 +177,25 @@ function resolvePublicEventsPagination(skip?: number, take?: number): { skip: nu
 
 function buildPublicEventsTypesenseFilter(input: {
   eventGroupId?: string;
+  eventType?: EventType;
   majorEventId?: string;
   startDateFrom?: Date;
   startDateUntil?: Date;
 }): string {
-  const filters = ['publiclyVisible:=true'];
+  const filters = [
+    'publiclyVisible:=true',
+    'publicationState:=PUBLISHED',
+    'majorEventPublicationState:=PUBLISHED',
+  ];
 
   if (input.eventGroupId) {
     filters.push(`eventGroupId:=${escapeTypesenseFilterValue(input.eventGroupId)}`);
   }
   if (input.majorEventId) {
     filters.push(`majorEventId:=${escapeTypesenseFilterValue(input.majorEventId)}`);
+  }
+  if (input.eventType) {
+    filters.push(`type:=${escapeTypesenseFilterValue(input.eventType)}`);
   }
   if (input.startDateFrom) {
     filters.push(`startDate:>=${toTypesenseTimestamp(input.startDateFrom)}`);
@@ -260,28 +270,26 @@ export class PublicEventsResolver {
     take?: number,
   ) {
     const pagination = resolvePublicEventsPagination(skip, take);
-    const where: Prisma.EventWhereInput = {
-      deletedAt: null,
-      publiclyVisible: true,
-    };
+    const whereParts: Prisma.EventWhereInput[] = [PUBLIC_EVENT_WHERE];
     const normalizedQuery = query?.trim();
 
     if (startDateFrom || startDateUntil) {
-      where.startDate = {};
+      const startDate: Prisma.DateTimeFilter = {};
       if (startDateFrom) {
-        where.startDate.gte = startDateFrom;
+        startDate.gte = startDateFrom;
       }
       if (startDateUntil) {
-        where.startDate.lte = startDateUntil;
+        startDate.lte = startDateUntil;
       }
+      whereParts.push({ startDate });
     }
 
     if (eventGroupId) {
-      where.eventGroupId = eventGroupId;
+      whereParts.push({ eventGroupId });
     }
 
     if (majorEventId) {
-      where.majorEventId = majorEventId;
+      whereParts.push({ majorEventId });
     }
 
     let prioritizedIds: string[] = [];
@@ -302,17 +310,19 @@ export class PublicEventsResolver {
           if (prioritizedIds.length === 0) {
             return [];
           }
-          where.id = { in: prioritizedIds };
+          whereParts.push({ id: { in: prioritizedIds } });
         } else {
-          where.name = { contains: normalizedQuery, mode: 'insensitive' };
+          whereParts.push({ name: { contains: normalizedQuery, mode: 'insensitive' } });
         }
       } else {
-        where.name = { contains: normalizedQuery, mode: 'insensitive' };
+        whereParts.push({ name: { contains: normalizedQuery, mode: 'insensitive' } });
       }
     }
 
     const events = await this.prisma.event.findMany({
-      where,
+      where: {
+        AND: whereParts,
+      },
       select: PUBLIC_EVENT_SELECT,
       orderBy: {
         startDate: 'desc',
@@ -384,36 +394,41 @@ export class PublicEventsResolver {
       startDateFilter.lte = startDateUntil;
     }
 
-    const where: Prisma.EventWhereInput = {
-      deletedAt: null,
-      publiclyVisible: true,
-      startDate: startDateFilter,
-    };
+    const whereParts: Prisma.EventWhereInput[] = [PUBLIC_EVENT_WHERE, { startDate: startDateFilter }];
 
     if (eventType) {
-      where.type = eventType;
+      whereParts.push({ type: eventType });
     }
 
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, 500);
+        const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, {
+          filterBy: buildPublicEventsTypesenseFilter({
+            eventType,
+            startDateFrom: effectiveStartDate,
+            startDateUntil,
+          }),
+          limit: 500,
+        });
         if (searchResult.available) {
           prioritizedIds = searchResult.ids;
           if (prioritizedIds.length === 0) {
             return [];
           }
-          where.id = { in: prioritizedIds };
+          whereParts.push({ id: { in: prioritizedIds } });
         } else {
-          where.name = { contains: normalizedQuery, mode: 'insensitive' };
+          whereParts.push({ name: { contains: normalizedQuery, mode: 'insensitive' } });
         }
       } else {
-        where.name = { contains: normalizedQuery, mode: 'insensitive' };
+        whereParts.push({ name: { contains: normalizedQuery, mode: 'insensitive' } });
       }
     }
 
     const events = await this.prisma.event.findMany({
-      where,
+      where: {
+        AND: whereParts,
+      },
       select: PUBLIC_EVENT_SELECT,
       orderBy: {
         startDate: 'asc',
@@ -451,9 +466,7 @@ export class PublicEventsResolver {
   ) {
     const event = await this.prisma.event.findFirst({
       where: {
-        id,
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { id }],
       },
       select: PUBLIC_EVENT_SELECT,
     });
@@ -479,9 +492,7 @@ export class PublicEventsResolver {
   ): Promise<PublicEventSubscriptionSummary> {
     const event = await this.prisma.event.findFirst({
       where: {
-        id: eventId,
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { id: eventId }],
       },
       select: {
         id: true,
@@ -515,15 +526,14 @@ export class PublicEventsResolver {
     const [majorEvent, events] = await Promise.all([
       this.prisma.majorEvent.findFirst({
         where: {
+          ...PUBLIC_MAJOR_EVENT_WHERE,
           id: majorEventId,
-          deletedAt: null,
         },
         select: PUBLIC_MAJOR_EVENT_SELECT,
       }),
       this.prisma.event.findMany({
         where: {
-          ...this.publicSlotSummaryEventWhere(now),
-          majorEventId,
+          AND: [this.publicSlotSummaryEventWhere(now), { majorEventId }],
         },
         select: PUBLIC_EVENT_SELECT,
         orderBy: {
@@ -564,13 +574,16 @@ export class PublicEventsResolver {
 
   private publicSlotSummaryEventWhere(now: Date): Prisma.EventWhereInput {
     return {
-      deletedAt: null,
-      publiclyVisible: true,
-      allowSubscription: true,
-      majorEventId: {
-        not: null,
-      },
-      OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }],
+      AND: [
+        PUBLIC_EVENT_WHERE,
+        {
+          allowSubscription: true,
+          majorEventId: {
+            not: null,
+          },
+          OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }],
+        },
+      ],
     };
   }
 

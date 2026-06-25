@@ -96,9 +96,13 @@ export class Event {
   readonly eventState = toSignal(this.createEventState(), {
     initialValue: { status: 'loading' } satisfies EventPageState,
   });
+  readonly isPreview = computed(() => {
+    const currentState = this.eventState();
+    return currentState.status === 'ready' && Boolean(currentState.data.preview);
+  });
   readonly calendarDownloadUrl = computed(() => {
     const currentState = this.eventState();
-    if (currentState.status !== 'ready') {
+    if (currentState.status !== 'ready' || currentState.data.preview) {
       return null;
     }
 
@@ -254,6 +258,10 @@ export class Event {
   }
 
   canSubscribe(data: EventPageData): boolean {
+    if (data.preview) {
+      return false;
+    }
+
     if (!this.hasStandaloneSubscription(data.event)) {
       return false;
     }
@@ -276,6 +284,7 @@ export class Event {
 
   canUnsubscribe(data: EventPageData): boolean {
     return (
+      !data.preview &&
       this.hasStandaloneSubscription(data.event) &&
       Boolean(data.currentUserSubscription) &&
       this.isOnline() &&
@@ -284,6 +293,10 @@ export class Event {
   }
 
   canConfirmAttendance(event: PublicEvent): boolean {
+    if (this.isPreview()) {
+      return false;
+    }
+
     return isOnlineAttendanceRegistrationOpen(event);
   }
 
@@ -382,11 +395,35 @@ export class Event {
 
   private createEventState(): Observable<EventPageState> {
     return combineLatest([
-      this.route.paramMap.pipe(map((params) => params.get('eventId') ?? params.get('eventID') ?? '')),
+      this.route.paramMap.pipe(
+        map((params) => ({
+          eventId: params.get('eventId') ?? params.get('eventID') ?? '',
+          previewToken: params.get('previewToken') ?? '',
+        })),
+      ),
       toObservable(this.isAuthenticated),
       toObservable(this.reloadCounter),
     ]).pipe(
-      switchMap(([eventId, authenticated]) => {
+      switchMap(([routeParams, authenticated]) => {
+        if (routeParams.previewToken) {
+          return this.api.getPreviewEventPageData(routeParams.previewToken).pipe(
+            map(
+              (data): EventPageState => ({
+                status: 'ready',
+                data,
+              }),
+            ),
+            startWith({ status: 'loading' } satisfies EventPageState),
+            catchError((error: unknown) =>
+              of({
+                status: 'error',
+                message: error instanceof Error ? error.message : 'Não foi possível carregar a pré-visualização.',
+              } satisfies EventPageState),
+            ),
+          );
+        }
+
+        const eventId = routeParams.eventId;
         if (!eventId) {
           return of({
             status: 'error',

@@ -1,4 +1,5 @@
 import { PublicEventsResolver } from './events.resolver';
+import { PUBLIC_EVENT_WHERE } from './models';
 
 describe('PublicEventsResolver lecturer profiles', () => {
   afterEach(() => {
@@ -22,18 +23,14 @@ describe('PublicEventsResolver lecturer profiles', () => {
     ).resolves.toEqual([{ id: 'event-b' }]);
 
     expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', {
-      filterBy: 'publiclyVisible:=true',
+      filterBy: 'publiclyVisible:=true && publicationState:=PUBLISHED && majorEventPublicationState:=PUBLISHED',
       limit: 100,
       offset: 250,
     });
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          deletedAt: null,
-          publiclyVisible: true,
-          id: {
-            in: ['event-b'],
-          },
+          AND: [PUBLIC_EVENT_WHERE, { id: { in: ['event-b'] } }],
         },
         skip: 0,
         take: 1,
@@ -58,14 +55,17 @@ describe('PublicEventsResolver lecturer profiles', () => {
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          deletedAt: null,
-          publiclyVisible: true,
-          majorEventId: 'major-1',
-          eventGroupId: 'group-1',
-          name: {
-            contains: 'aula',
-            mode: 'insensitive',
-          },
+          AND: [
+            PUBLIC_EVENT_WHERE,
+            { eventGroupId: 'group-1' },
+            { majorEventId: 'major-1' },
+            {
+              name: {
+                contains: 'aula',
+                mode: 'insensitive',
+              },
+            },
+          ],
         },
         skip: 5,
         take: 10,
@@ -100,16 +100,23 @@ describe('PublicEventsResolver lecturer profiles', () => {
       { id: 'event-c', startDate: laterStartDate },
     ]);
 
-    expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', 500);
+    expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', {
+      filterBy: 'publiclyVisible:=true && publicationState:=PUBLISHED && majorEventPublicationState:=PUBLISHED && startDate:>=1782172800',
+      limit: 500,
+    });
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          deletedAt: null,
-          publiclyVisible: true,
-          id: {
-            in: ['event-a', 'event-b', 'event-c'],
-          },
-        }),
+        where: {
+          AND: [
+            PUBLIC_EVENT_WHERE,
+            {
+              startDate: {
+                gte: new Date('2026-06-23T00:00:00.000Z'),
+              },
+            },
+            { id: { in: ['event-a', 'event-b', 'event-c'] } },
+          ],
+        },
       }),
     );
   });

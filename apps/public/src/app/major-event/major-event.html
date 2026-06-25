@@ -1,5 +1,5 @@
 <mat-toolbar>
-  <span>Grandes eventos</span>
+  <span>{{ isPreview() ? 'Pré-Visualização' : 'Grandes eventos' }}</span>
 </mat-toolbar>
 
 <main class="major-event-page">
@@ -20,6 +20,12 @@
     <p>Nenhum grande evento disponível.</p>
   </section>
   } @else {
+  @if (state.preview) {
+  <section class="preview-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">visibility</mat-icon>
+    <p>Pré-visualização temporária. Este link expira em {{ state.preview.expiresAt | date: 'dd/MM/yyyy HH:mm' }}.</p>
+  </section>
+  }
   <section class="event-grid" aria-label="Grandes eventos">
     @for (majorEvent of majorEvents(); track majorEvent.id) { @let subscription = subscriptionFor(majorEvent.id);
     <mat-card appearance="outlined" class="event-card">
@@ -62,6 +68,7 @@
         </mat-chip-set>
       </mat-card-content>
 
+      @if (!isPreview()) {
       <mat-card-actions align="end">
         @if (subscription?.subscriptionStatus === 'CONFIRMED') {
         <button mat-flat-button type="button" disabled>
@@ -109,6 +116,7 @@
         </a>
         }
       </mat-card-actions>
+      }
     </mat-card>
     }
   </section>

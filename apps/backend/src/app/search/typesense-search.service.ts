@@ -20,6 +20,8 @@ type EventSearchDocument = {
   startDate: number;
   endDate: number;
   publiclyVisible: boolean;
+  publicationState: string;
+  majorEventPublicationState: string;
   isIssuableCertificateEvent: boolean;
 };
 
@@ -29,6 +31,7 @@ type MajorEventSearchDocument = {
   description?: string;
   startDate: number;
   endDate: number;
+  publicationState: string;
 };
 
 type EventGroupSearchDocument = {
@@ -178,6 +181,7 @@ export class TypesenseSearchService implements OnModuleInit {
     eventGroupId?: string | null;
     shouldIssueCertificate?: boolean | null;
     publiclyVisible?: boolean | null;
+    publicationState?: string | null;
     startDate: Date;
     endDate: Date;
   }): Promise<void> {
@@ -205,6 +209,8 @@ export class TypesenseSearchService implements OnModuleInit {
       startDate: this.toUnixTimestamp(input.startDate),
       endDate: this.toUnixTimestamp(input.endDate),
       publiclyVisible: Boolean(input.publiclyVisible),
+      publicationState: input.publicationState ?? 'DRAFT',
+      majorEventPublicationState: await this.resolveMajorEventPublicationState(input.majorEventId),
       isIssuableCertificateEvent: this.isIssuableCertificateEvent({
         eventGroup: eventGroupContext,
         eventGroupId: input.eventGroupId,
@@ -224,6 +230,7 @@ export class TypesenseSearchService implements OnModuleInit {
     description?: string | null;
     startDate: Date;
     endDate: Date;
+    publicationState?: string | null;
   }): Promise<void> {
     if (!this.client) {
       return;
@@ -235,6 +242,7 @@ export class TypesenseSearchService implements OnModuleInit {
       description: this.toOptionalString(input.description),
       startDate: this.toUnixTimestamp(input.startDate),
       endDate: this.toUnixTimestamp(input.endDate),
+      publicationState: input.publicationState ?? 'DRAFT',
     });
     await this.reindexEventsByMajorEventId(input.id);
   }
@@ -411,6 +419,8 @@ export class TypesenseSearchService implements OnModuleInit {
         { name: 'startDate', type: 'int64', sort: true },
         { name: 'endDate', type: 'int64', sort: true },
         { name: 'publiclyVisible', type: 'bool', optional: true, facet: true },
+        { name: 'publicationState', type: 'string', optional: true, facet: true },
+        { name: 'majorEventPublicationState', type: 'string', optional: true, facet: true },
         { name: 'isIssuableCertificateEvent', type: 'bool', optional: true, facet: true },
       ]),
       this.createCollectionSchema(TYPESENSE_COLLECTIONS.majorEvents, [
@@ -419,6 +429,7 @@ export class TypesenseSearchService implements OnModuleInit {
         { name: 'description', type: 'string', optional: true },
         { name: 'startDate', type: 'int64', sort: true },
         { name: 'endDate', type: 'int64', sort: true },
+        { name: 'publicationState', type: 'string', optional: true, facet: true },
       ]),
       this.createCollectionSchema(TYPESENSE_COLLECTIONS.eventGroups, [
         { name: 'id', type: 'string' },
@@ -505,6 +516,7 @@ export class TypesenseSearchService implements OnModuleInit {
             select: {
               name: true,
               deletedAt: true,
+              publicationState: true,
             },
           },
           eventGroupId: true,
@@ -520,6 +532,7 @@ export class TypesenseSearchService implements OnModuleInit {
           endDate: true,
           shouldIssueCertificate: true,
           publiclyVisible: true,
+          publicationState: true,
         },
       }),
       this.prisma.majorEvent.findMany({
@@ -530,6 +543,7 @@ export class TypesenseSearchService implements OnModuleInit {
           description: true,
           startDate: true,
           endDate: true,
+          publicationState: true,
         },
       }),
       this.prisma.eventGroup.findMany({
@@ -585,11 +599,13 @@ export class TypesenseSearchService implements OnModuleInit {
           locationDescription: this.toOptionalString(event.locationDescription),
           majorEventId: this.toOptionalString(event.majorEventId),
           majorEventName: event.majorEvent?.deletedAt ? undefined : this.toOptionalString(event.majorEvent?.name),
+          majorEventPublicationState: this.materializeMajorEventPublicationState(event.majorEvent),
           eventGroupId: this.toOptionalString(event.eventGroupId),
           eventGroupName: event.eventGroup?.deletedAt ? undefined : this.toOptionalString(event.eventGroup?.name),
           startDate: this.toUnixTimestamp(event.startDate),
           endDate: this.toUnixTimestamp(event.endDate),
           publiclyVisible: event.publiclyVisible,
+          publicationState: event.publicationState,
           isIssuableCertificateEvent: this.isIssuableCertificateEvent(event),
         })),
       ),
@@ -601,6 +617,7 @@ export class TypesenseSearchService implements OnModuleInit {
           description: this.toOptionalString(majorEvent.description),
           startDate: this.toUnixTimestamp(majorEvent.startDate),
           endDate: this.toUnixTimestamp(majorEvent.endDate),
+          publicationState: majorEvent.publicationState,
         })),
       ),
       this.replaceCollectionDocuments<EventGroupSearchDocument>(
@@ -675,6 +692,7 @@ export class TypesenseSearchService implements OnModuleInit {
           select: {
             name: true,
             deletedAt: true,
+            publicationState: true,
           },
         },
         eventGroupId: true,
@@ -690,6 +708,7 @@ export class TypesenseSearchService implements OnModuleInit {
         endDate: true,
         shouldIssueCertificate: true,
         publiclyVisible: true,
+        publicationState: true,
       },
     });
 
@@ -705,11 +724,13 @@ export class TypesenseSearchService implements OnModuleInit {
           locationDescription: this.toOptionalString(event.locationDescription),
           majorEventId: this.toOptionalString(event.majorEventId),
           majorEventName: event.majorEvent?.deletedAt ? undefined : this.toOptionalString(event.majorEvent?.name),
+          majorEventPublicationState: this.materializeMajorEventPublicationState(event.majorEvent),
           eventGroupId: this.toOptionalString(event.eventGroupId),
           eventGroupName: event.eventGroup?.deletedAt ? undefined : this.toOptionalString(event.eventGroup?.name),
           startDate: this.toUnixTimestamp(event.startDate),
           endDate: this.toUnixTimestamp(event.endDate),
           publiclyVisible: event.publiclyVisible,
+          publicationState: event.publicationState,
           isIssuableCertificateEvent: this.isIssuableCertificateEvent(event),
         }),
       ),
@@ -845,6 +866,31 @@ export class TypesenseSearchService implements OnModuleInit {
     });
 
     return this.toOptionalString(majorEvent?.name);
+  }
+
+  private async resolveMajorEventPublicationState(majorEventId?: string | null): Promise<string> {
+    if (!majorEventId) {
+      return 'PUBLISHED';
+    }
+
+    const majorEvent = await this.prisma.majorEvent.findFirst({
+      where: { id: majorEventId, deletedAt: null },
+      select: { publicationState: true },
+    });
+
+    return majorEvent?.publicationState ?? 'UNPUBLISHED';
+  }
+
+  private materializeMajorEventPublicationState(majorEvent?: { deletedAt: Date | null; publicationState: string } | null): string {
+    if (!majorEvent) {
+      return 'PUBLISHED';
+    }
+
+    if (majorEvent.deletedAt) {
+      return 'UNPUBLISHED';
+    }
+
+    return majorEvent.publicationState;
   }
 
   private async resolveEventGroupContext(eventGroupId?: string | null): Promise<{
