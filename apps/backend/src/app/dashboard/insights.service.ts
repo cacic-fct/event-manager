@@ -157,7 +157,9 @@ export class DashboardInsightsService {
       permissionSet.has(Permission.Receipt.Approve) ||
       permissionSet.has(Permission.Receipt.Reject) ||
       permissionSet.has(Permission.Receipt.Undo);
-    const shouldBuildInconsistencies = canManageEvents || canManageCertificates;
+    const shouldBuildEventInconsistencies = canManageEvents || canManageCertificates;
+    const shouldBuildMajorEventInconsistencies = canManageMajorEvents;
+    const shouldBuildInconsistencies = shouldBuildEventInconsistencies || shouldBuildMajorEventInconsistencies;
 
     const [
       eventsCount,
@@ -169,9 +171,11 @@ export class DashboardInsightsService {
       calendarEvents,
       upcomingMajorEventsCount,
       consistencyEvents,
+      majorEventsWithSubscriptionDates,
       singleEventGroups,
       mismatchingCertificateGroupEvents,
       pastCertificateEventsWithoutAttendance,
+      pastCertificateEventsWithoutAttendanceCollection,
     ] = await Promise.all([
       canReadEvents ? this.prisma.event.count({ where: { deletedAt: null } }) : Promise.resolve(0),
       canReadEvents ? this.prisma.eventGroup.count({ where: { deletedAt: null } }) : Promise.resolve(0),
@@ -250,7 +254,7 @@ export class DashboardInsightsService {
             },
           })
         : Promise.resolve(0),
-      shouldBuildInconsistencies
+      shouldBuildEventInconsistencies
         ? this.prisma.event.findMany({
             where: {
               deletedAt: null,
@@ -271,7 +275,25 @@ export class DashboardInsightsService {
             orderBy: { startDate: 'asc' },
           })
         : Promise.resolve([]),
-      shouldBuildInconsistencies
+      shouldBuildMajorEventInconsistencies
+        ? this.prisma.majorEvent.findMany({
+            where: {
+              deletedAt: null,
+              endDate: { gte: now },
+              OR: [{ subscriptionStartDate: { not: null } }, { subscriptionEndDate: { not: null } }],
+            },
+            select: {
+              id: true,
+              name: true,
+              startDate: true,
+              endDate: true,
+              subscriptionStartDate: true,
+              subscriptionEndDate: true,
+            },
+            orderBy: { startDate: 'asc' },
+          })
+        : Promise.resolve([]),
+      shouldBuildEventInconsistencies
         ? this.prisma.eventGroup.findMany({
             where: {
               deletedAt: null,
@@ -292,7 +314,7 @@ export class DashboardInsightsService {
             take: 30,
           })
         : Promise.resolve([]),
-      shouldBuildInconsistencies
+      shouldBuildEventInconsistencies
         ? this.prisma.event.findMany({
             where: {
               deletedAt: null,
@@ -316,13 +338,65 @@ export class DashboardInsightsService {
             take: 30,
           })
         : Promise.resolve([]),
-      shouldBuildInconsistencies
+      shouldBuildEventInconsistencies
         ? this.prisma.event.findMany({
             where: {
               deletedAt: null,
               endDate: { lt: now },
               shouldIssueCertificate: true,
               attendances: { none: {} },
+              OR: [
+                { majorEventId: null },
+                {
+                  majorEvent: {
+                    deletedAt: null,
+                    certificateConfigs: {
+                      some: {
+                        deletedAt: null,
+                        isActive: true,
+                        issuedTo: 'ATTENDEE',
+                      },
+                    },
+                  },
+                },
+                {
+                  eventGroup: {
+                    deletedAt: null,
+                    certificateConfigs: {
+                      some: {
+                        deletedAt: null,
+                        isActive: true,
+                        issuedTo: 'ATTENDEE',
+                      },
+                    },
+                  },
+                },
+                {
+                  certificateConfigs: {
+                    some: {
+                      deletedAt: null,
+                      isActive: true,
+                      issuedTo: 'ATTENDEE',
+                    },
+                  },
+                },
+              ],
+            },
+            select: {
+              id: true,
+              name: true,
+            },
+            orderBy: { endDate: 'desc' },
+            take: 30,
+          })
+        : Promise.resolve([]),
+      shouldBuildEventInconsistencies
+        ? this.prisma.event.findMany({
+            where: {
+              deletedAt: null,
+              endDate: { lt: now },
+              shouldIssueCertificate: true,
+              shouldCollectAttendance: false,
               OR: [
                 { majorEventId: null },
                 {
@@ -397,12 +471,15 @@ export class DashboardInsightsService {
           }))
         : [],
       inconsistencies:
-        canManageEvents || canManageCertificates
+        shouldBuildInconsistencies
           ? buildInconsistencies({
+              now,
               events: consistencyEvents,
+              majorEventsWithSubscriptionDates,
               singleEventGroups,
               mismatchingCertificateGroupEvents,
               pastCertificateEventsWithoutAttendance,
+              pastCertificateEventsWithoutAttendanceCollection,
             })
           : [],
       duplicatePeopleCount: canManageMergeCandidates ? duplicatePeopleCount : 0,

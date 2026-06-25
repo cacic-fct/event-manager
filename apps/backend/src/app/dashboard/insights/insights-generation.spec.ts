@@ -41,8 +41,15 @@ describe('DashboardInsightsService generation', () => {
         insightEvent({
           id: 'overlap-event',
           name: 'Overlap event',
-          startDate: new Date('2009-12-31T13:00:00.000Z'),
-          endDate: new Date('2009-12-31T14:00:00.000Z'),
+          startDate: new Date('2026-05-22T13:00:00.000Z'),
+          endDate: new Date('2026-05-22T14:00:00.000Z'),
+          lecturers: [{ personId: 'person-1', person: { id: 'person-1', name: 'Ada' } }],
+        }),
+        insightEvent({
+          id: 'overlap-event-2',
+          name: 'Overlap event 2',
+          startDate: new Date('2026-05-22T13:30:00.000Z'),
+          endDate: new Date('2026-05-22T14:30:00.000Z'),
           lecturers: [{ personId: 'person-1', person: { id: 'person-1', name: 'Ada' } }],
         }),
       ])
@@ -58,6 +65,7 @@ describe('DashboardInsightsService generation', () => {
           },
         },
       ])
+      .mockResolvedValueOnce([{ id: 'no-attendance-event', name: 'No attendance' }])
       .mockResolvedValueOnce([{ id: 'no-attendance-event', name: 'No attendance' }])
       .mockResolvedValueOnce([
         {
@@ -98,6 +106,16 @@ describe('DashboardInsightsService generation', () => {
           startDate: new Date('2026-05-24T10:00:00.000Z'),
           endDate: new Date('2026-05-26T20:00:00.000Z'),
           _count: { subscriptions: 5 },
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'major-subscription-mismatch',
+          name: 'Major subscription mismatch',
+          startDate: new Date('2026-05-24T10:00:00.000Z'),
+          endDate: new Date('2026-05-26T20:00:00.000Z'),
+          subscriptionStartDate: new Date('2026-05-27T10:00:00.000Z'),
+          subscriptionEndDate: new Date('2026-05-27T11:00:00.000Z'),
         },
       ])
       .mockResolvedValueOnce([
@@ -169,6 +187,8 @@ describe('DashboardInsightsService generation', () => {
         'EVENT_GROUP_WITH_SINGLE_EVENT',
         'EVENT_GROUP_CERTIFICATE_SETTING_MISMATCH',
         'PAST_CERTIFICATE_EVENT_WITHOUT_ATTENDANCE',
+        'PAST_CERTIFICATE_EVENT_WITHOUT_ATTENDANCE_COLLECTION',
+        'MAJOR_EVENT_SUBSCRIPTION_DATE_MISMATCH',
         'SUSPICIOUS_DURATION',
         'SUSPICIOUS_DATE',
         'PLACEHOLDER_EMOJI',
@@ -177,6 +197,7 @@ describe('DashboardInsightsService generation', () => {
         'LECTURER_DOUBLE_BOOKED',
       ]),
     );
+    expect(prisma.event.findMany.mock.calls[3]?.[0].where).not.toHaveProperty('shouldCollectAttendance');
     expect(result.permissions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -238,6 +259,34 @@ describe('DashboardInsightsService generation', () => {
     expect(weatherService.getPublicEventWeather).not.toHaveBeenCalled();
     expect(redis.get).not.toHaveBeenCalled();
     expect(redis.set).not.toHaveBeenCalled();
+  });
+
+  it('reports major-event subscription date issues without event-level inconsistency queries', async () => {
+    const { authorizationPolicy, prisma, service } = createInsightsServiceTestContext();
+    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue([Permission.MajorEvent.Update]);
+    prisma.majorEvent.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    prisma.majorEvent.findMany.mockResolvedValueOnce([
+      {
+        id: 'major-subscription-mismatch',
+        name: 'Major subscription mismatch',
+        startDate: new Date('2026-05-24T10:00:00.000Z'),
+        endDate: new Date('2026-05-26T20:00:00.000Z'),
+        subscriptionStartDate: new Date('2026-05-26T18:00:00.000Z'),
+        subscriptionEndDate: new Date('2026-05-27T11:00:00.000Z'),
+      },
+    ]);
+
+    const result = await service.getWorkspaceDashboardInsights({} as never);
+
+    expect(result.inconsistencies).toEqual([
+      expect.objectContaining({
+        type: 'MAJOR_EVENT_SUBSCRIPTION_DATE_MISMATCH',
+        action: 'OPEN_MAJOR_EVENT',
+        targetId: 'major-subscription-mismatch',
+      }),
+    ]);
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+    expect(prisma.eventGroup.findMany).not.toHaveBeenCalled();
   });
 
   it('propagates permission evaluation failures', async () => {

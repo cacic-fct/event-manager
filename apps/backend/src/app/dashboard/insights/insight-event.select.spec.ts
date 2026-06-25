@@ -9,6 +9,8 @@ describe('EVENT_INSIGHT_SELECT', () => {
       type: true,
       startDate: true,
       endDate: true,
+      description: true,
+      shortDescription: true,
       locationDescription: true,
       latitude: true,
       longitude: true,
@@ -41,6 +43,9 @@ describe('EVENT_INSIGHT_SELECT', () => {
         where: { deletedAt: null, isActive: true },
         select: { id: true },
       },
+      allowSubscription: true,
+      subscriptionStartDate: true,
+      subscriptionEndDate: true,
       lecturers: {
         select: {
           personId: true,
