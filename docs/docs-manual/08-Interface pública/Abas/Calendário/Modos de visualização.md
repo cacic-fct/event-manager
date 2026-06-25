@@ -28,6 +28,6 @@ Eventos públicos podem ser baixados como arquivo de calendário individual.
 
 Usuários autenticados também podem habilitar um feed privado com suas atividades. Esse link deve ser tratado como credencial: quem possui o link consegue ler o calendário gerado para aquele usuário.
 
-O sistema mostra o link privado somente ao habilitar ou rotacionar a chave. Se o link vazar, rotacione a chave nas preferências. O feed anterior deixa de funcionar, embora aplicativos de calendário possam manter dados em cache por alguns minutos.
+O sistema mostra o link privado somente ao habilitar ou rotacionar a chave. Se o link vazar, rotacione a chave nas preferências. O feed anterior deixa de funcionar, embora aplicativos de calendário possam manter os dados em cache permanente.
 
-Feeds privados podem ser desativados automaticamente quando a conta fica muito tempo sem uma sessão válida.
+Feeds privados são desativados automaticamente quando a conta fica muito tempo sem uma sessão válida.

@@ -18,4 +18,4 @@ Super administradores possuem um feed compartilhado próprio. Rotacionar esse fe
 
 Rotacione a chave quando o link for exposto indevidamente, compartilhado com a pessoa errada ou cadastrado em um dispositivo que não deve mais receber atualizações.
 
-A rotação invalida o link anterior. Clientes de calendário podem manter cache por alguns minutos, então a remoção não deve ser tratada como instantânea.
+A rotação invalida o link anterior. Clientes de calendário podem manter um cache permanentemente.
