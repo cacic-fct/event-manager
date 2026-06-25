@@ -21,8 +21,13 @@ export class AttendanceScannerCacheService {
       return;
     }
 
-    newEventIds.forEach((eventId) => this.warmedEventIds.add(eventId));
-    await Promise.allSettled([this.warmZXingWasm(), this.askServiceWorkerToCache(newEventIds)]);
+    const [, serviceWorkerResult] = await Promise.allSettled([
+      this.warmZXingWasm(),
+      this.askServiceWorkerToCache(newEventIds),
+    ]);
+    if (serviceWorkerResult.status === 'fulfilled' && serviceWorkerResult.value) {
+      newEventIds.forEach((eventId) => this.warmedEventIds.add(eventId));
+    }
   }
 
   private warmZXingWasm(): Promise<unknown> {
@@ -35,24 +40,47 @@ export class AttendanceScannerCacheService {
     return this.wasmWarmup;
   }
 
-  private async askServiceWorkerToCache(eventIds: readonly string[]): Promise<void> {
+  private async askServiceWorkerToCache(eventIds: readonly string[]): Promise<boolean> {
     if (!('serviceWorker' in navigator)) {
-      return;
+      return true;
     }
 
     const registration = await navigator.serviceWorker.ready;
     const worker = registration.active ?? navigator.serviceWorker.controller;
     if (!worker) {
-      return;
+      return true;
     }
 
-    worker.postMessage({
-      type: 'CACHE_ATTENDANCE_SCANNER',
-      urls: [
-        this.appUrl('attendance/collect'),
-        ...eventIds.map((eventId) => this.appUrl(`attendance/collect/${encodeURIComponent(eventId)}`)),
-        ...this.zxingWasmUrls(),
-      ],
+    return new Promise((resolve) => {
+      const channel = new MessageChannel();
+      const timeout = setTimeout(() => {
+        channel.port1.close();
+        resolve(false);
+      }, 10_000);
+
+      channel.port1.onmessage = (event) => {
+        clearTimeout(timeout);
+        channel.port1.close();
+        resolve(event.data?.type === 'CACHE_ATTENDANCE_SCANNER_RESULT' && event.data.ok === true);
+      };
+
+      try {
+        worker.postMessage(
+          {
+            type: 'CACHE_ATTENDANCE_SCANNER',
+            urls: [
+              this.appUrl('attendance/collect'),
+              ...eventIds.map((eventId) => this.appUrl(`attendance/collect/${encodeURIComponent(eventId)}`)),
+              ...this.zxingWasmUrls(),
+            ],
+          },
+          [channel.port2],
+        );
+      } catch {
+        clearTimeout(timeout);
+        channel.port1.close();
+        resolve(false);
+      }
     });
   }
 

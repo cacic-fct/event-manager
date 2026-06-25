@@ -103,6 +103,20 @@ describe('LgpdService', () => {
         metadata: null,
       },
     ]);
+    tx.offlineEventAttendanceSubmission.findMany.mockResolvedValue([
+      {
+        id: 'offline-submission-1',
+        personId: 'source-person',
+        scannerCode: 'user:old-user',
+        manualValue: 'old@example.com',
+        authorUserId: 'old-user',
+        authorName: 'Old User',
+        authorEmail: 'old@example.com',
+        submittedById: 'old-user',
+        committedById: null,
+        rejectedById: null,
+      },
+    ]);
 
     await expect(
       service.hardDelete({
@@ -114,7 +128,7 @@ describe('LgpdService', () => {
       success: true,
       peopleDeleted: 2,
       usersDeleted: 2,
-      recordsDeleted: 3,
+      recordsDeleted: 5,
     });
 
     expect(tx.eventSubscription.deleteMany).toHaveBeenCalledWith({
@@ -141,7 +155,10 @@ describe('LgpdService', () => {
       where: {
         OR: expect.arrayContaining([
           { actorId: { in: expect.arrayContaining(['old-user', 'new-user']) } },
+          { before: { path: ['authorUserId'], equals: 'old-user' } },
           { before: { path: ['createdById'], equals: 'old-user' } },
+          { metadata: { path: ['submittedById'], equals: 'old-user' } },
+          { metadata: { path: ['offlineAttendanceAuthor', 'userId'], equals: 'old-user' } },
           { after: { path: ['updatedById'], equals: 'new-user' } },
           {
             entityType: 'EVENT_ATTENDANCE',
@@ -287,6 +304,18 @@ describe('LgpdService', () => {
     expect(tx.eventManagerPermissionGrant.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       tx.user.deleteMany.mock.invocationCallOrder[0],
     );
+    expect(tx.offlineEventAttendanceSubmission.update).toHaveBeenCalledWith({
+      where: { id: 'offline-submission-1' },
+      data: expect.objectContaining({
+        personId: null,
+        scannerCode: anonymizedAuditSubjectId,
+        manualValue: '[ANONIMIZADO]',
+        authorUserId: anonymizedAuditSubjectId,
+        authorName: '[ANONIMIZADO]',
+        authorEmail: null,
+        submittedById: anonymizedAuditSubjectId,
+      }),
+    });
     expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       s3.deleteFile.mock.invocationCallOrder[0],
     );
@@ -307,6 +336,9 @@ describe('LgpdService', () => {
       },
     ];
     prisma.eventSubscription.findMany.mockResolvedValue([{ id: 'moved-subscription' }]);
+    prisma.offlineEventAttendanceSubmission.findMany.mockResolvedValue([
+      { id: 'offline-submission-1', personId: 'source-person', authorUserId: 'old-user' },
+    ]);
     prisma.auditLogEntry.findMany.mockResolvedValue(auditLogEntries);
     prisma.majorEventReceipt.findMany.mockResolvedValueOnce([
       {
@@ -377,6 +409,10 @@ describe('LgpdService', () => {
         },
       ],
     });
+    expect(result.attendances).toEqual({
+      records: expect.any(Array),
+      offlineSubmissions: [{ id: 'offline-submission-1', personId: 'source-person', authorUserId: 'old-user' }],
+    });
     expect(result.auditHistory).toEqual({ records: auditLogEntries });
     expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -409,10 +445,24 @@ describe('LgpdService', () => {
           {
             after: { path: ['userId'], equals: 'new-user' },
           },
+          {
+            metadata: { path: ['offlineAttendanceAuthor', 'userId'], equals: 'old-user' },
+          },
         ]),
       },
       orderBy: { lastRecordedAt: 'desc' },
     });
+    expect(prisma.offlineEventAttendanceSubmission.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: expect.arrayContaining([
+            { personId: { in: expect.arrayContaining(['source-person', 'target-person']) } },
+            { authorUserId: { in: expect.arrayContaining(['old-user', 'new-user']) } },
+            { submittedById: { in: expect.arrayContaining(['old-user', 'new-user']) } },
+          ]),
+        },
+      }),
+    );
     const exportAuditWhere = prisma.auditLogEntry.findMany.mock.calls[0]?.[0]?.where;
     expect(exportAuditWhere.OR).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ actorEmail: expect.anything() })]),
@@ -428,6 +478,21 @@ describe('LgpdService', () => {
   });
 
   it('removes receipt storage and database rows when scheduling deletion', async () => {
+    tx.offlineEventAttendanceSubmission.findMany.mockResolvedValueOnce([
+      {
+        id: 'offline-submission-1',
+        personId: 'source-person',
+        scannerCode: null,
+        manualValue: 'old@example.com',
+        authorUserId: null,
+        authorName: 'Old User',
+        authorEmail: 'old@example.com',
+        submittedById: 'new-user',
+        committedById: null,
+        rejectedById: null,
+      },
+    ]);
+
     await expect(
       service.scheduleDeletion({
         userId: 'old-user',
@@ -437,25 +502,35 @@ describe('LgpdService', () => {
     ).resolves.toEqual({
       success: true,
       peopleUpdated: 2,
-      recordsUpdated: 7,
+      recordsUpdated: 3,
     });
 
     expect(s3.deleteFile).toHaveBeenCalledWith('receipts/old.png');
-    expect(prisma.majorEventReceiptValidationAction.deleteMany).toHaveBeenCalledWith({
+    expect(tx.majorEventReceiptValidationAction.deleteMany).toHaveBeenCalledWith({
       where: { subscription: { personId: { in: ['source-person', 'target-person'] } } },
     });
-    expect(prisma.majorEventReceipt.deleteMany).toHaveBeenCalledWith({
+    expect(tx.majorEventReceipt.deleteMany).toHaveBeenCalledWith({
       where: { personId: { in: ['source-person', 'target-person'] } },
     });
-    expect(prisma.majorEventReceiptValidationAction.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
-      prisma.majorEventReceipt.deleteMany.mock.invocationCallOrder[0],
+    expect(tx.majorEventReceiptValidationAction.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0],
     );
-    expect(prisma.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
-      prisma.majorEventSubscription.updateMany.mock.invocationCallOrder[0],
+    expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.majorEventSubscription.updateMany.mock.invocationCallOrder[0],
     );
-    expect(prisma.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       s3.deleteFile.mock.invocationCallOrder[0],
     );
+    expect(tx.offlineEventAttendanceSubmission.update).toHaveBeenCalledWith({
+      where: { id: 'offline-submission-1' },
+      data: expect.objectContaining({
+        personId: null,
+        manualValue: '[ANONIMIZADO]',
+        authorName: '[ANONIMIZADO]',
+        authorEmail: null,
+        submittedById: 'anonymized:schedule-1',
+      }),
+    });
   });
 
   it('continues deleting receipt objects after an S3 cleanup failure', async () => {
@@ -479,7 +554,7 @@ describe('LgpdService', () => {
     ).resolves.toEqual({
       success: true,
       peopleUpdated: 2,
-      recordsUpdated: 7,
+      recordsUpdated: 2,
     });
 
     expect(s3.deleteFile).toHaveBeenNthCalledWith(1, 'receipts/old.png');
@@ -612,6 +687,7 @@ function createPrismaMock() {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     eventAttendance: findManyDelegate(),
+    offlineEventAttendanceSubmission: findManyDelegate(),
     eventLecturer: findManyDelegate(),
     certificate: softDeleteDelegate(),
     majorEventReceipt: {
@@ -631,6 +707,10 @@ function createPrismaMock() {
 }
 
 function createTransactionMock() {
+  const writeManyDelegate = (count = 0) => ({
+    updateMany: jest.fn().mockResolvedValue({ count }),
+    deleteMany: jest.fn().mockResolvedValue({ count }),
+  });
   const deleteManyDelegate = (count = 0) => ({
     deleteMany: jest.fn().mockResolvedValue({ count }),
   });
@@ -640,21 +720,25 @@ function createTransactionMock() {
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue({}),
     },
-    certificate: deleteManyDelegate(),
-    majorEventSubscriptionEventSelection: deleteManyDelegate(),
+    certificate: writeManyDelegate(),
+    majorEventSubscriptionEventSelection: writeManyDelegate(1),
     majorEventReceiptValidationAction: deleteManyDelegate(),
     majorEventReceipt: deleteManyDelegate(),
-    eventSubscription: deleteManyDelegate(1),
-    eventGroupSubscription: deleteManyDelegate(),
-    majorEventSubscription: deleteManyDelegate(),
+    eventSubscription: writeManyDelegate(1),
+    eventGroupSubscription: writeManyDelegate(),
+    majorEventSubscription: writeManyDelegate(),
     eventAttendance: deleteManyDelegate(),
+    offlineEventAttendanceSubmission: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn().mockResolvedValue({}),
+    },
     eventLecturer: deleteManyDelegate(),
     externalAccountMergeOperation: deleteManyDelegate(),
     peopleMergeOperation: deleteManyDelegate(),
     mergeCandidate: deleteManyDelegate(),
     accountUserMerge: deleteManyDelegate(),
     eventManagerPermissionGrant: deleteManyDelegate(2),
-    people: deleteManyDelegate(2),
+    people: writeManyDelegate(2),
     user: deleteManyDelegate(2),
   };
 }

@@ -1,7 +1,7 @@
 import { Field, InputType } from '@nestjs/graphql';
 
 import { AttendanceCollectionLocationInput } from './attendance';
-import { AttendanceCreationMethod } from './enums';
+import { OfflineAttendanceCreationMethod } from './enums';
 
 @InputType()
 export class EventAttendanceCreateInput {
@@ -47,8 +47,8 @@ export class OfflineEventAttendanceCommitInput {
   @Field(() => String)
   eventId!: string;
 
-  @Field(() => AttendanceCreationMethod)
-  createdByMethod!: AttendanceCreationMethod;
+  @Field(() => OfflineAttendanceCreationMethod)
+  createdByMethod!: OfflineAttendanceCreationMethod;
 
   @Field(() => String, { nullable: true })
   code?: string;

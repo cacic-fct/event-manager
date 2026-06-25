@@ -64,7 +64,7 @@ export interface OfflineAttendanceCollectionEventRecord {
   event: PublicEvent;
 }
 
-export type OfflineAttendanceQueueStatus = 'PENDING' | 'SYNCING' | 'DUPLICATE' | 'CONFLICT' | 'FAILED';
+export type OfflineAttendanceQueueStatus = 'PENDING' | 'SYNCING' | 'DUPLICATE' | 'CONFLICT' | 'FORBIDDEN' | 'FAILED';
 
 export interface OfflineAttendanceQueueLocation {
   latitude: number;
@@ -134,7 +134,7 @@ export class OfflinePublicDataDatabase extends Dexie {
       attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
       featureFlagCache: 'key, updatedAt',
       attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
-      attendanceQueue: 'clientId, eventId, status, authorUserId, queuedAt, updatedAt, [eventId+status]',
+      attendanceQueue: 'clientId, eventId, status, queuedAt, updatedAt, [eventId+status]',
     });
   }
 }

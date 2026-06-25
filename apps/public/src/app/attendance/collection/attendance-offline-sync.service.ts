@@ -20,6 +20,8 @@ import { AttendanceScannerCacheService } from './attendance-scanner-cache.servic
 
 const HOURLY_REMINDER_MS = 60 * 60_000;
 const MAX_SYNC_ATTEMPTS = 3;
+const INITIAL_SYNC_RETRY_DELAY_MS = 1000;
+const MAX_SYNC_RETRY_DELAY_MS = 8000;
 
 @Injectable({ providedIn: 'root' })
 export class AttendanceOfflineSyncService {
@@ -148,26 +150,42 @@ export class AttendanceOfflineSyncService {
           );
         }
 
-        const failedByClientId = new Map(
+        const retryableFailureByClientId = new Map(
           results
-            .filter((result) => !this.isDurableResult(result))
+            .filter((result) => this.isRetryableResult(result))
+            .map((result) => [result.clientId, result.message ?? 'Falha de sincronização.']),
+        );
+        const terminalFailureByClientId = new Map(
+          results
+            .filter((result) => !this.isDurableResult(result) && !this.isRetryableResult(result))
             .map((result) => [result.clientId, result.message ?? 'Falha de sincronização.']),
         );
         for (const item of missingAcknowledgements) {
-          failedByClientId.set(item.clientId, 'O servidor não confirmou o recebimento desta presença.');
+          retryableFailureByClientId.set(item.clientId, 'O servidor não confirmou o recebimento desta presença.');
         }
 
-        remaining = remaining.filter((item) => failedByClientId.has(item.clientId));
+        for (const item of remaining) {
+          const message = terminalFailureByClientId.get(item.clientId);
+          if (message) {
+            finalFailures.set(item.clientId, {
+              item,
+              message,
+            });
+          }
+        }
+
+        remaining = remaining.filter((item) => retryableFailureByClientId.has(item.clientId));
 
         for (const item of remaining) {
           finalFailures.set(item.clientId, {
             item,
-            message: failedByClientId.get(item.clientId) ?? 'Falha de sincronização.',
+            message: retryableFailureByClientId.get(item.clientId) ?? 'Falha de sincronização.',
           });
         }
 
-        if (attempt < MAX_SYNC_ATTEMPTS) {
-          finalFailures.clear();
+        if (attempt < MAX_SYNC_ATTEMPTS && remaining.length > 0) {
+          remaining.forEach((item) => finalFailures.delete(item.clientId));
+          await this.waitBeforeRetry(attempt);
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Falha de sincronização.';
@@ -178,8 +196,9 @@ export class AttendanceOfflineSyncService {
             message,
           }),
         );
-        if (attempt < MAX_SYNC_ATTEMPTS) {
-          finalFailures.clear();
+        if (attempt < MAX_SYNC_ATTEMPTS && remaining.length > 0) {
+          remaining.forEach((item) => finalFailures.delete(item.clientId));
+          await this.waitBeforeRetry(attempt);
         }
       }
     }
@@ -189,6 +208,15 @@ export class AttendanceOfflineSyncService {
 
   private isDurableResult(result: OfflineAttendanceCommitResult): boolean {
     return result.status === 'CREATED' || result.status === 'STAGED' || result.status === 'DUPLICATE';
+  }
+
+  private isRetryableResult(result: OfflineAttendanceCommitResult): boolean {
+    return result.status === 'FAILED';
+  }
+
+  private waitBeforeRetry(attempt: number): Promise<void> {
+    const delayMs = Math.min(MAX_SYNC_RETRY_DELAY_MS, INITIAL_SYNC_RETRY_DELAY_MS * 2 ** (attempt - 1));
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
   private showSyncResultDialog(

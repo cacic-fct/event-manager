@@ -12,12 +12,18 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT, GraphqlContext } from './event-attendances.shared';
+import {
+  mapOfflineSubmissionForResponse,
+  offlineSubmissionActorIds,
+  offlineSubmissionActorNameMap,
+} from './offline-submission-response';
 
 const EVENT_ATTENDANCE_AUDIT_SELECT = {
   personId: true,
@@ -50,6 +56,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     private readonly dashboardInsights: DashboardInsightsService = {
       invalidateCachedInsights: async () => undefined,
     } as unknown as DashboardInsightsService,
+    private readonly authorizationPolicy: AuthorizationPolicyService = {
+      assertPermissions: async () => undefined,
+    } as unknown as AuthorizationPolicyService,
   ) {
     super(prisma, attendanceCategories);
   }
@@ -254,7 +263,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   }
 
   @Mutation(() => OfflineEventAttendanceSubmission, { name: 'approveOfflineEventAttendanceSubmission' })
-  @RequirePermissions(Permission.EventAttendance.Update)
   async approveOfflineEventAttendanceSubmission(
     @Args('submissionId', { type: () => String }) submissionId: string,
     @Context() context: GraphqlContext,
@@ -263,7 +271,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   }
 
   @Mutation(() => [OfflineEventAttendanceSubmission], { name: 'approveOfflineEventAttendanceSubmissions' })
-  @RequirePermissions(Permission.EventAttendance.Update)
   async approveOfflineEventAttendanceSubmissions(
     @Args('submissionIds', { type: () => [String] }) submissionIds: string[],
     @Context() context: GraphqlContext,
@@ -297,12 +304,30 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       throw new ConflictException('Esta presença off-line já foi revisada.');
     }
 
+    await this.assertCanReviewOfflineSubmission(submission.eventId, context);
     await this.frozenResources.assertEventMutable(submission.eventId, this.getUser(context), 'edit');
-    const personId = submission.personId ?? (await this.resolveOfflineSubmissionPerson(submission));
+    const personId = await this.resolveOfflineSubmissionPersonId(submission);
     const committedById = this.getActorId(context);
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        const reviewUpdate = await tx.offlineEventAttendanceSubmission.updateMany({
+          where: {
+            id: submission.id,
+            status: 'PENDING',
+          },
+          data: {
+            status: 'COMMITTED',
+            personId,
+            committedAt: new Date(),
+            committedById,
+            resolutionError: null,
+          },
+        });
+        if (reviewUpdate.count !== 1) {
+          throw new ConflictException('Esta presença off-line já foi revisada.');
+        }
+
         const existingAttendance = await tx.eventAttendance.findUnique({
           where: {
             personId_eventId: {
@@ -313,18 +338,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           select: EVENT_ATTENDANCE_AUDIT_SELECT,
         });
         if (existingAttendance) {
-          await tx.offlineEventAttendanceSubmission.update({
-            where: {
-              id: submission.id,
-            },
-            data: {
-              status: 'COMMITTED',
-              personId,
-              committedAt: new Date(),
-              committedById,
-              resolutionError: null,
-            },
-          });
           await this.auditLog.record(
             {
               entityType: AuditLogEntityType.EVENT_ATTENDANCE,
@@ -368,18 +381,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           },
           select: EVENT_ATTENDANCE_AUDIT_SELECT,
         });
-        await tx.offlineEventAttendanceSubmission.update({
-          where: {
-            id: submission.id,
-          },
-          data: {
-            status: 'COMMITTED',
-            personId,
-            committedAt: new Date(),
-            committedById,
-            resolutionError: null,
-          },
-        });
         await this.recordAttendanceCreate(
           attendance,
           context,
@@ -400,7 +401,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   }
 
   @Mutation(() => OfflineEventAttendanceSubmission, { name: 'rejectOfflineEventAttendanceSubmission' })
-  @RequirePermissions(Permission.EventAttendance.Update)
   async rejectOfflineEventAttendanceSubmission(
     @Args('submissionId', { type: () => String }) submissionId: string,
     @Args('reason', { type: () => String, nullable: true }) reason: string | null | undefined,
@@ -410,7 +410,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   }
 
   @Mutation(() => [OfflineEventAttendanceSubmission], { name: 'rejectOfflineEventAttendanceSubmissions' })
-  @RequirePermissions(Permission.EventAttendance.Update)
   async rejectOfflineEventAttendanceSubmissions(
     @Args('submissionIds', { type: () => [String] }) submissionIds: string[],
     @Args('reason', { type: () => String, nullable: true }) reason: string | null | undefined,
@@ -447,34 +446,44 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       throw new ConflictException('Esta presença off-line já foi revisada.');
     }
 
+    await this.assertCanReviewOfflineSubmission(submission.eventId, context);
     await this.frozenResources.assertEventMutable(submission.eventId, this.getUser(context), 'edit');
-    await this.prisma.offlineEventAttendanceSubmission.update({
-      where: {
-        id: submission.id,
-      },
-      data: {
-        status: 'REJECTED',
-        rejectedAt: new Date(),
-        rejectedById: this.getActorId(context),
-        rejectionReason: reason?.trim() || undefined,
-      },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      const reviewUpdate = await tx.offlineEventAttendanceSubmission.updateMany({
+        where: {
+          id: submission.id,
+          status: 'PENDING',
+        },
+        data: {
+          status: 'REJECTED',
+          rejectedAt: new Date(),
+          rejectedById: this.getActorId(context),
+          rejectionReason: reason?.trim() || undefined,
+        },
+      });
+      if (reviewUpdate.count !== 1) {
+        throw new ConflictException('Esta presença off-line já foi revisada.');
+      }
 
-    await this.auditLog.record({
-      entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-      entityId: `offline:${submission.id}`,
-      entityLabel: submission.id,
-      operation: AuditLogOperation.UPDATE,
-      actor: this.getUser(context),
-      after: {
-        status: 'REJECTED',
-        rejectionReason: reason?.trim() || null,
-      },
-      scope: {
-        permission: Permission.EventAttendance.Update,
-        eventId: submission.eventId,
-      },
-      summary: 'Presença off-line rejeitada pelo painel administrativo.',
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+          entityId: `offline:${submission.id}`,
+          entityLabel: submission.id,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          after: {
+            status: 'REJECTED',
+            rejectionReason: reason?.trim() || null,
+          },
+          scope: {
+            permission: Permission.EventAttendance.Update,
+            eventId: submission.eventId,
+          },
+          summary: 'Presença off-line rejeitada pelo painel administrativo.',
+        },
+        tx,
+      );
     });
 
     await this.dashboardInsights.invalidateCachedInsights();
@@ -602,6 +611,16 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     };
   }
 
+  private async resolveOfflineSubmissionPersonId(submission: {
+    personId: string | null;
+    createdByMethod: AttendanceCreationMethod;
+    scannerCode: string | null;
+    manualValue: string | null;
+  }): Promise<string> {
+    const personId = submission.personId ?? (await this.resolveOfflineSubmissionPerson(submission));
+    return this.resolveMergedPersonId(personId);
+  }
+
   private async resolveOfflineSubmissionPerson(submission: {
     createdByMethod: AttendanceCreationMethod;
     scannerCode: string | null;
@@ -637,6 +656,23 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     }
   }
 
+  private async resolveMergedPersonId(personId: string): Promise<string> {
+    const person = await this.prisma.people.findUnique({
+      where: {
+        id: personId,
+      },
+      select: {
+        id: true,
+        mergedIntoId: true,
+      },
+    });
+    if (!person) {
+      throw new NotFoundException(`Person ${personId} was not found.`);
+    }
+
+    return person.mergedIntoId ?? person.id;
+  }
+
   private async getOfflineSubmissionForResponse(submissionId: string): Promise<OfflineEventAttendanceSubmission> {
     const submission = await this.prisma.offlineEventAttendanceSubmission.findUniqueOrThrow({
       where: {
@@ -648,11 +684,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       },
     });
 
-    const actorIds = [
-      submission.submittedById,
-      submission.committedById,
-      submission.rejectedById,
-    ].filter((id): id is string => Boolean(id));
+    const actorIds = offlineSubmissionActorIds([submission]);
     const actors = actorIds.length
       ? await this.prisma.user.findMany({
           where: {
@@ -666,32 +698,15 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           },
         })
       : [];
-    const actorNameById = new Map(actors.map((actor) => [actor.id, actor.name]));
+    const actorNameById = offlineSubmissionActorNameMap(actors);
 
-    return {
-      ...submission,
-      event: submission.event ?? undefined,
-      personId: submission.personId ?? undefined,
-      person: submission.person ?? undefined,
-      scannerCode: submission.scannerCode ?? undefined,
-      manualValue: submission.manualValue ?? undefined,
-      authorUserId: submission.authorUserId ?? undefined,
-      authorName: submission.authorName ?? undefined,
-      authorEmail: submission.authorEmail ?? undefined,
-      submittedByFullName: actorNameById.get(submission.submittedById),
-      stagedReason: submission.stagedReason ?? undefined,
-      resolutionError: submission.resolutionError ?? undefined,
-      collectedLatitude: submission.collectedLatitude ?? undefined,
-      collectedLongitude: submission.collectedLongitude ?? undefined,
-      collectedAccuracyMeters: submission.collectedAccuracyMeters ?? undefined,
-      committedAt: submission.committedAt ?? undefined,
-      committedById: submission.committedById ?? undefined,
-      committedByFullName: submission.committedById ? actorNameById.get(submission.committedById) : undefined,
-      rejectedAt: submission.rejectedAt ?? undefined,
-      rejectedById: submission.rejectedById ?? undefined,
-      rejectedByFullName: submission.rejectedById ? actorNameById.get(submission.rejectedById) : undefined,
-      rejectionReason: submission.rejectionReason ?? undefined,
-    };
+    return mapOfflineSubmissionForResponse(submission, actorNameById);
+  }
+
+  private async assertCanReviewOfflineSubmission(eventId: string, context: GraphqlContext): Promise<void> {
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventAttendance.Update], {
+      eventId,
+    });
   }
 
   private getUser(context: GraphqlContext | undefined) {

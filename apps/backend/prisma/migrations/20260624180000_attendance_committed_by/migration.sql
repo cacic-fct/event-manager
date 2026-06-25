@@ -1,8 +1,6 @@
 ALTER TABLE "event_attendances"
 ADD COLUMN "committedById" TEXT;
 
-CREATE INDEX "event_attendances_committedById_idx" ON "event_attendances"("committedById");
-
 CREATE TYPE "OfflineEventAttendanceSubmissionStatus" AS ENUM ('PENDING', 'COMMITTED', 'REJECTED');
 
 CREATE TABLE "offline_event_attendance_submissions" (

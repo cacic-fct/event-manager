@@ -474,11 +474,25 @@ export class CurrentUserAttendanceCollectionResolver {
         !canCommitWithPermission &&
         await this.shouldStageOfflineAttendance(item.eventId, sender.id, error)
       ) {
-        const stagedSubmission = await this.stageOfflineAttendance(item, context, {
-          createdById,
-          submittedById,
-          stagedReason: this.errorMessage(error),
-        });
+        let stagedSubmission: OfflineEventAttendanceSubmission;
+        try {
+          stagedSubmission = await this.stageOfflineAttendance(item, context, {
+            createdById,
+            submittedById,
+            stagedReason: this.errorMessage(error),
+          });
+        } catch (stageError: unknown) {
+          if (this.isRequiredLocationError(stageError)) {
+            return {
+              clientId: item.clientId,
+              eventId: item.eventId,
+              status: this.commitStatusForError(stageError),
+              message: this.errorMessage(stageError),
+            };
+          }
+
+          throw stageError;
+        }
 
         return {
           clientId: item.clientId,
@@ -569,51 +583,19 @@ export class CurrentUserAttendanceCollectionResolver {
   ) {
     const resolvedPerson = await this.tryResolveOfflineAttendancePerson(item);
     const locationData = this.getRequiredLocationData(item.location);
-    const submission = await this.prisma.offlineEventAttendanceSubmission.upsert({
-      where: {
-        submittedById_clientId: {
-          submittedById: metadata.submittedById,
-          clientId: item.clientId,
-        },
-      },
-      create: {
-        clientId: item.clientId,
-        eventId: item.eventId,
-        personId: resolvedPerson.personId,
-        createdByMethod: item.createdByMethod,
-        scannerCode: this.normalizeOptionalString(item.code),
-        manualValue: this.normalizeOptionalString(item.value),
-        collectedAt: item.collectedAt,
-        authorUserId: metadata.createdById,
-        authorName: this.normalizeOptionalString(item.authorName),
-        authorEmail: this.normalizeOptionalString(item.authorEmail),
-        submittedById: metadata.submittedById,
-        stagedReason: metadata.stagedReason,
-        resolutionError: resolvedPerson.errorMessage,
-        ...locationData,
-      },
-      update: {
-        stagedReason: metadata.stagedReason,
-        resolutionError: resolvedPerson.errorMessage,
-        personId: resolvedPerson.personId,
-        scannerCode: this.normalizeOptionalString(item.code),
-        manualValue: this.normalizeOptionalString(item.value),
-        collectedLatitude: locationData.collectedLatitude,
-        collectedLongitude: locationData.collectedLongitude,
-        collectedAccuracyMeters: locationData.collectedAccuracyMeters,
-      },
-      include: {
-        event: true,
-        person: true,
-      },
-    });
+    const submissionWrite = await this.writeOfflineAttendanceSubmission(item, metadata, resolvedPerson, locationData);
+    const submission = submissionWrite.submission;
+
+    if (!submissionWrite.changed) {
+      return this.toOfflineSubmission(submission);
+    }
 
     await this.auditLog.record({
       entityType: AuditLogEntityType.EVENT_ATTENDANCE,
       entityId: submission.personId
         ? this.auditLog.buildCompositeEntityId([submission.personId, submission.eventId])
         : `offline:${submission.id}`,
-      entityLabel: submission.person?.name ?? submission.manualValue ?? submission.scannerCode ?? submission.id,
+      entityLabel: submission.manualValue ?? submission.scannerCode ?? submission.id,
       operation: AuditLogOperation.CREATE,
       actor: this.getAuthenticatedUser(context),
       after: {
@@ -635,6 +617,122 @@ export class CurrentUserAttendanceCollectionResolver {
     await this.dashboardInsights.invalidateCachedInsights();
 
     return this.toOfflineSubmission(submission);
+  }
+
+  private async writeOfflineAttendanceSubmission(
+    item: CommitOfflineEventAttendancesInput['attendances'][number],
+    metadata: {
+      createdById: string;
+      submittedById: string;
+      stagedReason: string;
+    },
+    resolvedPerson: { personId: string | null; errorMessage?: string },
+    locationData: {
+      collectedLatitude: number;
+      collectedLongitude: number;
+      collectedAccuracyMeters: number;
+    },
+  ) {
+    const where = this.offlineSubmissionWhere(metadata.submittedById, item.clientId);
+    const existing = await this.prisma.offlineEventAttendanceSubmission.findUnique({
+      where,
+      include: {
+        event: true,
+      },
+    });
+
+    if (existing) {
+      if (existing.status !== 'PENDING') {
+        return { submission: existing, changed: false };
+      }
+
+      return this.updatePendingOfflineAttendanceSubmission(item, metadata, resolvedPerson, locationData);
+    }
+
+    try {
+      return {
+        submission: await this.prisma.offlineEventAttendanceSubmission.create({
+          data: {
+            clientId: item.clientId,
+            eventId: item.eventId,
+            personId: resolvedPerson.personId,
+            createdByMethod: item.createdByMethod,
+            scannerCode: this.normalizeOptionalString(item.code),
+            manualValue: this.normalizeOptionalString(item.value),
+            collectedAt: item.collectedAt,
+            authorUserId: metadata.createdById,
+            authorName: this.normalizeOptionalString(item.authorName),
+            authorEmail: this.normalizeOptionalString(item.authorEmail),
+            submittedById: metadata.submittedById,
+            stagedReason: metadata.stagedReason,
+            resolutionError: resolvedPerson.errorMessage,
+            ...locationData,
+          },
+          include: {
+            event: true,
+          },
+        }),
+        changed: true,
+      };
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return this.updatePendingOfflineAttendanceSubmission(item, metadata, resolvedPerson, locationData);
+      }
+
+      throw error;
+    }
+  }
+
+  private async updatePendingOfflineAttendanceSubmission(
+    item: CommitOfflineEventAttendancesInput['attendances'][number],
+    metadata: {
+      submittedById: string;
+      stagedReason: string;
+    },
+    resolvedPerson: { personId: string | null; errorMessage?: string },
+    locationData: {
+      collectedLatitude: number;
+      collectedLongitude: number;
+      collectedAccuracyMeters: number;
+    },
+  ) {
+    const update = await this.prisma.offlineEventAttendanceSubmission.updateMany({
+      where: {
+        submittedById: metadata.submittedById,
+        clientId: item.clientId,
+        status: 'PENDING',
+      },
+      data: {
+        stagedReason: metadata.stagedReason,
+        resolutionError: resolvedPerson.errorMessage,
+        personId: resolvedPerson.personId,
+        scannerCode: this.normalizeOptionalString(item.code),
+        manualValue: this.normalizeOptionalString(item.value),
+        collectedLatitude: locationData.collectedLatitude,
+        collectedLongitude: locationData.collectedLongitude,
+        collectedAccuracyMeters: locationData.collectedAccuracyMeters,
+      },
+    });
+    const submission = await this.prisma.offlineEventAttendanceSubmission.findUniqueOrThrow({
+      where: this.offlineSubmissionWhere(metadata.submittedById, item.clientId),
+      include: {
+        event: true,
+      },
+    });
+
+    return {
+      submission,
+      changed: update.count === 1,
+    };
+  }
+
+  private offlineSubmissionWhere(submittedById: string, clientId: string) {
+    return {
+      submittedById_clientId: {
+        submittedById,
+        clientId,
+      },
+    };
   }
 
   private async tryResolveOfflineAttendancePerson(
@@ -765,6 +863,17 @@ export class CurrentUserAttendanceCollectionResolver {
     }
 
     return 'FAILED';
+  }
+
+  private isRequiredLocationError(error: unknown): boolean {
+    if (!(error instanceof BadRequestException)) {
+      return false;
+    }
+
+    return [
+      'Localização precisa é obrigatória para registrar presença.',
+      'Ative a localização precisa para registrar presença.',
+    ].includes(this.errorMessage(error));
   }
 
   private errorMessage(error: unknown): string {

@@ -93,7 +93,7 @@
         <mat-icon mat-card-avatar>pending_actions</mat-icon>
         <mat-card-title>Presenças off-line pendentes</mat-card-title>
         <mat-card-subtitle>
-          Há {{ dashboard.pendingOfflineAttendancesCount }} presenças aguardando revisão administrativa.
+          {{ offlineAttendanceSummary(dashboard.pendingOfflineAttendancesCount) }} aguardando revisão administrativa.
         </mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
