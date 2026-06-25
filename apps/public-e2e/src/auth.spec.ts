@@ -13,10 +13,10 @@ test('protected public routes start backend login with the requested return path
     },
   });
 
-  await page.goto('/preferences');
+  await page.goto('/app/preferences');
 
   await expect.poll(() => loginRedirect?.pathname).toBe('/api/auth/login/redirect');
-  await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/preferences');
+  await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/app/preferences');
 });
 
 test('authenticated public users keep their local session and see account actions', async ({ page }) => {
@@ -24,7 +24,7 @@ test('authenticated public users keep their local session and see account action
     user: authenticatedUserFixture(),
   });
 
-  await page.goto('/menu');
+  await page.goto('/app/menu');
 
   await expect(page.getByText('Usuário Teste')).toBeVisible();
   await expect(page.getByLabel('Sair da conta')).toBeVisible();

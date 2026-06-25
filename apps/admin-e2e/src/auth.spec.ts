@@ -13,7 +13,7 @@ test('login page starts the backend auth redirect with the admin return path', a
     },
   });
 
-  await page.goto('/login');
+  await page.goto('/admin/login');
   await expect(page.getByRole('heading', { name: 'Event Manager' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Entrar' }).click();
