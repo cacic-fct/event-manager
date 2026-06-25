@@ -21,7 +21,7 @@ import {
 } from '@cacic-fct/shared-angular';
 import { AttendanceOfflineQueueService, OfflineAttendanceQueueItem } from '@cacic-fct/offline-public-data-access';
 import { formatUnespRole, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
 import {
   AttendanceCollectionApiService,
   AttendanceCollectionEvent,
@@ -103,8 +103,8 @@ export class AttendanceScanner implements OnInit {
       error: () => void this.loadCachedEvent(eventId),
     });
 
-    this.offlineQueue
-      .watchEventItems(eventId)
+    const userId = this.auth.user()?.sub;
+    (userId ? this.offlineQueue.watchEventItems(userId, eventId) : of([]))
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((items) => this.queuedAttendances.set(items));
 
@@ -200,12 +200,22 @@ export class AttendanceScanner implements OnInit {
   }
 
   protected async retryQueuedAttendance(item: OfflineAttendanceQueueItem): Promise<void> {
-    await this.offlineQueue.retry(item.clientId);
+    const userId = this.auth.user()?.sub;
+    if (!userId) {
+      return;
+    }
+
+    await this.offlineQueue.retry(userId, item.clientId);
     await this.syncQueuedAttendances();
   }
 
   protected async removeQueuedAttendance(item: OfflineAttendanceQueueItem): Promise<void> {
-    await this.offlineQueue.remove(item.clientId);
+    const userId = this.auth.user()?.sub;
+    if (!userId) {
+      return;
+    }
+
+    await this.offlineQueue.remove(userId, item.clientId);
     this.snackbar.open('Pendência removida.', 'Fechar', { duration: 2500 });
   }
 
@@ -363,6 +373,7 @@ export class AttendanceScanner implements OnInit {
 
     await this.offlineQueue.enqueue({
       clientId: this.createClientId(),
+      queuedByUserId: user.sub,
       eventId,
       eventName: event.event.name,
       createdByMethod: method,
