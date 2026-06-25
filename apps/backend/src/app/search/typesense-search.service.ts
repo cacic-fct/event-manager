@@ -468,7 +468,7 @@ export class TypesenseSearchService implements OnModuleInit {
 
   private findMissingFields(schema: CollectionCreateSchema, existing: CollectionSchema): CollectionFieldSchema[] {
     const currentNames = new Set(existing.fields.map((field) => field.name));
-    return (schema.fields ?? []).filter((field) => !currentNames.has(field.name));
+    return (schema.fields ?? []).filter((field) => field.name !== 'id' && !currentNames.has(field.name));
   }
 
   private createCollectionSchema(name: string, fields: CollectionFieldSchema[]): CollectionCreateSchema {

@@ -530,12 +530,15 @@ describe('TypesenseSearchService', () => {
   it('updates existing collections when schema fields are missing', async () => {
     const { client, service } = createEnabledService();
     client.collection.exists.mockResolvedValue(true);
-    client.collection.retrieve.mockResolvedValue({ fields: [{ name: 'id' }] });
+    client.collection.retrieve.mockResolvedValue({ fields: [] });
 
     await service['ensureCollections']();
 
     expect(client.collection.update).toHaveBeenCalledWith({
       fields: expect.arrayContaining([expect.objectContaining({ name: 'name' })]),
+    });
+    expect(client.collection.update).not.toHaveBeenCalledWith({
+      fields: expect.arrayContaining([expect.objectContaining({ name: 'id' })]),
     });
   });
 });
