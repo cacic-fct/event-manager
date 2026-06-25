@@ -21,4 +21,14 @@ describe('Calendar', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('keeps calendar filters in the signal form model', () => {
+    component.filterForm.query().value.set('Angular');
+    component.filterForm.eventType().value.set('MINICURSO');
+
+    expect(component.filterModel()).toEqual({
+      query: 'Angular',
+      eventType: 'MINICURSO',
+    });
+  });
 });

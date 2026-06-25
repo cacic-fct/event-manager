@@ -49,10 +49,10 @@
           id="attendance-code"
           autocomplete="one-time-code"
           inputmode="text"
-          maxlength="4"
-          [formControl]="codeControl" />
+          [formField]="codeForm.code"
+          (input)="normalizeCodeInput($event)" />
       </label>
-      @if (codeControl.touched && codeControl.invalid) {
+      @if (codeForm.code().touched() && codeForm.code().invalid()) {
         <p class="field-error">Informe os 4 caracteres do código.</p>
       }
 
@@ -60,7 +60,7 @@
         <p class="field-error">Muitas tentativas. Aguarde {{ cooldownSeconds() }}s para tentar novamente.</p>
       }
 
-      <button mat-flat-button type="submit" [disabled]="codeControl.invalid || isSubmitting() || cooldownSeconds() > 0">
+      <button mat-flat-button type="submit" [disabled]="codeForm().invalid() || isSubmitting() || cooldownSeconds() > 0">
         <mat-icon>how_to_reg</mat-icon>
         Confirmar
       </button>

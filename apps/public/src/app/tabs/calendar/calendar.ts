@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormField, form } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -56,7 +56,7 @@ interface CalendarFilterValue {
     MatProgressBarModule,
     MatSelectModule,
     MatToolbarModule,
-    ReactiveFormsModule,
+    FormField,
   ],
   templateUrl: './calendar.html',
   styleUrl: './calendar.css',
@@ -71,10 +71,11 @@ export class Calendar {
   private readonly minimumDate = startOfDay(subMonths(this.todayDate, 1));
   private readonly refreshCooldownMs = 5 * 60 * 1000;
 
-  readonly queryControl = new FormControl('', { nonNullable: true });
-  readonly eventTypeControl = new FormControl<CalendarEventTypeFilter>('ALL', {
-    nonNullable: true,
+  readonly filterModel = signal<CalendarFilterValue>({
+    query: '',
+    eventType: 'ALL',
   });
+  readonly filterForm = form(this.filterModel);
 
   readonly viewMode = signal<CalendarViewMode>('list');
   readonly listStartDate = signal(this.todayDate);
@@ -226,12 +227,8 @@ export class Calendar {
   }
 
   private filterChanges(): Observable<CalendarFilterValue> {
-    return combineLatest([
-      this.queryControl.valueChanges.pipe(startWith(this.queryControl.value)),
-      this.eventTypeControl.valueChanges.pipe(startWith(this.eventTypeControl.value)),
-    ]).pipe(
+    return toObservable(computed(() => this.filterModel())).pipe(
       debounceTime(250),
-      map(([query, eventType]) => ({ query, eventType })),
       distinctUntilChanged((left, right) => left.query === right.query && left.eventType === right.eventType),
     );
   }

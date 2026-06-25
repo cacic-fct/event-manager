@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormField, form, maxLength, minLength, required, submit as submitSignalForm } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -32,7 +32,7 @@ type AttendanceCodeState =
     MatProgressBarModule,
     MatSnackBarModule,
     MatToolbarModule,
-    ReactiveFormsModule,
+    FormField,
   ],
   templateUrl: './online-attendance-code.component.html',
   styleUrl: './online-attendance-code.component.css',
@@ -50,11 +50,14 @@ export class OnlineAttendanceCodeComponent {
 
   readonly emoji = inject(EmojiService);
   readonly isSubmitting = signal(false);
-  readonly codeValue = signal('');
   readonly cooldownSeconds = this.cooldown.seconds;
-  readonly codeControl = new FormControl('', {
-    nonNullable: true,
-    validators: [Validators.required, Validators.minLength(4)],
+  readonly codeModel = signal({
+    code: '',
+  });
+  readonly codeForm = form(this.codeModel, (path) => {
+    required(path.code);
+    minLength(path.code, 4);
+    maxLength(path.code, 4);
   });
 
   private readonly returnUrl = toSignal(
@@ -66,23 +69,10 @@ export class OnlineAttendanceCodeComponent {
   });
   private readonly reloadCounter = signal(0);
 
-  readonly slots = computed(() => this.codeValue().padEnd(4, ' '));
+  readonly slots = computed(() => this.codeModel().code.padEnd(4, ' '));
   readonly state = toSignal(this.createState(), {
     initialValue: { status: 'loading' } satisfies AttendanceCodeState,
   });
-
-  constructor() {
-    this.codeControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
-      const normalized = value
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, '')
-        .slice(0, 4);
-      if (value !== normalized) {
-        this.codeControl.setValue(normalized, { emitEvent: false });
-      }
-      this.codeValue.set(normalized);
-    });
-  }
 
   back(): void {
     const state = this.state();
@@ -102,9 +92,8 @@ export class OnlineAttendanceCodeComponent {
       return;
     }
 
-    const code = this.codeControl.value.trim();
-    if (code.length !== 4) {
-      this.codeControl.markAsTouched();
+    if (this.codeForm().invalid()) {
+      void submitSignalForm(this.codeForm, { action: async () => undefined });
       return;
     }
 
@@ -113,6 +102,7 @@ export class OnlineAttendanceCodeComponent {
       return;
     }
 
+    const code = this.codeModel().code.trim();
     this.isSubmitting.set(true);
     this.api
       .confirmAttendance(state.item.eventId, code)
@@ -173,9 +163,25 @@ export class OnlineAttendanceCodeComponent {
           return;
         }
 
-        this.codeControl.setValue(parsed.code);
+        this.codeForm.code().value.set(parsed.code);
         this.submit();
       });
+  }
+
+  protected normalizeCodeInput(event: Event): void {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+
+    const normalized = input.value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 4);
+    if (input.value !== normalized) {
+      input.value = normalized;
+    }
+    this.codeForm.code().value.set(normalized);
   }
 
   private createState() {

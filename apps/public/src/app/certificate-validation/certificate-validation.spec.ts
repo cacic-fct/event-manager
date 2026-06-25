@@ -34,7 +34,7 @@ describe('CertificateValidation', () => {
   it('makes the challenge state clear after QR-code scan submission', async () => {
     const { api, component, router } = await createFixture();
 
-    component.certificateIdControl.setValue('scanned-certificate');
+    component.validationForm.certificateId().value.set('scanned-certificate');
     component.submit('scan');
 
     expect(router.navigate).toHaveBeenCalledWith(['/validate'], {
@@ -51,6 +51,18 @@ describe('CertificateValidation', () => {
     component.onTurnstileTokenChange('scan-token');
 
     expect(api.validateCertificate).toHaveBeenCalledWith('scanned-certificate', 'scan-token');
+  });
+
+  it('keeps an invalid route certificate id as a signal-form validation error until the value changes', async () => {
+    const { component } = await createFixture({ queryParams: { invalidId: 'missing-certificate' } });
+
+    expect(component.validationForm.certificateId().value()).toBe('missing-certificate');
+    expect(component.validationForm.certificateId().invalid()).toBe(true);
+    expect(component.validationForm.certificateId().errors().some((error) => error.kind === 'notFound')).toBe(true);
+
+    component.validationForm.certificateId().value.set('other-certificate');
+
+    expect(component.validationForm.certificateId().invalid()).toBe(false);
   });
 });
 

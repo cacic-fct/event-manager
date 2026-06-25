@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormField, form, minLength, required, submit as submitSignalForm } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,36 +12,29 @@ import { Person } from '../../graphql/models';
 @Component({
   selector: 'app-person-create-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-  ],
+  imports: [FormField, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatProgressSpinnerModule],
   template: `
     <h2 mat-dialog-title>Criar pessoa</h2>
     <div mat-dialog-content>
-      <form [formGroup]="form" class="form">
+      <form class="form">
         <mat-form-field>
           <mat-label>Nome</mat-label>
-          <input matInput formControlName="name" />
+          <input matInput [formField]="form.name" />
         </mat-form-field>
 
         <mat-form-field>
           <mat-label>Email</mat-label>
-          <input matInput formControlName="email" />
+          <input matInput [formField]="form.email" />
         </mat-form-field>
 
         <mat-form-field>
           <mat-label>Documento</mat-label>
-          <input matInput formControlName="identityDocument" />
+          <input matInput [formField]="form.identityDocument" />
         </mat-form-field>
 
         <mat-form-field>
           <mat-label>Matrícula (RA)</mat-label>
-          <input matInput formControlName="academicId" />
+          <input matInput [formField]="form.academicId" />
         </mat-form-field>
 
         @if (errorMessage()) {
@@ -78,22 +71,25 @@ import { Person } from '../../graphql/models';
 })
 export class PersonCreateDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<PersonCreateDialogComponent, Person | null>);
-  private readonly formBuilder = inject(FormBuilder);
   private readonly api = inject(PeopleApiService);
 
   readonly isSaving = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
-  readonly form = this.formBuilder.nonNullable.group({
-    name: ['', [Validators.required, Validators.minLength(2)]],
-    email: [''],
-    identityDocument: [''],
-    academicId: [''],
+  readonly model = signal({
+    name: '',
+    email: '',
+    identityDocument: '',
+    academicId: '',
+  });
+  readonly form = form(this.model, (path) => {
+    required(path.name);
+    minLength(path.name, 2);
   });
 
   async onSaveClick(): Promise<void> {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+    if (this.form().invalid()) {
+      void submitSignalForm(this.form, { action: async () => undefined });
       return;
     }
 
@@ -101,7 +97,7 @@ export class PersonCreateDialogComponent {
     this.isSaving.set(true);
 
     try {
-      const rawValue = this.form.getRawValue();
+      const rawValue = this.model();
       const duplicateCandidates = await firstValueFrom(
         this.api.listPeopleSummaries({
           query: rawValue.name,

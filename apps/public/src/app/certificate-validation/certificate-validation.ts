@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormField, form, required, submit as submitSignalForm, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -62,12 +62,12 @@ type ValidationSource = 'link' | 'manual' | 'scan';
     MatInputModule,
     MatListModule,
     MatProgressBarModule,
-    ReactiveFormsModule,
     RouterLink,
     MatToolbarModule,
     CacicLogoComponent,
     MatTooltipModule,
     CloudflareTurnstileComponent,
+    FormField,
   ],
 })
 export class CertificateValidation {
@@ -91,14 +91,25 @@ export class CertificateValidation {
   private nextValidationSource: ValidationSource | null = null;
   private currentRouteCertificateId: string | null = null;
   private isDarkSignal = signal(false);
+  private readonly notFoundCertificateId = signal<string | null>(null);
   fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
 
-  readonly certificateIdControl = new FormControl('', {
-    nonNullable: true,
-    validators: [Validators.required],
+  readonly certificateLookupModel = signal({
+    certificateId: '',
   });
-  readonly validationForm = new FormGroup({
-    certificateId: this.certificateIdControl,
+  readonly validationForm = form(this.certificateLookupModel, (path) => {
+    required(path.certificateId, { message: 'Informe o código do certificado.' });
+    validate(path.certificateId, ({ value }) => {
+      const notFoundCertificateId = this.notFoundCertificateId();
+      if (notFoundCertificateId && value().trim() === notFoundCertificateId) {
+        return {
+          kind: 'notFound',
+          message: 'Certificado não encontrado.',
+        };
+      }
+
+      return null;
+    });
   });
   readonly state = signal<ValidationState>({ status: 'idle' });
   readonly downloading = signal(false);
@@ -155,7 +166,7 @@ export class CertificateValidation {
   }
 
   submit(source: ValidationSource = 'manual'): void {
-    const certificateId = this.certificateIdControl.value.trim();
+    const certificateId = this.certificateLookupModel().certificateId.trim();
     if (this.validationCooldownSeconds() > 0) {
       this.state.set({
         status: 'error',
@@ -164,9 +175,8 @@ export class CertificateValidation {
       return;
     }
 
-    if (!certificateId) {
-      this.certificateIdControl.markAsTouched();
-      this.certificateIdControl.updateValueAndValidity();
+    if (this.validationForm().invalid()) {
+      void submitSignalForm(this.validationForm, { action: async () => undefined });
       return;
     }
 
@@ -237,7 +247,7 @@ export class CertificateValidation {
         const prefix = 'eventos.cacic.dev.br/validar/';
         const certificateId = code.startsWith(prefix) ? code.substring(prefix.length) : code;
 
-        this.certificateIdControl.setValue(certificateId);
+        this.validationForm.certificateId().value.set(certificateId);
 
         this.submit('scan');
       });
@@ -275,6 +285,10 @@ export class CertificateValidation {
     }
 
     return 'Conclua a verificação anti-spam para validar o certificado.';
+  }
+
+  protected hasCertificateIdError(kind: string): boolean {
+    return this.validationForm.certificateId().errors().some((error) => error.kind === kind);
   }
 
   private queueValidation(certificateId: string, source: ValidationSource): void {
@@ -359,14 +373,8 @@ export class CertificateValidation {
 
   private syncInput(certificateId: string | null, invalidId: string | null): void {
     const value = certificateId ?? invalidId ?? '';
-    this.certificateIdControl.setValue(value, { emitEvent: false });
-    this.certificateIdControl.markAsPristine();
-    this.certificateIdControl.updateValueAndValidity({ emitEvent: false });
-
-    if (!certificateId && invalidId) {
-      this.certificateIdControl.setErrors({ notFound: true });
-      this.certificateIdControl.markAsTouched();
-    }
+    this.notFoundCertificateId.set(!certificateId && invalidId ? invalidId : null);
+    this.validationForm.certificateId().value.set(value);
   }
 
   private normalizeId(value: string | null): string | null {

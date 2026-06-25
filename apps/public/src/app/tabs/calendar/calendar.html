@@ -16,9 +16,9 @@
     <mat-form-field appearance="outline" class="search-field">
       <mat-label>Buscar eventos</mat-label>
       <mat-icon matPrefix>search</mat-icon>
-      <input matInput type="search" [formControl]="queryControl" autocomplete="off" />
-      @if (queryControl.value) {
-      <button matIconButton matSuffix type="button" (click)="queryControl.setValue('')" aria-label="Limpar busca">
+      <input matInput type="search" [formField]="filterForm.query" autocomplete="off" />
+      @if (filterModel().query) {
+      <button matIconButton matSuffix type="button" (click)="filterForm.query().value.set('')" aria-label="Limpar busca">
         <mat-icon>close</mat-icon>
       </button>
       }
@@ -26,7 +26,7 @@
 
     <mat-form-field appearance="outline" class="type-field">
       <mat-label>Tipo</mat-label>
-      <mat-select [formControl]="eventTypeControl">
+      <mat-select [formField]="filterForm.eventType">
         @for (option of eventTypeOptions; track option.value) {
         <mat-option [value]="option.value">{{ option.label }}</mat-option>
         }

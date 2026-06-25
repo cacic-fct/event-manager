@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { signal } from '@angular/core';
+import { FormField, form, required, submit as submitSignalForm } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { startWith } from 'rxjs';
 
 export interface AttendanceCsvColumnDialogData {
   fileName: string;
@@ -17,15 +16,15 @@ export interface AttendanceCsvColumnDialogData {
 @Component({
   selector: 'app-attendance-csv-column-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatListModule, MatSelectModule],
+  imports: [FormField, MatButtonModule, MatDialogModule, MatFormFieldModule, MatListModule, MatSelectModule],
   template: `
     <h2 mat-dialog-title>Importar presenças</h2>
     <div mat-dialog-content>
       <p>{{ data.fileName }}</p>
-      <form [formGroup]="form">
+      <form>
         <mat-form-field>
           <mat-label>Coluna para localizar pessoas</mat-label>
-          <mat-select formControlName="selectedHeader">
+          <mat-select [formField]="form.selectedHeader">
             @for (header of data.headers; track header) {
               <mat-option [value]="header">{{ header }}</mat-option>
             }
@@ -45,26 +44,23 @@ export interface AttendanceCsvColumnDialogData {
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button type="button" [disabled]="form.invalid" (click)="confirm()">Importar</button>
+      <button mat-flat-button type="button" [disabled]="form().invalid()" (click)="confirm()">Importar</button>
     </div>
   `,
 })
 export class AttendanceCsvColumnDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<AttendanceCsvColumnDialogComponent, string | null>);
-  private readonly formBuilder = inject(FormBuilder);
   readonly data = inject<AttendanceCsvColumnDialogData>(MAT_DIALOG_DATA);
 
-  readonly form = this.formBuilder.nonNullable.group({
-    selectedHeader: [this.data.headers[0] ?? '', [Validators.required]],
+  readonly model = signal({
+    selectedHeader: this.data.headers[0] ?? '',
+  });
+  readonly form = form(this.model, (path) => {
+    required(path.selectedHeader);
   });
 
-  private readonly selectedHeader = toSignal(
-    this.form.controls.selectedHeader.valueChanges.pipe(startWith(this.form.controls.selectedHeader.value)),
-    { initialValue: this.form.controls.selectedHeader.value },
-  );
-
   readonly previewValues = computed(() => {
-    const selectedHeader = this.selectedHeader();
+    const selectedHeader = this.model().selectedHeader;
     return this.data.previewRows
       .map((row) => row[selectedHeader]?.trim() ?? '')
       .filter((value) => value.length > 0)
@@ -72,11 +68,11 @@ export class AttendanceCsvColumnDialogComponent {
   });
 
   confirm(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+    if (this.form().invalid()) {
+      void submitSignalForm(this.form, { action: async () => undefined });
       return;
     }
 
-    this.dialogRef.close(this.form.controls.selectedHeader.value);
+    this.dialogRef.close(this.model().selectedHeader);
   }
 }
