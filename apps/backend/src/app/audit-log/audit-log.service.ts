@@ -87,6 +87,7 @@ const FIELD_LABELS: Record<string, string> = {
   category: 'Categoria',
   contactInfo: 'Contato',
   contactType: 'Tipo de contato',
+  committedById: 'Enviado por',
   createdById: 'Autor',
   createdByMethod: 'Origem',
   deletedAt: 'Exclusão',

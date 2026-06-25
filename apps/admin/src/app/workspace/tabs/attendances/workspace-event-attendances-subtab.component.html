@@ -149,6 +149,78 @@
         </div>
       </section>
 
+      <section class="surface offline-reconciliation">
+        <div class="surface-heading">
+          <div>
+            <h4>Presenças off-line em revisão</h4>
+            <span>{{ workspace.offlineAttendanceSubmissions().length }} pendência(s)</span>
+          </div>
+          @if (canEditSelectedEventAttendances() && workspace.offlineAttendanceSubmissions().length > 0) {
+            <div class="panel-actions">
+              <button mat-stroked-button type="button" (click)="workspace.rejectAllOfflineAttendanceSubmissions()">
+                <mat-icon>close</mat-icon>
+                Rejeitar lote
+              </button>
+              <button mat-flat-button type="button" (click)="workspace.approveAllOfflineAttendanceSubmissions()">
+                <mat-icon>done_all</mat-icon>
+                Aprovar lote
+              </button>
+            </div>
+          }
+        </div>
+
+        <mat-list class="attendance-list">
+          @for (submission of workspace.offlineAttendanceSubmissions(); track submission.id) {
+            <mat-list-item>
+              <span matListItemTitle class="attendance-item-title">
+                {{ submission.personName }}
+              </span>
+              <span matListItemLine class="attendance-item-line">
+                Coletada em {{ submission.collectedAt | date: 'short' }} · enviada por
+                {{ submission.submittedByFullName || submission.submittedById }}
+              </span>
+              <span matListItemLine class="attendance-item-line">
+                {{ submission.stagedReason || submission.resolutionError || 'Aguardando revisão administrativa.' }}
+              </span>
+              <div matListItemMeta class="attendance-item-actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Inspecionar presença off-line"
+                  matTooltip="Inspecionar"
+                  (click)="workspace.inspectOfflineAttendanceSubmission(submission, canEditSelectedEventAttendances())">
+                  <mat-icon>visibility</mat-icon>
+                </button>
+                @if (canEditSelectedEventAttendances()) {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Aprovar presença off-line"
+                    matTooltip="Aprovar"
+                    [disabled]="!!submission.resolutionError"
+                    (click)="workspace.approveOfflineAttendanceSubmission(submission)">
+                    <mat-icon>check</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Rejeitar presença off-line"
+                    matTooltip="Rejeitar"
+                    (click)="workspace.rejectOfflineAttendanceSubmission(submission)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </div>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhuma presença off-line em revisão</span>
+              <span matListItemLine>Coletas expiradas ou conflitantes aparecerão aqui depois da sincronização.</span>
+            </mat-list-item>
+          }
+        </mat-list>
+      </section>
+
       <section class="surface">
         <div class="surface-heading">
           <h4>Presenças do evento</h4>

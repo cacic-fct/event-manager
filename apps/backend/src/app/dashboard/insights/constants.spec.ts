@@ -12,7 +12,7 @@ import {
 describe('dashboard insights constants', () => {
   it('exposes cache, time, weather, and permission settings used by dashboard insights', () => {
     expect(CACHE_TTL_SECONDS).toBe(300);
-    expect(CACHE_KEY_PREFIX).toBe('dashboard:workspace:v4');
+    expect(CACHE_KEY_PREFIX).toBe('dashboard:workspace:v5');
     expect(DEFAULT_EMOJI).toBe('❔');
     expect(TWO_HOURS_MS).toBe(7200000);
     expect(EIGHT_HOURS_MS).toBe(28800000);
@@ -21,6 +21,7 @@ describe('dashboard insights constants', () => {
     expect(DASHBOARD_PERMISSION_REQUIREMENTS).toEqual([
       'event#read',
       'event#update',
+      'event-attendance#update',
       'major-event#read',
       'major-event#update',
       'certificate#issue',

@@ -185,6 +185,8 @@ export class CurrentUserEventAttendanceResolver {
           personId: person.id,
           eventId: event.id,
           createdByMethod: AttendanceCreationMethod.ONLINE_CODE,
+          createdById: authenticatedUser.sub,
+          committedById: authenticatedUser.sub,
         },
       });
       await this.attendanceCategories.refreshForAttendance(person.id, event.id, tx);

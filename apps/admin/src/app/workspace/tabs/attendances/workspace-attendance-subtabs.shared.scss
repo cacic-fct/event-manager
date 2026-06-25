@@ -145,6 +145,10 @@
   gap: 1rem;
 }
 
+.offline-reconciliation {
+  grid-column: 1 / -1;
+}
+
 .manual-form,
 .major-event-form,
 .detail-form {

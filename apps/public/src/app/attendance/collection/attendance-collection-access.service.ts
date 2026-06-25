@@ -1,6 +1,8 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { firstValueFrom, map } from 'rxjs';
 import { AttendanceCollectionApiService, AttendanceCollectionEvent, AttendanceCollectionLocation } from './attendance-collection-api.service';
 
@@ -79,6 +81,8 @@ export class AttendanceCollectionAccessService {
 
 export const attendanceCollectionListGuard: CanActivateFn = async () => {
   const api = inject(AttendanceCollectionApiService);
+  const auth = inject(AuthService);
+  const offlineQueue = inject(AttendanceOfflineQueueService);
   const router = inject(Router);
 
   try {
@@ -87,7 +91,10 @@ export const attendanceCollectionListGuard: CanActivateFn = async () => {
       return true;
     }
   } catch {
-    return router.createUrlTree(['/menu']);
+    const userId = auth.user()?.sub;
+    if (userId && (await offlineQueue.getCollectionEvents(userId)).length > 0) {
+      return true;
+    }
   }
 
   return router.createUrlTree(['/menu']);
@@ -96,6 +103,8 @@ export const attendanceCollectionListGuard: CanActivateFn = async () => {
 export const attendanceCollectionScannerGuard: CanActivateFn = async (route) => {
   const api = inject(AttendanceCollectionApiService);
   const access = inject(AttendanceCollectionAccessService);
+  const auth = inject(AuthService);
+  const offlineQueue = inject(AttendanceOfflineQueueService);
   const router = inject(Router);
   const eventId = route.paramMap.get('eventId');
 
@@ -114,6 +123,17 @@ export const attendanceCollectionScannerGuard: CanActivateFn = async (route) => 
     await access.getPreciseLocation();
     return true;
   } catch {
-    return router.createUrlTree(['/attendance/collect']);
+    const userId = auth.user()?.sub;
+    const cachedEvent = userId && eventId ? await offlineQueue.getCollectionEvent(userId, eventId) : null;
+    if (cachedEvent && access.isCollectionOpen(cachedEvent)) {
+      try {
+        await access.getPreciseLocation();
+        return true;
+      } catch {
+        return router.createUrlTree(['/attendance/collect']);
+      }
+    }
   }
+
+  return router.createUrlTree(['/attendance/collect']);
 };

@@ -1,5 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { AttendanceCategory, SubscriptionStatus } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
 import { EventAttendancesQueriesResolver } from './event-attendances.queries.resolver';
 
 describe('EventAttendancesQueriesResolver', () => {
@@ -9,6 +11,15 @@ describe('EventAttendancesQueriesResolver', () => {
   beforeEach(() => {
     prisma = createFullPrisma();
     resolver = new EventAttendancesQueriesResolver(prisma as never, {} as never);
+  });
+
+  it('allows read-only attendance users to list offline submissions', () => {
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_PERMISSIONS_KEY,
+        EventAttendancesQueriesResolver.prototype.offlineEventAttendanceSubmissions,
+      ),
+    ).toEqual([Permission.EventAttendance.Read]);
   });
 
   it('lists attendances with collector full names', async () => {

@@ -239,6 +239,7 @@ describe('MergeCandidateOperationsService', () => {
           attendedAt: new Date('2026-05-21T10:00:00.000Z'),
           createdAt: new Date('2026-05-21T09:00:00.000Z'),
           createdById: 'actor-1',
+          committedById: null,
         },
       ],
       skipDuplicates: true,

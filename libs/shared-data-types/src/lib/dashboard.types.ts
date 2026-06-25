@@ -85,6 +85,15 @@ export interface DashboardPendingReceiptMajorEvent {
   pendingCount: number;
 }
 
+export interface DashboardPendingOfflineAttendanceEvent {
+  eventId: string;
+  name: string;
+  emoji: string;
+  startDate: string;
+  endDate: string;
+  pendingCount: number;
+}
+
 export interface DashboardInconsistency {
   type: DashboardInconsistencyType;
   action?: DashboardInsightAction | null;
@@ -117,6 +126,8 @@ export interface WorkspaceDashboardInsights {
   pendingCertificates: DashboardCertificatePendingItem[];
   pendingReceiptValidationsCount: number;
   pendingReceiptMajorEvents: DashboardPendingReceiptMajorEvent[];
+  pendingOfflineAttendancesCount: number;
+  pendingOfflineAttendanceEvents: DashboardPendingOfflineAttendanceEvent[];
   inconsistencies: DashboardInconsistency[];
   duplicatePeopleCount: number;
   permissions: DashboardPermissionGroup[];

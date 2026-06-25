@@ -64,6 +64,7 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
       attendedAt: readRequiredString(entry, 'attendedAt'),
       createdAt: readRequiredString(entry, 'createdAt'),
       createdById: readNullableString(entry, 'createdById'),
+      committedById: readNullableString(entry, 'committedById'),
     };
   });
 

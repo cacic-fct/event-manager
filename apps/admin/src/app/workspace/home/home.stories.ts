@@ -16,6 +16,7 @@ import type {
   DashboardInconsistency,
   DashboardInsightAction,
   DashboardInsightSeverity,
+  DashboardPendingOfflineAttendanceEvent,
   DashboardPendingReceiptMajorEvent,
   DashboardWeatherAlert,
   WorkspaceDashboardInsights,
@@ -37,6 +38,7 @@ interface HomeStoryArgs {
   suggestions: DashboardInsightAction[];
   weatherAlerts: number;
   pendingCertificates: number;
+  pendingOfflineAttendancesCount: number;
   pendingReceiptValidationsCount: number;
   duplicatePeopleCount: number;
   inconsistencies: number;
@@ -55,6 +57,7 @@ const defaultArgs: HomeStoryArgs = {
   suggestions: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT'],
   weatherAlerts: 1,
   pendingCertificates: 2,
+  pendingOfflineAttendancesCount: 5,
   pendingReceiptValidationsCount: 4,
   duplicatePeopleCount: 3,
   inconsistencies: 3,
@@ -105,6 +108,7 @@ const meta: Meta<HomeStoryArgs> = {
     },
     weatherAlerts: { control: { type: 'range', min: 0, max: 5, step: 1 } },
     pendingCertificates: { control: { type: 'range', min: 0, max: 6, step: 1 } },
+    pendingOfflineAttendancesCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     pendingReceiptValidationsCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     duplicatePeopleCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     inconsistencies: { control: { type: 'range', min: 0, max: 8, step: 1 } },
@@ -185,6 +189,7 @@ export const EmptyDashboard: Story = {
     suggestions: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT'],
     weatherAlerts: 0,
     pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
     pendingReceiptValidationsCount: 0,
     duplicatePeopleCount: 0,
     inconsistencies: 0,
@@ -232,6 +237,8 @@ function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsi
     pendingCertificates: empty
       ? []
       : Array.from({ length: args.pendingCertificates }, (_, index) => buildPendingCertificate(index)),
+    pendingOfflineAttendancesCount: empty ? 0 : args.pendingOfflineAttendancesCount,
+    pendingOfflineAttendanceEvents: empty ? [] : buildPendingOfflineAttendanceEvents(args.pendingOfflineAttendancesCount),
     pendingReceiptValidationsCount: empty ? 0 : args.pendingReceiptValidationsCount,
     pendingReceiptMajorEvents: empty ? [] : buildPendingReceiptMajorEvents(args.pendingReceiptValidationsCount),
     inconsistencies: empty
@@ -321,6 +328,23 @@ function buildPendingReceiptMajorEvents(totalCount: number): DashboardPendingRec
     emoji: faker.helpers.arrayElement(['💻', '🎓', '📊']),
     startDate: dateFromNow(index + 3, 8).toISOString(),
     endDate: dateFromNow(index + 5, 18).toISOString(),
+    pendingCount,
+  }));
+}
+
+function buildPendingOfflineAttendanceEvents(totalCount: number): DashboardPendingOfflineAttendanceEvent[] {
+  if (totalCount === 0) {
+    return [];
+  }
+
+  const firstCount = Math.ceil(totalCount / 2);
+  const counts = totalCount === firstCount ? [firstCount] : [firstCount, totalCount - firstCount];
+  return counts.map((pendingCount, index) => ({
+    eventId: `offline-attendance-event-${index}`,
+    name: faker.helpers.arrayElement(['Credenciamento geral', 'Minicurso de Angular', 'Palestra de Segurança']),
+    emoji: faker.helpers.arrayElement(['✅', '💻', '🔐']),
+    startDate: dateFromNow(-index - 1, 19).toISOString(),
+    endDate: dateFromNow(-index - 1, 21).toISOString(),
     pendingCount,
   }));
 }

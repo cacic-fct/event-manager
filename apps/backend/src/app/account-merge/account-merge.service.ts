@@ -41,6 +41,7 @@ type AttendanceSnapshot = {
   attendedAt: string;
   createdAt: string;
   createdById: string | null;
+  committedById: string | null;
 };
 
 type LectureSnapshot = {
@@ -468,6 +469,7 @@ export class AccountMergeService {
         attendedAt: attendance.attendedAt.toISOString(),
         createdAt: attendance.createdAt.toISOString(),
         createdById: attendance.createdById,
+        committedById: attendance.committedById,
       })),
       sourceLectures: sourceLectures.map((lecture) => ({
         eventId: lecture.eventId,
@@ -508,6 +510,7 @@ export class AccountMergeService {
           attendedAt: attendance.attendedAt,
           createdAt: attendance.createdAt,
           createdById: attendance.createdById,
+          committedById: attendance.committedById,
           createdByMethod: attendance.createdByMethod,
           category: attendance.category,
         })),

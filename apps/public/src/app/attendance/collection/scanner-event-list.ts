@@ -9,6 +9,8 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AttendanceCollectionAccessService } from './attendance-collection-access.service';
+import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
+import { AuthService } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-scanner-event-list',
@@ -20,6 +22,8 @@ import { AttendanceCollectionAccessService } from './attendance-collection-acces
 export class ScannerEventList implements OnInit {
   private readonly access = inject(AttendanceCollectionAccessService);
   private readonly api = inject(AttendanceCollectionApiService);
+  private readonly auth = inject(AuthService);
+  private readonly offlineQueue = inject(AttendanceOfflineQueueService);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
   readonly emoji = inject(EmojiService);
@@ -37,8 +41,12 @@ export class ScannerEventList implements OnInit {
       next: (events) => {
         this.events.set(events);
         this.loading.set(false);
+        const userId = this.auth.user()?.sub;
+        if (userId) {
+          void this.offlineQueue.replaceCollectionEvents(userId, events);
+        }
       },
-      error: () => this.loading.set(false),
+      error: () => void this.loadCachedEvents(),
     });
   }
 
@@ -79,5 +87,12 @@ export class ScannerEventList implements OnInit {
       this.locationStatus.set(message);
       this.snackbar.open(message, 'Fechar', { duration: 5000 });
     }
+  }
+
+  private async loadCachedEvents(): Promise<void> {
+    const userId = this.auth.user()?.sub;
+    const events = userId ? await this.offlineQueue.getCollectionEvents(userId) : [];
+    this.events.set(events);
+    this.loading.set(false);
   }
 }

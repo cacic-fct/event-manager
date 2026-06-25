@@ -760,6 +760,7 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
 export const DASHBOARD_PERMISSION_REQUIREMENTS = [
   Permission.Event.Read,
   Permission.Event.Update,
+  Permission.EventAttendance.Update,
   Permission.MajorEvent.Read,
   Permission.MajorEvent.Update,
   Permission.Certificate.Issue,

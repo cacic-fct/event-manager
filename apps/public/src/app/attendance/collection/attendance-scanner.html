@@ -31,6 +31,46 @@
     </button>
   </form>
 
+  @if (queuedAttendances().length > 0) {
+  <section class="queue-panel" aria-live="polite">
+    <div class="feed-heading">
+      <h2>Sincronização off-line</h2>
+      <span>{{ pendingQueueCount() }} para enviar</span>
+    </div>
+
+    <div class="queue-actions">
+      <button mat-flat-button type="button" (click)="syncQueuedAttendances()" [disabled]="pendingQueueCount() === 0">
+        <mat-icon>sync</mat-icon>
+        Sincronizar
+      </button>
+    </div>
+
+    <mat-list>
+      @for (item of queuedAttendances(); track item.clientId) {
+      <mat-list-item [class.needs-review]="item.status === 'CONFLICT' || item.status === 'DUPLICATE' || item.status === 'FORBIDDEN'">
+        <span matListItemTitle>{{ methodLabel(item.createdByMethod) }} · {{ queueStatusLabel(item.status) }}</span>
+        <span matListItemLine>{{ item.collectedAt | date: 'shortTime' }} · {{ item.authorName || 'autor não identificado' }}</span>
+        @if (item.lastError) {
+        <span matListItemLine>{{ item.lastError }}</span>
+        }
+        <div matListItemMeta class="queue-item-actions">
+          @if (item.status === 'FAILED' || item.status === 'CONFLICT') {
+          <button matIconButton type="button" aria-label="Tentar novamente" (click)="retryQueuedAttendance(item)">
+            <mat-icon>refresh</mat-icon>
+          </button>
+          }
+          @if (item.status === 'DUPLICATE' || item.status === 'CONFLICT' || item.status === 'FORBIDDEN') {
+          <button matIconButton type="button" aria-label="Remover pendência" (click)="removeQueuedAttendance(item)">
+            <mat-icon>done</mat-icon>
+          </button>
+          }
+        </div>
+      </mat-list-item>
+      }
+    </mat-list>
+  </section>
+  }
+
   <section class="feed-panel" aria-live="polite">
     <div class="feed-heading">
       <h2>Presenças registradas</h2>
@@ -47,7 +87,8 @@
         <span matListItemLine>
           @if (attendance.attendedAt) { {{ attendance.attendedAt | date: 'shortTime' }} } @else { - } · {{
           methodLabel(attendance.createdByMethod) }} @if (attendance.collectedByFirstName) { · por {{
-          attendance.collectedByFirstName }} }
+          attendance.collectedByFirstName }} } @if (attendance.committedByFirstName) { · enviado por {{
+          attendance.committedByFirstName }} }
         </span>
       </mat-list-item>
       } @empty {

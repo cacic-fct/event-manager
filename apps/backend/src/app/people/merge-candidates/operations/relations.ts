@@ -40,6 +40,7 @@ export async function moveRelations(
         attendedAt: attendance.attendedAt,
         createdAt: attendance.createdAt,
         createdById: attendance.createdById,
+        committedById: attendance.committedById,
       })),
       skipDuplicates: true,
     });
@@ -236,6 +237,7 @@ export async function moveRelations(
       attendedAt: attendance.attendedAt.toISOString(),
       createdAt: attendance.createdAt.toISOString(),
       createdById: attendance.createdById,
+      committedById: attendance.committedById,
     })),
     sourceLectures: sourceLectures.map((lecture) => ({
       eventId: lecture.eventId,

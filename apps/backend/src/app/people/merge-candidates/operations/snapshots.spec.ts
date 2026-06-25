@@ -99,6 +99,7 @@ describe('merge candidate snapshot helpers', () => {
           attendedAt: '2026-05-21T12:00:00.000Z',
           createdAt: '2026-05-21T11:00:00.000Z',
           createdById: null,
+          committedById: null,
         },
       ],
       sourceLectures: [

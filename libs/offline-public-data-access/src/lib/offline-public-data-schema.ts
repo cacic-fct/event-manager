@@ -1,4 +1,5 @@
 import type { EventTargetType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { AttendanceCreationMethod } from '@cacic-fct/shared-data-types';
 import type {
   EventDetails,
   EventGroupDetails,
@@ -55,6 +56,41 @@ export interface OfflineFeatureFlagCacheRecord {
   value: unknown;
 }
 
+export interface OfflineAttendanceCollectionEventRecord {
+  key: string;
+  userId: string;
+  eventId: string;
+  cachedAt: number;
+  event: PublicEvent;
+}
+
+export type OfflineAttendanceQueueStatus = 'PENDING' | 'SYNCING' | 'DUPLICATE' | 'CONFLICT' | 'FORBIDDEN' | 'FAILED';
+
+export interface OfflineAttendanceQueueLocation {
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number;
+}
+
+export interface OfflineAttendanceQueueItem {
+  clientId: string;
+  eventId: string;
+  eventName: string;
+  createdByMethod: Extract<AttendanceCreationMethod, 'SCANNER' | 'MANUAL_INPUT'>;
+  code?: string;
+  value?: string;
+  location: OfflineAttendanceQueueLocation;
+  collectedAt: string;
+  queuedAt: number;
+  updatedAt: number;
+  authorUserId: string | null;
+  authorName: string | null;
+  authorEmail: string | null;
+  status: OfflineAttendanceQueueStatus;
+  attempts: number;
+  lastError?: string | null;
+}
+
 export class OfflinePublicDataDatabase extends Dexie {
   calendarEvents!: Table<OfflineCalendarEvent, string>;
   syncMetadata!: Table<OfflinePublicDataSyncMetadata, string>;
@@ -62,6 +98,8 @@ export class OfflinePublicDataDatabase extends Dexie {
   attendanceFeeds!: Table<OfflineAttendanceFeedRecord, string>;
   attendanceDetails!: Table<OfflineAttendanceDetailRecord, string>;
   featureFlagCache!: Table<OfflineFeatureFlagCacheRecord, string>;
+  attendanceCollectionEvents!: Table<OfflineAttendanceCollectionEventRecord, string>;
+  attendanceQueue!: Table<OfflineAttendanceQueueItem, string>;
 
   constructor() {
     super('cacic-public-offline-data');
@@ -86,6 +124,17 @@ export class OfflinePublicDataDatabase extends Dexie {
       attendanceFeeds: 'key, userId, updatedAt',
       attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
       featureFlagCache: 'key, updatedAt',
+    });
+
+    this.version(4).stores({
+      calendarEvents: 'id, startDate, cachedAt',
+      syncMetadata: 'key',
+      userSnapshots: 'userId, updatedAt',
+      attendanceFeeds: 'key, userId, updatedAt',
+      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+      featureFlagCache: 'key, updatedAt',
+      attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      attendanceQueue: 'clientId, eventId, status, queuedAt, updatedAt, [eventId+status]',
     });
   }
 }
