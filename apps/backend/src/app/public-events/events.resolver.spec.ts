@@ -162,7 +162,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
     );
   });
 
-  it('exposes lecturer names when the person does not have a public lecturer profile', async () => {
+  it('does not expose lecturers without a public lecturer profile', async () => {
     const prisma = {
       eventLecturer: {
         findMany: jest.fn().mockResolvedValue([
@@ -179,17 +179,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
     };
     const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
 
-    await expect(resolver.lecturers({ id: 'event-1' } as never)).resolves.toEqual([
-      {
-        id: 'person-1',
-        displayName: 'Grace Hopper',
-        biography: null,
-        publishGoogleUserPicture: false,
-        googleUserPicture: null,
-        email: null,
-        whatsapp: null,
-      },
-    ]);
+    await expect(resolver.lecturers({ id: 'event-1' } as never)).resolves.toEqual([]);
 
     expect(prisma.eventLecturer.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -199,6 +189,9 @@ describe('PublicEventsResolver lecturer profiles', () => {
           },
           person: {
             deletedAt: null,
+            lecturerProfile: {
+              isNot: null,
+            },
           },
         },
       }),
