@@ -3,9 +3,12 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
 import { NEVER, of } from 'rxjs';
-import { ScannerFeedbackService } from '@cacic-fct/shared-angular';
+import { AuthService, ScannerFeedbackService } from '@cacic-fct/shared-angular';
+import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
 import { AttendanceCollectionApiService } from './attendance-collection-api.service';
 import { AttendanceScanner } from './attendance-scanner';
+import { AttendanceOfflineSyncService } from './attendance-offline-sync.service';
+import { NetworkStatusService } from '../../shared/network-status.service';
 
 Object.defineProperty(globalThis.navigator, 'geolocation', {
   configurable: true,
@@ -40,6 +43,41 @@ const meta: Meta<AttendanceScanner> = {
       providers: [
         provideRouter([]),
         ScannerFeedbackService,
+        {
+          provide: AuthService,
+          useValue: {
+            user: () => ({
+              sub: 'collector-1',
+              preferredUsername: 'Marina',
+              email: 'marina@example.com',
+              claims: { name: 'Marina Costa', email: 'marina@example.com' },
+            }),
+          },
+        },
+        {
+          provide: NetworkStatusService,
+          useValue: {
+            isOnline: () => true,
+          },
+        },
+        {
+          provide: AttendanceOfflineQueueService,
+          useValue: {
+            replaceCollectionEvents: () => Promise.resolve(),
+            getCollectionEvent: () => Promise.resolve(null),
+            watchEventItems: () => of([]),
+            retry: () => Promise.resolve(),
+            remove: () => Promise.resolve(),
+            enqueue: () => Promise.resolve(),
+          },
+        },
+        {
+          provide: AttendanceOfflineSyncService,
+          useValue: {
+            syncPending: () => Promise.resolve(),
+            notifyPendingNow: () => Promise.resolve(),
+          },
+        },
         {
           provide: ActivatedRoute,
           useValue: {

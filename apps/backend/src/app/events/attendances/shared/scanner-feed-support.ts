@@ -12,6 +12,7 @@ export abstract class EventAttendancesScannerFeedSupport extends EventAttendance
         eventId: true,
         attendedAt: true,
         createdById: true,
+        committedById: true,
         createdByMethod: true,
         person: {
           select: {
@@ -39,7 +40,11 @@ export abstract class EventAttendancesScannerFeedSupport extends EventAttendance
     const majorEventId = attendances.find((attendance) => attendance.event.majorEventId)?.event.majorEventId;
     const personIds = attendances.map((attendance) => attendance.personId);
     const collectorIds = [
-      ...new Set(attendances.map((attendance) => attendance.createdById).filter((id): id is string => Boolean(id))),
+      ...new Set(
+        attendances
+          .flatMap((attendance) => [attendance.createdById, attendance.committedById])
+          .filter((id): id is string => Boolean(id)),
+      ),
     ];
 
     const standaloneEventIds = [
@@ -119,6 +124,10 @@ export abstract class EventAttendancesScannerFeedSupport extends EventAttendance
       attendedAt: attendance.attendedAt,
       createdByMethod: attendance.createdByMethod,
       collectedByFirstName: attendance.createdById ? (collectorFirstNameById.get(attendance.createdById) ?? undefined) : undefined,
+      committedByFirstName:
+        attendance.committedById && attendance.committedById !== attendance.createdById
+          ? (collectorFirstNameById.get(attendance.committedById) ?? undefined)
+          : undefined,
     }));
   }
 

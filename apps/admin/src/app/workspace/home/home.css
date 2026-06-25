@@ -103,6 +103,17 @@
   gap: 8px;
 }
 
+.rank-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font-weight: 600;
+}
+
 .attendance-meta {
   display: flex;
   flex-direction: column;

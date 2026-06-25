@@ -39,7 +39,8 @@ mat-list-item span[matListItemLine] {
 }
 
 .location-state,
-.feed-panel {
+.feed-panel,
+.queue-panel {
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 8px;
   padding: 0.875rem;
@@ -59,6 +60,21 @@ mat-list-item span[matListItemLine] {
 .feed-heading {
   justify-content: space-between;
   margin-bottom: 0.5rem;
+}
+
+.queue-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.queue-item-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.needs-review {
+  background: color-mix(in srgb, var(--mat-sys-error-container) 24%, transparent);
 }
 
 mat-list {

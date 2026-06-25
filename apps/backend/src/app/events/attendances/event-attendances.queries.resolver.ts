@@ -1,4 +1,10 @@
-import { EventAttendance, EventAttendanceScannerFeedItem, MajorEventUserAttendance } from '@cacic-fct/shared-data-types';
+import {
+  EventAttendance,
+  EventAttendanceScannerFeedItem,
+  MajorEventUserAttendance,
+  OfflineEventAttendanceSubmission,
+  OfflineEventAttendanceSubmissionStatus,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
@@ -8,6 +14,12 @@ import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT } from './event-attendances.shared';
+import {
+  mapOfflineSubmissionForResponse,
+  offlineSubmissionActorIds,
+  offlineSubmissionActorNameMap,
+  OfflineSubmissionResponseSource,
+} from './offline-submission-response';
 
 @Resolver(() => EventAttendance)
 export class EventAttendancesQueriesResolver extends EventAttendancesResolverBase {
@@ -42,6 +54,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         attendedAt: true,
         createdAt: true,
         createdById: true,
+        committedById: true,
         createdByMethod: true,
         collectedLatitude: true,
         collectedLongitude: true,
@@ -62,11 +75,15 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     const collectorIds = [
       ...new Set(attendances.map((attendance) => attendance.createdById).filter((id): id is string => Boolean(id))),
     ];
-    const collectors = collectorIds.length
+    const committerIds = [
+      ...new Set(attendances.map((attendance) => attendance.committedById).filter((id): id is string => Boolean(id))),
+    ];
+    const actorIds = [...new Set([...collectorIds, ...committerIds])];
+    const collectors = actorIds.length
       ? await this.prisma.user.findMany({
           where: {
             id: {
-              in: collectorIds,
+              in: actorIds,
             },
           },
           select: {
@@ -80,6 +97,10 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     return attendances.map((attendance) => ({
       ...attendance,
       collectedByFullName: attendance.createdById ? (collectorNameById.get(attendance.createdById) ?? undefined) : undefined,
+      committedByFullName:
+        attendance.committedById && attendance.committedById !== attendance.createdById
+          ? (collectorNameById.get(attendance.committedById) ?? undefined)
+          : undefined,
     }));
   }
 
@@ -87,6 +108,31 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   @RequirePermissions(Permission.EventAttendance.Read)
   eventAttendanceScannerFeed(@Args('eventId', { type: () => String }) eventId: string) {
     return this.getScannerFeed(eventId);
+  }
+
+  @Query(() => [OfflineEventAttendanceSubmission], { name: 'offlineEventAttendanceSubmissions' })
+  @RequirePermissions(Permission.EventAttendance.Read)
+  async offlineEventAttendanceSubmissions(
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Args('status', { type: () => OfflineEventAttendanceSubmissionStatus, nullable: true })
+    status?: OfflineEventAttendanceSubmissionStatus,
+  ): Promise<OfflineEventAttendanceSubmission[]> {
+    const submissions = await this.prisma.offlineEventAttendanceSubmission.findMany({
+      where: {
+        eventId,
+        status: status ?? 'PENDING',
+      },
+      include: {
+        event: true,
+        person: true,
+      },
+      orderBy: {
+        submittedAt: 'desc',
+      },
+      take: 500,
+    });
+
+    return this.withOfflineSubmissionActorNames(submissions);
   }
 
   @Query(() => [MajorEventUserAttendance], {
@@ -240,6 +286,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         attendedAt: true,
         createdAt: true,
         createdById: true,
+        committedById: true,
         createdByMethod: true,
         category: true,
         person: true,
@@ -254,5 +301,27 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }
 
     return attendance;
+  }
+
+  private async withOfflineSubmissionActorNames(
+    submissions: OfflineSubmissionResponseSource[],
+  ): Promise<OfflineEventAttendanceSubmission[]> {
+    const actorIds = offlineSubmissionActorIds(submissions);
+    const actors = actorIds.length
+      ? await this.prisma.user.findMany({
+          where: {
+            id: {
+              in: actorIds,
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+          },
+        })
+      : [];
+    const actorNameById = offlineSubmissionActorNameMap(actors);
+
+    return submissions.map((submission) => mapOfflineSubmissionForResponse(submission, actorNameById));
   }
 }

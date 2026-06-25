@@ -157,6 +157,7 @@ export class DashboardInsightsService {
       permissionSet.has(Permission.Receipt.Approve) ||
       permissionSet.has(Permission.Receipt.Reject) ||
       permissionSet.has(Permission.Receipt.Undo);
+    const canReviewOfflineAttendances = permissionSet.has(Permission.EventAttendance.Update);
     const shouldBuildEventInconsistencies = canManageEvents || canManageCertificates;
     const shouldBuildMajorEventInconsistencies = canManageMajorEvents;
     const shouldBuildInconsistencies = shouldBuildEventInconsistencies || shouldBuildMajorEventInconsistencies;
@@ -168,6 +169,8 @@ export class DashboardInsightsService {
       duplicatePeopleCount,
       pendingReceiptValidationsCount,
       pendingReceiptMajorEvents,
+      pendingOfflineAttendancesCount,
+      pendingOfflineAttendanceEvents,
       calendarEvents,
       upcomingMajorEventsCount,
       consistencyEvents,
@@ -221,6 +224,46 @@ export class DashboardInsightsService {
                     where: {
                       deletedAt: null,
                       subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: { startDate: 'desc' },
+            take: 10,
+          })
+        : Promise.resolve([]),
+      canReviewOfflineAttendances
+        ? this.prisma.offlineEventAttendanceSubmission.count({
+            where: {
+              status: 'PENDING',
+              event: {
+                deletedAt: null,
+              },
+            },
+          })
+        : Promise.resolve(0),
+      canReviewOfflineAttendances
+        ? this.prisma.event.findMany({
+            where: {
+              deletedAt: null,
+              offlineAttendanceSubmissions: {
+                some: {
+                  status: 'PENDING',
+                },
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+              emoji: true,
+              startDate: true,
+              endDate: true,
+              _count: {
+                select: {
+                  offlineAttendanceSubmissions: {
+                    where: {
+                      status: 'PENDING',
                     },
                   },
                 },
@@ -470,18 +513,28 @@ export class DashboardInsightsService {
             pendingCount: majorEvent._count.subscriptions,
           }))
         : [],
-      inconsistencies:
-        shouldBuildInconsistencies
-          ? buildInconsistencies({
-              now,
-              events: consistencyEvents,
-              majorEventsWithSubscriptionDates,
-              singleEventGroups,
-              mismatchingCertificateGroupEvents,
-              pastCertificateEventsWithoutAttendance,
-              pastCertificateEventsWithoutAttendanceCollection,
-            })
-          : [],
+      pendingOfflineAttendancesCount: canReviewOfflineAttendances ? pendingOfflineAttendancesCount : 0,
+      pendingOfflineAttendanceEvents: canReviewOfflineAttendances
+        ? pendingOfflineAttendanceEvents.map((event) => ({
+            eventId: event.id,
+            name: event.name,
+            emoji: event.emoji,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            pendingCount: event._count.offlineAttendanceSubmissions,
+          }))
+        : [],
+      inconsistencies: shouldBuildInconsistencies
+        ? buildInconsistencies({
+            now,
+            events: consistencyEvents,
+            majorEventsWithSubscriptionDates,
+            singleEventGroups,
+            mismatchingCertificateGroupEvents,
+            pastCertificateEventsWithoutAttendance,
+            pastCertificateEventsWithoutAttendanceCollection,
+          })
+        : [],
       duplicatePeopleCount: canManageMergeCandidates ? duplicatePeopleCount : 0,
       permissions: formatPermissions(permissions),
     };

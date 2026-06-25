@@ -11,6 +11,7 @@ model EventAttendance {
 
   createdAt       DateTime                 @default(now())
   createdById     String?
+  committedById   String?
   createdByMethod AttendanceCreationMethod @default(UNKNOWN)
 
   collectedLatitude       Float?
@@ -20,6 +21,7 @@ model EventAttendance {
   @@id([personId, eventId])
   @@index([eventId])
   @@index([personId])
+  @@index([committedById])
   @@map("event_attendances")
 }
 
@@ -38,6 +40,54 @@ model EventAttendanceCollector {
   @@map("event_attendance_collectors")
 }
 
+model OfflineEventAttendanceSubmission {
+  id String @id @default(uuid(7))
+
+  clientId String
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  personId String?
+  person   People? @relation(fields: [personId], references: [id])
+
+  status OfflineEventAttendanceSubmissionStatus @default(PENDING)
+
+  createdByMethod AttendanceCreationMethod
+  scannerCode     String?
+  manualValue     String?
+  collectedAt     DateTime
+
+  authorUserId String?
+  authorName   String?
+  authorEmail  String?
+
+  submittedById String
+  submittedAt   DateTime @default(now())
+
+  stagedReason    String?
+  resolutionError String?
+
+  collectedLatitude       Float?
+  collectedLongitude      Float?
+  collectedAccuracyMeters Float?
+
+  committedAt   DateTime?
+  committedById String?
+
+  rejectedAt     DateTime?
+  rejectedById   String?
+  rejectionReason String?
+
+  @@unique([submittedById, clientId])
+  @@index([eventId, status])
+  @@index([personId])
+  @@index([submittedById])
+  @@index([committedById])
+  @@index([rejectedById])
+  @@map("offline_event_attendance_submissions")
+}
+
 enum AttendanceCreationMethod {
   CSV_IMPORT
   MANUAL_INPUT
@@ -51,4 +101,10 @@ enum AttendanceCategory {
   NON_SUBSCRIBED
   REGULAR
   UNKNOWN
+}
+
+enum OfflineEventAttendanceSubmissionStatus {
+  PENDING
+  COMMITTED
+  REJECTED
 }

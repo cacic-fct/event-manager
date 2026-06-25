@@ -85,9 +85,43 @@
     </mat-list>
   </section>
   } @if ( dashboard.pendingCertificates.length > 0 || dashboard.duplicatePeopleCount > 0 ||
-  dashboard.pendingReceiptMajorEvents.length > 0 ) {
+  dashboard.pendingReceiptMajorEvents.length > 0 || dashboard.pendingOfflineAttendanceEvents.length > 0 ) {
   <section class="dashboard-grid">
-    @if (dashboard.pendingReceiptMajorEvents.length > 0) {
+    @if (dashboard.pendingOfflineAttendanceEvents.length > 0) {
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>pending_actions</mat-icon>
+        <mat-card-title>Presenças off-line pendentes</mat-card-title>
+        <mat-card-subtitle>
+          {{ offlineAttendanceSummary(dashboard.pendingOfflineAttendancesCount) }} aguardando revisão administrativa.
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-list class="compact-list embedded-list">
+          @for (item of dashboard.pendingOfflineAttendanceEvents; track item.eventId; let index = $index) {
+          <mat-list-item>
+            <span matListItemIcon class="rank-badge">{{ index + 1 }}</span>
+            <span matListItemTitle class="list-title">
+              <app-twemoji [emoji]="item.emoji" />
+              <span>{{ item.name }}</span>
+            </span>
+            <span matListItemLine>
+              {{ offlineAttendanceSummary(item.pendingCount) }} · {{ item.startDate | date: 'shortDate' }}
+            </span>
+            <a
+              matIconButton
+              matListItemMeta
+              aria-label="Revisar presenças off-line"
+              matTooltip="Revisar presenças off-line"
+              [routerLink]="offlineAttendanceLink(item)">
+              <mat-icon>arrow_forward</mat-icon>
+            </a>
+          </mat-list-item>
+          }
+        </mat-list>
+      </mat-card-content>
+    </mat-card>
+    } @if (dashboard.pendingReceiptMajorEvents.length > 0) {
     <mat-card appearance="outlined">
       <mat-card-header>
         <mat-icon mat-card-avatar>receipt_long</mat-icon>

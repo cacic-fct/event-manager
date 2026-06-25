@@ -24,8 +24,10 @@ type AttendanceInfoDialogData = {
   attendedAt: string;
   createdAt: string;
   createdById?: string | null;
+  committedById?: string | null;
   createdByMethod: string;
   collectedByFullName?: string | null;
+  committedByFullName?: string | null;
   collectedLatitude?: number | null;
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
@@ -196,7 +198,9 @@ export class WorkspaceAttendanceInfoDialogComponent implements OnDestroy {
     { label: 'Presença registrada em', value: this.formatDate(this.data.attendedAt) },
     { label: 'Método', value: this.getMethodLabel(this.data.createdByMethod) },
     { label: 'Coletado por', value: this.data.collectedByFullName },
+    { label: 'Enviado por', value: this.data.committedByFullName },
     { label: 'ID do Coletor', value: this.data.createdById },
+    { label: 'ID de Envio', value: this.data.committedById },
   ]);
 
   constructor() {

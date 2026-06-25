@@ -51,6 +51,7 @@
         "class-validator": "^0.15.1",
         "cookie-parser": "^1.4.7",
         "date-fns": "^4.4.0",
+        "detectincognitojs": "^1.7.0",
         "dexie": "^4.4.4",
         "express": "^5.2.1",
         "graphql": "^16.14.2",
@@ -2526,6 +2527,8 @@
     "detect-node": ["detect-node@2.1.0", "", {}, "sha512-T0NIuQpnTvFDATNuHN5roPwSBG83rFsuO+MXXH9/3N1eFbn4wcPjttvjMLEPWJ0RGUYgQE7cGgS3tNxbqCGM7g=="],
 
     "detect-port": ["detect-port@2.1.0", "", { "dependencies": { "address": "^2.0.1" }, "bin": { "detect": "dist/commonjs/bin/detect-port.js", "detect-port": "dist/commonjs/bin/detect-port.js" } }, "sha512-epZuWb/6Q62L+nDHJc/hQAqf8pylsqgk3BpZXVBx1CDnr3nkrVNn73Uu1rXcFzkNcc+hkP3whuOg7JZYaQB65Q=="],
+
+    "detectincognitojs": ["detectincognitojs@1.7.0", "", {}, "sha512-CETH9/Vey0D+2HhfCjtrD8/udPjAQW8Zj2NLQ/9NKgTIxVH0M0RrJBrI6M9BX4Rhgaw15Jz/AqXFtYRF8sMDxQ=="],
 
     "devtools-protocol": ["devtools-protocol@0.0.1638949", "", {}, "sha512-mXwg4Fqnv0WR4iuAT/gYUmctNkjILwXFHyZ+m7Ty1dfr0ezZt2U3gnrrJTfRobJTHoXf+IbuFvFITzLrLFjwJA=="],
 

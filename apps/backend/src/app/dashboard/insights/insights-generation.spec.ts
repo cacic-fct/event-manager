@@ -19,13 +19,25 @@ describe('DashboardInsightsService generation', () => {
       'merge-candidate#read',
       'receipt#read',
       'person#update',
+      'event-attendance#update',
     ]);
     prisma.event.count.mockResolvedValue(10);
     prisma.eventGroup.count.mockResolvedValue(3);
     prisma.majorEvent.count.mockResolvedValueOnce(2).mockResolvedValueOnce(1);
     prisma.mergeCandidate.count.mockResolvedValue(4);
     prisma.majorEventSubscription.count.mockResolvedValue(5);
+    prisma.offlineEventAttendanceSubmission.count.mockResolvedValue(7);
     prisma.event.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'offline-event',
+          name: 'Offline event',
+          emoji: '✅',
+          startDate: new Date('2026-05-18T10:00:00.000Z'),
+          endDate: new Date('2026-05-18T12:00:00.000Z'),
+          _count: { offlineAttendanceSubmissions: 7 },
+        },
+      ])
       .mockResolvedValueOnce([insightEvent({ id: 'calendar-1', latitude: -22.1, longitude: -51.4 })])
       .mockResolvedValueOnce([
         insightEvent({
@@ -181,6 +193,17 @@ describe('DashboardInsightsService generation', () => {
         pendingCount: 5,
       },
     ]);
+    expect(result.pendingOfflineAttendancesCount).toBe(7);
+    expect(result.pendingOfflineAttendanceEvents).toEqual([
+      {
+        eventId: 'offline-event',
+        name: 'Offline event',
+        emoji: '✅',
+        startDate: new Date('2026-05-18T10:00:00.000Z'),
+        endDate: new Date('2026-05-18T12:00:00.000Z'),
+        pendingCount: 7,
+      },
+    ]);
     expect(result.duplicatePeopleCount).toBe(4);
     expect(result.inconsistencies.map((item) => item.type)).toEqual(
       expect.arrayContaining([
@@ -215,7 +238,7 @@ describe('DashboardInsightsService generation', () => {
       ]),
     );
     expect(redis.set).toHaveBeenCalledWith(
-      'dashboard:workspace:v4:certificate#issue,event#update,major-event#update,merge-candidate#read,person#update,receipt#read',
+      'dashboard:workspace:v5:certificate#issue,event#update,event-attendance#update,major-event#update,merge-candidate#read,person#update,receipt#read',
       expect.stringContaining('"eventsCount":10'),
       'EX',
       300,
@@ -311,6 +334,7 @@ describe('DashboardInsightsService generation', () => {
     expect(result.calendarEvents).toEqual([]);
     expect(result.weatherAlerts).toEqual([]);
     expect(result.pendingReceiptValidationsCount).toBe(2);
+    expect(result.pendingOfflineAttendancesCount).toBe(0);
     expect(prisma.event.findMany).not.toHaveBeenCalled();
     expect(weatherService.getPublicEventWeather).not.toHaveBeenCalled();
   });

@@ -1,7 +1,7 @@
 export { DASHBOARD_PERMISSION_REQUIREMENTS } from '@cacic-fct/shared-permissions';
 
 export const CACHE_TTL_SECONDS = 5 * 60;
-export const CACHE_KEY_PREFIX = 'dashboard:workspace:v4';
+export const CACHE_KEY_PREFIX = 'dashboard:workspace:v5';
 export const DEFAULT_EMOJI = '❔';
 export const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 export const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;

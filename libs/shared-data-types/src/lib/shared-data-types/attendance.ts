@@ -1,6 +1,13 @@
 import { Field, Float, InputType, Int, ObjectType } from '@nestjs/graphql';
 
-import { AttendanceCategory, AttendanceCreationMethod, AttendanceImportMatchType, SubscriptionStatus } from './enums';
+import {
+  AttendanceCategory,
+  AttendanceCreationMethod,
+  AttendanceImportMatchType,
+  OfflineEventAttendanceCommitStatus,
+  OfflineEventAttendanceSubmissionStatus,
+  SubscriptionStatus,
+} from './enums';
 import { Event } from './events';
 import { Person } from './people';
 
@@ -30,11 +37,17 @@ export class EventAttendance {
   @Field(() => String, { nullable: true })
   createdById?: string;
 
+  @Field(() => String, { nullable: true })
+  committedById?: string;
+
   @Field(() => AttendanceCreationMethod)
   createdByMethod!: AttendanceCreationMethod;
 
   @Field(() => String, { nullable: true })
   collectedByFullName?: string;
+
+  @Field(() => String, { nullable: true })
+  committedByFullName?: string;
 
   @Field(() => Float, { nullable: true })
   collectedLatitude?: number;
@@ -71,6 +84,120 @@ export class EventAttendanceScannerFeedItem {
 
   @Field(() => String, { nullable: true })
   collectedByFirstName?: string;
+
+  @Field(() => String, { nullable: true })
+  committedByFirstName?: string;
+}
+
+@ObjectType()
+export class OfflineEventAttendanceSubmission {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  clientId!: string;
+
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => Event, { nullable: true })
+  event?: Event;
+
+  @Field(() => String, { nullable: true })
+  personId?: string;
+
+  @Field(() => Person, { nullable: true })
+  person?: Person;
+
+  @Field(() => OfflineEventAttendanceSubmissionStatus)
+  status!: OfflineEventAttendanceSubmissionStatus;
+
+  @Field(() => AttendanceCreationMethod)
+  createdByMethod!: AttendanceCreationMethod;
+
+  @Field(() => String, { nullable: true })
+  scannerCode?: string;
+
+  @Field(() => String, { nullable: true })
+  manualValue?: string;
+
+  @Field(() => Date)
+  collectedAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  authorUserId?: string;
+
+  @Field(() => String, { nullable: true })
+  authorName?: string;
+
+  @Field(() => String, { nullable: true })
+  authorEmail?: string;
+
+  @Field(() => String)
+  submittedById!: string;
+
+  @Field(() => String, { nullable: true })
+  submittedByFullName?: string;
+
+  @Field(() => Date)
+  submittedAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  stagedReason?: string;
+
+  @Field(() => String, { nullable: true })
+  resolutionError?: string;
+
+  @Field(() => Float, { nullable: true })
+  collectedLatitude?: number;
+
+  @Field(() => Float, { nullable: true })
+  collectedLongitude?: number;
+
+  @Field(() => Float, { nullable: true })
+  collectedAccuracyMeters?: number;
+
+  @Field(() => Date, { nullable: true })
+  committedAt?: Date;
+
+  @Field(() => String, { nullable: true })
+  committedById?: string;
+
+  @Field(() => String, { nullable: true })
+  committedByFullName?: string;
+
+  @Field(() => Date, { nullable: true })
+  rejectedAt?: Date;
+
+  @Field(() => String, { nullable: true })
+  rejectedById?: string;
+
+  @Field(() => String, { nullable: true })
+  rejectedByFullName?: string;
+
+  @Field(() => String, { nullable: true })
+  rejectionReason?: string;
+}
+
+@ObjectType()
+export class OfflineEventAttendanceCommitResult {
+  @Field(() => String)
+  clientId!: string;
+
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => OfflineEventAttendanceCommitStatus)
+  status!: OfflineEventAttendanceCommitStatus;
+
+  @Field(() => String, { nullable: true })
+  message?: string;
+
+  @Field(() => EventAttendance, { nullable: true })
+  attendance?: EventAttendance;
+
+  @Field(() => OfflineEventAttendanceSubmission, { nullable: true })
+  stagedSubmission?: OfflineEventAttendanceSubmission;
 }
 
 @InputType()

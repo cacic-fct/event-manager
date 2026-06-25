@@ -3,6 +3,8 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
 import { of } from 'rxjs';
+import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { AttendanceCollectionApiService } from './attendance-collection-api.service';
 import { ScannerEventList } from './scanner-event-list';
 
@@ -18,6 +20,19 @@ const meta: Meta<ScannerEventList> = {
     applicationConfig({
       providers: [
         provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            user: () => ({ sub: 'collector-1' }),
+          },
+        },
+        {
+          provide: AttendanceOfflineQueueService,
+          useValue: {
+            replaceCollectionEvents: () => Promise.resolve(),
+            getCollectionEvents: () => Promise.resolve([]),
+          },
+        },
         {
           provide: AttendanceCollectionApiService,
           useValue: {

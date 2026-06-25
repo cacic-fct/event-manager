@@ -11,6 +11,7 @@ type LgpdResolvedPerson = Prisma.PeopleGetPayload<{
 type DataSubjectResolution = {
   userIds: string[];
   personIds: string[];
+  emails: string[];
   people: LgpdResolvedPerson[];
 };
 
@@ -18,7 +19,10 @@ const ANONYMIZED_AUDIT_VALUE = '[ANONIMIZADO]';
 const AUDIT_IDENTITY_FIELDS = new Set([
   'personId',
   'userId',
+  'authorUserId',
+  'submittedById',
   'createdById',
+  'committedById',
   'updatedById',
   'revertedById',
   'receiptValidatedBy',
@@ -46,6 +50,7 @@ export class LgpdService {
   async collectUserData(input: { userId: string; email?: string }): Promise<Record<string, LgpdCategoryData>> {
     const dataSubject = await this.resolveDataSubject(input);
     const { people, personIds, userIds } = dataSubject;
+    const offlineSubmissionWhere = this.buildOfflineSubmissionSubjectWhere(dataSubject);
 
     const userWhere = { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] };
     const [
@@ -56,6 +61,7 @@ export class LgpdService {
       eventGroupSubscriptions,
       majorEventSubscriptions,
       attendances,
+      offlineAttendanceSubmissions,
       lectures,
       certificates,
       majorEventReceipts,
@@ -101,6 +107,13 @@ export class LgpdService {
         include: { event: true },
         orderBy: { attendedAt: 'desc' },
       }) : Promise.resolve([]),
+      offlineSubmissionWhere
+        ? this.prisma.offlineEventAttendanceSubmission.findMany({
+            where: offlineSubmissionWhere,
+            include: { event: true, person: true },
+            orderBy: { submittedAt: 'desc' },
+          })
+        : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.eventLecturer.findMany({
         where: { personId: { in: personIds } },
         include: { event: true },
@@ -167,7 +180,7 @@ export class LgpdService {
         eventGroupSubscriptions,
         majorEventSubscriptions,
       },
-      attendances: { records: attendances },
+      attendances: { records: attendances, offlineSubmissions: offlineAttendanceSubmissions },
       lecturerActivities: { records: lectures },
       certificates: { records: certificates },
       receipts: {
@@ -185,76 +198,76 @@ export class LgpdService {
   }
 
   async scheduleDeletion(input: { userId: string; email?: string; requestId: string; scheduledHardDeleteAt?: string }) {
-    const { personIds } = await this.resolveDataSubject(input);
-    if (personIds.length === 0) {
+    const dataSubject = await this.resolveDataSubject(input);
+    const { personIds, userIds } = dataSubject;
+    if (personIds.length === 0 && userIds.length === 0) {
       return { success: true, peopleUpdated: 0, recordsUpdated: 0 };
     }
 
     const receiptObjectKeys = await this.findReceiptObjectKeys(personIds);
 
     const now = new Date();
-    const [
-      people,
-      eventSubscriptions,
-      eventGroupSubscriptions,
-      receiptValidationActions,
-      majorEventReceipts,
-      majorEventSubscriptions,
-      selections,
-      certificates,
-    ] =
-      await this.prisma.$transaction([
-        this.prisma.people.updateMany({
-          where: { id: { in: personIds }, deletedAt: null },
-          data: { deletedAt: now, updatedById: input.userId },
-        }),
-        this.prisma.eventSubscription.updateMany({
-          where: { personId: { in: personIds }, deletedAt: null },
-          data: { deletedAt: now },
-        }),
-        this.prisma.eventGroupSubscription.updateMany({
-          where: { personId: { in: personIds }, deletedAt: null },
-          data: { deletedAt: now },
-        }),
-        this.prisma.majorEventReceiptValidationAction.deleteMany({
-          where: { subscription: { personId: { in: personIds } } },
-        }),
-        this.prisma.majorEventReceipt.deleteMany({
-          where: { personId: { in: personIds } },
-        }),
-        this.prisma.majorEventSubscription.updateMany({
-          where: { personId: { in: personIds }, deletedAt: null },
-          data: { deletedAt: now },
-        }),
-        this.prisma.majorEventSubscriptionEventSelection.updateMany({
-          where: {
-            subscription: { personId: { in: personIds } },
-            deletedAt: null,
-          },
-          data: { deletedAt: now },
-        }),
-        this.prisma.certificate.updateMany({
-          where: { personId: { in: personIds }, deletedAt: null },
-          data: { deletedAt: now },
-        }),
-      ]);
+    const result = await this.prisma.$transaction(async (tx) => {
+      const people = await tx.people.updateMany({
+        where: { id: { in: personIds }, deletedAt: null },
+        data: { deletedAt: now, updatedById: input.userId },
+      });
+      const eventSubscriptions = await tx.eventSubscription.updateMany({
+        where: { personId: { in: personIds }, deletedAt: null },
+        data: { deletedAt: now },
+      });
+      const eventGroupSubscriptions = await tx.eventGroupSubscription.updateMany({
+        where: { personId: { in: personIds }, deletedAt: null },
+        data: { deletedAt: now },
+      });
+      const receiptValidationActions = await tx.majorEventReceiptValidationAction.deleteMany({
+        where: { subscription: { personId: { in: personIds } } },
+      });
+      const majorEventReceipts = await tx.majorEventReceipt.deleteMany({
+        where: { personId: { in: personIds } },
+      });
+      const majorEventSubscriptions = await tx.majorEventSubscription.updateMany({
+        where: { personId: { in: personIds }, deletedAt: null },
+        data: { deletedAt: now },
+      });
+      const selections = await tx.majorEventSubscriptionEventSelection.updateMany({
+        where: {
+          subscription: { personId: { in: personIds } },
+          deletedAt: null,
+        },
+        data: { deletedAt: now },
+      });
+      const certificates = await tx.certificate.updateMany({
+        where: { personId: { in: personIds }, deletedAt: null },
+        data: { deletedAt: now },
+      });
+      const offlineAttendanceSubmissions = await this.anonymizeOfflineAttendanceSubmissions(
+        tx,
+        dataSubject,
+        this.buildAnonymizedAuditSubjectId(input.requestId),
+      );
+
+      return {
+        people,
+        recordsUpdated:
+          eventSubscriptions.count +
+          eventGroupSubscriptions.count +
+          receiptValidationActions.count +
+          majorEventReceipts.count +
+          majorEventSubscriptions.count +
+          selections.count +
+          certificates.count +
+          offlineAttendanceSubmissions,
+      };
+    });
 
     await this.deleteReceiptObjects(receiptObjectKeys);
 
-    const recordsUpdated =
-      eventSubscriptions.count +
-      eventGroupSubscriptions.count +
-      receiptValidationActions.count +
-      majorEventReceipts.count +
-      majorEventSubscriptions.count +
-      selections.count +
-      certificates.count;
-
     this.logger.log(
-      `Scheduled LGPD deletion request=${input.requestId}, user=${input.userId}, people=${people.count}, related=${recordsUpdated}.`,
+      `Scheduled LGPD deletion request=${input.requestId}, user=${input.userId}, people=${result.people.count}, related=${result.recordsUpdated}.`,
     );
 
-    return { success: true, peopleUpdated: people.count, recordsUpdated };
+    return { success: true, peopleUpdated: result.people.count, recordsUpdated: result.recordsUpdated };
   }
 
   async hardDelete(input: { userId: string; email?: string; requestId: string }) {
@@ -273,7 +286,13 @@ export class LgpdService {
           people: dataSubjectPeople,
           personIds,
           userIds,
+          emails: dataSubject.emails,
         },
+        this.buildAnonymizedAuditSubjectId(input.requestId),
+      );
+      const offlineAttendanceSubmissions = await this.anonymizeOfflineAttendanceSubmissions(
+        tx,
+        dataSubject,
         this.buildAnonymizedAuditSubjectId(input.requestId),
       );
       const certificates = await tx.certificate.deleteMany({ where: { personId: { in: personIds } } });
@@ -320,7 +339,8 @@ export class LgpdService {
           majorEventSubscriptions.count +
           attendances.count +
           lecturers.count +
-          permissionGrants.count,
+          permissionGrants.count +
+          offlineAttendanceSubmissions,
       };
     });
 
@@ -412,6 +432,8 @@ export class LgpdService {
       [...AUDIT_IDENTITY_FIELDS].flatMap((field) => [
         { before: { path: [field], equals: identifier } },
         { after: { path: [field], equals: identifier } },
+        { metadata: { path: [field], equals: identifier } },
+        { metadata: { path: ['offlineAttendanceAuthor', field], equals: identifier } },
       ]),
     );
     const eventAttendanceEntityConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap(
@@ -668,8 +690,233 @@ export class LgpdService {
     return {
       userIds: [...userIds],
       personIds: people.map((person) => person.id),
+      emails: [...emails],
       people,
     };
+  }
+
+  private buildOfflineSubmissionSubjectWhere(
+    dataSubject: DataSubjectResolution,
+  ): Prisma.OfflineEventAttendanceSubmissionWhereInput | null {
+    const conditions: Prisma.OfflineEventAttendanceSubmissionWhereInput[] = [];
+    if (dataSubject.personIds.length > 0) {
+      conditions.push({ personId: { in: dataSubject.personIds } });
+    }
+    if (dataSubject.userIds.length > 0) {
+      conditions.push({ authorUserId: { in: dataSubject.userIds } });
+      conditions.push({ submittedById: { in: dataSubject.userIds } });
+      conditions.push({ committedById: { in: dataSubject.userIds } });
+      conditions.push({ rejectedById: { in: dataSubject.userIds } });
+      conditions.push({ scannerCode: { in: dataSubject.userIds.map((userId) => `user:${userId}`) } });
+    }
+    for (const email of dataSubject.emails) {
+      conditions.push({ authorEmail: { equals: email, mode: 'insensitive' } });
+    }
+    const manualValues = this.getOfflineManualSubjectValueCandidates(dataSubject);
+    if (manualValues.length > 0) {
+      conditions.push({ manualValue: { in: manualValues, mode: 'insensitive' } });
+    }
+
+    return conditions.length > 0 ? { OR: conditions } : null;
+  }
+
+  private async anonymizeOfflineAttendanceSubmissions(
+    tx: Prisma.TransactionClient,
+    dataSubject: DataSubjectResolution,
+    anonymizedSubjectId: string,
+  ): Promise<number> {
+    const where = this.buildOfflineSubmissionSubjectWhere(dataSubject);
+    if (!where) {
+      return 0;
+    }
+
+    const submissions = await tx.offlineEventAttendanceSubmission.findMany({
+      where,
+      select: {
+        id: true,
+        personId: true,
+        scannerCode: true,
+        manualValue: true,
+        authorUserId: true,
+        authorName: true,
+        authorEmail: true,
+        submittedById: true,
+        committedById: true,
+        rejectedById: true,
+      },
+    });
+    const userIds = new Set(dataSubject.userIds);
+    const personIds = new Set(dataSubject.personIds);
+    const emails = new Set(dataSubject.emails.map((email) => email.toLowerCase()));
+    const manualValues = new Set(
+      this.getOfflineManualSubjectValueCandidates(dataSubject).map((value) => this.caseInsensitiveKey(value)),
+    );
+    let updated = 0;
+
+    for (const submission of submissions) {
+      const data: Prisma.OfflineEventAttendanceSubmissionUncheckedUpdateInput = {};
+      const personMatches = submission.personId != null && personIds.has(submission.personId);
+      if (personMatches) {
+        data.personId = null;
+        data.scannerCode = ANONYMIZED_AUDIT_VALUE;
+        data.manualValue = ANONYMIZED_AUDIT_VALUE;
+      }
+      if (submission.scannerCode && userIds.has(this.parseScannerUserId(submission.scannerCode) ?? '')) {
+        data.scannerCode = anonymizedSubjectId;
+      }
+      if (submission.manualValue && manualValues.has(this.caseInsensitiveKey(submission.manualValue))) {
+        data.manualValue = ANONYMIZED_AUDIT_VALUE;
+      }
+      if (submission.authorUserId && userIds.has(submission.authorUserId)) {
+        data.authorUserId = anonymizedSubjectId;
+      }
+      if (submission.authorEmail && emails.has(submission.authorEmail.toLowerCase())) {
+        data.authorEmail = null;
+      }
+      if (
+        (submission.authorUserId && userIds.has(submission.authorUserId)) ||
+        (submission.authorEmail && emails.has(submission.authorEmail.toLowerCase()))
+      ) {
+        data.authorName = ANONYMIZED_AUDIT_VALUE;
+      }
+      if (userIds.has(submission.submittedById)) {
+        data.submittedById = anonymizedSubjectId;
+      }
+      if (submission.committedById && userIds.has(submission.committedById)) {
+        data.committedById = anonymizedSubjectId;
+      }
+      if (submission.rejectedById && userIds.has(submission.rejectedById)) {
+        data.rejectedById = anonymizedSubjectId;
+      }
+      if (Object.keys(data).length === 0) {
+        continue;
+      }
+
+      await tx.offlineEventAttendanceSubmission.update({
+        where: { id: submission.id },
+        data,
+      });
+      updated += 1;
+    }
+
+    return updated;
+  }
+
+  private parseScannerUserId(scannerCode: string): string | null {
+    const [kind, userId, ...extraParts] = scannerCode.split(':');
+    return kind === 'user' && userId && extraParts.length === 0 ? userId : null;
+  }
+
+  private getOfflineManualSubjectValueCandidates(dataSubject: DataSubjectResolution): string[] {
+    const values = new Map<string, string>();
+    const addValue = (value?: string | null) => {
+      const normalizedValue = value?.trim();
+      if (!normalizedValue) {
+        return;
+      }
+      values.set(this.caseInsensitiveKey(normalizedValue), normalizedValue);
+    };
+
+    for (const email of dataSubject.emails) {
+      addValue(email);
+    }
+
+    for (const person of dataSubject.people) {
+      addValue(person.email);
+      for (const email of person.secondaryEmails ?? []) {
+        addValue(email);
+      }
+      this.addPhoneManualValueCandidates(values, person.phone);
+      this.addIdentityDocumentManualValueCandidates(values, person.identityDocument, person.isCPF !== false);
+    }
+
+    return [...values.values()];
+  }
+
+  private addPhoneManualValueCandidates(values: Map<string, string>, phone?: string | null): void {
+    const normalizedPhone = phone?.trim();
+    if (!normalizedPhone) {
+      return;
+    }
+
+    this.addManualValueCandidate(values, normalizedPhone);
+    for (const candidate of this.getBrazilianPhoneCandidates(normalizedPhone.replace(/\D/g, ''))) {
+      this.addManualValueCandidate(values, candidate);
+    }
+  }
+
+  private addIdentityDocumentManualValueCandidates(
+    values: Map<string, string>,
+    identityDocument?: string | null,
+    isCpf = true,
+  ): void {
+    const normalizedDocument = identityDocument?.trim();
+    if (!normalizedDocument) {
+      return;
+    }
+
+    this.addManualValueCandidate(values, normalizedDocument);
+    const digits = normalizedDocument.replace(/\D/g, '');
+    if (!digits) {
+      return;
+    }
+
+    this.addManualValueCandidate(values, digits);
+    if (isCpf && digits.length === 11) {
+      this.addManualValueCandidate(
+        values,
+        `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`,
+      );
+    }
+  }
+
+  private getBrazilianPhoneCandidates(digits: string): string[] {
+    if (!digits) {
+      return [];
+    }
+
+    const candidates = new Set<string>();
+    const withoutCountry = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
+    const withCountry = withoutCountry.length >= 10 ? `55${withoutCountry}` : digits;
+    for (const candidate of [digits, withoutCountry, withCountry, `+${withCountry}`]) {
+      candidates.add(candidate);
+    }
+    this.addBrazilianPhoneDisplayCandidates(candidates, withoutCountry);
+    return [...candidates];
+  }
+
+  private addBrazilianPhoneDisplayCandidates(candidates: Set<string>, withoutCountry: string): void {
+    if (withoutCountry.length !== 10 && withoutCountry.length !== 11) {
+      return;
+    }
+
+    const areaCode = withoutCountry.slice(0, 2);
+    const localNumber = withoutCountry.slice(2);
+    const prefixLength = localNumber.length === 9 ? 5 : 4;
+    const prefix = localNumber.slice(0, prefixLength);
+    const suffix = localNumber.slice(prefixLength);
+    const localDisplay = `${prefix}-${suffix}`;
+    for (const candidate of [
+      `(${areaCode}) ${localDisplay}`,
+      `${areaCode} ${localDisplay}`,
+      `${areaCode}${localDisplay}`,
+      `55 ${areaCode} ${localDisplay}`,
+      `+55 ${areaCode} ${localDisplay}`,
+      `+55 (${areaCode}) ${localDisplay}`,
+    ]) {
+      candidates.add(candidate);
+    }
+  }
+
+  private addManualValueCandidate(values: Map<string, string>, value: string): void {
+    const normalizedValue = value.trim();
+    if (normalizedValue) {
+      values.set(this.caseInsensitiveKey(normalizedValue), normalizedValue);
+    }
+  }
+
+  private caseInsensitiveKey(value: string): string {
+    return value.trim().toLowerCase();
   }
 
   private async expandUsers(userIds: Set<string>, emails: Set<string>): Promise<boolean> {

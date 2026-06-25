@@ -26,9 +26,10 @@ model Event {
   eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id])
   eventGroupId String?
 
-  attendances           EventAttendance[]
-  attendanceCollectors  EventAttendanceCollector[]
-  lecturers             EventLecturer[]
+  attendances                   EventAttendance[]
+  attendanceCollectors          EventAttendanceCollector[]
+  offlineAttendanceSubmissions  OfflineEventAttendanceSubmission[]
+  lecturers                     EventLecturer[]
   eventManagerPermissionGrants EventManagerPermissionGrant[]
 
   allowSubscription     Boolean             @default(false)

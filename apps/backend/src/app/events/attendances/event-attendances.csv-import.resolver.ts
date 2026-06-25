@@ -97,6 +97,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
                 personId,
                 eventId: input.eventId,
                 createdById,
+                committedById: createdById,
                 createdByMethod: AttendanceCreationMethod.CSV_IMPORT,
               })),
               skipDuplicates: true,

@@ -354,6 +354,7 @@ export class MergeCandidateOperationsService {
             attendedAt: new Date(attendance.attendedAt),
             createdAt: new Date(attendance.createdAt),
             createdById: attendance.createdById,
+            committedById: attendance.committedById,
           })),
           skipDuplicates: true,
         });

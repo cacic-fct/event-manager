@@ -120,6 +120,121 @@ describe('EventAttendancesMutationsResolver', () => {
       ConflictException,
     );
   });
+
+  it('marks approved offline submissions as committed when attendance already exists', async () => {
+    const submission = {
+      id: 'submission-1',
+      clientId: 'queue-1',
+      eventId: 'event-1',
+      personId: 'person-1',
+      status: 'PENDING',
+      createdByMethod: AttendanceCreationMethod.SCANNER,
+      scannerCode: 'user:user-1',
+      manualValue: null,
+      collectedAt: new Date('2026-05-21T12:00:00.000Z'),
+      authorUserId: 'offline-user',
+      submittedById: 'collector-user',
+      collectedLatitude: -22.1,
+      collectedLongitude: -51.4,
+      collectedAccuracyMeters: 12,
+      event: { id: 'event-1', name: 'Evento' },
+      person: { id: 'person-1', name: 'Pessoa' },
+    };
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findUnique.mockResolvedValue({ id: 'person-1', mergedIntoId: null });
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      status: 'COMMITTED',
+      committedAt: new Date('2026-05-21T13:00:00.000Z'),
+      committedById: 'admin-user',
+      rejectedAt: null,
+      rejectedById: null,
+      rejectionReason: null,
+      stagedReason: null,
+      resolutionError: null,
+    });
+    const tx = createTxMock();
+    tx.eventAttendance.findUnique.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.approveOfflineEventAttendanceSubmission('submission-1', { req: { user: { sub: 'admin-user' } } } as never),
+    ).resolves.toEqual(expect.objectContaining({ id: 'submission-1', status: 'COMMITTED' }));
+    expect(tx.eventAttendance.create).not.toHaveBeenCalled();
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'submission-1',
+          status: 'PENDING',
+        },
+        data: expect.objectContaining({
+          status: 'COMMITTED',
+          personId: 'person-1',
+          committedById: 'admin-user',
+        }),
+      }),
+    );
+  });
+
+  it('normalizes merged staged people before approving offline submissions', async () => {
+    const submission = {
+      id: 'submission-1',
+      clientId: 'queue-1',
+      eventId: 'event-1',
+      personId: 'old-person',
+      status: 'PENDING',
+      createdByMethod: AttendanceCreationMethod.SCANNER,
+      scannerCode: 'user:user-1',
+      manualValue: null,
+      collectedAt: new Date('2026-05-21T12:00:00.000Z'),
+      authorUserId: 'offline-user',
+      submittedById: 'collector-user',
+      collectedLatitude: -22.1,
+      collectedLongitude: -51.4,
+      collectedAccuracyMeters: 12,
+      event: { id: 'event-1', name: 'Evento' },
+      person: { id: 'old-person', name: 'Pessoa antiga' },
+    };
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findUnique.mockResolvedValue({ id: 'old-person', mergedIntoId: 'person-1' });
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      personId: 'person-1',
+      status: 'COMMITTED',
+      committedAt: new Date('2026-05-21T13:00:00.000Z'),
+      committedById: 'admin-user',
+      rejectedAt: null,
+      rejectedById: null,
+      rejectionReason: null,
+      stagedReason: null,
+      resolutionError: null,
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    tx.eventAttendance.findUnique.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await resolver.approveOfflineEventAttendanceSubmission('submission-1', { req: { user: { sub: 'admin-user' } } } as never);
+
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personId: 'person-1',
+        }),
+      }),
+    );
+    expect(tx.eventAttendance.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          personId_eventId: {
+            personId: 'person-1',
+            eventId: 'event-1',
+          },
+        },
+      }),
+    );
+  });
 });
 
 function createFullPrisma() {
@@ -129,6 +244,11 @@ function createFullPrisma() {
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),
       deleteMany: jest.fn(),
+    },
+    offlineEventAttendanceSubmission: {
+      findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+      update: jest.fn(),
     },
     user: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -147,6 +267,7 @@ function createFullPrisma() {
       findMany: jest.fn().mockResolvedValue([]),
     },
     people: {
+      findUnique: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
@@ -162,6 +283,9 @@ function createTxMock() {
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+    },
+    offlineEventAttendanceSubmission: {
+      updateMany: jest.fn(),
     },
   };
 }

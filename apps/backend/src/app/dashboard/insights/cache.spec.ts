@@ -6,8 +6,8 @@ describe('dashboard insights cache helpers', () => {
       get: jest.fn().mockResolvedValue(null),
     };
 
-    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v4:none')).resolves.toBeNull();
-    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v4:none');
+    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v5:none')).resolves.toBeNull();
+    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v5:none');
   });
 
   it('restores cached date strings to Date instances', async () => {
@@ -68,6 +68,17 @@ describe('dashboard insights cache helpers', () => {
               pendingCount: 2,
             },
           ],
+          pendingOfflineAttendancesCount: 3,
+          pendingOfflineAttendanceEvents: [
+            {
+              eventId: 'offline-event-1',
+              name: 'Cached offline event',
+              emoji: '✅',
+              startDate: '2026-05-18T12:00:00.000Z',
+              endDate: '2026-05-18T13:00:00.000Z',
+              pendingCount: 3,
+            },
+          ],
           inconsistencies: [],
           duplicatePeopleCount: 0,
           permissions: [],
@@ -84,6 +95,8 @@ describe('dashboard insights cache helpers', () => {
     expect(result?.pendingCertificates[0].finishedAt).toEqual(new Date('2026-05-20T12:00:00.000Z'));
     expect(result?.pendingReceiptMajorEvents[0].startDate).toEqual(new Date('2026-05-24T12:00:00.000Z'));
     expect(result?.pendingReceiptMajorEvents[0].endDate).toEqual(new Date('2026-05-26T12:00:00.000Z'));
+    expect(result?.pendingOfflineAttendanceEvents[0].startDate).toEqual(new Date('2026-05-18T12:00:00.000Z'));
+    expect(result?.pendingOfflineAttendanceEvents[0].endDate).toEqual(new Date('2026-05-18T13:00:00.000Z'));
   });
 
   it('returns null for invalid cache payloads', async () => {
@@ -95,12 +108,12 @@ describe('dashboard insights cache helpers', () => {
   });
 
   it('builds permission-aware cache keys', () => {
-    expect(getCacheKey([])).toBe('dashboard:workspace:v4:none');
+    expect(getCacheKey([])).toBe('dashboard:workspace:v5:none');
     expect(getCacheKey(['event#update', 'certificate#issue', 'event#update'])).toBe(
-      'dashboard:workspace:v4:certificate#issue,event#update',
+      'dashboard:workspace:v5:certificate#issue,event#update',
     );
     expect(getCacheKey(['certificate#issue', 'event#update'])).toBe(
-      'dashboard:workspace:v4:certificate#issue,event#update',
+      'dashboard:workspace:v5:certificate#issue,event#update',
     );
   });
 });

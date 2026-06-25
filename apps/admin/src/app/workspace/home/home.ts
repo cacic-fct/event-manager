@@ -15,6 +15,7 @@ import type {
   DashboardCertificatePendingItem,
   DashboardInconsistency,
   DashboardInsightAction,
+  DashboardPendingOfflineAttendanceEvent,
   DashboardPendingReceiptMajorEvent,
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
@@ -161,8 +162,16 @@ export class Home implements OnInit, OnDestroy {
     return [this.navMap()['subscriptions']?.path ?? 'subscriptions', 'major-event', item.majorEventId, 'validate-receipts'];
   }
 
+  offlineAttendanceLink(item: DashboardPendingOfflineAttendanceEvent): string[] {
+    return [this.navMap()['attendances']?.path ?? 'attendances', 'event', item.eventId];
+  }
+
   receiptMajorEventSummary(count: number): string {
     return `${count} ${count === 1 ? 'comprovante pendente' : 'comprovantes pendentes'}`;
+  }
+
+  offlineAttendanceSummary(count: number): string {
+    return `${count} ${count === 1 ? 'presença pendente' : 'presenças pendentes'}`;
   }
 
   describeEventType(type: string): string {
