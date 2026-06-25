@@ -10,7 +10,10 @@ import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { Event, EventGroup, EventInput, Person, PlacePresetInput } from '../../graphql/models';
-import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
+import {
+  CloneAssetDialogComponent,
+  CloneAssetDialogResult,
+} from '../../workspace/dialogs/clone-asset-dialog.component';
 import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-create-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
@@ -279,7 +282,7 @@ export class WorkspaceEventsService {
 
     this.ui.loading.set(true);
     try {
-      let savedEventId = eventId;
+      let savedEventId;
       if (eventId) {
         const updated = await firstValueFrom(this.api.updateEvent(eventId, payload));
         savedEventId = updated.id;
@@ -287,6 +290,7 @@ export class WorkspaceEventsService {
         const created = await firstValueFrom(this.api.createEvent(payload));
         savedEventId = created.id;
       }
+
       if (manualPlace) {
         await this.placePresetsService.ensurePresetForManualLocation(manualPlace);
       }
@@ -618,9 +622,7 @@ export class WorkspaceEventsService {
 
     const currentEventId = this.eventForm.controls.id.value;
     const groupEvents = await firstValueFrom(this.api.listEvents({ eventGroupId, take: 100 }));
-    const sourceEventIds = groupEvents
-      .map((eventItem) => eventItem.id)
-      .filter((eventId) => eventId !== currentEventId);
+    const sourceEventIds = groupEvents.map((eventItem) => eventItem.id).filter((eventId) => eventId !== currentEventId);
 
     if (sourceEventIds.length === 0) {
       this.groupLecturerSuggestions.set([]);
@@ -684,10 +686,7 @@ export class WorkspaceEventsService {
     }
   }
 
-  private buildEventPayload(
-    includePeople: boolean,
-    options: { allowIncompleteDraft?: boolean } = {},
-  ): EventInput {
+  private buildEventPayload(includePeople: boolean, options: { allowIncompleteDraft?: boolean } = {}): EventInput {
     const raw = this.eventForm.getRawValue();
     const creditValue = this.toOptionalNumber(raw.creditValue);
     const dates = this.resolveEventDates(raw.startDate, raw.endDate, options.allowIncompleteDraft === true);
