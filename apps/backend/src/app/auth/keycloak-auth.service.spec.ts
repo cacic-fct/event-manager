@@ -161,14 +161,60 @@ describe('KeycloakAuthService', () => {
     );
   });
 
-  it('wraps token exchange and refresh failures as unauthorized responses', async () => {
-    const loggerErrorSpy = jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
-    mockedAxios.post.mockRejectedValueOnce({ response: { data: { error: 'invalid_grant' } } });
+  it('wraps token exchange and refresh failures as unauthorized responses with redacted diagnostics', async () => {
+    const loggerWarnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
+    const exchangeError = {
+      code: 'ERR_BAD_REQUEST',
+      message: 'Request failed with status code 401',
+      response: {
+        status: 401,
+        statusText: 'Unauthorized',
+        data: {
+          error: 'invalid_grant',
+          error_description: 'Code not valid',
+          refresh_token: 'secret-refresh-token',
+        },
+      },
+    };
+    mockedAxios.isAxiosError.mockImplementation((error) => error === exchangeError);
+    mockedAxios.post.mockRejectedValueOnce(exchangeError);
+
     await expect(service.exchangeCodeForTokens('bad-code')).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(loggerErrorSpy).not.toHaveBeenCalled();
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
+      'Keycloak authorization code token exchange failed. status=401 Unauthorized; error=invalid_grant; description=Code not valid; axiosCode=ERR_BAD_REQUEST.',
+    );
+    expect(loggerWarnSpy.mock.calls[0][0]).not.toContain('secret-refresh-token');
 
     mockedAxios.post.mockRejectedValueOnce(new Error('refresh failed'));
     await expect(service.refreshAccessToken('bad-refresh-token')).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(loggerWarnSpy).toHaveBeenCalledWith('Keycloak refresh token exchange failed. message=refresh failed.');
+  });
+
+  it('suppresses repeated identical Keycloak failure logs within the suppression window', async () => {
+    const loggerWarnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
+    const exchangeError = {
+      message: 'Request failed with status code 401',
+      response: {
+        status: 401,
+        data: {
+          error: 'invalid_grant',
+        },
+      },
+    };
+    mockedAxios.isAxiosError.mockImplementation((error) => error === exchangeError);
+    mockedAxios.post.mockRejectedValue(exchangeError);
+
+    await expect(service.exchangeCodeForTokens('bad-code')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.exchangeCodeForTokens('bad-code-again')).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(60_001);
+
+    await expect(service.exchangeCodeForTokens('bad-code-after-window')).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(loggerWarnSpy).toHaveBeenCalledTimes(2);
+    expect(loggerWarnSpy.mock.calls[1][0]).toBe(
+      'Keycloak authorization code token exchange failed. status=401; error=invalid_grant. Suppressed 1 similar Keycloak failure log in the last 60 seconds.',
+    );
   });
 
   it('creates, updates, refreshes, clears, and reads logout data for sessions', async () => {
@@ -177,6 +223,11 @@ describe('KeycloakAuthService', () => {
     mockedAxios.post.mockResolvedValueOnce({
       data: {
         active: true,
+      },
+    });
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        sub: 'user-1',
       },
     });
 

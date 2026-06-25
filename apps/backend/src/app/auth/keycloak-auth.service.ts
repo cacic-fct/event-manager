@@ -17,6 +17,7 @@ import {
 } from './keycloak-claims.utils';
 import { AuthSession, CachedUser, TokenClaims, TokenResponse } from './keycloak-auth.types';
 import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
+import { summarizeKeycloakFailure } from './keycloak-error-logging';
 
 type MachineToMachinePrincipalOptions = {
   requiredRoles?: string[];
@@ -33,7 +34,9 @@ type AuthorizationRequirements = {
 export class KeycloakAuthService {
   private readonly logger = new Logger(KeycloakAuthService.name);
   private readonly userCache = new Map<string, CachedUser>();
+  private readonly keycloakFailureLogs = new Map<string, { loggedAt: number; suppressed: number }>();
   private readonly accessTokenRefreshSkewMs = 30_000;
+  private readonly keycloakFailureLogSuppressionMs = 60_000;
 
   private readonly realmUrl = this.readEnv('KEYCLOAK_REALM_URL', DEFAULT_KEYCLOAK_REALM_URL).replace(/\/+$/, '');
 
@@ -147,7 +150,8 @@ export class KeycloakAuthService {
       );
 
       return data;
-    } catch {
+    } catch (error) {
+      this.logKeycloakFailure('authorization code token exchange', error);
       throw new UnauthorizedException('Could not exchange authorization code for tokens.');
     }
   }
@@ -174,7 +178,8 @@ export class KeycloakAuthService {
       );
 
       return data;
-    } catch {
+    } catch (error) {
+      this.logKeycloakFailure('refresh token exchange', error);
       throw new UnauthorizedException('Could not refresh access token.');
     }
   }
@@ -199,8 +204,8 @@ export class KeycloakAuthService {
           },
         });
         refreshTokenRevoked = true;
-      } catch {
-        this.logger.warn('Failed to revoke refresh token at Keycloak.');
+      } catch (error) {
+        this.logKeycloakFailure('refresh token revocation', error);
       }
     }
 
@@ -545,7 +550,7 @@ export class KeycloakAuthService {
           throw error;
         }
 
-        this.logger.warn('Keycloak token introspection failed; falling back to userinfo endpoint.');
+        this.logKeycloakFailure('token introspection', error, 'Falling back to userinfo endpoint.');
       }
     }
 
@@ -568,13 +573,43 @@ export class KeycloakAuthService {
         ...data,
         active: true,
       };
-    } catch {
+    } catch (error) {
       if (introspectionClaims) {
+        this.logKeycloakFailure('userinfo lookup', error, 'Using token introspection claims.');
         return introspectionClaims;
       }
 
+      this.logKeycloakFailure('userinfo lookup', error);
       throw new UnauthorizedException('Unable to validate access token with Keycloak.');
     }
+  }
+
+  private logKeycloakFailure(operation: string, error: unknown, continuation?: string): void {
+    const summary = summarizeKeycloakFailure(error);
+    const logKey = `${operation}|${summary.dedupeKey}`;
+    const now = Date.now();
+    const previousLog = this.keycloakFailureLogs.get(logKey);
+
+    if (previousLog && now - previousLog.loggedAt < this.keycloakFailureLogSuppressionMs) {
+      previousLog.suppressed += 1;
+      return;
+    }
+
+    const suppressedCount = previousLog?.suppressed ?? 0;
+    this.keycloakFailureLogs.set(logKey, {
+      loggedAt: now,
+      suppressed: 0,
+    });
+
+    const continuationMessage = continuation ? ` ${continuation}` : '';
+    const suppressionMessage =
+      suppressedCount > 0
+        ? ` Suppressed ${suppressedCount} similar Keycloak failure log${
+            suppressedCount === 1 ? '' : 's'
+          } in the last ${Math.round(this.keycloakFailureLogSuppressionMs / 1000)} seconds.`
+        : '';
+
+    this.logger.warn(`Keycloak ${operation} failed. ${summary.message}.${continuationMessage}${suppressionMessage}`);
   }
 
   private resolveAccessTokenExpiration(accessToken: string, expiresInSeconds?: number): number {

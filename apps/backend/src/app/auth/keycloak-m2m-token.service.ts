@@ -2,6 +2,7 @@ import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { DEFAULT_KEYCLOAK_REALM_URL } from './auth.constants';
+import { summarizeKeycloakFailure } from './keycloak-error-logging';
 
 type ClientCredentialsTokenResponse = {
   access_token?: unknown;
@@ -19,6 +20,8 @@ type ClientCredentialsTokenOptions = {
 export class KeycloakM2mTokenService {
   private readonly logger = new Logger(KeycloakM2mTokenService.name);
   private readonly tokenRefreshSkewMs = 30_000;
+  private readonly keycloakFailureLogSuppressionMs = 60_000;
+  private readonly keycloakFailureLogs = new Map<string, { loggedAt: number; suppressed: number }>();
   private readonly cachedTokens = new Map<string, { token: string; expiresAt: number }>();
 
   constructor(private readonly configService: ConfigService) {}
@@ -82,11 +85,7 @@ export class KeycloakM2mTokenService {
         throw error;
       }
 
-      if (axios.isAxiosError(error)) {
-        this.logger.warn(`Could not obtain Keycloak M2M access token. Status=${error.response?.status ?? 'none'}.`);
-      } else {
-        this.logger.warn('Could not obtain Keycloak M2M access token.');
-      }
+      this.logKeycloakFailure(error);
 
       throw new ServiceUnavailableException('Could not authenticate with Keycloak for M2M access.');
     }
@@ -94,5 +93,32 @@ export class KeycloakM2mTokenService {
 
   private get realmUrl(): string {
     return (this.configService.get<string>('KEYCLOAK_REALM_URL') ?? DEFAULT_KEYCLOAK_REALM_URL).replace(/\/+$/, '');
+  }
+
+  private logKeycloakFailure(error: unknown): void {
+    const summary = summarizeKeycloakFailure(error);
+    const logKey = `client credentials token request|${summary.dedupeKey}`;
+    const now = Date.now();
+    const previousLog = this.keycloakFailureLogs.get(logKey);
+
+    if (previousLog && now - previousLog.loggedAt < this.keycloakFailureLogSuppressionMs) {
+      previousLog.suppressed += 1;
+      return;
+    }
+
+    const suppressedCount = previousLog?.suppressed ?? 0;
+    this.keycloakFailureLogs.set(logKey, {
+      loggedAt: now,
+      suppressed: 0,
+    });
+
+    const suppressionMessage =
+      suppressedCount > 0
+        ? ` Suppressed ${suppressedCount} similar Keycloak failure log${
+            suppressedCount === 1 ? '' : 's'
+          } in the last ${Math.round(this.keycloakFailureLogSuppressionMs / 1000)} seconds.`
+        : '';
+
+    this.logger.warn(`Keycloak client credentials token request failed. ${summary.message}.${suppressionMessage}`);
   }
 }
