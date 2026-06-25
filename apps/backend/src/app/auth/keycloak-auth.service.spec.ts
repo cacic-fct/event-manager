@@ -84,6 +84,43 @@ describe('KeycloakAuthService', () => {
     });
   });
 
+  it('ignores blank optional Keycloak environment values', async () => {
+    process.env.KEYCLOAK_CLIENT_ID = '   ';
+    process.env.KEYCLOAK_CLIENT_SECRET = ' secret ';
+    process.env.KEYCLOAK_REDIRECT_URI = '   ';
+    service = new KeycloakAuthService(
+      sessions as unknown as AuthSessionStoreService,
+      authorizationState as unknown as AuthorizationStateService,
+      userClaimSync as unknown as AuthenticatedUserSyncService,
+    );
+
+    const authorization = await service.buildAuthorizationUrl();
+    const url = new URL(authorization.authorizationUrl);
+
+    expect(url.searchParams.get('client_id')).toBe('cacic-event-manager');
+    expect(url.searchParams.get('redirect_uri')).toBe('http://localhost:3000/api/auth/callback');
+    expect(authorizationState.create).toHaveBeenCalledWith({
+      redirectUri: 'http://localhost:3000/api/auth/callback',
+      returnTo: undefined,
+      state: undefined,
+      prompt: undefined,
+    });
+  });
+
+  it('fails fast when the production Keycloak client secret is blank', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.KEYCLOAK_CLIENT_SECRET = '   ';
+
+    expect(
+      () =>
+        new KeycloakAuthService(
+          sessions as unknown as AuthSessionStoreService,
+          authorizationState as unknown as AuthorizationStateService,
+          userClaimSync as unknown as AuthenticatedUserSyncService,
+        ),
+    ).toThrow('KEYCLOAK_CLIENT_SECRET must be set for production authentication.');
+  });
+
   it('exchanges, refreshes, and revokes tokens through Keycloak form endpoints', async () => {
     mockedAxios.post
       .mockResolvedValueOnce({ data: { access_token: 'access-token' } })

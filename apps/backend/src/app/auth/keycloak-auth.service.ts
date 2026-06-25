@@ -35,15 +35,15 @@ export class KeycloakAuthService {
   private readonly userCache = new Map<string, CachedUser>();
   private readonly accessTokenRefreshSkewMs = 30_000;
 
-  private readonly realmUrl = (process.env.KEYCLOAK_REALM_URL ?? DEFAULT_KEYCLOAK_REALM_URL).replace(/\/+$/, '');
+  private readonly realmUrl = this.readEnv('KEYCLOAK_REALM_URL', DEFAULT_KEYCLOAK_REALM_URL).replace(/\/+$/, '');
 
-  private readonly clientId = process.env.KEYCLOAK_CLIENT_ID ?? DEFAULT_KEYCLOAK_CLIENT_ID;
+  private readonly clientId = this.readEnv('KEYCLOAK_CLIENT_ID', DEFAULT_KEYCLOAK_CLIENT_ID);
   private readonly allowedAccessTokenClients = this.readAllowedAccessTokenClients();
 
-  private readonly clientSecret = process.env.KEYCLOAK_CLIENT_SECRET;
-  private readonly defaultRedirectUri = process.env.KEYCLOAK_REDIRECT_URI ?? 'http://localhost:3000/api/auth/callback';
+  private readonly clientSecret = this.readOptionalEnv('KEYCLOAK_CLIENT_SECRET');
+  private readonly defaultRedirectUri = this.readEnv('KEYCLOAK_REDIRECT_URI', 'http://localhost:3000/api/auth/callback');
 
-  private readonly defaultPostLogoutRedirectUri = process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI;
+  private readonly defaultPostLogoutRedirectUri = this.readOptionalEnv('KEYCLOAK_POST_LOGOUT_REDIRECT_URI');
 
   private readonly cacheTtlMs = this.parseCacheTtlMs(process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS);
 
@@ -51,7 +51,11 @@ export class KeycloakAuthService {
     private readonly sessions: AuthSessionStoreService,
     private readonly authorizationState: AuthorizationStateService,
     private readonly userClaimSync?: AuthenticatedUserSyncService,
-  ) {}
+  ) {
+    if (process.env.NODE_ENV === 'production' && !this.clientSecret) {
+      throw new Error('KEYCLOAK_CLIENT_SECRET must be set for production authentication.');
+    }
+  }
 
   async authenticateAccessToken(
     accessToken: string,
@@ -616,6 +620,15 @@ export class KeycloakAuthService {
     }
 
     return parsedTtl;
+  }
+
+  private readEnv(key: string, fallback: string): string {
+    return this.readOptionalEnv(key) ?? fallback;
+  }
+
+  private readOptionalEnv(key: string): string | undefined {
+    const value = process.env[key]?.trim();
+    return value ? value : undefined;
   }
 
   private readAllowedAccessTokenClients(): Set<string> {

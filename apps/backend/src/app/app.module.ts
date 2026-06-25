@@ -124,11 +124,13 @@ import { VotingIntegrationService } from './voting-integration/service';
 import { TurnstileService } from './turnstile/turnstile.service';
 import { RateLimitGuard } from './rate-limit/rate-limit.guard';
 import { RateLimitService } from './rate-limit/rate-limit.service';
+import { validateBackendEnvironment } from './config/environment.validation';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateBackendEnvironment,
     }),
     PrismaModule,
     AuthModule,
