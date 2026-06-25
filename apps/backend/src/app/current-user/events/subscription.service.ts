@@ -14,7 +14,7 @@ import {
   TransactionClient,
 } from '../selects';
 import { CurrentUserEventGroupSubscription } from '../models';
-import { PUBLIC_EVENT_SELECT, PublicEvent } from '../../public-events/models';
+import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE, PublicEvent } from '../../public-events/models';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
 
@@ -96,9 +96,7 @@ export class CurrentUserEventSubscriptionService {
     const result = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const targetEvent = await tx.event.findFirst({
         where: {
-          id: eventId,
-          deletedAt: null,
-          publiclyVisible: true,
+          AND: [PUBLIC_EVENT_WHERE, { id: eventId }],
         },
         select: EVENT_SELECT,
       });
@@ -188,7 +186,6 @@ export class CurrentUserEventSubscriptionService {
         where: {
           id: eventId,
           deletedAt: null,
-          publiclyVisible: true,
         },
         select: EVENT_SELECT,
       });
@@ -315,7 +312,6 @@ export class CurrentUserEventSubscriptionService {
         },
         event: {
           deletedAt: null,
-          publiclyVisible: true,
         },
       },
       select: {
@@ -342,7 +338,6 @@ export class CurrentUserEventSubscriptionService {
           deletedAt: null,
           event: {
             deletedAt: null,
-            publiclyVisible: true,
             majorEventId: null,
           },
         },
@@ -412,9 +407,7 @@ export class CurrentUserEventSubscriptionService {
     const [groupEvents, existingSubscription, activeChildSubscriptions] = await Promise.all([
       tx.event.findMany({
         where: {
-          eventGroupId,
-          deletedAt: null,
-          publiclyVisible: true,
+          AND: [PUBLIC_EVENT_WHERE, { eventGroupId }],
         },
         select: EVENT_SELECT,
         orderBy: {
@@ -434,9 +427,8 @@ export class CurrentUserEventSubscriptionService {
           personId,
           deletedAt: null,
           event: {
-            eventGroupId,
             deletedAt: null,
-            publiclyVisible: true,
+            eventGroupId,
             majorEventId: null,
           },
         },
@@ -551,7 +543,6 @@ export class CurrentUserEventSubscriptionService {
         eventGroupSubscriptionId: subscription.id,
         event: {
           deletedAt: null,
-          publiclyVisible: true,
         },
       },
       select: {
@@ -624,7 +615,6 @@ export class CurrentUserEventSubscriptionService {
         eventGroupSubscriptionId,
         event: {
           deletedAt: null,
-          publiclyVisible: true,
         },
       },
       select: {

@@ -1,6 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
-import { ContactType, PriceType } from './enums';
+import { ContactType, PriceType, PublicationState } from './enums';
 
 @ObjectType()
 export class PaymentInfo {
@@ -123,6 +123,18 @@ export class MajorEvent {
 
   @Field(() => [MajorEventPrice], { nullable: true })
   majorEventPrices?: MajorEventPrice[] | null;
+
+  @Field(() => PublicationState)
+  publicationState!: PublicationState;
+
+  @Field(() => Date, { nullable: true })
+  scheduledPublishAt?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  publishedAt?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  unpublishedAt?: Date | null;
 
   @Field(() => Date, { nullable: true })
   deletedAt?: Date | null;

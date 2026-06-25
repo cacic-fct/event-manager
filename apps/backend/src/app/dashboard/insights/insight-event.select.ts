@@ -17,6 +17,7 @@ export const EVENT_INSIGHT_SELECT = {
     select: {
       id: true,
       name: true,
+      publicationState: true,
       certificateConfigs: {
         where: { deletedAt: null, isActive: true },
         select: { id: true },
@@ -37,6 +38,9 @@ export const EVENT_INSIGHT_SELECT = {
   },
   shouldCollectAttendance: true,
   shouldIssueCertificate: true,
+  publiclyVisible: true,
+  publicationState: true,
+  scheduledPublishAt: true,
   allowSubscription: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,

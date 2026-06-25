@@ -3,7 +3,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CertificateScope, Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MAJOR_EVENT_BASE_SELECT, EventRecord } from '../selects';
-import { PUBLIC_EVENT_SELECT, PublicEvent } from '../../public-events/models';
+import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE, PublicEvent } from '../../public-events/models';
 import { CurrentUserMajorEventFeedItem } from '../models';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
@@ -332,7 +332,7 @@ export class CurrentUserMajorEventSubscriptionService {
           },
         },
         event: {
-          deletedAt: null,
+          AND: [PUBLIC_EVENT_WHERE],
         },
       },
       select: {
@@ -373,10 +373,7 @@ export class CurrentUserMajorEventSubscriptionService {
         personId,
         deletedAt: null,
         event: {
-          deletedAt: null,
-          majorEventId: {
-            in: majorEventIds,
-          },
+          AND: [PUBLIC_EVENT_WHERE, { majorEventId: { in: majorEventIds } }],
         },
       },
       select: {
@@ -416,7 +413,7 @@ export class CurrentUserMajorEventSubscriptionService {
           deletedAt: null,
         },
         event: {
-          deletedAt: null,
+          AND: [PUBLIC_EVENT_WHERE],
         },
       },
       select: {
@@ -443,9 +440,7 @@ export class CurrentUserMajorEventSubscriptionService {
   }> {
     const events = await this.prisma.event.findMany({
       where: {
-        majorEventId,
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { majorEventId }],
         allowSubscription: true,
       },
       select: {
@@ -498,7 +493,7 @@ export class CurrentUserMajorEventSubscriptionService {
           personId,
           deletedAt: null,
           majorEvent: {
-            deletedAt: null,
+            ...PUBLIC_MAJOR_EVENT_WHERE,
           },
         },
         select: this.getMajorEventSubscriptionSelect(paymentInfoTableExists),
@@ -512,7 +507,7 @@ export class CurrentUserMajorEventSubscriptionService {
           event: {
             deletedAt: null,
             majorEvent: {
-              deletedAt: null,
+              ...PUBLIC_MAJOR_EVENT_WHERE,
             },
           },
         },
@@ -540,7 +535,7 @@ export class CurrentUserMajorEventSubscriptionService {
             deletedAt: null,
             scope: CertificateScope.MAJOR_EVENT,
             majorEvent: {
-              deletedAt: null,
+              ...PUBLIC_MAJOR_EVENT_WHERE,
             },
           },
         },

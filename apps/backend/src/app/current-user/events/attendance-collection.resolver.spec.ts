@@ -116,7 +116,6 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
           personId: 'collector-person',
           event: expect.objectContaining({
             deletedAt: null,
-            publiclyVisible: true,
             shouldCollectAttendance: true,
           }),
         }),

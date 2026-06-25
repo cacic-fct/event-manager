@@ -7,20 +7,20 @@ export class EventCreateInput {
   @Field(() => String, { nullable: true })
   id?: string;
 
-  @Field(() => String)
-  name!: string;
+  @Field(() => String, { nullable: true })
+  name?: string;
 
   @Field(() => Int, { nullable: true })
   creditMinutes?: number;
 
-  @Field(() => Date)
-  startDate!: Date;
+  @Field(() => Date, { nullable: true })
+  startDate?: Date;
 
-  @Field(() => Date)
-  endDate!: Date;
+  @Field(() => Date, { nullable: true })
+  endDate?: Date;
 
-  @Field(() => String)
-  emoji!: string;
+  @Field(() => String, { nullable: true })
+  emoji?: string;
 
   @Field(() => EventType, { nullable: true })
   type?: EventType;

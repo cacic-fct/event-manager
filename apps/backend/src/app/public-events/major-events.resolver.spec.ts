@@ -1,6 +1,7 @@
 import { RATE_LIMIT_METADATA_KEY } from '../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { PublicMajorEventsResolver } from './major-events.resolver';
+import { PUBLIC_MAJOR_EVENT_WHERE } from './models';
 
 describe('PublicMajorEventsResolver', () => {
   it('uses a bounded Typesense page for public major-event search pagination', async () => {
@@ -28,13 +29,14 @@ describe('PublicMajorEventsResolver', () => {
     ]);
 
     expect(typesenseSearch.searchMajorEvents).toHaveBeenCalledWith('congresso', {
+      filterBy: 'publicationState:=PUBLISHED',
       limit: 1_000,
       offset: 10_000,
     });
     expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          deletedAt: null,
+          ...PUBLIC_MAJOR_EVENT_WHERE,
           id: {
             in: ['major-1'],
           },

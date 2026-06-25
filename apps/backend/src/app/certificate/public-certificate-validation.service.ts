@@ -24,6 +24,14 @@ const CERTIFICATE_VALIDATION_EVENT_SELECT = {
   creditMinutes: true,
   type: true,
   publiclyVisible: true,
+  publicationState: true,
+  majorEventId: true,
+  majorEvent: {
+    select: {
+      deletedAt: true,
+      publicationState: true,
+    },
+  },
 } satisfies Prisma.EventSelect;
 
 const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
@@ -59,6 +67,8 @@ const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
           id: true,
           name: true,
           emoji: true,
+          deletedAt: true,
+          publicationState: true,
         },
       },
     },
@@ -98,7 +108,7 @@ export class PublicCertificateValidationService {
     }
 
     const events = await this.resolveCertificateEvents(certificate);
-    const publiclyVisibleEvents = events.filter((event) => event.publiclyVisible);
+    const publiclyVisibleEvents = events.filter((event) => this.isCertificateEventPublic(event));
     const sections = this.buildSections(certificate, publiclyVisibleEvents);
 
     return {
@@ -108,7 +118,7 @@ export class PublicCertificateValidationService {
       maskedIdentityDocument: this.maskCpf(certificate.person.identityDocument, certificate.person.isCPF),
       scope: certificate.config.scope as CertificateScope,
       certificateName: certificate.config.name,
-      targetName: this.getTargetName(certificate),
+      targetName: this.getTargetName(certificate, publiclyVisibleEvents),
       targetEmoji: this.getTargetEmoji(certificate),
       sections,
       totalCreditMinutes: this.sumCreditMinutes(publiclyVisibleEvents),
@@ -420,8 +430,25 @@ export class PublicCertificateValidationService {
     };
   }
 
-  private getTargetName(certificate: PublicCertificateValidationRecord): string | undefined {
-    if (certificate.config.scope === CertificateScope.EVENT && !certificate.config.event?.publiclyVisible) {
+  private getTargetName(
+    certificate: PublicCertificateValidationRecord,
+    publiclyVisibleEvents: CertificateValidationEventRecord[],
+  ): string | undefined {
+    if (
+      certificate.config.scope === CertificateScope.EVENT &&
+      !this.isCertificateEventPublic(certificate.config.event)
+    ) {
+      return undefined;
+    }
+
+    if (
+      certificate.config.scope === CertificateScope.MAJOR_EVENT &&
+      !this.isCertificateMajorEventPublic(certificate)
+    ) {
+      return undefined;
+    }
+
+    if (certificate.config.scope === CertificateScope.EVENT_GROUP && publiclyVisibleEvents.length === 0) {
       return undefined;
     }
 
@@ -434,11 +461,38 @@ export class PublicCertificateValidationService {
   }
 
   private getTargetEmoji(certificate: PublicCertificateValidationRecord): string | undefined {
-    if (certificate.config.scope === CertificateScope.EVENT && !certificate.config.event?.publiclyVisible) {
+    if (
+      certificate.config.scope === CertificateScope.EVENT &&
+      !this.isCertificateEventPublic(certificate.config.event)
+    ) {
+      return undefined;
+    }
+
+    if (
+      certificate.config.scope === CertificateScope.MAJOR_EVENT &&
+      !this.isCertificateMajorEventPublic(certificate)
+    ) {
       return undefined;
     }
 
     return certificate.config.majorEvent?.emoji ?? certificate.config.event?.emoji ?? undefined;
+  }
+
+  private isCertificateEventPublic(event?: CertificateValidationEventRecord | null): event is CertificateValidationEventRecord {
+    return Boolean(
+      event &&
+        event.publiclyVisible &&
+        event.publicationState === 'PUBLISHED' &&
+        (!event.majorEventId ||
+          Boolean(event.majorEvent && event.majorEvent.deletedAt == null && event.majorEvent.publicationState === 'PUBLISHED')),
+    );
+  }
+
+  private isCertificateMajorEventPublic(certificate: PublicCertificateValidationRecord): boolean {
+    return (
+      certificate.config.majorEvent?.deletedAt == null &&
+      certificate.config.majorEvent?.publicationState === 'PUBLISHED'
+    );
   }
 
   private sumCreditMinutes(events: CertificateValidationEventRecord[]): number {

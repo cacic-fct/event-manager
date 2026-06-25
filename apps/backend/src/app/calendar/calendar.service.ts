@@ -6,6 +6,7 @@ import { EventManagerPermissionGrantScope, Prisma, SubscriptionStatus } from '@p
 import { createHmac, randomBytes } from 'node:crypto';
 import { subHours, subMonths, subYears } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
+import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import {
   ADMIN_CALENDAR_FEED_DISABLED_NO_CURRENT_TARGETS,
   ADMIN_CALENDAR_FEED_DISABLED_STALE_ACCESS,
@@ -76,10 +77,7 @@ const PUBLIC_EVENT_CALENDAR_SELECT = {
       createdAt: true,
       updatedAt: true,
       events: {
-        where: {
-          deletedAt: null,
-          publiclyVisible: true,
-        },
+        where: PUBLIC_EVENT_WHERE,
         orderBy: {
           startDate: 'asc',
         },
@@ -482,9 +480,7 @@ export class CalendarService {
   async buildPublicEventCalendar(eventId: string, publicAppOrigin: string): Promise<CalendarDownload> {
     const event = await this.prisma.event.findFirst({
       where: {
-        id: eventId,
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { id: eventId }],
       },
       select: PUBLIC_EVENT_CALENDAR_SELECT,
     });
@@ -883,11 +879,14 @@ export class CalendarService {
 
   private privateFeedEventWhere(now: Date): Prisma.EventWhereInput {
     return {
-      deletedAt: null,
-      publiclyVisible: true,
-      endDate: {
-        gte: subMonths(now, PRIVATE_FEED_LOOKBACK_MONTHS),
-      },
+      AND: [
+        PUBLIC_EVENT_WHERE,
+        {
+          endDate: {
+            gte: subMonths(now, PRIVATE_FEED_LOOKBACK_MONTHS),
+          },
+        },
+      ],
     };
   }
 

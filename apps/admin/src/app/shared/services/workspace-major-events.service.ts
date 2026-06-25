@@ -7,10 +7,17 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
+import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { Event, MajorEvent, MajorEventInput, PriceType } from '../../graphql/models';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
+import { WorkspaceUiService } from './workspace-ui.service';
+
+type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
+const DEFAULT_DRAFT_MAJOR_EVENT_NAME = 'Grande evento sem título';
+const DEFAULT_DRAFT_MAJOR_EVENT_EMOJI = '📌';
+const DEFAULT_MAJOR_EVENT_DURATION_MS = 24 * 60 * 60 * 1000;
 
 @Injectable({
   providedIn: 'root',
@@ -18,12 +25,15 @@ import { WorkspacePermissionsService } from './workspace-permissions.service';
 export class WorkspaceMajorEventsService {
   private readonly api = inject(MajorEventApiService);
   private readonly eventsApi = inject(EventApiService);
+  private readonly publicationApi = inject(PublicationApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
   private readonly permissions = inject(WorkspacePermissionsService);
   private readonly router = inject(Router);
+  private readonly ui = inject(WorkspaceUiService);
 
+  readonly loading = this.ui.loading;
   readonly majorEvents = signal<MajorEvent[]>([]);
   readonly selectedMajorEvent = signal<MajorEvent | null>(null);
   readonly majorEventEvents = signal<Event[]>([]);
@@ -62,7 +72,11 @@ export class WorkspaceMajorEventsService {
       priceTiers: this.formBuilder.array([this.createPriceTierGroup('Preço único', '')]),
     },
     {
-      validators: [this.requireBothOrNeither('buttonText', 'buttonLink'), this.validatePaymentInfo()],
+      validators: [
+        this.requireBothOrNeither('buttonText', 'buttonLink'),
+        this.validatePaymentInfo(),
+        this.rejectDraftPlaceholders(),
+      ],
     },
   );
 
@@ -106,36 +120,80 @@ export class WorkspaceMajorEventsService {
     }
   }
 
-  async saveMajorEvent(): Promise<void> {
-    if (this.majorEventForm.invalid) {
+  async saveMajorEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
+    if (action === 'PUBLISH' && this.majorEventForm.invalid) {
       this.majorEventForm.markAllAsTouched();
       return;
     }
 
     const raw = this.majorEventForm.getRawValue();
-    const payload = this.buildMajorEventPayload();
+    const payload = this.buildMajorEventPayload({ allowIncompleteDraft: action !== 'PUBLISH' });
 
+    this.ui.loading.set(true);
     try {
+      let savedMajorEvent: MajorEvent;
       if (raw.id) {
-        const updatedMajorEvent = await firstValueFrom(this.api.updateMajorEvent(raw.id, payload));
-        this.snackbar.open('Grande evento atualizado.', 'Fechar', {
-          duration: 2500,
-        });
+        savedMajorEvent = await firstValueFrom(this.api.updateMajorEvent(raw.id, payload));
         await this.loadMajorEvents();
-        await this.pickMajorEvent(updatedMajorEvent);
       } else {
-        await firstValueFrom(this.api.createMajorEvent(payload));
-        this.snackbar.open('Grande evento criado.', 'Fechar', {
-          duration: 2500,
-        });
+        savedMajorEvent = await firstValueFrom(this.api.createMajorEvent(payload));
+      }
+      this.majorEventForm.controls.id.setValue(savedMajorEvent.id, { emitEvent: false });
+      this.selectedMajorEvent.set(savedMajorEvent);
+
+      if (action === 'PUBLISH') {
+        await firstValueFrom(
+          this.publicationApi.setPublicationState({
+            targetType: 'MAJOR_EVENT',
+            targetId: savedMajorEvent.id,
+            state: 'PUBLISHED',
+          }),
+        );
+        this.snackbar.open('Grande evento publicado.', 'Fechar', { duration: 2500 });
+      } else {
+        await firstValueFrom(
+          this.publicationApi.setPublicationState({
+            targetType: 'MAJOR_EVENT',
+            targetId: savedMajorEvent.id,
+            state: 'DRAFT',
+          }),
+        );
+        this.snackbar.open(
+          action === 'SCHEDULE' ? 'Grande evento salvo como rascunho.' : 'Rascunho salvo.',
+          'Fechar',
+          {
+            duration: 2500,
+          },
+        );
+      }
+
+      await this.loadMajorEvents();
+      if (action === 'SCHEDULE') {
+        void this.router.navigate(this.majorEventPublicationRoute(savedMajorEvent.id));
+        return;
+      }
+
+      if (raw.id) {
+        await this.pickMajorEvent(savedMajorEvent);
+      } else {
         this.resetMajorEventForm();
-        await this.loadMajorEvents();
       }
     } catch (error) {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grande evento.'), 'Fechar', {
         duration: 5000,
       });
+    } finally {
+      this.ui.loading.set(false);
     }
+  }
+
+  openMajorEventPublication(): void {
+    const selectedMajorEvent = this.selectedMajorEvent();
+    if (!selectedMajorEvent) {
+      return;
+    }
+
+    void this.router.navigate(this.majorEventPublicationRoute(selectedMajorEvent.id));
   }
 
   resetMajorEventForm(): void {
@@ -335,8 +393,13 @@ export class WorkspaceMajorEventsService {
     await this.loadEventsForMajorEvent(selectedMajorEvent.id);
   }
 
-  private buildMajorEventPayload(): MajorEventInput {
+  private buildMajorEventPayload(options: { allowIncompleteDraft?: boolean } = {}): MajorEventInput {
     const raw = this.majorEventForm.getRawValue();
+    const dates = this.resolveMajorEventDates(
+      raw.startDate,
+      raw.endDate,
+      options.allowIncompleteDraft === true,
+    );
     const paymentInfoInput = {
       bankName: raw.paymentBankName.trim(),
       agency: raw.paymentAgency.trim(),
@@ -357,10 +420,10 @@ export class WorkspaceMajorEventsService {
     const validPriceTiers = priceTiers.filter((tier): tier is { name: string; value: number } => tier.value !== null);
 
     return {
-      name: raw.name.trim(),
-      emoji: raw.emoji.trim(),
-      startDate: this.toIsoDateTime(raw.startDate),
-      endDate: this.toIsoDateTime(raw.endDate),
+      name: raw.name.trim() || (options.allowIncompleteDraft ? DEFAULT_DRAFT_MAJOR_EVENT_NAME : ''),
+      emoji: raw.emoji.trim() || (options.allowIncompleteDraft ? DEFAULT_DRAFT_MAJOR_EVENT_EMOJI : ''),
+      startDate: dates.startDate,
+      endDate: dates.endDate,
       description: raw.description.trim() || null,
       subscriptionStartDate: this.toOptionalIsoDateTime(raw.subscriptionStartDate),
       subscriptionEndDate: this.toOptionalIsoDateTime(raw.subscriptionEndDate),
@@ -386,6 +449,45 @@ export class WorkspaceMajorEventsService {
             }
           : null,
     };
+  }
+
+  private resolveMajorEventDates(
+    rawStartDate: string,
+    rawEndDate: string,
+    allowIncompleteDraft: boolean,
+  ): { startDate: string; endDate: string } {
+    if (!allowIncompleteDraft || (rawStartDate && rawEndDate)) {
+      return {
+        startDate: this.toIsoDateTime(rawStartDate),
+        endDate: this.toIsoDateTime(rawEndDate),
+      };
+    }
+
+    if (rawStartDate) {
+      const startDate = new Date(rawStartDate);
+      return {
+        startDate: startDate.toISOString(),
+        endDate: new Date(startDate.getTime() + DEFAULT_MAJOR_EVENT_DURATION_MS).toISOString(),
+      };
+    }
+
+    if (rawEndDate) {
+      const endDate = new Date(rawEndDate);
+      return {
+        startDate: new Date(endDate.getTime() - DEFAULT_MAJOR_EVENT_DURATION_MS).toISOString(),
+        endDate: endDate.toISOString(),
+      };
+    }
+
+    const startDate = new Date();
+    return {
+      startDate: startDate.toISOString(),
+      endDate: new Date(startDate.getTime() + DEFAULT_MAJOR_EVENT_DURATION_MS).toISOString(),
+    };
+  }
+
+  private majorEventPublicationRoute(majorEventId: string): string[] {
+    return ['/publication', 'major-event', majorEventId];
   }
 
   private async loadEventsForMajorEvent(majorEventId: string): Promise<void> {
@@ -476,6 +578,17 @@ export class WorkspaceMajorEventsService {
       }
 
       return null;
+    };
+  }
+
+  private rejectDraftPlaceholders() {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const name = control.get('name')?.value?.toString().trim();
+      const emoji = control.get('emoji')?.value?.toString().trim();
+
+      return name === DEFAULT_DRAFT_MAJOR_EVENT_NAME || emoji === DEFAULT_DRAFT_MAJOR_EVENT_EMOJI
+        ? { draftPlaceholder: true }
+        : null;
     };
   }
 

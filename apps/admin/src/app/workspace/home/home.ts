@@ -202,6 +202,8 @@ export class Home implements OnInit, OnDestroy {
         return this.navMap()['certificates']?.path ?? 'certificates';
       case 'OPEN_MERGE_CANDIDATES':
         return this.navMap()['merge-candidates']?.path ?? 'merge-candidates';
+      case 'OPEN_PUBLICATION':
+        return this.navMap()['publication']?.path ?? 'publication';
     }
   }
 

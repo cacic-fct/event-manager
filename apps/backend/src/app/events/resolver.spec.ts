@@ -188,6 +188,7 @@ describe('EventsResolver', () => {
       name: 'Evento antigo',
       majorEventId: 'major-old',
       eventGroupId: null,
+      publicationState: 'PUBLISHED',
     };
     const updatedDetail = {
       id: 'event-1',
@@ -259,6 +260,16 @@ describe('EventsResolver', () => {
       ),
     ).resolves.toBe(updatedDetail);
 
+    expect(tx.event.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'Evento novo',
+          publicationState: 'DRAFT',
+          scheduledPublishAt: null,
+          publicationUpdatedBy: 'user-1',
+        }),
+      }),
+    );
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
         before: previousAudit,

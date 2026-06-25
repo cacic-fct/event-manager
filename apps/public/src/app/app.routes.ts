@@ -1,5 +1,9 @@
 import { Route } from '@angular/router';
-import { authGuard, developmentOnlyGuard, redirectAuthenticatedGuard } from '@cacic-fct/shared-angular';
+import {
+  authGuard,
+  developmentOnlyGuard,
+  redirectAuthenticatedGuard,
+} from '@cacic-fct/shared-angular';
 import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,
@@ -48,6 +52,21 @@ export const appRoutes: Route[] = [
     loadChildren: () => import('./development-tools/development-tools.routes').then((m) => m.routes),
     title: 'Ferramentas de desenvolvimento',
     canActivate: [developmentOnlyGuard],
+  },
+  {
+    path: 'preview/:previewToken/event',
+    loadComponent: () => import('./event/event').then((m) => m.Event),
+    title: 'Pré-Visualização',
+  },
+  {
+    path: 'preview/:previewToken/major-event',
+    loadComponent: () => import('./major-event/major-event').then((m) => m.MajorEvent),
+    title: 'Pré-Visualização',
+  },
+  {
+    path: 'preview/:previewToken/group',
+    loadComponent: () => import('./preview/group-preview.component').then((m) => m.GroupPreviewComponent),
+    title: 'Pré-Visualização',
   },
   {
     path: 'event/:eventId',

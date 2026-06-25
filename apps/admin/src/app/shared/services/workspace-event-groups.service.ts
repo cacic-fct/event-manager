@@ -7,6 +7,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
+import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { Event, EventGroup, EventGroupInput, EventSummary } from '../../graphql/models';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
@@ -14,6 +15,8 @@ import { WorkspaceEventsService } from './workspace-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 const DEFAULT_EVENT_GROUP_EMOJI = '❔';
+const DEFAULT_DRAFT_EVENT_GROUP_NAME = 'Grupo sem título';
+type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 
 @Injectable({
   providedIn: 'root',
@@ -21,6 +24,7 @@ const DEFAULT_EVENT_GROUP_EMOJI = '❔';
 export class WorkspaceEventGroupsService {
   private readonly api = inject(EventGroupApiService);
   private readonly eventsApi = inject(EventApiService);
+  private readonly publicationApi = inject(PublicationApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
@@ -33,6 +37,7 @@ export class WorkspaceEventGroupsService {
   readonly selectedEventGroup = signal<EventGroup | null>(null);
   readonly eventGroupEvents = signal<Event[]>([]);
   readonly eventGroupEventSearchResults = signal<Event[]>([]);
+  readonly savingEventGroup = signal(false);
   readonly selectedEventGroupHasMajorEventEvents = computed(() =>
     this.eventGroupEvents().some((eventItem) => eventItem.majorEventId),
   );
@@ -107,35 +112,58 @@ export class WorkspaceEventGroupsService {
     this.eventSummaries.set(await firstValueFrom(this.eventsApi.listEventsSummary({ take: 200, isInGroup: true })));
   }
 
-  async saveEventGroup(): Promise<void> {
-    if (this.eventGroupForm.invalid) {
+  async saveEventGroup(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
+    if (this.savingEventGroup()) {
+      return;
+    }
+
+    if (action === 'PUBLISH' && this.eventGroupForm.invalid) {
       this.eventGroupForm.markAllAsTouched();
       return;
     }
 
     const raw = this.eventGroupForm.getRawValue();
-    const payload: EventGroupInput = {
-      name: raw.name.trim(),
-      emoji: raw.emoji.trim() || DEFAULT_EVENT_GROUP_EMOJI,
-      shouldIssueCertificate: raw.shouldIssueCertificate,
-      shouldIssueCertificateForNonPayingAttendees:
-        raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonPayingAttendees,
-      shouldIssueCertificateForNonSubscribedAttendees:
-        raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonSubscribedAttendees,
-      shouldIssueCertificateForEachEvent:
-        raw.shouldIssueCertificate &&
-        !this.selectedEventGroupHasMajorEventEvents() &&
-        raw.shouldIssueCertificateForEachEvent,
-      shouldIssuePartialCertificate: raw.shouldIssueCertificate && raw.shouldIssuePartialCertificate,
-    };
+    const payload = this.buildEventGroupPayload(action !== 'PUBLISH');
 
+    this.savingEventGroup.set(true);
     try {
+      let savedGroup: EventGroup;
       if (raw.id) {
-        await firstValueFrom(this.api.updateEventGroup(raw.id, payload));
-        this.snackbar.open('Grupo atualizado.', 'Fechar', { duration: 2500 });
+        savedGroup = await firstValueFrom(this.api.updateEventGroup(raw.id, payload));
       } else {
-        await firstValueFrom(this.api.createEventGroup(payload));
-        this.snackbar.open('Grupo criado.', 'Fechar', { duration: 2500 });
+        savedGroup = await firstValueFrom(this.api.createEventGroup(payload));
+      }
+      this.eventGroupForm.controls.id.setValue(savedGroup.id, { emitEvent: false });
+      this.selectedEventGroup.set(savedGroup);
+
+      if (action === 'PUBLISH') {
+        if (this.eventGroupEvents().length === 0) {
+          this.snackbar.open('Grupo salvo. Adicione eventos antes de publicar o conjunto.', 'Fechar', {
+            duration: 4000,
+          });
+        } else {
+          await firstValueFrom(
+            this.publicationApi.setPublicationState({
+              targetType: 'EVENT_GROUP',
+              targetId: savedGroup.id,
+              state: 'PUBLISHED',
+            }),
+          );
+          this.snackbar.open('Grupo publicado.', 'Fechar', { duration: 2500 });
+        }
+      } else {
+        if (this.eventGroupEvents().length > 0) {
+          await firstValueFrom(
+            this.publicationApi.setPublicationState({
+              targetType: 'EVENT_GROUP',
+              targetId: savedGroup.id,
+              state: 'DRAFT',
+            }),
+          );
+        }
+        this.snackbar.open(action === 'SCHEDULE' ? 'Grupo salvo como rascunho.' : 'Rascunho salvo.', 'Fechar', {
+          duration: 2500,
+        });
       }
 
       this.eventGroupForm.reset({
@@ -148,15 +176,34 @@ export class WorkspaceEventGroupsService {
         shouldIssueCertificateForEachEvent: false,
         shouldIssuePartialCertificate: false,
       });
+      if (!raw.id && action !== 'SCHEDULE') {
+        this.selectedEventGroup.set(null);
+        this.eventGroupEvents.set([]);
+      }
       this.syncCertificateRuleControls();
       await this.loadEventGroups();
+      if (action === 'SCHEDULE') {
+        void this.router.navigate(this.eventGroupPublicationRoute(savedGroup.id));
+        return;
+      }
       const selectedGroup = this.selectedEventGroup();
       if (selectedGroup) {
         await this.loadEventsForGroup(selectedGroup.id);
       }
     } catch (error) {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grupo.'), 'Fechar', { duration: 5000 });
+    } finally {
+      this.savingEventGroup.set(false);
     }
+  }
+
+  openEventGroupPublication(): void {
+    const selectedGroup = this.selectedEventGroup();
+    if (!selectedGroup) {
+      return;
+    }
+
+    void this.router.navigate(this.eventGroupPublicationRoute(selectedGroup.id));
   }
 
   startNewEventGroup(): void {
@@ -327,6 +374,28 @@ export class WorkspaceEventGroupsService {
       .filter((event) => event.eventGroupId === groupId)
       .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
       .at(0);
+  }
+
+  private buildEventGroupPayload(allowIncompleteDraft: boolean): EventGroupInput {
+    const raw = this.eventGroupForm.getRawValue();
+    return {
+      name: raw.name.trim() || (allowIncompleteDraft ? DEFAULT_DRAFT_EVENT_GROUP_NAME : ''),
+      emoji: raw.emoji.trim() || DEFAULT_EVENT_GROUP_EMOJI,
+      shouldIssueCertificate: raw.shouldIssueCertificate,
+      shouldIssueCertificateForNonPayingAttendees:
+        raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees:
+        raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonSubscribedAttendees,
+      shouldIssueCertificateForEachEvent:
+        raw.shouldIssueCertificate &&
+        !this.selectedEventGroupHasMajorEventEvents() &&
+        raw.shouldIssueCertificateForEachEvent,
+      shouldIssuePartialCertificate: raw.shouldIssueCertificate && raw.shouldIssuePartialCertificate,
+    };
+  }
+
+  private eventGroupPublicationRoute(groupId: string): string[] {
+    return ['/publication', 'event-group', groupId];
   }
 
   private syncCertificateRuleControls(): void {

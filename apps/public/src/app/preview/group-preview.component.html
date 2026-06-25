@@ -1,0 +1,56 @@
+<mat-toolbar>
+  <span>Pré-Visualização</span>
+</mat-toolbar>
+
+<main class="group-preview-page">
+  @let currentState = state(); @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" />
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+    <p>Carregando pré-visualização...</p>
+  </section>
+  } @else if (currentState.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ currentState.message }}</p>
+  </section>
+  } @else {
+  <section class="preview-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">visibility</mat-icon>
+    <p>Pré-visualização temporária. Este link expira em {{ currentState.preview.expiresAt | date: 'dd/MM/yyyy HH:mm' }}.</p>
+  </section>
+
+  <header class="group-header">
+    <img class="twemoji" [src]="emoji.getTwemojiUrl(currentState.preview.eventGroup.emoji)" [alt]="currentState.preview.eventGroup.emoji" />
+    <div>
+      <p class="eyebrow">Grupo de eventos</p>
+      <h1>{{ currentState.preview.eventGroup.name }}</h1>
+    </div>
+  </header>
+
+  <section class="event-grid" aria-label="Eventos do grupo">
+    @for (event of events(); track event.id) {
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <div mat-card-avatar class="emoji-frame">
+          <img class="twemoji small" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
+        </div>
+        <mat-card-title>{{ event.name }}</mat-card-title>
+        <mat-card-subtitle>{{ dateLine(event) }}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-chip-set aria-label="Tipo do evento">
+          <mat-chip>{{ typeLabel(event.type) }}</mat-chip>
+          @if (event.majorEvent) {
+          <mat-chip>{{ event.majorEvent.name }}</mat-chip>
+          }
+        </mat-chip-set>
+        @if (event.shortDescription || event.description) {
+        <p>{{ event.shortDescription || event.description }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+    }
+  </section>
+  }
+</main>

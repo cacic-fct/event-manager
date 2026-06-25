@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
 import { WorkspaceEventGroupsService } from './workspace-event-groups.service';
 import { WorkspaceEventsService } from './workspace-events.service';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
@@ -6,7 +7,7 @@ import { WorkspaceMergeCandidatesService } from './workspace-merge-candidates.se
 import { WorkspacePeopleService } from './workspace-people.service';
 import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
-import { WorkspacePermissionTab, WorkspacePermissionsService } from './workspace-permissions.service';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspaceUiService } from './workspace-ui.service';
 
 @Injectable({

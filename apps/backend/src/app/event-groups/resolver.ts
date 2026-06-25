@@ -24,6 +24,8 @@ type GraphqlContext = {
   request?: { user?: AuthenticatedUser };
 };
 
+const DEFAULT_DRAFT_EVENT_GROUP_NAME = 'Grupo sem título';
+
 const EVENT_GROUP_CLONE_SOURCE_SELECT = {
   id: true,
   name: true,
@@ -162,7 +164,10 @@ export class EventGroupsResolver {
     input: EventGroupCreateInput,
     @Context() context: GraphqlContext,
   ) {
-    const normalizedInput = this.normalizeEventGroupCertificateInput(input);
+    const normalizedInput = this.normalizeEventGroupCertificateInput({
+      ...input,
+      name: input.name?.trim() || DEFAULT_DRAFT_EVENT_GROUP_NAME,
+    });
     const eventGroup = await this.prisma.$transaction(async (tx) => {
       const created = await tx.eventGroup.create({ data: normalizedInput });
       await this.auditLog.record(

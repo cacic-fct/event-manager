@@ -1,13 +1,12 @@
-import { WorkspacePermissionTab } from '../shared/services/workspace-permissions.service';
+import { type WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
 
 type WorkspaceNavLink = {
   kind: 'link';
-  id: string;
+  id: WorkspacePermissionTab;
   path: string;
   label: string;
   description: string;
   icon: string;
-  permissionTab: WorkspacePermissionTab;
   helpLink: string;
 };
 
@@ -26,7 +25,6 @@ export const workspaceNavItems = [
     label: 'Eventos',
     description: 'Gerencie eventos individuais, datas, locais e inscrições.',
     icon: 'event',
-    permissionTab: WorkspacePermissionTab.Events,
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20evento',
   },
   {
@@ -36,7 +34,6 @@ export const workspaceNavItems = [
     label: 'Grupos',
     description: 'Gerencie agrupamentos de eventos e suas relações.',
     icon: 'folder',
-    permissionTab: WorkspacePermissionTab.Groups,
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grupo%20de%20eventos',
   },
   {
@@ -46,8 +43,16 @@ export const workspaceNavItems = [
     label: 'Grandes eventos',
     description: 'Organize eventos maiores compostos por várias atividades.',
     icon: 'festival',
-    permissionTab: WorkspacePermissionTab.MajorEvents,
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grande%20evento',
+  },
+  {
+    kind: 'link',
+    id: 'publication',
+    path: 'publication',
+    label: 'Publicação',
+    description: 'Orquestre rascunhos, agendamentos, publicação e pré-visualizações.',
+    icon: 'campaign',
+    helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
     kind: 'divider',
@@ -60,7 +65,6 @@ export const workspaceNavItems = [
     label: 'Inscrições',
     description: 'Consulte e ajuste inscrições em eventos e grandes eventos.',
     icon: 'how_to_reg',
-    permissionTab: WorkspacePermissionTab.Subscriptions,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
@@ -70,7 +74,6 @@ export const workspaceNavItems = [
     label: 'Presenças',
     description: 'Controle presença, check-ins e registros de participação.',
     icon: 'fact_check',
-    permissionTab: WorkspacePermissionTab.Attendances,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
@@ -80,7 +83,6 @@ export const workspaceNavItems = [
     label: 'Certificados',
     description: 'Gerencie modelos, emissões e validações de certificados.',
     icon: 'workspace_premium',
-    permissionTab: WorkspacePermissionTab.Certificates,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
@@ -94,7 +96,6 @@ export const workspaceNavItems = [
     label: 'Pessoas',
     description: 'Consulte e gerencie participantes, palestrantes e usuários.',
     icon: 'groups',
-    permissionTab: WorkspacePermissionTab.People,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
@@ -104,7 +105,6 @@ export const workspaceNavItems = [
     label: 'Pessoas duplicadas',
     description: 'Analise possíveis duplicidades e consolide registros.',
     icon: 'merge_type',
-    permissionTab: WorkspacePermissionTab.MergeCandidates,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
@@ -118,7 +118,6 @@ export const workspaceNavItems = [
     label: 'Notificações',
     description: 'Acompanhe avisos e preferências de comunicação.',
     icon: 'notifications',
-    permissionTab: WorkspacePermissionTab.Notifications,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
@@ -128,7 +127,6 @@ export const workspaceNavItems = [
     label: 'Locais',
     description: 'Gerencie presets de locais usados nos eventos.',
     icon: 'place',
-    permissionTab: WorkspacePermissionTab.Places,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
@@ -138,7 +136,6 @@ export const workspaceNavItems = [
     label: 'Operações globais',
     description: 'Execute ações administrativas com efeitos amplos.',
     icon: 'language',
-    permissionTab: WorkspacePermissionTab.GlobalOperations,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
@@ -148,7 +145,6 @@ export const workspaceNavItems = [
     label: 'Permissões',
     description: 'Consulte os acessos concedidos para este usuário.',
     icon: 'admin_panel_settings',
-    permissionTab: WorkspacePermissionTab.Permissions,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
   {
@@ -158,7 +154,6 @@ export const workspaceNavItems = [
     label: 'Preferências',
     description: 'Ajuste preferências administrativas da sua conta.',
     icon: 'settings',
-    permissionTab: WorkspacePermissionTab.Preferences,
     helpLink: 'https://docs.fctapp.cacic.dev.br/',
   },
 ] as const satisfies readonly WorkspaceNavItem[];

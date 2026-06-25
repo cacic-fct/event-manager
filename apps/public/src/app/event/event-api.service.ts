@@ -22,6 +22,10 @@ export interface EventPageData {
   weather: PublicEventWeather | null;
   currentUserSubscription: CurrentUserEventSubscription | null;
   currentUserAttendance: CurrentUserEventAttendance | null;
+  preview?: {
+    previewAt: string;
+    expiresAt: string;
+  } | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -76,6 +80,51 @@ export class EventApiService {
         currentUserSubscription: data.currentUserEventSubscription ?? null,
         currentUserAttendance: data.currentUserEventAttendance ?? null,
       })),
+    );
+  }
+
+  getPreviewEventPageData(previewToken: string): Observable<EventPageData> {
+    return this.query<{
+      publicContentPreview: {
+        previewAt: string;
+        expiresAt: string;
+        event: PublicEvent | null;
+      };
+    }>(
+      `
+        query PublicContentPreviewEvent($previewToken: String!) {
+          publicContentPreview(previewToken: $previewToken) {
+            previewAt
+            expiresAt
+            event {
+              ${PUBLIC_EVENT_PAGE_FIELDS}
+            }
+          }
+        }
+      `,
+      { previewToken },
+    ).pipe(
+      map((data) => {
+        const event = data.publicContentPreview.event;
+        if (!event) {
+          throw new Error('Pré-visualização sem evento.');
+        }
+
+        return {
+          event,
+          subscriptionSummary: {
+            eventId: event.id,
+            hasAvailableSlots: true,
+          },
+          weather: null,
+          currentUserSubscription: null,
+          currentUserAttendance: null,
+          preview: {
+            previewAt: data.publicContentPreview.previewAt,
+            expiresAt: data.publicContentPreview.expiresAt,
+          },
+        };
+      }),
     );
   }
 

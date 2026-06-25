@@ -94,15 +94,39 @@
                 Duplicar
               </button>
             }
+            <button mat-stroked-button type="button" (click)="workspace.openMajorEventPublication()">
+              <mat-icon>campaign</mat-icon>
+              Publicação
+            </button>
           }
           <button mat-button type="button" (click)="workspace.resetMajorEventForm()">
             <mat-icon>restart_alt</mat-icon>
             Limpar
           </button>
           @if (canEditMajorEvent(workspace.selectedMajorEvent())) {
-            <button mat-flat-button type="button" (click)="workspace.saveMajorEvent()">
-              <mat-icon>save</mat-icon>
-              Salvar
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.saveMajorEvent('SCHEDULE')"
+              [disabled]="workspace.loading()">
+              <mat-icon>schedule</mat-icon>
+              Agendar
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="workspace.saveMajorEvent('DRAFT')"
+              [disabled]="workspace.loading()">
+              <mat-icon>edit_note</mat-icon>
+              Salvar rascunho
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              (click)="workspace.saveMajorEvent('PUBLISH')"
+              [disabled]="workspace.loading() || workspace.majorEventForm.invalid">
+              <mat-icon>publish</mat-icon>
+              Publicar
             </button>
           }
         </div>

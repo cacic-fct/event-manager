@@ -3,6 +3,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { EventManagerPermissionGrantScope } from '@prisma/client';
 import { createHmac } from 'node:crypto';
 import { CalendarService } from './calendar.service';
+import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import {
   ADMIN_CALENDAR_FEED_DISABLED_NO_CURRENT_TARGETS,
   ADMIN_CALENDAR_FEED_DISABLED_STALE_ACCESS,
@@ -82,9 +83,7 @@ describe('CalendarService', () => {
     expect(prisma.event.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          id: 'hidden-event',
-          deletedAt: null,
-          publiclyVisible: true,
+          AND: [PUBLIC_EVENT_WHERE, { id: 'hidden-event' }],
         },
       }),
     );
@@ -149,10 +148,7 @@ describe('CalendarService', () => {
           eventGroup: expect.objectContaining({
             select: expect.objectContaining({
               events: expect.objectContaining({
-                where: {
-                  deletedAt: null,
-                  publiclyVisible: true,
-                },
+                where: PUBLIC_EVENT_WHERE,
               }),
             }),
           }),
@@ -408,8 +404,7 @@ describe('CalendarService', () => {
           personId: { in: ['person-1'] },
           deletedAt: null,
           event: expect.objectContaining({
-            deletedAt: null,
-            publiclyVisible: true,
+            AND: expect.arrayContaining([PUBLIC_EVENT_WHERE]),
           }),
         }),
       }),

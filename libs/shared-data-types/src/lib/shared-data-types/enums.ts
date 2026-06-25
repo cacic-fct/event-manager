@@ -21,6 +21,27 @@ registerEnumType(EventType, {
   name: 'EventType',
 });
 
+export const PublicationState = {
+  DRAFT: 'DRAFT',
+  SCHEDULED: 'SCHEDULED',
+  PUBLISHED: 'PUBLISHED',
+  UNPUBLISHED: 'UNPUBLISHED',
+} as const;
+export type PublicationState = (typeof PublicationState)[keyof typeof PublicationState];
+registerEnumType(PublicationState, {
+  name: 'PublicationState',
+});
+
+export const PublicationTargetType = {
+  EVENT: 'EVENT',
+  EVENT_GROUP: 'EVENT_GROUP',
+  MAJOR_EVENT: 'MAJOR_EVENT',
+} as const;
+export type PublicationTargetType = (typeof PublicationTargetType)[keyof typeof PublicationTargetType];
+registerEnumType(PublicationTargetType, {
+  name: 'PublicationTargetType',
+});
+
 export const ContactType = {
   EMAIL: 'EMAIL',
   PHONE: 'PHONE',

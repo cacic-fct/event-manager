@@ -21,6 +21,10 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
   rankedSubscriptionEnabled: true,
   isPaymentRequired: true,
   additionalPaymentInfo: true,
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   certificateConfigs: {
     where: {
       deletedAt: null,
@@ -89,10 +93,34 @@ export const PUBLIC_EVENT_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,
 } satisfies Prisma.EventSelect;
+
+export const PUBLIC_MAJOR_EVENT_WHERE = {
+  deletedAt: null,
+  publicationState: 'PUBLISHED',
+} satisfies Prisma.MajorEventWhereInput;
+
+export const PUBLIC_EVENT_WHERE = {
+  deletedAt: null,
+  publiclyVisible: true,
+  publicationState: 'PUBLISHED',
+  OR: [
+    { majorEventId: null },
+    {
+      majorEvent: {
+        deletedAt: null,
+        publicationState: 'PUBLISHED',
+      },
+    },
+  ],
+} satisfies Prisma.EventWhereInput;
 
 export type PublicMajorEventRecord = Prisma.MajorEventGetPayload<{
   select: typeof PUBLIC_MAJOR_EVENT_SELECT;

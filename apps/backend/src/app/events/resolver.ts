@@ -2,7 +2,13 @@ import { DeletionResult, Event, EventCloneInput, EventCreateInput, EventUpdateIn
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  CertificateScope,
+  Prisma,
+  PublicationState as PrismaPublicationState,
+} from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -16,6 +22,7 @@ import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+import { resolvePublicationActorId } from '../publishing/publishing-auth';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -100,6 +107,10 @@ const EVENT_BASE_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,
@@ -140,6 +151,10 @@ const EVENT_AUDIT_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,
@@ -179,6 +194,9 @@ const EVENT_CLONE_SOURCE_SELECT = {
     },
   },
 } satisfies Prisma.EventSelect;
+
+const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
+const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
 
 @Resolver(() => Event)
 export class EventsResolver {
@@ -325,7 +343,7 @@ export class EventsResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventCreateTargetsMutable(input, this.getUser(context));
-    const normalizedInput = await this.normalizeEventCertificateInput(input);
+    const normalizedInput = this.applyEventCreateDefaults(await this.normalizeEventCertificateInput(input));
     const eventInput = { ...normalizedInput };
     const lecturerPersonIds = eventInput.lecturerPersonIds;
     const attendanceCollectorPersonIds = eventInput.attendanceCollectorPersonIds;
@@ -400,6 +418,7 @@ export class EventsResolver {
       eventGroupId: event.eventGroupId,
       shouldIssueCertificate: event.shouldIssueCertificate,
       publiclyVisible: event.publiclyVisible,
+      publicationState: event.publicationState,
       startDate: event.startDate,
       endDate: event.endDate,
     });
@@ -421,7 +440,13 @@ export class EventsResolver {
         select: EVENT_AUDIT_SELECT,
       });
       if (!previousEvent) throw new NotFoundException(`Event ${id} was not found.`);
-      const updatedCount = await tx.event.updateMany({ where: { id, deletedAt: null }, data: normalizedInput });
+      const updatedCount = await tx.event.updateMany({
+        where: { id, deletedAt: null },
+        data: {
+          ...normalizedInput,
+          ...this.buildPublicationInvalidation(previousEvent, this.getUser(context)),
+        },
+      });
       if (updatedCount.count !== 1) {
         throw new NotFoundException(`Event ${id} was not found.`);
       }
@@ -462,6 +487,7 @@ export class EventsResolver {
         eventGroupId: event.eventGroupId,
         shouldIssueCertificate: event.shouldIssueCertificate,
         publiclyVisible: event.publiclyVisible,
+        publicationState: event.publicationState,
         startDate: event.startDate,
         endDate: event.endDate,
       });
@@ -575,7 +601,7 @@ export class EventsResolver {
       );
     }
     await this.frozenResources.assertEventCreateTargetsMutable(cloneInput, this.getUser(context));
-    const normalizedInput = await this.normalizeEventCertificateInput(cloneInput);
+    const normalizedInput = this.applyEventCreateDefaults(await this.normalizeEventCertificateInput(cloneInput));
     const eventInput = { ...normalizedInput };
     const lecturerPersonIds = eventInput.lecturerPersonIds;
     delete eventInput.lecturerPersonIds;
@@ -641,6 +667,7 @@ export class EventsResolver {
       eventGroupId: event.eventGroupId,
       shouldIssueCertificate: event.shouldIssueCertificate,
       publiclyVisible: event.publiclyVisible,
+      publicationState: event.publicationState,
       startDate: event.startDate,
       endDate: event.endDate,
     });
@@ -756,6 +783,48 @@ export class EventsResolver {
     }
 
     return normalizedInput;
+  }
+
+  private buildPublicationInvalidation(
+    event: { publicationState: PrismaPublicationState },
+    user: AuthenticatedUser | undefined,
+  ): Prisma.EventUpdateManyMutationInput {
+    if (
+      event.publicationState !== PrismaPublicationState.PUBLISHED &&
+      event.publicationState !== PrismaPublicationState.SCHEDULED
+    ) {
+      return {};
+    }
+
+    return {
+      publicationState: PrismaPublicationState.DRAFT,
+      scheduledPublishAt: null,
+      publicationUpdatedBy: resolvePublicationActorId(user),
+    };
+  }
+
+  private applyEventCreateDefaults(
+    input: EventCreateInput,
+  ): EventCreateInput & { name: string; startDate: Date; endDate: Date; emoji: string } {
+    const startDate = input.startDate ?? this.defaultEventStartDate(input.endDate);
+    const endDate = input.endDate ?? new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MS);
+
+    return {
+      ...input,
+      name: input.name?.trim() || DEFAULT_DRAFT_EVENT_NAME,
+      startDate,
+      endDate,
+      emoji: input.emoji?.trim() || '❔',
+      type: input.type ?? 'OTHER',
+    };
+  }
+
+  private defaultEventStartDate(endDate: Date | undefined): Date {
+    if (endDate) {
+      return new Date(endDate.getTime() - DEFAULT_EVENT_DURATION_MS);
+    }
+
+    return new Date();
   }
 
   private async disableGroupPerEventModeForMajorEvent(

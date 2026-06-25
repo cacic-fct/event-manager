@@ -1,4 +1,6 @@
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
+export type PublicationState = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'UNPUBLISHED';
+export type PublicationTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 export type PriceType = 'SINGLE' | 'TIERED';
 export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
@@ -126,6 +128,10 @@ export interface MajorEvent {
   additionalPaymentInfo?: string | null;
   paymentInfo?: PaymentInfo | null;
   majorEventPrices: MajorEventPrice[];
+  publicationState: PublicationState;
+  scheduledPublishAt?: string | null;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
   deletedAt?: string | null;
   createdAt: string;
   createdById?: string | null;
@@ -271,6 +277,10 @@ export interface Event {
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
   publiclyVisible: boolean;
+  publicationState: PublicationState;
+  scheduledPublishAt?: string | null;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
   youtubeCode?: string | null;
   buttonText?: string | null;
   buttonLink?: string | null;

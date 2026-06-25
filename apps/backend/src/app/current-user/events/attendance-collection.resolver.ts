@@ -67,7 +67,6 @@ export class CurrentUserAttendanceCollectionResolver {
         personId: person.id,
         event: {
           deletedAt: null,
-          publiclyVisible: true,
           shouldCollectAttendance: true,
           startDate: {
             gte: visibleFrom,

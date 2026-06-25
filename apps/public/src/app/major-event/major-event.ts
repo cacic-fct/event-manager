@@ -1,25 +1,30 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, map, of } from 'rxjs';
 import { EmojiService } from '../shared/emoji.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from './subscription/subscription-api.service';
 
 type MajorEventPageState =
   | { status: 'loading' }
-  | { status: 'ready'; events: PublicMajorEvent[]; subscriptions: CurrentUserMajorEventSubscription[] }
+  | {
+      status: 'ready';
+      events: PublicMajorEvent[];
+      subscriptions: CurrentUserMajorEventSubscription[];
+      preview?: { expiresAt: string } | null;
+    }
   | { status: 'error'; message: string };
 
 const RECEIPT_UPLOAD_STATUSES = new Set([
@@ -52,10 +57,14 @@ export class MajorEvent {
   private readonly analytics = inject(AnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly route = inject(ActivatedRoute);
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly pageState = signal<MajorEventPageState>({ status: 'loading' });
+  private readonly previewToken = toSignal(this.route.paramMap.pipe(map((params) => params.get('previewToken') ?? '')), {
+    initialValue: '',
+  });
 
   readonly majorEvents = computed(() => {
     const state = this.pageState();
@@ -74,6 +83,7 @@ export class MajorEvent {
 
     return new Map(state.subscriptions.map((subscription) => [subscription.majorEventId, subscription]));
   });
+  readonly isPreview = computed(() => Boolean(this.previewToken()));
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -115,10 +125,32 @@ export class MajorEvent {
   }
 
   login(): void {
+    if (this.isPreview()) {
+      return;
+    }
+
     void this.auth.login({ returnTo: '/major-event' });
   }
 
   private loadPage(): void {
+    const previewToken = this.route.snapshot.paramMap.get('previewToken');
+    if (previewToken) {
+      this.pageState.set({ status: 'loading' });
+      this.api
+        .getPreviewMajorEvents(previewToken)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: ({ events, expiresAt }) =>
+            this.pageState.set({ status: 'ready', events, subscriptions: [], preview: { expiresAt } }),
+          error: (error: unknown) =>
+            this.pageState.set({
+              status: 'error',
+              message: error instanceof Error ? error.message : 'Não foi possível carregar a pré-visualização.',
+            }),
+        });
+      return;
+    }
+
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setHours(0, 0, 0, 0);
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);

@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType } from '@prisma/client';
 import { CurrentUserEventSubscriptionService } from './subscription.service';
+import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 
 describe('CurrentUserEventSubscriptionService', () => {
   it('records group subscriptions with their own audit entity type', async () => {
@@ -85,15 +86,13 @@ describe('CurrentUserEventSubscriptionService', () => {
 
     expect(tx.event.findFirst).toHaveBeenCalledWith({
       where: {
-        id: 'hidden-event',
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { id: 'hidden-event' }],
       },
       select: expect.any(Object),
     });
   });
 
-  it('requires standalone event unsubscriptions to target publicly visible events', async () => {
+  it('requires standalone event unsubscriptions to target existing non-deleted events', async () => {
     const tx = {
       event: {
         findFirst: jest.fn().mockResolvedValue(null),
@@ -117,13 +116,12 @@ describe('CurrentUserEventSubscriptionService', () => {
       where: {
         id: 'hidden-event',
         deletedAt: null,
-        publiclyVisible: true,
       },
       select: expect.any(Object),
     });
   });
 
-  it('loads subscribed group events only through publicly visible events', async () => {
+  it('loads subscribed group events through active events', async () => {
     const prisma = {
       eventSubscription: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -149,7 +147,6 @@ describe('CurrentUserEventSubscriptionService', () => {
         },
         event: {
           deletedAt: null,
-          publiclyVisible: true,
         },
       },
       select: expect.any(Object),
@@ -161,7 +158,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     });
   });
 
-  it('subscribes to event groups using only publicly visible child events', async () => {
+  it('subscribes to event groups using publicly visible child events while preserving active child subscriptions', async () => {
     const tx = {
       event: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -192,9 +189,7 @@ describe('CurrentUserEventSubscriptionService', () => {
 
     expect(tx.event.findMany).toHaveBeenCalledWith({
       where: {
-        eventGroupId: 'group-1',
-        deletedAt: null,
-        publiclyVisible: true,
+        AND: [PUBLIC_EVENT_WHERE, { eventGroupId: 'group-1' }],
       },
       select: expect.any(Object),
       orderBy: {
@@ -206,9 +201,8 @@ describe('CurrentUserEventSubscriptionService', () => {
         personId: 'person-1',
         deletedAt: null,
         event: {
-          eventGroupId: 'group-1',
           deletedAt: null,
-          publiclyVisible: true,
+          eventGroupId: 'group-1',
           majorEventId: null,
         },
       },

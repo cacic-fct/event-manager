@@ -10,7 +10,13 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  CertificateScope,
+  Prisma,
+  PublicationState as PrismaPublicationState,
+} from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -20,6 +26,7 @@ import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import { resolvePublicationActorId } from '../publishing/publishing-auth';
 
 const PAYMENT_INFO_SELECT = {
   id: true,
@@ -72,6 +79,10 @@ const MAJOR_EVENT_SELECT = {
   majorEventPrices: {
     select: MAJOR_EVENT_PRICE_SELECT,
   },
+  publicationState: true,
+  scheduledPublishAt: true,
+  publishedAt: true,
+  unpublishedAt: true,
   deletedAt: true,
   createdAt: true,
   createdById: true,
@@ -87,6 +98,9 @@ const MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT = {
 } satisfies Prisma.MajorEventSelect;
 
 type PaymentInfoCloneRecord = Prisma.PaymentInfoGetPayload<{ select: typeof PAYMENT_INFO_SELECT }>;
+
+const DEFAULT_DRAFT_MAJOR_EVENT_NAME = 'Grande evento sem título';
+const DEFAULT_MAJOR_EVENT_DURATION_MS = 24 * 60 * 60 * 1000;
 
 const MAJOR_EVENT_CERTIFICATE_CONFIG_CLONE_SELECT = {
   where: {
@@ -269,6 +283,7 @@ export class MajorEventsResolver {
       description: majorEvent.description,
       startDate: majorEvent.startDate,
       endDate: majorEvent.endDate,
+      publicationState: majorEvent.publicationState,
     });
     return majorEvent;
   }
@@ -298,12 +313,15 @@ export class MajorEventsResolver {
     const hasExistingPaymentInfo =
       paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
 
-    const data = this.buildMajorEventUpdateData(
-      input,
-      majorEvent.isPaymentRequired,
-      hasExistingPaymentInfo,
-      paymentInfoTableExists,
-    );
+    const data = {
+      ...this.buildMajorEventUpdateData(
+        input,
+        majorEvent.isPaymentRequired,
+        hasExistingPaymentInfo,
+        paymentInfoTableExists,
+      ),
+      ...this.buildPublicationInvalidation(majorEvent, this.getUser(context)),
+    };
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
       const persisted = await tx.majorEvent.update({
@@ -335,8 +353,8 @@ export class MajorEventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: majorEvent,
-          after: updated,
+          before: this.omitPublicationAuditFields(majorEvent),
+          after: this.omitPublicationAuditFields(updated),
           scope: { permission: Permission.MajorEvent.Update, majorEventId: updated.id },
           summary: 'Grande evento atualizado.',
         },
@@ -350,6 +368,7 @@ export class MajorEventsResolver {
       description: updatedMajorEvent.description,
       startDate: updatedMajorEvent.startDate,
       endDate: updatedMajorEvent.endDate,
+      publicationState: updatedMajorEvent.publicationState,
     });
     return updatedMajorEvent;
   }
@@ -473,6 +492,7 @@ export class MajorEventsResolver {
       description: majorEvent.description,
       startDate: majorEvent.startDate,
       endDate: majorEvent.endDate,
+      publicationState: majorEvent.publicationState,
     });
     return majorEvent;
   }
@@ -517,11 +537,13 @@ export class MajorEventsResolver {
     input: MajorEventCreateInput,
     paymentInfoTableExists: boolean,
   ): Prisma.MajorEventCreateInput {
+    const startDate = input.startDate ?? this.defaultMajorEventStartDate(input.endDate);
+    const endDate = input.endDate ?? new Date(startDate.getTime() + DEFAULT_MAJOR_EVENT_DURATION_MS);
     const data: Prisma.MajorEventCreateInput = {
-      name: input.name,
+      name: input.name?.trim() || DEFAULT_DRAFT_MAJOR_EVENT_NAME,
       emoji: input.emoji?.trim() || '📌',
-      startDate: input.startDate,
-      endDate: input.endDate,
+      startDate,
+      endDate,
     };
 
     if (input.id !== undefined) data.id = input.id;
@@ -585,6 +607,14 @@ export class MajorEventsResolver {
     }
 
     return data;
+  }
+
+  private defaultMajorEventStartDate(endDate: Date | undefined): Date {
+    if (endDate) {
+      return new Date(endDate.getTime() - DEFAULT_MAJOR_EVENT_DURATION_MS);
+    }
+
+    return new Date();
   }
 
   private buildMajorEventUpdateData(
@@ -670,6 +700,36 @@ export class MajorEventsResolver {
     }
 
     return data;
+  }
+
+  private buildPublicationInvalidation(
+    majorEvent: { publicationState: PrismaPublicationState },
+    user: AuthenticatedUser | undefined,
+  ): Prisma.MajorEventUpdateInput {
+    if (
+      majorEvent.publicationState !== PrismaPublicationState.PUBLISHED &&
+      majorEvent.publicationState !== PrismaPublicationState.SCHEDULED
+    ) {
+      return {};
+    }
+
+    return {
+      publicationState: PrismaPublicationState.DRAFT,
+      scheduledPublishAt: null,
+      publicationUpdatedBy: resolvePublicationActorId(user),
+    };
+  }
+
+  private omitPublicationAuditFields<T extends Record<string, unknown>>(majorEvent: T) {
+    const contentFields: Record<string, unknown> = { ...majorEvent };
+    delete contentFields.publicationState;
+    delete contentFields.scheduledPublishAt;
+    delete contentFields.publishedAt;
+    delete contentFields.unpublishedAt;
+    delete contentFields.publicationScheduledBy;
+    delete contentFields.publicationUpdatedBy;
+
+    return contentFields;
   }
 
   private getMajorEventSelect(paymentInfoTableExists: boolean) {
@@ -831,12 +891,16 @@ export class MajorEventsResolver {
   }
 
   private buildPriceTierPayloads(input: MajorEventPriceInput): Prisma.PriceTierCreateWithoutPriceInput[] {
-    return input.tiers
-      .map((tier) => ({
-        name: tier.name.trim(),
-        value: Math.round(tier.value),
-      }))
-      .filter((tier) => tier.name.length > 0);
+    const tiers = input.tiers.map((tier) => ({
+      name: tier.name?.trim() ?? '',
+      value: Math.round(tier.value),
+    }));
+
+    if (tiers.some((tier) => tier.name.length === 0)) {
+      throw new BadRequestException('Price tier names are required.');
+    }
+
+    return tiers;
   }
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {

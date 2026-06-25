@@ -1,6 +1,6 @@
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 
-import { EventType } from './enums';
+import { EventType, PublicationState } from './enums';
 import { EventAttendance } from './attendance';
 import { EventLecturer } from './lecturers';
 import { EventGroup } from './event-groups';
@@ -106,6 +106,18 @@ export class Event {
 
   @Field(() => Boolean)
   publiclyVisible!: boolean;
+
+  @Field(() => PublicationState)
+  publicationState!: PublicationState;
+
+  @Field(() => Date, { nullable: true })
+  scheduledPublishAt?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  publishedAt?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  unpublishedAt?: Date | null;
 
   @Field(() => String, { nullable: true })
   youtubeCode?: string | null;

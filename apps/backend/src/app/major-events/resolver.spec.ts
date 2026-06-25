@@ -177,4 +177,77 @@ describe('MajorEventsResolver', () => {
       tx,
     );
   });
+
+  it('moves a published major event back to draft when content is edited', async () => {
+    const majorEvent = {
+      id: 'major-1',
+      name: 'SECOMPP',
+      description: 'Semana acadêmica',
+      startDate: new Date('2026-08-01T12:00:00.000Z'),
+      endDate: new Date('2026-08-05T12:00:00.000Z'),
+      isPaymentRequired: false,
+      publicationState: 'PUBLISHED',
+    };
+    const updatedMajorEvent = {
+      ...majorEvent,
+      name: 'SECOMPP 2026',
+      publicationState: 'DRAFT',
+    };
+    const tx = {
+      majorEvent: {
+        update: jest.fn().mockResolvedValue({ id: 'major-1' }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(updatedMajorEvent),
+      },
+    };
+    const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([{ exists: false }]),
+      majorEvent: {
+        findFirst: jest.fn().mockResolvedValue(majorEvent),
+      },
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const typesenseSearch = {
+      upsertMajorEvent: jest.fn(),
+    };
+    const frozenResources = {
+      assertMajorEventMutable: jest.fn(),
+    };
+    const auditLog = {
+      record: jest.fn(),
+    };
+    const resolver = new MajorEventsResolver(
+      prisma as never,
+      typesenseSearch as never,
+      frozenResources as never,
+      {} as never,
+      auditLog as never,
+    );
+
+    await expect(
+      resolver.updateMajorEvent(
+        'major-1',
+        {
+          name: 'SECOMPP 2026',
+        },
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).resolves.toBe(updatedMajorEvent);
+
+    expect(tx.majorEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'SECOMPP 2026',
+          publicationState: 'DRAFT',
+          scheduledPublishAt: null,
+          publicationUpdatedBy: 'admin-1',
+        }),
+      }),
+    );
+    expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'major-1',
+        publicationState: 'DRAFT',
+      }),
+    );
+  });
 });

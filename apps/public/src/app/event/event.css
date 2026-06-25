@@ -269,6 +269,21 @@ mat-toolbar {
   z-index: 1;
 }
 
+.preview-notice {
+  align-items: center;
+  background: var(--mat-sys-tertiary-container);
+  border-radius: 8px;
+  color: var(--mat-sys-on-tertiary-container);
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+}
+
+.preview-notice p {
+  margin: 0;
+}
+
 @media (max-width: 760px) {
   .detail-grid {
     grid-template-columns: 1fr;

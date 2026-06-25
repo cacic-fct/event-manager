@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Route } from '@angular/router';
 import { canValidateReceiptsGuard, workspaceCanReadTabGuard } from './workspace.guard';
 import { WorkspaceNavLinkId, WorkspaceNavLinkItem, workspaceNavLinkItems } from './workspace-nav';
@@ -8,6 +7,7 @@ const eventsData = getWorkspaceRouteData('events');
 const placesData = getWorkspaceRouteData('places');
 const groupsData = getWorkspaceRouteData('groups');
 const majorEventsData = getWorkspaceRouteData('major-events');
+const publicationData = getWorkspaceRouteData('publication');
 const peopleData = getWorkspaceRouteData('people');
 const mergeCandidatesData = getWorkspaceRouteData('merge-candidates');
 const certificatesData = getWorkspaceRouteData('certificates');
@@ -19,7 +19,11 @@ const permissionsData = getWorkspaceRouteData('permissions');
 const preferencesData = getWorkspaceRouteData('preferences');
 
 function getWorkspaceRouteData(id: WorkspaceNavLinkId) {
-  return workspaceNavLinkItems.find((item) => item.id === id)!;
+  const item = workspaceNavLinkItems.find((navItem) => navItem.id === id);
+  if (!item) {
+    throw new Error(`Workspace navigation item ${id} is not registered.`);
+  }
+  return item;
 }
 
 function guardedWorkspaceTabRoute(
@@ -86,6 +90,17 @@ export const workspaceRoutes: Route[] = [
       ...guardedWorkspaceTabRoute(`${majorEventsData.path}/:majorEventId`, majorEventsData, () =>
         import('./tabs/major-events/workspace-major-events-tab.component').then(
           (m) => m.WorkspaceMajorEventsTabComponent,
+        ),
+      ),
+
+      ...guardedWorkspaceTabRoute(publicationData.path, publicationData, () =>
+        import('./tabs/publishing/workspace-publishing-tab.component').then(
+          (m) => m.WorkspacePublicationTabComponent,
+        ),
+      ),
+      ...guardedWorkspaceTabRoute(`${publicationData.path}/:targetType/:targetId`, publicationData, () =>
+        import('./tabs/publishing/workspace-publishing-tab.component').then(
+          (m) => m.WorkspacePublicationTabComponent,
         ),
       ),
 

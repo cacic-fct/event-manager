@@ -214,6 +214,10 @@ function buildMajorEvent(id: string, name: string, emoji: string): MajorEvent {
     isPaymentRequired: true,
     shouldIssueCertificateForNonPayingAttendees: false,
     shouldIssueCertificateForNonSubscribedAttendees: false,
+    publicationState: 'PUBLISHED',
+    scheduledPublishAt: null,
+    publishedAt: '2026-05-20T12:00:00.000Z',
+    unpublishedAt: null,
     majorEventPrices: [
       {
         id: `${id}-price`,
@@ -245,6 +249,10 @@ function buildEvent(id: string, name: string, emoji: string): Event {
     autoSubscribe: false,
     isOnlineAttendanceAllowed: false,
     publiclyVisible: true,
+    publicationState: 'PUBLISHED',
+    scheduledPublishAt: null,
+    publishedAt: '2026-05-20T12:00:00.000Z',
+    unpublishedAt: null,
     createdAt: '2026-05-01T12:00:00.000Z',
     updatedAt: '2026-05-20T12:00:00.000Z',
   };

@@ -181,7 +181,9 @@ describe('TypesenseSearchService', () => {
 
   it('upserts event documents with denormalized active parent names', async () => {
     const prisma = createPrismaMock();
-    prisma.majorEvent.findFirst.mockResolvedValue({ name: '  Semana academica  ' });
+    prisma.majorEvent.findFirst
+      .mockResolvedValueOnce({ name: '  Semana academica  ' })
+      .mockResolvedValueOnce({ publicationState: 'PUBLISHED' });
     prisma.eventGroup.findFirst.mockResolvedValue({
       name: '  Minicursos  ',
       shouldIssueCertificate: true,
@@ -203,6 +205,7 @@ describe('TypesenseSearchService', () => {
       eventGroupId: 'group-1',
       shouldIssueCertificate: true,
       publiclyVisible: true,
+      publicationState: 'PUBLISHED',
       startDate,
       endDate,
     });
@@ -234,6 +237,8 @@ describe('TypesenseSearchService', () => {
       startDate: Math.floor(startDate.getTime() / 1000),
       endDate: Math.floor(endDate.getTime() / 1000),
       publiclyVisible: true,
+      publicationState: 'PUBLISHED',
+      majorEventPublicationState: 'PUBLISHED',
       isIssuableCertificateEvent: false,
     });
   });
