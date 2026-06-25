@@ -18,7 +18,7 @@ export interface OfflineAttendanceCommitResultLike {
 @Injectable({ providedIn: 'root' })
 export class AttendanceOfflineQueueService {
   private readonly databaseProvider = inject(OfflinePublicDatabaseProvider);
-  private startupSyncingReset: Promise<void> | null = null;
+  private readonly startupSyncingResetByUserId = new Map<string, Promise<void>>();
 
   async replaceCollectionEvents(
     userId: string,
@@ -83,7 +83,7 @@ export class AttendanceOfflineQueueService {
     await database.attendanceQueue.put(item);
   }
 
-  watchEventItems(eventId: string): Observable<OfflineAttendanceQueueItem[]> {
+  watchEventItems(userId: string, eventId: string): Observable<OfflineAttendanceQueueItem[]> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return of([]);
@@ -92,8 +92,8 @@ export class AttendanceOfflineQueueService {
     return from(
       liveQuery(() =>
         database.attendanceQueue
-          .where('eventId')
-          .equals(eventId)
+          .where('[queuedByUserId+eventId]')
+          .equals([userId, eventId])
           .filter((item) => item.status !== 'SYNCING')
           .toArray()
           .then((items) => this.sortNewestFirst(items)),
@@ -101,7 +101,7 @@ export class AttendanceOfflineQueueService {
     );
   }
 
-  watchUnresolvedItems(): Observable<OfflineAttendanceQueueItem[]> {
+  watchUnresolvedItems(userId: string): Observable<OfflineAttendanceQueueItem[]> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return of([]);
@@ -110,6 +110,8 @@ export class AttendanceOfflineQueueService {
     return from(
       liveQuery(() =>
         database.attendanceQueue
+          .where('queuedByUserId')
+          .equals(userId)
           .filter((item) => item.status !== 'SYNCING')
           .toArray()
           .then((items) => this.sortNewestFirst(items)),
@@ -117,46 +119,55 @@ export class AttendanceOfflineQueueService {
     );
   }
 
-  async listPending(limit = 80): Promise<OfflineAttendanceQueueItem[]> {
-    await this.ensureStartupSyncingReset();
+  async listPending(userId: string, limit = 80): Promise<OfflineAttendanceQueueItem[]> {
+    await this.ensureStartupSyncingReset(userId);
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return [];
     }
 
     const items = await database.attendanceQueue
+      .where('queuedByUserId')
+      .equals(userId)
       .filter((item) => item.status === 'PENDING' || item.status === 'FAILED')
       .toArray();
 
     return this.sortOldestFirst(items).slice(0, limit);
   }
 
-  async countPending(): Promise<number> {
-    await this.ensureStartupSyncingReset();
+  async countPending(userId: string): Promise<number> {
+    await this.ensureStartupSyncingReset(userId);
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return 0;
     }
 
     return database.attendanceQueue
+      .where('queuedByUserId')
+      .equals(userId)
       .filter((item) => item.status === 'PENDING' || item.status === 'FAILED')
       .count();
   }
 
-  async countUnresolved(): Promise<number> {
+  async countUnresolved(userId: string): Promise<number> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return 0;
     }
 
-    return database.attendanceQueue.filter((item) => item.status !== 'SYNCING').count();
+    return database.attendanceQueue
+      .where('queuedByUserId')
+      .equals(userId)
+      .filter((item) => item.status !== 'SYNCING')
+      .count();
   }
 
-  async markSyncing(clientIds: readonly string[]): Promise<void> {
-    await this.updateStatus(clientIds, 'SYNCING');
+  async markSyncing(userId: string, clientIds: readonly string[]): Promise<void> {
+    await this.updateStatus(userId, clientIds, 'SYNCING');
   }
 
   async resetSyncing(
+    userId: string,
     clientIds?: readonly string[],
     message = 'Sincronização interrompida. Tente enviar novamente.',
   ): Promise<void> {
@@ -169,9 +180,9 @@ export class AttendanceOfflineQueueService {
     await database.transaction('rw', database.attendanceQueue, async () => {
       const items = clientIds?.length
         ? await database.attendanceQueue.bulkGet([...clientIds])
-        : await database.attendanceQueue.where('status').equals('SYNCING').toArray();
+        : await database.attendanceQueue.where('[queuedByUserId+status]').equals([userId, 'SYNCING']).toArray();
       for (const item of items) {
-        if (!item || item.status !== 'SYNCING') {
+        if (!item || item.queuedByUserId !== userId || item.status !== 'SYNCING') {
           continue;
         }
 
@@ -184,7 +195,7 @@ export class AttendanceOfflineQueueService {
     });
   }
 
-  async recordSyncFailure(clientIds: readonly string[], message: string): Promise<void> {
+  async recordSyncFailure(userId: string, clientIds: readonly string[], message: string): Promise<void> {
     const database = this.databaseProvider.getDatabase();
     if (!database || clientIds.length === 0) {
       return;
@@ -194,7 +205,7 @@ export class AttendanceOfflineQueueService {
     await database.transaction('rw', database.attendanceQueue, async () => {
       for (const clientId of clientIds) {
         const item = await database.attendanceQueue.get(clientId);
-        if (!item) {
+        if (!item || item.queuedByUserId !== userId) {
           continue;
         }
 
@@ -208,7 +219,7 @@ export class AttendanceOfflineQueueService {
     });
   }
 
-  async applyCommitResults(results: readonly OfflineAttendanceCommitResultLike[]): Promise<void> {
+  async applyCommitResults(userId: string, results: readonly OfflineAttendanceCommitResultLike[]): Promise<void> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return;
@@ -217,17 +228,17 @@ export class AttendanceOfflineQueueService {
     const now = Date.now();
     await database.transaction('rw', database.attendanceQueue, async () => {
       for (const result of results) {
+        const item = await database.attendanceQueue.get(result.clientId);
+        if (!item || item.queuedByUserId !== userId) {
+          continue;
+        }
+
         if (result.status === 'CREATED' || result.status === 'STAGED' || result.status === 'DUPLICATE') {
           await database.attendanceQueue.delete(result.clientId);
           continue;
         }
 
         const nextStatus = this.queueStatusForCommitStatus(result.status);
-        const item = await database.attendanceQueue.get(result.clientId);
-        if (!item) {
-          continue;
-        }
-
         await database.attendanceQueue.update(result.clientId, {
           status: nextStatus,
           attempts: item.attempts + 1,
@@ -238,20 +249,24 @@ export class AttendanceOfflineQueueService {
     });
   }
 
-  async remove(clientId: string): Promise<void> {
+  async remove(userId: string, clientId: string): Promise<void> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return;
     }
 
-    await database.attendanceQueue.delete(clientId);
+    const item = await database.attendanceQueue.get(clientId);
+    if (item?.queuedByUserId === userId) {
+      await database.attendanceQueue.delete(clientId);
+    }
   }
 
-  async retry(clientId: string): Promise<void> {
-    await this.updateStatus([clientId], 'PENDING', null);
+  async retry(userId: string, clientId: string): Promise<void> {
+    await this.updateStatus(userId, [clientId], 'PENDING', null);
   }
 
   private async updateStatus(
+    userId: string,
     clientIds: readonly string[],
     status: OfflineAttendanceQueueStatus,
     lastError?: string | null,
@@ -264,6 +279,11 @@ export class AttendanceOfflineQueueService {
     const now = Date.now();
     await database.transaction('rw', database.attendanceQueue, async () => {
       for (const clientId of clientIds) {
+        const item = await database.attendanceQueue.get(clientId);
+        if (!item || item.queuedByUserId !== userId) {
+          continue;
+        }
+
         await database.attendanceQueue.update(clientId, {
           status,
           updatedAt: now,
@@ -318,8 +338,13 @@ export class AttendanceOfflineQueueService {
     return `${userId}:${eventId}`;
   }
 
-  private async ensureStartupSyncingReset(): Promise<void> {
-    this.startupSyncingReset ??= this.resetSyncing();
-    await this.startupSyncingReset;
+  private async ensureStartupSyncingReset(userId: string): Promise<void> {
+    let reset = this.startupSyncingResetByUserId.get(userId);
+    if (!reset) {
+      reset = this.resetSyncing(userId);
+      this.startupSyncingResetByUserId.set(userId, reset);
+    }
+
+    await reset;
   }
 }

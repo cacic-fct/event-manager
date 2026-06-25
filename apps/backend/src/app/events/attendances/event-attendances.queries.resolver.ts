@@ -21,6 +21,8 @@ import {
   OfflineSubmissionResponseSource,
 } from './offline-submission-response';
 
+const OFFLINE_ATTENDANCE_SUBMISSION_LIST_LIMIT = 1000;
+
 @Resolver(() => EventAttendance)
 export class EventAttendancesQueriesResolver extends EventAttendancesResolverBase {
   constructor(prisma: PrismaService, attendanceCategories: AttendanceCategoryService) {
@@ -129,7 +131,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       orderBy: {
         submittedAt: 'desc',
       },
-      take: 500,
+      take: OFFLINE_ATTENDANCE_SUBMISSION_LIST_LIMIT,
     });
 
     return this.withOfflineSubmissionActorNames(submissions);
