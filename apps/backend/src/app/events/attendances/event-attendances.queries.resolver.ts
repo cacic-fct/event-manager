@@ -111,7 +111,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   }
 
   @Query(() => [OfflineEventAttendanceSubmission], { name: 'offlineEventAttendanceSubmissions' })
-  @RequirePermissions(Permission.EventAttendance.Update)
+  @RequirePermissions(Permission.EventAttendance.Read)
   async offlineEventAttendanceSubmissions(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('status', { type: () => OfflineEventAttendanceSubmissionStatus, nullable: true })

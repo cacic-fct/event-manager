@@ -511,7 +511,10 @@ export class WorkspaceAttendancesService {
     this.snackbar.open('Presenças off-line rejeitadas.', 'Fechar', { duration: 2500 });
   }
 
-  async inspectOfflineAttendanceSubmission(submission: OfflineAttendanceSubmissionListItem): Promise<void> {
+  async inspectOfflineAttendanceSubmission(
+    submission: OfflineAttendanceSubmissionListItem,
+    canReview: boolean,
+  ): Promise<void> {
     const action = await firstValueFrom(
       this.dialog
         .open(WorkspaceOfflineAttendanceSubmissionDialogComponent, {
@@ -519,7 +522,7 @@ export class WorkspaceAttendancesService {
           maxWidth: '96vw',
           data: {
             submission,
-            canReview: true,
+            canReview,
           },
         })
         .afterClosed(),

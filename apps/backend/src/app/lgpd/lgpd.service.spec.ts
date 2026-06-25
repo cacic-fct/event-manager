@@ -459,6 +459,18 @@ describe('LgpdService', () => {
             { personId: { in: expect.arrayContaining(['source-person', 'target-person']) } },
             { authorUserId: { in: expect.arrayContaining(['old-user', 'new-user']) } },
             { submittedById: { in: expect.arrayContaining(['old-user', 'new-user']) } },
+            {
+              manualValue: {
+                in: expect.arrayContaining([
+                  'old@example.com',
+                  '+55 18 99999-0000',
+                  '18999990000',
+                  '(18) 99999-0000',
+                  '52998224725',
+                ]),
+                mode: 'insensitive',
+              },
+            },
           ]),
         },
       }),
@@ -533,6 +545,76 @@ describe('LgpdService', () => {
     });
   });
 
+  it('anonymizes unresolved offline manual submissions matched by phone or identity document', async () => {
+    tx.offlineEventAttendanceSubmission.findMany.mockResolvedValueOnce([
+      {
+        id: 'offline-submission-phone',
+        personId: null,
+        scannerCode: null,
+        manualValue: '(18) 99999-0000',
+        authorUserId: null,
+        authorName: null,
+        authorEmail: null,
+        submittedById: 'collector-user',
+        committedById: null,
+        rejectedById: null,
+      },
+      {
+        id: 'offline-submission-document',
+        personId: null,
+        scannerCode: null,
+        manualValue: '52998224725',
+        authorUserId: null,
+        authorName: null,
+        authorEmail: null,
+        submittedById: 'collector-user',
+        committedById: null,
+        rejectedById: null,
+      },
+    ]);
+
+    await expect(
+      service.scheduleDeletion({
+        userId: 'old-user',
+        email: 'old@example.com',
+        requestId: 'schedule-1',
+      }),
+    ).resolves.toEqual({
+      success: true,
+      peopleUpdated: 2,
+      recordsUpdated: 4,
+    });
+
+    expect(tx.offlineEventAttendanceSubmission.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: expect.arrayContaining([
+            {
+              manualValue: {
+                in: expect.arrayContaining([
+                  '+55 18 99999-0000',
+                  '18999990000',
+                  '(18) 99999-0000',
+                  '529.982.247-25',
+                  '52998224725',
+                ]),
+                mode: 'insensitive',
+              },
+            },
+          ]),
+        },
+      }),
+    );
+    expect(tx.offlineEventAttendanceSubmission.update).toHaveBeenCalledWith({
+      where: { id: 'offline-submission-phone' },
+      data: { manualValue: '[ANONIMIZADO]' },
+    });
+    expect(tx.offlineEventAttendanceSubmission.update).toHaveBeenCalledWith({
+      where: { id: 'offline-submission-document' },
+      data: { manualValue: '[ANONIMIZADO]' },
+    });
+  });
+
   it('continues deleting receipt objects after an S3 cleanup failure', async () => {
     const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     prisma.majorEventReceipt.findMany.mockResolvedValueOnce([
@@ -595,6 +677,10 @@ const people = [
     name: 'Source Person',
     email: 'old@example.com',
     secondaryEmails: [],
+    phone: '+55 18 99999-0000',
+    identityDocument: '529.982.247-25',
+    isCPF: true,
+    academicId: null,
     userId: 'old-user',
     externalRef: 'kc:old-user',
     mergedIntoId: 'target-person',
@@ -609,6 +695,10 @@ const people = [
     name: 'Target Person',
     email: 'new@example.com',
     secondaryEmails: ['old@example.com'],
+    phone: null,
+    identityDocument: null,
+    isCPF: true,
+    academicId: null,
     userId: 'new-user',
     externalRef: 'kc:new-user',
     mergedIntoId: null,

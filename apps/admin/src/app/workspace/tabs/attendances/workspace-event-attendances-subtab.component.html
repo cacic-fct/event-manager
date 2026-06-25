@@ -188,7 +188,7 @@
                   type="button"
                   aria-label="Inspecionar presença off-line"
                   matTooltip="Inspecionar"
-                  (click)="workspace.inspectOfflineAttendanceSubmission(submission)">
+                  (click)="workspace.inspectOfflineAttendanceSubmission(submission, canEditSelectedEventAttendances())">
                   <mat-icon>visibility</mat-icon>
                 </button>
                 @if (canEditSelectedEventAttendances()) {

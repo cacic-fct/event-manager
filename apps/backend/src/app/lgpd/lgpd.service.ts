@@ -711,7 +711,10 @@ export class LgpdService {
     }
     for (const email of dataSubject.emails) {
       conditions.push({ authorEmail: { equals: email, mode: 'insensitive' } });
-      conditions.push({ manualValue: { equals: email, mode: 'insensitive' } });
+    }
+    const manualValues = this.getOfflineManualSubjectValueCandidates(dataSubject);
+    if (manualValues.length > 0) {
+      conditions.push({ manualValue: { in: manualValues, mode: 'insensitive' } });
     }
 
     return conditions.length > 0 ? { OR: conditions } : null;
@@ -745,6 +748,9 @@ export class LgpdService {
     const userIds = new Set(dataSubject.userIds);
     const personIds = new Set(dataSubject.personIds);
     const emails = new Set(dataSubject.emails.map((email) => email.toLowerCase()));
+    const manualValues = new Set(
+      this.getOfflineManualSubjectValueCandidates(dataSubject).map((value) => this.caseInsensitiveKey(value)),
+    );
     let updated = 0;
 
     for (const submission of submissions) {
@@ -758,7 +764,7 @@ export class LgpdService {
       if (submission.scannerCode && userIds.has(this.parseScannerUserId(submission.scannerCode) ?? '')) {
         data.scannerCode = anonymizedSubjectId;
       }
-      if (submission.manualValue && emails.has(submission.manualValue.toLowerCase())) {
+      if (submission.manualValue && manualValues.has(this.caseInsensitiveKey(submission.manualValue))) {
         data.manualValue = ANONYMIZED_AUDIT_VALUE;
       }
       if (submission.authorUserId && userIds.has(submission.authorUserId)) {
@@ -799,6 +805,118 @@ export class LgpdService {
   private parseScannerUserId(scannerCode: string): string | null {
     const [kind, userId, ...extraParts] = scannerCode.split(':');
     return kind === 'user' && userId && extraParts.length === 0 ? userId : null;
+  }
+
+  private getOfflineManualSubjectValueCandidates(dataSubject: DataSubjectResolution): string[] {
+    const values = new Map<string, string>();
+    const addValue = (value?: string | null) => {
+      const normalizedValue = value?.trim();
+      if (!normalizedValue) {
+        return;
+      }
+      values.set(this.caseInsensitiveKey(normalizedValue), normalizedValue);
+    };
+
+    for (const email of dataSubject.emails) {
+      addValue(email);
+    }
+
+    for (const person of dataSubject.people) {
+      addValue(person.email);
+      for (const email of person.secondaryEmails ?? []) {
+        addValue(email);
+      }
+      this.addPhoneManualValueCandidates(values, person.phone);
+      this.addIdentityDocumentManualValueCandidates(values, person.identityDocument, person.isCPF !== false);
+    }
+
+    return [...values.values()];
+  }
+
+  private addPhoneManualValueCandidates(values: Map<string, string>, phone?: string | null): void {
+    const normalizedPhone = phone?.trim();
+    if (!normalizedPhone) {
+      return;
+    }
+
+    this.addManualValueCandidate(values, normalizedPhone);
+    for (const candidate of this.getBrazilianPhoneCandidates(normalizedPhone.replace(/\D/g, ''))) {
+      this.addManualValueCandidate(values, candidate);
+    }
+  }
+
+  private addIdentityDocumentManualValueCandidates(
+    values: Map<string, string>,
+    identityDocument?: string | null,
+    isCpf = true,
+  ): void {
+    const normalizedDocument = identityDocument?.trim();
+    if (!normalizedDocument) {
+      return;
+    }
+
+    this.addManualValueCandidate(values, normalizedDocument);
+    const digits = normalizedDocument.replace(/\D/g, '');
+    if (!digits) {
+      return;
+    }
+
+    this.addManualValueCandidate(values, digits);
+    if (isCpf && digits.length === 11) {
+      this.addManualValueCandidate(
+        values,
+        `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`,
+      );
+    }
+  }
+
+  private getBrazilianPhoneCandidates(digits: string): string[] {
+    if (!digits) {
+      return [];
+    }
+
+    const candidates = new Set<string>();
+    const withoutCountry = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
+    const withCountry = withoutCountry.length >= 10 ? `55${withoutCountry}` : digits;
+    for (const candidate of [digits, withoutCountry, withCountry, `+${withCountry}`]) {
+      candidates.add(candidate);
+    }
+    this.addBrazilianPhoneDisplayCandidates(candidates, withoutCountry);
+    return [...candidates];
+  }
+
+  private addBrazilianPhoneDisplayCandidates(candidates: Set<string>, withoutCountry: string): void {
+    if (withoutCountry.length !== 10 && withoutCountry.length !== 11) {
+      return;
+    }
+
+    const areaCode = withoutCountry.slice(0, 2);
+    const localNumber = withoutCountry.slice(2);
+    const prefixLength = localNumber.length === 9 ? 5 : 4;
+    const prefix = localNumber.slice(0, prefixLength);
+    const suffix = localNumber.slice(prefixLength);
+    const localDisplay = `${prefix}-${suffix}`;
+    for (const candidate of [
+      `(${areaCode}) ${localDisplay}`,
+      `${areaCode} ${localDisplay}`,
+      `${areaCode}${localDisplay}`,
+      `55 ${areaCode} ${localDisplay}`,
+      `+55 ${areaCode} ${localDisplay}`,
+      `+55 (${areaCode}) ${localDisplay}`,
+    ]) {
+      candidates.add(candidate);
+    }
+  }
+
+  private addManualValueCandidate(values: Map<string, string>, value: string): void {
+    const normalizedValue = value.trim();
+    if (normalizedValue) {
+      values.set(this.caseInsensitiveKey(normalizedValue), normalizedValue);
+    }
+  }
+
+  private caseInsensitiveKey(value: string): string {
+    return value.trim().toLowerCase();
   }
 
   private async expandUsers(userIds: Set<string>, emails: Set<string>): Promise<boolean> {
