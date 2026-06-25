@@ -67,6 +67,31 @@ const CALENDAR_EVENT_SELECT = {
   },
 } satisfies Prisma.EventSelect;
 
+const PUBLIC_EVENT_CALENDAR_SELECT = {
+  ...CALENDAR_EVENT_SELECT,
+  eventGroup: {
+    select: {
+      id: true,
+      name: true,
+      createdAt: true,
+      updatedAt: true,
+      events: {
+        where: {
+          deletedAt: null,
+          publiclyVisible: true,
+        },
+        orderBy: {
+          startDate: 'asc',
+        },
+        select: {
+          startDate: true,
+          endDate: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.EventSelect;
+
 const CALENDAR_FEED_SETTINGS_SELECT = {
   feedKeyNonce: true,
   feedKeyHash: true,
@@ -143,6 +168,7 @@ const ADMIN_CALENDAR_GRANT_SELECT = {
 } satisfies Prisma.EventManagerPermissionGrantSelect;
 
 type CalendarEventRecord = Prisma.EventGetPayload<{ select: typeof CALENDAR_EVENT_SELECT }>;
+type PublicEventCalendarRecord = Prisma.EventGetPayload<{ select: typeof PUBLIC_EVENT_CALENDAR_SELECT }>;
 type CalendarFeedSettingsRecord = Prisma.UserCalendarFeedSettingsGetPayload<{
   select: typeof CALENDAR_FEED_SETTINGS_SELECT;
 }>;
@@ -460,22 +486,28 @@ export class CalendarService {
         deletedAt: null,
         publiclyVisible: true,
       },
-      select: CALENDAR_EVENT_SELECT,
+      select: PUBLIC_EVENT_CALENDAR_SELECT,
     });
 
     if (!event) {
       throw new NotFoundException(`Event ${eventId} was not found.`);
     }
 
+    const groupedEntry = event.eventGroup
+      ? this.mapPublicEventGroupToCalendarEntry(event.eventGroup, this.buildPublicEventUrl(publicAppOrigin, event.id))
+      : null;
+    const entry = groupedEntry ?? this.mapEventToCalendarEntry(event, this.buildPublicEventUrl(publicAppOrigin, event.id));
+    const calendarName = groupedEntry ? event.eventGroup?.name : event.name;
+
     return {
       content: this.buildCalendar({
-        name: event.name,
-        description: event.shortDescription ?? event.description ?? null,
-        entries: [this.mapEventToCalendarEntry(event, this.buildPublicEventUrl(publicAppOrigin, event.id))],
+        name: calendarName ?? event.name,
+        description: groupedEntry ? groupedEntry.description : (event.shortDescription ?? event.description ?? null),
+        entries: [entry],
         eventClass: ICalEventClass.PUBLIC,
         ttlSeconds: 60 * 60,
       }),
-      fileName: `${this.slugifyFileName(event.name) || 'evento'}.ics`,
+      fileName: `${this.slugifyFileName(calendarName ?? event.name) || 'evento'}.ics`,
     };
   }
 
@@ -1197,6 +1229,33 @@ export class CalendarService {
       location: this.buildEventLocation(event),
       created: event.createdAt,
       lastModified: event.updatedAt,
+      url,
+    };
+  }
+
+  private mapPublicEventGroupToCalendarEntry(
+    eventGroup: NonNullable<PublicEventCalendarRecord['eventGroup']>,
+    url: string,
+  ): CalendarEntry | null {
+    if (eventGroup.events.length === 0) {
+      return null;
+    }
+
+    const start = eventGroup.events[0].startDate;
+    const end = eventGroup.events.reduce(
+      (latest, event) => (event.endDate > latest ? event.endDate : latest),
+      eventGroup.events[0].endDate,
+    );
+
+    return {
+      id: `event-group-${eventGroup.id}@eventos.cacic.dev.br`,
+      summary: eventGroup.name,
+      start,
+      end,
+      description: `Grupo de eventos com ${eventGroup.events.length} evento(s).`,
+      location: null,
+      created: eventGroup.createdAt,
+      lastModified: eventGroup.updatedAt,
       url,
     };
   }
