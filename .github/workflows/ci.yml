@@ -22,7 +22,7 @@ env:
 
 jobs:
   lint:
-    name: Lint affected projects
+    name: Lint all projects
     runs-on: ubuntu-latest
 
     permissions:
@@ -65,8 +65,8 @@ jobs:
       - name: Derive Nx SHAs
         uses: nrwl/nx-set-shas@v5
 
-      - name: Lint affected projects
-        run: bunx nx affected -t lint --parallel=3
+      - name: Lint all projects
+        run: bunx nx run-many -t lint --all --parallel=3
 
   unit-tests:
     name: Unit tests (${{ matrix.project }})
@@ -225,7 +225,7 @@ jobs:
       - name: Install Playwright Chromium
         run: bunx playwright install --with-deps chromium
 
-      - name: Run frontend auth e2e tests
+      - name: Run frontend e2e tests
         run: E2E_START_SERVER=true bunx nx e2e ${{ matrix.project }} -- --project=chromium
 
   backend-e2e:
@@ -500,8 +500,8 @@ jobs:
       - name: Derive Nx SHAs
         uses: nrwl/nx-set-shas@v5
 
-      - name: Lint affected projects
-        run: bunx nx affected -t lint --parallel=3
+      - name: Lint all projects
+        run: bunx nx run-many -t lint --all --parallel=3
 
   untrusted-pr-unit-tests:
     name: Untrusted PR unit tests
@@ -569,8 +569,8 @@ jobs:
       - name: Derive Nx SHAs
         uses: nrwl/nx-set-shas@v5
 
-      - name: Run affected unit tests with coverage
-        run: bunx nx affected -t test --parallel=3 --coverage
+      - name: Run unit tests with coverage
+        run: bunx nx run-many -t test -p admin,backend,public --parallel=3 --coverage
 
   untrusted-pr-frontend-e2e:
     name: Untrusted PR frontend E2E (${{ matrix.project }})
@@ -621,7 +621,7 @@ jobs:
       - name: Install Playwright Chromium
         run: bunx playwright install --with-deps chromium
 
-      - name: Run frontend auth e2e tests
+      - name: Run frontend e2e tests
         run: E2E_START_SERVER=true bunx nx e2e ${{ matrix.project }} -- --project=chromium
 
   untrusted-pr-backend-e2e:

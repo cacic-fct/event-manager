@@ -149,6 +149,56 @@ describe('CalendarService', () => {
             select: expect.objectContaining({
               events: expect.objectContaining({
                 where: PUBLIC_EVENT_WHERE,
+                take: 1001,
+              }),
+            }),
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('bounds public event group expansion in calendar downloads', async () => {
+    const groupEvents = Array.from({ length: 1001 }, (_, index) => ({
+      startDate: new Date(`2026-07-${String((index % 28) + 1).padStart(2, '0')}T13:00:00.000Z`),
+      endDate: new Date(`2026-07-${String((index % 28) + 1).padStart(2, '0')}T15:00:00.000Z`),
+    }));
+    groupEvents[999] = {
+      startDate: new Date('2026-08-01T13:00:00.000Z'),
+      endDate: new Date('2026-08-01T15:00:00.000Z'),
+    };
+    groupEvents[1000] = {
+      startDate: new Date('2026-09-01T13:00:00.000Z'),
+      endDate: new Date('2026-09-01T15:00:00.000Z'),
+    };
+    const prisma = createPrismaMock({
+      event: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...publicEvent,
+          eventGroup: {
+            id: 'group-1',
+            name: 'Trilha com limite',
+            createdAt: new Date('2026-06-01T10:00:00.000Z'),
+            updatedAt: new Date('2026-06-20T10:00:00.000Z'),
+            events: groupEvents,
+          },
+        }),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    const download = await service.buildPublicEventCalendar('event-1', 'https://eventos.cacic.dev.br');
+
+    expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 1000+ evento(s).');
+    expect(download.content).toContain('DTEND:20260801T150000Z');
+    expect(download.content).not.toContain('DTEND:20260901T150000Z');
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          eventGroup: expect.objectContaining({
+            select: expect.objectContaining({
+              events: expect.objectContaining({
+                take: 1001,
               }),
             }),
           }),

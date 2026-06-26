@@ -240,7 +240,7 @@ export class PlacePresetsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'mergePlacePreset' })
-  @RequirePermissions(Permission.PlacePreset.Merge)
+  @RequirePermissions(Permission.PlacePreset.Merge, Permission.PlacePreset.Delete)
   async mergePlacePreset(
     @Args('targetId', { type: () => String }) targetId: string,
     @Args('sourceId', { type: () => String }) sourceId: string,
@@ -313,7 +313,7 @@ export class PlacePresetsResolver {
           actor: this.getUser(context),
           before: source,
           after: { ...source, deletedAt },
-          scope: { permission: Permission.PlacePreset.Merge },
+          scope: { permission: Permission.PlacePreset.Delete },
           summary: `Local absorvido por ${updatedTarget.name}.`,
           force: true,
         },

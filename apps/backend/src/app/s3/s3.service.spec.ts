@@ -26,6 +26,22 @@ describe('S3Service', () => {
     jest.clearAllMocks();
   });
 
+  it('configures the AWS S3 client for SeaweedFS path-style buckets', () => {
+    const { S3Client } = jest.requireMock('@aws-sdk/client-s3') as { S3Client: jest.Mock };
+
+    new S3Service(configServiceMock() as never);
+
+    expect(S3Client).toHaveBeenCalledWith({
+      endpoint: 'http://localhost:8333',
+      region: 'sa-east-1',
+      credentials: {
+        accessKeyId: 'access',
+        secretAccessKey: 'secret',
+      },
+      forcePathStyle: true,
+    });
+  });
+
   it('generates stable file keys with sanitized timestamps', () => {
     const service = new S3Service(configServiceMock() as never);
 

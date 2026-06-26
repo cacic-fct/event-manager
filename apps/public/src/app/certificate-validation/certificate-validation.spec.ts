@@ -64,6 +64,24 @@ describe('CertificateValidation', () => {
 
     expect(component.validationForm.certificateId().invalid()).toBe(false);
   });
+
+  it('submits manual certificate lookup through the native form submit event', async () => {
+    const { component, fixture, router } = await createFixture();
+    component.validationForm.certificateId().value.set('manual-certificate');
+    fixture.detectChanges();
+
+    const form = fixture.nativeElement.querySelector('form.lookup-form') as HTMLFormElement | null;
+    expect(form).not.toBeNull();
+
+    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    const wasNotCanceled = form?.dispatchEvent(submitEvent);
+
+    expect(wasNotCanceled).toBe(false);
+    expect(submitEvent.defaultPrevented).toBe(true);
+    expect(router.navigate).toHaveBeenCalledWith(['/validate'], {
+      queryParams: { certificateId: 'manual-certificate' },
+    });
+  });
 });
 
 async function createFixture({

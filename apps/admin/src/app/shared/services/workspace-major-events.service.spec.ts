@@ -5,8 +5,9 @@ import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
-import { MajorEvent, MajorEventInput } from '../../graphql/models';
+import { MajorEventInput } from '../../graphql/models';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
+import { createAdminMajorEventFromInput } from '../../testing/admin-entity-fixtures';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 
@@ -31,12 +32,12 @@ describe('WorkspaceMajorEventsService', () => {
     api = {
       createMajorEvent: vi.fn((payload: MajorEventInput) => {
         lastPayload = payload;
-        return of(createMajorEvent(payload));
+        return of(createAdminMajorEventFromInput(payload));
       }),
       getMajorEvent: vi.fn(),
       updateMajorEvent: vi.fn((id: string, payload: MajorEventInput) => {
         lastPayload = payload;
-        return of(createMajorEvent({ ...payload, id }));
+        return of(createAdminMajorEventFromInput({ ...payload, id }));
       }),
       listMajorEvents: vi.fn(() => of([])),
     };
@@ -143,7 +144,7 @@ describe('WorkspaceMajorEventsService', () => {
   it('loads the stored single price into the edit form', async () => {
     api.getMajorEvent.mockReturnValue(
       of(
-        createMajorEvent({
+        createAdminMajorEventFromInput({
           id: 'major-event-1',
           name: 'SECOMPP26',
           emoji: '😀',
@@ -168,7 +169,7 @@ describe('WorkspaceMajorEventsService', () => {
   it('loads the stored tiered prices into the edit form', async () => {
     api.getMajorEvent.mockReturnValue(
       of(
-        createMajorEvent({
+        createAdminMajorEventFromInput({
           id: 'major-event-1',
           name: 'SECOMPP26',
           emoji: '😀',
@@ -195,43 +196,3 @@ describe('WorkspaceMajorEventsService', () => {
     ]);
   });
 });
-
-function createMajorEvent(input: MajorEventInput): MajorEvent {
-  return {
-    id: input.id ?? 'major-event-1',
-    name: input.name ?? 'Major event',
-    emoji: input.emoji ?? '😀',
-    startDate: input.startDate ?? '2026-05-15T03:00:00.000Z',
-    endDate: input.endDate ?? '2026-05-20T03:00:00.000Z',
-    description: input.description,
-    subscriptionStartDate: input.subscriptionStartDate,
-    subscriptionEndDate: input.subscriptionEndDate,
-    maxCoursesPerAttendee: input.maxCoursesPerAttendee,
-    maxLecturesPerAttendee: input.maxLecturesPerAttendee,
-    buttonText: input.buttonText,
-    buttonLink: input.buttonLink,
-    contactInfo: input.contactInfo,
-    contactType: input.contactType,
-    isPaymentRequired: input.isPaymentRequired ?? false,
-    publicationState: 'DRAFT',
-    shouldIssueCertificateForNonPayingAttendees: input.shouldIssueCertificateForNonPayingAttendees ?? false,
-    shouldIssueCertificateForNonSubscribedAttendees: input.shouldIssueCertificateForNonSubscribedAttendees ?? false,
-    additionalPaymentInfo: input.additionalPaymentInfo,
-    paymentInfo: null,
-    majorEventPrices: input.price
-      ? [
-          {
-            id: 'major-event-price-1',
-            type: input.price.type,
-            tiers: input.price.tiers.map((tier, index) => ({
-              id: `price-tier-${index + 1}`,
-              name: tier.name,
-              value: tier.value,
-            })),
-          },
-        ]
-      : [],
-    createdAt: '2026-05-15T03:00:00.000Z',
-    updatedAt: '2026-05-15T03:00:00.000Z',
-  };
-}

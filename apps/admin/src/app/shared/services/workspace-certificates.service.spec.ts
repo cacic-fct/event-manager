@@ -7,16 +7,16 @@ import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { CertificateConfig, CertificateConfigInput, CertificateTemplate } from '../../graphql/models';
+import { CertificateConfigInput } from '../../graphql/models';
+import {
+  createAdminCertificateConfig,
+  createAdminCertificateConfigFromInput,
+  createAdminCertificateTemplate,
+} from '../../testing/admin-entity-fixtures';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
 
 describe('WorkspaceCertificatesService', () => {
-  const certificateTemplate = {
-    id: 'template-1',
-    name: 'Template',
-    description: null,
-    version: 1,
-    isActive: true,
+  const certificateTemplate = createAdminCertificateTemplate({
     certificateFieldsJson: JSON.stringify({
       'top-text': {
         label: 'Texto em cima do nome',
@@ -31,9 +31,7 @@ describe('WorkspaceCertificatesService', () => {
         default: 'como organizador do evento',
       },
     }),
-    createdAt: '2026-05-05T00:00:00.000Z',
-    updatedAt: '2026-05-05T00:00:00.000Z',
-  } satisfies CertificateTemplate;
+  });
 
   let service: WorkspaceCertificatesService;
   let api: {
@@ -52,24 +50,7 @@ describe('WorkspaceCertificatesService', () => {
     api = {
       createCertificateConfig: vi.fn((payload: CertificateConfigInput) => {
         lastPayload = payload;
-        return of({
-          id: 'config-1',
-          name: payload.name ?? 'Certificate',
-          scope: payload.scope ?? 'EVENT',
-          majorEventId: payload.majorEventId,
-          eventGroupId: payload.eventGroupId,
-          eventId: payload.eventId,
-          certificateTemplateId: payload.certificateTemplateId ?? certificateTemplate.id,
-          certificateTemplate,
-          certificateText: payload.certificateText,
-          shouldAutofillSecondPage: payload.shouldAutofillSecondPage ?? true,
-          secondPageText: payload.secondPageText,
-          isActive: payload.isActive ?? true,
-          issuedTo: payload.issuedTo ?? 'ATTENDEE',
-          certificateFieldsJson: payload.certificateFieldsJson,
-          createdAt: '2026-05-05T00:00:00.000Z',
-          updatedAt: '2026-05-05T00:00:00.000Z',
-        } satisfies CertificateConfig);
+        return of(createAdminCertificateConfigFromInput(payload, certificateTemplate));
       }),
       issueMissedCertificates: vi.fn(() => of([])),
       listCertificateConfigs: vi.fn(() => of([])),
@@ -78,24 +59,7 @@ describe('WorkspaceCertificatesService', () => {
       listCertificates: vi.fn(() => of([])),
       updateCertificateConfig: vi.fn((id: string, payload: CertificateConfigInput) => {
         lastPayload = payload;
-        return of({
-          id,
-          name: payload.name ?? 'Certificate',
-          scope: payload.scope ?? 'EVENT',
-          majorEventId: payload.majorEventId,
-          eventGroupId: payload.eventGroupId,
-          eventId: payload.eventId,
-          certificateTemplateId: payload.certificateTemplateId ?? certificateTemplate.id,
-          certificateTemplate,
-          certificateText: payload.certificateText,
-          shouldAutofillSecondPage: payload.shouldAutofillSecondPage ?? true,
-          secondPageText: payload.secondPageText,
-          isActive: payload.isActive ?? true,
-          issuedTo: payload.issuedTo ?? 'ATTENDEE',
-          certificateFieldsJson: payload.certificateFieldsJson,
-          createdAt: '2026-05-05T00:00:00.000Z',
-          updatedAt: '2026-05-05T00:00:00.000Z',
-        } satisfies CertificateConfig);
+        return of(createAdminCertificateConfigFromInput(payload, certificateTemplate, { id }));
       }),
     };
 
@@ -170,24 +134,7 @@ describe('WorkspaceCertificatesService', () => {
   });
 
   it('persists current recipient type before issuing pending certificates', async () => {
-    service.selectCertificateConfig({
-      id: 'config-1',
-      name: 'Certificate',
-      scope: 'EVENT',
-      majorEventId: null,
-      eventGroupId: null,
-      eventId: 'event-1',
-      certificateTemplateId: certificateTemplate.id,
-      certificateTemplate,
-      certificateText: null,
-      shouldAutofillSecondPage: true,
-      secondPageText: null,
-      isActive: true,
-      issuedTo: 'ATTENDEE',
-      certificateFieldsJson: null,
-      createdAt: '2026-05-05T00:00:00.000Z',
-      updatedAt: '2026-05-05T00:00:00.000Z',
-    });
+    service.selectCertificateConfig(createAdminCertificateConfig({ id: 'config-1' }, certificateTemplate));
     service.certificateConfigForm.issuedTo().value.set('LECTURER');
 
     await service.issueMissedCertificates();

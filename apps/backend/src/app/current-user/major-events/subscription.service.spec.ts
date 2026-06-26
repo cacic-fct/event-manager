@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import { CurrentUserMajorEventSubscriptionService } from './subscription.service';
+import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 
 describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
   let service: CurrentUserMajorEventSubscriptionService;
@@ -266,6 +267,32 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
     await expect(service.getMajorEventSubscriptionEvents('person-1', 'major-1')).resolves.toEqual({
       selectedEvents: [publicEvent('selected-event', 'major-1')],
       notSubscribedEvents: [publicEvent('available-event', 'major-1')],
+    });
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith({
+      where: {
+        AND: [PUBLIC_EVENT_WHERE, { majorEventId: 'major-1' }],
+        allowSubscription: true,
+      },
+      select: expect.objectContaining({
+        majorEventSelections: {
+          where: {
+            deletedAt: null,
+            subscription: {
+              personId: 'person-1',
+              deletedAt: null,
+              majorEventId: 'major-1',
+            },
+          },
+          select: {
+            eventId: true,
+          },
+          take: 1,
+        },
+      }),
+      orderBy: {
+        startDate: 'asc',
+      },
     });
   });
 });

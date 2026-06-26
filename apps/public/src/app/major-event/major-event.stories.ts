@@ -5,6 +5,11 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
+import {
+  createPublicMajorEvent,
+  createPublicMajorEventPrice,
+  createPublicPaymentInfo,
+} from '../testing/public-entity-fixtures';
 import { MajorEvent } from './major-event';
 
 interface MajorEventStoryArgs {
@@ -129,7 +134,7 @@ function previewParameters(context: MajorEventStoryContext) {
 
 function buildMajorEvent(args: MajorEventStoryArgs) {
   faker.seed(20260803);
-  return {
+  return createPublicMajorEvent({
     id: 'major-preview',
     name: faker.helpers.arrayElement(['SECOMPP 2026', 'CACiC 2026']),
     emoji: '💻',
@@ -152,7 +157,7 @@ function buildMajorEvent(args: MajorEventStoryArgs) {
     shouldIssueCertificateForNonPayingAttendees: false,
     shouldIssueCertificateForNonSubscribedAttendees: false,
     paymentInfo: args.requiresPayment
-      ? {
+      ? createPublicPaymentInfo({
           id: 'payment-preview',
           bankName: 'Banco Storybook',
           agency: '0001',
@@ -162,16 +167,16 @@ function buildMajorEvent(args: MajorEventStoryArgs) {
           pixKey: 'pagamentos@example.com',
           pixCity: 'PRESIDENTE PRUDENTE',
           majorEventId: 'major-preview',
-        }
+        })
       : null,
     majorEventPrices: args.requiresPayment
       ? [
-          {
+          createPublicMajorEventPrice({
             id: 'price-preview',
-            type: 'STUDENT',
+            type: 'TIERED',
             tiers: [{ id: 'tier-preview', name: 'Estudante', value: 2500 }],
-          },
+          }),
         ]
       : [],
-  };
+  });
 }

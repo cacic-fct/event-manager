@@ -1,4 +1,4 @@
-import { Permission } from '@cacic-fct/shared-permissions';
+import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, AuditLogRevertMode, Prisma } from '@prisma/client';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -15,7 +15,7 @@ describe('AuditLogService', () => {
 
   beforeEach(() => {
     prisma = createPrisma();
-    authorizationPolicy = { assertPermissions: jest.fn(), isSuperAdmin: jest.fn().mockReturnValue(false) };
+    authorizationPolicy = { assertPermissions: jest.fn(), isSuperAdmin: jest.fn().mockReturnValue(true) };
     typesenseSearch = createTypesenseSearch();
     attendanceRealtime = { notifyAllConnectedPeople: jest.fn() };
     frozenResources = createFrozenResources();
@@ -578,6 +578,8 @@ describe('AuditLogService', () => {
   });
 
   it('rejects global audit exploration for non-super-admin users', async () => {
+    authorizationPolicy.isSuperAdmin.mockReturnValue(false);
+
     await expect(service.exploreAuditLogs({}, undefined)).rejects.toBeInstanceOf(ForbiddenException);
 
     expect(typesenseSearch.searchAuditLogEntries).not.toHaveBeenCalled();
@@ -708,6 +710,25 @@ describe('AuditLogService', () => {
         take: 100,
       }),
     );
+  });
+
+  it('rejects audit history reads for non-super-admin event managers', async () => {
+    authorizationPolicy.isSuperAdmin.mockReturnValue(false);
+
+    await expect(
+      service.listEntityHistory(
+        AuditLogEntityType.EVENT_GROUP_SUBSCRIPTION,
+        'subscription-1',
+        createAuthenticatedUser({
+          sub: 'user-1',
+          roleSet: new Set([EventManagerKeycloakRole.Access]),
+          permissionSet: new Set([Permission.Subscription.Read]),
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
+    expect(prisma.auditLogEntry.findMany).not.toHaveBeenCalled();
   });
 
   it('authorizes subscription and contextual histories with their resource scopes', async () => {

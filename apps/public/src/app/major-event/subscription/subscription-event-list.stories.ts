@@ -1,6 +1,7 @@
-import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
+import { createPublicEvent, createPublicEventGroup, createPublicMajorEvent } from '../../testing/public-entity-fixtures';
 import { SubscriptionEventList } from './subscription-event-list';
 
 const meta: Meta<SubscriptionEventList> = {
@@ -17,67 +18,18 @@ export default meta;
 
 type Story = StoryObj<SubscriptionEventList>;
 
-const demoMajorEvent: PublicMajorEvent = {
-  id: 'major-story',
-  name: 'CACiC Storybook',
-  emoji: '💻',
-  startDate: '2026-05-20T12:00:00.000Z',
-  endDate: '2026-05-23T21:00:00.000Z',
-  description: 'Evento de demonstração para Storybook.',
-  subscriptionStartDate: '2026-05-01T12:00:00.000Z',
-  subscriptionEndDate: '2026-05-19T21:00:00.000Z',
-  maxCoursesPerAttendee: 2,
-  maxLecturesPerAttendee: 8,
-  buttonText: 'Site oficial',
-  buttonLink: 'https://example.com',
-  contactInfo: 'eventos@example.com',
-  contactType: 'EMAIL',
-  isPaymentRequired: false,
-  additionalPaymentInfo: null,
-  shouldIssueCertificate: true,
-};
-
-const demoEvent: PublicEvent = {
+const demoMajorEvent = createPublicMajorEvent({ id: 'major-story', emoji: '💻' });
+const demoEventGroup = createPublicEventGroup({ id: 'group-story', emoji: '✨' });
+const demoEvent: PublicEvent = createPublicEvent({
   id: 'event-story',
-  name: 'Arquitetura Angular com Signals',
-  creditMinutes: 120,
+  emoji: '🧠',
+  majorEvent: demoMajorEvent,
+  eventGroup: demoEventGroup,
   startDate: '2026-05-21T17:00:00.000Z',
   endDate: '2026-05-21T19:00:00.000Z',
-  emoji: '🧠',
-  type: 'MINICURSO' as const,
-  description: 'Uma sessão prática com estados, efeitos e componentes standalone.',
-  shortDescription: 'Signals na prática',
-  latitude: -22.1211,
-  longitude: -51.4086,
-  locationDescription: 'Laboratório 01',
-  majorEventId: demoMajorEvent.id,
-  majorEvent: demoMajorEvent,
-  eventGroupId: 'group-story',
-  eventGroup: {
-    id: 'group-story',
-    name: 'Trilha Frontend',
-    emoji: '✨',
-    shouldIssueCertificateForEachEvent: true,
-    shouldIssuePartialCertificate: true,
-    shouldIssueCertificate: true,
-  },
-  allowSubscription: true,
-  subscriptionStartDate: '2026-05-01T12:00:00.000Z',
-  subscriptionEndDate: '2026-05-21T16:00:00.000Z',
-  slots: 40,
-  slotsAvailable: 12,
-  queueCount: 3,
-  autoSubscribe: false,
-  shouldIssueCertificate: true,
-  shouldCollectAttendance: true,
-  isOnlineAttendanceAllowed: true,
   onlineAttendanceStartDate: '2026-05-21T17:00:00.000Z',
   onlineAttendanceEndDate: '2026-05-21T19:00:00.000Z',
-  publiclyVisible: true,
-  youtubeCode: null,
-  buttonText: null,
-  buttonLink: null,
-};
+});
 
 const demoEvents: PublicEvent[] = [
   demoEvent,

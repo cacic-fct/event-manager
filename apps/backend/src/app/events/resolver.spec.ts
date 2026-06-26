@@ -236,6 +236,9 @@ describe('EventsResolver', () => {
     const frozenResources = {
       assertEventUpdateMutable: jest.fn(),
     };
+    const authorizationPolicy = {
+      assertPermissions: jest.fn(),
+    };
     const auditLog = {
       record: jest.fn(),
     };
@@ -244,7 +247,7 @@ describe('EventsResolver', () => {
       typesenseSearch as never,
       {} as never,
       frozenResources as never,
-      {} as never,
+      authorizationPolicy as never,
       auditLog as never,
     );
 
@@ -269,6 +272,13 @@ describe('EventsResolver', () => {
           publicationUpdatedBy: 'user-1',
         }),
       }),
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'user-1' },
+      [Permission.Event.Update],
+      {
+        majorEventId: 'major-new',
+      },
     );
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -461,6 +471,12 @@ describe('EventsResolver', () => {
       [Permission.Event.Create],
       {
         majorEventId: 'major-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.Event.Create],
+      {
         eventGroupId: 'group-1',
       },
     );
@@ -480,7 +496,7 @@ describe('EventsResolver', () => {
         eventGroupId: 'group-1',
       },
     );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(5);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(6);
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
         entityId: 'event-clone',

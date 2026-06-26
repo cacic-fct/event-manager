@@ -1,4 +1,4 @@
-import { Permission } from '@cacic-fct/shared-permissions';
+import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogActorType,
@@ -1027,9 +1027,16 @@ export class AuditLogService {
     entityId: string,
     actor: AuthenticatedUser | undefined,
   ): Promise<void> {
+    this.assertSuperAdminAuditAccess(actor);
     const config = this.getAccessConfig(entityType);
     const context = await this.resolveAuthorizationContext(entityType, entityId);
     await this.authorizationPolicy.assertPermissions(actor, [config.readPermission], context);
+  }
+
+  private assertSuperAdminAuditAccess(actor: AuthenticatedUser | undefined): void {
+    if (!this.authorizationPolicy.isSuperAdmin(actor)) {
+      throw new ForbiddenException(`Missing required Keycloak role: ${EventManagerKeycloakRole.SuperAdmin}.`);
+    }
   }
 
   private async assertCanRevert(
@@ -1037,6 +1044,7 @@ export class AuditLogService {
     config: RevertEntityConfig,
     actor: AuthenticatedUser | undefined,
   ): Promise<void> {
+    this.assertSuperAdminAuditAccess(actor);
     const permission =
       entry.operation === AuditLogOperation.CREATE
         ? config.deletePermission ?? config.updatePermission

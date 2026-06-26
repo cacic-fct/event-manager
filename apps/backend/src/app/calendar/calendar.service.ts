@@ -26,6 +26,8 @@ const PRIVATE_FEED_LOOKBACK_MONTHS = 1;
 const PRIVATE_FEED_EVENT_TAKE = 600;
 const ADMIN_FEED_ITEM_TAKE = 600;
 const ADMIN_EVENT_GROUP_RANGE_EVENT_TAKE = 1000;
+const PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE = 1000;
+const PUBLIC_EVENT_GROUP_RANGE_EVENT_QUERY_TAKE = PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE + 1;
 const ADMIN_FEED_ACCESS_CHECK_MAX_AGE_HOURS = 24;
 
 const ADMIN_CALENDAR_EVENT_PERMISSIONS = [Permission.Event.Read] as const satisfies readonly Permission[];
@@ -85,6 +87,7 @@ const PUBLIC_EVENT_CALENDAR_SELECT = {
           startDate: true,
           endDate: true,
         },
+        take: PUBLIC_EVENT_GROUP_RANGE_EVENT_QUERY_TAKE,
       },
     },
   },
@@ -1236,14 +1239,16 @@ export class CalendarService {
     eventGroup: NonNullable<PublicEventCalendarRecord['eventGroup']>,
     url: string,
   ): CalendarEntry | null {
-    if (eventGroup.events.length === 0) {
+    const events = eventGroup.events.slice(0, PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE);
+    if (events.length === 0) {
       return null;
     }
 
-    const start = eventGroup.events[0].startDate;
-    const end = eventGroup.events.reduce(
+    const isTruncated = eventGroup.events.length > PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE;
+    const start = events[0].startDate;
+    const end = events.reduce(
       (latest, event) => (event.endDate > latest ? event.endDate : latest),
-      eventGroup.events[0].endDate,
+      events[0].endDate,
     );
 
     return {
@@ -1251,7 +1256,7 @@ export class CalendarService {
       summary: eventGroup.name,
       start,
       end,
-      description: `Grupo de eventos com ${eventGroup.events.length} evento(s).`,
+      description: `Grupo de eventos com ${events.length}${isTruncated ? '+' : ''} evento(s).`,
       location: null,
       created: eventGroup.createdAt,
       lastModified: eventGroup.updatedAt,

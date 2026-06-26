@@ -22,6 +22,7 @@
       "@cacic-fct/shared-environment": ["./libs/shared-environment/src/index.ts"],
       "@cacic-fct/shared-notifications-angular": ["./libs/shared-notifications-angular/src/index.ts"],
       "@cacic-fct/offline-public-data-access": ["./libs/offline-public-data-access/src/index.ts"],
+      "@cacic-fct/event-manager-public-testing": ["./libs/event-manager-public-testing/src/index.ts"],
       "@cacic-fct/event-manager-public-contracts": ["./libs/event-manager-public-contracts/src/index.ts"],
       "@cacic-fct/event-manager-public-contracts/types": [
         "./libs/event-manager-public-contracts/src/lib/types/index.ts"

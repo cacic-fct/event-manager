@@ -97,6 +97,29 @@ describe('ReceiptUploadService', () => {
     await expect(service.uploadReceipt('major-1', createInvalidFile(), user)).rejects.toThrow(BadRequestException);
   });
 
+  it('rejects invalid receipt images before mutable checks, user lookup, or storage writes', async () => {
+    const frozenResources = {
+      assertMajorEventMutable: jest.fn(),
+    };
+    service = new ReceiptUploadService(
+      prisma as never,
+      s3 as never,
+      currentUserContext as never,
+      attendanceCategories as never,
+      dashboardInsights as never,
+      authorizationPolicy as never,
+      receiptQueue as never,
+      frozenResources as never,
+    );
+
+    await expect(service.uploadReceipt('major-1', createInvalidFile(), user)).rejects.toThrow(BadRequestException);
+
+    expect(frozenResources.assertMajorEventMutable).not.toHaveBeenCalled();
+    expect(currentUserContext.requireCurrentPerson).not.toHaveBeenCalled();
+    expect(prisma.majorEventSubscription.findFirst).not.toHaveBeenCalled();
+    expect(s3.uploadFile).not.toHaveBeenCalled();
+  });
+
   it('uploads, records, queues, and maps a receipt', async () => {
     currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
     prisma.majorEventSubscription.findFirst.mockResolvedValue({
@@ -132,6 +155,10 @@ describe('ReceiptUploadService', () => {
       'image/png',
       expect.objectContaining({
         majorEventId: 'major-1',
+        subscriptionId: 'subscription-1',
+        personId: 'person-1',
+        receiptId: expect.any(String),
+        expiresAt: expect.any(String),
       }),
       expect.any(Date),
     );

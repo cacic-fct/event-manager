@@ -5,7 +5,7 @@ export default [
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   {
-    ignores: ['**/dist', '**/out-tsc', '**/mockServiceWorker.js'],
+    ignores: ['**/dist', '**/out-tsc', 'docs/.docusaurus', 'docs/build', '**/mockServiceWorker.js'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],

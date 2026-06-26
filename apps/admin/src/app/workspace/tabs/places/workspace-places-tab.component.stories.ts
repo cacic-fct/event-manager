@@ -3,6 +3,7 @@ import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import type { PlacePreset } from '../../../graphql/models';
+import { createAdminPlacePreset } from '../../../testing/admin-entity-fixtures';
 import { WorkspacePlacesTabComponent } from './workspace-places-tab.component';
 
 faker.seed(20260616);
@@ -20,18 +21,17 @@ let activeArgs: PlacesTabStoryArgs = {
 function placePreset(index: number, incomplete = false): PlacePreset {
   const names = ['Auditório Discente', 'Laboratório de Software', 'Anfiteatro Central', 'Sala B12', 'Bloco de Eventos'];
 
-  return {
+  return createAdminPlacePreset({
     id: `place-${index + 1}`,
     name: names[index % names.length],
     latitude: incomplete ? null : Number((-22.1211 + index * 0.001).toFixed(6)),
     longitude: incomplete ? null : Number((-51.4086 - index * 0.001).toFixed(6)),
     locationDescription: incomplete ? null : faker.helpers.arrayElement(['FCT-Unesp', 'Piso térreo', 'Próximo à secretaria']),
-    deletedAt: null,
     createdAt: '2026-05-16T12:00:00.000Z',
-    createdById: 'storybook-admin',
     updatedAt: '2026-05-16T12:00:00.000Z',
+    createdById: 'storybook-admin',
     updatedById: 'storybook-admin',
-  };
+  });
 }
 
 function places(args: PlacesTabStoryArgs): PlacePreset[] {

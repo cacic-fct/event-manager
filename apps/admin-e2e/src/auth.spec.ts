@@ -22,6 +22,19 @@ test('login page starts the backend auth redirect with the admin return path', a
   await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/admin/');
 });
 
+test('authenticated users are redirected away from the local login page', async ({ page }) => {
+  await mockAdminApi(page, {
+    user: authenticatedUserFixture(),
+  });
+
+  await page.goto('/admin/login');
+
+  await expect(page).toHaveURL(/\/admin\/?$/);
+  await expect(page.getByText('admin@example.edu')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /bom dia|boa tarde|boa noite/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Entrar' })).toHaveCount(0);
+});
+
 async function preventSilentSso(page: Page): Promise<void> {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
@@ -73,9 +86,71 @@ async function mockAdminApi(
       return;
     }
 
+    if (url.pathname === '/api/graphql') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: graphqlData(route.request().postDataJSON() as unknown) }),
+      });
+      return;
+    }
+
     await route.fulfill({
       status: 204,
       body: '',
     });
   });
+}
+
+function authenticatedUserFixture(): Record<string, unknown> {
+  return {
+    realm_access: {
+      roles: [],
+    },
+    sub: 'admin-1',
+    preferredUsername: 'admin',
+    email: 'admin@example.edu',
+    roles: [],
+    permissions: ['event#read'],
+    scopes: ['openid'],
+    claims: {
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      is_onboarded: true,
+      name: 'Admin Teste',
+      email: 'admin@example.edu',
+      picture: null,
+    },
+  };
+}
+
+function graphqlData(body: unknown): Record<string, unknown> {
+  const query = isRecord(body) && typeof body['query'] === 'string' ? body['query'] : '';
+
+  if (query.includes('query WorkspaceDashboardInsights')) {
+    return {
+      workspaceDashboardInsights: emptyDashboardInsights(),
+    };
+  }
+
+  return {};
+}
+
+function emptyDashboardInsights(): Record<string, unknown> {
+  return {
+    generatedAt: '2026-06-26T12:00:00.000Z',
+    suggestions: [],
+    calendarEvents: [],
+    pendingReceiptValidationsCount: 0,
+    pendingReceiptMajorEvents: [],
+    pendingOfflineAttendancesCount: 0,
+    pendingOfflineAttendanceEvents: [],
+    pendingCertificates: [],
+    duplicatePeopleCount: 0,
+    inconsistencies: [],
+    weatherAlerts: [],
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

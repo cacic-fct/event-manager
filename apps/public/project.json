@@ -132,6 +132,12 @@
         "coverage": true
       }
     },
+    "test-workbox": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bunx vitest run --config apps/public/workbox/vitest.config.ts"
+      }
+    },
     "serve-static": {
       "continuous": true,
       "executor": "@nx/web:file-server",

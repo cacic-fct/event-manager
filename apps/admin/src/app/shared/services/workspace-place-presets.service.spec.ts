@@ -4,7 +4,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { PlacePresetApiService } from '../../graphql/place-preset-api.service';
-import { PlacePreset, PlacePresetInput } from '../../graphql/models';
+import { PlacePresetInput } from '../../graphql/models';
+import { createAdminPlacePreset } from '../../testing/admin-entity-fixtures';
 import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
 
 describe('WorkspacePlacePresetsService', () => {
@@ -21,11 +22,13 @@ describe('WorkspacePlacePresetsService', () => {
   beforeEach(async () => {
     api = {
       listPlacePresets: vi.fn(() => of([])),
-      createPlacePreset: vi.fn((input: PlacePresetInput) => of(createPlacePreset({ ...input, id: 'created-place' }))),
-      updatePlacePreset: vi.fn((id: string, input: PlacePresetInput) => of(createPlacePreset({ ...input, id }))),
+      createPlacePreset: vi.fn((input: PlacePresetInput) =>
+        of(createAdminPlacePreset({ ...input, id: 'created-place' })),
+      ),
+      updatePlacePreset: vi.fn((id: string, input: PlacePresetInput) => of(createAdminPlacePreset({ ...input, id }))),
       deletePlacePreset: vi.fn(() => of({ deleted: true, id: 'place-1' })),
       mergePlacePreset: vi.fn(() => of({ deleted: true, id: 'source-place' })),
-      getPlacePreset: vi.fn(() => of(createPlacePreset({ id: 'place-1', name: 'Auditório' }))),
+      getPlacePreset: vi.fn(() => of(createAdminPlacePreset({ id: 'place-1', name: 'Auditório' }))),
     };
 
     await TestBed.configureTestingModule({
@@ -43,15 +46,15 @@ describe('WorkspacePlacePresetsService', () => {
 
   it('sorts presets alphabetically for display', () => {
     service.placePresets.set([
-      createPlacePreset({ id: 'b', name: 'Zeladoria' }),
-      createPlacePreset({ id: 'a', name: 'Auditório' }),
+      createAdminPlacePreset({ id: 'b', name: 'Zeladoria' }),
+      createAdminPlacePreset({ id: 'a', name: 'Auditório' }),
     ]);
 
     expect(service.sortedPlacePresets().map((place) => place.name)).toEqual(['Auditório', 'Zeladoria']);
   });
 
   it('autosaves a manual location when no identical preset exists', async () => {
-    service.placePresets.set([createPlacePreset({ id: 'existing', name: 'Laboratório' })]);
+    service.placePresets.set([createAdminPlacePreset({ id: 'existing', name: 'Laboratório' })]);
 
     await service.ensurePresetForManualLocation({
       name: 'Sala 5',
@@ -70,7 +73,7 @@ describe('WorkspacePlacePresetsService', () => {
 
   it('does not autosave duplicate manual locations', async () => {
     service.placePresets.set([
-      createPlacePreset({
+      createAdminPlacePreset({
         id: 'existing',
         name: 'Sala 5',
         latitude: -22.1,
@@ -89,15 +92,3 @@ describe('WorkspacePlacePresetsService', () => {
     expect(api.createPlacePreset).not.toHaveBeenCalled();
   });
 });
-
-function createPlacePreset(input: Partial<PlacePreset>): PlacePreset {
-  return {
-    id: input.id ?? 'place-1',
-    name: input.name ?? 'Local',
-    latitude: input.latitude,
-    longitude: input.longitude,
-    locationDescription: input.locationDescription,
-    createdAt: '2026-05-21T00:00:00.000Z',
-    updatedAt: '2026-05-21T00:00:00.000Z',
-  };
-}

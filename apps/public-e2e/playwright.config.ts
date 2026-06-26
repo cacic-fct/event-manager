@@ -5,6 +5,8 @@ import { workspaceRoot } from '@nx/devkit';
 // For CI, you may want to set BASE_URL to the deployed application.
 const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
 const startServer = process.env['E2E_START_SERVER'] === 'true';
+const startStaticServer = process.env['E2E_PUBLIC_STATIC_SERVER'] === 'true';
+const serviceWorkerTestMatch = /.*service-worker-offline\.spec\.ts/;
 
 /**
  * Read environment variables from file.
@@ -20,13 +22,14 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
+    serviceWorkers: 'block',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
   ...(startServer
     ? {
         webServer: {
-          command: 'bunx nx run public:serve',
+          command: startStaticServer ? 'bunx nx run public:serve-static' : 'bunx nx run public:serve',
           url: baseURL,
           reuseExistingServer: true,
           cwd: workspaceRoot,
@@ -36,17 +39,29 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: serviceWorkerTestMatch,
       use: { ...devices['Desktop Chrome'] },
     },
 
     {
       name: 'firefox',
+      testIgnore: serviceWorkerTestMatch,
       use: { ...devices['Desktop Firefox'] },
     },
 
     {
       name: 'webkit',
+      testIgnore: serviceWorkerTestMatch,
       use: { ...devices['Desktop Safari'] },
+    },
+
+    {
+      name: 'service-worker-chromium',
+      testMatch: serviceWorkerTestMatch,
+      use: {
+        ...devices['Desktop Chrome'],
+        serviceWorkers: 'allow',
+      },
     },
 
     // Uncomment for mobile browsers support

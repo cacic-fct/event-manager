@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Person } from '../graphql/models';
+import { createAdminPerson } from '../testing/admin-entity-fixtures';
 import { buildSubscriberCsv, formatIdentityDocumentForExport, isValidCpf } from './subscriber-csv-export';
 
 describe('subscriber CSV export helpers', () => {
@@ -26,7 +26,7 @@ describe('subscriber CSV export helpers', () => {
       const csv = buildSubscriberCsv(
         [
           {
-            person: createPerson({ name: `${prefix}HYPERLINK("https://example.com")` }),
+            person: createAdminPerson({ name: `${prefix}HYPERLINK("https://example.com")` }),
           },
         ],
         { fields: ['fullName'], identityDocumentMode: 'masked' },
@@ -40,7 +40,7 @@ describe('subscriber CSV export helpers', () => {
     const csv = buildSubscriberCsv(
       [
         {
-          person: createPerson({ name: '=SUM(1;2)' }),
+          person: createAdminPerson({ name: '=SUM(1;2)' }),
         },
       ],
       { fields: ['fullName'], identityDocumentMode: 'masked' },
@@ -49,16 +49,6 @@ describe('subscriber CSV export helpers', () => {
     expect(csv).toBe('Nome completo\r\n"\'=SUM(1;2)"');
   });
 });
-
-function createPerson(overrides: Partial<Person>): Person {
-  return {
-    id: 'person-1',
-    name: 'Ada Lovelace',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  };
-}
 
 function escapeExpectedCsvCell(value: string): string {
   if (!/[;\r\n"]/.test(value)) {

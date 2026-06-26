@@ -4,6 +4,7 @@ import { InsightEvent } from './insight-event.select';
 
 const MIN_DESCRIPTION_CHARACTERS = 48;
 const MIN_DESCRIPTION_WORDS = 6;
+const MAX_INCONSISTENCIES = 30;
 
 type SubscriptionDateTarget = {
   startDate: Date;
@@ -271,10 +272,29 @@ export function buildInconsistencies(input: {
   }
 
   for (const placeEvents of eventsByPlace.values()) {
-    for (let leftIndex = 0; leftIndex < placeEvents.length; leftIndex++) {
-      for (let rightIndex = leftIndex + 1; rightIndex < placeEvents.length; rightIndex++) {
-        const left = placeEvents[leftIndex];
-        const right = placeEvents[rightIndex];
+    if (inconsistencies.length >= MAX_INCONSISTENCIES) {
+      break;
+    }
+
+    const sortedPlaceEvents = [...placeEvents].sort(
+      (left, right) => left.startDate.getTime() - right.startDate.getTime(),
+    );
+    for (
+      let leftIndex = 0;
+      leftIndex < sortedPlaceEvents.length && inconsistencies.length < MAX_INCONSISTENCIES;
+      leftIndex++
+    ) {
+      const left = sortedPlaceEvents[leftIndex];
+      for (
+        let rightIndex = leftIndex + 1;
+        rightIndex < sortedPlaceEvents.length && inconsistencies.length < MAX_INCONSISTENCIES;
+        rightIndex++
+      ) {
+        const right = sortedPlaceEvents[rightIndex];
+        if (right.startDate >= left.endDate) {
+          break;
+        }
+
         if (hasDateOverlap(left, right)) {
           inconsistencies.push({
             type: 'PLACE_DOUBLE_BOOKED',
@@ -291,7 +311,7 @@ export function buildInconsistencies(input: {
     }
   }
 
-  return inconsistencies.slice(0, 30);
+  return inconsistencies.slice(0, MAX_INCONSISTENCIES);
 }
 
 function hasPlace(event: InsightEvent): boolean {
