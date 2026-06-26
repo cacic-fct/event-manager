@@ -386,7 +386,13 @@ export class TypesenseSearchService implements OnModuleInit {
       return;
     }
 
-    const schemas = [
+    for (const schema of this.createCollectionSchemas()) {
+      await this.ensureCollection(schema);
+    }
+  }
+
+  private createCollectionSchemas(): CollectionCreateSchema[] {
+    return [
       this.createCollectionSchema(TYPESENSE_COLLECTIONS.events, [
         { name: 'id', type: 'string' },
         { name: 'name', type: 'string' },
@@ -441,10 +447,6 @@ export class TypesenseSearchService implements OnModuleInit {
         { name: 'isActive', type: 'bool', facet: true },
       ]),
     ];
-
-    for (const schema of schemas) {
-      await this.ensureCollection(schema);
-    }
   }
 
   private async ensureCollection(schema: CollectionCreateSchema): Promise<void> {
@@ -569,9 +571,18 @@ export class TypesenseSearchService implements OnModuleInit {
       }),
     ]);
 
+    const schemas = new Map(this.createCollectionSchemas().map((schema) => [schema.name, schema]));
+    const getSchema = (collectionName: string) => {
+      const schema = schemas.get(collectionName);
+      if (!schema) {
+        throw new Error(`Missing Typesense collection schema for ${collectionName}.`);
+      }
+      return schema;
+    };
+
     await Promise.all([
       this.replaceCollectionDocuments<EventSearchDocument>(
-        TYPESENSE_COLLECTIONS.events,
+        getSchema(TYPESENSE_COLLECTIONS.events),
         events.map((event) => ({
           id: event.id,
           name: event.name,
@@ -593,7 +604,7 @@ export class TypesenseSearchService implements OnModuleInit {
         })),
       ),
       this.replaceCollectionDocuments<MajorEventSearchDocument>(
-        TYPESENSE_COLLECTIONS.majorEvents,
+        getSchema(TYPESENSE_COLLECTIONS.majorEvents),
         majorEvents.map((majorEvent) => ({
           id: majorEvent.id,
           name: majorEvent.name,
@@ -604,14 +615,14 @@ export class TypesenseSearchService implements OnModuleInit {
         })),
       ),
       this.replaceCollectionDocuments<EventGroupSearchDocument>(
-        TYPESENSE_COLLECTIONS.eventGroups,
+        getSchema(TYPESENSE_COLLECTIONS.eventGroups),
         eventGroups.map((eventGroup) => ({
           id: eventGroup.id,
           name: eventGroup.name,
         })),
       ),
       this.replaceCollectionDocuments<PersonSearchDocument>(
-        TYPESENSE_COLLECTIONS.people,
+        getSchema(TYPESENSE_COLLECTIONS.people),
         people.map((person) => ({
           id: person.id,
           name: person.name,
@@ -624,7 +635,7 @@ export class TypesenseSearchService implements OnModuleInit {
         })),
       ),
       this.replaceCollectionDocuments<PlacePresetSearchDocument>(
-        TYPESENSE_COLLECTIONS.placePresets,
+        getSchema(TYPESENSE_COLLECTIONS.placePresets),
         placePresets.map((placePreset) => ({
           id: placePreset.id,
           name: placePreset.name,
@@ -632,7 +643,7 @@ export class TypesenseSearchService implements OnModuleInit {
         })),
       ),
       this.replaceCollectionDocuments<CertificateTemplateSearchDocument>(
-        TYPESENSE_COLLECTIONS.certificateTemplates,
+        getSchema(TYPESENSE_COLLECTIONS.certificateTemplates),
         certificateTemplates.map((certificateTemplate) => ({
           id: certificateTemplate.id,
           name: certificateTemplate.name,
@@ -721,7 +732,7 @@ export class TypesenseSearchService implements OnModuleInit {
   }
 
   private async replaceCollectionDocuments<T extends { id: string }>(
-    collectionName: string,
+    schema: CollectionCreateSchema,
     documents: T[],
   ): Promise<void> {
     if (!this.client) {
@@ -729,14 +740,15 @@ export class TypesenseSearchService implements OnModuleInit {
     }
 
     try {
-      const collection = this.client.collections<T & Record<string, unknown>>(collectionName);
-      await collection.documents().delete({ truncate: true });
+      const collection = this.client.collections<T & Record<string, unknown>>(schema.name);
+      await collection.delete();
+      await this.client.collections().create(schema);
       if (documents.length === 0) {
         return;
       }
       await collection.documents().import(documents, { action: 'upsert' });
     } catch (error) {
-      this.logger.error(`Failed to replace Typesense documents for ${collectionName}.`, error);
+      this.logger.error(`Failed to replace Typesense documents for ${schema.name}.`, error);
     }
   }
 

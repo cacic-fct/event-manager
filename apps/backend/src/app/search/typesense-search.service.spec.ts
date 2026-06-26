@@ -391,7 +391,9 @@ describe('TypesenseSearchService', () => {
     });
     await service['ensureCollections']();
     await service['reindexAll']();
-    await service['replaceCollectionDocuments']('cacic_event_manager_events', [{ id: 'event-1' }]);
+    await service['replaceCollectionDocuments'](service['createCollectionSchema']('cacic_event_manager_events', []), [
+      { id: 'event-1' },
+    ]);
     await service['upsertDocument']('cacic_event_manager_events', { id: 'event-1' });
     await service['deleteDocument']('cacic_event_manager_events', 'event-1');
 
@@ -405,9 +407,11 @@ describe('TypesenseSearchService', () => {
 
     await expect(service.onModuleInit()).resolves.toBeUndefined();
 
-    client.documents.delete.mockRejectedValueOnce(new Error('truncate failed'));
+    client.collection.delete.mockRejectedValueOnce(new Error('collection delete failed'));
     await expect(
-      service['replaceCollectionDocuments']('cacic_event_manager_events', [{ id: 'event-1' }]),
+      service['replaceCollectionDocuments'](service['createCollectionSchema']('cacic_event_manager_events', []), [
+        { id: 'event-1' },
+      ]),
     ).resolves.toBeUndefined();
 
     client.documents.upsert.mockRejectedValueOnce(new Error('upsert failed'));
@@ -481,7 +485,7 @@ describe('TypesenseSearchService', () => {
 
     await service.onModuleInit();
 
-    expect(client.rootCollections.create).toHaveBeenCalledTimes(6);
+    expect(client.rootCollections.create).toHaveBeenCalledTimes(12);
     expect(client.rootCollections.create).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'cacic_event_manager_events' }),
     );
@@ -500,7 +504,7 @@ describe('TypesenseSearchService', () => {
     expect(client.rootCollections.create).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'cacic_event_manager_certificate_templates' }),
     );
-    expect(client.documents.delete).toHaveBeenCalledWith({ truncate: true });
+    expect(client.collection.delete).toHaveBeenCalledTimes(6);
     expect(client.documents.import).toHaveBeenCalledWith(
       [
         expect.objectContaining({
@@ -570,6 +574,7 @@ function createTypesenseClientMock() {
   };
   const collection = {
     documents: jest.fn((id?: string) => (id ? document : documents)),
+    delete: jest.fn().mockResolvedValue(undefined),
     exists: jest.fn().mockResolvedValue(true),
     retrieve: jest.fn().mockResolvedValue({ fields: [] }),
     update: jest.fn().mockResolvedValue(undefined),
