@@ -1,7 +1,7 @@
 import { isValidCPF } from '@cacic-fct/shared-utils';
 import { BadRequestException, ConflictException, NotFoundException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AttendanceCreationMethod } from '@prisma/client';
+import { AttendanceCreationMethod, SubscriptionStatus } from '@prisma/client';
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
 import {
   ConfirmCurrentUserOnlineAttendanceInput,
@@ -161,6 +161,8 @@ export class CurrentUserEventAttendanceResolver {
       throw new BadRequestException(`Online attendance for event ${input.eventId} is already closed.`);
     }
 
+    await this.assertCurrentPersonCanConfirmOnlineAttendance(person.id, event);
+
     const existingAttendance = await this.prisma.eventAttendance.findUnique({
       where: {
         personId_eventId: {
@@ -202,6 +204,53 @@ export class CurrentUserEventAttendanceResolver {
     await this.attendanceRealtime.notifyPerson(person.id);
 
     return this.mapper.mapCurrentUserEventAttendance(createdAttendance);
+  }
+
+  private async assertCurrentPersonCanConfirmOnlineAttendance(
+    personId: string,
+    event: {
+      id: string;
+      allowSubscription: boolean;
+      majorEventId: string | null;
+      majorEvent: { isPaymentRequired: boolean } | null;
+    },
+  ): Promise<void> {
+    if (event.allowSubscription) {
+      const eventSubscription = await this.prisma.eventSubscription.findFirst({
+        where: {
+          personId,
+          eventId: event.id,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!eventSubscription) {
+        throw new BadRequestException(`You must be subscribed to event ${event.id} to confirm online attendance.`);
+      }
+    }
+
+    if (event.majorEventId && event.majorEvent?.isPaymentRequired) {
+      const majorEventSubscription = await this.prisma.majorEventSubscription.findFirst({
+        where: {
+          personId,
+          majorEventId: event.majorEventId,
+          deletedAt: null,
+          subscriptionStatus: SubscriptionStatus.CONFIRMED,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!majorEventSubscription) {
+        throw new BadRequestException(
+          `You must have a confirmed subscription to major event ${event.majorEventId} to confirm online attendance.`,
+        );
+      }
+    }
   }
 
   @Query(() => [CurrentUserPendingOnlineAttendanceEvent], {

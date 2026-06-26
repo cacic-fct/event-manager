@@ -139,6 +139,32 @@ describe('buildInconsistencies', () => {
     expect(result).toHaveLength(30);
   });
 
+  it('caps same-place conflict generation before allocating every overlapping pair', () => {
+    const result = buildInconsistencies({
+      now,
+      singleEventGroups: [],
+      mismatchingCertificateGroupEvents: [],
+      pastCertificateEventsWithoutAttendance: [],
+      pastCertificateEventsWithoutAttendanceCollection: [],
+      majorEventsWithSubscriptionDates: [],
+      events: Array.from({ length: 5000 }, (_, index) =>
+        insightEvent({
+          id: `same-place-event-${index}`,
+          name: `Same place event ${index}`,
+          startDate: new Date('2026-05-23T12:00:00.000Z'),
+          endDate: new Date('2026-05-23T14:00:00.000Z'),
+          locationDescription: 'Auditório principal',
+          lecturers: [
+            { personId: `lecturer-${index}`, person: { id: `lecturer-${index}`, name: `Lecturer ${index}` } },
+          ],
+        }),
+      ) as never[],
+    });
+
+    expect(result).toHaveLength(30);
+    expect(result.every((item) => item.type === 'PLACE_DOUBLE_BOOKED')).toBe(true);
+  });
+
   it('skips categories that are not inconsistent', () => {
     const result = buildInconsistencies({
       now,

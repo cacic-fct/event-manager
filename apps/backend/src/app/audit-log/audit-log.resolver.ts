@@ -1,4 +1,6 @@
+import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { RequireRoles } from '../auth/decorators/require-roles.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogEntry, AuditLogEntityHistoryInput, AuditLogRevertInput } from './audit-log.models';
 import { AuditLogService } from './audit-log.service';
@@ -12,6 +14,7 @@ type GraphqlContext = {
 export class AuditLogResolver {
   constructor(private readonly auditLog: AuditLogService) {}
 
+  @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
   @Query(() => [AuditLogEntry], { name: 'auditLogEntries' })
   auditLogEntries(
     @Args('input', { type: () => AuditLogEntityHistoryInput }) input: AuditLogEntityHistoryInput,
@@ -21,6 +24,7 @@ export class AuditLogResolver {
     return this.auditLog.listEntityHistory(input.entityType, input.entityId, this.getUser(context), take);
   }
 
+  @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
   @Mutation(() => AuditLogEntry, { name: 'revertAuditLogEntry' })
   revertAuditLogEntry(
     @Args('input', { type: () => AuditLogRevertInput }) input: AuditLogRevertInput,

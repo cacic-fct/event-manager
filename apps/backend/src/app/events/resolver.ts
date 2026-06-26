@@ -342,7 +342,9 @@ export class EventsResolver {
     @Args('input', { type: () => EventCreateInput }) input: EventCreateInput,
     @Context() context: GraphqlContext,
   ) {
-    await this.frozenResources.assertEventCreateTargetsMutable(input, this.getUser(context));
+    const user = this.getUser(context);
+    await this.assertEventCreateRelationPermissions(input, user);
+    await this.frozenResources.assertEventCreateTargetsMutable(input, user);
     const normalizedInput = this.applyEventCreateDefaults(await this.normalizeEventCertificateInput(input));
     const eventInput = { ...normalizedInput };
     const lecturerPersonIds = eventInput.lecturerPersonIds;
@@ -432,7 +434,9 @@ export class EventsResolver {
     @Args('input', { type: () => EventUpdateInput }) input: EventUpdateInput,
     @Context() context: GraphqlContext,
   ) {
-    await this.frozenResources.assertEventUpdateMutable(id, input, this.getUser(context));
+    const user = this.getUser(context);
+    await this.assertEventUpdateRelationPermissions(id, input, user);
+    await this.frozenResources.assertEventUpdateMutable(id, input, user);
     const normalizedInput = await this.normalizeEventCertificateInput(input, id);
     const event = await this.prisma.$transaction(async (tx) => {
       const previousEvent = await tx.event.findFirst({
@@ -585,7 +589,7 @@ export class EventsResolver {
       majorEventId: cloneInput.majorEventId,
       eventGroupId: cloneInput.eventGroupId,
     };
-    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.Event.Create], cloneTargetContext);
+    await this.assertEventCreateRelationPermissions(cloneInput, this.getUser(context));
     if (shouldCopyLecturers) {
       await this.authorizationPolicy.assertPermissions(
         this.getUser(context),
@@ -712,6 +716,72 @@ export class EventsResolver {
       deleted: true,
       id,
     };
+  }
+
+  private async assertEventCreateRelationPermissions(
+    input: Pick<EventCreateInput, 'majorEventId' | 'eventGroupId'>,
+    user: AuthenticatedUser | undefined,
+  ): Promise<void> {
+    await this.assertEventRelationPermissions(Permission.Event.Create, user, {
+      majorEventId: input.majorEventId,
+      eventGroupId: input.eventGroupId,
+    });
+  }
+
+  private async assertEventUpdateRelationPermissions(
+    id: string,
+    input: Pick<EventUpdateInput, 'majorEventId' | 'eventGroupId'>,
+    user: AuthenticatedUser | undefined,
+  ): Promise<void> {
+    if (input.majorEventId === undefined && input.eventGroupId === undefined) {
+      return;
+    }
+
+    const currentEvent = await this.prisma.event.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: {
+        majorEventId: true,
+        eventGroupId: true,
+      },
+    });
+
+    if (!currentEvent) {
+      throw new NotFoundException(`Event ${id} was not found.`);
+    }
+
+    await this.assertEventRelationPermissions(Permission.Event.Update, user, {
+      majorEventId: this.changedTargetId(currentEvent.majorEventId, input.majorEventId),
+      eventGroupId: this.changedTargetId(currentEvent.eventGroupId, input.eventGroupId),
+    });
+  }
+
+  private async assertEventRelationPermissions(
+    permission: Permission,
+    user: AuthenticatedUser | undefined,
+    target: Pick<EventCreateInput, 'majorEventId' | 'eventGroupId'>,
+  ): Promise<void> {
+    if (target.majorEventId) {
+      await this.authorizationPolicy.assertPermissions(user, [permission], {
+        majorEventId: target.majorEventId,
+      });
+    }
+
+    if (target.eventGroupId) {
+      await this.authorizationPolicy.assertPermissions(user, [permission], {
+        eventGroupId: target.eventGroupId,
+      });
+    }
+  }
+
+  private changedTargetId(currentId: string | null, nextId: string | null | undefined): string | undefined {
+    if (nextId === undefined || nextId === null || nextId === currentId) {
+      return undefined;
+    }
+
+    return nextId;
   }
 
   private async normalizeEventCertificateInput<T extends EventCreateInput | EventUpdateInput>(

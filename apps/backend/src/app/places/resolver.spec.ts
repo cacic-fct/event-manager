@@ -1,9 +1,17 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
+import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { PlacePresetsResolver } from './resolver';
 
 describe('PlacePresetsResolver', () => {
+  it('requires merge and delete permissions to merge place presets', () => {
+    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PlacePresetsResolver.prototype.mergePlacePreset)).toEqual([
+      Permission.PlacePreset.Merge,
+      Permission.PlacePreset.Delete,
+    ]);
+  });
+
   it('lists active places alphabetically with query filters', async () => {
     const prisma = createPrismaMock();
     const resolver = new PlacePresetsResolver(prisma as never);
@@ -273,7 +281,7 @@ describe('PlacePresetsResolver', () => {
         entityType: AuditLogEntityType.PLACE_PRESET,
         entityId: 'source-place',
         operation: AuditLogOperation.MERGE,
-        scope: { permission: Permission.PlacePreset.Merge },
+        scope: { permission: Permission.PlacePreset.Delete },
       }),
       prisma,
     );

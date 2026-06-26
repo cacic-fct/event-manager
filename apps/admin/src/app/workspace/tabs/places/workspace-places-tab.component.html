@@ -44,7 +44,10 @@
               type="button"
               aria-label="Selecionar para unificar"
               matTooltip="Selecionar duplicado"
-              [disabled]="!permissions.canEdit(Permission.PlacePreset.Merge)"
+              [disabled]="
+                !permissions.canEdit(Permission.PlacePreset.Merge) ||
+                !permissions.canDelete(Permission.PlacePreset.Delete)
+              "
               (click)="$event.stopPropagation(); workspace.chooseMergeSource(place)">
               <mat-icon>call_merge</mat-icon>
             </button>
@@ -98,7 +101,10 @@
             mat-stroked-button
             type="button"
             [disabled]="
-              !workspace.selectedPlacePreset() || !workspace.mergeSource() || !permissions.canEdit(Permission.PlacePreset.Merge)
+              !workspace.selectedPlacePreset() ||
+              !workspace.mergeSource() ||
+              !permissions.canEdit(Permission.PlacePreset.Merge) ||
+              !permissions.canDelete(Permission.PlacePreset.Delete)
             "
             (click)="workspace.openMergeDialog(workspace.selectedPlacePreset()!)">
             <mat-icon>call_merge</mat-icon>
