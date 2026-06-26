@@ -17,7 +17,7 @@
 
   @let currentState = state();
 
-  <form class="lookup-form" (ngSubmit)="submit()">
+  <form class="lookup-form" (submit)="$event.preventDefault(); submit()">
     <mat-form-field class="id-field">
       <mat-label>Código do certificado</mat-label>
       <input matInput autocomplete="off" [formField]="validationForm.certificateId" />
