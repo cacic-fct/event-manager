@@ -16,6 +16,7 @@ import {
   WorkspacePermissionsService,
 } from '../../../shared/services/workspace-permissions.service';
 import { WorkspaceSubscriptionsService } from '../../../shared/services/workspace-subscriptions.service';
+import { createAdminEvent, createAdminMajorEvent, createAdminPerson } from '../../../testing/admin-entity-fixtures';
 
 interface StoryWorkspaceOptions {
   majorEventId?: string;
@@ -205,7 +206,7 @@ function defaultPermissions(): WorkspacePermissionScope[] {
 }
 
 function buildMajorEvent(id: string, name: string, emoji: string): MajorEvent {
-  return {
+  return createAdminMajorEvent({
     id,
     name,
     emoji,
@@ -230,11 +231,11 @@ function buildMajorEvent(id: string, name: string, emoji: string): MajorEvent {
     ],
     createdAt: '2026-05-01T12:00:00.000Z',
     updatedAt: '2026-05-20T12:00:00.000Z',
-  };
+  });
 }
 
 function buildEvent(id: string, name: string, emoji: string): Event {
-  return {
+  return createAdminEvent({
     id,
     name,
     emoji,
@@ -255,18 +256,18 @@ function buildEvent(id: string, name: string, emoji: string): Event {
     unpublishedAt: null,
     createdAt: '2026-05-01T12:00:00.000Z',
     updatedAt: '2026-05-20T12:00:00.000Z',
-  };
+  });
 }
 
 function buildPerson(id: string, name: string): Person {
-  return {
+  return createAdminPerson({
     id,
     name,
     email: `${id}@cacic.dev.br`,
     identityDocument: '123.456.789-00',
     createdAt: '2026-05-01T12:00:00.000Z',
     updatedAt: '2026-05-20T12:00:00.000Z',
-  };
+  });
 }
 
 function buildMajorEventSubscription(

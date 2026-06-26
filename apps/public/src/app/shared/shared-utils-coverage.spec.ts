@@ -1,4 +1,3 @@
-import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import {
   buildEventDetail,
   buildEventGroupDetail,
@@ -26,6 +25,11 @@ import {
   sortSubscriptionsFeed,
   unformatCPF,
 } from '@cacic-fct/shared-utils';
+import {
+  createPublicEvent as eventFixture,
+  createPublicEventGroup as eventGroupFixture,
+  createPublicMajorEvent as majorEventFixture,
+} from '../testing/public-entity-fixtures';
 
 describe('shared utility coverage from public app', () => {
   it('formats attendance display values and privacy-safe unique text', () => {
@@ -211,64 +215,6 @@ describe('shared utility coverage from public app', () => {
     ).toBe(true);
   });
 });
-
-function eventFixture(overrides: Partial<PublicEvent> = {}): PublicEvent {
-  return {
-    id: 'event-1',
-    name: 'Oficina',
-    creditMinutes: 90,
-    startDate: '2026-05-21T09:00:00',
-    endDate: '2026-05-21T11:00:00',
-    emoji: '🎓',
-    type: 'MINICURSO',
-    description: 'Descricao longa',
-    shortDescription: 'Descricao curta',
-    locationDescription: 'Sala 1',
-    majorEventId: null,
-    majorEvent: null,
-    eventGroupId: null,
-    eventGroup: null,
-    allowSubscription: true,
-    slots: 20,
-    slotsAvailable: 10,
-    queueCount: 0,
-    autoSubscribe: false,
-    shouldIssueCertificate: true,
-    shouldCollectAttendance: false,
-    isOnlineAttendanceAllowed: false,
-    publiclyVisible: true,
-    buttonText: null,
-    buttonLink: null,
-    ...overrides,
-  };
-}
-
-function eventGroupFixture(overrides: Partial<PublicEventGroup> = {}): PublicEventGroup {
-  return {
-    id: 'group-1',
-    name: 'Grupo de oficinas',
-    emoji: '🧪',
-    shouldIssueCertificate: true,
-    shouldIssueCertificateForEachEvent: false,
-    shouldIssuePartialCertificate: false,
-    ...overrides,
-  };
-}
-
-function majorEventFixture(overrides: Partial<PublicMajorEvent> = {}): PublicMajorEvent {
-  return {
-    id: 'major-1',
-    name: 'Semana',
-    emoji: '💻',
-    startDate: '2026-05-21T09:00:00',
-    endDate: '2026-05-23T18:00:00',
-    description: 'Evento principal',
-    contactType: 'EMAIL',
-    isPaymentRequired: false,
-    shouldIssueCertificate: true,
-    ...overrides,
-  };
-}
 
 function participationFixture(overrides = {}) {
   return {

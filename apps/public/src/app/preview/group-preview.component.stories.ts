@@ -6,6 +6,7 @@ import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
+import { createPublicEvent, createPublicEventGroup, createPublicMajorEvent } from '../testing/public-entity-fixtures';
 import { GroupPreviewComponent } from './group-preview.component';
 
 interface GroupPreviewStoryArgs {
@@ -121,65 +122,61 @@ function storyParameters(context: GroupPreviewStoryContext) {
 
 function buildPreview(args: GroupPreviewStoryArgs) {
   faker.seed(20260802);
+  const eventGroup = createPublicEventGroup({
+    id: 'group-preview',
+    name: 'Minicursos de Férias',
+    emoji: '🧪',
+    shouldIssueCertificate: true,
+    shouldIssueCertificateForEachEvent: true,
+    shouldIssuePartialCertificate: true,
+  });
+  const majorEvent = args.includeMajorEvent
+    ? createPublicMajorEvent({
+        id: 'major-preview',
+        name: 'SECOMPP 2026',
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+      })
+    : null;
+
   return {
     previewAt: '2026-08-01T12:00:00.000Z',
     expiresAt: '2026-08-01T13:00:00.000Z',
-    eventGroup: {
-      id: 'group-preview',
-      name: 'Minicursos de Férias',
-      emoji: '🧪',
-      shouldIssueCertificate: true,
-      shouldIssueCertificateForEachEvent: true,
-      shouldIssuePartialCertificate: true,
-    },
-    events: Array.from({ length: args.eventCount }, (_, index) => ({
-      id: `event-${index}`,
-      name: faker.helpers.arrayElement(['Minicurso Angular', 'Minicurso NestJS', 'Workshop Docker', 'Palestra Web']),
-      creditMinutes: 120,
-      startDate: new Date(Date.UTC(2026, 7, index + 1, 12, 0, 0)).toISOString(),
-      endDate: new Date(Date.UTC(2026, 7, index + 1, 14, 0, 0)).toISOString(),
-      type: index % 2 === 0 ? 'MINICURSO' : 'PALESTRA',
-      emoji: index % 2 === 0 ? '💻' : '🔐',
-      description: faker.lorem.paragraph(),
-      shortDescription: faker.lorem.sentence(),
-      latitude: null,
-      longitude: null,
-      locationDescription: 'Auditório 1',
-      majorEventId: args.includeMajorEvent ? 'major-preview' : null,
-      majorEvent: args.includeMajorEvent
-        ? {
-            id: 'major-preview',
-            name: 'SECOMPP 2026',
-            subscriptionStartDate: null,
-            subscriptionEndDate: null,
-          }
-        : null,
-      eventGroupId: 'group-preview',
-      eventGroup: {
-        id: 'group-preview',
-        name: 'Minicursos de Férias',
-        emoji: '🧪',
+    eventGroup,
+    events: Array.from({ length: args.eventCount }, (_, index) =>
+      createPublicEvent({
+        id: `event-${index}`,
+        name: faker.helpers.arrayElement(['Minicurso Angular', 'Minicurso NestJS', 'Workshop Docker', 'Palestra Web']),
+        creditMinutes: 120,
+        startDate: new Date(Date.UTC(2026, 7, index + 1, 12, 0, 0)).toISOString(),
+        endDate: new Date(Date.UTC(2026, 7, index + 1, 14, 0, 0)).toISOString(),
+        type: index % 2 === 0 ? 'MINICURSO' : 'PALESTRA',
+        emoji: index % 2 === 0 ? '💻' : '🔐',
+        description: faker.lorem.paragraph(),
+        shortDescription: faker.lorem.sentence(),
+        latitude: null,
+        longitude: null,
+        locationDescription: 'Auditório 1',
+        majorEvent,
+        eventGroup,
+        allowSubscription: false,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        slots: null,
+        slotsAvailable: null,
+        queueCount: 0,
+        autoSubscribe: false,
         shouldIssueCertificate: true,
-        shouldIssueCertificateForEachEvent: true,
-        shouldIssuePartialCertificate: true,
-      },
-      allowSubscription: false,
-      subscriptionStartDate: null,
-      subscriptionEndDate: null,
-      slots: null,
-      slotsAvailable: null,
-      queueCount: 0,
-      autoSubscribe: false,
-      shouldIssueCertificate: true,
-      shouldCollectAttendance: true,
-      isOnlineAttendanceAllowed: false,
-      onlineAttendanceStartDate: null,
-      onlineAttendanceEndDate: null,
-      publiclyVisible: true,
-      youtubeCode: null,
-      buttonText: null,
-      buttonLink: null,
-      lecturers: [],
-    })),
+        shouldCollectAttendance: true,
+        isOnlineAttendanceAllowed: false,
+        onlineAttendanceStartDate: null,
+        onlineAttendanceEndDate: null,
+        publiclyVisible: true,
+        youtubeCode: null,
+        buttonText: null,
+        buttonLink: null,
+        lecturers: [],
+      }),
+    ),
   };
 }

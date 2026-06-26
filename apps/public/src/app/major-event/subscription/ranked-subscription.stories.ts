@@ -6,6 +6,13 @@ import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils'
 import { HttpResponse, http } from 'msw';
 import { NEVER } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
+import {
+  createPublicEvent,
+  createPublicEventGroup,
+  createPublicMajorEvent,
+  createPublicMajorEventPrice,
+  createPublicPaymentInfo,
+} from '../../testing/public-entity-fixtures';
 import { RankedMajorEventSubscription } from './ranked-subscription';
 import { MajorEventSubscriptionRealtimeService } from './subscription-realtime.service';
 
@@ -51,7 +58,7 @@ const isoDaysFromNow = (days: number, hour: number): string => {
 };
 
 function createMajorEvent(scenario: StoryScenario): PublicMajorEvent {
-  return {
+  return createPublicMajorEvent({
     id: 'major-1',
     name: scenario === 'payment' ? 'SECOMPP Preferencial' : 'CACiC Preferencial',
     emoji: faker.helpers.arrayElement(['💻', '🚀', '🎓']),
@@ -73,7 +80,7 @@ function createMajorEvent(scenario: StoryScenario): PublicMajorEvent {
     shouldIssueCertificate: true,
     shouldIssueCertificateForNonPayingAttendees: false,
     shouldIssueCertificateForNonSubscribedAttendees: false,
-    paymentInfo: {
+    paymentInfo: createPublicPaymentInfo({
       id: 'payment-1',
       bankName: 'Banco Storybook',
       agency: '0001',
@@ -83,18 +90,18 @@ function createMajorEvent(scenario: StoryScenario): PublicMajorEvent {
       pixKey: 'pagamentos@example.com',
       pixCity: 'PRESIDENTE PRUDENTE',
       majorEventId: 'major-1',
-    },
+    }),
     majorEventPrices: [
-      {
+      createPublicMajorEventPrice({
         id: 'price-1',
         type: 'TIERED',
         tiers: [
           { id: 'tier-student', name: 'Estudante', value: 2500 },
           { id: 'tier-community', name: 'Comunidade', value: 5000 },
         ],
-      },
+      }),
     ],
-  };
+  });
 }
 
 function createEvent(
@@ -110,8 +117,18 @@ function createEvent(
   } = {},
 ): PublicEvent {
   const eventGroupId = options.eventGroupId === undefined ? `group-${(index % 2) + 1}` : options.eventGroupId;
+  const eventGroup = eventGroupId
+    ? createPublicEventGroup({
+        id: eventGroupId,
+        name: options.eventGroupName ?? faker.helpers.arrayElement(['Trilha Web', 'Trilha Dados']),
+        emoji: options.eventGroupEmoji ?? faker.helpers.arrayElement(['🌐', '📊']),
+        shouldIssueCertificateForEachEvent: true,
+        shouldIssuePartialCertificate: true,
+        shouldIssueCertificate: true,
+      })
+    : null;
   const type = options.type ?? faker.helpers.arrayElement<EventType>(['MINICURSO', 'PALESTRA', 'OTHER']);
-  return {
+  return createPublicEvent({
     id: `event-${index + 1}`,
     name: faker.helpers.arrayElement([
       'Arquitetura Angular com Signals',
@@ -134,16 +151,7 @@ function createEvent(
     majorEventId: majorEvent.id,
     majorEvent,
     eventGroupId,
-    eventGroup: eventGroupId
-      ? {
-          id: eventGroupId,
-          name: options.eventGroupName ?? faker.helpers.arrayElement(['Trilha Web', 'Trilha Dados']),
-          emoji: options.eventGroupEmoji ?? faker.helpers.arrayElement(['🌐', '📊']),
-          shouldIssueCertificateForEachEvent: true,
-          shouldIssuePartialCertificate: true,
-          shouldIssueCertificate: true,
-        }
-      : null,
+    eventGroup,
     allowSubscription: true,
     subscriptionStartDate: isoDaysFromNow(-3, 8),
     subscriptionEndDate: isoDaysFromNow(index + 9, 23),
@@ -160,7 +168,7 @@ function createEvent(
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,
-  };
+  });
 }
 
 function createStoryData(scenario: StoryScenario): RankedStoryData {

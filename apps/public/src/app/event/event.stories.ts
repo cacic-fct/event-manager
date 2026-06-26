@@ -5,6 +5,11 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
+import {
+  createPublicEvent,
+  createPublicLecturerProfile,
+  createPublicMajorEvent,
+} from '../testing/public-entity-fixtures';
 import { Event } from './event';
 
 interface EventStoryArgs {
@@ -134,7 +139,7 @@ function buildPreview(args: EventStoryArgs) {
 
 function buildEvent(args: EventStoryArgs) {
   const majorEvent = args.includeMajorEvent
-    ? {
+    ? createPublicMajorEvent({
         id: 'major-preview',
         name: 'SECOMPP 2026',
         emoji: '💻',
@@ -158,10 +163,10 @@ function buildEvent(args: EventStoryArgs) {
         shouldIssueCertificateForNonSubscribedAttendees: false,
         paymentInfo: null,
         majorEventPrices: [],
-      }
+      })
     : null;
 
-  return {
+  return createPublicEvent({
     id: 'event-preview',
     name: faker.helpers.arrayElement(['Workshop Docker', 'Palestra Segurança na Web', 'Minicurso Angular']),
     creditMinutes: 120,
@@ -195,7 +200,7 @@ function buildEvent(args: EventStoryArgs) {
     buttonText: 'Material de apoio',
     buttonLink: 'https://cacic.dev',
     lecturers: [
-      {
+      createPublicLecturerProfile({
         id: 'lecturer-preview',
         displayName: faker.person.fullName(),
         biography: faker.lorem.paragraph(),
@@ -203,7 +208,7 @@ function buildEvent(args: EventStoryArgs) {
         googleUserPicture: null,
         email: faker.internet.email(),
         whatsapp: '+5518999999999',
-      },
+      }),
     ],
-  };
+  });
 }

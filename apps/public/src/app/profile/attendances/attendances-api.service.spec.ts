@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { firstValueFrom } from 'rxjs';
+import { createPublicEvent, createPublicMajorEvent } from '../../testing/public-entity-fixtures';
 import { AttendancesApiService } from './attendances-api.service';
 
 describe('AttendancesApiService', () => {
@@ -169,7 +170,7 @@ describe('AttendancesApiService', () => {
 });
 
 function majorEventFixture() {
-  return {
+  return createPublicMajorEvent({
     id: 'major-event-1',
     name: 'Grande evento',
     emoji: '🎉',
@@ -188,11 +189,11 @@ function majorEventFixture() {
     additionalPaymentInfo: null,
     shouldIssueCertificate: false,
     paymentInfo: null,
-  };
+  });
 }
 
 function eventFixture(id: string, name: string): PublicEvent {
-  return {
+  return createPublicEvent({
     id,
     name,
     creditMinutes: 60,
@@ -205,7 +206,6 @@ function eventFixture(id: string, name: string): PublicEvent {
     latitude: null,
     longitude: null,
     locationDescription: null,
-    majorEventId: 'major-event-1',
     majorEvent: majorEventFixture(),
     eventGroupId: null,
     eventGroup: null,
@@ -225,5 +225,5 @@ function eventFixture(id: string, name: string): PublicEvent {
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,
-  };
+  });
 }
