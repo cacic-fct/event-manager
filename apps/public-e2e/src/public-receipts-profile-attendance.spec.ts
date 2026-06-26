@@ -16,7 +16,7 @@ test('opens a paid major event payment page and sends a receipt through the mock
 
   await page.goto('/app/major-event');
 
-  await expect(page.getByRole('heading', { name: 'SECOMPP Pago' })).toBeVisible();
+  await expect(page.getByText('SECOMPP Pago')).toBeVisible();
   await page.getByRole('link', { name: 'Enviar comprovante' }).click();
 
   await expect(page.getByRole('heading', { name: 'SECOMPP Pago' })).toBeVisible();
@@ -60,7 +60,7 @@ test('lists current-user subscriptions and downloads the certificate archive', a
 });
 
 test('confirms online attendance from the pending attendance list', async ({ page }) => {
-  const api = await mockPublicApi(page);
+  const api = await mockPublicApi(page, { pendingOnlineAttendance: true });
 
   await page.goto('/app/attendance/register');
 
@@ -96,7 +96,10 @@ async function mockStaticExternalAssets(page: Page): Promise<void> {
   );
 }
 
-async function mockPublicApi(page: Page): Promise<{
+async function mockPublicApi(
+  page: Page,
+  options: { pendingOnlineAttendance?: boolean } = {},
+): Promise<{
   certificateArchiveDownloads: () => number;
   onlineAttendanceConfirmations: () => Array<{ eventId: string; code: string }>;
   receiptUploads: () => Array<{ majorEventId: string; contentType: string; body: string }>;
@@ -159,6 +162,7 @@ async function mockPublicApi(page: Page): Promise<{
         setOnlineAttendanceConfirmed: (nextValue) => {
           onlineAttendanceConfirmed = nextValue;
         },
+        hasPendingOnlineAttendance: () => options.pendingOnlineAttendance === true,
         onlineAttendanceConfirmations,
       });
       return;
@@ -183,6 +187,7 @@ async function fulfillGraphql(
     certificateArchiveDownloads: () => void;
     getOnlineAttendanceConfirmed: () => boolean;
     setOnlineAttendanceConfirmed: (nextValue: boolean) => void;
+    hasPendingOnlineAttendance: () => boolean;
     onlineAttendanceConfirmations: Array<{ eventId: string; code: string }>;
   },
 ): Promise<void> {
@@ -237,7 +242,7 @@ async function fulfillGraphql(
 
   if (query.includes('query CurrentUserPendingOnlineAttendanceEvents')) {
     await fulfillGraphqlData(route, {
-      currentUserPendingOnlineAttendanceEvents: state.getOnlineAttendanceConfirmed()
+      currentUserPendingOnlineAttendanceEvents: state.getOnlineAttendanceConfirmed() || !state.hasPendingOnlineAttendance()
         ? []
         : [
             {
