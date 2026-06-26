@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
 import { Buffer } from 'node:buffer';
-import { randomBytes } from 'node:crypto';
+import { createPublicKey, type JsonWebKey, type KeyObject, randomBytes, verify as verifySignature } from 'node:crypto';
 import { AuthSessionStoreService } from './auth-session-store.service';
 import { DEFAULT_KEYCLOAK_CLIENT_ID, DEFAULT_KEYCLOAK_REALM_URL } from './auth.constants';
 import { AuthorizationState, AuthorizationStateService } from './authorization-state.service';
@@ -37,6 +37,7 @@ type ClientSecretAuthMethod = 'client_secret_basic' | 'client_secret_post';
 export class KeycloakAuthService {
   private readonly logger = new Logger(KeycloakAuthService.name);
   private readonly userCache = new Map<string, CachedUser>();
+  private jwksCache?: { keys: Map<string, KeyObject>; expiresAt: number };
   private readonly keycloakFailureLogs = new Map<string, { loggedAt: number; suppressed: number }>();
   private readonly accessTokenRefreshSkewMs = 30_000;
   private readonly keycloakFailureLogSuppressionMs = 60_000;
@@ -52,7 +53,15 @@ export class KeycloakAuthService {
 
   private readonly defaultPostLogoutRedirectUri = this.readOptionalEnv('KEYCLOAK_POST_LOGOUT_REDIRECT_URI');
 
-  private readonly cacheTtlMs = this.parseCacheTtlMs(process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS);
+  private readonly cacheTtlMs = this.parsePositiveIntegerEnv(
+    process.env.KEYCLOAK_PRINCIPAL_CACHE_TTL_MS ?? process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS,
+    10_000,
+  );
+  private readonly jwksCacheTtlMs = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_JWKS_CACHE_TTL_MS, 600_000);
+  private readonly jwtClockSkewSeconds = this.parsePositiveIntegerEnv(
+    process.env.KEYCLOAK_JWT_CLOCK_SKEW_SECONDS,
+    30,
+  );
 
   constructor(
     private readonly sessions: AuthSessionStoreService,
@@ -457,27 +466,16 @@ export class KeycloakAuthService {
       return cachedUser.user;
     }
 
-    const keycloakClaims = await this.fetchTokenClaims(accessToken);
-    const decodedClaims = decodeJwtPayload(accessToken);
-    const introspectionJwtClaims = decodeJwtPayload(readStringClaim(keycloakClaims, 'jwt') ?? '');
-    const mergedClaims: Record<string, unknown> = {
-      ...decodedClaims,
-      ...introspectionJwtClaims,
-      ...keycloakClaims,
-    };
+    const mergedClaims = await this.verifyAccessTokenClaims(accessToken);
 
-    const roles = extractRoles(this.clientId, decodedClaims, introspectionJwtClaims, keycloakClaims);
+    const roles = extractRoles(this.clientId, mergedClaims);
     const roleSet = new Set(roles);
-    const oidcScopes = extractOidcScopes(decodedClaims, introspectionJwtClaims, keycloakClaims);
+    const oidcScopes = extractOidcScopes(mergedClaims);
     const oidcScopeSet = new Set(oidcScopes);
 
     const principal: AuthenticatedUser = {
       realm_access: {
-        roles: extractRealmRoles(
-          decodedClaims['realm_access'],
-          introspectionJwtClaims['realm_access'],
-          keycloakClaims['realm_access'],
-        ),
+        roles: extractRealmRoles(mergedClaims['realm_access']),
       },
       sub: readStringClaim(mergedClaims, 'sub'),
       preferredUsername: readStringClaim(mergedClaims, 'preferred_username'),
@@ -511,70 +509,209 @@ export class KeycloakAuthService {
     await this.userClaimSync?.syncLoginClaims(principal);
   }
 
-  private async fetchTokenClaims(accessToken: string): Promise<TokenClaims> {
-    let introspectionClaims: TokenClaims | null = null;
+  private async verifyAccessTokenClaims(accessToken: string): Promise<TokenClaims> {
+    const segments = accessToken.split('.');
+    if (
+      segments.length !== 3 ||
+      segments.some((segment) => segment.length === 0)
+    ) {
+      throw new UnauthorizedException('Invalid token format.');
+    }
 
-    if (this.clientSecret) {
-      const payload = new URLSearchParams();
-      payload.set('token', accessToken);
-      payload.set('token_type_hint', 'access_token');
-      const headers = this.createFormHeaders({
-        accept: 'application/jwt, application/json',
-      });
-      this.addClientAuthentication(payload, headers);
+    const [encodedHeader, encodedPayload, encodedSignature] = segments;
+    const header = this.decodeJwtJsonSegment(encodedHeader, 'header');
+    const alg = readStringClaim(header, 'alg');
+    const kid = readStringClaim(header, 'kid');
 
-      try {
-        const { data } = await axios.post<TokenClaims>(
-          `${this.realmUrl}/protocol/openid-connect/token/introspect`,
-          payload.toString(),
-          {
-            headers,
-          },
-        );
+    if (alg !== 'RS256') {
+      throw new UnauthorizedException('Unsupported token signature algorithm.');
+    }
 
-        if (data.active === false) {
-          throw new UnauthorizedException('Token is not active.');
-        }
+    if (!kid) {
+      throw new UnauthorizedException('Token signing key id is missing.');
+    }
 
-        if (data.active === true) {
-          introspectionClaims = data;
-        }
-      } catch (error) {
-        if (error instanceof UnauthorizedException) {
-          throw error;
-        }
+    const claims = this.decodeJwtJsonSegment(encodedPayload, 'payload');
+    await this.assertJwtSignature(kid, encodedHeader, encodedPayload, encodedSignature);
+    this.assertJwtIssuer(claims);
+    this.assertJwtTimeClaims(claims);
 
-        this.logKeycloakFailure('token introspection', error, 'Falling back to userinfo endpoint.');
+    return {
+      ...claims,
+      active: true,
+    };
+  }
+
+  private async assertJwtSignature(
+    kid: string,
+    encodedHeader: string,
+    encodedPayload: string,
+    encodedSignature: string,
+  ): Promise<void> {
+    const signingInput = Buffer.from(`${encodedHeader}.${encodedPayload}`, 'utf8');
+    const signature = this.decodeBase64UrlSegment(encodedSignature);
+    const signingKey = await this.getSigningKey(kid);
+
+    if (verifySignature('RSA-SHA256', signingInput, signingKey, signature)) {
+      return;
+    }
+
+    const refreshedSigningKey = await this.getSigningKey(kid, true);
+    if (verifySignature('RSA-SHA256', signingInput, refreshedSigningKey, signature)) {
+      return;
+    }
+
+    throw new UnauthorizedException('Invalid token signature.');
+  }
+
+  private async getSigningKey(kid: string, forceRefresh = false): Promise<KeyObject> {
+    const keys = await this.getJwksKeys(forceRefresh);
+    const key = keys.get(kid);
+    if (key) {
+      return key;
+    }
+
+    if (!forceRefresh) {
+      const refreshedKeys = await this.getJwksKeys(true);
+      const refreshedKey = refreshedKeys.get(kid);
+      if (refreshedKey) {
+        return refreshedKey;
       }
     }
 
+    throw new UnauthorizedException('Unable to verify token signature.');
+  }
+
+  private async getJwksKeys(forceRefresh = false): Promise<Map<string, KeyObject>> {
+    const now = Date.now();
+    if (!forceRefresh && this.jwksCache && this.jwksCache.expiresAt > now) {
+      return this.jwksCache.keys;
+    }
+
+    const jwksUrl = `${this.realmUrl}/protocol/openid-connect/certs`;
+
     try {
-      const { data } = await axios.get<TokenClaims>(`${this.realmUrl}/protocol/openid-connect/userinfo`, {
+      const response = await fetch(jwksUrl, {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          accept: 'application/json',
         },
       });
 
-      if (introspectionClaims) {
-        return {
-          ...introspectionClaims,
-          ...data,
-          active: true,
-        };
+      if (!response.ok) {
+        this.logger.warn(`Keycloak JWKS lookup failed. status=${response.status} ${response.statusText}.`);
+        throw new UnauthorizedException('Unable to load Keycloak signing keys.');
       }
 
-      return {
-        ...data,
-        active: true,
+      const body: unknown = await response.json();
+      const keys = this.parseJwks(body);
+      if (keys.size === 0) {
+        this.logger.warn('Keycloak JWKS response did not include usable RS256 signing keys.');
+        throw new UnauthorizedException('Unable to load Keycloak signing keys.');
+      }
+
+      this.jwksCache = {
+        keys,
+        expiresAt: now + this.jwksCacheTtlMs,
       };
+
+      return keys;
     } catch (error) {
-      if (introspectionClaims) {
-        this.logKeycloakFailure('userinfo lookup', error, 'Using token introspection claims.');
-        return introspectionClaims;
+      if (error instanceof UnauthorizedException) {
+        throw error;
       }
 
-      this.logKeycloakFailure('userinfo lookup', error);
-      throw new UnauthorizedException('Unable to validate access token with Keycloak.');
+      this.logger.warn(
+        `Keycloak JWKS lookup failed. ${error instanceof Error ? `message=${error.message}.` : 'unknown error.'}`,
+      );
+      throw new UnauthorizedException('Unable to load Keycloak signing keys.');
+    }
+  }
+
+  private parseJwks(body: unknown): Map<string, KeyObject> {
+    const keys = new Map<string, KeyObject>();
+    if (!isRecord(body) || !Array.isArray(body['keys'])) {
+      return keys;
+    }
+
+    for (const rawKey of body['keys']) {
+      if (!isRecord(rawKey)) {
+        continue;
+      }
+
+      const kid = readStringClaim(rawKey, 'kid');
+      const kty = readStringClaim(rawKey, 'kty');
+      const use = readStringClaim(rawKey, 'use');
+      const alg = readStringClaim(rawKey, 'alg');
+      if (!kid || kty !== 'RSA' || (use && use !== 'sig') || (alg && alg !== 'RS256')) {
+        continue;
+      }
+
+      try {
+        keys.set(
+          kid,
+          createPublicKey({
+            key: { ...rawKey } as JsonWebKey,
+            format: 'jwk',
+          }),
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Ignoring unusable Keycloak JWKS key. kid=${kid}; ${
+            error instanceof Error ? `message=${error.message}.` : 'unknown error.'
+          }`,
+        );
+      }
+    }
+
+    return keys;
+  }
+
+  private decodeJwtJsonSegment(segment: string, description: string): Record<string, unknown> {
+    try {
+      const parsed: unknown = JSON.parse(this.decodeBase64UrlSegment(segment).toString('utf8'));
+      if (isRecord(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // Fall through to a stable UnauthorizedException below.
+    }
+
+    throw new UnauthorizedException(`Invalid token ${description}.`);
+  }
+
+  private decodeBase64UrlSegment(segment: string): Buffer {
+    try {
+      return Buffer.from(segment, 'base64url');
+    } catch {
+      throw new UnauthorizedException('Invalid token encoding.');
+    }
+  }
+
+  private assertJwtIssuer(claims: Record<string, unknown>): void {
+    if (readStringClaim(claims, 'iss') !== this.realmUrl) {
+      throw new UnauthorizedException('Invalid token issuer.');
+    }
+  }
+
+  private assertJwtTimeClaims(claims: Record<string, unknown>): void {
+    const now = Math.floor(Date.now() / 1000);
+    const exp = readNumberClaim(claims, 'exp');
+    if (!exp) {
+      throw new UnauthorizedException('Token missing expiration.');
+    }
+
+    if (exp < now - this.jwtClockSkewSeconds) {
+      throw new UnauthorizedException('Token expired.');
+    }
+
+    const nbf = readNumberClaim(claims, 'nbf');
+    if (nbf && nbf > now + this.jwtClockSkewSeconds) {
+      throw new UnauthorizedException('Token is not active yet.');
+    }
+
+    const iat = readNumberClaim(claims, 'iat');
+    if (iat && iat > now + this.jwtClockSkewSeconds) {
+      throw new UnauthorizedException('Token issued in the future.');
     }
   }
 
@@ -700,10 +837,10 @@ export class KeycloakAuthService {
     return accessTokenExpiresAt - this.accessTokenRefreshSkewMs <= Date.now();
   }
 
-  private parseCacheTtlMs(rawTtl?: string): number {
-    const parsedTtl = Number.parseInt(rawTtl ?? '10000', 10);
+  private parsePositiveIntegerEnv(rawValue: string | undefined, fallback: number): number {
+    const parsedTtl = Number.parseInt(rawValue ?? '', 10);
     if (Number.isNaN(parsedTtl) || parsedTtl <= 0) {
-      return 10000;
+      return fallback;
     }
 
     return parsedTtl;
@@ -810,15 +947,8 @@ export class KeycloakAuthService {
   }
 
   private isServiceAccountPrincipal(principal: AuthenticatedUser): boolean {
-    if (principal.preferredUsername?.startsWith('service-account-')) {
-      return true;
-    }
-
-    if (principal.sub?.startsWith('service-account-')) {
-      return true;
-    }
-
-    return Boolean(readStringClaim(principal.claims, 'client_id')?.startsWith('service-account-'));
+    const clientId = this.readClientId(principal);
+    return Boolean(clientId && principal.preferredUsername === `service-account-${clientId}`);
   }
 
   private readClientId(principal: AuthenticatedUser): string | undefined {

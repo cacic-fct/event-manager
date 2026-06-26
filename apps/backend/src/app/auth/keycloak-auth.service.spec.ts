@@ -1,5 +1,6 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
+import { generateKeyPairSync, type JsonWebKey, type KeyObject, sign as signToken } from 'node:crypto';
 import { AuthSessionStoreService } from './auth-session-store.service';
 import { AuthorizationStateService } from './authorization-state.service';
 import { KeycloakAuthService } from './keycloak-auth.service';
@@ -15,9 +16,19 @@ jest.mock('axios', () => ({
 }));
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+const TEST_ISSUER = 'https://keycloak.example/realms/cacic';
+const TEST_KEY_ID = 'test-key';
+const signingKeys = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const publicJwk = {
+  ...signingKeys.publicKey.export({ format: 'jwk' }),
+  kid: TEST_KEY_ID,
+  alg: 'RS256',
+  use: 'sig',
+} as JsonWebKey & { kid: string; alg: string; use: string };
 
 describe('KeycloakAuthService', () => {
   const originalEnv = { ...process.env };
+  const originalFetch = global.fetch;
   let sessions: ReturnType<typeof createSessionStoreMock>;
   let authorizationState: Pick<
     jest.Mocked<AuthorizationStateService>,
@@ -25,16 +36,21 @@ describe('KeycloakAuthService', () => {
   >;
   let service: KeycloakAuthService;
   let userClaimSync: Pick<jest.Mocked<AuthenticatedUserSyncService>, 'syncLoginClaims'>;
+  let fetchMock: jest.MockedFunction<typeof fetch>;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
     jest.clearAllMocks();
-    process.env.KEYCLOAK_REALM_URL = 'https://keycloak.example/realms/cacic/';
+    fetchMock = jest.fn().mockResolvedValue(jwksResponse([publicJwk]));
+    global.fetch = fetchMock;
+    process.env.KEYCLOAK_REALM_URL = `${TEST_ISSUER}/`;
     process.env.KEYCLOAK_CLIENT_ID = 'event-manager';
     process.env.KEYCLOAK_CLIENT_SECRET = 'secret';
     process.env.KEYCLOAK_REDIRECT_URI = 'https://app.example/api/auth/callback';
     process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI = 'https://app.example/';
-    process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS = '5000';
+    process.env.KEYCLOAK_PRINCIPAL_CACHE_TTL_MS = '5000';
+    process.env.KEYCLOAK_JWKS_CACHE_TTL_MS = '600000';
+    process.env.KEYCLOAK_JWT_CLOCK_SKEW_SECONDS = '30';
     delete process.env.KEYCLOAK_M2M_AUDIENCE;
     delete process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS;
     delete process.env.KEYCLOAK_M2M_REQUIRE_SERVICE_ACCOUNT;
@@ -58,6 +74,7 @@ describe('KeycloakAuthService', () => {
 
   afterEach(() => {
     process.env = { ...originalEnv };
+    global.fetch = originalFetch;
     jest.useRealTimers();
   });
 
@@ -265,16 +282,6 @@ describe('KeycloakAuthService', () => {
   it('creates, updates, refreshes, clears, and reads logout data for sessions', async () => {
     const accessToken = jwt({ exp: 1_800_000_000, sub: 'user-1', unesp_role: ['aluno-graduacao'] });
     const refreshToken = jwt({ exp: 1_900_000_000 });
-    mockedAxios.post.mockResolvedValueOnce({
-      data: {
-        active: true,
-      },
-    });
-    mockedAxios.get.mockResolvedValueOnce({
-      data: {
-        sub: 'user-1',
-      },
-    });
 
     const created = await service.createSession({
       access_token: accessToken,
@@ -385,18 +392,6 @@ describe('KeycloakAuthService', () => {
         permissions: [{ rsname: 'event', scopes: ['read'] }],
       },
     });
-    mockedAxios.post.mockResolvedValueOnce({
-      data: {
-        active: true,
-        permissions: [{ rsname: 'event', scopes: ['update'] }],
-      },
-    });
-    mockedAxios.get.mockResolvedValue({
-      data: {
-        sub: 'user-1',
-        preferred_username: 'ada',
-      },
-    });
 
     const principal = await service.authenticateAccessToken(accessToken, {
       roles: ['access'],
@@ -408,45 +403,64 @@ describe('KeycloakAuthService', () => {
     expect(principal.permissions).toEqual([]);
     expect(principal.permissionSet.size).toBe(0);
     await service.authenticateAccessToken(accessToken, { roles: ['access'] });
-    expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockedAxios.post).not.toHaveBeenCalledWith(
+      expect.stringContaining('/protocol/openid-connect/token/introspect'),
+      expect.any(String),
+      expect.any(Object),
+    );
   });
 
-  it('rejects inactive tokens and forbidden role requirements', async () => {
-    mockedAxios.post.mockResolvedValueOnce({ data: { active: false } });
-    await expect(service.authenticateAccessToken(jwt({ sub: 'inactive-user' }))).rejects.toBeInstanceOf(
+  it('rejects expired tokens, not-yet-active tokens, and forbidden role requirements', async () => {
+    await expect(service.authenticateAccessToken(jwt({ sub: 'expired-user', exp: 1 }))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    await expect(
+      service.authenticateAccessToken(jwt({ sub: 'future-user', nbf: Math.floor(Date.now() / 1000) + 120 })),
+    ).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
 
-    mockedAxios.post.mockResolvedValueOnce({ data: { active: true } });
-    mockedAxios.get.mockResolvedValueOnce({
-      data: {
-        sub: 'user-1',
-        resource_access: {
-          'event-manager': {
-            roles: ['user'],
-          },
-        },
-      },
-    });
-
     await expect(
-      service.authenticateAccessToken(jwt({ sub: 'user-1' }), {
-        roles: ['admin'],
-      }),
+      service.authenticateAccessToken(
+        jwt({
+          sub: 'user-1',
+          resource_access: {
+            'event-manager': {
+              roles: ['user'],
+            },
+          },
+        }),
+        {
+          roles: ['admin'],
+        },
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects access tokens from clients outside the allowed list', async () => {
-    mockedAxios.post.mockResolvedValueOnce({ data: { active: true } });
-    mockedAxios.get.mockResolvedValueOnce({
-      data: {
-        sub: 'user-1',
-      },
-    });
+    await expect(
+      service.authenticateAccessToken(
+        jwt({ aud: 'external-audience', azp: 'external-client', client_id: 'browser-client', sub: 'user-1' }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('allows configured sibling clients to reuse the shared Keycloak session without token copying', async () => {
+    process.env.KEYCLOAK_ALLOWED_ACCESS_TOKEN_CLIENTS = 'cacic-account-manager';
+    service = new KeycloakAuthService(
+      sessions as unknown as AuthSessionStoreService,
+      authorizationState as unknown as AuthorizationStateService,
+      userClaimSync as unknown as AuthenticatedUserSyncService,
+    );
 
     await expect(
-      service.authenticateAccessToken(jwt({ azp: 'external-client', client_id: 'browser-client', sub: 'user-1' })),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+      service.authenticateAccessToken(jwt({ azp: 'cacic-account-manager', sub: 'user-1' })),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        sub: 'user-1',
+      }),
+    );
   });
 
   it('authenticates sessions and retries with a refreshed token after unauthorized token validation', async () => {
@@ -479,23 +493,10 @@ describe('KeycloakAuthService', () => {
         accessTokenExpiresAt: 1_800_000_000_000,
         sessionExpiresAt: Date.now() + 300_000,
       });
-    mockedAxios.post
-      .mockResolvedValueOnce({ data: { active: false } })
-      .mockResolvedValueOnce({
-        data: {
-          access_token: freshAccessToken,
-          refresh_token: 'refresh-token',
-        },
-      })
-      .mockResolvedValueOnce({ data: { active: true } });
-    mockedAxios.get.mockResolvedValueOnce({
+    mockedAxios.post.mockResolvedValueOnce({
       data: {
-        sub: 'user-1',
-        resource_access: {
-          'event-manager': {
-            roles: ['admin'],
-          },
-        },
+        access_token: freshAccessToken,
+        refresh_token: 'refresh-token',
       },
     });
 
@@ -621,8 +622,49 @@ function createSessionStoreMock() {
   };
 }
 
-function jwt(payload: Record<string, unknown>) {
-  return `header.${Buffer.from(JSON.stringify({ azp: 'event-manager', ...payload })).toString('base64url')}.signature`;
+function jwt(
+  payload: Record<string, unknown>,
+  options: {
+    kid?: string;
+    issuer?: string;
+    privateKey?: KeyObject;
+  } = {},
+) {
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+    kid: options.kid ?? TEST_KEY_ID,
+  };
+  const fullPayload = {
+    iss: options.issuer ?? TEST_ISSUER,
+    aud: 'event-manager',
+    azp: 'event-manager',
+    exp: 1_800_000_000,
+    iat: 1_767_228_000,
+    ...payload,
+  };
+  const encodedHeader = base64UrlJson(header);
+  const encodedPayload = base64UrlJson(fullPayload);
+  const signature = signToken(
+    'RSA-SHA256',
+    Buffer.from(`${encodedHeader}.${encodedPayload}`, 'utf8'),
+    options.privateKey ?? signingKeys.privateKey,
+  ).toString('base64url');
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+function base64UrlJson(value: Record<string, unknown>): string {
+  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
+}
+
+function jwksResponse(keys: readonly JsonWebKey[]): Response {
+  return {
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    json: jest.fn().mockResolvedValue({ keys }),
+  } as unknown as Response;
 }
 
 function principalFixture(overrides: Record<string, unknown> = {}) {
