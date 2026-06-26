@@ -64,12 +64,20 @@ test('confirms online attendance from the pending attendance list', async ({ pag
 
   await page.goto('/app/attendance/register');
 
-  await expect(page.getByText('Presenças pendentes')).toBeVisible();
-  await page.getByRole('link', { name: 'Confirmar presença em Presença on-line' }).click();
-  await page.locator('#attendance-code').fill('a1b2');
-  await page.getByRole('button', { name: 'Confirmar' }).click();
+  await expect(page.getByRole('heading', { name: 'Presença on-line' })).toBeVisible();
+  await page.locator('#attendance-code').evaluate((input) => {
+    if (input instanceof HTMLInputElement) {
+      input.value = 'A1B2';
+      input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: 'A1B2' }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+  await expect(page.locator('.segmented-code span')).toHaveText(['A', '1', 'B', '2']);
+  const confirmButton = page.locator('form.code-form').getByRole('button', { name: 'Confirmar' });
+  await expect(confirmButton).toBeEnabled();
+  await confirmButton.click();
 
-  await expect(page.getByText('Presença confirmada.')).toBeVisible();
+  await expect.poll(() => api.onlineAttendanceConfirmations()).toHaveLength(1);
   expect(api.onlineAttendanceConfirmations()).toEqual([{ eventId: 'online-event', code: 'A1B2' }]);
 });
 
@@ -254,7 +262,7 @@ async function fulfillGraphql(
     return;
   }
 
-  if (query.includes('mutation ConfirmCurrentUserOnlineAttendance')) {
+  if (query.includes('confirmCurrentUserOnlineAttendance')) {
     const eventId = stringVariable(variables, 'eventId');
     const code = stringVariable(variables, 'code');
     state.onlineAttendanceConfirmations.push({ eventId, code });

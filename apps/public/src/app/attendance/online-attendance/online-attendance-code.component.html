@@ -39,7 +39,7 @@
       </div>
     </section>
 
-    <form class="code-form" (ngSubmit)="submit()">
+    <form class="code-form" (submit)="submit(); $event.preventDefault()">
       <span class="code-label">Código de presença</span>
       <label class="segmented-code" for="attendance-code">
         @for (slot of [0, 1, 2, 3]; track slot) {
