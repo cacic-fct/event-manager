@@ -34,6 +34,10 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'major-event',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'validate/:certificateId',
     renderMode: RenderMode.Client,
   },
