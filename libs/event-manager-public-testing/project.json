@@ -1,0 +1,9 @@
+{
+  "name": "event-manager-public-testing",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "root": "libs/event-manager-public-testing",
+  "sourceRoot": "libs/event-manager-public-testing/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:testing"],
+  "targets": {}
+}

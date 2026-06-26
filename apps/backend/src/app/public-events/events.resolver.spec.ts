@@ -1,5 +1,5 @@
 import { PublicEventsResolver } from './events.resolver';
-import { PUBLIC_EVENT_WHERE } from './models';
+import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from './models';
 
 describe('PublicEventsResolver lecturer profiles', () => {
   afterEach(() => {
@@ -73,6 +73,71 @@ describe('PublicEventsResolver lecturer profiles', () => {
     );
   });
 
+  it('loads public event detail through the shared public publication predicate', async () => {
+    const event = { id: 'event-1', name: 'Evento público' };
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(event),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(resolver.publicEvent('event-1')).resolves.toBe(event);
+
+    expect(prisma.event.findFirst).toHaveBeenCalledWith({
+      where: {
+        AND: [PUBLIC_EVENT_WHERE, { id: 'event-1' }],
+      },
+      select: expect.any(Object),
+    });
+  });
+
+  it('computes standalone event availability only for public events', async () => {
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'event-1', slots: 2 }),
+      },
+      eventSubscription: {
+        groupBy: jest.fn().mockResolvedValue([
+          {
+            eventId: 'event-1',
+            _count: {
+              personId: 1,
+            },
+          },
+        ]),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(resolver.publicEventSubscriptionSummary('event-1')).resolves.toEqual({
+      eventId: 'event-1',
+      hasAvailableSlots: true,
+    });
+
+    expect(prisma.event.findFirst).toHaveBeenCalledWith({
+      where: {
+        AND: [PUBLIC_EVENT_WHERE, { id: 'event-1' }],
+      },
+      select: {
+        id: true,
+        slots: true,
+      },
+    });
+    expect(prisma.eventSubscription.groupBy).toHaveBeenCalledWith({
+      by: ['eventId'],
+      where: {
+        eventId: {
+          in: ['event-1'],
+        },
+        deletedAt: null,
+      },
+      _count: {
+        personId: true,
+      },
+    });
+  });
+
   it('orders public calendar events by date and Typesense rank for same-date matches', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-06-23T12:00:00.000Z'));
     const sameStartDate = new Date('2026-06-24T12:00:00.000Z');
@@ -119,6 +184,83 @@ describe('PublicEventsResolver lecturer profiles', () => {
         },
       }),
     );
+  });
+
+  it('builds major-event subscription pages from published major events and visible child events only', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-06-23T12:00:00.000Z'));
+    const majorEvent = createMajorEventRecord('major-1');
+    const event = {
+      id: 'event-1',
+      slots: 1,
+      startDate: new Date('2026-06-24T12:00:00.000Z'),
+    };
+    const prisma = {
+      majorEvent: {
+        findFirst: jest.fn().mockResolvedValue(majorEvent),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([event]),
+      },
+      eventSubscription: {
+        groupBy: jest.fn().mockResolvedValue([
+          {
+            eventId: 'event-1',
+            _count: {
+              personId: 1,
+            },
+          },
+        ]),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(resolver.publicMajorEventSubscriptionPage('major-1')).resolves.toEqual({
+      majorEvent: expect.objectContaining({
+        id: 'major-1',
+        name: 'Major 1',
+      }),
+      events: [event],
+      subscriptionSummaries: [
+        {
+          eventId: 'event-1',
+          hasAvailableSlots: false,
+        },
+      ],
+    });
+
+    expect(prisma.majorEvent.findFirst).toHaveBeenCalledWith({
+      where: {
+        ...PUBLIC_MAJOR_EVENT_WHERE,
+        id: 'major-1',
+      },
+      select: expect.any(Object),
+    });
+    expect(prisma.event.findMany).toHaveBeenCalledWith({
+      where: {
+        AND: [
+          {
+            AND: [
+              PUBLIC_EVENT_WHERE,
+              {
+                allowSubscription: true,
+                majorEventId: {
+                  not: null,
+                },
+                OR: [
+                  { subscriptionEndDate: null },
+                  { subscriptionEndDate: { gte: new Date('2026-06-23T12:00:00.000Z') } },
+                ],
+              },
+            ],
+          },
+          { majorEventId: 'major-1' },
+        ],
+      },
+      select: expect.any(Object),
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
   });
 
   it('maps event lecturers to public profiles and hides unpublished Google pictures', async () => {
@@ -294,5 +436,30 @@ function createTypesenseSearch(result: { available: boolean; ids: string[] }) {
   return {
     isEnabled: jest.fn().mockReturnValue(true),
     searchEvents: jest.fn().mockResolvedValue(result),
+  };
+}
+
+function createMajorEventRecord(id: string) {
+  return {
+    id,
+    name: 'Major 1',
+    emoji: null,
+    startDate: new Date('2026-06-24T12:00:00.000Z'),
+    endDate: new Date('2026-06-25T12:00:00.000Z'),
+    description: null,
+    buttonText: null,
+    buttonLink: null,
+    contactInfo: null,
+    contactType: null,
+    subscriptionStartDate: null,
+    subscriptionEndDate: null,
+    maxCoursesPerAttendee: null,
+    maxLecturesPerAttendee: null,
+    maxUncategorizedPerAttendee: null,
+    rankedSubscriptionEnabled: false,
+    isPaymentRequired: false,
+    additionalPaymentInfo: null,
+    certificateConfigs: [],
+    majorEventPrices: [],
   };
 }
