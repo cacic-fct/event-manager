@@ -18,6 +18,7 @@ import {
   AuthService,
   ServiceWorkerService,
   authInterceptor,
+  initializeCacicAccountPrivacyBestEffort,
   provideCacicObservability,
   provideCloudflareTurnstile,
 } from '@cacic-fct/shared-angular';
@@ -144,9 +145,7 @@ export const appConfig: ApplicationConfig = {
         isPerformanceEnabled: isAccountPerformanceMonitoringEnabled,
       },
     }),
-    provideAppInitializer(() => {
-      return inject(CacicAccountPrivacyService).initialize();
-    }),
+    provideAppInitializer(initializeCacicAccountPrivacyBestEffort),
     provideAppInitializer(() => {
       const registry = inject(MatIconRegistry);
       registry.setDefaultFontSetClass('material-symbols-outlined');
