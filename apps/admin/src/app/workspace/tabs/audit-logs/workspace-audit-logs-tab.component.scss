@@ -213,7 +213,7 @@ pre {
   overflow: auto;
   padding: 0.75rem;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .empty-state {

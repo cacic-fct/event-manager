@@ -9,8 +9,9 @@ import {
 describe('typesense writer helpers', () => {
   it('creates missing collections and updates missing fields on existing collections', async () => {
     const client = createClientMock();
-    client.collection.exists.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-    client.collection.retrieve.mockResolvedValueOnce({ fields: [{ name: 'name', type: 'string' }] });
+    client.collection.retrieve.mockRejectedValueOnce({ httpStatus: 404 }).mockResolvedValueOnce({
+      fields: [{ name: 'name', type: 'string' }],
+    });
 
     await ensureTypesenseCollection(client.instance as never, {
       name: 'events',
@@ -43,6 +44,11 @@ describe('typesense writer helpers', () => {
   it('replaces, upserts, and deletes documents', async () => {
     const client = createClientMock();
     const logger = { error: jest.fn() };
+    client.alias.retrieve.mockRejectedValueOnce({ httpStatus: 404 });
+    client.aliasesRoot.upsert.mockRejectedValueOnce({ httpStatus: 409 }).mockResolvedValueOnce({
+      name: 'events',
+      collection_name: 'events_reindex_test',
+    });
 
     await replaceTypesenseCollectionDocuments({
       client: client.instance as never,
@@ -63,8 +69,16 @@ describe('typesense writer helpers', () => {
       id: 'event-2',
     });
 
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringMatching(/^events_reindex_/),
+        fields: [{ name: 'id', type: 'string' }],
+      }),
+    );
+    expect(client.aliasesRoot.upsert).toHaveBeenLastCalledWith('events', {
+      collection_name: expect.stringMatching(/^events_reindex_/),
+    });
     expect(client.collection.delete).toHaveBeenCalled();
-    expect(client.rootCollections.create).toHaveBeenCalledWith({ name: 'events', fields: [{ name: 'id', type: 'string' }] });
     expect(client.documents.import).toHaveBeenCalledWith([{ id: 'event-1', name: 'Aula' }], { action: 'upsert' });
     expect(client.documents.upsert).toHaveBeenCalledWith({ id: 'event-2' });
     expect(client.document.delete).toHaveBeenCalled();
@@ -101,18 +115,32 @@ function createClientMock() {
   const collection = {
     delete: jest.fn().mockResolvedValue(undefined),
     documents: jest.fn((id?: string) => (id ? document : documents)),
-    exists: jest.fn().mockResolvedValue(true),
     retrieve: jest.fn().mockResolvedValue({ fields: [] }),
     update: jest.fn().mockResolvedValue(undefined),
   };
   const rootCollections = {
     create: jest.fn().mockResolvedValue(undefined),
   };
+  const alias = {
+    retrieve: jest.fn().mockResolvedValue({
+      name: 'events',
+      collection_name: 'events_previous',
+    }),
+  };
+  const aliasesRoot = {
+    upsert: jest.fn().mockResolvedValue({
+      name: 'events',
+      collection_name: 'events_reindex_test',
+    }),
+  };
   const instance = {
     collections: jest.fn((name?: string) => (name ? collection : rootCollections)),
+    aliases: jest.fn((name?: string) => (name ? alias : aliasesRoot)),
   };
 
   return {
+    alias,
+    aliasesRoot,
     collection,
     document,
     documents,

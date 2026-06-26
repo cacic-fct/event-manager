@@ -1,7 +1,8 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
-import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
+import { delay, of, throwError, type Observable } from 'rxjs';
+import { AuditLogApiService, type AuditLogExplorerInput } from '../../../graphql/audit-log-api.service';
 import {
   AuditLogActorType,
   AuditLogEntityType,
@@ -27,16 +28,6 @@ type AuditLogsStoryArgs = {
   typesenseAvailable: boolean;
 };
 
-type GraphqlBody = {
-  query?: string;
-  variables?: {
-    input?: {
-      skip?: number;
-      take?: number;
-    };
-  };
-};
-
 const defaultArgs: AuditLogsStoryArgs = {
   entryCount: 36,
   includeReverted: false,
@@ -44,8 +35,6 @@ const defaultArgs: AuditLogsStoryArgs = {
   responseDelay: 100,
   typesenseAvailable: true,
 };
-
-let activeArgs = defaultArgs;
 
 const meta: Meta<AuditLogsStoryArgs> = {
   component: WorkspaceAuditLogsTabComponent,
@@ -74,34 +63,21 @@ const meta: Meta<AuditLogsStoryArgs> = {
     },
   },
   render: (args) => {
-    activeArgs = args;
-    return { props: args };
+    return {
+      props: args,
+      applicationConfig: {
+        providers: [
+          {
+            provide: AuditLogApiService,
+            useValue: createAuditLogApiService(args),
+          },
+        ],
+      },
+    };
   },
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'error' },
-    msw: {
-      handlers: [
-        http.post('/api/graphql', async ({ request }) => {
-          const body = (await request.json()) as GraphqlBody;
-          await delay(activeArgs.responseDelay);
-
-          if (!body.query?.includes('AuditLogExplorer')) {
-            return HttpResponse.json({ data: {} });
-          }
-
-          if (activeArgs.requestState === 'error') {
-            return HttpResponse.json({ errors: [{ message: 'Falha simulada ao consultar auditoria.' }] });
-          }
-
-          return HttpResponse.json({
-            data: {
-              auditLogExplorer: buildExplorerResult(activeArgs, body.variables?.input?.skip ?? 0, body.variables?.input?.take ?? 25),
-            },
-          });
-        }),
-      ],
-    },
   },
 };
 
@@ -174,6 +150,18 @@ export const RequestError: Story = {
     await expect(await canvas.findByText('Falha simulada ao consultar auditoria.')).toBeVisible();
   },
 };
+
+function createAuditLogApiService(args: AuditLogsStoryArgs): Pick<AuditLogApiService, 'searchExplorer'> {
+  return {
+    searchExplorer: (input: AuditLogExplorerInput): Observable<AuditLogExplorerResult> => {
+      if (args.requestState === 'error') {
+        return throwError(() => new Error('Falha simulada ao consultar auditoria.')).pipe(delay(args.responseDelay));
+      }
+
+      return of(buildExplorerResult(args, input.skip ?? 0, input.take ?? 25)).pipe(delay(args.responseDelay));
+    },
+  };
+}
 
 function buildExplorerResult(args: AuditLogsStoryArgs, skip: number, take: number): AuditLogExplorerResult {
   const entries = args.requestState === 'empty' ? [] : buildEntries(args).slice(skip, skip + take);

@@ -22,6 +22,7 @@ describe('typesense collection helpers', () => {
     );
     expect(schemas.find((schema) => schema.name === TYPESENSE_COLLECTIONS.auditLogs)?.fields).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ name: 'id', sort: true }),
         expect.objectContaining({ name: 'operation', facet: true }),
         expect.objectContaining({ name: 'lastRecordedAt', sort: true }),
         expect.objectContaining({ name: 'reverted', facet: true }),

@@ -129,6 +129,54 @@ describe('AuditLogService', () => {
     );
   });
 
+  it('retries transaction-scoped Typesense synchronization when the committed row is not visible yet', async () => {
+    const tx = createPrisma();
+    tx.auditLogEntry.create.mockResolvedValue(createAuditEntry({ id: 'audit-retry' }));
+    prisma.auditLogEntry.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(createAuditEntry({ id: 'audit-retry', entityLabel: 'Committed after retry' }));
+
+    await service.record(
+      {
+        entityType: AuditLogEntityType.PERSON,
+        entityId: 'person-1',
+        entityLabel: 'Ana Silva',
+        operation: AuditLogOperation.UPDATE,
+        actor: {
+          id: 'admin-1',
+          name: 'Renan Yudi',
+          email: 'renan@example.com',
+          type: AuditLogActorType.USER,
+        },
+        before: {
+          name: 'Ana Silva',
+        },
+        after: {
+          name: 'Ana Clara Silva',
+        },
+        squashWindowMs: 0,
+      },
+      tx as never,
+    );
+
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
+    expect(typesenseSearch.upsertAuditLogEntry).not.toHaveBeenCalled();
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 35);
+    });
+
+    expect(prisma.auditLogEntry.findUnique).toHaveBeenCalledTimes(2);
+    expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'audit-retry',
+        entityLabel: 'Committed after retry',
+      }),
+    );
+  });
+
   it('skips no-op audit records unless they are forced', async () => {
     await service.record({
       entityType: AuditLogEntityType.PERSON,
@@ -524,7 +572,7 @@ describe('AuditLogService', () => {
         entityType: AuditLogEntityType.EVENT,
         entityId: 'event-1',
       },
-      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
       take: 150,
     });
   });
@@ -594,17 +642,19 @@ describe('AuditLogService', () => {
       typesenseAvailable: true,
     });
 
-    expect(typesenseSearch.searchAuditLogEntries).toHaveBeenCalledWith('nome renan person-', {
+    expect(typesenseSearch.searchAuditLogEntries).toHaveBeenCalledWith('nome', {
       filterBy: [
         'entityType:=`PERSON`',
         'operation:=`UPDATE`',
         `lastRecordedAt:>=${Math.floor(dateFrom.getTime() / 1000)}`,
         `lastRecordedAt:<=${Math.floor(dateTo.getTime() / 1000)}`,
         'reverted:=false',
+        '(actorId:`renan` || actorName:`renan` || actorEmail:`renan`)',
+        '(entityId:`person-` || entityLabel:`person-` || eventId:`person-` || majorEventId:`person-` || eventGroupId:`person-`)',
       ].join(' && '),
       limit: 25,
       offset: 50,
-      sortBy: 'lastRecordedAt:desc,createdAt:desc',
+      sortBy: 'lastRecordedAt:desc,createdAt:desc,id:asc',
     });
     expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith({
       where: {
@@ -653,7 +703,7 @@ describe('AuditLogService', () => {
     });
     expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
         skip: 0,
         take: 100,
       }),

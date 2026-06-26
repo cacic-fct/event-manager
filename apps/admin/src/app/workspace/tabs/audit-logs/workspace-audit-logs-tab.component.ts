@@ -1,5 +1,5 @@
-import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -63,6 +63,7 @@ type AuditLogFilterForm = {
 })
 export class WorkspaceAuditLogsTabComponent {
   private readonly api = inject(AuditLogApiService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   protected readonly filters = new FormGroup<AuditLogFilterForm>({
     query: new FormControl('', { nonNullable: true }),
@@ -101,7 +102,9 @@ export class WorkspaceAuditLogsTabComponent {
   });
 
   constructor() {
-    void this.load();
+    if (isPlatformBrowser(this.platformId)) {
+      void this.load();
+    }
   }
 
   protected async applyFilters(): Promise<void> {

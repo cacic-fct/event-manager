@@ -69,7 +69,7 @@ export function createTypesenseCollectionSchemas(): CollectionCreateSchema[] {
       { name: 'isActive', type: 'bool', facet: true },
     ]),
     createTypesenseCollectionSchema(TYPESENSE_COLLECTIONS.auditLogs, [
-      { name: 'id', type: 'string' },
+      { name: 'id', type: 'string', sort: true },
       { name: 'entityType', type: 'string', facet: true },
       { name: 'entityId', type: 'string', facet: true },
       { name: 'entityLabel', type: 'string', optional: true },

@@ -63,6 +63,7 @@ describe('typesense query helpers', () => {
       q: '*',
       query_by: 'actorName',
       per_page: 250,
+      limit_hits: 301,
       offset: 50,
       filter_by: 'reverted:=false',
       sort_by: 'lastRecordedAt:desc',
@@ -71,6 +72,7 @@ describe('typesense query helpers', () => {
       q: '*',
       query_by: 'actorName',
       per_page: 1,
+      limit_hits: 301,
       offset: 300,
       filter_by: 'reverted:=false',
       sort_by: 'lastRecordedAt:desc',
@@ -95,6 +97,29 @@ describe('typesense query helpers', () => {
     expect(logger.error).toHaveBeenCalledWith(
       'Typesense search failed for collection events.',
       expect.any(Error),
+    );
+  });
+
+  it('surfaces Typesense request validation errors instead of treating them as downtime', async () => {
+    const client = createClientMock();
+    const logger = { error: jest.fn() };
+    const error = Object.assign(new Error('bad request'), { httpStatus: 400 });
+    client.documents.search.mockRejectedValueOnce(error);
+
+    await expect(
+      searchTypesensePagedDocumentIds({
+        client: client.instance as never,
+        logger: logger as never,
+        collectionName: 'audit_logs',
+        query: '',
+        queryBy: 'actorName',
+        options: { limit: 10 },
+        allowMatchAll: true,
+      }),
+    ).rejects.toBe(error);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Typesense search request is invalid for collection audit_logs.',
+      error,
     );
   });
 });

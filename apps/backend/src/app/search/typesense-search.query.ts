@@ -4,6 +4,8 @@ import type { Client as TypesenseClient } from 'typesense';
 import { TYPESENSE_MAX_PER_PAGE } from './typesense-search.collections';
 import type { TypesensePagedSearchResult, TypesenseSearchOptions, TypesenseSearchResult } from './typesense-search.types';
 
+const TYPESENSE_MAX_RESULT_WINDOW = 10_000;
+
 export async function searchTypesenseDocumentIds<T extends { id: string }>(input: {
   client: TypesenseClient | null;
   logger: Logger;
@@ -52,6 +54,7 @@ export async function searchTypesensePagedDocumentIds<T extends { id: string }>(
         q: normalizedQuery || '*',
         query_by: input.queryBy,
         per_page: pageSize,
+        limit_hits: offset + limit,
       };
 
       if (nextOffset > 0) {
@@ -86,6 +89,11 @@ export async function searchTypesensePagedDocumentIds<T extends { id: string }>(
       found,
     };
   } catch (error) {
+    if (isTypesenseConfigurationError(error)) {
+      input.logger.error(`Typesense search request is invalid for collection ${input.collectionName}.`, error);
+      throw error;
+    }
+
     input.logger.error(`Typesense search failed for collection ${input.collectionName}.`, error);
     return { available: false, ids: [], found: 0 };
   }
@@ -93,18 +101,39 @@ export async function searchTypesensePagedDocumentIds<T extends { id: string }>(
 
 function normalizeSearchOptions(options: number | TypesenseSearchOptions): Required<TypesenseSearchOptions> {
   if (typeof options === 'number') {
+    const offset = 0;
     return {
       filterBy: '',
-      limit: Math.max(0, Math.floor(options)),
-      offset: 0,
+      limit: normalizeSearchLimit(options, offset),
+      offset,
       sortBy: '',
     };
   }
 
+  const offset = Math.max(0, Math.floor(options.offset ?? 0));
   return {
     filterBy: options.filterBy?.trim() ?? '',
-    limit: Math.max(0, Math.floor(options.limit ?? 50)),
-    offset: Math.max(0, Math.floor(options.offset ?? 0)),
+    limit: normalizeSearchLimit(options.limit ?? 50, offset),
+    offset,
     sortBy: options.sortBy?.trim() ?? '',
   };
+}
+
+function normalizeSearchLimit(limit: number, offset: number): number {
+  const windowRemaining = Math.max(0, TYPESENSE_MAX_RESULT_WINDOW - offset);
+  return Math.min(windowRemaining, Math.max(0, Math.floor(limit)));
+}
+
+function isTypesenseConfigurationError(error: unknown): boolean {
+  const httpStatus = readHttpStatus(error);
+  return httpStatus === 400 || httpStatus === 401 || httpStatus === 403 || httpStatus === 422;
+}
+
+function readHttpStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object' || !('httpStatus' in error)) {
+    return undefined;
+  }
+
+  const httpStatus = (error as { httpStatus?: unknown }).httpStatus;
+  return typeof httpStatus === 'number' ? httpStatus : undefined;
 }

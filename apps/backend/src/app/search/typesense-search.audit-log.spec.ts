@@ -67,4 +67,43 @@ describe('typesense audit-log search helpers', () => {
       }),
     );
   });
+
+  it('normalizes required actor names and omits empty changed-field labels', () => {
+    const recordedAt = new Date('2026-06-25T12:00:00.000Z');
+    const document = toAuditLogSearchDocument({
+      id: 'audit-2',
+      entityType: 'SYSTEM',
+      entityId: 'import-1',
+      entityLabel: null,
+      operation: 'IMPORT',
+      summary: null,
+      actorId: null,
+      actorName: '   ',
+      actorEmail: null,
+      actorType: 'SYSTEM',
+      permission: null,
+      eventId: null,
+      majorEventId: null,
+      eventGroupId: null,
+      before: null,
+      after: null,
+      changes: [{ field: 'rows', before: 0, after: 2 }],
+      changedFields: [],
+      groupedCount: 1,
+      firstRecordedAt: recordedAt,
+      lastRecordedAt: recordedAt,
+      createdAt: recordedAt,
+      revertedAt: null,
+      revertedById: null,
+      revertedByName: null,
+      revertedByEntryId: null,
+      revertTargetId: null,
+      revertMode: null,
+      metadata: null,
+    });
+
+    expect(document.actorName).toBe('Sistema');
+    expect(document.changedFields).toBeUndefined();
+    expect(document.changedFieldLabels).toBeUndefined();
+  });
 });

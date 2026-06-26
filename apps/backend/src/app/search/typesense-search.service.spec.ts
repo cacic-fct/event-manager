@@ -118,12 +118,14 @@ describe('TypesenseSearchService', () => {
       q: 'aula',
       query_by: 'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
       per_page: 7,
+      limit_hits: 7,
     });
     expect(client.instance.collections).toHaveBeenNthCalledWith(4, 'cacic_event_manager_people');
     expect(client.documents.search).toHaveBeenNthCalledWith(4, {
       q: 'ana',
       query_by: 'name,email,secondaryEmails,phone,identityDocument,academicId',
       per_page: 5,
+      limit_hits: 5,
     });
   });
 
@@ -156,6 +158,7 @@ describe('TypesenseSearchService', () => {
       q: 'aula',
       query_by: 'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
       per_page: 250,
+      limit_hits: 503,
       offset: 250,
       filter_by: 'publiclyVisible:=true',
     });
@@ -163,6 +166,7 @@ describe('TypesenseSearchService', () => {
       q: 'aula',
       query_by: 'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
       per_page: 3,
+      limit_hits: 503,
       offset: 500,
       filter_by: 'publiclyVisible:=true',
     });
@@ -193,6 +197,7 @@ describe('TypesenseSearchService', () => {
       q: '*',
       query_by: expect.stringContaining('actorEmail'),
       per_page: 25,
+      limit_hits: 75,
       offset: 50,
       filter_by: 'operation:=`UPDATE` && reverted:=false',
       sort_by: 'lastRecordedAt:desc,createdAt:desc',
@@ -440,11 +445,11 @@ describe('TypesenseSearchService', () => {
   it('logs initialization and document synchronization failures without throwing', async () => {
     const { client, service } = createEnabledService();
     jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
-    client.collection.exists.mockRejectedValueOnce(new Error('schema unavailable'));
+    client.collection.retrieve.mockRejectedValueOnce(new Error('schema unavailable'));
 
     await expect(service.onModuleInit()).resolves.toBeUndefined();
 
-    client.collection.delete.mockRejectedValueOnce(new Error('collection delete failed'));
+    client.documents.import.mockRejectedValueOnce(new Error('document import failed'));
     await expect(
       service['replaceCollectionDocuments'](service['createCollectionSchema']('cacic_event_manager_events', []), [
         { id: 'event-1' },
@@ -518,7 +523,7 @@ describe('TypesenseSearchService', () => {
       ],
     });
     const { client, service } = createEnabledService(prisma);
-    client.collection.exists.mockResolvedValue(false);
+    client.collection.retrieve.mockRejectedValue({ httpStatus: 404 });
 
     await service.onModuleInit();
 
@@ -544,7 +549,8 @@ describe('TypesenseSearchService', () => {
     expect(client.rootCollections.create).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'cacic_event_manager_audit_logs' }),
     );
-    expect(client.collection.delete).toHaveBeenCalledTimes(7);
+    expect(client.collection.delete).not.toHaveBeenCalled();
+    expect(client.aliasesRoot.upsert).toHaveBeenCalledTimes(7);
     expect(client.documents.import).toHaveBeenCalledWith(
       [
         expect.objectContaining({
@@ -573,7 +579,6 @@ describe('TypesenseSearchService', () => {
 
   it('updates existing collections when schema fields are missing', async () => {
     const { client, service } = createEnabledService();
-    client.collection.exists.mockResolvedValue(true);
     client.collection.retrieve.mockResolvedValue({ fields: [] });
 
     await service['ensureCollections']();
@@ -651,18 +656,26 @@ function createTypesenseClientMock() {
   const collection = {
     documents: jest.fn((id?: string) => (id ? document : documents)),
     delete: jest.fn().mockResolvedValue(undefined),
-    exists: jest.fn().mockResolvedValue(true),
     retrieve: jest.fn().mockResolvedValue({ fields: [] }),
     update: jest.fn().mockResolvedValue(undefined),
   };
   const rootCollections = {
     create: jest.fn().mockResolvedValue(undefined),
   };
+  const alias = {
+    retrieve: jest.fn().mockRejectedValue({ httpStatus: 404 }),
+  };
+  const aliasesRoot = {
+    upsert: jest.fn().mockResolvedValue({ name: 'alias', collection_name: 'collection' }),
+  };
   const instance = {
     collections: jest.fn((name?: string) => (name ? collection : rootCollections)),
+    aliases: jest.fn((name?: string) => (name ? alias : aliasesRoot)),
   };
 
   return {
+    alias,
+    aliasesRoot,
     collection,
     document,
     documents,

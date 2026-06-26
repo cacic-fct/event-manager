@@ -443,7 +443,15 @@ export class LgpdService {
         },
       },
     });
-    await Promise.all(entries.map((entry) => this.typesenseSearch.upsertAuditLogEntry(entry)));
+    await Promise.all(
+      entries.map((entry) =>
+        this.typesenseSearch.upsertAuditLogEntry(entry).catch((error: unknown) => {
+          this.logger.warn(
+            `Falha ao reindexar audit log anonimizado ${entry.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }),
+      ),
+    );
   }
 
   private buildAuditLogSubjectWhere(dataSubject: DataSubjectResolution): Prisma.AuditLogEntryWhereInput {

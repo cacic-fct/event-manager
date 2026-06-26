@@ -72,6 +72,9 @@ type RevertEntityConfig = {
 
 const DEFAULT_SQUASH_WINDOW_MS = 2 * 60_000;
 const IGNORED_AUDIT_FIELDS = new Set(['createdAt', 'updatedAt', 'updatedById']);
+const AUDIT_LOG_ACTOR_FILTER_FIELDS = ['actorId', 'actorName', 'actorEmail'] as const;
+const AUDIT_LOG_ENTITY_FILTER_FIELDS = ['entityId', 'entityLabel', 'eventId', 'majorEventId', 'eventGroupId'] as const;
+const AUDIT_LOG_SYNC_RETRY_DELAYS_MS = [25, 100, 500, 1_000, 2_500] as const;
 const NON_REVERSIBLE_OPERATIONS = new Set<AuditLogOperation>([
   AuditLogOperation.IMPORT,
   AuditLogOperation.ISSUE,
@@ -293,7 +296,7 @@ export class AuditLogService {
         entityType,
         entityId,
       },
-      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
       take: Math.min(Math.max(Math.trunc(take), 1), 150),
     });
 
@@ -314,7 +317,7 @@ export class AuditLogService {
       filterBy: this.buildAuditLogTypesenseFilter(input),
       limit: take,
       offset: skip,
-      sortBy: 'lastRecordedAt:desc,createdAt:desc',
+      sortBy: 'lastRecordedAt:desc,createdAt:desc,id:asc',
     });
 
     if (searchResult.available) {
@@ -333,7 +336,7 @@ export class AuditLogService {
       this.prisma.auditLogEntry.count({ where }),
       this.prisma.auditLogEntry.findMany({
         where,
-        orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
         skip,
         take,
       }),
@@ -495,10 +498,7 @@ export class AuditLogService {
   }
 
   private buildAuditLogSearchQuery(input: AuditLogExplorerInput): string {
-    return [input.query, input.actor, input.entity]
-      .map((value) => value?.trim())
-      .filter((value): value is string => Boolean(value))
-      .join(' ');
+    return input.query?.trim() ?? '';
   }
 
   private buildAuditLogTypesenseFilter(input: AuditLogExplorerInput): string {
@@ -521,6 +521,14 @@ export class AuditLogService {
     }
     if (input.revertedStatus === AuditLogExplorerRevertedStatus.NOT_REVERTED) {
       filters.push('reverted:=false');
+    }
+    const actorFilter = this.buildAuditLogTypesenseTextFilter(input.actor, AUDIT_LOG_ACTOR_FILTER_FIELDS);
+    if (actorFilter) {
+      filters.push(actorFilter);
+    }
+    const entityFilter = this.buildAuditLogTypesenseTextFilter(input.entity, AUDIT_LOG_ENTITY_FILTER_FIELDS);
+    if (entityFilter) {
+      filters.push(entityFilter);
     }
 
     return filters.join(' && ');
@@ -633,6 +641,16 @@ export class AuditLogService {
     return `\`${value.replace(/[`\\]/g, '\\$&')}\``;
   }
 
+  private buildAuditLogTypesenseTextFilter(value: string | null | undefined, fields: readonly string[]): string | null {
+    const normalized = value?.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const escaped = this.escapeTypesenseFilterValue(normalized);
+    return `(${fields.map((field) => `${field}:${escaped}`).join(' || ')})`;
+  }
+
   private toTypesenseTimestamp(date: Date): number {
     return Math.floor(date.getTime() / 1000);
   }
@@ -654,7 +672,7 @@ export class AuditLogService {
         revertedAt: null,
         revertTargetId: null,
       },
-      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
     });
 
     if (!lastEntry || !this.canSquashIntoEntry(lastEntry, options, actor, now, squashWindowMs)) {
@@ -926,15 +944,27 @@ export class AuditLogService {
     });
   }
 
-  private async synchronizeCommittedAuditLogEntry(id: string): Promise<void> {
+  private async synchronizeCommittedAuditLogEntry(id: string, attempt = 0): Promise<void> {
     const entry = await this.prisma.auditLogEntry.findUnique({
       where: { id },
     });
     if (!entry) {
+      this.scheduleCommittedAuditLogEntryRetry(id, attempt);
       return;
     }
 
     await this.typesenseSearch.upsertAuditLogEntry(entry);
+  }
+
+  private scheduleCommittedAuditLogEntryRetry(id: string, attempt: number): void {
+    const delayMs = AUDIT_LOG_SYNC_RETRY_DELAYS_MS[attempt];
+    if (delayMs === undefined) {
+      return;
+    }
+
+    setTimeout(() => {
+      void this.synchronizeCommittedAuditLogEntry(id, attempt + 1).catch(() => undefined);
+    }, delayMs);
   }
 
   private parseChanges(value: Prisma.JsonValue): StoredAuditChange[] {

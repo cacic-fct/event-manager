@@ -62,6 +62,7 @@ export const AUDIT_LOG_QUERY_BY = [
 
 export function toAuditLogSearchDocument(input: AuditLogSearchDocumentInput): AuditLogSearchDocument {
   const changes = parseAuditLogChanges(input.changes);
+  const changedFieldLabels = changes.map((change) => change.label).filter(Boolean);
   const changesText = toOptionalString(
     changes
       .flatMap((change) => [
@@ -82,7 +83,7 @@ export function toAuditLogSearchDocument(input: AuditLogSearchDocumentInput): Au
     operation: input.operation,
     summary: toOptionalString(input.summary),
     actorId: toOptionalString(input.actorId),
-    actorName: input.actorName,
+    actorName: toOptionalString(input.actorName) ?? 'Sistema',
     actorEmail: toOptionalString(input.actorEmail),
     actorType: input.actorType,
     permission: toOptionalString(input.permission),
@@ -90,7 +91,7 @@ export function toAuditLogSearchDocument(input: AuditLogSearchDocumentInput): Au
     majorEventId: toOptionalString(input.majorEventId),
     eventGroupId: toOptionalString(input.eventGroupId),
     changedFields: input.changedFields.length > 0 ? input.changedFields : undefined,
-    changedFieldLabels: changes.map((change) => change.label).filter(Boolean),
+    changedFieldLabels: changedFieldLabels.length > 0 ? changedFieldLabels : undefined,
     changesText,
     beforeText: stringifyJsonForSearch(input.before),
     afterText: stringifyJsonForSearch(input.after),
