@@ -3,6 +3,7 @@ import {
   EVENT_MANAGER_M2M_VOTING_ROLES,
   type EventManagerVotingAttendanceCheckResponse,
   type EventManagerVotingEvent,
+  type EventManagerVotingPersonIdentifierLookupResponse,
   type EventManagerVotingPeopleLookupResponse,
 } from '@cacic-fct/event-manager-m2m-contracts';
 import {
@@ -25,6 +26,8 @@ import {
   VotingAttendanceCheckRequestDto,
   VotingAttendanceCheckResponseDto,
   VotingIntegrationEventDto,
+  VotingPersonIdentifierLookupRequestDto,
+  VotingPersonIdentifierLookupResponseDto,
   VotingPeopleLookupRequestDto,
   VotingPeopleLookupResponseDto,
 } from './dto';
@@ -133,6 +136,39 @@ export class VotingIntegrationController {
   ): Promise<EventManagerVotingPeopleLookupResponse> {
     this.assertM2m(request);
     return this.votingIntegrationService.lookupPeopleByEnrollmentNumbers(body.enrollmentNumbers);
+  }
+
+  @Post('people/identifier-lookup')
+  @RequireRoles(EVENT_MANAGER_M2M_VOTING_ROLES.READ)
+  @ApiOperation({
+    summary: 'Resolve Event Manager people by private slate candidate identifier',
+    description:
+      'Internal machine-to-machine endpoint used by CACiC Voto during CACiC election slate staging and review. It accepts CPF, phone, or e-mail identifiers and returns matching active people only to trusted service callers; browser clients must not call this endpoint.',
+  })
+  @ApiBody({
+    type: VotingPersonIdentifierLookupRequestDto,
+    description: 'Candidate identifiers submitted in CACiC Voto slate forms.',
+  })
+  @ApiOkResponse({
+    type: VotingPersonIdentifierLookupResponseDto,
+    description: 'Active Event Manager people records matching the requested identifiers.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Returned when the request does not include a valid service access token.',
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Returned when the authenticated principal is not a machine-to-machine principal or lacks the voting-integration:read role.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Returned when the lookup payload is invalid.',
+  })
+  lookupPeopleByIdentifier(
+    @Req() request: RequestWithUser,
+    @Body() body: VotingPersonIdentifierLookupRequestDto,
+  ): Promise<EventManagerVotingPersonIdentifierLookupResponse> {
+    this.assertM2m(request);
+    return this.votingIntegrationService.lookupPeopleByIdentifiers(body.identifiers);
   }
 
   private assertM2m(request: RequestWithUser): void {

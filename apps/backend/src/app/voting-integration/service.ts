@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import type {
   EventManagerVotingAttendanceCheckResponse,
   EventManagerVotingEvent,
+  EventManagerVotingPersonIdentifierLookupItem,
+  EventManagerVotingPersonIdentifierLookupResponse,
   EventManagerVotingPeopleLookupResponse,
   EventManagerVotingPerson,
 } from '@cacic-fct/event-manager-m2m-contracts';
@@ -27,6 +29,8 @@ const VOTING_PERSON_SELECT = {
   academicId: true,
   name: true,
   email: true,
+  phone: true,
+  identityDocument: true,
 } satisfies Prisma.PeopleSelect;
 
 type VotingPersonRecord = Prisma.PeopleGetPayload<{
@@ -148,6 +152,41 @@ export class VotingIntegrationService {
     };
   }
 
+  async lookupPeopleByIdentifiers(
+    identifiers: readonly EventManagerVotingPersonIdentifierLookupItem[],
+  ): Promise<EventManagerVotingPersonIdentifierLookupResponse> {
+    const normalized = this.normalizeIdentifierLookupItems(identifiers);
+    if (normalized.length === 0) {
+      return { people: [] };
+    }
+
+    const people = await this.prisma.people.findMany({
+      where: {
+        deletedAt: null,
+        OR: this.identifierLookupWhere(normalized),
+      },
+      select: VOTING_PERSON_SELECT,
+      orderBy: [
+        {
+          name: 'asc',
+        },
+      ],
+    });
+
+    return {
+      people: normalized.flatMap((item) =>
+        people
+          .filter((person) => this.personMatchesIdentifier(person, item))
+          .flatMap((person) =>
+            this.toPersonDto(person).map((match) => ({
+              ...match,
+              requestId: item.requestId,
+            })),
+          ),
+      ),
+    };
+  }
+
   private async resolveUserIds(userId: string): Promise<string[]> {
     const finalUserId = await this.accountMergeService.resolveFinalUserId(userId);
     return [...new Set([userId, finalUserId].filter((value): value is string => Boolean(value)))];
@@ -191,9 +230,114 @@ export class VotingIntegrationService {
     return [...normalized];
   }
 
+  private normalizeIdentifierLookupItems(
+    identifiers: readonly EventManagerVotingPersonIdentifierLookupItem[],
+  ): EventManagerVotingPersonIdentifierLookupItem[] {
+    const normalized: EventManagerVotingPersonIdentifierLookupItem[] = [];
+    const seen = new Set<string>();
+
+    for (const identifier of identifiers) {
+      const requestId = identifier.requestId.trim();
+      const identifierValue = this.normalizeIdentifierValue(
+        identifier.identifierType,
+        identifier.identifierValue,
+      );
+      if (!requestId || !identifierValue) {
+        continue;
+      }
+
+      const key = `${requestId}:${identifier.identifierType}:${identifierValue}`;
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      normalized.push({
+        requestId,
+        identifierType: identifier.identifierType,
+        identifierValue,
+      });
+    }
+
+    return normalized;
+  }
+
+  private identifierLookupWhere(
+    identifiers: readonly EventManagerVotingPersonIdentifierLookupItem[],
+  ): Prisma.PeopleWhereInput[] {
+    return identifiers.map((identifier) => {
+      switch (identifier.identifierType) {
+        case 'cpf':
+          return {
+            identityDocument: {
+              in: this.identifierValueVariants(identifier.identifierValue),
+            },
+          };
+        case 'phone':
+          return {
+            phone: {
+              in: this.identifierValueVariants(identifier.identifierValue),
+            },
+          };
+        case 'email':
+          return {
+            email: {
+              equals: identifier.identifierValue,
+              mode: 'insensitive',
+            },
+          };
+      }
+    });
+  }
+
+  private personMatchesIdentifier(
+    person: VotingPersonRecord,
+    identifier: EventManagerVotingPersonIdentifierLookupItem,
+  ): boolean {
+    switch (identifier.identifierType) {
+      case 'cpf':
+        return this.onlyDigits(person.identityDocument) === this.onlyDigits(identifier.identifierValue);
+      case 'phone':
+        return this.onlyDigits(person.phone) === this.onlyDigits(identifier.identifierValue);
+      case 'email':
+        return this.normalizeEmail(person.email) === this.normalizeEmail(identifier.identifierValue);
+    }
+  }
+
+  private normalizeIdentifierValue(
+    type: EventManagerVotingPersonIdentifierLookupItem['identifierType'],
+    value: string,
+  ): string | null {
+    switch (type) {
+      case 'cpf': {
+        const digits = this.onlyDigits(value);
+        return digits.length === 11 ? digits : null;
+      }
+      case 'phone': {
+        const digits = this.onlyDigits(value);
+        return digits.length >= 10 && digits.length <= 13 ? digits : null;
+      }
+      case 'email':
+        return this.normalizeEmail(value);
+    }
+  }
+
+  private identifierValueVariants(value: string): string[] {
+    return [...new Set([value, this.onlyDigits(value)].filter(Boolean))];
+  }
+
   private normalizeEnrollmentNumber(value?: string | null): string | null {
     const normalized = value?.replace(/^\uFEFF/, '').trim();
     return normalized || null;
+  }
+
+  private normalizeEmail(value?: string | null): string | null {
+    const normalized = value?.trim().toLowerCase();
+    return normalized || null;
+  }
+
+  private onlyDigits(value?: string | null): string {
+    return value?.replace(/\D/g, '') ?? '';
   }
 
   private toKeycloakExternalRef(userId: string): string {

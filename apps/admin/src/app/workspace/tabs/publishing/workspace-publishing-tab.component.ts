@@ -2,6 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   PLATFORM_ID,
   ViewEncapsulation,
   computed,
@@ -30,6 +31,7 @@ import {
   PublicContentWorkspaceFilters,
 } from '../../../graphql/publishing-api.service';
 import { PublicationState, PublicationTargetType } from '../../../graphql/models';
+import { bindLiveSearch } from '../../../shared/live-search';
 import {
   defaultScheduledPublicationDate,
   flattenPublicationListItems,
@@ -73,6 +75,7 @@ export class WorkspacePublicationTabComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(false);
   readonly workspace = signal<PublicContentWorkspace | null>(null);
@@ -115,6 +118,11 @@ export class WorkspacePublicationTabComponent {
   });
 
   constructor() {
+    bindLiveSearch({
+      control: this.filterForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.applySearch(),
+    });
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const targetType = params.get('targetType');
       const targetId = params.get('targetId');
@@ -159,7 +167,7 @@ export class WorkspacePublicationTabComponent {
   }
 
   async clearSearch(): Promise<void> {
-    this.filterForm.controls.query.setValue('');
+    this.filterForm.controls.query.setValue('', { emitEvent: false });
     this.query.set('');
     this.pageIndex.set(0);
     await this.refresh();

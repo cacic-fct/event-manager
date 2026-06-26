@@ -13,13 +13,13 @@
         </button>
       </div>
 
-      <form class="compact-form">
+      <form class="compact-form" [formGroup]="workspace.peopleSearchForm">
         <mat-form-field>
           <mat-label>Buscar pessoa</mat-label>
           <mat-icon matPrefix>search</mat-icon>
-          <input matInput #peopleSearchInput />
+          <input matInput formControlName="query" />
         </mat-form-field>
-        <button mat-flat-button type="button" (click)="workspace.searchPeople(peopleSearchInput.value)">
+        <button mat-flat-button type="button" (click)="workspace.searchPeople(workspace.peopleSearchForm.controls.query.value)">
           <mat-icon>search</mat-icon>
           Buscar
         </button>

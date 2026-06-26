@@ -30,14 +30,14 @@ export function buildEventListFilters(raw: EventFiltersForm['value'], take = 200
   };
 }
 
-export function resetEventFiltersForm(form: EventFiltersForm): void {
+export function resetEventFiltersForm(form: EventFiltersForm, options?: { emitEvent?: boolean }): void {
   form.reset({
     startDateFrom: '',
     startDateUntil: '',
     isInGroup: 'ALL',
     isInMajorEvent: 'ALL',
     query: '',
-  });
+  }, options);
 }
 
 function toOptionalBoolean(value: string | null | undefined): boolean | undefined {

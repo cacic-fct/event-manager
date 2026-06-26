@@ -12,6 +12,8 @@ import {
   createAdminCertificateConfig,
   createAdminCertificateConfigFromInput,
   createAdminCertificateTemplate,
+  createAdminEvent,
+  createAdminPerson,
 } from '../../testing/admin-entity-fixtures';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
 
@@ -38,12 +40,17 @@ describe('WorkspaceCertificatesService', () => {
     createCertificateConfig: ReturnType<typeof vi.fn>;
     issueMissedCertificates: ReturnType<typeof vi.fn>;
     listCertificateConfigs: ReturnType<typeof vi.fn>;
+    listCertificateIssuableEventGroups: ReturnType<typeof vi.fn>;
     listCertificateIssuableEvents: ReturnType<typeof vi.fn>;
+    listCertificateIssuableMajorEvents: ReturnType<typeof vi.fn>;
     listCertificateTemplates: ReturnType<typeof vi.fn>;
     listCertificates: ReturnType<typeof vi.fn>;
     updateCertificateConfig: ReturnType<typeof vi.fn>;
   };
   let lastPayload: CertificateConfigInput | null;
+  let peopleApi: {
+    listPeopleSummaries: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     lastPayload = null;
@@ -54,13 +61,18 @@ describe('WorkspaceCertificatesService', () => {
       }),
       issueMissedCertificates: vi.fn(() => of([])),
       listCertificateConfigs: vi.fn(() => of([])),
+      listCertificateIssuableEventGroups: vi.fn(() => of([])),
       listCertificateIssuableEvents: vi.fn(() => of([])),
+      listCertificateIssuableMajorEvents: vi.fn(() => of([])),
       listCertificateTemplates: vi.fn(() => of([certificateTemplate])),
       listCertificates: vi.fn(() => of([])),
       updateCertificateConfig: vi.fn((id: string, payload: CertificateConfigInput) => {
         lastPayload = payload;
         return of(createAdminCertificateConfigFromInput(payload, certificateTemplate, { id }));
       }),
+    };
+    peopleApi = {
+      listPeopleSummaries: vi.fn(() => of([])),
     };
 
     await TestBed.configureTestingModule({
@@ -70,7 +82,7 @@ describe('WorkspaceCertificatesService', () => {
         { provide: EventApiService, useValue: {} },
         { provide: EventGroupApiService, useValue: {} },
         { provide: MajorEventApiService, useValue: {} },
-        { provide: PeopleApiService, useValue: {} },
+        { provide: PeopleApiService, useValue: peopleApi },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
       ],
@@ -83,6 +95,10 @@ describe('WorkspaceCertificatesService', () => {
     service.certificateConfigForm.certificateTemplateId().value.set(certificateTemplate.id);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('posts template defaults as stored certificate fields', async () => {
     await service.saveCertificateConfig();
 
@@ -92,6 +108,30 @@ describe('WorkspaceCertificatesService', () => {
         'bottom-text': 'como organizador do evento',
       }),
     );
+  });
+
+  it('searches certificate targets as the query changes', async () => {
+    vi.useFakeTimers();
+    api.listCertificateIssuableEvents.mockReturnValueOnce(of([createAdminEvent({ id: 'event-1', name: 'Aula' })]));
+
+    service.targetFiltersForm.controls.query.setValue('aula');
+
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(api.listCertificateIssuableEvents).toHaveBeenCalledWith({ query: 'aula', take: 200 });
+    expect(service.issuableEvents().map((eventItem) => eventItem.id)).toEqual(['event-1']);
+  });
+
+  it('searches manual certificate people as the query changes', async () => {
+    vi.useFakeTimers();
+    peopleApi.listPeopleSummaries.mockReturnValueOnce(of([createAdminPerson({ id: 'person-1', name: 'Ana' })]));
+
+    service.personLookupForm.controls.query.setValue('ana');
+
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(peopleApi.listPeopleSummaries).toHaveBeenCalledWith({ query: 'ana', take: 20 });
+    expect(service.personSearchResults().map((person) => person.id)).toEqual(['person-1']);
   });
 
   it('uses template defaults in the form and sends them in the payload', async () => {

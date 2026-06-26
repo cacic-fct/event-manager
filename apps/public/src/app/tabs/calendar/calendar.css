@@ -20,12 +20,16 @@
   align-items: start;
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) auto;
 }
 
 .search-field,
 .type-field {
   width: 100%;
+}
+
+.search-button {
+  min-height: 56px;
 }
 
 .empty-section {

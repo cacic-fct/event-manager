@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, computed, inject, Injectable, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -24,6 +24,7 @@ import { SubscriptionCsvImportResultDialogComponent } from '../../workspace/dial
 import { SubscriberCsvExportDialogComponent } from '../../workspace/dialogs/subscriber-csv-export-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
+import { bindLiveSearch } from '../live-search';
 import { buildSubscriberCsv } from '../subscriber-csv-export';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspaceAttendancesService } from './workspace-attendances.service';
@@ -46,6 +47,7 @@ export class WorkspaceSubscriptionsService {
   private readonly snackbar = inject(MatSnackBar);
   private readonly attendanceApi = inject(AttendanceApiService);
   private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
   readonly eventFiltersForm = this.formBuilder.nonNullable.group({
@@ -114,6 +116,14 @@ export class WorkspaceSubscriptionsService {
   readonly selectedEventIds = signal<Set<string>>(new Set());
   readonly isImportingCsv = signal(false);
 
+  constructor() {
+    bindLiveSearch({
+      control: this.eventFiltersForm,
+      destroyRef: this.destroyRef,
+      search: () => this.searchEvents(),
+    });
+  }
+
   async searchEvents(): Promise<void> {
     const events = await firstValueFrom(
       this.eventApi.listEvents(buildEventListFilters(this.eventFiltersForm.value, 80)),
@@ -122,7 +132,7 @@ export class WorkspaceSubscriptionsService {
   }
 
   async resetEventFilters(): Promise<void> {
-    resetEventFiltersForm(this.eventFiltersForm);
+    resetEventFiltersForm(this.eventFiltersForm, { emitEvent: false });
     await this.searchEvents();
   }
 

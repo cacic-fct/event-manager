@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -11,6 +11,7 @@ import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { Event, EventGroup, EventGroupInput, EventSummary } from '../../graphql/models';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
+import { bindLiveSearch } from '../live-search';
 import { WorkspaceEventsService } from './workspace-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 
@@ -31,6 +32,7 @@ export class WorkspaceEventGroupsService {
   private readonly eventsService = inject(WorkspaceEventsService);
   private readonly permissions = inject(WorkspacePermissionsService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly eventGroups = signal<EventGroup[]>([]);
   readonly eventSummaries = signal<EventSummary[]>([]);
@@ -87,6 +89,11 @@ export class WorkspaceEventGroupsService {
   });
 
   constructor() {
+    bindLiveSearch({
+      control: this.eventGroupEventSearchForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchEventsForSelectedGroup(),
+    });
     this.eventGroupForm.controls.shouldIssueCertificate.valueChanges.subscribe(() =>
       this.syncCertificateRuleControls(),
     );
@@ -222,9 +229,12 @@ export class WorkspaceEventGroupsService {
       shouldIssuePartialCertificate: false,
     });
     this.syncCertificateRuleControls();
-    this.eventGroupEventSearchForm.reset({
-      query: '',
-    });
+    this.eventGroupEventSearchForm.reset(
+      {
+        query: '',
+      },
+      { emitEvent: false },
+    );
   }
 
   async pickEventGroup(group: EventGroup): Promise<void> {
@@ -254,13 +264,19 @@ export class WorkspaceEventGroupsService {
       shouldIssuePartialCertificate: group.shouldIssuePartialCertificate,
     });
     this.syncCertificateRuleControls();
-    this.eventGroupEventSearchForm.reset({
-      query: '',
-    });
+    this.eventGroupEventSearchForm.reset(
+      {
+        query: '',
+      },
+      { emitEvent: false },
+    );
     this.eventGroupEventSearchResults.set([]);
-    this.eventsService.eventGroupLookupForm.reset({
-      query: group.name,
-    });
+    this.eventsService.eventGroupLookupForm.reset(
+      {
+        query: group.name,
+      },
+      { emitEvent: false },
+    );
     void this.loadEventsForGroup(group.id);
   }
 

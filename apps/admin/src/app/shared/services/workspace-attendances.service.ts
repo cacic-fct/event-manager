@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { computed, Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, computed, Injectable, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -29,6 +29,7 @@ import { WorkspaceOfflineAttendanceSubmissionDialogComponent } from '../../works
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
+import { bindLiveSearch } from '../live-search';
 import { buildSubscriberCsv } from '../subscriber-csv-export';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 
@@ -101,6 +102,7 @@ export class WorkspaceAttendancesService {
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
 
@@ -189,6 +191,14 @@ export class WorkspaceAttendancesService {
     majorEventId: ['', [Validators.required]],
   });
 
+  constructor() {
+    bindLiveSearch({
+      control: this.attendanceEventFiltersForm,
+      destroyRef: this.destroyRef,
+      search: () => this.searchAttendanceEvents(),
+    });
+  }
+
   async searchAttendanceEvents(): Promise<void> {
     const events = await firstValueFrom(
       this.eventApi.listEvents(buildEventListFilters(this.attendanceEventFiltersForm.value, 80)),
@@ -210,7 +220,7 @@ export class WorkspaceAttendancesService {
   }
 
   async resetAttendanceEventFilters(): Promise<void> {
-    resetEventFiltersForm(this.attendanceEventFiltersForm);
+    resetEventFiltersForm(this.attendanceEventFiltersForm, { emitEvent: false });
     await this.searchAttendanceEvents();
   }
 

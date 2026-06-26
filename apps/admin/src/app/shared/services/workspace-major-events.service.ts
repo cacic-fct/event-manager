@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -11,6 +11,7 @@ import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { Event, MajorEvent, MajorEventInput, PriceType } from '../../graphql/models';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
+import { bindLiveSearch } from '../live-search';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspaceUiService } from './workspace-ui.service';
 
@@ -32,6 +33,7 @@ export class WorkspaceMajorEventsService {
   private readonly permissions = inject(WorkspacePermissionsService);
   private readonly router = inject(Router);
   private readonly ui = inject(WorkspaceUiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = this.ui.loading;
   readonly majorEvents = signal<MajorEvent[]>([]);
@@ -85,6 +87,11 @@ export class WorkspaceMajorEventsService {
   });
 
   constructor() {
+    bindLiveSearch({
+      control: this.majorEventEventSearchForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchEventsForSelectedMajorEvent(),
+    });
     this.majorEventForm.controls.isPaymentRequired.valueChanges.subscribe(() =>
       this.syncCertificateExceptionControls(),
     );
@@ -201,9 +208,12 @@ export class WorkspaceMajorEventsService {
     this.selectedMajorEvent.set(null);
     this.majorEventEvents.set([]);
     this.majorEventEventSearchResults.set([]);
-    this.majorEventEventSearchForm.reset({
-      query: '',
-    });
+    this.majorEventEventSearchForm.reset(
+      {
+        query: '',
+      },
+      { emitEvent: false },
+    );
     this.majorEventForm.reset({
       id: '',
       name: '',
@@ -255,9 +265,12 @@ export class WorkspaceMajorEventsService {
 
   private populateMajorEventSelection(majorEvent: MajorEvent): void {
     this.selectedMajorEvent.set(majorEvent);
-    this.majorEventEventSearchForm.reset({
-      query: '',
-    });
+    this.majorEventEventSearchForm.reset(
+      {
+        query: '',
+      },
+      { emitEvent: false },
+    );
     this.majorEventEventSearchResults.set([]);
     const price = majorEvent.majorEventPrices.find((priceOption) => priceOption.tiers.length > 0);
     const priceType = price?.type ?? 'SINGLE';

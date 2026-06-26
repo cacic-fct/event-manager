@@ -81,7 +81,7 @@ export class Calendar {
   readonly listStartDate = signal(this.todayDate);
   readonly weekBaseDate = signal(startOfWeek(this.todayDate, { weekStartsOn: 0 }));
   readonly selectedDate = signal(this.todayDate);
-  private readonly reconnectRefreshCounter = signal(0);
+  private readonly refreshCounter = signal(0);
 
   readonly eventTypeOptions: Array<{
     value: CalendarEventTypeFilter;
@@ -122,7 +122,7 @@ export class Calendar {
         filter((shouldRefresh) => shouldRefresh),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe(() => this.reconnectRefreshCounter.update((value) => value + 1));
+      .subscribe(() => this.refreshCounter.update((value) => value + 1));
   }
 
   setViewMode(mode: string): void {
@@ -162,13 +162,17 @@ export class Calendar {
     this.selectedDate.set(this.todayDate);
   }
 
+  searchNow(): void {
+    this.refreshCounter.update((value) => value + 1);
+  }
+
   selectDate(date: Date): void {
     this.selectedDate.set(date);
     this.ensureListIncludes(date);
   }
 
   private createCalendarState(): Observable<CalendarState> {
-    return combineLatest([this.filterChanges(), toObservable(this.listStartDate), toObservable(this.reconnectRefreshCounter)]).pipe(
+    return combineLatest([this.filterChanges(), toObservable(this.listStartDate), toObservable(this.refreshCounter)]).pipe(
       switchMap(([filters, startDate]) =>
         this.loadEvents(filters, startDate).pipe(
           map(
