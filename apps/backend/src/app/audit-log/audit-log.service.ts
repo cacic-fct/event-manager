@@ -1,5 +1,5 @@
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogActorType,
   AuditLogEntry as PrismaAuditLogEntry,
