@@ -218,6 +218,7 @@ export const WorkspacePermissionTab = {
   Places: 'places',
   GlobalOperations: 'global-operations',
   Permissions: 'permissions',
+  AuditLogs: 'audit-logs',
   Notifications: 'notifications',
   Preferences: 'preferences',
 } as const;
@@ -374,6 +375,13 @@ export const WORKSPACE_TAB_PERMISSIONS = [
       Permission.PermissionGrant.Delete,
       Permission.Person.Read,
     ],
+    delete: [],
+  },
+  {
+    id: WorkspacePermissionTab.AuditLogs,
+    label: 'Auditoria',
+    read: [],
+    edit: [],
     delete: [],
   },
   {

@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { canValidateReceiptsGuard, workspaceCanReadTabGuard } from './workspace.guard';
+import { canValidateReceiptsGuard, workspaceCanReadTabGuard, workspaceSuperAdminGuard } from './workspace.guard';
 import { WorkspaceNavLinkId, WorkspaceNavLinkItem, workspaceNavLinkItems } from './workspace-nav';
 import { WorkspaceNotificationsTabComponent } from './tabs/notifications/workspace-notifications-tab.component';
 
@@ -16,6 +16,7 @@ const subscriptionsData = getWorkspaceRouteData('subscriptions');
 const notificationsData = getWorkspaceRouteData('notifications');
 const globalOperationsData = getWorkspaceRouteData('global-operations');
 const permissionsData = getWorkspaceRouteData('permissions');
+const auditLogsData = getWorkspaceRouteData('audit-logs');
 const preferencesData = getWorkspaceRouteData('preferences');
 
 function getWorkspaceRouteData(id: WorkspaceNavLinkId) {
@@ -189,6 +190,21 @@ export const workspaceRoutes: Route[] = [
           (m) => m.WorkspaceGlobalOperationsTabComponent,
         ),
       ),
+      {
+        path: auditLogsData.path,
+        data: auditLogsData,
+        canMatch: [workspaceSuperAdminGuard],
+        loadComponent: () =>
+          import('./tabs/audit-logs/workspace-audit-logs-tab.component').then(
+            (m) => m.WorkspaceAuditLogsTabComponent,
+          ),
+      },
+      {
+        path: auditLogsData.path,
+        data: auditLogsData,
+        loadComponent: () =>
+          import('./workspace-permission-denied.component').then((m) => m.WorkspacePermissionDeniedComponent),
+      },
       ...guardedWorkspaceTabRoute(notificationsData.path, notificationsData, () =>
         Promise.resolve(WorkspaceNotificationsTabComponent),
       ),

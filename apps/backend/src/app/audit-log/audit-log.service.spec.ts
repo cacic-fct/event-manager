@@ -2,11 +2,12 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, AuditLogRevertMode, Prisma } from '@prisma/client';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuditLogExplorerRevertedStatus } from './audit-log.models';
 import { AuditLogService } from './audit-log.service';
 
 describe('AuditLogService', () => {
   let prisma: ReturnType<typeof createPrisma>;
-  let authorizationPolicy: { assertPermissions: jest.Mock };
+  let authorizationPolicy: { assertPermissions: jest.Mock; isSuperAdmin: jest.Mock };
   let typesenseSearch: ReturnType<typeof createTypesenseSearch>;
   let attendanceRealtime: { notifyAllConnectedPeople: jest.Mock };
   let frozenResources: ReturnType<typeof createFrozenResources>;
@@ -14,7 +15,7 @@ describe('AuditLogService', () => {
 
   beforeEach(() => {
     prisma = createPrisma();
-    authorizationPolicy = { assertPermissions: jest.fn() };
+    authorizationPolicy = { assertPermissions: jest.fn(), isSuperAdmin: jest.fn().mockReturnValue(false) };
     typesenseSearch = createTypesenseSearch();
     attendanceRealtime = { notifyAllConnectedPeople: jest.fn() };
     frozenResources = createFrozenResources();
@@ -81,6 +82,51 @@ describe('AuditLogService', () => {
     ]);
     expect(createdChanges(prisma).some((change) => change.field === 'updatedAt')).toBe(false);
     expect(createdChanges(prisma).some((change) => change.field === 'updatedById')).toBe(false);
+  });
+
+  it('defers Typesense synchronization for transaction-scoped audit records until the row is committed', async () => {
+    const tx = createPrisma();
+    tx.auditLogEntry.create.mockResolvedValue(createAuditEntry({ id: 'audit-tx' }));
+    prisma.auditLogEntry.findUnique.mockResolvedValue(createAuditEntry({ id: 'audit-tx', entityLabel: 'Committed' }));
+
+    await service.record(
+      {
+        entityType: AuditLogEntityType.PERSON,
+        entityId: 'person-1',
+        entityLabel: 'Ana Silva',
+        operation: AuditLogOperation.UPDATE,
+        actor: {
+          id: 'admin-1',
+          name: 'Renan Yudi',
+          email: 'renan@example.com',
+          type: AuditLogActorType.USER,
+        },
+        before: {
+          name: 'Ana Silva',
+        },
+        after: {
+          name: 'Ana Clara Silva',
+        },
+        squashWindowMs: 0,
+      },
+      tx as never,
+    );
+
+    expect(typesenseSearch.upsertAuditLogEntry).not.toHaveBeenCalled();
+
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
+
+    expect(prisma.auditLogEntry.findUnique).toHaveBeenCalledWith({
+      where: { id: 'audit-tx' },
+    });
+    expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'audit-tx',
+        entityLabel: 'Committed',
+      }),
+    );
   });
 
   it('skips no-op audit records unless they are forced', async () => {
@@ -481,6 +527,137 @@ describe('AuditLogService', () => {
       orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
       take: 150,
     });
+  });
+
+  it('rejects global audit exploration for non-super-admin users', async () => {
+    await expect(service.exploreAuditLogs({}, undefined)).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(typesenseSearch.searchAuditLogEntries).not.toHaveBeenCalled();
+    expect(prisma.auditLogEntry.findMany).not.toHaveBeenCalled();
+  });
+
+  it('explores audit logs through Typesense and resolves authoritative rows from Prisma', async () => {
+    const dateFrom = new Date('2026-06-20T00:00:00.000Z');
+    const dateTo = new Date('2026-06-25T23:59:59.999Z');
+    authorizationPolicy.isSuperAdmin.mockReturnValue(true);
+    typesenseSearch.searchAuditLogEntries.mockResolvedValue({
+      available: true,
+      ids: ['audit-2', 'audit-1'],
+      found: 12,
+    });
+    prisma.auditLogEntry.findMany.mockResolvedValue([
+      createAuditEntry({
+        id: 'audit-1',
+        before: { name: 'Ana' },
+        after: { name: 'Ana Silva' },
+        metadata: { requestId: 'request-1' },
+      }),
+      createAuditEntry({
+        id: 'audit-2',
+        entityId: 'person-2',
+        entityLabel: 'Bruno',
+      }),
+    ]);
+
+    await expect(
+      service.exploreAuditLogs(
+        {
+          query: 'nome',
+          actor: 'renan',
+          entity: 'person-',
+          entityType: AuditLogEntityType.PERSON,
+          operation: AuditLogOperation.UPDATE,
+          dateFrom,
+          dateTo,
+          revertedStatus: AuditLogExplorerRevertedStatus.NOT_REVERTED,
+          skip: 50,
+          take: 25,
+        },
+        createAuthenticatedUser({ sub: 'super-admin' }),
+      ),
+    ).resolves.toEqual({
+      entries: [
+        expect.objectContaining({
+          id: 'audit-2',
+          entityId: 'person-2',
+        }),
+        expect.objectContaining({
+          id: 'audit-1',
+          beforeJson: JSON.stringify({ name: 'Ana' }, null, 2),
+          afterJson: JSON.stringify({ name: 'Ana Silva' }, null, 2),
+          metadataJson: JSON.stringify({ requestId: 'request-1' }, null, 2),
+        }),
+      ],
+      skip: 50,
+      take: 25,
+      total: 12,
+      typesenseAvailable: true,
+    });
+
+    expect(typesenseSearch.searchAuditLogEntries).toHaveBeenCalledWith('nome renan person-', {
+      filterBy: [
+        'entityType:=`PERSON`',
+        'operation:=`UPDATE`',
+        `lastRecordedAt:>=${Math.floor(dateFrom.getTime() / 1000)}`,
+        `lastRecordedAt:<=${Math.floor(dateTo.getTime() / 1000)}`,
+        'reverted:=false',
+      ].join(' && '),
+      limit: 25,
+      offset: 50,
+      sortBy: 'lastRecordedAt:desc,createdAt:desc',
+    });
+    expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith({
+      where: {
+        id: {
+          in: ['audit-2', 'audit-1'],
+        },
+      },
+    });
+  });
+
+  it('falls back to SQL filtering when Typesense is unavailable', async () => {
+    authorizationPolicy.isSuperAdmin.mockReturnValue(true);
+    typesenseSearch.searchAuditLogEntries.mockResolvedValue({ available: false, ids: [], found: 0 });
+    prisma.auditLogEntry.count.mockResolvedValue(1);
+    prisma.auditLogEntry.findMany.mockResolvedValue([
+      createAuditEntry({
+        id: 'audit-sql',
+        revertedAt: new Date('2026-06-25T12:00:00.000Z'),
+      }),
+    ]);
+
+    await expect(
+      service.exploreAuditLogs({
+        actor: 'renan',
+        entity: 'person-1',
+        operation: AuditLogOperation.UPDATE,
+        revertedStatus: AuditLogExplorerRevertedStatus.REVERTED,
+        take: 500,
+      }),
+    ).resolves.toEqual({
+      entries: [expect.objectContaining({ id: 'audit-sql' })],
+      skip: 0,
+      take: 100,
+      total: 1,
+      typesenseAvailable: false,
+    });
+
+    expect(prisma.auditLogEntry.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        AND: expect.arrayContaining([
+          { operation: AuditLogOperation.UPDATE },
+          { revertedAt: { not: null } },
+          expect.objectContaining({ OR: expect.any(Array) }),
+        ]),
+      }),
+    });
+    expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
+        skip: 0,
+        take: 100,
+      }),
+    );
   });
 
   it('authorizes subscription and contextual histories with their resource scopes', async () => {
@@ -1190,12 +1367,13 @@ describe('AuditLogService', () => {
 function createPrisma() {
   return {
     auditLogEntry: {
-      create: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockResolvedValue(createAuditEntry()),
       findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
-      update: jest.fn(),
+      update: jest.fn().mockResolvedValue(createAuditEntry()),
       updateMany: jest.fn(),
     },
     user: {
@@ -1324,6 +1502,8 @@ function createTypesenseSearch() {
     deletePerson: jest.fn(),
     upsertPlacePreset: jest.fn(),
     deletePlacePreset: jest.fn(),
+    upsertAuditLogEntry: jest.fn().mockResolvedValue(undefined),
+    searchAuditLogEntries: jest.fn().mockResolvedValue({ available: false, ids: [], found: 0 }),
   };
 }
 

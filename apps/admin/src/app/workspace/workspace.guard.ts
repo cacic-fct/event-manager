@@ -2,7 +2,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { inject } from '@angular/core';
 import { PLATFORM_ID } from '@angular/core';
 import { CanMatchFn, Route } from '@angular/router';
-import { Permission, type WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
+import { AuthService } from '@cacic-fct/shared-angular';
+import { EventManagerKeycloakRole, Permission, type WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
 import { WorkspacePermissionsService } from '../shared/services/workspace-permissions.service';
 
 export const workspaceCanReadTabGuard: CanMatchFn = async (route: Route) => {
@@ -34,4 +35,15 @@ export const canValidateReceiptsGuard: CanMatchFn = async () => {
 
   await permissions.evaluateWorkspacePermissions();
   return permissions.has(Permission.Receipt.Read);
+};
+
+export const workspaceSuperAdminGuard: CanMatchFn = () => {
+  const auth = inject(AuthService);
+  const platformId = inject(PLATFORM_ID);
+
+  if (!isPlatformBrowser(platformId)) {
+    return true;
+  }
+
+  return auth.roles().includes(EventManagerKeycloakRole.SuperAdmin);
 };

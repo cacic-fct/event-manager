@@ -1,5 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogActorType,
   AuditLogEntry as PrismaAuditLogEntry,
@@ -11,10 +11,17 @@ import {
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenOperation, FrozenResourceService } from '../common/frozen-resource.service';
+import { resolvePagination } from '../common/pagination';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
-import { AuditLogEntry } from './audit-log.models';
+import {
+  AuditLogEntry,
+  AuditLogExplorerEntry,
+  AuditLogExplorerInput,
+  AuditLogExplorerResult,
+  AuditLogExplorerRevertedStatus,
+} from './audit-log.models';
 
 type AuditActor = {
   id?: string | null;
@@ -208,6 +215,10 @@ export class AuditLogService {
       deleteEventGroup: async () => undefined,
       upsertPerson: async () => undefined,
       deletePerson: async () => undefined,
+      upsertPlacePreset: async () => undefined,
+      deletePlacePreset: async () => undefined,
+      upsertAuditLogEntry: async () => undefined,
+      searchAuditLogEntries: async () => ({ available: false, ids: [], found: 0 }),
     } as unknown as TypesenseSearchService,
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService = {
       notifyAllConnectedPeople: async () => undefined,
@@ -243,7 +254,7 @@ export class AuditLogService {
       }
     }
 
-    await prisma.auditLogEntry.create({
+    const entry = await prisma.auditLogEntry.create({
       data: {
         entityType: options.entityType,
         entityId: options.entityId,
@@ -267,6 +278,7 @@ export class AuditLogService {
         metadata: options.metadata ? this.toJsonInput(options.metadata) : undefined,
       },
     });
+    this.synchronizeAuditLogEntry(entry, prisma);
   }
 
   async listEntityHistory(
@@ -286,6 +298,54 @@ export class AuditLogService {
     });
 
     return entries.map((entry) => this.mapEntry(entry));
+  }
+
+  async exploreAuditLogs(
+    input: AuditLogExplorerInput,
+    actor: AuthenticatedUser | undefined,
+  ): Promise<AuditLogExplorerResult> {
+    this.assertCanExploreAuditLogs(actor);
+    this.assertValidExplorerDateRange(input.dateFrom, input.dateTo);
+
+    const pagination = resolvePagination(input.skip ?? undefined, input.take ?? undefined);
+    const skip = pagination.skip;
+    const take = Math.min(pagination.take, 100);
+    const searchResult = await this.typesenseSearch.searchAuditLogEntries(this.buildAuditLogSearchQuery(input), {
+      filterBy: this.buildAuditLogTypesenseFilter(input),
+      limit: take,
+      offset: skip,
+      sortBy: 'lastRecordedAt:desc,createdAt:desc',
+    });
+
+    if (searchResult.available) {
+      const entries = await this.findAuditLogEntriesByIds(searchResult.ids);
+      return {
+        entries: entries.map((entry) => this.mapExplorerEntry(entry)),
+        total: searchResult.found,
+        skip,
+        take,
+        typesenseAvailable: true,
+      };
+    }
+
+    const where = this.buildAuditLogSqlWhere(input);
+    const [total, entries] = await Promise.all([
+      this.prisma.auditLogEntry.count({ where }),
+      this.prisma.auditLogEntry.findMany({
+        where,
+        orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
+        skip,
+        take,
+      }),
+    ]);
+
+    return {
+      entries: entries.map((entry) => this.mapExplorerEntry(entry)),
+      total,
+      skip,
+      take,
+      typesenseAvailable: false,
+    };
   }
 
   async revertEntry(
@@ -401,11 +461,180 @@ export class AuditLogService {
         id: revertResult.revertLogId,
       },
     });
+    const revertedEntries = await this.prisma.auditLogEntry.findMany({
+      where: {
+        revertedByEntryId: revertLog.id,
+      },
+    });
+    for (const entry of [revertLog, ...revertedEntries]) {
+      this.synchronizeAuditLogEntry(entry);
+    }
     return this.mapEntry(revertLog);
   }
 
   buildCompositeEntityId(parts: readonly string[]): string {
     return parts.map((part) => encodeURIComponent(part)).join(':');
+  }
+
+  private assertCanExploreAuditLogs(actor: AuthenticatedUser | undefined): void {
+    if (!this.authorizationPolicy.isSuperAdmin(actor)) {
+      throw new ForbiddenException('Somente super-admins podem consultar todos os logs de auditoria.');
+    }
+  }
+
+  private assertValidExplorerDateRange(dateFrom?: Date | null, dateTo?: Date | null): void {
+    if (dateFrom && Number.isNaN(dateFrom.getTime())) {
+      throw new BadRequestException('A data inicial do filtro de auditoria é inválida.');
+    }
+    if (dateTo && Number.isNaN(dateTo.getTime())) {
+      throw new BadRequestException('A data final do filtro de auditoria é inválida.');
+    }
+    if (dateFrom && dateTo && dateFrom.getTime() > dateTo.getTime()) {
+      throw new BadRequestException('A data inicial deve ser anterior à data final.');
+    }
+  }
+
+  private buildAuditLogSearchQuery(input: AuditLogExplorerInput): string {
+    return [input.query, input.actor, input.entity]
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value))
+      .join(' ');
+  }
+
+  private buildAuditLogTypesenseFilter(input: AuditLogExplorerInput): string {
+    const filters: string[] = [];
+
+    if (input.entityType) {
+      filters.push(`entityType:=${this.escapeTypesenseFilterValue(input.entityType)}`);
+    }
+    if (input.operation) {
+      filters.push(`operation:=${this.escapeTypesenseFilterValue(input.operation)}`);
+    }
+    if (input.dateFrom) {
+      filters.push(`lastRecordedAt:>=${this.toTypesenseTimestamp(input.dateFrom)}`);
+    }
+    if (input.dateTo) {
+      filters.push(`lastRecordedAt:<=${this.toTypesenseTimestamp(input.dateTo)}`);
+    }
+    if (input.revertedStatus === AuditLogExplorerRevertedStatus.REVERTED) {
+      filters.push('reverted:=true');
+    }
+    if (input.revertedStatus === AuditLogExplorerRevertedStatus.NOT_REVERTED) {
+      filters.push('reverted:=false');
+    }
+
+    return filters.join(' && ');
+  }
+
+  private buildAuditLogSqlWhere(input: AuditLogExplorerInput): Prisma.AuditLogEntryWhereInput {
+    const conditions: Prisma.AuditLogEntryWhereInput[] = [];
+    const recordedAt: Prisma.DateTimeFilter = {};
+
+    if (input.entityType) {
+      conditions.push({ entityType: input.entityType });
+    }
+    if (input.operation) {
+      conditions.push({ operation: input.operation });
+    }
+    if (input.dateFrom) {
+      recordedAt.gte = input.dateFrom;
+    }
+    if (input.dateTo) {
+      recordedAt.lte = input.dateTo;
+    }
+    if (Object.keys(recordedAt).length > 0) {
+      conditions.push({ lastRecordedAt: recordedAt });
+    }
+    if (input.revertedStatus === AuditLogExplorerRevertedStatus.REVERTED) {
+      conditions.push({ revertedAt: { not: null } });
+    }
+    if (input.revertedStatus === AuditLogExplorerRevertedStatus.NOT_REVERTED) {
+      conditions.push({ revertedAt: null });
+    }
+
+    const queryCondition = this.buildAuditLogTextCondition(input.query, [
+      'entityId',
+      'entityLabel',
+      'summary',
+      'actorId',
+      'actorName',
+      'actorEmail',
+      'permission',
+      'eventId',
+      'majorEventId',
+      'eventGroupId',
+      'revertedById',
+      'revertedByName',
+      'revertedByEntryId',
+      'revertTargetId',
+    ]);
+    if (queryCondition) {
+      conditions.push(queryCondition);
+    }
+
+    const actorCondition = this.buildAuditLogTextCondition(input.actor, ['actorId', 'actorName', 'actorEmail']);
+    if (actorCondition) {
+      conditions.push(actorCondition);
+    }
+
+    const entityCondition = this.buildAuditLogTextCondition(input.entity, [
+      'entityId',
+      'entityLabel',
+      'eventId',
+      'majorEventId',
+      'eventGroupId',
+    ]);
+    if (entityCondition) {
+      conditions.push(entityCondition);
+    }
+
+    return conditions.length > 0 ? { AND: conditions } : {};
+  }
+
+  private buildAuditLogTextCondition(
+    value: string | null | undefined,
+    fields: readonly (keyof Prisma.AuditLogEntryWhereInput)[],
+  ): Prisma.AuditLogEntryWhereInput | null {
+    const normalized = value?.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    return {
+      OR: fields.map((field) => ({
+        [field]: {
+          contains: normalized,
+          mode: Prisma.QueryMode.insensitive,
+        },
+      })),
+    };
+  }
+
+  private async findAuditLogEntriesByIds(ids: readonly string[]): Promise<PrismaAuditLogEntry[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const entries = await this.prisma.auditLogEntry.findMany({
+      where: {
+        id: {
+          in: [...ids],
+        },
+      },
+    });
+    const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+    return ids.flatMap((id) => {
+      const entry = entriesById.get(id);
+      return entry ? [entry] : [];
+    });
+  }
+
+  private escapeTypesenseFilterValue(value: string): string {
+    return `\`${value.replace(/[`\\]/g, '\\$&')}\``;
+  }
+
+  private toTypesenseTimestamp(date: Date): number {
+    return Math.floor(date.getTime() / 1000);
   }
 
   private async trySquashUpdate(
@@ -438,7 +667,7 @@ export class AuditLogService {
       return false;
     }
 
-    await prisma.auditLogEntry.update({
+    const updatedEntry = await prisma.auditLogEntry.update({
       where: {
         id: lastEntry.id,
       },
@@ -454,6 +683,7 @@ export class AuditLogService {
         lastRecordedAt: now,
       },
     });
+    this.synchronizeAuditLogEntry(updatedEntry, prisma);
 
     return true;
   }
@@ -666,6 +896,45 @@ export class AuditLogService {
       revertMode: entry.revertMode,
       canRevert: this.canRevertEntry(entry),
     };
+  }
+
+  private mapExplorerEntry(entry: PrismaAuditLogEntry): AuditLogExplorerEntry {
+    return {
+      ...this.mapEntry(entry),
+      beforeJson: this.stringifyAuditJson(entry.before),
+      afterJson: this.stringifyAuditJson(entry.after),
+      metadataJson: this.stringifyAuditJson(entry.metadata),
+    };
+  }
+
+  private stringifyAuditJson(value: Prisma.JsonValue | null): string | null {
+    if (value === null) {
+      return null;
+    }
+
+    return JSON.stringify(value, null, 2);
+  }
+
+  private synchronizeAuditLogEntry(entry: PrismaAuditLogEntry, prisma: AuditPrismaClient = this.prisma): void {
+    if (prisma === this.prisma) {
+      void this.typesenseSearch.upsertAuditLogEntry(entry).catch(() => undefined);
+      return;
+    }
+
+    setImmediate(() => {
+      void this.synchronizeCommittedAuditLogEntry(entry.id).catch(() => undefined);
+    });
+  }
+
+  private async synchronizeCommittedAuditLogEntry(id: string): Promise<void> {
+    const entry = await this.prisma.auditLogEntry.findUnique({
+      where: { id },
+    });
+    if (!entry) {
+      return;
+    }
+
+    await this.typesenseSearch.upsertAuditLogEntry(entry);
   }
 
   private parseChanges(value: Prisma.JsonValue): StoredAuditChange[] {

@@ -1,13 +1,15 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { AuditLogApiService } from '../../graphql/audit-log-api.service';
 import { AuditLogEntry, AuditLogEntityType, AuditLogOperation, AuditLogRevertMode } from '../../graphql/models';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../shared/components/confirmation-dialog.component';
+import { auditLogOperationIcon, auditLogOperationLabel } from '../tabs/audit-logs/workspace-audit-log-utils';
 
 export interface AuditLogDialogData {
   entityType: AuditLogEntityType;
@@ -118,16 +120,16 @@ export interface AuditLogDialogData {
                     <button
                       mat-stroked-button
                       type="button"
-                      [disabled]="revertingEntryId() === entry.id"
-                      (click)="revert(entry, 'ENTRY_ONLY')">
+                      [disabled]="busyEntryId() === entry.id"
+                      (click)="requestRevert(entry, 'ENTRY_ONLY')">
                       <mat-icon>undo</mat-icon>
                       Desfazer alteração
                     </button>
                     <button
                       mat-stroked-button
                       type="button"
-                      [disabled]="revertingEntryId() === entry.id"
-                      (click)="revert(entry, 'ENTRY_AND_AFTER')">
+                      [disabled]="busyEntryId() === entry.id"
+                      (click)="requestRevert(entry, 'ENTRY_AND_AFTER')">
                       <mat-icon>history</mat-icon>
                       Desfazer daqui em diante
                     </button>
@@ -221,10 +223,6 @@ export interface AuditLogDialogData {
       padding: 0.875rem;
     }
 
-    .history-entry.reverted {
-      background: color-mix(in srgb, currentColor 4%, transparent);
-    }
-
     .entry-marker {
       align-items: center;
       background: var(--mat-sys-primary-container);
@@ -302,7 +300,6 @@ export interface AuditLogDialogData {
     }
 
     .change-values span {
-      background: color-mix(in srgb, currentColor 6%, transparent);
       border-radius: 6px;
       flex: 1 1 0;
       min-width: 0;
@@ -339,13 +336,16 @@ export interface AuditLogDialogData {
 export class AuditLogDialogComponent {
   protected readonly data = inject<AuditLogDialogData>(MAT_DIALOG_DATA);
   private readonly api = inject(AuditLogApiService);
+  private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
   protected readonly entries = signal<AuditLogEntry[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
+  protected readonly confirmingEntryId = signal<string | null>(null);
   protected readonly revertingEntryId = signal<string | null>(null);
   protected readonly title = computed(() => this.data.entityLabel || this.data.entityId);
+  protected readonly busyEntryId = computed(() => this.confirmingEntryId() ?? this.revertingEntryId());
 
   constructor() {
     void this.load();
@@ -370,7 +370,32 @@ export class AuditLogDialogComponent {
     }
   }
 
-  protected async revert(entry: AuditLogEntry, mode: AuditLogRevertMode): Promise<void> {
+  protected async requestRevert(entry: AuditLogEntry, mode: AuditLogRevertMode): Promise<void> {
+    if (this.busyEntryId()) {
+      return;
+    }
+
+    this.confirmingEntryId.set(entry.id);
+
+    try {
+      const confirmed = await firstValueFrom(
+        this.dialog
+          .open(ConfirmationDialogComponent, {
+            data: this.revertConfirmationData(entry, mode),
+            width: 'min(560px, calc(100vw - 32px))',
+          })
+          .afterClosed(),
+      );
+
+      if (confirmed === true) {
+        await this.revert(entry, mode);
+      }
+    } finally {
+      this.confirmingEntryId.set(null);
+    }
+  }
+
+  private async revert(entry: AuditLogEntry, mode: AuditLogRevertMode): Promise<void> {
     this.revertingEntryId.set(entry.id);
 
     try {
@@ -409,61 +434,29 @@ export class AuditLogDialogComponent {
   }
 
   protected operationLabel(operation: AuditLogOperation): string {
-    switch (operation) {
-      case 'CREATE':
-        return 'Criação';
-      case 'UPDATE':
-        return 'Alteração';
-      case 'DELETE':
-        return 'Remoção';
-      case 'MERGE':
-        return 'Unificação';
-      case 'IMPORT':
-        return 'Importação';
-      case 'APPROVE':
-        return 'Aprovação';
-      case 'REJECT':
-        return 'Rejeição';
-      case 'ISSUE':
-        return 'Emissão';
-      case 'REISSUE':
-        return 'Reemissão';
-      case 'SCAN':
-        return 'Leitura';
-      case 'UNDO':
-        return 'Desfazer';
-      case 'REVERT':
-        return 'Reversão';
-      case 'USER_CREATE':
-        return 'Criação pelo usuário';
-    }
+    return auditLogOperationLabel(operation);
   }
 
   protected operationIcon(operation: AuditLogOperation): string {
-    switch (operation) {
-      case 'CREATE':
-      case 'USER_CREATE':
-        return 'add_circle';
-      case 'UPDATE':
-        return 'edit';
-      case 'DELETE':
-        return 'delete';
-      case 'MERGE':
-        return 'call_merge';
-      case 'IMPORT':
-        return 'upload_file';
-      case 'APPROVE':
-        return 'check_circle';
-      case 'REJECT':
-        return 'cancel';
-      case 'ISSUE':
-      case 'REISSUE':
-        return 'workspace_premium';
-      case 'SCAN':
-        return 'qr_code_scanner';
-      case 'UNDO':
-      case 'REVERT':
-        return 'undo';
-    }
+    return auditLogOperationIcon(operation);
+  }
+
+  private revertConfirmationData(entry: AuditLogEntry, mode: AuditLogRevertMode): ConfirmationDialogData {
+    const affectsFuture = mode === 'ENTRY_AND_AFTER';
+
+    return {
+      title: affectsFuture ? 'Desfazer deste ponto em diante?' : 'Desfazer esta alteração?',
+      message: affectsFuture
+        ? 'O sistema vai registrar uma reversão auditada para este registro e para alterações posteriores do mesmo item.'
+        : 'O sistema vai registrar uma reversão auditada para este registro.',
+      details: [
+        `Item auditado: ${this.title()}`,
+        `Alteração: ${entry.summary || this.fallbackSummary(entry)}`,
+        `Autor original: ${entry.actorName}`,
+        `Registro: ${entry.id}`,
+      ],
+      confirmLabel: 'Desfazer',
+      tone: 'danger',
+    };
   }
 }
