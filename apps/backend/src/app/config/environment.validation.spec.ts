@@ -72,6 +72,22 @@ describe('validateBackendEnvironment', () => {
     ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.dev.br/api/auth/callback.');
   });
 
+  it('requires the Keycloak token endpoint auth method to be supported when set', () => {
+    expect(() =>
+      validateBackendEnvironment({
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD: 'client_secret_jwt',
+      }),
+    ).toThrow('KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD must be one of: client_secret_basic, client_secret_post.');
+
+    const config = {
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+      KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD: 'client_secret_post',
+    };
+
+    expect(validateBackendEnvironment(config)).toBe(config);
+  });
+
   it('accepts the minimal development configuration', () => {
     const config = {
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',

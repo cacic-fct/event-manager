@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
+import { Buffer } from 'node:buffer';
 import { randomBytes } from 'node:crypto';
 import { AuthSessionStoreService } from './auth-session-store.service';
 import { DEFAULT_KEYCLOAK_CLIENT_ID, DEFAULT_KEYCLOAK_REALM_URL } from './auth.constants';
@@ -30,6 +31,8 @@ type AuthorizationRequirements = {
   roles?: readonly string[];
 };
 
+type ClientSecretAuthMethod = 'client_secret_basic' | 'client_secret_post';
+
 @Injectable()
 export class KeycloakAuthService {
   private readonly logger = new Logger(KeycloakAuthService.name);
@@ -44,6 +47,7 @@ export class KeycloakAuthService {
   private readonly allowedAccessTokenClients = this.readAllowedAccessTokenClients();
 
   private readonly clientSecret = this.readOptionalEnv('KEYCLOAK_CLIENT_SECRET');
+  private readonly tokenEndpointAuthMethod = this.readTokenEndpointAuthMethod();
   private readonly defaultRedirectUri = this.readEnv('KEYCLOAK_REDIRECT_URI', 'http://localhost:3000/api/auth/callback');
 
   private readonly defaultPostLogoutRedirectUri = this.readOptionalEnv('KEYCLOAK_POST_LOGOUT_REDIRECT_URI');
@@ -129,22 +133,17 @@ export class KeycloakAuthService {
       this.authorizationState.getAuthorizationRedirectUri(state) ?? redirectUri ?? this.defaultRedirectUri;
     const payload = new URLSearchParams();
     payload.set('grant_type', 'authorization_code');
-    payload.set('client_id', this.clientId);
     payload.set('code', code);
     payload.set('redirect_uri', exchangeRedirectUri);
-
-    if (this.clientSecret) {
-      payload.set('client_secret', this.clientSecret);
-    }
+    const headers = this.createFormHeaders();
+    this.addClientAuthentication(payload, headers);
 
     try {
       const { data } = await axios.post<Record<string, unknown>>(
         `${this.realmUrl}/protocol/openid-connect/token`,
         payload.toString(),
         {
-          headers: {
-            'content-type': 'application/x-www-form-urlencoded',
-          },
+          headers,
         },
       );
 
@@ -162,21 +161,16 @@ export class KeycloakAuthService {
   async refreshAccessToken(refreshToken: string): Promise<Record<string, unknown>> {
     const payload = new URLSearchParams();
     payload.set('grant_type', 'refresh_token');
-    payload.set('client_id', this.clientId);
     payload.set('refresh_token', refreshToken);
-
-    if (this.clientSecret) {
-      payload.set('client_secret', this.clientSecret);
-    }
+    const headers = this.createFormHeaders();
+    this.addClientAuthentication(payload, headers);
 
     try {
       const { data } = await axios.post<Record<string, unknown>>(
         `${this.realmUrl}/protocol/openid-connect/token`,
         payload.toString(),
         {
-          headers: {
-            'content-type': 'application/x-www-form-urlencoded',
-          },
+          headers,
         },
       );
 
@@ -195,16 +189,14 @@ export class KeycloakAuthService {
 
     if (input.refreshToken && this.clientSecret) {
       const payload = new URLSearchParams();
-      payload.set('client_id', this.clientId);
-      payload.set('client_secret', this.clientSecret);
       payload.set('token', input.refreshToken);
       payload.set('token_type_hint', 'refresh_token');
+      const headers = this.createFormHeaders();
+      this.addClientAuthentication(payload, headers);
 
       try {
         await axios.post(`${this.realmUrl}/protocol/openid-connect/revoke`, payload.toString(), {
-          headers: {
-            'content-type': 'application/x-www-form-urlencoded',
-          },
+          headers,
         });
         refreshTokenRevoked = true;
       } catch (error) {
@@ -526,18 +518,17 @@ export class KeycloakAuthService {
       const payload = new URLSearchParams();
       payload.set('token', accessToken);
       payload.set('token_type_hint', 'access_token');
-      payload.set('client_id', this.clientId);
-      payload.set('client_secret', this.clientSecret);
+      const headers = this.createFormHeaders({
+        accept: 'application/jwt, application/json',
+      });
+      this.addClientAuthentication(payload, headers);
 
       try {
         const { data } = await axios.post<TokenClaims>(
           `${this.realmUrl}/protocol/openid-connect/token/introspect`,
           payload.toString(),
           {
-            headers: {
-              'content-type': 'application/x-www-form-urlencoded',
-              accept: 'application/jwt, application/json',
-            },
+            headers,
           },
         );
 
@@ -618,7 +609,46 @@ export class KeycloakAuthService {
   private getTokenExchangeFailureContext(redirectUri: string): string {
     return `clientId=${this.clientId}; redirectUri=${this.formatRedirectUriForLog(
       redirectUri,
-    )}; clientSecretConfigured=${this.clientSecret ? 'true' : 'false'}.`;
+    )}; clientSecretConfigured=${this.clientSecret ? 'true' : 'false'}; tokenEndpointAuthMethod=${
+      this.clientSecret ? this.tokenEndpointAuthMethod : 'none'
+    }.`;
+  }
+
+  private createFormHeaders(extraHeaders?: Record<string, string>): Record<string, string> {
+    return {
+      'content-type': 'application/x-www-form-urlencoded',
+      ...extraHeaders,
+    };
+  }
+
+  private addClientAuthentication(payload: URLSearchParams, headers: Record<string, string>): void {
+    if (!this.clientSecret) {
+      payload.set('client_id', this.clientId);
+      return;
+    }
+
+    if (this.tokenEndpointAuthMethod === 'client_secret_post') {
+      payload.set('client_id', this.clientId);
+      payload.set('client_secret', this.clientSecret);
+      return;
+    }
+
+    headers.Authorization = `Basic ${this.getClientSecretBasicCredentials()}`;
+  }
+
+  private getClientSecretBasicCredentials(): string {
+    const clientSecret = this.clientSecret;
+    if (!clientSecret) {
+      return '';
+    }
+
+    return Buffer.from(`${this.formEncode(this.clientId)}:${this.formEncode(clientSecret)}`, 'utf8').toString('base64');
+  }
+
+  private formEncode(value: string): string {
+    const params = new URLSearchParams();
+    params.set('value', value);
+    return params.toString().slice('value='.length);
   }
 
   private formatRedirectUriForLog(redirectUri: string): string {
@@ -681,6 +711,22 @@ export class KeycloakAuthService {
 
   private readEnv(key: string, fallback: string): string {
     return this.readOptionalEnv(key) ?? fallback;
+  }
+
+  private readTokenEndpointAuthMethod(): ClientSecretAuthMethod {
+    const value = process.env.KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD?.trim();
+
+    if (value === 'client_secret_basic' || value === 'client_secret_post') {
+      return value;
+    }
+
+    if (value) {
+      this.logger.warn(
+        `Unsupported KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD="${value}". Falling back to client_secret_basic.`,
+      );
+    }
+
+    return 'client_secret_basic';
   }
 
   private readOptionalEnv(key: string): string | undefined {

@@ -153,11 +153,54 @@ describe('KeycloakAuthService', () => {
       expect.stringContaining('grant_type=authorization_code'),
       expect.any(Object),
     );
+    expect(mockedAxios.post.mock.calls[0][1]).not.toContain('client_secret');
+    expect(mockedAxios.post.mock.calls[0][2]).toEqual(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Basic ZXZlbnQtbWFuYWdlcjpzZWNyZXQ=',
+        }),
+      }),
+    );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       3,
       'https://keycloak.example/realms/cacic/protocol/openid-connect/revoke',
       expect.stringContaining('token_type_hint=refresh_token'),
       expect.any(Object),
+    );
+    expect(mockedAxios.post.mock.calls[2][1]).not.toContain('client_secret');
+    expect(mockedAxios.post.mock.calls[2][2]).toEqual(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Basic ZXZlbnQtbWFuYWdlcjpzZWNyZXQ=',
+        }),
+      }),
+    );
+  });
+
+  it('can authenticate the Keycloak client with client_secret_post when configured', async () => {
+    process.env.KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD = 'client_secret_post';
+    service = new KeycloakAuthService(
+      sessions as unknown as AuthSessionStoreService,
+      authorizationState as unknown as AuthorizationStateService,
+      userClaimSync as unknown as AuthenticatedUserSyncService,
+    );
+    mockedAxios.post.mockResolvedValueOnce({ data: { access_token: 'access-token' } });
+    authorizationState.getAuthorizationRedirectUri.mockReturnValue('https://app.example/state-callback');
+
+    await expect(
+      service.exchangeCodeForTokens('code-1', { redirectUri: 'https://app.example/state-callback' }),
+    ).resolves.toEqual({
+      access_token: 'access-token',
+    });
+
+    expect(mockedAxios.post.mock.calls[0][1]).toContain('client_id=event-manager');
+    expect(mockedAxios.post.mock.calls[0][1]).toContain('client_secret=secret');
+    expect(mockedAxios.post.mock.calls[0][2]).toEqual(
+      expect.objectContaining({
+        headers: expect.not.objectContaining({
+          Authorization: expect.any(String),
+        }),
+      }),
     );
   });
 
@@ -181,7 +224,7 @@ describe('KeycloakAuthService', () => {
 
     await expect(service.exchangeCodeForTokens('bad-code')).rejects.toBeInstanceOf(UnauthorizedException);
     expect(loggerWarnSpy).toHaveBeenCalledWith(
-      'Keycloak authorization code token exchange failed. status=401 Unauthorized; error=invalid_grant; description=Code not valid; axiosCode=ERR_BAD_REQUEST. clientId=event-manager; redirectUri=https://app.example/api/auth/callback; clientSecretConfigured=true.',
+      'Keycloak authorization code token exchange failed. status=401 Unauthorized; error=invalid_grant; description=Code not valid; axiosCode=ERR_BAD_REQUEST. clientId=event-manager; redirectUri=https://app.example/api/auth/callback; clientSecretConfigured=true; tokenEndpointAuthMethod=client_secret_basic.',
     );
     expect(loggerWarnSpy.mock.calls[0][0]).not.toContain('secret-refresh-token');
     expect(loggerWarnSpy.mock.calls[0][0]).not.toContain('bad-code');
@@ -215,7 +258,7 @@ describe('KeycloakAuthService', () => {
     await expect(service.exchangeCodeForTokens('bad-code-after-window')).rejects.toBeInstanceOf(UnauthorizedException);
     expect(loggerWarnSpy).toHaveBeenCalledTimes(2);
     expect(loggerWarnSpy.mock.calls[1][0]).toBe(
-      'Keycloak authorization code token exchange failed. status=401; error=invalid_grant. clientId=event-manager; redirectUri=https://app.example/api/auth/callback; clientSecretConfigured=true. Suppressed 1 similar Keycloak failure log in the last 60 seconds.',
+      'Keycloak authorization code token exchange failed. status=401; error=invalid_grant. clientId=event-manager; redirectUri=https://app.example/api/auth/callback; clientSecretConfigured=true; tokenEndpointAuthMethod=client_secret_basic. Suppressed 1 similar Keycloak failure log in the last 60 seconds.',
     );
   });
 

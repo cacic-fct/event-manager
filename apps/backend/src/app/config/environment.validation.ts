@@ -20,6 +20,7 @@ const REQUIRED_IN_PRODUCTION = [
 ] as const;
 
 const S3_STORAGE_KEYS = ['S3_ENDPOINT', 'S3_ACCESS_KEY', 'S3_SECRET_KEY', 'S3_BUCKET_NAME'] as const;
+const KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHODS = ['client_secret_basic', 'client_secret_post'] as const;
 
 export function validateBackendEnvironment(config: Environment): Environment {
   const errors: string[] = [];
@@ -53,6 +54,7 @@ export function validateBackendEnvironment(config: Environment): Environment {
   requireHttpUrl(config, 'KEYCLOAK_POST_LOGIN_REDIRECT_URI', errors);
   requireHttpUrl(config, 'KEYCLOAK_POST_LOGOUT_REDIRECT_URI', errors);
   requireUrlPath(config, 'KEYCLOAK_REDIRECT_URI', '/api/auth/callback', errors);
+  requireOneOf(config, 'KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD', KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHODS, errors);
   requireHttpUrl(config, 'ACCOUNT_MANAGER_API_URL', errors);
   requireHttpUrl(config, 'NOVU_API_URL', errors);
   requireHttpUrl(config, 'NOVU_CLIENT_API_URL', errors);
@@ -115,6 +117,15 @@ function requireHttpUrl(config: Environment, key: string, errors: string[]): voi
   } catch {
     errors.push(`${key} must be a valid URL.`);
   }
+}
+
+function requireOneOf(config: Environment, key: string, allowedValues: readonly string[], errors: string[]): void {
+  const value = readString(config, key);
+  if (!value || allowedValues.includes(value)) {
+    return;
+  }
+
+  errors.push(`${key} must be one of: ${allowedValues.join(', ')}.`);
 }
 
 function isEnabled(config: Environment, key: string): boolean {
