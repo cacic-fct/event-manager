@@ -10,8 +10,12 @@ describe('validateBackendEnvironment', () => {
     ).toThrow(
       [
         'PUBLIC_APP_ORIGIN is required.',
+        'KEYCLOAK_REALM_URL is required.',
+        'KEYCLOAK_CLIENT_ID is required.',
         'KEYCLOAK_CLIENT_SECRET is required.',
+        'KEYCLOAK_REDIRECT_URI is required.',
         'KEYCLOAK_POST_LOGIN_REDIRECT_URI is required.',
+        'KEYCLOAK_POST_LOGOUT_REDIRECT_URI is required.',
         'KEYCLOAK_M2M_CLIENT_ID is required.',
         'KEYCLOAK_M2M_CLIENT_SECRET is required.',
         'KEYCLOAK_M2M_AUDIENCE is required.',
@@ -50,6 +54,22 @@ describe('validateBackendEnvironment', () => {
         S3_ENDPOINT: 'http://localhost:8333',
       }),
     ).toThrow('S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET_NAME must be set when any S3 storage variable is set.');
+  });
+
+  it('requires the Keycloak callback URI to match the backend callback route', () => {
+    expect(() =>
+      validateBackendEnvironment({
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.dev.br/api/auth/callback?extra=1',
+      }),
+    ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.dev.br/api/auth/callback.');
+
+    expect(() =>
+      validateBackendEnvironment({
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.dev.br/api/auth/other',
+      }),
+    ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.dev.br/api/auth/callback.');
   });
 
   it('accepts the minimal development configuration', () => {

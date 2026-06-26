@@ -4,8 +4,12 @@ const REQUIRED_ALWAYS = ['DATABASE_URL'] as const;
 
 const REQUIRED_IN_PRODUCTION = [
   'PUBLIC_APP_ORIGIN',
+  'KEYCLOAK_REALM_URL',
+  'KEYCLOAK_CLIENT_ID',
   'KEYCLOAK_CLIENT_SECRET',
+  'KEYCLOAK_REDIRECT_URI',
   'KEYCLOAK_POST_LOGIN_REDIRECT_URI',
+  'KEYCLOAK_POST_LOGOUT_REDIRECT_URI',
   'KEYCLOAK_M2M_CLIENT_ID',
   'KEYCLOAK_M2M_CLIENT_SECRET',
   'KEYCLOAK_M2M_AUDIENCE',
@@ -48,6 +52,7 @@ export function validateBackendEnvironment(config: Environment): Environment {
   requireHttpUrl(config, 'KEYCLOAK_REDIRECT_URI', errors);
   requireHttpUrl(config, 'KEYCLOAK_POST_LOGIN_REDIRECT_URI', errors);
   requireHttpUrl(config, 'KEYCLOAK_POST_LOGOUT_REDIRECT_URI', errors);
+  requireUrlPath(config, 'KEYCLOAK_REDIRECT_URI', '/api/auth/callback', errors);
   requireHttpUrl(config, 'ACCOUNT_MANAGER_API_URL', errors);
   requireHttpUrl(config, 'NOVU_API_URL', errors);
   requireHttpUrl(config, 'NOVU_CLIENT_API_URL', errors);
@@ -60,6 +65,22 @@ export function validateBackendEnvironment(config: Environment): Environment {
   }
 
   return config;
+}
+
+function requireUrlPath(config: Environment, key: string, expectedPathname: string, errors: string[]): void {
+  const value = readString(config, key);
+  if (!value) {
+    return;
+  }
+
+  try {
+    const url = new URL(value);
+    if (url.pathname !== expectedPathname || url.search || url.hash) {
+      errors.push(`${key} must be exactly ${url.origin}${expectedPathname}.`);
+    }
+  } catch {
+    return;
+  }
 }
 
 function requireKeys(config: Environment, keys: readonly string[], errors: string[]): void {

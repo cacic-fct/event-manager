@@ -181,9 +181,11 @@ describe('KeycloakAuthService', () => {
 
     await expect(service.exchangeCodeForTokens('bad-code')).rejects.toBeInstanceOf(UnauthorizedException);
     expect(loggerWarnSpy).toHaveBeenCalledWith(
-      'Keycloak authorization code token exchange failed. status=401 Unauthorized; error=invalid_grant; description=Code not valid; axiosCode=ERR_BAD_REQUEST.',
+      'Keycloak authorization code token exchange failed. status=401 Unauthorized; error=invalid_grant; description=Code not valid; axiosCode=ERR_BAD_REQUEST. clientId=event-manager; redirectUri=https://app.example/api/auth/callback; clientSecretConfigured=true.',
     );
     expect(loggerWarnSpy.mock.calls[0][0]).not.toContain('secret-refresh-token');
+    expect(loggerWarnSpy.mock.calls[0][0]).not.toContain('bad-code');
+    expect(loggerWarnSpy.mock.calls[0][0]).not.toContain('secret;');
 
     mockedAxios.post.mockRejectedValueOnce(new Error('refresh failed'));
     await expect(service.refreshAccessToken('bad-refresh-token')).rejects.toBeInstanceOf(UnauthorizedException);
@@ -213,7 +215,7 @@ describe('KeycloakAuthService', () => {
     await expect(service.exchangeCodeForTokens('bad-code-after-window')).rejects.toBeInstanceOf(UnauthorizedException);
     expect(loggerWarnSpy).toHaveBeenCalledTimes(2);
     expect(loggerWarnSpy.mock.calls[1][0]).toBe(
-      'Keycloak authorization code token exchange failed. status=401; error=invalid_grant. Suppressed 1 similar Keycloak failure log in the last 60 seconds.',
+      'Keycloak authorization code token exchange failed. status=401; error=invalid_grant. clientId=event-manager; redirectUri=https://app.example/api/auth/callback; clientSecretConfigured=true. Suppressed 1 similar Keycloak failure log in the last 60 seconds.',
     );
   });
 

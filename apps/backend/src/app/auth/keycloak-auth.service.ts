@@ -125,14 +125,13 @@ export class KeycloakAuthService {
     state?: AuthorizationState,
     redirectUri?: string,
   ): Promise<Record<string, unknown>> {
+    const exchangeRedirectUri =
+      this.authorizationState.getAuthorizationRedirectUri(state) ?? redirectUri ?? this.defaultRedirectUri;
     const payload = new URLSearchParams();
     payload.set('grant_type', 'authorization_code');
     payload.set('client_id', this.clientId);
     payload.set('code', code);
-    payload.set(
-      'redirect_uri',
-      this.authorizationState.getAuthorizationRedirectUri(state) ?? redirectUri ?? this.defaultRedirectUri,
-    );
+    payload.set('redirect_uri', exchangeRedirectUri);
 
     if (this.clientSecret) {
       payload.set('client_secret', this.clientSecret);
@@ -151,7 +150,11 @@ export class KeycloakAuthService {
 
       return data;
     } catch (error) {
-      this.logKeycloakFailure('authorization code token exchange', error);
+      this.logKeycloakFailure(
+        'authorization code token exchange',
+        error,
+        this.getTokenExchangeFailureContext(exchangeRedirectUri),
+      );
       throw new UnauthorizedException('Could not exchange authorization code for tokens.');
     }
   }
@@ -610,6 +613,25 @@ export class KeycloakAuthService {
         : '';
 
     this.logger.warn(`Keycloak ${operation} failed. ${summary.message}.${continuationMessage}${suppressionMessage}`);
+  }
+
+  private getTokenExchangeFailureContext(redirectUri: string): string {
+    return `clientId=${this.clientId}; redirectUri=${this.formatRedirectUriForLog(
+      redirectUri,
+    )}; clientSecretConfigured=${this.clientSecret ? 'true' : 'false'}.`;
+  }
+
+  private formatRedirectUriForLog(redirectUri: string): string {
+    try {
+      const url = new URL(redirectUri);
+      url.username = '';
+      url.password = '';
+      url.search = '';
+      url.hash = '';
+      return url.toString();
+    } catch {
+      return '[invalid-url]';
+    }
   }
 
   private resolveAccessTokenExpiration(accessToken: string, expiresInSeconds?: number): number {
