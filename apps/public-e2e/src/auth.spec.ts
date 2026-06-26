@@ -19,6 +19,24 @@ test('protected public routes start backend login with the requested return path
   await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/app/preferences');
 });
 
+test('public landing login starts backend auth with the feature-flagged public return path', async ({ page }) => {
+  let loginRedirect: URL | null = null;
+  await mockPublicApi(page, {
+    user: null,
+    onLoginRedirect: (url) => {
+      loginRedirect = url;
+    },
+  });
+
+  await page.goto('/app/');
+
+  await expect(page.getByRole('heading', { name: 'CACiC Eventos' })).toBeVisible();
+  await page.getByRole('button', { name: 'Entrar com o Google' }).click();
+
+  await expect.poll(() => loginRedirect?.pathname).toBe('/api/auth/login/redirect');
+  await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/app/calendar');
+});
+
 test('authenticated public users keep their local session and see account actions', async ({ page }) => {
   await mockPublicApi(page, {
     user: authenticatedUserFixture(),

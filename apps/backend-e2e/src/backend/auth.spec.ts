@@ -36,6 +36,18 @@ describe('authentication boundaries', () => {
     );
   });
 
+  it('rejects malformed JSON before auth-specific refresh handling runs', async () => {
+    const response = await axios.post('/api/auth/refresh', '{"refresh":', {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      transformRequest: [(data) => data],
+      validateStatus: () => true,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it('rejects permission evaluation when no authenticated principal is attached', async () => {
     const response = await axios.post(
       '/api/auth/permissions/evaluate',
