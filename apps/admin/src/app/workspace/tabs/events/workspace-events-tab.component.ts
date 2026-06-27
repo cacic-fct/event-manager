@@ -13,7 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
-import { Event, EventType } from '../../../graphql/models';
+import { Event, EventType, PublicationState } from '../../../graphql/models';
 import { WorkspaceEventsService } from '../../../shared/services/workspace-events.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
@@ -95,6 +95,63 @@ export class WorkspaceEventsTabComponent {
 
   protected canCloneEvent(): boolean {
     return this.permissions.hasAll([Permission.Event.Read, Permission.Event.Create]);
+  }
+
+  protected draftEventActionLabel(): string {
+    const state = this.workspace.selectedEvent()?.publicationState;
+    return state === 'PUBLISHED' || state === 'SCHEDULED' ? 'Voltar para rascunho' : 'Salvar rascunho';
+  }
+
+  protected draftEventActionTooltip(): string {
+    return this.draftActionTooltip(this.workspace.selectedEvent()?.publicationState, 'evento');
+  }
+
+  protected publishEventActionLabel(): string {
+    return this.publishActionLabel(this.workspace.selectedEvent()?.publicationState);
+  }
+
+  protected publishEventActionTooltip(): string {
+    return this.publishActionTooltip(this.workspace.selectedEvent()?.publicationState, 'evento');
+  }
+
+  protected publishEventActionIcon(): string {
+    return this.workspace.selectedEvent()?.publicationState === 'PUBLISHED' ? 'sync' : 'publish';
+  }
+
+  private draftActionTooltip(state: PublicationState | null | undefined, targetLabel: string): string {
+    if (state === 'PUBLISHED') {
+      return `Salva as alterações e retira o ${targetLabel} do ar, deixando-o como rascunho.`;
+    }
+
+    if (state === 'SCHEDULED') {
+      return `Salva as alterações e cancela o agendamento, deixando o ${targetLabel} como rascunho.`;
+    }
+
+    return `Salva sem publicar. O ${targetLabel} continua fora do ar.`;
+  }
+
+  private publishActionLabel(state: PublicationState | null | undefined): string {
+    if (state === 'PUBLISHED') {
+      return 'Atualizar publicação';
+    }
+
+    if (state === 'SCHEDULED') {
+      return 'Publicar agora';
+    }
+
+    return 'Publicar';
+  }
+
+  private publishActionTooltip(state: PublicationState | null | undefined, targetLabel: string): string {
+    if (state === 'PUBLISHED') {
+      return `Salva as alterações e mantém o ${targetLabel} publicado com a versão atualizada.`;
+    }
+
+    if (state === 'SCHEDULED') {
+      return `Salva as alterações, cancela o agendamento e publica o ${targetLabel} imediatamente.`;
+    }
+
+    return `Salva e publica o ${targetLabel} imediatamente.`;
   }
 
   protected canEditSelectedEventRelation(

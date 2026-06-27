@@ -67,6 +67,28 @@
   justify-content: flex-end;
 }
 
+.editor-action-row {
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-action-group {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.editor-action-group--publication {
+  justify-content: flex-end;
+}
+
+.editor-action-group button {
+  max-width: 100%;
+}
+
 .tab-grid {
   display: grid;
   grid-template-columns: minmax(23rem, 0.95fr) minmax(34rem, 1.55fr);
@@ -436,6 +458,18 @@ app-twemoji[matPrefix] {
   .compact-form {
     display: grid;
     grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .editor-action-row {
+    gap: 0.75rem;
+  }
+
+  .editor-action-group,
+  .editor-action-group--publication {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
     width: 100%;
   }
 

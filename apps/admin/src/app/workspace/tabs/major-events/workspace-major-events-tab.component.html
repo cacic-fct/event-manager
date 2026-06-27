@@ -79,56 +79,68 @@
           <p>Dados públicos, regras de inscrição e pagamento.</p>
         </div>
 
-        <div class="panel-actions">
-          @if (workspace.selectedMajorEvent(); as selectedMajorEvent) {
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="auditLog.openHistory('MAJOR_EVENT', selectedMajorEvent.id, selectedMajorEvent.name)">
-              <mat-icon>history</mat-icon>
-              Histórico
-            </button>
-            @if (canCloneMajorEvent()) {
-              <button mat-stroked-button type="button" (click)="workspace.cloneMajorEvent(selectedMajorEvent)">
-                <mat-icon>content_copy</mat-icon>
-                Duplicar
+        <div class="panel-actions editor-action-row">
+          <div class="editor-action-group">
+            @if (workspace.selectedMajorEvent(); as selectedMajorEvent) {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="auditLog.openHistory('MAJOR_EVENT', selectedMajorEvent.id, selectedMajorEvent.name)">
+                <mat-icon>history</mat-icon>
+                Histórico
+              </button>
+              @if (canCloneMajorEvent()) {
+                <button mat-stroked-button type="button" (click)="workspace.cloneMajorEvent(selectedMajorEvent)">
+                  <mat-icon>content_copy</mat-icon>
+                  Duplicar
+                </button>
+              }
+              <button
+                mat-stroked-button
+                type="button"
+                matTooltip="Abrir o painel para pré-visualizar, agendar, publicar ou despublicar este grande evento."
+                (click)="workspace.openMajorEventPublication()">
+                <mat-icon>campaign</mat-icon>
+                Gerenciar publicação
               </button>
             }
-            <button mat-stroked-button type="button" (click)="workspace.openMajorEventPublication()">
-              <mat-icon>campaign</mat-icon>
-              Publicação
+          </div>
+
+          <div class="editor-action-group editor-action-group--publication">
+            <button mat-button type="button" (click)="workspace.resetMajorEventForm()">
+              <mat-icon>restart_alt</mat-icon>
+              Limpar
             </button>
-          }
-          <button mat-button type="button" (click)="workspace.resetMajorEventForm()">
-            <mat-icon>restart_alt</mat-icon>
-            Limpar
-          </button>
-          @if (canEditMajorEvent(workspace.selectedMajorEvent())) {
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.saveMajorEvent('SCHEDULE')"
-              [disabled]="workspace.loading()">
-              <mat-icon>schedule</mat-icon>
-              Agendar
-            </button>
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.saveMajorEvent('DRAFT')"
-              [disabled]="workspace.loading()">
-              <mat-icon>edit_note</mat-icon>
-              Salvar rascunho
-            </button>
-            <button
-              mat-flat-button
-              type="button"
-              (click)="workspace.saveMajorEvent('PUBLISH')"
-              [disabled]="workspace.loading() || workspace.majorEventForm.invalid">
-              <mat-icon>publish</mat-icon>
-              Publicar
-            </button>
-          }
+            @if (canEditMajorEvent(workspace.selectedMajorEvent())) {
+              <button
+                mat-stroked-button
+                type="button"
+                matTooltip="Salva como rascunho e abre o painel de publicação para escolher data, pré-visualizar ou revisar vínculos."
+                (click)="workspace.saveMajorEvent('SCHEDULE')"
+                [disabled]="workspace.loading()">
+                <mat-icon>schedule</mat-icon>
+                Salvar e agendar
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                [matTooltip]="draftMajorEventActionTooltip()"
+                (click)="workspace.saveMajorEvent('DRAFT')"
+                [disabled]="workspace.loading()">
+                <mat-icon>edit_note</mat-icon>
+                {{ draftMajorEventActionLabel() }}
+              </button>
+              <button
+                mat-flat-button
+                type="button"
+                [matTooltip]="publishMajorEventActionTooltip()"
+                (click)="workspace.saveMajorEvent('PUBLISH')"
+                [disabled]="workspace.loading() || workspace.majorEventForm.invalid">
+                <mat-icon>{{ publishMajorEventActionIcon() }}</mat-icon>
+                {{ publishMajorEventActionLabel() }}
+              </button>
+            }
+          </div>
         </div>
       </div>
 

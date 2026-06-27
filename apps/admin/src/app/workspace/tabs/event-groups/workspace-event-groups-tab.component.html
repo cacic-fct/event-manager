@@ -100,56 +100,68 @@
           </p>
         </div>
 
-        <div class="panel-actions">
-          @if (workspace.selectedEventGroup(); as selectedEventGroup) {
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="auditLog.openHistory('EVENT_GROUP', selectedEventGroup.id, selectedEventGroup.name)">
-              <mat-icon>history</mat-icon>
-              Histórico
-            </button>
-            @if (canCloneGroup()) {
-              <button mat-stroked-button type="button" (click)="workspace.cloneEventGroup(selectedEventGroup)">
-                <mat-icon>content_copy</mat-icon>
-                Duplicar
+        <div class="panel-actions editor-action-row">
+          <div class="editor-action-group">
+            @if (workspace.selectedEventGroup(); as selectedEventGroup) {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="auditLog.openHistory('EVENT_GROUP', selectedEventGroup.id, selectedEventGroup.name)">
+                <mat-icon>history</mat-icon>
+                Histórico
+              </button>
+              @if (canCloneGroup()) {
+                <button mat-stroked-button type="button" (click)="workspace.cloneEventGroup(selectedEventGroup)">
+                  <mat-icon>content_copy</mat-icon>
+                  Duplicar
+                </button>
+              }
+              <button
+                mat-stroked-button
+                type="button"
+                matTooltip="Abrir o painel para pré-visualizar, agendar, publicar ou despublicar os eventos vinculados a este grupo."
+                (click)="workspace.openEventGroupPublication()">
+                <mat-icon>campaign</mat-icon>
+                Gerenciar publicação
               </button>
             }
-            <button mat-stroked-button type="button" (click)="workspace.openEventGroupPublication()">
-              <mat-icon>campaign</mat-icon>
-              Publicação
+          </div>
+
+          <div class="editor-action-group editor-action-group--publication">
+            <button mat-button type="button" (click)="workspace.startNewEventGroup()">
+              <mat-icon>restart_alt</mat-icon>
+              Limpar
             </button>
-          }
-          <button mat-button type="button" (click)="workspace.startNewEventGroup()">
-            <mat-icon>restart_alt</mat-icon>
-            Limpar
-          </button>
-          @if (canEditGroup(workspace.selectedEventGroup())) {
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.saveEventGroup('SCHEDULE')"
-              [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid">
-              <mat-icon>schedule</mat-icon>
-              Agendar
-            </button>
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.saveEventGroup('DRAFT')"
-              [disabled]="workspace.savingEventGroup()">
-              <mat-icon>edit_note</mat-icon>
-              Salvar rascunho
-            </button>
-            <button
-              mat-flat-button
-              type="button"
-              (click)="workspace.saveEventGroup('PUBLISH')"
-              [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid">
-              <mat-icon>publish</mat-icon>
-              Publicar
-            </button>
-          }
+            @if (canEditGroup(workspace.selectedEventGroup())) {
+              <button
+                mat-stroked-button
+                type="button"
+                matTooltip="Salva como rascunho e abre o painel de publicação para escolher data, pré-visualizar ou revisar eventos vinculados."
+                (click)="workspace.saveEventGroup('SCHEDULE')"
+                [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid">
+                <mat-icon>schedule</mat-icon>
+                Salvar e agendar
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                [matTooltip]="draftGroupActionTooltip()"
+                (click)="workspace.saveEventGroup('DRAFT')"
+                [disabled]="workspace.savingEventGroup()">
+                <mat-icon>edit_note</mat-icon>
+                {{ draftGroupActionLabel() }}
+              </button>
+              <button
+                mat-flat-button
+                type="button"
+                [matTooltip]="publishGroupActionTooltip()"
+                (click)="workspace.saveEventGroup('PUBLISH')"
+                [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid">
+                <mat-icon>{{ publishGroupActionIcon() }}</mat-icon>
+                {{ publishGroupActionLabel() }}
+              </button>
+            }
+          </div>
         </div>
       </div>
 
