@@ -87,6 +87,7 @@ jobs:
             CHANGED_FILES="$(git diff --name-only "$BASE" "$HEAD")"
             DEPLOYABLE_APPS_PATTERN='^(admin|backend|public)$'
             GLOBAL_CHANGE_PATTERN='(^package\.json$|^bun\.lock$|^nx\.json$|^tsconfig\.base\.json$|^\.npmrc$|^bunfig\.toml$|^\.github/workflows/.*\.ya?ml$|^Dockerfile$|^apps/[^/]+/Dockerfile(\.dockerignore)?$)'
+            ADMIN_GRAPHQL_CONTRACT_PATTERN='^apps/admin/src/app/graphql/'
 
             if printf '%s\n' "$CHANGED_FILES" | grep -E "$GLOBAL_CHANGE_PATTERN"; then
               DEPLOYABLE="$(printf '%s\n' \
@@ -108,6 +109,14 @@ jobs:
                   | grep -E "$DEPLOYABLE_APPS_PATTERN" \
                   || true
               )"
+
+              if printf '%s\n' "$CHANGED_FILES" | grep -E "$ADMIN_GRAPHQL_CONTRACT_PATTERN"; then
+                DEPLOYABLE="$(
+                  printf '%s\n%s\n' "$DEPLOYABLE" backend \
+                    | sed '/^[[:space:]]*$/d' \
+                    | sort -u
+                )"
+              fi
             fi
           fi
 
