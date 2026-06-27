@@ -236,6 +236,7 @@ describe('EventDraftsService', () => {
           name: 'Evento revisado',
           publicationState: PublicationState.PUBLISHED,
           scheduledPublishAt: null,
+          publicationScheduledBy: null,
           unpublishedAt: null,
         }),
       }),

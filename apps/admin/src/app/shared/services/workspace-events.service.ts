@@ -69,6 +69,7 @@ const BANNED_ATTENDANCE_CODES = new Set([
 ]);
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIfCurrent?: boolean };
+type DraftSelectionResult = EventDraft | null | undefined;
 type EventGroupResolution =
   | { status: 'none' }
   | { status: 'found'; group: EventGroup }
@@ -271,6 +272,9 @@ export class WorkspaceEventsService {
     this.mergeDraftsForEvent(eventId, drafts);
 
     const selectedDraft = await this.resolveDraftSelection(eventDetails, drafts, options);
+    if (selectedDraft === undefined) {
+      return false;
+    }
 
     this.selectedEvent.set(eventDetails);
     this.selectedEventDraft.set(selectedDraft);
@@ -912,7 +916,7 @@ export class WorkspaceEventsService {
     eventItem: Event,
     drafts: EventDraft[],
     options: EventSelectionOptions,
-  ): Promise<EventDraft | null> {
+  ): Promise<DraftSelectionResult> {
     if (options.forceOriginal) {
       return null;
     }
@@ -930,8 +934,8 @@ export class WorkspaceEventsService {
     }
 
     const selection = await this.openDraftSelector(eventItem, drafts);
-    if (!selection) {
-      return null;
+    if (selection === undefined) {
+      return undefined;
     }
 
     return selection.kind === 'draft' ? selection.draft : null;

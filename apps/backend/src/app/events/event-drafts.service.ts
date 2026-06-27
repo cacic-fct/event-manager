@@ -334,6 +334,7 @@ export class EventDraftsService {
           ...payload,
           publicationState: PrismaPublicationState.PUBLISHED,
           scheduledPublishAt: null,
+          publicationScheduledBy: null,
           publishedAt: appliedAt,
           unpublishedAt: null,
           publicationUpdatedBy: user?.sub ?? null,

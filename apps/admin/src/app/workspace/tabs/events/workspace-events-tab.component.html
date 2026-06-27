@@ -21,7 +21,7 @@
         @for (eventItem of workspace.events(); track eventItem.id) {
           <mat-list-item
             (click)="workspace.selectEvent(eventItem)"
-            [class.selected-list-item]="workspace.selectedEvent()?.id === eventItem.id">
+            [class.selected-list-item]="workspace.selectedEvent()?.id === eventItem.id && !workspace.selectedEventDraft()">
             <span matListItemTitle class="list-title">
               <app-twemoji [emoji]="eventItem.emoji" />
               <span>{{ eventItem.name }}</span>
