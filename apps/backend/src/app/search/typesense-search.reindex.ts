@@ -189,14 +189,15 @@ export async function replaceAuditLogSearchDocuments(input: {
   if (!input.client) {
     return;
   }
+  const client = input.client;
 
   try {
     await replaceTypesenseCollection({
-      client: input.client,
+      client,
       logger: input.logger,
       schema: input.schema,
       importDocuments: async (collectionName) => {
-        const collection = input.client.collections<AuditLogSearchDocument & Record<string, unknown>>(collectionName);
+        const collection = client.collections<AuditLogSearchDocument & Record<string, unknown>>(collectionName);
 
         let cursor: { id: string } | undefined;
         for (;;) {
