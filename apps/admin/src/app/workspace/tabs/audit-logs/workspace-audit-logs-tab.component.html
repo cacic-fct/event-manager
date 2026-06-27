@@ -1,0 +1,301 @@
+<section class="section workspace-tab-shell">
+  <section class="panel panel-stack audit-shell">
+    <div class="panel-heading">
+      <div>
+        <h3>Logs de auditoria</h3>
+        <p>Busca global por alterações, autores, entidades, datas e reversões.</p>
+      </div>
+    </div>
+
+    <form class="audit-filter-grid" [formGroup]="filters" (ngSubmit)="applyFilters()">
+      <mat-form-field appearance="outline" class="span-2">
+        <mat-label>Busca geral</mat-label>
+        <input matInput formControlName="query" autocomplete="off" />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Autor</mat-label>
+        <input matInput formControlName="actor" autocomplete="off" />
+        <mat-icon matPrefix>person_search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Item alterado</mat-label>
+        <input matInput formControlName="entity" autocomplete="off" />
+        <mat-icon matPrefix>database_search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo de item</mat-label>
+        <mat-select formControlName="entityType">
+          <mat-option value="">Todos</mat-option>
+          @for (option of entityTypeOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Operação</mat-label>
+        <mat-select formControlName="operation">
+          <mat-option value="">Todas</mat-option>
+          @for (option of operationOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Data inicial</mat-label>
+        <input matInput type="date" formControlName="dateFrom" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Data final</mat-label>
+        <input matInput type="date" formControlName="dateTo" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Reversão</mat-label>
+        <mat-select formControlName="revertedStatus">
+          @for (option of revertedStatusOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <div class="filter-actions">
+        <button mat-stroked-button type="button" (click)="clearFilters()">
+          <mat-icon>filter_alt_off</mat-icon>
+          Limpar
+        </button>
+        <button mat-flat-button type="submit" [disabled]="loading()">
+          <mat-icon>manage_search</mat-icon>
+          Buscar
+        </button>
+      </div>
+    </form>
+
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    @if (error()) {
+      <section class="surface empty-state" role="alert">
+        <mat-icon>error</mat-icon>
+        <div>
+          <h4>Não foi possível carregar os logs</h4>
+          <p>{{ error() }}</p>
+        </div>
+        <button mat-stroked-button type="button" (click)="load()">
+          <mat-icon>refresh</mat-icon>
+          Tentar novamente
+        </button>
+      </section>
+    } @else if (result(); as explorer) {
+      <section class="surface result-surface">
+        <div class="result-toolbar">
+          <div>
+            <strong> {{ rangeStart() }}-{{ rangeEnd() }} de {{ explorer.total }} </strong>
+            <span>resultados encontrados</span>
+          </div>
+
+          <div class="pagination-actions">
+            <mat-form-field appearance="outline" class="page-size-field">
+              <mat-label>Por página</mat-label>
+              <mat-select [value]="take()" (selectionChange)="setPageSize($event.value)">
+                @for (option of pageSizeOptions; track option) {
+                  <mat-option [value]="option">{{ option }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <button
+              matIconButton
+              type="button"
+              aria-label="Página anterior"
+              matTooltip="Página anterior"
+              [disabled]="!canGoPrevious()"
+              (click)="previousPage()">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <button
+              matIconButton
+              type="button"
+              aria-label="Próxima página"
+              matTooltip="Próxima página"
+              [disabled]="!canGoNext()"
+              (click)="nextPage()">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        @if (!explorer.typesenseAvailable) {
+          <div class="search-source-note" role="status">
+            <mat-icon>storage</mat-icon>
+            <span>Typesense indisponível; resultados carregados pela busca do banco de dados.</span>
+          </div>
+        }
+
+        @if (explorer.entries.length > 0) {
+          <mat-accordion class="audit-result-list" multi>
+            @for (entry of explorer.entries; track entry.id) {
+              <mat-expansion-panel class="audit-entry" [class.reverted]="entry.revertedAt">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <span class="operation-icon">
+                      <mat-icon>{{ operationIcon(entry.operation) }}</mat-icon>
+                    </span>
+                    <span class="entry-main">
+                      <span class="entry-title">{{ entry.summary || fallbackSummary(entry) }}</span>
+                      <span class="entry-subtitle">
+                        {{ entityTypeLabel(entry.entityType) }} · {{ entry.entityLabel || entry.entityId }}
+                      </span>
+                    </span>
+                  </mat-panel-title>
+
+                  <mat-panel-description>
+                    <span>{{ entry.actorName }}</span>
+                    <time [attr.datetime]="entry.lastRecordedAt">{{ entry.lastRecordedAt | date: 'short' }}</time>
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <div class="entry-compact-meta" aria-label="Resumo do registro">
+                  <mat-chip-set>
+                    <mat-chip>{{ operationLabel(entry.operation) }}</mat-chip>
+                    <mat-chip>{{ actorTypeLabel(entry.actorType) }}</mat-chip>
+                    <mat-chip>{{ changeSummary(entry) }}</mat-chip>
+                    @if (entry.groupedCount > 1) {
+                      <mat-chip>{{ entry.groupedCount }} agrupados</mat-chip>
+                    }
+                    @if (entry.revertedAt) {
+                      <mat-chip class="reverted-chip">Desfeito</mat-chip>
+                    }
+                  </mat-chip-set>
+                </div>
+
+                <section class="entry-detail-grid" aria-label="Dados do log">
+                  <div>
+                    <span>ID do log</span>
+                    <strong>{{ entry.id }}</strong>
+                  </div>
+                  <div>
+                    <span>ID da entidade</span>
+                    <strong>{{ entry.entityId }}</strong>
+                  </div>
+                  <div>
+                    <span>Autor</span>
+                    <strong>{{ entry.actorName }}</strong>
+                  </div>
+                  <div>
+                    <span>E-mail do autor</span>
+                    <strong>{{ entry.actorEmail || 'Não registrado' }}</strong>
+                  </div>
+                  <div>
+                    <span>ID do autor</span>
+                    <strong>{{ entry.actorId || 'Não registrado' }}</strong>
+                  </div>
+                  <div>
+                    <span>Permissão</span>
+                    <strong>{{ entry.permission || 'Não registrada' }}</strong>
+                  </div>
+                  <div>
+                    <span>Evento</span>
+                    <strong>{{ entry.eventId || 'Não vinculado' }}</strong>
+                  </div>
+                  <div>
+                    <span>Grupo</span>
+                    <strong>{{ entry.eventGroupId || 'Não vinculado' }}</strong>
+                  </div>
+                  <div>
+                    <span>Grande evento</span>
+                    <strong>{{ entry.majorEventId || 'Não vinculado' }}</strong>
+                  </div>
+                  <div>
+                    <span>Primeiro registro</span>
+                    <strong>{{ entry.firstRecordedAt | date: 'short' }}</strong>
+                  </div>
+                  <div>
+                    <span>Último registro</span>
+                    <strong>{{ entry.lastRecordedAt | date: 'short' }}</strong>
+                  </div>
+                  <div>
+                    <span>Criado em</span>
+                    <strong>{{ entry.createdAt | date: 'short' }}</strong>
+                  </div>
+                  @if (entry.revertedAt) {
+                    <div>
+                      <span>Desfeito em</span>
+                      <strong>{{ entry.revertedAt | date: 'short' }}</strong>
+                    </div>
+                    <div>
+                      <span>Desfeito por</span>
+                      <strong>{{ entry.revertedByName || entry.revertedById || 'Não registrado' }}</strong>
+                    </div>
+                    <div>
+                      <span>Log de reversão</span>
+                      <strong>{{ entry.revertedByEntryId || 'Não registrado' }}</strong>
+                    </div>
+                  }
+                  @if (entry.revertTargetId) {
+                    <div>
+                      <span>Alvo da reversão</span>
+                      <strong>{{ entry.revertTargetId }}</strong>
+                    </div>
+                  }
+                  @if (entry.revertMode) {
+                    <div>
+                      <span>Modo da reversão</span>
+                      <strong>{{ entry.revertMode }}</strong>
+                    </div>
+                  }
+                </section>
+
+                @if (entry.changes.length > 0) {
+                  <section class="change-list" aria-label="Campos alterados">
+                    @for (change of entry.changes; track change.field) {
+                      <div class="change-row">
+                        <strong>{{ change.label }}</strong>
+                        <code>{{ change.field }}</code>
+                        <span>{{ change.beforeValue || 'Vazio' }}</span>
+                        <mat-icon>arrow_forward</mat-icon>
+                        <span>{{ change.afterValue || 'Vazio' }}</span>
+                      </div>
+                    }
+                  </section>
+                } @else {
+                  <p class="empty-note">Este registro não tem campos alterados para exibir.</p>
+                }
+
+                <section class="json-grid" aria-label="Dados brutos do log">
+                  <div>
+                    <h4>Antes</h4>
+                    <pre>{{ jsonLabel(entry.beforeJson) }}</pre>
+                  </div>
+                  <div>
+                    <h4>Depois</h4>
+                    <pre>{{ jsonLabel(entry.afterJson) }}</pre>
+                  </div>
+                  <div>
+                    <h4>Metadados</h4>
+                    <pre>{{ jsonLabel(entry.metadataJson) }}</pre>
+                  </div>
+                </section>
+              </mat-expansion-panel>
+            }
+          </mat-accordion>
+        } @else {
+          <section class="empty-state">
+            <mat-icon>manage_search</mat-icon>
+            <div>
+              <h4>Nenhum log encontrado</h4>
+              <p>Ajuste os filtros para ampliar a busca.</p>
+            </div>
+          </section>
+        }
+      </section>
+    }
+  </section>
+</section>

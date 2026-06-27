@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AuditLogEntityType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { TypesenseSearchService } from '../search/typesense-search.service';
 import { S3Service } from '../s3/s3.service';
 
 type LgpdCategoryData = Record<string, unknown>;
@@ -45,6 +46,7 @@ export class LgpdService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
+    private readonly typesenseSearch: TypesenseSearchService,
   ) {}
 
   async collectUserData(input: { userId: string; email?: string }): Promise<Record<string, LgpdCategoryData>> {
@@ -279,8 +281,8 @@ export class LgpdService {
 
     const receiptObjectKeys = await this.findReceiptObjectKeys(personIds);
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      await this.anonymizeAuditEntries(
+    const { anonymizedAuditEntryIds, ...result } = await this.prisma.$transaction(async (tx) => {
+      const anonymizedAuditEntryIds = await this.anonymizeAuditEntries(
         tx,
         {
           people: dataSubjectPeople,
@@ -327,6 +329,7 @@ export class LgpdService {
       const users = await tx.user.deleteMany({ where: { id: { in: userIds } } });
 
       return {
+        anonymizedAuditEntryIds,
         peopleDeleted: people.count,
         usersDeleted: users.count,
         recordsDeleted:
@@ -344,6 +347,7 @@ export class LgpdService {
       };
     });
 
+    await this.synchronizeAnonymizedAuditEntries(anonymizedAuditEntryIds);
     await this.deleteReceiptObjects(receiptObjectKeys);
 
     this.logger.log(
@@ -357,7 +361,7 @@ export class LgpdService {
     tx: Prisma.TransactionClient,
     dataSubject: DataSubjectResolution,
     anonymizedSubjectId: string,
-  ): Promise<void> {
+  ): Promise<string[]> {
     const entries = await tx.auditLogEntry.findMany({
       where: this.buildAuditLogSubjectWhere(dataSubject),
     });
@@ -424,6 +428,30 @@ export class LgpdService {
     });
 
     await Promise.all(auditEntryUpdates);
+    return entries.map((entry) => entry.id);
+  }
+
+  private async synchronizeAnonymizedAuditEntries(ids: readonly string[]): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    const entries = await this.prisma.auditLogEntry.findMany({
+      where: {
+        id: {
+          in: [...ids],
+        },
+      },
+    });
+    await Promise.all(
+      entries.map((entry) =>
+        this.typesenseSearch.upsertAuditLogEntry(entry).catch((error: unknown) => {
+          this.logger.warn(
+            `Falha ao reindexar audit log anonimizado ${entry.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }),
+      ),
+    );
   }
 
   private buildAuditLogSubjectWhere(dataSubject: DataSubjectResolution): Prisma.AuditLogEntryWhereInput {

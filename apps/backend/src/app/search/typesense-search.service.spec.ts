@@ -118,12 +118,14 @@ describe('TypesenseSearchService', () => {
       q: 'aula',
       query_by: 'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
       per_page: 7,
+      limit_hits: 7,
     });
     expect(client.instance.collections).toHaveBeenNthCalledWith(4, 'cacic_event_manager_people');
     expect(client.documents.search).toHaveBeenNthCalledWith(4, {
       q: 'ana',
       query_by: 'name,email,secondaryEmails,phone,identityDocument,academicId',
       per_page: 5,
+      limit_hits: 5,
     });
   });
 
@@ -156,6 +158,7 @@ describe('TypesenseSearchService', () => {
       q: 'aula',
       query_by: 'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
       per_page: 250,
+      limit_hits: 503,
       offset: 250,
       filter_by: 'publiclyVisible:=true',
     });
@@ -163,8 +166,41 @@ describe('TypesenseSearchService', () => {
       q: 'aula',
       query_by: 'name,description,shortDescription,locationDescription,majorEventName,eventGroupName,emoji',
       per_page: 3,
+      limit_hits: 503,
       offset: 500,
       filter_by: 'publiclyVisible:=true',
+    });
+  });
+
+  it('searches audit logs with match-all queries, filters, sorting, and totals', async () => {
+    const { client, service } = createEnabledService();
+    client.documents.search.mockResolvedValueOnce({
+      found: 42,
+      hits: [{ document: { id: 'audit-2' } }, { document: { id: 'audit-1' } }],
+    });
+
+    await expect(
+      service.searchAuditLogEntries('', {
+        filterBy: 'operation:=`UPDATE` && reverted:=false',
+        limit: 25,
+        offset: 50,
+        sortBy: 'lastRecordedAt:desc,createdAt:desc',
+      }),
+    ).resolves.toEqual({
+      available: true,
+      found: 42,
+      ids: ['audit-2', 'audit-1'],
+    });
+
+    expect(client.instance.collections).toHaveBeenCalledWith('cacic_event_manager_audit_logs');
+    expect(client.documents.search).toHaveBeenCalledWith({
+      q: '*',
+      query_by: expect.stringContaining('actorEmail'),
+      per_page: 25,
+      limit_hits: 75,
+      offset: 50,
+      filter_by: 'operation:=`UPDATE` && reverted:=false',
+      sort_by: 'lastRecordedAt:desc,createdAt:desc',
     });
   });
 
@@ -396,6 +432,12 @@ describe('TypesenseSearchService', () => {
     ]);
     await service['upsertDocument']('cacic_event_manager_events', { id: 'event-1' });
     await service['deleteDocument']('cacic_event_manager_events', 'event-1');
+    await service.upsertAuditLogEntry(createAuditLogEntry());
+    await expect(service.searchAuditLogEntries('', { limit: 10 })).resolves.toEqual({
+      available: false,
+      found: 0,
+      ids: [],
+    });
 
     expect(typesenseClientConstructor).not.toHaveBeenCalled();
   });
@@ -403,11 +445,11 @@ describe('TypesenseSearchService', () => {
   it('logs initialization and document synchronization failures without throwing', async () => {
     const { client, service } = createEnabledService();
     jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
-    client.collection.exists.mockRejectedValueOnce(new Error('schema unavailable'));
+    client.collection.retrieve.mockRejectedValueOnce(new Error('schema unavailable'));
 
     await expect(service.onModuleInit()).resolves.toBeUndefined();
 
-    client.collection.delete.mockRejectedValueOnce(new Error('collection delete failed'));
+    client.documents.import.mockRejectedValueOnce(new Error('document import failed'));
     await expect(
       service['replaceCollectionDocuments'](service['createCollectionSchema']('cacic_event_manager_events', []), [
         { id: 'event-1' },
@@ -481,11 +523,11 @@ describe('TypesenseSearchService', () => {
       ],
     });
     const { client, service } = createEnabledService(prisma);
-    client.collection.exists.mockResolvedValue(false);
+    client.collection.retrieve.mockRejectedValue({ httpStatus: 404 });
 
     await service.onModuleInit();
 
-    expect(client.rootCollections.create).toHaveBeenCalledTimes(12);
+    expect(client.rootCollections.create).toHaveBeenCalledTimes(14);
     expect(client.rootCollections.create).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'cacic_event_manager_events' }),
     );
@@ -504,7 +546,11 @@ describe('TypesenseSearchService', () => {
     expect(client.rootCollections.create).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'cacic_event_manager_certificate_templates' }),
     );
-    expect(client.collection.delete).toHaveBeenCalledTimes(6);
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'cacic_event_manager_audit_logs' }),
+    );
+    expect(client.collection.delete).not.toHaveBeenCalled();
+    expect(client.aliasesRoot.upsert).toHaveBeenCalledTimes(7);
     expect(client.documents.import).toHaveBeenCalledWith(
       [
         expect.objectContaining({
@@ -533,7 +579,6 @@ describe('TypesenseSearchService', () => {
 
   it('updates existing collections when schema fields are missing', async () => {
     const { client, service } = createEnabledService();
-    client.collection.exists.mockResolvedValue(true);
     client.collection.retrieve.mockResolvedValue({ fields: [] });
 
     await service['ensureCollections']();
@@ -544,6 +589,42 @@ describe('TypesenseSearchService', () => {
     expect(client.collection.update).not.toHaveBeenCalledWith({
       fields: expect.arrayContaining([expect.objectContaining({ name: 'id' })]),
     });
+  });
+
+  it('reindexes audit logs in bounded batches', async () => {
+    const prisma = createPrismaMock();
+    const firstBatch = Array.from({ length: 500 }, (_, index) => createAuditLogEntry({ id: `audit-${index + 1}` }));
+    const secondBatch = [createAuditLogEntry({ id: 'audit-501' })];
+    prisma.auditLogEntry.findMany
+      .mockResolvedValueOnce(firstBatch)
+      .mockResolvedValueOnce(secondBatch);
+    const { client, service } = createEnabledService(prisma);
+
+    await service['replaceAuditLogDocuments']({
+      name: 'cacic_event_manager_audit_logs',
+      fields: [],
+    });
+
+    expect(prisma.auditLogEntry.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        select: expect.objectContaining({ id: true, before: true, metadata: true }),
+        take: 500,
+      }),
+    );
+    expect(prisma.auditLogEntry.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        cursor: { id: 'audit-500' },
+        skip: 1,
+        take: 500,
+      }),
+    );
+    expect(client.documents.import).toHaveBeenCalledTimes(2);
+    expect(client.documents.import).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ id: 'audit-501' })]),
+      { action: 'upsert' },
+    );
   });
 });
 
@@ -575,18 +656,26 @@ function createTypesenseClientMock() {
   const collection = {
     documents: jest.fn((id?: string) => (id ? document : documents)),
     delete: jest.fn().mockResolvedValue(undefined),
-    exists: jest.fn().mockResolvedValue(true),
     retrieve: jest.fn().mockResolvedValue({ fields: [] }),
     update: jest.fn().mockResolvedValue(undefined),
   };
   const rootCollections = {
     create: jest.fn().mockResolvedValue(undefined),
   };
+  const alias = {
+    retrieve: jest.fn().mockRejectedValue({ httpStatus: 404 }),
+  };
+  const aliasesRoot = {
+    upsert: jest.fn().mockResolvedValue({ name: 'alias', collection_name: 'collection' }),
+  };
   const instance = {
     collections: jest.fn((name?: string) => (name ? collection : rootCollections)),
+    aliases: jest.fn((name?: string) => (name ? alias : aliasesRoot)),
   };
 
   return {
+    alias,
+    aliasesRoot,
     collection,
     document,
     documents,
@@ -602,6 +691,7 @@ function createPrismaMock(records: Partial<{
   people: unknown[];
   placePreset: unknown[];
   certificateTemplate: unknown[];
+  auditLogEntry: unknown[];
 }> = {}) {
   return {
     event: {
@@ -624,5 +714,45 @@ function createPrismaMock(records: Partial<{
     certificateTemplate: {
       findMany: jest.fn().mockResolvedValue(records.certificateTemplate ?? []),
     },
+    auditLogEntry: {
+      findMany: jest.fn().mockResolvedValue(records.auditLogEntry ?? []),
+    },
+  };
+}
+
+function createAuditLogEntry(overrides: Record<string, unknown> = {}) {
+  const recordedAt = new Date('2026-06-25T12:00:00.000Z');
+
+  return {
+    id: 'audit-1',
+    entityType: 'PERSON',
+    entityId: 'person-1',
+    entityLabel: 'Ana Silva',
+    operation: 'UPDATE',
+    summary: 'Pessoa atualizada.',
+    actorId: 'admin-1',
+    actorName: 'Renan Yudi',
+    actorEmail: 'renan@example.com',
+    actorType: 'USER',
+    permission: 'person#update',
+    eventId: null,
+    majorEventId: null,
+    eventGroupId: null,
+    before: { name: 'Ana' },
+    after: { name: 'Ana Silva' },
+    changes: [{ field: 'name', label: 'Nome', before: 'Ana', after: 'Ana Silva' }],
+    changedFields: ['name'],
+    groupedCount: 1,
+    firstRecordedAt: recordedAt,
+    lastRecordedAt: recordedAt,
+    createdAt: recordedAt,
+    revertedAt: null,
+    revertedById: null,
+    revertedByName: null,
+    revertedByEntryId: null,
+    revertTargetId: null,
+    revertMode: null,
+    metadata: { source: 'spec' },
+    ...overrides,
   };
 }

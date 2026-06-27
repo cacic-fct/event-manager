@@ -2,7 +2,13 @@ import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { AuditLogEntry, AuditLogEntityHistoryInput, AuditLogRevertInput } from './audit-log.models';
+import {
+  AuditLogEntry,
+  AuditLogEntityHistoryInput,
+  AuditLogExplorerInput,
+  AuditLogExplorerResult,
+  AuditLogRevertInput,
+} from './audit-log.models';
 import { AuditLogService } from './audit-log.service';
 
 type GraphqlContext = {
@@ -22,6 +28,18 @@ export class AuditLogResolver {
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
     return this.auditLog.listEntityHistory(input.entityType, input.entityId, this.getUser(context), take);
+  }
+
+  @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
+  @Query(() => AuditLogExplorerResult, {
+    name: 'auditLogExplorer',
+    description: 'Search audit log entries across all entities. Restricted to super-admin users.',
+  })
+  auditLogExplorer(
+    @Args('input', { type: () => AuditLogExplorerInput }) input: AuditLogExplorerInput,
+    @Context() context: GraphqlContext,
+  ) {
+    return this.auditLog.exploreAuditLogs(input, this.getUser(context));
   }
 
   @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
