@@ -47,6 +47,8 @@ import { AttendanceCategoryService } from './events/attendance-category.service'
 import { EventSubscriptionSyncService } from './events/event-subscription-sync.service';
 import { EventSubscriptionCountersService } from './events/subscription-counters.service';
 import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
+import { EventDraftsResolver } from './events/event-drafts.resolver';
+import { EventDraftsService } from './events/event-drafts.service';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
 import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
@@ -205,6 +207,8 @@ import { validateBackendEnvironment } from './config/environment.validation';
     EventGroupsResolver,
     PlacePresetsResolver,
     EventsResolver,
+    EventDraftsResolver,
+    EventDraftsService,
     PublicEventsResolver,
     UsersResolver,
     PeopleResolver,

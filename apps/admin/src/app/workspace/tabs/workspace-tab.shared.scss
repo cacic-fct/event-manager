@@ -67,6 +67,29 @@
   justify-content: flex-end;
 }
 
+.editor-action-row {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-action-group {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.editor-action-group--publication {
+  justify-content: flex-end;
+}
+
+.editor-action-group button {
+  max-width: 100%;
+}
+
 .tab-grid {
   display: grid;
   grid-template-columns: minmax(23rem, 0.95fr) minmax(34rem, 1.55fr);
@@ -324,6 +347,26 @@
   background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
 }
 
+.draft-list-item {
+  --mat-list-list-item-leading-icon-color: var(--mat-sys-tertiary);
+
+  background: color-mix(in srgb, var(--mat-sys-tertiary) 8%, transparent);
+}
+
+.draft-list-item.selected-list-item {
+  background: color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-tertiary) 8%);
+}
+
+.draft-label {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--mat-sys-tertiary) 45%, var(--mat-sys-outline-variant));
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  color: var(--mat-sys-on-tertiary-container);
+  background: var(--mat-sys-tertiary-container);
+  font: var(--mat-sys-label-small);
+}
+
 .empty-state {
   display: grid;
   min-height: 18rem;
@@ -452,6 +495,18 @@ app-twemoji[matPrefix] {
   .compact-form {
     display: grid;
     grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .editor-action-row {
+    gap: 0.75rem;
+  }
+
+  .editor-action-group,
+  .editor-action-group--publication {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
     width: 100%;
   }
 

@@ -9,11 +9,16 @@ import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
-import { Event, EventGroup, EventInput, Person, PlacePresetInput } from '../../graphql/models';
+import { Event, EventDraft, EventGroup, EventInput, Person, PlacePresetInput } from '../../graphql/models';
+import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import {
   CloneAssetDialogComponent,
   CloneAssetDialogResult,
 } from '../../workspace/dialogs/clone-asset-dialog.component';
+import {
+  EventDraftSelectorDialogComponent,
+  EventDraftSelectorResult,
+} from '../../workspace/dialogs/event-draft-selector-dialog.component';
 import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-create-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
@@ -63,6 +68,12 @@ const BANNED_ATTENDANCE_CODES = new Set([
   'ANWS',
 ]);
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
+type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIfCurrent?: boolean };
+type DraftSelectionResult = EventDraft | null | undefined;
+type EventGroupResolution =
+  | { status: 'none' }
+  | { status: 'found'; group: EventGroup }
+  | { status: 'unresolved' };
 const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
 const DEFAULT_DRAFT_EVENT_EMOJI = '❔';
 const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
@@ -89,14 +100,16 @@ export class WorkspaceEventsService {
   readonly loading = this.ui.loading;
 
   readonly events = signal<Event[]>([]);
+  readonly eventDraftsByEventId = signal<Record<string, EventDraft[]>>({});
   readonly eventsPagination = createWorkspaceListPagination();
   readonly selectedEvent = signal<Event | null>(null);
+  readonly selectedEventDraft = signal<EventDraft | null>(null);
   readonly eventLecturers = signal<{ personId: string; name: string }[]>([]);
   readonly eventAttendanceCollectors = signal<{ personId: string; name: string }[]>([]);
   readonly selectedEventGroupName = signal('');
-  readonly selectedEventGroupAllowsCertificates = signal(true);
-  readonly selectedEventGroupAllowsNonPayingCertificates = signal(true);
-  readonly selectedEventGroupAllowsNonSubscribedCertificates = signal(true);
+  readonly selectedEventGroupAllowsCertificates = signal<boolean | null>(true);
+  readonly selectedEventGroupAllowsNonPayingCertificates = signal<boolean | null>(true);
+  readonly selectedEventGroupAllowsNonSubscribedCertificates = signal<boolean | null>(true);
   readonly eventGroupSearchResults = signal<EventGroup[]>([]);
   readonly lecturerSearchResults = signal<Person[]>([]);
   readonly attendanceCollectorSearchResults = signal<Person[]>([]);
@@ -204,7 +217,9 @@ export class WorkspaceEventsService {
         skip: this.eventsPagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
       }),
     );
-    this.events.set(applyPagedResult(items, this.eventsPagination));
+    const events = applyPagedResult(items, this.eventsPagination);
+    this.events.set(events);
+    await this.loadDraftsForEvents(events.map((eventItem) => eventItem.id));
   }
 
   async applyEventFilters(): Promise<void> {
@@ -232,27 +247,48 @@ export class WorkspaceEventsService {
   }
 
   async selectEvent(eventItem: Event): Promise<void> {
-    void this.router.navigate(['/events', eventItem.id]);
-    await this.selectEventById(eventItem.id);
+    if (await this.selectEventById(eventItem.id)) {
+      void this.router.navigate(['/events', eventItem.id]);
+    }
   }
 
-  async selectEventById(eventId: string): Promise<void> {
-    if (this.selectedEvent()?.id === eventId) {
-      return;
+  async selectEventDraft(eventItem: Event, draft: EventDraft): Promise<void> {
+    if (await this.selectEventById(eventItem.id, { draftId: draft.id })) {
+      void this.router.navigate(['/events', eventItem.id]);
+    }
+  }
+
+  async selectEventById(
+    eventId: string,
+    options: EventSelectionOptions = {},
+  ): Promise<boolean> {
+    if (options.skipIfCurrent && this.selectedEvent()?.id === eventId && !options.draftId && !options.forceOriginal) {
+      return true;
     }
 
     const eventDetails = await firstValueFrom(this.api.getEvent(eventId));
+    const canLoadDrafts = this.permissions.canEdit(Permission.Event.Update);
+    const drafts = canLoadDrafts ? await firstValueFrom(this.api.listEventDrafts({ sourceEventId: eventId })) : [];
+    this.mergeDraftsForEvent(eventId, drafts);
+
+    const selectedDraft = await this.resolveDraftSelection(eventDetails, drafts, options);
+    if (selectedDraft === undefined) {
+      return false;
+    }
+
     this.selectedEvent.set(eventDetails);
-    this.populateEventForm(eventDetails);
-    this.eventGroupLookupForm.controls.query.setValue(eventDetails.eventGroup?.name ?? '', { emitEvent: false });
+    this.selectedEventDraft.set(selectedDraft);
+    await this.populateEventForm(selectedDraft ? this.eventFromDraft(eventDetails, selectedDraft) : eventDetails);
     this.eventGroupSearchResults.set([]);
     await Promise.all([this.loadEventLecturers(eventId), this.loadEventAttendanceCollectors(eventId)]);
     await this.loadGroupLecturerSuggestions();
+    return true;
   }
 
   resetEventForm(): void {
     void this.router.navigate(['/events']);
     this.selectedEvent.set(null);
+    this.selectedEventDraft.set(null);
     this.eventLecturers.set([]);
     this.eventAttendanceCollectors.set([]);
     this.eventGroupSearchResults.set([]);
@@ -332,9 +368,45 @@ export class WorkspaceEventsService {
     const eventId = this.eventForm.controls.id.value;
     const payload = this.buildEventPayload(!eventId, { allowIncompleteDraft: action !== 'PUBLISH' });
     const manualPlace = this.buildManualPlacePresetPayload();
+    const selectedEvent = this.selectedEvent();
+    const selectedDraft = this.selectedEventDraft();
 
     this.ui.loading.set(true);
     try {
+      if (eventId && selectedEvent && (selectedDraft || this.shouldSaveSeparateDraft(selectedEvent, action))) {
+        const savedDraft = await firstValueFrom(
+          this.api.saveEventDraft({
+            sourceEventId: selectedEvent.id,
+            draftId: selectedDraft?.id,
+            input: payload,
+          }),
+        );
+        this.selectedEventDraft.set(savedDraft);
+        this.mergeDraftsForEvent(selectedEvent.id, [
+          savedDraft,
+          ...this.draftsForEvent(selectedEvent.id).filter((draft) => draft.id !== savedDraft.id),
+        ]);
+
+        if (manualPlace) {
+          await this.placePresetsService.ensurePresetForManualLocation(manualPlace);
+        }
+
+        if (action === 'PUBLISH') {
+          await firstValueFrom(this.api.applyEventDraft(savedDraft.id));
+          this.snackbar.open('Rascunho aplicado à publicação.', 'Fechar', { duration: 2500 });
+          await this.loadEvents();
+          await this.selectEventById(selectedEvent.id, { forceOriginal: true });
+          return;
+        }
+
+        this.snackbar.open('Rascunho salvo sem alterar a publicação.', 'Fechar', { duration: 3500 });
+        await this.loadEvents();
+        if (action === 'SCHEDULE') {
+          void this.router.navigate(this.eventPublicationRoute(selectedEvent.id));
+        }
+        return;
+      }
+
       let savedEventId;
       if (eventId) {
         const updated = await firstValueFrom(this.api.updateEvent(eventId, payload));
@@ -396,6 +468,61 @@ export class WorkspaceEventsService {
     await this.deleteEventById(eventItem.id);
   }
 
+  async chooseSelectedEventVersion(): Promise<void> {
+    const selectedEvent = this.selectedEvent();
+    if (!selectedEvent) {
+      return;
+    }
+
+    const drafts = await firstValueFrom(this.api.listEventDrafts({ sourceEventId: selectedEvent.id }));
+    this.mergeDraftsForEvent(selectedEvent.id, drafts);
+    const selection = await this.openDraftSelector(selectedEvent, drafts);
+    if (!selection) {
+      return;
+    }
+
+    this.selectedEventDraft.set(selection.kind === 'draft' ? selection.draft : null);
+    await this.populateEventForm(
+      selection.kind === 'draft' ? this.eventFromDraft(selectedEvent, selection.draft) : selectedEvent,
+    );
+  }
+
+  async deleteDraftsForSelectedEvent(): Promise<void> {
+    const selectedEvent = this.selectedEvent();
+    if (!selectedEvent || this.draftsForEvent(selectedEvent.id).length === 0) {
+      return;
+    }
+
+    const confirmed = await this.confirm({
+      title: 'Excluir rascunhos?',
+      message: 'Todos os rascunhos deste evento serão excluídos permanentemente. A publicação atual não será alterada.',
+      confirmLabel: 'Excluir rascunhos',
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    this.ui.loading.set(true);
+    try {
+      await firstValueFrom(this.api.deleteEventDraftsForEvent(selectedEvent.id));
+      this.mergeDraftsForEvent(selectedEvent.id, []);
+      this.selectedEventDraft.set(null);
+      await this.populateEventForm(selectedEvent);
+      this.snackbar.open('Rascunhos excluídos.', 'Fechar', { duration: 2500 });
+      await this.loadEvents();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir os rascunhos.'), 'Fechar', {
+        duration: 5000,
+      });
+    } finally {
+      this.ui.loading.set(false);
+    }
+  }
+
+  draftsForEvent(eventId: string | null | undefined): EventDraft[] {
+    return eventId ? (this.eventDraftsByEventId()[eventId] ?? []) : [];
+  }
+
   async cloneEvent(eventItem: Event): Promise<void> {
     const result = await this.openCloneDialog(eventItem);
     if (!result) {
@@ -439,10 +566,7 @@ export class WorkspaceEventsService {
 
   assignEventGroupToEvent(group: EventGroup): void {
     this.eventForm.controls.eventGroupId.setValue(group.id);
-    this.selectedEventGroupName.set(group.name);
-    this.selectedEventGroupAllowsCertificates.set(group.shouldIssueCertificate);
-    this.selectedEventGroupAllowsNonPayingCertificates.set(group.shouldIssueCertificateForNonPayingAttendees);
-    this.selectedEventGroupAllowsNonSubscribedCertificates.set(group.shouldIssueCertificateForNonSubscribedAttendees);
+    this.applySelectedEventGroup(group, { hasEventGroup: true });
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
     void this.loadGroupLecturerSuggestions();
@@ -450,10 +574,7 @@ export class WorkspaceEventsService {
 
   clearEventGroupFromEvent(): void {
     this.eventForm.controls.eventGroupId.setValue('');
-    this.selectedEventGroupName.set('');
-    this.selectedEventGroupAllowsCertificates.set(true);
-    this.selectedEventGroupAllowsNonPayingCertificates.set(true);
-    this.selectedEventGroupAllowsNonSubscribedCertificates.set(true);
+    this.applySelectedEventGroup(null, { hasEventGroup: false });
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
     this.groupLecturerSuggestions.set([]);
@@ -498,6 +619,10 @@ export class WorkspaceEventsService {
 
   async createAndAddLecturer(): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
 
     const dialogRef = this.dialog.open(PersonCreateDialogComponent, {
       width: '48rem',
@@ -524,6 +649,11 @@ export class WorkspaceEventsService {
 
   async addLecturer(person: Person): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
+
     if (!selectedEvent) {
       this.addPendingLecturer(person);
       return;
@@ -539,6 +669,11 @@ export class WorkspaceEventsService {
 
   async removeLecturer(personId: string): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
+
     if (!selectedEvent) {
       this.eventLecturers.update((lecturers) => lecturers.filter((lecturer) => lecturer.personId !== personId));
       return;
@@ -558,6 +693,11 @@ export class WorkspaceEventsService {
 
   async addAttendanceCollector(person: Person): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
+
     if (!selectedEvent) {
       this.addPendingAttendanceCollector(person);
       return;
@@ -573,6 +713,11 @@ export class WorkspaceEventsService {
 
   async removeAttendanceCollector(personId: string): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
+
     if (!selectedEvent) {
       this.eventAttendanceCollectors.update((collectors) =>
         collectors.filter((collector) => collector.personId !== personId),
@@ -739,6 +884,184 @@ export class WorkspaceEventsService {
     }
   }
 
+  private async loadDraftsForEvents(eventIds: string[]): Promise<void> {
+    if (eventIds.length === 0 || !this.permissions.canEdit(Permission.Event.Update)) {
+      this.eventDraftsByEventId.set({});
+      return;
+    }
+
+    const drafts = await firstValueFrom(this.api.listEventDrafts({ sourceEventIds: eventIds }));
+    const grouped = Object.fromEntries(eventIds.map((eventId) => [eventId, [] as EventDraft[]]));
+    for (const draft of drafts) {
+      grouped[draft.sourceEventId] = [...(grouped[draft.sourceEventId] ?? []), draft];
+    }
+    for (const eventId of eventIds) {
+      grouped[eventId] = this.sortDrafts(grouped[eventId]);
+    }
+    this.eventDraftsByEventId.set(grouped);
+  }
+
+  private mergeDraftsForEvent(eventId: string, drafts: EventDraft[]): void {
+    this.eventDraftsByEventId.update((current) => ({
+      ...current,
+      [eventId]: this.sortDrafts(drafts),
+    }));
+  }
+
+  private sortDrafts(drafts: EventDraft[]): EventDraft[] {
+    return [...drafts].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+  }
+
+  private async resolveDraftSelection(
+    eventItem: Event,
+    drafts: EventDraft[],
+    options: EventSelectionOptions,
+  ): Promise<DraftSelectionResult> {
+    if (options.forceOriginal) {
+      return null;
+    }
+
+    if (options.draftId) {
+      return drafts.find((draft) => draft.id === options.draftId) ?? null;
+    }
+
+    if (drafts.length === 0 || (eventItem.publicationState !== 'PUBLISHED' && eventItem.publicationState !== 'SCHEDULED')) {
+      return null;
+    }
+
+    if (drafts.length === 1) {
+      return drafts[0];
+    }
+
+    const selection = await this.openDraftSelector(eventItem, drafts);
+    if (selection === undefined) {
+      return undefined;
+    }
+
+    return selection.kind === 'draft' ? selection.draft : null;
+  }
+
+  private isEditingSelectedDraft(): boolean {
+    return this.selectedEventDraft() !== null;
+  }
+
+  private showDraftRelationWarning(): void {
+    this.snackbar.open(
+      'Rascunhos salvam apenas os campos do evento. Edite vínculos na versão publicada.',
+      'Fechar',
+      { duration: 4000 },
+    );
+  }
+
+  private openDraftSelector(eventItem: Event, drafts: EventDraft[]): Promise<EventDraftSelectorResult | undefined> {
+    return firstValueFrom(
+      this.dialog
+        .open<EventDraftSelectorDialogComponent, { event: Event; drafts: EventDraft[] }, EventDraftSelectorResult>(
+          EventDraftSelectorDialogComponent,
+          {
+            data: { event: eventItem, drafts },
+            width: '640px',
+          },
+        )
+        .afterClosed(),
+    );
+  }
+
+  private shouldSaveSeparateDraft(eventItem: Event, action: CreationPublicationAction): boolean {
+    return action === 'DRAFT' && (eventItem.publicationState === 'PUBLISHED' || eventItem.publicationState === 'SCHEDULED');
+  }
+
+  private eventFromDraft(eventItem: Event, draft: EventDraft): Event {
+    const payload = this.parseDraftPayload(draft);
+    return {
+      ...eventItem,
+      name: this.stringValue(payload.name, eventItem.name),
+      creditMinutes: this.numberOrNullValue(payload.creditMinutes, eventItem.creditMinutes ?? null),
+      startDate: this.stringValue(payload.startDate, eventItem.startDate),
+      endDate: this.stringValue(payload.endDate, eventItem.endDate),
+      emoji: this.stringValue(payload.emoji, eventItem.emoji),
+      type: this.stringValue(payload.type, eventItem.type) as Event['type'],
+      description: this.nullableStringValue(payload.description, eventItem.description ?? null),
+      shortDescription: this.nullableStringValue(payload.shortDescription, eventItem.shortDescription ?? null),
+      latitude: this.numberOrNullValue(payload.latitude, eventItem.latitude ?? null),
+      longitude: this.numberOrNullValue(payload.longitude, eventItem.longitude ?? null),
+      locationDescription: this.nullableStringValue(payload.locationDescription, eventItem.locationDescription ?? null),
+      majorEventId: this.nullableStringValue(payload.majorEventId, eventItem.majorEventId ?? null),
+      eventGroupId: this.nullableStringValue(payload.eventGroupId, eventItem.eventGroupId ?? null),
+      allowSubscription: this.booleanValue(payload.allowSubscription, eventItem.allowSubscription),
+      subscriptionStartDate: this.nullableStringValue(payload.subscriptionStartDate, eventItem.subscriptionStartDate ?? null),
+      subscriptionEndDate: this.nullableStringValue(payload.subscriptionEndDate, eventItem.subscriptionEndDate ?? null),
+      slots: this.numberOrNullValue(payload.slots, eventItem.slots ?? null),
+      autoSubscribe: this.booleanValue(payload.autoSubscribe, eventItem.autoSubscribe),
+      shouldIssueCertificate: this.booleanValue(payload.shouldIssueCertificate, eventItem.shouldIssueCertificate),
+      shouldIssueCertificateForNonPayingAttendees: this.booleanValue(
+        payload.shouldIssueCertificateForNonPayingAttendees,
+        eventItem.shouldIssueCertificateForNonPayingAttendees,
+      ),
+      shouldIssueCertificateForNonSubscribedAttendees: this.booleanValue(
+        payload.shouldIssueCertificateForNonSubscribedAttendees,
+        eventItem.shouldIssueCertificateForNonSubscribedAttendees,
+      ),
+      shouldCollectAttendance: this.booleanValue(payload.shouldCollectAttendance, eventItem.shouldCollectAttendance),
+      isOnlineAttendanceAllowed: this.booleanValue(payload.isOnlineAttendanceAllowed, eventItem.isOnlineAttendanceAllowed),
+      shouldProvideSubscriberListToLecturer: this.booleanValue(
+        payload.shouldProvideSubscriberListToLecturer,
+        eventItem.shouldProvideSubscriberListToLecturer ?? false,
+      ),
+      onlineAttendanceCode: this.nullableStringValue(payload.onlineAttendanceCode, eventItem.onlineAttendanceCode ?? null),
+      onlineAttendanceStartDate: this.nullableStringValue(
+        payload.onlineAttendanceStartDate,
+        eventItem.onlineAttendanceStartDate ?? null,
+      ),
+      onlineAttendanceEndDate: this.nullableStringValue(
+        payload.onlineAttendanceEndDate,
+        eventItem.onlineAttendanceEndDate ?? null,
+      ),
+      publiclyVisible: this.booleanValue(payload.publiclyVisible, eventItem.publiclyVisible),
+      youtubeCode: this.nullableStringValue(payload.youtubeCode, eventItem.youtubeCode ?? null),
+      buttonText: this.nullableStringValue(payload.buttonText, eventItem.buttonText ?? null),
+      buttonLink: this.nullableStringValue(payload.buttonLink, eventItem.buttonLink ?? null),
+    };
+  }
+
+  private parseDraftPayload(draft: EventDraft): EventInput {
+    try {
+      const parsed: unknown = JSON.parse(draft.payloadJson);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as EventInput) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private stringValue(value: unknown, fallback: string): string {
+    return typeof value === 'string' ? value : fallback;
+  }
+
+  private nullableStringValue(value: unknown, fallback: string | null): string | null {
+    return typeof value === 'string' || value === null ? value : fallback;
+  }
+
+  private numberOrNullValue(value: unknown, fallback: number | null): number | null {
+    return typeof value === 'number' || value === null ? value : fallback;
+  }
+
+  private booleanValue(value: unknown, fallback: boolean): boolean {
+    return typeof value === 'boolean' ? value : fallback;
+  }
+
+  private async confirm(data: { title: string; message: string; confirmLabel?: string }): Promise<boolean> {
+    const result = await firstValueFrom(
+      this.dialog
+        .open(ConfirmationDialogComponent, {
+          data,
+          width: '420px',
+        })
+        .afterClosed(),
+    );
+
+    return result === true;
+  }
+
   private buildEventPayload(includePeople: boolean, options: { allowIncompleteDraft?: boolean } = {}): EventInput {
     const raw = this.eventForm.getRawValue();
     const creditValue = this.toOptionalNumber(raw.creditValue);
@@ -775,11 +1098,11 @@ export class WorkspaceEventsService {
       shouldIssueCertificate: raw.shouldIssueCertificate,
       shouldIssueCertificateForNonPayingAttendees:
         raw.shouldIssueCertificate &&
-        this.selectedEventGroupAllowsNonPayingCertificates() &&
+        this.selectedEventGroupAllowsNonPayingCertificates() !== false &&
         raw.shouldIssueCertificateForNonPayingAttendees,
       shouldIssueCertificateForNonSubscribedAttendees:
         raw.shouldIssueCertificate &&
-        this.selectedEventGroupAllowsNonSubscribedCertificates() &&
+        this.selectedEventGroupAllowsNonSubscribedCertificates() !== false &&
         raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: raw.shouldCollectAttendance,
       isOnlineAttendanceAllowed,
@@ -891,8 +1214,9 @@ export class WorkspaceEventsService {
     );
   }
 
-  private populateEventForm(eventItem: Event): void {
+  private async populateEventForm(eventItem: Event): Promise<void> {
     const asHours = (eventItem.creditMinutes ?? 0) / 60;
+    const selectedEventGroup = await this.resolveSelectedEventGroup(eventItem);
     this.eventForm.reset({
       id: eventItem.id,
       name: eventItem.name,
@@ -936,17 +1260,63 @@ export class WorkspaceEventsService {
       buttonLink: eventItem.buttonLink ?? '',
     });
     this.syncOnlineAttendanceControls();
-    this.eventGroupLookupForm.controls.query.setValue(eventItem.eventGroup?.name ?? '', { emitEvent: false });
-    this.selectedEventGroupName.set(eventItem.eventGroup?.name ?? '');
-    this.selectedEventGroupAllowsCertificates.set(eventItem.eventGroup?.shouldIssueCertificate ?? true);
-    this.selectedEventGroupAllowsNonPayingCertificates.set(
-      eventItem.eventGroup?.shouldIssueCertificateForNonPayingAttendees ?? true,
+    this.eventGroupLookupForm.controls.query.setValue(
+      selectedEventGroup.status === 'found' ? selectedEventGroup.group.name : '',
+      { emitEvent: false },
     );
-    this.selectedEventGroupAllowsNonSubscribedCertificates.set(
-      eventItem.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees ?? true,
-    );
+    this.applySelectedEventGroup(selectedEventGroup);
     this.eventGroupSearchResults.set([]);
     this.syncCertificateControl();
+  }
+
+  private async resolveSelectedEventGroup(eventItem: Event): Promise<EventGroupResolution> {
+    if (!eventItem.eventGroupId) {
+      return { status: 'none' };
+    }
+
+    if (eventItem.eventGroup?.id === eventItem.eventGroupId) {
+      return { status: 'found', group: eventItem.eventGroup };
+    }
+
+    try {
+      return {
+        status: 'found',
+        group: await firstValueFrom(this.eventGroupsApi.getEventGroup(eventItem.eventGroupId)),
+      };
+    } catch {
+      return { status: 'unresolved' };
+    }
+  }
+
+  private applySelectedEventGroup(group: EventGroup | null, options: { hasEventGroup: boolean }): void;
+  private applySelectedEventGroup(resolution: EventGroupResolution): void;
+  private applySelectedEventGroup(
+    value: EventGroup | EventGroupResolution | null,
+    options?: { hasEventGroup: boolean },
+  ): void {
+    const resolution: EventGroupResolution =
+      options != null
+        ? value == null
+          ? options.hasEventGroup
+            ? { status: 'unresolved' }
+            : { status: 'none' }
+          : { status: 'found', group: value as EventGroup }
+        : (value as EventGroupResolution);
+    const group = resolution.status === 'found' ? resolution.group : null;
+    const allowCertificates =
+      resolution.status === 'unresolved' ? null : group?.shouldIssueCertificate ?? true;
+    this.selectedEventGroupName.set(group?.name ?? '');
+    this.selectedEventGroupAllowsCertificates.set(allowCertificates);
+    this.selectedEventGroupAllowsNonPayingCertificates.set(
+      resolution.status === 'unresolved'
+        ? null
+        : group?.shouldIssueCertificateForNonPayingAttendees ?? allowCertificates,
+    );
+    this.selectedEventGroupAllowsNonSubscribedCertificates.set(
+      resolution.status === 'unresolved'
+        ? null
+        : group?.shouldIssueCertificateForNonSubscribedAttendees ?? allowCertificates,
+    );
   }
 
   private toIsoDateTime(rawValue: string): string {
@@ -1012,7 +1382,7 @@ export class WorkspaceEventsService {
     const certificateControl = this.eventForm.controls.shouldIssueCertificate;
     const nonPayingCertificateControl = this.eventForm.controls.shouldIssueCertificateForNonPayingAttendees;
     const nonSubscribedCertificateControl = this.eventForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
-    if (!this.selectedEventGroupAllowsCertificates()) {
+    if (this.selectedEventGroupAllowsCertificates() === false) {
       certificateControl.setValue(false, { emitEvent: false });
       nonPayingCertificateControl.setValue(false, { emitEvent: false });
       nonSubscribedCertificateControl.setValue(false, { emitEvent: false });
@@ -1023,14 +1393,14 @@ export class WorkspaceEventsService {
     }
 
     certificateControl.enable({ emitEvent: false });
-    if (certificateControl.value && this.selectedEventGroupAllowsNonPayingCertificates()) {
+    if (certificateControl.value && this.selectedEventGroupAllowsNonPayingCertificates() !== false) {
       nonPayingCertificateControl.enable({ emitEvent: false });
     } else {
       nonPayingCertificateControl.setValue(false, { emitEvent: false });
       nonPayingCertificateControl.disable({ emitEvent: false });
     }
 
-    if (certificateControl.value && this.selectedEventGroupAllowsNonSubscribedCertificates()) {
+    if (certificateControl.value && this.selectedEventGroupAllowsNonSubscribedCertificates() !== false) {
       nonSubscribedCertificateControl.enable({ emitEvent: false });
       return;
     }

@@ -6,11 +6,17 @@ import {
   Event,
   EventAttendanceCollector,
   EventCloneInput,
+  EventDraft,
   EventInput,
   EventLecturer,
   EventSummary,
 } from './models';
-import { EVENT_DETAIL_FIELDS, EVENT_LIST_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
+import {
+  EVENT_DETAIL_FIELDS,
+  EVENT_DRAFT_FIELDS,
+  EVENT_LIST_FIELDS,
+  PERSON_SEARCH_FIELDS,
+} from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
 export class EventApiService {
@@ -118,6 +124,75 @@ export class EventApiService {
         { id, input },
       )
       .pipe(map((data) => data.updateEvent));
+  }
+
+  listEventDrafts(filters: { sourceEventId?: string; sourceEventIds?: string[] }) {
+    return this.graphqlHttp
+      .request<{ eventDrafts: EventDraft[] }>(
+        `query ListEventDrafts($sourceEventId: String, $sourceEventIds: [String!]) {
+          eventDrafts(sourceEventId: $sourceEventId, sourceEventIds: $sourceEventIds) {
+            ${EVENT_DRAFT_FIELDS}
+          }
+        }`,
+        filters,
+      )
+      .pipe(map((data) => data.eventDrafts));
+  }
+
+  saveEventDraft(input: { sourceEventId: string; draftId?: string | null; input: EventInput }) {
+    return this.graphqlHttp
+      .request<{ saveEventDraft: EventDraft }>(
+        `mutation SaveEventDraft($input: EventDraftSaveInput!) {
+          saveEventDraft(input: $input) {
+            ${EVENT_DRAFT_FIELDS}
+          }
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.saveEventDraft));
+  }
+
+  applyEventDraft(draftId: string) {
+    return this.graphqlHttp
+      .request<{ applyEventDraft: Pick<Event, 'id'> }>(
+        `mutation ApplyEventDraft($draftId: String!) {
+          applyEventDraft(draftId: $draftId) {
+            id
+          }
+        }`,
+        { draftId },
+      )
+      .pipe(map((data) => data.applyEventDraft));
+  }
+
+  deleteEventDraft(draftId: string) {
+    return this.graphqlHttp
+      .request<{ deleteEventDraft: DeletionResult }>(
+        `mutation DeleteEventDraft($draftId: String!) {
+          deleteEventDraft(draftId: $draftId) {
+            deleted
+            id
+            eventId
+          }
+        }`,
+        { draftId },
+      )
+      .pipe(map((data) => data.deleteEventDraft));
+  }
+
+  deleteEventDraftsForEvent(sourceEventId: string) {
+    return this.graphqlHttp
+      .request<{ deleteEventDraftsForEvent: DeletionResult }>(
+        `mutation DeleteEventDraftsForEvent($sourceEventId: String!) {
+          deleteEventDraftsForEvent(sourceEventId: $sourceEventId) {
+            deleted
+            id
+            eventId
+          }
+        }`,
+        { sourceEventId },
+      )
+      .pipe(map((data) => data.deleteEventDraftsForEvent));
   }
 
   cloneEvent(id: string, input: EventCloneInput) {

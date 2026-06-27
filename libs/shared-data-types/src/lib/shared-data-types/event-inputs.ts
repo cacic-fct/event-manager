@@ -207,6 +207,18 @@ export class EventUpdateInput {
 }
 
 @InputType()
+export class EventDraftSaveInput {
+  @Field(() => String)
+  sourceEventId!: string;
+
+  @Field(() => String, { nullable: true })
+  draftId?: string | null;
+
+  @Field(() => EventUpdateInput)
+  input!: EventUpdateInput;
+}
+
+@InputType()
 export class EventClonePartsInput {
   @Field(() => Boolean, { nullable: true })
   lecturers?: boolean;

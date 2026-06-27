@@ -11,7 +11,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
-import { EventGroup } from '../../../graphql/models';
+import { EventGroup, PublicationState } from '../../../graphql/models';
 import { isFrozenEventGroup } from '../../../shared/frozen-resource';
 import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { WorkspaceEventGroupsService } from '../../../shared/services/workspace-event-groups.service';
@@ -74,8 +74,81 @@ export class WorkspaceEventGroupsTabComponent {
     return this.permissions.hasAll([Permission.EventGroup.Read, Permission.EventGroup.Create]);
   }
 
+  protected draftGroupActionLabel(): string {
+    const state = this.selectedGroupPublicationState();
+    return state === 'PUBLISHED' || state === 'SCHEDULED' ? 'Voltar para rascunho' : 'Salvar rascunho';
+  }
+
+  protected draftGroupActionTooltip(): string {
+    const state = this.selectedGroupPublicationState();
+    if (state === 'PUBLISHED') {
+      return 'Salva as alterações e retira do ar os eventos vinculados ao grupo, deixando-os como rascunho.';
+    }
+
+    if (state === 'SCHEDULED') {
+      return 'Salva as alterações e cancela o agendamento dos eventos vinculados, deixando-os como rascunho.';
+    }
+
+    return 'Salva sem publicar. O grupo continua fora do ar até ter eventos publicados.';
+  }
+
+  protected publishGroupActionLabel(): string {
+    if (this.workspace.eventGroupEvents().length === 0) {
+      return 'Salvar grupo';
+    }
+
+    const state = this.selectedGroupPublicationState();
+    if (state === 'PUBLISHED') {
+      return 'Atualizar publicação';
+    }
+
+    if (state === 'SCHEDULED') {
+      return 'Publicar agora';
+    }
+
+    return 'Publicar';
+  }
+
+  protected publishGroupActionTooltip(): string {
+    if (this.workspace.eventGroupEvents().length === 0) {
+      return 'Salva o grupo. Vincule eventos antes de publicar o conjunto.';
+    }
+
+    const state = this.selectedGroupPublicationState();
+    if (state === 'PUBLISHED') {
+      return 'Salva as alterações e mantém os eventos vinculados publicados com a versão atualizada.';
+    }
+
+    if (state === 'SCHEDULED') {
+      return 'Salva as alterações, cancela o agendamento e publica os eventos vinculados imediatamente.';
+    }
+
+    return 'Salva e publica os eventos vinculados ao grupo imediatamente.';
+  }
+
+  protected publishGroupActionIcon(): string {
+    return this.selectedGroupPublicationState() === 'PUBLISHED' ? 'sync' : 'publish';
+  }
+
   protected canEditSelectedGroupEvents(): boolean {
     return this.canEditGroup(this.workspace.selectedEventGroup());
+  }
+
+  private selectedGroupPublicationState(): PublicationState {
+    const events = this.workspace.eventGroupEvents();
+    if (events.some((eventItem) => eventItem.publicationState === 'PUBLISHED')) {
+      return 'PUBLISHED';
+    }
+
+    if (events.some((eventItem) => eventItem.publicationState === 'SCHEDULED')) {
+      return 'SCHEDULED';
+    }
+
+    if (events.length > 0 && events.every((eventItem) => eventItem.publicationState === 'UNPUBLISHED')) {
+      return 'UNPUBLISHED';
+    }
+
+    return 'DRAFT';
   }
 
   private isGroupFrozen(group: EventGroup): boolean {

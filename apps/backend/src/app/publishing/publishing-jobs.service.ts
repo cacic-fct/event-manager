@@ -4,6 +4,7 @@ import { PublicationState } from '@cacic-fct/shared-data-types';
 import { PublicationState as PrismaPublicationState } from '@prisma/client';
 import { Queue } from 'bullmq';
 import {
+  CLEANUP_STALE_EVENT_DRAFTS_JOB,
   PUBLICATION_QUEUE,
   PUBLISH_SCHEDULED_CONTENT_JOB,
   RECONCILE_PUBLICATION_STATES_JOB,
@@ -12,6 +13,7 @@ import { PublicationSearchSyncService } from './publishing-search-sync.service';
 import { PublicationTransitionService } from './publishing-transition.service';
 import { PublicationJobData, PublicationQueueData, TargetSync } from './publishing.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventDraftsService } from '../events/event-drafts.service';
 
 @Injectable()
 export class PublicationJobsService {
@@ -21,24 +23,40 @@ export class PublicationJobsService {
     private readonly prisma: PrismaService,
     private readonly transitions: PublicationTransitionService,
     private readonly searchSync: PublicationSearchSyncService,
+    private readonly eventDrafts: EventDraftsService,
     @InjectQueue(PUBLICATION_QUEUE)
     private readonly publicationQueue: Queue<PublicationQueueData>,
   ) {}
 
   async schedulePublicationJobs(): Promise<void> {
-    await this.publicationQueue.add(
-      RECONCILE_PUBLICATION_STATES_JOB,
-      {},
-      {
-        jobId: `publication:${RECONCILE_PUBLICATION_STATES_JOB}`,
-        repeat: {
-          pattern: '*/5 * * * *',
-          tz: 'America/Sao_Paulo',
+    await Promise.all([
+      this.publicationQueue.add(
+        RECONCILE_PUBLICATION_STATES_JOB,
+        {},
+        {
+          jobId: `publication:${RECONCILE_PUBLICATION_STATES_JOB}`,
+          repeat: {
+            pattern: '*/5 * * * *',
+            tz: 'America/Sao_Paulo',
+          },
+          removeOnComplete: true,
+          removeOnFail: 50,
         },
-        removeOnComplete: true,
-        removeOnFail: 50,
-      },
-    );
+      ),
+      this.publicationQueue.add(
+        CLEANUP_STALE_EVENT_DRAFTS_JOB,
+        {},
+        {
+          jobId: `publication:${CLEANUP_STALE_EVENT_DRAFTS_JOB}`,
+          repeat: {
+            pattern: '17 3 * * *',
+            tz: 'America/Sao_Paulo',
+          },
+          removeOnComplete: true,
+          removeOnFail: 50,
+        },
+      ),
+    ]);
     await this.enqueuePendingScheduledContent();
   }
 
@@ -134,6 +152,13 @@ export class PublicationJobsService {
         where: { trimAfter: { lte: now } },
       }),
     ]);
+  }
+
+  async cleanupStaleEventDrafts(): Promise<void> {
+    const deletedCount = await this.eventDrafts.cleanupStaleDrafts();
+    if (deletedCount > 0) {
+      this.logger.log(`Deleted ${deletedCount} stale event draft(s).`);
+    }
   }
 
   private reportPublicationFailures(

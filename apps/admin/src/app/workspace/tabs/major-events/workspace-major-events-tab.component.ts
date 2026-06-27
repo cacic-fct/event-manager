@@ -14,7 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
-import { MajorEvent } from '../../../graphql/models';
+import { MajorEvent, PublicationState } from '../../../graphql/models';
 import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
 import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { WorkspaceMajorEventsService } from '../../../shared/services/workspace-major-events.service';
@@ -76,6 +76,63 @@ export class WorkspaceMajorEventsTabComponent {
 
   protected canCloneMajorEvent(): boolean {
     return this.permissions.hasAll([Permission.MajorEvent.Read, Permission.MajorEvent.Create]);
+  }
+
+  protected draftMajorEventActionLabel(): string {
+    const state = this.workspace.selectedMajorEvent()?.publicationState;
+    return state === 'PUBLISHED' || state === 'SCHEDULED' ? 'Voltar para rascunho' : 'Salvar rascunho';
+  }
+
+  protected draftMajorEventActionTooltip(): string {
+    return this.draftActionTooltip(this.workspace.selectedMajorEvent()?.publicationState);
+  }
+
+  protected publishMajorEventActionLabel(): string {
+    return this.publishActionLabel(this.workspace.selectedMajorEvent()?.publicationState);
+  }
+
+  protected publishMajorEventActionTooltip(): string {
+    return this.publishActionTooltip(this.workspace.selectedMajorEvent()?.publicationState);
+  }
+
+  protected publishMajorEventActionIcon(): string {
+    return this.workspace.selectedMajorEvent()?.publicationState === 'PUBLISHED' ? 'sync' : 'publish';
+  }
+
+  private draftActionTooltip(state: PublicationState | null | undefined): string {
+    if (state === 'PUBLISHED') {
+      return 'Salva as alterações e retira o grande evento do ar, deixando-o como rascunho.';
+    }
+
+    if (state === 'SCHEDULED') {
+      return 'Salva as alterações e cancela o agendamento, deixando o grande evento como rascunho.';
+    }
+
+    return 'Salva sem publicar. O grande evento continua fora do ar.';
+  }
+
+  private publishActionLabel(state: PublicationState | null | undefined): string {
+    if (state === 'PUBLISHED') {
+      return 'Atualizar publicação';
+    }
+
+    if (state === 'SCHEDULED') {
+      return 'Publicar agora';
+    }
+
+    return 'Publicar';
+  }
+
+  private publishActionTooltip(state: PublicationState | null | undefined): string {
+    if (state === 'PUBLISHED') {
+      return 'Salva as alterações e mantém o grande evento publicado com a versão atualizada.';
+    }
+
+    if (state === 'SCHEDULED') {
+      return 'Salva as alterações, cancela o agendamento e publica o grande evento imediatamente.';
+    }
+
+    return 'Salva e publica o grande evento imediatamente.';
   }
 
   protected canEditSelectedMajorEventEvents(): boolean {
