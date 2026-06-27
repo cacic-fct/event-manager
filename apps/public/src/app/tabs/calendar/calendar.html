@@ -32,6 +32,11 @@
         }
       </mat-select>
     </mat-form-field>
+
+    <button mat-stroked-button type="button" class="search-button" (click)="searchNow()">
+      <mat-icon>search</mat-icon>
+      Buscar
+    </button>
   </form>
 
   @let state = calendarState(); @if (state.status === 'loading') {

@@ -4,15 +4,22 @@
   </a>
   <span>Crachá</span>
   <span class="global-toolbar-spacer"></span>
-  <button matIconButton aria-label="Imprimir crachá" (click)="print()">
+  <button matIconButton aria-label="Imprimir crachá" matTooltip="Imprimir crachá" (click)="print()">
     <mat-icon>printer</mat-icon>
   </button>
+  <button matIconButton aria-label="Código off-line" matTooltip="Código off-line" (click)="openTotp()">
+    <mat-icon>password</mat-icon>
+  </button>
   @if (serviceWorkerService.hasServiceWorker()) {
-  <button matIconButton aria-label="Disponível off-line" (click)="availableOffline()">
+  <button matIconButton aria-label="Disponível off-line" matTooltip="Disponível off-line" (click)="availableOffline()">
     <mat-icon>cloud_done</mat-icon>
   </button>
   } @else {
-  <button matIconButton aria-label="Não está disponível off-line" (click)="availableOffline()">
+  <button
+    matIconButton
+    aria-label="Não está disponível off-line"
+    matTooltip="Não está disponível off-line"
+    (click)="availableOffline()">
     <mat-icon>cloud_off</mat-icon>
   </button>
   }

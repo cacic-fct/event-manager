@@ -45,10 +45,31 @@ export interface EventManagerVotingPeopleLookupResponse {
   people: EventManagerVotingPerson[];
 }
 
+export type EventManagerVotingPersonIdentifierType = 'cpf' | 'phone' | 'email';
+
+export interface EventManagerVotingPersonIdentifierLookupItem {
+  requestId: string;
+  identifierType: EventManagerVotingPersonIdentifierType;
+  identifierValue: string;
+}
+
+export interface EventManagerVotingPersonIdentifierLookupRequest {
+  identifiers: EventManagerVotingPersonIdentifierLookupItem[];
+}
+
+export interface EventManagerVotingPersonIdentifierMatch extends EventManagerVotingPerson {
+  requestId: string;
+}
+
+export interface EventManagerVotingPersonIdentifierLookupResponse {
+  people: EventManagerVotingPersonIdentifierMatch[];
+}
+
 export const EVENT_MANAGER_M2M_VOTING_ROUTE_TEMPLATES = {
   EVENTS: `${EVENT_MANAGER_M2M_API_PREFIX}/internal/voting/events`,
   ATTENDANCE_CHECK: `${EVENT_MANAGER_M2M_API_PREFIX}/internal/voting/events/:eventId/attendance-check`,
   PEOPLE_LOOKUP: `${EVENT_MANAGER_M2M_API_PREFIX}/internal/voting/people/lookup`,
+  PEOPLE_IDENTIFIER_LOOKUP: `${EVENT_MANAGER_M2M_API_PREFIX}/internal/voting/people/identifier-lookup`,
 } as const;
 
 export const EVENT_MANAGER_M2M_VOTING_ROUTES = {
@@ -56,6 +77,7 @@ export const EVENT_MANAGER_M2M_VOTING_ROUTES = {
   attendanceCheck: (eventId: string) =>
     `${EVENT_MANAGER_M2M_API_PREFIX}/internal/voting/events/${encodePathSegment(eventId)}/attendance-check`,
   peopleLookup: () => `${EVENT_MANAGER_M2M_API_PREFIX}/internal/voting/people/lookup`,
+  peopleIdentifierLookup: () => `${EVENT_MANAGER_M2M_API_PREFIX}/internal/voting/people/identifier-lookup`,
 } as const;
 
 function encodePathSegment(value: string): string {

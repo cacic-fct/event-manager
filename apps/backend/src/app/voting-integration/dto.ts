@@ -3,11 +3,16 @@ import type {
   EventManagerVotingAttendanceCheckRequest,
   EventManagerVotingAttendanceCheckResponse,
   EventManagerVotingEvent,
+  EventManagerVotingPersonIdentifierLookupItem,
+  EventManagerVotingPersonIdentifierLookupRequest,
+  EventManagerVotingPersonIdentifierLookupResponse,
+  EventManagerVotingPersonIdentifierMatch,
+  EventManagerVotingPersonIdentifierType,
   EventManagerVotingPeopleLookupRequest,
   EventManagerVotingPeopleLookupResponse,
   EventManagerVotingPerson,
 } from '@cacic-fct/event-manager-m2m-contracts';
-import { ArrayMaxSize, IsArray, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsIn, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class VotingIntegrationEventDto implements EventManagerVotingEvent {
@@ -83,4 +88,45 @@ export class VotingPeopleLookupResponseDto implements EventManagerVotingPeopleLo
   @ValidateNested({ each: true })
   @Type(() => VotingPersonDto)
   people!: VotingPersonDto[];
+}
+
+export class VotingPersonIdentifierLookupItemDto implements EventManagerVotingPersonIdentifierLookupItem {
+  @ApiProperty({ example: 'member-1' })
+  @IsString()
+  @MaxLength(128)
+  requestId!: string;
+
+  @ApiProperty({ enum: ['cpf', 'phone', 'email'], example: 'email' })
+  @IsIn(['cpf', 'phone', 'email'])
+  identifierType!: EventManagerVotingPersonIdentifierType;
+
+  @ApiProperty({ example: 'ada@example.com' })
+  @IsString()
+  @MaxLength(255)
+  identifierValue!: string;
+}
+
+export class VotingPersonIdentifierLookupRequestDto implements EventManagerVotingPersonIdentifierLookupRequest {
+  @ApiProperty({
+    type: [VotingPersonIdentifierLookupItemDto],
+    description:
+      'Private candidate identifiers submitted by CACiC Voto for slate review. This endpoint must not be exposed to browser clients.',
+  })
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => VotingPersonIdentifierLookupItemDto)
+  identifiers!: VotingPersonIdentifierLookupItemDto[];
+}
+
+export class VotingPersonIdentifierMatchDto extends VotingPersonDto implements EventManagerVotingPersonIdentifierMatch {
+  @ApiProperty({ example: 'member-1' })
+  requestId!: string;
+}
+
+export class VotingPersonIdentifierLookupResponseDto implements EventManagerVotingPersonIdentifierLookupResponse {
+  @ApiProperty({ type: [VotingPersonIdentifierMatchDto] })
+  @ValidateNested({ each: true })
+  @Type(() => VotingPersonIdentifierMatchDto)
+  people!: VotingPersonIdentifierMatchDto[];
 }

@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -17,6 +17,7 @@ import {
 import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-create-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
+import { bindLiveSearch } from '../live-search';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
@@ -72,6 +73,7 @@ export class WorkspaceEventsService {
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly majorEventsService = inject(WorkspaceMajorEventsService);
   private readonly permissions = inject(WorkspacePermissionsService);
   readonly placePresetsService = inject(WorkspacePlacePresetsService);
@@ -163,6 +165,26 @@ export class WorkspaceEventsService {
   });
 
   constructor() {
+    bindLiveSearch({
+      control: this.eventFiltersForm,
+      destroyRef: this.destroyRef,
+      search: () => this.loadEvents(),
+    });
+    bindLiveSearch({
+      control: this.eventGroupLookupForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchEventGroupsForEvent(),
+    });
+    bindLiveSearch({
+      control: this.lecturerLookupForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchLecturerCandidates(),
+    });
+    bindLiveSearch({
+      control: this.attendanceCollectorLookupForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchAttendanceCollectorCandidates(),
+    });
     this.syncOnlineAttendanceControls();
     this.eventForm.controls.isOnlineAttendanceAllowed.valueChanges.subscribe(() => this.syncOnlineAttendanceControls());
     this.eventForm.controls.shouldIssueCertificate.valueChanges.subscribe(() => this.syncCertificateControl());
@@ -177,7 +199,7 @@ export class WorkspaceEventsService {
   }
 
   async resetEventFilters(): Promise<void> {
-    resetEventFiltersForm(this.eventFiltersForm);
+    resetEventFiltersForm(this.eventFiltersForm, { emitEvent: false });
     await this.loadEvents();
   }
 
@@ -194,7 +216,7 @@ export class WorkspaceEventsService {
     const eventDetails = await firstValueFrom(this.api.getEvent(eventId));
     this.selectedEvent.set(eventDetails);
     this.populateEventForm(eventDetails);
-    this.eventGroupLookupForm.controls.query.setValue(eventDetails.eventGroup?.name ?? '');
+    this.eventGroupLookupForm.controls.query.setValue(eventDetails.eventGroup?.name ?? '', { emitEvent: false });
     this.eventGroupSearchResults.set([]);
     await Promise.all([this.loadEventLecturers(eventId), this.loadEventAttendanceCollectors(eventId)]);
     await this.loadGroupLecturerSuggestions();
@@ -208,9 +230,12 @@ export class WorkspaceEventsService {
     this.eventGroupSearchResults.set([]);
     this.groupLecturerSuggestions.set([]);
     this.attendanceCollectorSearchResults.set([]);
-    this.eventGroupLookupForm.reset({
-      query: '',
-    });
+    this.eventGroupLookupForm.reset(
+      {
+        query: '',
+      },
+      { emitEvent: false },
+    );
     this.selectedEventGroupName.set('');
     this.selectedEventGroupAllowsCertificates.set(true);
     this.selectedEventGroupAllowsNonPayingCertificates.set(true);
@@ -883,7 +908,7 @@ export class WorkspaceEventsService {
       buttonLink: eventItem.buttonLink ?? '',
     });
     this.syncOnlineAttendanceControls();
-    this.eventGroupLookupForm.controls.query.setValue(eventItem.eventGroup?.name ?? '');
+    this.eventGroupLookupForm.controls.query.setValue(eventItem.eventGroup?.name ?? '', { emitEvent: false });
     this.selectedEventGroupName.set(eventItem.eventGroup?.name ?? '');
     this.selectedEventGroupAllowsCertificates.set(eventItem.eventGroup?.shouldIssueCertificate ?? true);
     this.selectedEventGroupAllowsNonPayingCertificates.set(

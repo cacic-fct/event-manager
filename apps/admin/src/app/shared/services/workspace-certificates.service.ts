@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { form, required, submit, type FieldTree } from '@angular/forms/signals';
 import { MatDialog } from '@angular/material/dialog';
@@ -24,6 +24,7 @@ import {
 } from '../../graphql/models';
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import { getErrorMessage } from '../error-message';
+import { bindLiveSearch } from '../live-search';
 
 type IssuableScope = Exclude<CertificateScope, 'OTHER'>;
 type CertificateTargetType = 'event' | 'event-group' | 'major-event';
@@ -64,6 +65,7 @@ export class WorkspaceCertificatesService {
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly issuableEvents = signal<Event[]>([]);
   readonly issuableEventGroups = signal<EventGroup[]>([]);
@@ -102,6 +104,19 @@ export class WorkspaceCertificatesService {
     required(path.certificateTemplateId);
     required(path.issuedTo);
   });
+
+  constructor() {
+    bindLiveSearch({
+      control: this.targetFiltersForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchTargets(),
+    });
+    bindLiveSearch({
+      control: this.personLookupForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchPeopleForManualIssue(),
+    });
+  }
 
   async loadInitialData(): Promise<void> {
     await Promise.all([this.loadCertificateTemplates(), this.searchTargets()]);
@@ -214,7 +229,7 @@ export class WorkspaceCertificatesService {
       id: target.id,
       name: target.name,
     });
-    this.personLookupForm.reset({ query: '' });
+    this.personLookupForm.reset({ query: '' }, { emitEvent: false });
     this.personSearchResults.set([]);
     this.selectedCertificateConfig.set(null);
     this.resetCertificateConfigForm();
@@ -265,7 +280,7 @@ export class WorkspaceCertificatesService {
         selectedTarget.id,
       ]);
     }
-    this.personLookupForm.reset({ query: '' });
+    this.personLookupForm.reset({ query: '' }, { emitEvent: false });
     this.personSearchResults.set([]);
     this.resetCertificateConfigForm();
     void this.loadCertificates();

@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -11,6 +11,7 @@ import {
   PlacePresetMergeDialogResult,
 } from '../../workspace/dialogs/place-preset-merge-dialog.component';
 import { getErrorMessage } from '../error-message';
+import { bindLiveSearch } from '../live-search';
 
 @Injectable({
   providedIn: 'root',
@@ -21,6 +22,7 @@ export class WorkspacePlacePresetsService {
   private readonly snackbar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly placePresets = signal<PlacePreset[]>([]);
   readonly selectedPlacePreset = signal<PlacePreset | null>(null);
@@ -41,13 +43,21 @@ export class WorkspacePlacePresetsService {
     locationDescription: [''],
   });
 
+  constructor() {
+    bindLiveSearch({
+      control: this.filterForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.loadPlacePresets(),
+    });
+  }
+
   async loadPlacePresets(): Promise<void> {
     const query = this.filterForm.controls.query.value.trim();
     this.placePresets.set(await firstValueFrom(this.api.listPlacePresets({ query: query || undefined, take: 300 })));
   }
 
   async resetFilters(): Promise<void> {
-    this.filterForm.reset({ query: '' });
+    this.filterForm.reset({ query: '' }, { emitEvent: false });
     await this.loadPlacePresets();
   }
 

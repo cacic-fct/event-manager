@@ -35,7 +35,7 @@ test('opens standard major-event subscription from the public list and subscribe
 
   await page.goto('/app/major-event');
 
-  await expect(page.getByRole('heading', { name: 'SECOMPP Integração' })).toBeVisible();
+  await expect(page.getByText('SECOMPP Integração')).toBeVisible();
   await page
     .locator('mat-card')
     .filter({ hasText: 'SECOMPP Integração' })
@@ -43,10 +43,13 @@ test('opens standard major-event subscription from the public list and subscribe
     .click();
 
   await expect(page.getByRole('heading', { name: 'SECOMPP Integração' })).toBeVisible();
-  await page.getByRole('checkbox', { name: 'Selecionar Oficina de APIs' }).click();
+  await page
+    .locator('mat-list-item')
+    .filter({ has: page.getByText('Oficina de APIs', { exact: true }) })
+    .click();
   await page.getByRole('button', { name: 'Inscrever-se' }).click();
   await expect(page.getByRole('heading', { name: 'Confirmar inscrição' })).toBeVisible();
-  await page.getByRole('button', { name: 'Inscrever-se' }).click();
+  await page.getByRole('dialog', { name: 'Confirmar inscrição' }).getByRole('button', { name: 'Inscrever-se' }).click();
 
   await expect(page.getByText('Inscrição realizada.')).toBeVisible();
   expect(api.majorEventUpserts()).toEqual([
@@ -63,14 +66,16 @@ test('completes ranked major-event subscription with automatic and grouped prefe
   await page.goto('/app/major-event/ranked-major/ranked-subscription');
 
   await expect(page.getByRole('heading', { name: 'SECOMPP Preferencial' })).toBeVisible();
-  await page.getByRole('checkbox', { name: 'Selecionar REST Essencial' }).click();
+  await page.getByRole('combobox', { name: 'Minicursos desejados' }).click();
+  await page.getByRole('option', { name: '2' }).click();
+  await page.locator('mat-list-item').filter({ hasText: 'REST Essencial' }).locator('mat-checkbox').click();
   await page.getByRole('button', { name: 'Ordenar preferências' }).click();
 
   await expect(page.getByText('Trilha Backend')).toBeVisible();
   await expect(page.getByText('Credenciamento')).toBeVisible();
   await page.getByRole('button', { name: 'Inscrever-se' }).click();
   await expect(page.getByRole('heading', { name: 'Confirmar inscrição' })).toBeVisible();
-  await page.getByRole('button', { name: 'Inscrever-se' }).click();
+  await page.getByRole('dialog', { name: 'Confirmar inscrição' }).getByRole('button', { name: 'Inscrever-se' }).click();
 
   await expect(page.getByText('Inscrição realizada.')).toBeVisible();
   expect(api.rankedMajorEventUpserts()).toEqual([

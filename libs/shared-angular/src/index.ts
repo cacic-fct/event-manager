@@ -16,6 +16,7 @@ export * from './lib/mailto/mailto.service';
 export * from './lib/observability/analytics.service';
 export * from './lib/observability/provide-observability';
 export * from './lib/pipes/safe.pipe';
+export * from './lib/privacy/account-privacy-startup';
 export * from './lib/service-worker/service-worker.service';
 export * from './lib/sitemap/sitemap.utils';
 export * from './lib/guards/guards';

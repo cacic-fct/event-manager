@@ -44,6 +44,10 @@ describe('WorkspacePlacePresetsService', () => {
     service = TestBed.inject(WorkspacePlacePresetsService);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('sorts presets alphabetically for display', () => {
     service.placePresets.set([
       createAdminPlacePreset({ id: 'b', name: 'Zeladoria' }),
@@ -51,6 +55,18 @@ describe('WorkspacePlacePresetsService', () => {
     ]);
 
     expect(service.sortedPlacePresets().map((place) => place.name)).toEqual(['Auditório', 'Zeladoria']);
+  });
+
+  it('loads matching presets as the search query changes', async () => {
+    vi.useFakeTimers();
+    api.listPlacePresets.mockReturnValueOnce(of([createAdminPlacePreset({ id: 'lab', name: 'Laboratório' })]));
+
+    service.filterForm.controls.query.setValue('lab');
+
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(api.listPlacePresets).toHaveBeenCalledWith({ query: 'lab', take: 300 });
+    expect(service.placePresets().map((place) => place.id)).toEqual(['lab']);
   });
 
   it('autosaves a manual location when no identical preset exists', async () => {

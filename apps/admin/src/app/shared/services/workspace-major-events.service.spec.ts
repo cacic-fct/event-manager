@@ -7,7 +7,7 @@ import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { MajorEventInput } from '../../graphql/models';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
-import { createAdminMajorEventFromInput } from '../../testing/admin-entity-fixtures';
+import { createAdminEvent, createAdminMajorEventFromInput } from '../../testing/admin-entity-fixtures';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 
@@ -26,6 +26,10 @@ describe('WorkspaceMajorEventsService', () => {
     updateMajorEvent: ReturnType<typeof vi.fn>;
     listMajorEvents: ReturnType<typeof vi.fn>;
   };
+  let eventApi: {
+    listEvents: ReturnType<typeof vi.fn>;
+    updateEvent: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     lastPayload = null;
@@ -41,6 +45,10 @@ describe('WorkspaceMajorEventsService', () => {
       }),
       listMajorEvents: vi.fn(() => of([])),
     };
+    eventApi = {
+      listEvents: vi.fn(() => of([])),
+      updateEvent: vi.fn(() => of(createAdminEvent())),
+    };
     publicationApi = {
       setPublicationState: vi.fn(() => of({ ok: true })),
     };
@@ -52,7 +60,7 @@ describe('WorkspaceMajorEventsService', () => {
       providers: [
         WorkspaceMajorEventsService,
         { provide: MajorEventApiService, useValue: api },
-        { provide: EventApiService, useValue: { listEvents: vi.fn(() => of([])) } },
+        { provide: EventApiService, useValue: eventApi },
         { provide: PublicationApiService, useValue: publicationApi },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
@@ -71,6 +79,10 @@ describe('WorkspaceMajorEventsService', () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('posts a single price entered as a number input value', async () => {
     service.priceTiers.at(0).controls.value.setValue(40 as unknown as string);
 
@@ -80,6 +92,21 @@ describe('WorkspaceMajorEventsService', () => {
       type: 'SINGLE',
       tiers: [{ name: 'Preço único', value: 4000 }],
     });
+  });
+
+  it('searches events for a selected major event as the query changes', async () => {
+    vi.useFakeTimers();
+    service.selectedMajorEvent.set(createAdminMajorEventFromInput({ id: 'major-event-1' }));
+    eventApi.listEvents.mockReturnValueOnce(
+      of([createAdminEvent({ id: 'event-1', name: 'Aula', majorEventId: null })]),
+    );
+
+    service.majorEventEventSearchForm.controls.query.setValue('aula');
+
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(eventApi.listEvents).toHaveBeenCalledWith({ query: 'aula', take: 20 });
+    expect(service.majorEventEventSearchResults().map((eventItem) => eventItem.id)).toEqual(['event-1']);
   });
 
   it('posts tiered participant prices', async () => {

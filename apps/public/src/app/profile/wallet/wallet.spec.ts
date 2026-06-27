@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ServiceWorkerService } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { Wallet } from './wallet';
+import { WalletTotpDialog } from './totp-dialog';
 
 describe('Wallet', () => {
   let component: Wallet;
@@ -71,5 +72,14 @@ describe('Wallet', () => {
 
     expect(dialog.open).toHaveBeenCalledOnce();
     expect(printSpy).toHaveBeenCalledOnce();
+  });
+
+  it('opens the offline code dialog from the wallet', () => {
+    component.openTotp();
+
+    expect(dialog.open).toHaveBeenCalledWith(WalletTotpDialog, {
+      autoFocus: false,
+      width: 'min(480px, calc(100vw - 32px))',
+    });
   });
 });

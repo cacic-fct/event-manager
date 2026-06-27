@@ -1,6 +1,7 @@
 {
   "name": "offline-public-data-access",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "root": "libs/offline-public-data-access",
   "sourceRoot": "libs/offline-public-data-access/src",
   "prefix": "lib",
   "projectType": "library",
@@ -24,6 +25,13 @@
         "args": [
           "**/*.ts"
         ]
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/libs/offline-public-data-access"],
+      "options": {
+        "command": "bunx vitest run --coverage --config libs/offline-public-data-access/vitest.config.ts"
       }
     }
   }

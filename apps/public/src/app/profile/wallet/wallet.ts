@@ -7,6 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatToolbarModule } from '@angular/material/toolbar';
 
 import { toSVG } from '@bwip-js/browser';
@@ -16,12 +17,22 @@ import { OfflineUserSnapshot } from '@cacic-fct/offline-public-data-access';
 import { formatCPF, formatUnespRole, isValidCPF } from '@cacic-fct/shared-utils';
 
 import { PrintDialog } from './print-dialog';
+import { WalletTotpDialog } from './totp-dialog';
 import { NetworkStatusService } from '../../shared/network-status.service';
 import { OfflineUserDataService } from '../../shared/offline-user-data.service';
 
 @Component({
   selector: 'app-wallet',
-  imports: [SafePipe, MatToolbarModule, MatIconModule, RouterLink, MatButtonModule, MatCardModule, MatDialogModule],
+  imports: [
+    SafePipe,
+    MatToolbarModule,
+    MatIconModule,
+    RouterLink,
+    MatButtonModule,
+    MatCardModule,
+    MatDialogModule,
+    MatTooltipModule,
+  ],
   templateUrl: './wallet.html',
   styleUrl: './wallet.css',
 })
@@ -164,6 +175,17 @@ export class Wallet {
     }
 
     window.print();
+  }
+
+  public openTotp(): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    this.dialog.open(WalletTotpDialog, {
+      autoFocus: false,
+      width: 'min(480px, calc(100vw - 32px))',
+    });
   }
 
   public availableOffline(): void {

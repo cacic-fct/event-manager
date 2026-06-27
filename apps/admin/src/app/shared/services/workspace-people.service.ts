@@ -32,6 +32,7 @@ import {
   PersonInput,
 } from '../../graphql/models';
 import { getErrorMessage } from '../error-message';
+import { bindLiveSearch } from '../live-search';
 
 type PermissionGrantOption = {
   permission: Permission;
@@ -250,6 +251,10 @@ export class WorkspacePeopleService {
     externalRef: [''],
   });
 
+  readonly peopleSearchForm = this.formBuilder.nonNullable.group({
+    query: [''],
+  });
+
   readonly lecturerProfileForm = this.formBuilder.nonNullable.group({
     displayName: ['', [Validators.required]],
     biography: [''],
@@ -274,6 +279,11 @@ export class WorkspacePeopleService {
   });
 
   constructor() {
+    bindLiveSearch({
+      control: this.peopleSearchForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: (query) => this.searchPeople(query),
+    });
     this.permissionGrantForm.controls.category.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((resource) => {
@@ -313,6 +323,9 @@ export class WorkspacePeopleService {
 
   async searchPeople(query: string): Promise<void> {
     const normalizedQuery = query.trim();
+    if (this.peopleSearchForm.controls.query.value !== query) {
+      this.peopleSearchForm.controls.query.setValue(query, { emitEvent: false });
+    }
     this.peopleSearchQuery.set(normalizedQuery);
     const people = await firstValueFrom(
       this.api.listPeopleSummaries({

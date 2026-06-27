@@ -375,6 +375,10 @@ export class KeycloakAuthService {
     await this.sessions.delete(sessionId);
   }
 
+  async getSessionExpiration(sessionId: string): Promise<number | null> {
+    return (await this.sessions.get(sessionId))?.sessionExpiresAt ?? null;
+  }
+
   async getSessionLogoutInput(sessionId: string): Promise<LogoutDto | null> {
     const session = await this.sessions.get(sessionId);
     if (!session) {

@@ -100,6 +100,8 @@ import { NovuNotificationsController } from './notifications/novu-notifications.
 import { AccountManagerPrivacySyncService } from './privacy/account-manager-privacy-sync.service';
 import { PrivacyController } from './privacy/privacy.controller';
 import { TrackingController } from './privacy/tracking.controller';
+import { AccountManagerTotpService } from './totp/account-manager-totp.service';
+import { TotpController } from './totp/totp.controller';
 import { PublicationProcessor } from './publishing/publishing.processor';
 import { PublicationResolver } from './publishing/publishing.resolver';
 import { PublicationScheduler } from './publishing/publishing.scheduler';
@@ -191,6 +193,7 @@ import { validateBackendEnvironment } from './config/environment.validation';
     NovuNotificationsController,
     PrivacyController,
     TrackingController,
+    TotpController,
     VotingIntegrationController,
   ],
   providers: [
@@ -267,6 +270,7 @@ import { validateBackendEnvironment } from './config/environment.validation';
     MajorEventReceiptsProcessor,
     ReceiptAnalysisService,
     AccountManagerPrivacySyncService,
+    AccountManagerTotpService,
     CertificatesResolver,
     WeatherResolver,
     CertificateTargetsService,
