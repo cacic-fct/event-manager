@@ -1,6 +1,6 @@
 {
   "name": "@cacic-fct/event-manager-m2m-contracts",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Framework-agnostic CACiC Event Manager M2M API contracts.",
   "license": "AGPL-3.0-only",
   "type": "commonjs",
