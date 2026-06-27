@@ -81,6 +81,16 @@ test('confirms online attendance from the pending attendance list', async ({ pag
   expect(api.onlineAttendanceConfirmations()).toEqual([{ eventId: 'online-event', code: 'A1B2' }]);
 });
 
+test('shows an empty pending attendance state without submitting codes', async ({ page }) => {
+  const api = await mockPublicApi(page);
+
+  await page.goto('/app/attendance/register');
+
+  await expect(page.getByText('Presenças pendentes', { exact: true })).toBeVisible();
+  await expect(page.getByText('Nenhuma presença pendente.')).toBeVisible();
+  expect(api.onlineAttendanceConfirmations()).toEqual([]);
+});
+
 async function preventSilentSso(page: Page): Promise<void> {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');

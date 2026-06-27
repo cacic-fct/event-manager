@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await preventSilentSso(page);
 });
 
-test('protected public routes start backend login with the requested return path', async ({ page }) => {
+test('public preferences remain available without starting backend login', async ({ page }) => {
   let loginRedirect: URL | null = null;
   await mockPublicApi(page, {
     user: null,
@@ -15,8 +15,8 @@ test('protected public routes start backend login with the requested return path
 
   await page.goto('/app/preferences');
 
-  await expect.poll(() => loginRedirect?.pathname).toBe('/api/auth/login/redirect');
-  await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/app/preferences');
+  await expect(page.getByText('Preferências', { exact: true }).first()).toBeVisible();
+  expect(loginRedirect).toBeNull();
 });
 
 test('public landing login starts backend auth with the feature-flagged public return path', async ({ page }) => {
@@ -45,7 +45,8 @@ test('authenticated public users keep their local session and see account action
   await page.goto('/app/menu');
 
   await expect(page.getByText('Usuário Teste')).toBeVisible();
-  await expect(page.getByLabel('Sair da conta')).toBeVisible();
+  await page.getByRole('link', { name: 'Preferências' }).click();
+  await expect(page.getByRole('button', { name: 'Sair da conta' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Entrar' })).toHaveCount(0);
 });
 

@@ -44,17 +44,17 @@ test('group and major event workspaces expose draft and publication controls', a
 test('subscription management loads event and major event subscriptions', async ({ page }) => {
   await page.goto('/admin/subscriptions/event/event-1');
 
-  await expect(page.getByRole('tab', { name: 'Eventos' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Eventos', exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('heading', { name: /Oficina de Angular/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Criação manual' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Inscrições' })).toBeVisible();
-  await expect(page.getByText('Ada Lovelace')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inscrições', level: 1 })).toBeVisible();
+  await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
 
   await page.goto('/admin/subscriptions/major-event/major-event-1');
 
   await expect(page.getByRole('tab', { name: 'Grandes eventos' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('Semana da Computação').first()).toBeVisible();
-  await expect(page.getByText('Ada Lovelace')).toBeVisible();
+  await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Eventos inscritos' })).toBeVisible();
   await expect(page.getByText('Oficina de Angular')).toBeVisible();
 });
@@ -67,12 +67,12 @@ test('attendance management loads event attendance and major event attendance de
   await expect(page.getByRole('heading', { name: 'Registro manual' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Presenças do evento' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Regulares' })).toBeVisible();
-  await expect(page.getByText('Ada Lovelace')).toBeVisible();
+  await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
 
   await page.goto('/admin/attendances/major-event/major-event-1');
 
   await expect(page.getByRole('tab', { name: 'Por grande evento' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByText('Ada Lovelace')).toBeVisible();
+  await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
   await expect(page.getByText('Oficina de Angular')).toBeVisible();
   await expect(page.getByText('Presente')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Editar' })).toBeVisible();

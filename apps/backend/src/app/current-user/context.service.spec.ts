@@ -281,8 +281,8 @@ describe('CurrentUserContextService', () => {
         name: 'Student Name',
         set_fullname: 'Updated Student Name',
         phone: '+5511999999999',
-        identityDocument: '987.654.321-00',
-        enrollmentNumber: '20240001',
+        identity_document: '987.654.321-00',
+        enrollment_number: '20240001',
       },
     });
     const user = createUserRecord();
@@ -386,8 +386,8 @@ function createAuthenticatedUser(overrides: Partial<AuthenticatedUser> = {}): Au
     claims: {
       name: 'Student Name',
       phone: '+5511999999999',
-      identityDocument: '123.456.789-00',
-      enrollmentNumber: '20240001',
+      identity_document: '123.456.789-00',
+      enrollment_number: '20240001',
       unesp_role: ['aluno-graduacao'],
       is_onboarded: true,
       ...(claims ?? {}),

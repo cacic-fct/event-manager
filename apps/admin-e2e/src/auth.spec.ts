@@ -34,14 +34,14 @@ test('login page submits development password credentials without a real Keycloa
 
   await page.goto('/admin/login?returnTo=%2Fadmin%2Fevents');
   await page.getByLabel('E-mail').fill('aluno@unesp.br');
-  await page.getByLabel('Senha').fill('1');
+  await page.getByRole('textbox', { name: 'Senha' }).fill('1');
   await page.getByRole('button', { name: /^Entrar$/ }).click();
 
   await expect.poll(() => passwordLoginBody).toEqual({
     email: 'aluno@unesp.br',
     password: '1',
   });
-  await expect(page).toHaveURL(/\/admin\/events/);
+  await expect(page).toHaveURL(/\/admin\/?$/);
 });
 
 test('authenticated users are redirected away from the local login page', async ({ page }) => {

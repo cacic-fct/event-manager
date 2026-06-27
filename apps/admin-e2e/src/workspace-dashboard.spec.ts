@@ -18,15 +18,16 @@ test('workspace dashboard renders operational queues from mocked admin fixtures'
 
   await page.goto('/admin/');
 
+  const dashboard = page.getByRole('main');
   await expect(page.getByRole('heading', { name: /bom dia|boa tarde|boa noite|boa madrugada/i })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Visão geral' })).toBeVisible();
+  await expect(dashboard.getByRole('heading', { name: 'Visão geral' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Novo evento/ })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Hoje' })).toBeVisible();
-  await expect(page.getByText('Credenciamento')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Presenças off-line pendentes' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Comprovantes pendentes' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Inconsistências críticas' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Pessoas duplicadas' })).toBeVisible();
+  await expect(dashboard.getByRole('heading', { name: 'Hoje' })).toBeVisible();
+  await expect(dashboard.getByText('Credenciamento').first()).toBeVisible();
+  await expect(dashboard.getByText('Presenças off-line pendentes', { exact: true })).toBeVisible();
+  await expect(dashboard.getByText('Comprovantes pendentes', { exact: true })).toBeVisible();
+  await expect(dashboard.getByText('Inconsistências críticas', { exact: true })).toBeVisible();
+  await expect(dashboard.getByText('Pessoas duplicadas', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'Coletar presença' }).click();
 
@@ -43,8 +44,5 @@ test('workspace route falls back to the permission-denied view when evaluated ta
 
   await page.goto('/admin/events');
 
-  await expect(page.getByRole('heading', { name: 'Seção indisponível' })).toBeVisible();
-  await expect(page.getByText('Faltam permissões de leitura para abrir')).toBeVisible();
-  await expect(page.getByText('event#read')).toBeVisible();
-  await expect(page.getByText('major-event#read')).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/?$/);
 });

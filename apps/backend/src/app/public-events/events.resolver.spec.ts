@@ -1,5 +1,6 @@
 import { PublicEventsResolver } from './events.resolver';
 import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from './models';
+import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 
 describe('PublicEventsResolver lecturer profiles', () => {
   afterEach(() => {
@@ -69,6 +70,51 @@ describe('PublicEventsResolver lecturer profiles', () => {
         },
         skip: 5,
         take: 10,
+      }),
+    );
+  });
+
+  it('returns no events without querying SQL when Typesense finds no public matches', async () => {
+    const prisma = {
+      event: {
+        findMany: jest.fn(),
+      },
+    };
+    const typesenseSearch = createTypesenseSearch({
+      available: true,
+      ids: [],
+    });
+    const resolver = new PublicEventsResolver(prisma as never, typesenseSearch as never);
+
+    await expect(resolver.publicEvents('sem resultados')).resolves.toEqual([]);
+
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+  });
+
+  it('ignores blank public event searches instead of applying empty name filters', async () => {
+    const prisma = {
+      event: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'event-1' }]),
+      },
+    };
+    const typesenseSearch = createTypesenseSearch({
+      available: true,
+      ids: ['event-1'],
+    });
+    const resolver = new PublicEventsResolver(prisma as never, typesenseSearch as never);
+
+    await expect(resolver.publicEvents('   ', undefined, undefined, undefined, undefined, 2, 3)).resolves.toEqual([
+      { id: 'event-1' },
+    ]);
+
+    expect(typesenseSearch.searchEvents).not.toHaveBeenCalled();
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [PUBLIC_EVENT_WHERE],
+        },
+        skip: 2,
+        take: 3,
       }),
     );
   });
@@ -188,7 +234,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
 
   it('builds major-event subscription pages from published major events and visible child events only', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-06-23T12:00:00.000Z'));
-    const majorEvent = createMajorEventRecord('major-1');
+    const majorEvent = createPublicMajorEventRecord({ id: 'major-1' });
     const event = {
       id: 'event-1',
       slots: 1,
@@ -261,6 +307,45 @@ describe('PublicEventsResolver lecturer profiles', () => {
         startDate: 'asc',
       },
     });
+  });
+
+  it('does not query subscription counts for an empty major-event subscription page', async () => {
+    const prisma = {
+      majorEvent: {
+        findFirst: jest.fn().mockResolvedValue(createPublicMajorEventRecord({ id: 'major-empty' })),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventSubscription: {
+        groupBy: jest.fn(),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(resolver.publicMajorEventSubscriptionPage('major-empty')).resolves.toEqual({
+      majorEvent: expect.objectContaining({ id: 'major-empty' }),
+      events: [],
+      subscriptionSummaries: [],
+    });
+
+    expect(prisma.eventSubscription.groupBy).not.toHaveBeenCalled();
+  });
+
+  it('rejects calendar requests before the public retention window', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-06-23T12:00:00.000Z'));
+    const prisma = {
+      event: {
+        findMany: jest.fn(),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(
+      resolver.publicCalendarEvents(undefined, undefined, new Date('2026-05-22T23:59:59.000Z')),
+    ).rejects.toThrow('Event is out of bounds for calendar listing');
+
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
   });
 
   it('maps event lecturers to public profiles and hides unpublished Google pictures', async () => {
@@ -436,30 +521,5 @@ function createTypesenseSearch(result: { available: boolean; ids: string[] }) {
   return {
     isEnabled: jest.fn().mockReturnValue(true),
     searchEvents: jest.fn().mockResolvedValue(result),
-  };
-}
-
-function createMajorEventRecord(id: string) {
-  return {
-    id,
-    name: 'Major 1',
-    emoji: null,
-    startDate: new Date('2026-06-24T12:00:00.000Z'),
-    endDate: new Date('2026-06-25T12:00:00.000Z'),
-    description: null,
-    buttonText: null,
-    buttonLink: null,
-    contactInfo: null,
-    contactType: null,
-    subscriptionStartDate: null,
-    subscriptionEndDate: null,
-    maxCoursesPerAttendee: null,
-    maxLecturesPerAttendee: null,
-    maxUncategorizedPerAttendee: null,
-    rankedSubscriptionEnabled: false,
-    isPaymentRequired: false,
-    additionalPaymentInfo: null,
-    certificateConfigs: [],
-    majorEventPrices: [],
   };
 }
