@@ -122,9 +122,7 @@ model EventDraft {
   updatedAt DateTime @updatedAt
   expiresAt DateTime
 
-  @@index([sourceEventId])
-  @@index([updatedAt])
-  @@index([createdAt])
+  @@index([sourceEventId, updatedAt(sort: Desc), createdAt(sort: Desc)])
   @@index([expiresAt])
   @@map("event_drafts")
 }

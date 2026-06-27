@@ -1,8 +1,11 @@
+import { Logger } from '@nestjs/common';
 import { AuditLogOperation, PublicationState } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventDraftsService } from './event-drafts.service';
 
 describe('EventDraftsService', () => {
+  let loggerWarnSpy: jest.SpyInstance;
+
   const user = {
     sub: 'user-1',
     email: 'editor@example.com',
@@ -35,6 +38,14 @@ describe('EventDraftsService', () => {
     updatedAt: new Date('2026-06-27T12:30:00.000Z'),
     expiresAt: new Date('2026-07-31T13:00:00.000Z'),
   };
+
+  beforeEach(() => {
+    loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    loggerWarnSpy.mockRestore();
+  });
 
   function buildService(overrides: Partial<{
     prisma: Record<string, unknown>;
@@ -229,6 +240,9 @@ describe('EventDraftsService', () => {
         }),
       }),
     );
+    const updateCall = tx.event.updateMany.mock.calls[0][0] as { data: { publishedAt: Date } };
+    expect(updateCall.data.publishedAt).toBeInstanceOf(Date);
+    expect(updateCall.data.publishedAt.getTime()).toBeGreaterThan(previousEvent.publishedAt.getTime());
     expect(tx.eventDraft.delete).toHaveBeenCalledWith({ where: { id: 'draft-1' } });
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -247,5 +261,109 @@ describe('EventDraftsService', () => {
       }),
     );
     expect(attendanceRealtime.notifyAllConnectedPeople).not.toHaveBeenCalled();
+  });
+
+  it('keeps the apply mutation successful when post-commit search sync fails', async () => {
+    const previousEvent = {
+      id: 'event-1',
+      name: 'Evento publicado',
+      publicationState: PublicationState.PUBLISHED,
+      publishedAt: new Date('2026-06-01T12:00:00.000Z'),
+      majorEventId: null,
+      eventGroupId: null,
+    };
+    const updatedEvent = {
+      ...previousEvent,
+      name: 'Evento revisado',
+      emoji: '🎟️',
+      type: 'OTHER',
+      description: null,
+      shortDescription: null,
+      locationDescription: null,
+      shouldIssueCertificate: false,
+      publiclyVisible: true,
+      startDate: new Date('2026-07-01T12:00:00.000Z'),
+      endDate: new Date('2026-07-01T13:00:00.000Z'),
+    };
+    const { service, prisma, tx, typesenseSearch } = buildService();
+    prisma.eventDraft.findUnique.mockResolvedValue(draftRecord);
+    tx.event.findFirst.mockResolvedValue(previousEvent);
+    tx.event.findUniqueOrThrow.mockResolvedValue(updatedEvent);
+    typesenseSearch.upsertEvent.mockRejectedValueOnce(new Error('Typesense unavailable'));
+
+    await expect(service.applyEventDraft('draft-1', user as never)).resolves.toEqual(updatedEvent);
+
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Typesense event sync failed after applying event draft draft-1'),
+    );
+  });
+
+  it('deletes a single draft using only the source event scope', async () => {
+    const { service, prisma, authorizationPolicy, frozenResources, tx } = buildService();
+    prisma.eventDraft.findUnique.mockResolvedValue({
+      ...draftRecord,
+      payload: {
+        ...draftRecord.payload,
+        majorEventId: 'major-event-from-draft',
+        eventGroupId: 'event-group-from-draft',
+      },
+    });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1', name: 'Evento publicado' }]);
+
+    await expect(service.deleteEventDraft('draft-1', user as never)).resolves.toEqual({
+      deleted: true,
+      id: 'draft-1',
+      eventId: 'event-1',
+    });
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.Event.Update], {
+      eventId: 'event-1',
+    });
+    expect(frozenResources.assertEventUpdateMutable).toHaveBeenCalledWith('event-1', {}, user);
+    expect(tx.eventDraft.deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: {
+          in: ['draft-1'],
+        },
+      },
+    });
+  });
+
+  it('cleans up all stale draft batches', async () => {
+    const secondDraft = {
+      ...draftRecord,
+      id: 'draft-2',
+      updatedAt: new Date('2026-06-27T12:31:00.000Z'),
+    };
+    const thirdDraft = {
+      ...draftRecord,
+      id: 'draft-3',
+      updatedAt: new Date('2026-06-27T12:32:00.000Z'),
+    };
+    const { service, prisma, tx } = buildService();
+    prisma.eventDraft.findMany
+      .mockResolvedValueOnce([draftRecord, secondDraft])
+      .mockResolvedValueOnce([thirdDraft])
+      .mockResolvedValueOnce([]);
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1', name: 'Evento publicado' }]);
+
+    await expect(service.cleanupStaleDrafts(new Date('2026-08-01T00:00:00.000Z'))).resolves.toBe(3);
+
+    expect(prisma.eventDraft.findMany).toHaveBeenCalledTimes(3);
+    expect(tx.eventDraft.deleteMany).toHaveBeenCalledTimes(2);
+    expect(tx.eventDraft.deleteMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        id: {
+          in: ['draft-1', 'draft-2'],
+        },
+      },
+    });
+    expect(tx.eventDraft.deleteMany).toHaveBeenNthCalledWith(2, {
+      where: {
+        id: {
+          in: ['draft-3'],
+        },
+      },
+    });
   });
 });

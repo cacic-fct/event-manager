@@ -27,6 +27,7 @@ export class EventDraftsResolver {
   }
 
   @Mutation(() => EventDraft, { name: 'saveEventDraft' })
+  @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.Event.Update)
   async saveEventDraft(
     @Args('input', { type: () => EventDraftSaveInput }) input: EventDraftSaveInput,
@@ -36,6 +37,7 @@ export class EventDraftsResolver {
   }
 
   @Mutation(() => Event, { name: 'applyEventDraft' })
+  @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.Event.Update)
   async applyEventDraft(
     @Args('draftId', { type: () => String }) draftId: string,
@@ -45,6 +47,7 @@ export class EventDraftsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteEventDraft' })
+  @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.Event.Update)
   async deleteEventDraft(
     @Args('draftId', { type: () => String }) draftId: string,
@@ -54,6 +57,7 @@ export class EventDraftsResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteEventDraftsForEvent' })
+  @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.Event.Update)
   async deleteEventDraftsForEvent(
     @Args('sourceEventId', { type: () => String }) sourceEventId: string,

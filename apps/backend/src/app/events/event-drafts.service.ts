@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DeletionResult, EventDraft, EventDraftSaveInput, EventUpdateInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogEntityType, AuditLogOperation, Prisma, PublicationState as PrismaPublicationState } from '@prisma/client';
@@ -130,6 +130,8 @@ const EVENT_DETAIL_SELECT = {
   updatedById: true,
 } satisfies Prisma.EventSelect;
 
+type EventDraftAppliedEvent = Prisma.EventGetPayload<{ select: typeof EVENT_DETAIL_SELECT }>;
+
 const EVENT_AUDIT_SELECT = {
   id: true,
   name: true,
@@ -192,6 +194,8 @@ const EVENT_DRAFT_SELECT = {
 
 @Injectable()
 export class EventDraftsService {
+  private readonly logger = new Logger(EventDraftsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
@@ -314,6 +318,7 @@ export class EventDraftsService {
     );
     await this.assertCanWriteDraft(draft.sourceEventId, payload, user);
 
+    const appliedAt = new Date();
     const event = await this.prisma.$transaction(async (tx) => {
       const previousEvent = await tx.event.findFirst({
         where: { id: draft.sourceEventId, deletedAt: null },
@@ -329,7 +334,7 @@ export class EventDraftsService {
           ...payload,
           publicationState: PrismaPublicationState.PUBLISHED,
           scheduledPublishAt: null,
-          publishedAt: previousEvent.publishedAt ?? new Date(),
+          publishedAt: appliedAt,
           unpublishedAt: null,
           publicationUpdatedBy: user?.sub ?? null,
         },
@@ -373,25 +378,7 @@ export class EventDraftsService {
       return updated;
     });
 
-    await this.typesenseSearch.upsertEvent({
-      id: event.id,
-      name: event.name,
-      emoji: event.emoji,
-      type: event.type,
-      description: event.description,
-      shortDescription: event.shortDescription,
-      locationDescription: event.locationDescription,
-      majorEventId: event.majorEventId,
-      eventGroupId: event.eventGroupId,
-      shouldIssueCertificate: event.shouldIssueCertificate,
-      publiclyVisible: event.publiclyVisible,
-      publicationState: event.publicationState,
-      startDate: event.startDate,
-      endDate: event.endDate,
-    });
-    if (this.didChangeOnlineAttendanceWindow(payload)) {
-      await this.attendanceRealtime.notifyAllConnectedPeople();
-    }
+    await this.runAppliedDraftSideEffects(event, payload, draft.id);
     return event;
   }
 
@@ -404,7 +391,7 @@ export class EventDraftsService {
       throw new NotFoundException(`Event draft ${draftId} was not found.`);
     }
 
-    await this.assertCanWriteDraft(draft.sourceEventId, this.eventInputFromDraftPayload(draft.payload), user);
+    await this.assertCanWriteDraft(draft.sourceEventId, {}, user);
     await this.deleteDrafts([draft], user);
 
     return {
@@ -432,24 +419,28 @@ export class EventDraftsService {
 
   async cleanupStaleDrafts(now = new Date()): Promise<number> {
     const cutoff = new Date(now.getTime() - EVENT_DRAFT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    const drafts = await this.prisma.eventDraft.findMany({
-      where: {
-        expiresAt: { lte: now },
-      },
-      select: EVENT_DRAFT_SELECT,
-      take: EVENT_DRAFT_CLEANUP_BATCH_SIZE,
-      orderBy: [{ updatedAt: 'asc' }],
-    });
+    let deletedCount = 0;
 
-    if (drafts.length === 0) {
-      return 0;
+    while (true) {
+      const drafts = await this.prisma.eventDraft.findMany({
+        where: {
+          expiresAt: { lte: now },
+        },
+        select: EVENT_DRAFT_SELECT,
+        take: EVENT_DRAFT_CLEANUP_BATCH_SIZE,
+        orderBy: [{ updatedAt: 'asc' }],
+      });
+
+      if (drafts.length === 0) {
+        return deletedCount;
+      }
+
+      await this.deleteDrafts(drafts, null, {
+        summary: 'Rascunho removido automaticamente por expiração.',
+        metadata: { cleanupReason: 'STALE_EVENT_DRAFT', cutoff: cutoff.toISOString(), now: now.toISOString() },
+      });
+      deletedCount += drafts.length;
     }
-
-    await this.deleteDrafts(drafts, null, {
-      summary: 'Rascunho removido automaticamente por expiração.',
-      metadata: { cleanupReason: 'STALE_EVENT_DRAFT', cutoff: cutoff.toISOString(), now: now.toISOString() },
-    });
-    return drafts.length;
   }
 
   private async editableSourceEventIds(user: AuthenticatedUser | undefined, requestedIds: string[]): Promise<string[]> {
@@ -664,6 +655,50 @@ export class EventDraftsService {
     return normalizedInput;
   }
 
+  private async runAppliedDraftSideEffects(
+    event: EventDraftAppliedEvent,
+    input: EventUpdateInput,
+    draftId: string,
+  ): Promise<void> {
+    const tasks: Array<{ name: string; run: () => Promise<unknown> }> = [
+      {
+        name: 'Typesense event sync',
+        run: () => this.typesenseSearch.upsertEvent({
+          id: event.id,
+          name: event.name,
+          emoji: event.emoji,
+          type: event.type,
+          description: event.description,
+          shortDescription: event.shortDescription,
+          locationDescription: event.locationDescription,
+          majorEventId: event.majorEventId,
+          eventGroupId: event.eventGroupId,
+          shouldIssueCertificate: event.shouldIssueCertificate,
+          publiclyVisible: event.publiclyVisible,
+          publicationState: event.publicationState,
+          startDate: event.startDate,
+          endDate: event.endDate,
+        }),
+      },
+    ];
+
+    if (this.didChangeOnlineAttendanceWindow(input)) {
+      tasks.push({
+        name: 'attendance realtime notification',
+        run: () => this.attendanceRealtime.notifyAllConnectedPeople(),
+      });
+    }
+
+    const results = await Promise.allSettled(tasks.map(({ run }) => Promise.resolve().then(run)));
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.warn(
+          `${tasks[index].name} failed after applying event draft ${draftId}: ${this.errorMessage(result.reason)}`,
+        );
+      }
+    });
+  }
+
   private didChangeOnlineAttendanceWindow(input: EventUpdateInput): boolean {
     return (
       input.shouldCollectAttendance !== undefined ||
@@ -672,6 +707,10 @@ export class EventDraftsService {
       input.onlineAttendanceStartDate !== undefined ||
       input.onlineAttendanceEndDate !== undefined
     );
+  }
+
+  private errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 
   private async resolveDraftActor(user: AuthenticatedUser | undefined): Promise<DraftActorInfo> {

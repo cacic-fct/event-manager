@@ -23,14 +23,8 @@ ALTER TABLE "event_drafts"
   ON DELETE CASCADE
   ON UPDATE CASCADE;
 
-CREATE INDEX "event_drafts_sourceEventId_idx"
-ON "event_drafts"("sourceEventId");
-
-CREATE INDEX "event_drafts_updatedAt_idx"
-ON "event_drafts"("updatedAt");
-
-CREATE INDEX "event_drafts_createdAt_idx"
-ON "event_drafts"("createdAt");
+CREATE INDEX "event_drafts_sourceEventId_updatedAt_createdAt_idx"
+ON "event_drafts"("sourceEventId", "updatedAt" DESC, "createdAt" DESC);
 
 CREATE INDEX "event_drafts_expiresAt_idx"
 ON "event_drafts"("expiresAt");

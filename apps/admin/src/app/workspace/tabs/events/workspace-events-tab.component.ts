@@ -53,7 +53,7 @@ export class WorkspaceEventsTabComponent {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const eventId = params.get('eventId');
       if (eventId) {
-        void this.workspace.selectEventById(eventId);
+        void this.workspace.selectEventById(eventId, { skipIfCurrent: true });
         return;
       }
 
@@ -174,12 +174,20 @@ export class WorkspaceEventsTabComponent {
       | typeof Permission.EventLecturer.Create
       | typeof Permission.Person.Create,
   ): boolean {
+    if (this.workspace.selectedEventDraft()) {
+      return false;
+    }
+
     return this.permissions.canEdit(scope) && (!this.workspace.selectedEvent() || this.canEditEvent(this.workspace.selectedEvent()));
   }
 
   protected canRemoveSelectedEventRelation(
     scope: typeof Permission.EventAttendanceCollector.Delete | typeof Permission.EventLecturer.Delete,
   ): boolean {
+    if (this.workspace.selectedEventDraft()) {
+      return false;
+    }
+
     const selectedEvent = this.workspace.selectedEvent();
     if (!selectedEvent) {
       return this.permissions.canDelete(scope);

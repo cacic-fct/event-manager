@@ -352,6 +352,10 @@
   background: color-mix(in srgb, var(--mat-sys-tertiary) 8%, transparent);
 }
 
+.draft-list-item.selected-list-item {
+  background: color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-tertiary) 8%);
+}
+
 .draft-label {
   flex: 0 0 auto;
   border: 1px solid color-mix(in srgb, var(--mat-sys-tertiary) 45%, var(--mat-sys-outline-variant));

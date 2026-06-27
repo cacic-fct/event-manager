@@ -212,7 +212,7 @@ export class EventDraftSaveInput {
   sourceEventId!: string;
 
   @Field(() => String, { nullable: true })
-  draftId?: string;
+  draftId?: string | null;
 
   @Field(() => EventUpdateInput)
   input!: EventUpdateInput;

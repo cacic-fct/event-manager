@@ -68,6 +68,7 @@ const BANNED_ATTENDANCE_CODES = new Set([
   'ANWS',
 ]);
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
+type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIfCurrent?: boolean };
 const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
 const DEFAULT_DRAFT_EVENT_EMOJI = '❔';
 const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
@@ -254,16 +255,18 @@ export class WorkspaceEventsService {
 
   async selectEventById(
     eventId: string,
-    options: { draftId?: string; forceOriginal?: boolean } = {},
+    options: EventSelectionOptions = {},
   ): Promise<boolean> {
+    if (options.skipIfCurrent && this.selectedEvent()?.id === eventId && !options.draftId && !options.forceOriginal) {
+      return true;
+    }
+
     const eventDetails = await firstValueFrom(this.api.getEvent(eventId));
-    const drafts = await firstValueFrom(this.api.listEventDrafts({ sourceEventId: eventId }));
+    const canLoadDrafts = this.permissions.canEdit(Permission.Event.Update);
+    const drafts = canLoadDrafts ? await firstValueFrom(this.api.listEventDrafts({ sourceEventId: eventId })) : [];
     this.mergeDraftsForEvent(eventId, drafts);
 
     const selectedDraft = await this.resolveDraftSelection(eventDetails, drafts, options);
-    if (selectedDraft === undefined) {
-      return false;
-    }
 
     this.selectedEvent.set(eventDetails);
     this.selectedEventDraft.set(selectedDraft);
@@ -612,6 +615,10 @@ export class WorkspaceEventsService {
 
   async createAndAddLecturer(): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
 
     const dialogRef = this.dialog.open(PersonCreateDialogComponent, {
       width: '48rem',
@@ -638,6 +645,11 @@ export class WorkspaceEventsService {
 
   async addLecturer(person: Person): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
+
     if (!selectedEvent) {
       this.addPendingLecturer(person);
       return;
@@ -653,6 +665,11 @@ export class WorkspaceEventsService {
 
   async removeLecturer(personId: string): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
+
     if (!selectedEvent) {
       this.eventLecturers.update((lecturers) => lecturers.filter((lecturer) => lecturer.personId !== personId));
       return;
@@ -672,6 +689,11 @@ export class WorkspaceEventsService {
 
   async addAttendanceCollector(person: Person): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
+
     if (!selectedEvent) {
       this.addPendingAttendanceCollector(person);
       return;
@@ -687,6 +709,11 @@ export class WorkspaceEventsService {
 
   async removeAttendanceCollector(personId: string): Promise<void> {
     const selectedEvent = this.selectedEvent();
+    if (this.isEditingSelectedDraft()) {
+      this.showDraftRelationWarning();
+      return;
+    }
+
     if (!selectedEvent) {
       this.eventAttendanceCollectors.update((collectors) =>
         collectors.filter((collector) => collector.personId !== personId),
@@ -864,21 +891,28 @@ export class WorkspaceEventsService {
     for (const draft of drafts) {
       grouped[draft.sourceEventId] = [...(grouped[draft.sourceEventId] ?? []), draft];
     }
+    for (const eventId of eventIds) {
+      grouped[eventId] = this.sortDrafts(grouped[eventId]);
+    }
     this.eventDraftsByEventId.set(grouped);
   }
 
   private mergeDraftsForEvent(eventId: string, drafts: EventDraft[]): void {
     this.eventDraftsByEventId.update((current) => ({
       ...current,
-      [eventId]: [...drafts].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)),
+      [eventId]: this.sortDrafts(drafts),
     }));
+  }
+
+  private sortDrafts(drafts: EventDraft[]): EventDraft[] {
+    return [...drafts].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
   }
 
   private async resolveDraftSelection(
     eventItem: Event,
     drafts: EventDraft[],
-    options: { draftId?: string; forceOriginal?: boolean },
-  ): Promise<EventDraft | null | undefined> {
+    options: EventSelectionOptions,
+  ): Promise<EventDraft | null> {
     if (options.forceOriginal) {
       return null;
     }
@@ -897,10 +931,22 @@ export class WorkspaceEventsService {
 
     const selection = await this.openDraftSelector(eventItem, drafts);
     if (!selection) {
-      return undefined;
+      return null;
     }
 
     return selection.kind === 'draft' ? selection.draft : null;
+  }
+
+  private isEditingSelectedDraft(): boolean {
+    return this.selectedEventDraft() !== null;
+  }
+
+  private showDraftRelationWarning(): void {
+    this.snackbar.open(
+      'Rascunhos salvam apenas os campos do evento. Edite vínculos na versão publicada.',
+      'Fechar',
+      { duration: 4000 },
+    );
   }
 
   private openDraftSelector(eventItem: Event, drafts: EventDraft[]): Promise<EventDraftSelectorResult | undefined> {
