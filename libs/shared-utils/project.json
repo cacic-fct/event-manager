@@ -5,5 +5,13 @@
   "sourceRoot": "libs/shared-utils/src",
   "projectType": "library",
   "tags": ["scope:shared", "type:util"],
-  "targets": {}
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/libs/shared-utils"],
+      "options": {
+        "command": "bunx vitest run --coverage --config libs/shared-utils/vitest.config.ts"
+      }
+    }
+  }
 }

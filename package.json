@@ -126,6 +126,7 @@
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-playwright": "^1.8.3",
+    "fake-indexeddb": "^6.2.5",
     "jest": "^30.4.2",
     "jest-environment-node": "^30.4.1",
     "jest-util": "^30.4.1",
@@ -145,14 +146,14 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.62.0",
     "vitest": "^4.1.9",
+    "webpack": "5.107.2",
     "webpack-cli": "7.0.3",
     "workbox-build": "^7.4.1",
     "workbox-cacheable-response": "^7.4.1",
     "workbox-expiration": "^7.4.1",
     "workbox-precaching": "^7.4.1",
     "workbox-routing": "^7.4.1",
-    "workbox-strategies": "^7.4.1",
-    "webpack": "5.107.2"
+    "workbox-strategies": "^7.4.1"
   },
   "msw": {
     "workerDirectory": [
