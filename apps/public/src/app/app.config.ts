@@ -30,6 +30,7 @@ import { AttendanceOfflineSyncService } from './attendance/collection/attendance
 import { OfflineUserDataService } from './shared/offline-user-data.service';
 import { NetworkStatusService } from './shared/network-status.service';
 import { NetworkStatusSnackbarService } from './shared/network-status-snackbar.service';
+import { TotpSeedSessionService } from './shared/totp/totp-seed-session.service';
 import { AppRouteReuseStrategy } from './tabs/reuse.strategy';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
 import { PUBLIC_FEATURE_FLAG_CONFIG, type PublicFeatureFlagConfig } from './feature-flags/public-feature-flag.config';
@@ -169,6 +170,7 @@ export const appConfig: ApplicationConfig = {
       inject(NetworkStatusService).start();
       inject(NetworkStatusSnackbarService).start();
       inject(OfflineUserDataService).start();
+      inject(TotpSeedSessionService).start();
     }),
     provideAppInitializer(() => {
       inject(ServiceWorkerService).start();

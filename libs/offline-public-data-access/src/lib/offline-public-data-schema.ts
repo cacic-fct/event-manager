@@ -56,6 +56,18 @@ export interface OfflineFeatureFlagCacheRecord {
   value: unknown;
 }
 
+export interface OfflineTotpSeedRecord {
+  userId: string;
+  primaryEmail: string;
+  seed: string;
+  algorithm: 'SHA512';
+  digits: 6;
+  periodSeconds: 30;
+  serverTime: string | Date;
+  sessionExpiresAt: number;
+  updatedAt: number;
+}
+
 export interface OfflineAttendanceCollectionEventRecord {
   key: string;
   userId: string;
@@ -99,6 +111,7 @@ export class OfflinePublicDataDatabase extends Dexie {
   attendanceFeeds!: Table<OfflineAttendanceFeedRecord, string>;
   attendanceDetails!: Table<OfflineAttendanceDetailRecord, string>;
   featureFlagCache!: Table<OfflineFeatureFlagCacheRecord, string>;
+  totpSeeds!: Table<OfflineTotpSeedRecord, string>;
   attendanceCollectionEvents!: Table<OfflineAttendanceCollectionEventRecord, string>;
   attendanceQueue!: Table<OfflineAttendanceQueueItem, string>;
 
@@ -167,5 +180,27 @@ export class OfflinePublicDataDatabase extends Dexie {
             item.queuedByUserId = item.queuedByUserId ?? item.authorUserId ?? '';
           }),
       );
+
+    this.version(6).stores({
+      calendarEvents: 'id, startDate, cachedAt',
+      syncMetadata: 'key',
+      userSnapshots: 'userId, updatedAt',
+      attendanceFeeds: 'key, userId, updatedAt',
+      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+      featureFlagCache: 'key, updatedAt',
+      totpSeeds: 'userId, primaryEmail, sessionExpiresAt, updatedAt',
+      attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      attendanceQueue: [
+        'clientId',
+        'queuedByUserId',
+        'eventId',
+        'status',
+        'queuedAt',
+        'updatedAt',
+        '[queuedByUserId+eventId]',
+        '[queuedByUserId+status]',
+        '[eventId+status]',
+      ].join(', '),
+    });
   }
 }

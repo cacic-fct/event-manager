@@ -18,6 +18,10 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'profile/wallet',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'attendance/register',
     renderMode: RenderMode.Client,
   },
