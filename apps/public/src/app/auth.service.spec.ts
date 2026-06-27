@@ -13,6 +13,8 @@ describe('AuthService', () => {
   let httpTesting: HttpTestingController;
 
   beforeEach(() => {
+    refreshTrackingCookies.mockClear();
+    clearTrackingCookies.mockClear();
     refreshTrackingCookies.mockReturnValue(of(undefined));
     clearTrackingCookies.mockReturnValue(of(undefined));
 
@@ -35,6 +37,8 @@ describe('AuthService', () => {
   });
 
   afterEach(() => {
+    auth.clearSession();
+    window.sessionStorage.clear();
     httpTesting.verify();
   });
 
@@ -58,6 +62,35 @@ describe('AuthService', () => {
 
     await expect(refresh).resolves.toBeUndefined();
     expect(auth.user()).toEqual({ sub: 'user-id', claims: { is_onboarded: true } });
+    expect(refreshTrackingCookies).toHaveBeenCalledOnce();
+  });
+
+  it('stores the user returned by development password login and clears auth redirect markers', async () => {
+    window.sessionStorage.setItem('cacic-eventos:post-logout-redirect', 'true');
+    window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
+    const user = {
+      sub: 'user-id',
+      email: 'aluno@unesp.br',
+      roles: ['access'],
+      scopes: ['openid'],
+      oidcScopes: ['openid'],
+      claims: {
+        is_onboarded: true,
+        exp: Math.floor(Date.now() / 1000) + 300,
+      },
+    };
+
+    const login = auth.passwordLogin('aluno@unesp.br', '1');
+    httpTesting.expectOne('/api/auth/password-login').flush({
+      user,
+      expiresAt: Date.now() + 300_000,
+      sessionExpiresAt: Date.now() + 600_000,
+    });
+
+    await expect(login).resolves.toEqual(user);
+    expect(auth.user()).toEqual(user);
+    expect(window.sessionStorage.getItem('cacic-eventos:post-logout-redirect')).toBeNull();
+    expect(window.sessionStorage.getItem('cacic-eventos:silent-sso-attempted')).toBeNull();
     expect(refreshTrackingCookies).toHaveBeenCalledOnce();
   });
 });

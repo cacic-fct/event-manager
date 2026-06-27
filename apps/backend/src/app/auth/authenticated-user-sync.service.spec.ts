@@ -20,8 +20,8 @@ describe('AuthenticatedUserSyncService', () => {
       sub: 'user-1',
       claims: {
         set_fullname: 'Updated Student Name',
-        identityDocument: '123.456.789-00',
-        enrollmentNumber: '20240001',
+        identity_document: '123.456.789-00',
+        enrollment_number: '20240001',
         unesp_role: ['aluno-graduacao', 'servidor'],
       },
     } as never);
@@ -83,8 +83,8 @@ describe('AuthenticatedUserSyncService', () => {
         {
           claims: {
             set_fullname: 'Updated Student Name',
-            identityDocument: 'new-document',
-            enrollmentNumber: 'new-academic-id',
+            identity_document: 'new-document',
+            enrollment_number: 'new-academic-id',
             unesp_role: ['new-role'],
           },
         } as never,

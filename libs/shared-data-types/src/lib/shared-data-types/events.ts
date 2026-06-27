@@ -145,6 +145,48 @@ export class Event {
 }
 
 @ObjectType()
+export class EventDraft {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  sourceEventId!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  payloadJson!: string;
+
+  @Field(() => String, { nullable: true })
+  createdById?: string | null;
+
+  @Field(() => String, { nullable: true })
+  createdByName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  createdByEmail?: string | null;
+
+  @Field(() => String, { nullable: true })
+  updatedById?: string | null;
+
+  @Field(() => String, { nullable: true })
+  updatedByName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  updatedByEmail?: string | null;
+
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => Date)
+  updatedAt!: Date;
+
+  @Field(() => Date)
+  expiresAt!: Date;
+}
+
+@ObjectType()
 export class PlacePreset {
   @Field(() => String)
   id!: string;

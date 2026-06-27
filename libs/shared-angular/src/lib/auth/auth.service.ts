@@ -1,11 +1,11 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import type { Permission } from '@cacic-fct/shared-permissions';
 import { EMPTY, Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError, timeout } from 'rxjs';
 import { AuthOnlineStatusService } from './auth-online-status.service';
-import { AuthenticatedUser, AuthRefreshResult } from './auth.types';
+import { AuthenticatedUser, AuthRefreshResult, PasswordLoginResult } from './auth.types';
 import type { LoginOptions } from './auth.types';
 import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforcement.token';
 
@@ -64,6 +64,28 @@ export class AuthService {
     this.removeSessionStorageItem(this.postLogoutRedirectStorageKey);
     this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
     window.location.assign(this.buildLoginRedirectUrl(options));
+  }
+
+  async passwordLogin(email: string, password: string): Promise<AuthenticatedUser> {
+    if (!isDevMode()) {
+      throw new Error('Password login is available only in development.');
+    }
+
+    const result = await firstValueFrom(
+      this.http.post<PasswordLoginResult>('/api/auth/password-login', {
+        email,
+        password,
+      }),
+    );
+
+    this.user.set(result.user);
+    this.removeSessionStorageItem(this.postLogoutRedirectStorageKey);
+    this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
+    this.scheduleRefresh(result.expiresAt);
+    this.refreshAccountTrackingCookiesBestEffort();
+    await this.redirectToOnboardingIfNeeded();
+
+    return result.user;
   }
 
   loginWithExistingSsoSession(): void {

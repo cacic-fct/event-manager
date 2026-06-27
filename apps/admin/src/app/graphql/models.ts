@@ -306,6 +306,22 @@ export interface Event {
   updatedById?: string | null;
 }
 
+export interface EventDraft {
+  id: string;
+  sourceEventId: string;
+  name: string;
+  payloadJson: string;
+  createdById?: string | null;
+  createdByName?: string | null;
+  createdByEmail?: string | null;
+  updatedById?: string | null;
+  updatedByName?: string | null;
+  updatedByEmail?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+}
+
 export interface PlacePreset {
   id: string;
   name: string;

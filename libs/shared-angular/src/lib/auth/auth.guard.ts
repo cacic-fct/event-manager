@@ -1,4 +1,4 @@
-import { PLATFORM_ID, inject } from '@angular/core';
+import { PLATFORM_ID, inject, isDevMode } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import type { Permission } from '@cacic-fct/shared-permissions';
@@ -35,8 +35,12 @@ export const authGuardWithLocalLogin =
       return router.parseUrl(loginUrl);
     }
 
-    void authService.login({ returnTo: state.url });
-    return router.parseUrl(loginUrl);
+    if (!isDevMode()) {
+      void authService.login({ returnTo: state.url });
+      return false;
+    }
+
+    return router.parseUrl(`${loginUrl}?returnTo=${encodeURIComponent(state.url)}`);
   };
 
 export const requiredPermissionsGuard =

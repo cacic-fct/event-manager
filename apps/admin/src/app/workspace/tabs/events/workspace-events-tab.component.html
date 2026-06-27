@@ -21,7 +21,7 @@
         @for (eventItem of workspace.events(); track eventItem.id) {
           <mat-list-item
             (click)="workspace.selectEvent(eventItem)"
-            [class.selected-list-item]="workspace.selectedEvent()?.id === eventItem.id">
+            [class.selected-list-item]="workspace.selectedEvent()?.id === eventItem.id && !workspace.selectedEventDraft()">
             <span matListItemTitle class="list-title">
               <app-twemoji [emoji]="eventItem.emoji" />
               <span>{{ eventItem.name }}</span>
@@ -61,6 +61,24 @@
               </button>
             }
           </mat-list-item>
+          @for (draft of workspace.draftsForEvent(eventItem.id); track draft.id) {
+            <mat-list-item
+              class="draft-list-item"
+              (click)="workspace.selectEventDraft(eventItem, draft)"
+              [class.selected-list-item]="workspace.selectedEventDraft()?.id === draft.id">
+              <span matListItemTitle class="list-title">
+                <mat-icon>edit_note</mat-icon>
+                <span class="draft-label">Rascunho</span>
+                <span>{{ draft.name }}</span>
+              </span>
+              <span matListItemLine>
+                Original: {{ eventItem.name }} · Editado em {{ draft.updatedAt | date: 'short' }}
+              </span>
+              <span matListItemLine>
+                {{ draft.updatedByName || draft.createdByName || 'Usuário não identificado' }}
+              </span>
+            </mat-list-item>
+          }
         } @empty {
           <mat-list-item>
             <span matListItemTitle>Nenhum evento encontrado</span>
@@ -99,66 +117,111 @@
         <div>
           <h3>
             @if (workspace.selectedEvent()) {
-              Editar evento
+              @if (workspace.selectedEventDraft()) {
+                Editar rascunho
+              } @else {
+                Editar evento
+              }
             } @else {
               Novo evento
             }
           </h3>
           <p>
             @if (workspace.selectedEvent()) {
-              {{ workspace.selectedEvent()?.name }}
+              @if (workspace.selectedEventDraft(); as selectedDraft) {
+                Rascunho de {{ workspace.selectedEvent()?.name }} · {{ selectedDraft.updatedAt | date: 'short' }}
+              } @else {
+                {{ workspace.selectedEvent()?.name }}
+              }
             } @else {
               Preencha os dados principais para publicar na programação.
             }
           </p>
         </div>
 
-        <div class="panel-actions">
-          @if (workspace.selectedEvent(); as selectedEvent) {
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="auditLog.openHistory('EVENT', selectedEvent.id, selectedEvent.name)">
-              <mat-icon>history</mat-icon>
-              Histórico
+        <div class="panel-actions editor-action-row">
+          <div class="editor-action-group">
+            @if (workspace.selectedEvent(); as selectedEvent) {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="auditLog.openHistory('EVENT', selectedEvent.id, selectedEvent.name)">
+                <mat-icon>history</mat-icon>
+                Histórico
+              </button>
+              @if (canCloneEvent()) {
+                <button mat-stroked-button type="button" (click)="workspace.cloneEvent(selectedEvent)">
+                  <mat-icon>content_copy</mat-icon>
+                  Duplicar
+                </button>
+              }
+              <button
+                mat-stroked-button
+                type="button"
+                matTooltip="Abrir o painel para pré-visualizar, agendar, publicar ou despublicar este evento."
+                (click)="workspace.openEventPublication()">
+                <mat-icon>campaign</mat-icon>
+                Gerenciar publicação
+              </button>
+              @if (workspace.draftsForEvent(selectedEvent.id).length > 0) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  matTooltip="Escolher entre a versão publicada e os rascunhos salvos deste evento."
+                  (click)="workspace.chooseSelectedEventVersion()">
+                  <mat-icon>rule</mat-icon>
+                  Escolher versão
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  matTooltip="Excluir permanentemente todos os rascunhos deste evento sem alterar a publicação atual."
+                  (click)="workspace.deleteDraftsForSelectedEvent()"
+                  [disabled]="workspace.loading()">
+                  <mat-icon>delete_sweep</mat-icon>
+                  Excluir rascunhos
+                </button>
+              }
+            }
+          </div>
+
+          <div class="editor-action-group editor-action-group--publication">
+            <button mat-button type="button" (click)="workspace.resetEventForm()">
+              <mat-icon>restart_alt</mat-icon>
+              Limpar
             </button>
-            @if (canCloneEvent()) {
-              <button mat-stroked-button type="button" (click)="workspace.cloneEvent(selectedEvent)">
-                <mat-icon>content_copy</mat-icon>
-                Duplicar
+            @if (canEditEvent(workspace.selectedEvent())) {
+              @if (!workspace.selectedEventDraft()) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  matTooltip="Salva como rascunho e abre o painel de publicação para escolher data, pré-visualizar ou revisar vínculos."
+                  (click)="workspace.saveEvent('SCHEDULE')"
+                  [disabled]="workspace.loading()">
+                  <mat-icon>schedule</mat-icon>
+                  Salvar e agendar
+                </button>
+              }
+              <button
+                mat-stroked-button
+                type="button"
+                [matTooltip]="draftEventActionTooltip()"
+                (click)="workspace.saveEvent('DRAFT')"
+                [disabled]="workspace.loading()">
+                <mat-icon>edit_note</mat-icon>
+                {{ draftEventActionLabel() }}
+              </button>
+              <button
+                mat-flat-button
+                type="button"
+                [matTooltip]="publishEventActionTooltip()"
+                (click)="workspace.saveEvent('PUBLISH')"
+                [disabled]="workspace.loading() || workspace.eventForm.invalid">
+                <mat-icon>{{ publishEventActionIcon() }}</mat-icon>
+                {{ publishEventActionLabel() }}
               </button>
             }
-            <button mat-stroked-button type="button" (click)="workspace.openEventPublication()">
-              <mat-icon>campaign</mat-icon>
-              Publicação
-            </button>
-          }
-          <button mat-button type="button" (click)="workspace.resetEventForm()">
-            <mat-icon>restart_alt</mat-icon>
-            Limpar
-          </button>
-          @if (canEditEvent(workspace.selectedEvent())) {
-            <button mat-stroked-button type="button" (click)="workspace.saveEvent('SCHEDULE')" [disabled]="workspace.loading()">
-              <mat-icon>schedule</mat-icon>
-              Agendar
-            </button>
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="workspace.saveEvent('DRAFT')"
-              [disabled]="workspace.loading()">
-              <mat-icon>edit_note</mat-icon>
-              Salvar rascunho
-            </button>
-            <button
-              mat-flat-button
-              type="button"
-              (click)="workspace.saveEvent('PUBLISH')"
-              [disabled]="workspace.loading() || workspace.eventForm.invalid">
-              <mat-icon>publish</mat-icon>
-              Publicar
-            </button>
-          }
+          </div>
         </div>
       </div>
 
@@ -372,7 +435,9 @@
               <input matInput type="number" formControlName="slots" />
             </mat-form-field>
 
-            <mat-checkbox formControlName="autoSubscribe"> Inscrever automaticamente pelo grande evento </mat-checkbox>
+            <mat-checkbox formControlName="autoSubscribe">
+              Inscrição automática e obrigatória pelo grande evento
+            </mat-checkbox>
 
             <mat-form-field>
               <mat-label>Código da presença on-line</mat-label>
@@ -423,7 +488,10 @@
             <mat-icon>person_search</mat-icon>
             Buscar
           </button>
-          @if (canEditSelectedEventRelation(Permission.EventLecturer.Create) && permissions.canEdit(Permission.Person.Create)) {
+          @if (
+            canEditSelectedEventRelation(Permission.EventLecturer.Create) &&
+            permissions.canEdit(Permission.Person.Create)
+          ) {
             <button mat-button type="button" (click)="workspace.createAndAddLecturer()">
               <mat-icon>person_add</mat-icon>
               Criar pessoa
@@ -535,7 +603,10 @@
         <div class="inline-list">
           @for (collector of workspace.eventAttendanceCollectors(); track collector.personId) {
             @if (canRemoveSelectedEventRelation(Permission.EventAttendanceCollector.Delete)) {
-              <button mat-stroked-button type="button" (click)="workspace.removeAttendanceCollector(collector.personId)">
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="workspace.removeAttendanceCollector(collector.personId)">
                 <mat-icon>close</mat-icon>
                 {{ collector.name }}
               </button>

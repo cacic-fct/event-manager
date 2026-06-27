@@ -60,8 +60,8 @@ export class AuthenticatedUserSyncService {
       fullname: this.readStringClaim(authenticatedUser.claims, 'set_fullname'),
       email,
       phone: this.readStringClaim(authenticatedUser.claims, 'phone'),
-      identityDocument: this.readStringClaim(authenticatedUser.claims, 'identityDocument'),
-      academicId: this.readStringClaim(authenticatedUser.claims, 'enrollmentNumber'),
+      identityDocument: this.readStringClaim(authenticatedUser.claims, 'identity_document'),
+      academicId: this.readStringClaim(authenticatedUser.claims, 'enrollment_number'),
       unespRole: this.readStringArrayClaim(authenticatedUser.claims, 'unesp_role'),
       externalRef: authenticatedUser.sub?.trim() ? `kc:${authenticatedUser.sub.trim()}` : null,
     };

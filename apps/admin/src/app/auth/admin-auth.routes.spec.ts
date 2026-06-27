@@ -44,7 +44,7 @@ describe('admin auth route wiring', () => {
     const result = TestBed.runInInjectionContext(() => guard?.({} as never, { url: '/' } as never)) as UrlTree;
 
     expect(result).toBeInstanceOf(UrlTree);
-    expect(router.serializeUrl(result)).toBe('/login');
-    expect(authService.login).toHaveBeenCalledWith({ returnTo: '/' });
+    expect(router.serializeUrl(result)).toBe('/login?returnTo=%2F');
+    expect(authService.login).not.toHaveBeenCalled();
   });
 });

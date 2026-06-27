@@ -737,6 +737,7 @@ export class AuthorizationPolicyService {
             context.genericId ??= id;
             break;
           case 'eventId':
+          case 'sourceEventId':
             context.eventId ??= id;
             break;
           case 'majorEventId':

@@ -327,6 +327,19 @@ describe('AuthorizationPolicyService', () => {
     );
   });
 
+  it('treats sourceEventId as the event target for draft mutations', () => {
+    const context = service.buildResourceContext(
+      {
+        input: {
+          sourceEventId: 'event-1',
+        },
+      },
+      [Permission.Event.Update],
+    );
+
+    expect(context.eventId).toBe('event-1');
+  });
+
   it('resolves certificate target ids for scoped certificate config grants', async () => {
     prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
       grant({

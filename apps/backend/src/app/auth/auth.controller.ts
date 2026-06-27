@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   Logger,
+  NotFoundException,
   Post,
   Query,
   Req,
@@ -24,6 +25,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 import { Request, Response } from 'express';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME } from './auth.constants';
@@ -77,6 +79,40 @@ class RefreshSessionResponseDto {
     example: 1767229199000,
   })
   sessionExpiresAt!: number;
+}
+
+class PasswordLoginRequestDto {
+  @ApiProperty({
+    description: 'User email address.',
+    example: 'aluno@unesp.br',
+  })
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({
+    description: 'User password.',
+    example: '1',
+    minLength: 1,
+  })
+  @IsString()
+  @MinLength(1)
+  password!: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional post-login destination for clients that track it.',
+    example: '/admin/',
+  })
+  @IsOptional()
+  @IsString()
+  returnTo?: string;
+}
+
+class PasswordLoginResponseDto extends RefreshSessionResponseDto {
+  @ApiProperty({
+    description: 'Authenticated user resolved from the created session.',
+    type: () => AuthenticatedUserResponseDto,
+  })
+  user!: PublicAuthenticatedUser;
 }
 
 class PermissionEvaluationRequestDto {
@@ -393,6 +429,61 @@ export class AuthController {
     response.redirect(this.keycloakAuthService.getPostLoginRedirectUri(authorizationState));
   }
 
+  @Post('password-login')
+  @Public()
+  @ApiOperation({
+    summary: 'Development password login',
+    description:
+      'Authenticates with email and password through Keycloak direct access grants. Enabled by default outside production and controlled by KEYCLOAK_PASSWORD_LOGIN_ENABLED.',
+  })
+  @ApiBody({
+    type: PasswordLoginRequestDto,
+    description: 'Development login credentials.',
+  })
+  @ApiOkResponse({
+    type: PasswordLoginResponseDto,
+    description: 'Session created from password credentials.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Returned when password login is disabled.',
+  })
+  async passwordLogin(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+    @Body() body: PasswordLoginRequestDto,
+  ): Promise<PasswordLoginResponseDto> {
+    if (!this.isPasswordLoginEnabled()) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new NotFoundException();
+      }
+
+      throw new ForbiddenException('Password login is disabled.');
+    }
+
+    const tokenResponse = await this.keycloakAuthService.exchangePasswordForTokens(
+      body.email.trim().toLowerCase(),
+      body.password,
+    );
+    const session = await this.keycloakAuthService.createSession(tokenResponse);
+
+    response.cookie(AUTH_SESSION_COOKIE_NAME, session.sessionId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: this.isSecureRequest(request),
+      expires: new Date(session.sessionExpiresAt),
+      maxAge: this.resolveCookieMaxAge(session.sessionExpiresAt),
+      path: '/',
+    });
+
+    const user = await this.keycloakAuthService.authenticateSession(session.sessionId);
+
+    return {
+      expiresAt: session.expiresAt,
+      sessionExpiresAt: session.sessionExpiresAt,
+      user: toPublicAuthenticatedUser(user),
+    };
+  }
+
   @Post('logout')
   @Public()
   @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
@@ -529,6 +620,28 @@ export class AuthController {
     const grantedPermissions = await this.authorizationPolicy.evaluatePermissions(request.user, permissions);
 
     return { permissions: grantedPermissions };
+  }
+
+  private isPasswordLoginEnabled(): boolean {
+    if (process.env.NODE_ENV === 'production') {
+      return false;
+    }
+
+    const configured = process.env.KEYCLOAK_PASSWORD_LOGIN_ENABLED;
+
+    if (configured !== undefined) {
+      const normalized = configured.trim().toLowerCase();
+
+      if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+        return true;
+      }
+
+      if (['0', 'false', 'no', 'off'].includes(normalized)) {
+        return false;
+      }
+    }
+
+    return process.env.NODE_ENV !== 'production';
   }
 
   private readCookie(request: Request, name: string): string | null {

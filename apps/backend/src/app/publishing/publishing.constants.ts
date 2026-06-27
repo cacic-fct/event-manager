@@ -1,6 +1,7 @@
 export const PUBLICATION_QUEUE = 'publication';
 export const PUBLISH_SCHEDULED_CONTENT_JOB = 'publish-scheduled-public-content';
 export const RECONCILE_PUBLICATION_STATES_JOB = 'reconcile-publication-states';
+export const CLEANUP_STALE_EVENT_DRAFTS_JOB = 'cleanup-stale-event-drafts';
 
 export const PREVIEW_TTL_SECONDS = 60 * 60;
 export const PREVIEW_TRIM_DAYS = 30;
