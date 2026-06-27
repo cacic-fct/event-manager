@@ -411,17 +411,45 @@ describe('AuthorizationPolicyService', () => {
 
   it('keeps attendance collector access domain-derived', async () => {
     prisma.eventAttendanceCollector.findUnique.mockResolvedValue({
-      event: {
-        startDate: new Date(Date.now() - 60_000),
-        endDate: new Date(Date.now() + 60_000),
-        deletedAt: null,
-        publiclyVisible: true,
-        shouldCollectAttendance: true,
-      },
+      eventId: 'event-1',
+    });
+    prisma.event.findUnique.mockResolvedValue({
+      startDate: new Date(Date.now() - 60_000),
+      endDate: new Date(Date.now() + 60_000),
+      deletedAt: null,
+      publiclyVisible: true,
+      shouldCollectAttendance: true,
     });
 
     await expect(service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
       enforceCollectionWindow: true,
+    })).resolves.toBeUndefined();
+  });
+
+  it('allows attendance managers to collect without an explicit collector row', async () => {
+    prisma.event.findUnique
+      .mockResolvedValueOnce({
+        startDate: new Date(Date.now() - 60_000),
+        endDate: new Date(Date.now() + 60_000),
+        deletedAt: null,
+        publiclyVisible: false,
+        shouldCollectAttendance: true,
+      })
+      .mockResolvedValueOnce({
+        majorEventId: null,
+        eventGroupId: null,
+      });
+    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+      grant({
+        permission: Permission.EventAttendance.Collect,
+        scope: EventManagerPermissionGrantScope.EVENT,
+        eventId: 'event-1',
+      }),
+    ]);
+
+    await expect(service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
+      enforceCollectionWindow: true,
+      user: user([EventManagerKeycloakRole.Access]),
     })).resolves.toBeUndefined();
   });
 

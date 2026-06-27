@@ -11,6 +11,7 @@ import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { Event, MajorEvent, MajorEventInput, PriceType } from '../../graphql/models';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
+import { applyPagedResult, createWorkspaceListPagination, pageVariables } from '../list-pagination';
 import { bindLiveSearch } from '../live-search';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspaceUiService } from './workspace-ui.service';
@@ -37,6 +38,7 @@ export class WorkspaceMajorEventsService {
 
   readonly loading = this.ui.loading;
   readonly majorEvents = signal<MajorEvent[]>([]);
+  readonly majorEventsPagination = createWorkspaceListPagination();
   readonly selectedMajorEvent = signal<MajorEvent | null>(null);
   readonly majorEventEvents = signal<Event[]>([]);
   readonly majorEventEventSearchResults = signal<Event[]>([]);
@@ -117,7 +119,8 @@ export class WorkspaceMajorEventsService {
   }
 
   async loadMajorEvents(): Promise<void> {
-    this.majorEvents.set(await firstValueFrom(this.api.listMajorEvents({ take: 200 })));
+    const items = await firstValueFrom(this.api.listMajorEvents(pageVariables(this.majorEventsPagination.pageIndex())));
+    this.majorEvents.set(applyPagedResult(items, this.majorEventsPagination));
     const selectedMajorEvent = this.selectedMajorEvent();
     if (selectedMajorEvent) {
       const refreshed = this.majorEvents().find((majorEvent) => majorEvent.id === selectedMajorEvent.id);
@@ -125,6 +128,19 @@ export class WorkspaceMajorEventsService {
         this.selectedMajorEvent.set(refreshed);
       }
     }
+  }
+
+  async previousMajorEventsPage(): Promise<void> {
+    this.majorEventsPagination.pageIndex.update((page) => Math.max(0, page - 1));
+    await this.loadMajorEvents();
+  }
+
+  async nextMajorEventsPage(): Promise<void> {
+    if (!this.majorEventsPagination.hasNextPage()) {
+      return;
+    }
+    this.majorEventsPagination.pageIndex.update((page) => page + 1);
+    await this.loadMajorEvents();
   }
 
   async saveMajorEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {

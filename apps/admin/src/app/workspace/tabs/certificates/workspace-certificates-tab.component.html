@@ -93,6 +93,30 @@
         }
       </mat-list>
 
+      <div class="list-pager" aria-label="Paginação de alvos de certificado">
+        <span>Itens {{ workspace.targetsPagination.label() }}</span>
+        <div class="list-pager-actions">
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Página anterior de alvos"
+            matTooltip="Anterior"
+            [disabled]="!workspace.targetsPagination.hasPreviousPage()"
+            (click)="workspace.previousTargetsPage()">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Próxima página de alvos"
+            matTooltip="Próxima"
+            [disabled]="!workspace.targetsPagination.hasNextPage()"
+            (click)="workspace.nextTargetsPage()">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      </div>
+
       @if (workspace.selectedTarget()) {
         <section class="surface field-group">
           <div class="surface-heading">
@@ -143,6 +167,30 @@
               </mat-list-item>
             }
           </mat-list>
+
+          <div class="list-pager" aria-label="Paginação de configurações de certificado">
+            <span>Itens {{ workspace.certificateConfigsPagination.label() }}</span>
+            <div class="list-pager-actions">
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Página anterior de configurações"
+                matTooltip="Anterior"
+                [disabled]="!workspace.certificateConfigsPagination.hasPreviousPage()"
+                (click)="workspace.previousCertificateConfigsPage()">
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Próxima página de configurações"
+                matTooltip="Próxima"
+                [disabled]="!workspace.certificateConfigsPagination.hasNextPage()"
+                (click)="workspace.nextCertificateConfigsPage()">
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </div>
+          </div>
         </section>
       }
     </aside>
@@ -322,6 +370,30 @@
               </mat-list-item>
             }
           </mat-list>
+
+          <div class="list-pager" aria-label="Paginação de certificados emitidos">
+            <span>Itens {{ workspace.certificatesPagination.label() }}</span>
+            <div class="list-pager-actions">
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Página anterior de certificados"
+                matTooltip="Anterior"
+                [disabled]="!workspace.certificatesPagination.hasPreviousPage()"
+                (click)="workspace.previousCertificatesPage()">
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Próxima página de certificados"
+                matTooltip="Próxima"
+                [disabled]="!workspace.certificatesPagination.hasNextPage()"
+                (click)="workspace.nextCertificatesPage()">
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </div>
+          </div>
         </section>
       } @else {
         <div class="empty-state">

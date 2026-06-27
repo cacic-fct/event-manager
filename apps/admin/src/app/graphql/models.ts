@@ -57,6 +57,7 @@ export type AuditLogOperation =
   | 'USER_CREATE';
 export type AuditLogActorType = 'USER' | 'SERVICE' | 'SYSTEM';
 export type AuditLogRevertMode = 'ENTRY_ONLY' | 'ENTRY_AND_AFTER';
+export type AuditLogExplorerRevertedStatus = 'ALL' | 'REVERTED' | 'NOT_REVERTED';
 
 export interface AuditLogChange {
   field: string;
@@ -93,6 +94,20 @@ export interface AuditLogEntry {
   revertTargetId?: string | null;
   revertMode?: AuditLogRevertMode | null;
   canRevert: boolean;
+}
+
+export interface AuditLogExplorerEntry extends AuditLogEntry {
+  beforeJson?: string | null;
+  afterJson?: string | null;
+  metadataJson?: string | null;
+}
+
+export interface AuditLogExplorerResult {
+  entries: AuditLogExplorerEntry[];
+  total: number;
+  skip: number;
+  take: number;
+  typesenseAvailable: boolean;
 }
 
 export interface EventSummary {

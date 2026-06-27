@@ -22,6 +22,12 @@ import {
 import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-create-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
+import {
+  WORKSPACE_LIST_PAGE_SIZE,
+  applyPagedResult,
+  createWorkspaceListPagination,
+  resetPagination,
+} from '../list-pagination';
 import { bindLiveSearch } from '../live-search';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
@@ -89,6 +95,7 @@ export class WorkspaceEventsService {
 
   readonly events = signal<Event[]>([]);
   readonly eventDraftsByEventId = signal<Record<string, EventDraft[]>>({});
+  readonly eventsPagination = createWorkspaceListPagination();
   readonly selectedEvent = signal<Event | null>(null);
   readonly selectedEventDraft = signal<EventDraft | null>(null);
   readonly eventLecturers = signal<{ personId: string; name: string }[]>([]);
@@ -198,17 +205,38 @@ export class WorkspaceEventsService {
   }
 
   async loadEvents(): Promise<void> {
-    const events = await firstValueFrom(this.api.listEvents(buildEventListFilters(this.eventFiltersForm.value)));
+    const items = await firstValueFrom(
+      this.api.listEvents({
+        ...buildEventListFilters(this.eventFiltersForm.value, WORKSPACE_LIST_PAGE_SIZE + 1),
+        skip: this.eventsPagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
+      }),
+    );
+    const events = applyPagedResult(items, this.eventsPagination);
     this.events.set(events);
     await this.loadDraftsForEvents(events.map((eventItem) => eventItem.id));
   }
 
   async applyEventFilters(): Promise<void> {
+    resetPagination(this.eventsPagination);
     await this.loadEvents();
   }
 
   async resetEventFilters(): Promise<void> {
     resetEventFiltersForm(this.eventFiltersForm, { emitEvent: false });
+    resetPagination(this.eventsPagination);
+    await this.loadEvents();
+  }
+
+  async previousEventsPage(): Promise<void> {
+    this.eventsPagination.pageIndex.update((page) => Math.max(0, page - 1));
+    await this.loadEvents();
+  }
+
+  async nextEventsPage(): Promise<void> {
+    if (!this.eventsPagination.hasNextPage()) {
+      return;
+    }
+    this.eventsPagination.pageIndex.update((page) => page + 1);
     await this.loadEvents();
   }
 

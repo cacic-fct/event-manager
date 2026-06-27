@@ -18,7 +18,7 @@ export interface PublicContentNode {
   publiclyVisible?: boolean | null;
   parentLabel?: string | null;
   childCount: number;
-  children: PublicContentNode[];
+  children?: PublicContentNode[];
 }
 
 export interface PublicContentWorkspace {

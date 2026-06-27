@@ -1,7 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { AuditLogEntry, AuditLogEntityType, AuditLogRevertMode } from './models';
+import {
+  AuditLogEntry,
+  AuditLogEntityType,
+  AuditLogExplorerResult,
+  AuditLogExplorerRevertedStatus,
+  AuditLogOperation,
+  AuditLogRevertMode,
+} from './models';
 
 export interface AuditLogEntityHistoryInput {
   entityType: AuditLogEntityType;
@@ -11,6 +18,19 @@ export interface AuditLogEntityHistoryInput {
 export interface AuditLogRevertInput {
   entryId: string;
   mode: AuditLogRevertMode;
+}
+
+export interface AuditLogExplorerInput {
+  query?: string;
+  actor?: string;
+  entity?: string;
+  entityType?: AuditLogEntityType;
+  operation?: AuditLogOperation;
+  dateFrom?: string;
+  dateTo?: string;
+  revertedStatus?: AuditLogExplorerRevertedStatus;
+  skip?: number;
+  take?: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -28,6 +48,25 @@ export class AuditLogApiService {
         { input, take },
       )
       .pipe(map((data) => data.auditLogEntries));
+  }
+
+  searchExplorer(input: AuditLogExplorerInput) {
+    return this.graphqlHttp
+      .request<{ auditLogExplorer: AuditLogExplorerResult }>(
+        `query AuditLogExplorer($input: AuditLogExplorerInput!) {
+          auditLogExplorer(input: $input) {
+            total
+            skip
+            take
+            typesenseAvailable
+            entries {
+              ${AUDIT_LOG_EXPLORER_ENTRY_FIELDS}
+            }
+          }
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.auditLogExplorer));
   }
 
   revertEntry(input: AuditLogRevertInput) {
@@ -77,4 +116,11 @@ const AUDIT_LOG_ENTRY_FIELDS = `
   revertTargetId
   revertMode
   canRevert
+`;
+
+const AUDIT_LOG_EXPLORER_ENTRY_FIELDS = `
+  ${AUDIT_LOG_ENTRY_FIELDS}
+  beforeJson
+  afterJson
+  metadataJson
 `;

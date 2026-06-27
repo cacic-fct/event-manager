@@ -27,6 +27,7 @@ const storyUser = signal({
     name: 'Storybook Admin',
   },
 });
+const storyRoles = signal<string[]>(['admin']);
 const shellLoading = signal(false);
 
 let activeArgs: WorkspaceLayoutStoryArgs;
@@ -52,6 +53,7 @@ const meta: Meta<WorkspaceLayoutStoryArgs> = {
           provide: AuthService,
           useValue: {
             user: storyUser,
+            roles: storyRoles,
             logout: async () => undefined,
           },
         },
@@ -95,10 +97,11 @@ const meta: Meta<WorkspaceLayoutStoryArgs> = {
   render: (args) => {
     activeArgs = args;
     shellLoading.set(args.loading);
+    storyRoles.set(['admin']);
     storyUser.set({
       sub: 'storybook-admin',
       email: args.userEmail,
-      roles: ['admin'],
+      roles: storyRoles(),
       scopes: [],
       claims: {
         name: 'Storybook Admin',

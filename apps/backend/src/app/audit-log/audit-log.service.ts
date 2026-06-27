@@ -1,4 +1,4 @@
-import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
+import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogActorType,
@@ -6,193 +6,27 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   AuditLogRevertMode,
-  Prisma,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenOperation, FrozenResourceService } from '../common/frozen-resource.service';
+import { resolvePagination } from '../common/pagination';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
-import { AuditLogEntry } from './audit-log.models';
-
-type AuditActor = {
-  id?: string | null;
-  name: string;
-  email?: string | null;
-  type: AuditLogActorType;
-};
-
-type AuditScope = {
-  permission?: Permission | string | null;
-  eventId?: string | null;
-  majorEventId?: string | null;
-  eventGroupId?: string | null;
-};
-
-type AuditRecordOptions = {
-  entityType: AuditLogEntityType;
-  entityId: string;
-  entityLabel?: string | null;
-  operation: AuditLogOperation;
-  actor?: AuthenticatedUser | AuditActor | null;
-  before?: unknown;
-  after?: unknown;
-  summary?: string | null;
-  scope?: AuditScope;
-  metadata?: Record<string, unknown>;
-  force?: boolean;
-  squashWindowMs?: number;
-};
-
-type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
-
-type StoredAuditChange = {
-  field: string;
-  label?: string;
-  before: unknown;
-  after: unknown;
-};
-
-type RevertEntityConfig = {
-  readPermission: Permission;
-  updatePermission?: Permission;
-  deletePermission?: Permission;
-  select: Record<string, unknown>;
-  mutableFields: readonly string[];
-  supportsSoftDelete: boolean;
-};
+import { findCurrentAuditEntityRecord, updateAuditEntityRecord } from './audit-log.entity-records';
+import { mapAuditLogEntry, mapAuditLogExplorerEntry } from './audit-log.entry-mapper';
+import { assertValidAuditLogExplorerDateRange, buildAuditLogSearchQuery, buildAuditLogSqlWhere, buildAuditLogTypesenseFilter } from './audit-log.explorer';
+import { getAuditFieldLabel } from './audit-log.field-labels';
+import { AuditLogEntry, AuditLogExplorerInput, AuditLogExplorerResult } from './audit-log.models';
+import { getAuditLogRevertConfig, isReversibleAuditOperation } from './audit-log.revert-config';
+import { applyAuditLogRevertInvariants } from './audit-log.revert-invariants';
+import { synchronizeRevertedAuditEntity } from './audit-log.reverted-entity-sync';
+import { diffAuditRecords, normalizeAuditSnapshot, readAuditSnapshot, toAuditJsonInput, toNullableAuditJsonInput } from './audit-log.snapshots';
+import { synchronizeAuditLogEntry } from './audit-log.synchronization';
+import { AuditActor, AuditPrismaClient, AuditRecordOptions, RevertEntityConfig, StoredAuditChange } from './audit-log.types';
 
 const DEFAULT_SQUASH_WINDOW_MS = 2 * 60_000;
-const IGNORED_AUDIT_FIELDS = new Set(['createdAt', 'updatedAt', 'updatedById']);
-const NON_REVERSIBLE_OPERATIONS = new Set<AuditLogOperation>([
-  AuditLogOperation.IMPORT,
-  AuditLogOperation.ISSUE,
-  AuditLogOperation.MERGE,
-  AuditLogOperation.REISSUE,
-  AuditLogOperation.SCAN,
-  AuditLogOperation.UNDO,
-  AuditLogOperation.REVERT,
-]);
-
-const FIELD_LABELS: Record<string, string> = {
-  academicId: 'Matrícula',
-  additionalPaymentInfo: 'Informações adicionais de pagamento',
-  allowSubscription: 'Permitir inscrição',
-  amountPaid: 'Valor pago',
-  attendedAt: 'Data da presença',
-  autoSubscribe: 'Inscrição automática',
-  buttonLink: 'Link do botão',
-  buttonText: 'Texto do botão',
-  category: 'Categoria',
-  contactInfo: 'Contato',
-  contactType: 'Tipo de contato',
-  committedById: 'Enviado por',
-  createdById: 'Autor',
-  createdByMethod: 'Origem',
-  deletedAt: 'Exclusão',
-  description: 'Descrição',
-  desiredCourses: 'Minicursos desejados',
-  desiredLectures: 'Palestras desejadas',
-  desiredUncategorized: 'Outros eventos desejados',
-  displayName: 'Nome público',
-  email: 'E-mail',
-  emoji: 'Emoji',
-  endDate: 'Fim',
-  eventGroupId: 'Grupo de eventos',
-  eventId: 'Evento',
-  externalRef: 'Referência externa',
-  identityDocument: 'Documento',
-  isActive: 'Ativa',
-  isPaymentRequired: 'Exigir pagamento',
-  latitude: 'Latitude',
-  locationDescription: 'Local',
-  longitude: 'Longitude',
-  majorEventId: 'Grande evento',
-  maxCoursesPerAttendee: 'Máximo de minicursos',
-  maxLecturesPerAttendee: 'Máximo de palestras',
-  maxUncategorizedPerAttendee: 'Máximo de outros eventos',
-  mergedIntoId: 'Unificada em',
-  name: 'Nome',
-  onlineAttendanceCode: 'Código de presença online',
-  onlineAttendanceEndDate: 'Fim da presença online',
-  onlineAttendanceStartDate: 'Início da presença online',
-  paymentDate: 'Data de pagamento',
-  paymentTier: 'Faixa de pagamento',
-  permission: 'Permissão',
-  personId: 'Pessoa',
-  phone: 'Telefone',
-  publiclyVisible: 'Visível publicamente',
-  publicationState: 'Estado da publicação',
-  publishedAt: 'Publicado em',
-  scheduledPublishAt: 'Publicação agendada',
-  unpublishedAt: 'Despublicado em',
-  publicationScheduledBy: 'Agendado por',
-  publicationUpdatedBy: 'Publicação atualizada por',
-  rankedSubscriptionEnabled: 'Inscrição por voto preferencial',
-  receiptRejectionReason: 'Motivo de rejeição',
-  receiptValidatedAt: 'Data da validação',
-  receiptValidatedBy: 'Validador',
-  scope: 'Escopo',
-  secondaryEmails: 'E-mails secundários',
-  selectedEventIds: 'Eventos selecionados',
-  shortDescription: 'Descrição curta',
-  shouldCollectAttendance: 'Coletar presença',
-  shouldIssueCertificate: 'Emitir certificado',
-  shouldIssueCertificateForEachEvent: 'Um certificado por evento',
-  shouldIssueCertificateForNonPayingAttendees: 'Certificado para não pagantes',
-  shouldIssueCertificateForNonSubscribedAttendees: 'Certificado para não inscritos',
-  shouldIssuePartialCertificate: 'Permitir certificado parcial',
-  shouldProvideSubscriberListToLecturer: 'Lista de inscritos para ministrante',
-  slots: 'Vagas',
-  startDate: 'Início',
-  subscriptionEndDate: 'Fim das inscrições',
-  subscriptionStartDate: 'Início das inscrições',
-  subscriptionStatus: 'Status da inscrição',
-  targetLabel: 'Alvo',
-  type: 'Tipo',
-  updatedById: 'Atualizado por',
-  userId: 'Usuário',
-  validFrom: 'Válida a partir de',
-  validUntil: 'Válida até',
-  whatsapp: 'WhatsApp',
-  youtubeCode: 'YouTube',
-};
-
-const EVENT_MUTABLE_FIELDS = [
-  'name',
-  'creditMinutes',
-  'startDate',
-  'endDate',
-  'type',
-  'emoji',
-  'description',
-  'shortDescription',
-  'latitude',
-  'longitude',
-  'locationDescription',
-  'majorEventId',
-  'eventGroupId',
-  'allowSubscription',
-  'subscriptionStartDate',
-  'subscriptionEndDate',
-  'slots',
-  'autoSubscribe',
-  'shouldIssueCertificate',
-  'shouldIssueCertificateForNonPayingAttendees',
-  'shouldIssueCertificateForNonSubscribedAttendees',
-  'shouldCollectAttendance',
-  'isOnlineAttendanceAllowed',
-  'shouldProvideSubscriberListToLecturer',
-  'onlineAttendanceCode',
-  'onlineAttendanceStartDate',
-  'onlineAttendanceEndDate',
-  'publiclyVisible',
-  'youtubeCode',
-  'buttonText',
-  'buttonLink',
-  'deletedAt',
-] as const;
 
 @Injectable()
 export class AuditLogService {
@@ -208,6 +42,10 @@ export class AuditLogService {
       deleteEventGroup: async () => undefined,
       upsertPerson: async () => undefined,
       deletePerson: async () => undefined,
+      upsertPlacePreset: async () => undefined,
+      deletePlacePreset: async () => undefined,
+      upsertAuditLogEntry: async () => undefined,
+      searchAuditLogEntries: async () => ({ available: false, ids: [], found: 0 }),
     } as unknown as TypesenseSearchService,
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService = {
       notifyAllConnectedPeople: async () => undefined,
@@ -221,9 +59,9 @@ export class AuditLogService {
   ) {}
 
   async record(options: AuditRecordOptions, prisma: AuditPrismaClient = this.prisma): Promise<void> {
-    const before = this.normalizeSnapshot(options.before);
-    const after = this.normalizeSnapshot(options.after);
-    const changes = this.diffRecords(before, after);
+    const before = normalizeAuditSnapshot(options.before);
+    const after = normalizeAuditSnapshot(options.after);
+    const changes = diffAuditRecords(before, after);
     if (!options.force && changes.length === 0) {
       return;
     }
@@ -243,7 +81,7 @@ export class AuditLogService {
       }
     }
 
-    await prisma.auditLogEntry.create({
+    const entry = await prisma.auditLogEntry.create({
       data: {
         entityType: options.entityType,
         entityId: options.entityId,
@@ -258,15 +96,16 @@ export class AuditLogService {
         eventId: options.scope?.eventId ?? null,
         majorEventId: options.scope?.majorEventId ?? null,
         eventGroupId: options.scope?.eventGroupId ?? null,
-        before: this.toNullableJsonInput(before),
-        after: this.toNullableJsonInput(after),
-        changes: this.toJsonInput(changes),
+        before: toNullableAuditJsonInput(before),
+        after: toNullableAuditJsonInput(after),
+        changes: toAuditJsonInput(changes),
         changedFields: changes.map((change) => change.field),
         firstRecordedAt: now,
         lastRecordedAt: now,
-        metadata: options.metadata ? this.toJsonInput(options.metadata) : undefined,
+        metadata: options.metadata ? toAuditJsonInput(options.metadata) : undefined,
       },
     });
+    synchronizeAuditLogEntry(entry, prisma, this.prisma, this.typesenseSearch);
   }
 
   async listEntityHistory(
@@ -281,17 +120,67 @@ export class AuditLogService {
         entityType,
         entityId,
       },
-      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
       take: Math.min(Math.max(Math.trunc(take), 1), 150),
     });
 
-    return entries.map((entry) => this.mapEntry(entry));
+    return entries.map((entry) => mapAuditLogEntry(entry, (auditEntry) => this.canRevertEntry(auditEntry)));
+  }
+
+  async exploreAuditLogs(
+    input: AuditLogExplorerInput,
+    actor: AuthenticatedUser | undefined,
+  ): Promise<AuditLogExplorerResult> {
+    this.assertCanExploreAuditLogs(actor);
+    assertValidAuditLogExplorerDateRange(input.dateFrom, input.dateTo);
+
+    const pagination = resolvePagination(input.skip ?? undefined, input.take ?? undefined);
+    const skip = pagination.skip;
+    const take = Math.min(pagination.take, 100);
+    const searchResult = await this.typesenseSearch.searchAuditLogEntries(buildAuditLogSearchQuery(input), {
+      filterBy: buildAuditLogTypesenseFilter(input),
+      limit: take,
+      offset: skip,
+      sortBy: 'lastRecordedAt:desc,createdAt:desc,id:asc',
+    });
+
+    if (searchResult.available) {
+      const entries = await this.findAuditLogEntriesByIds(searchResult.ids);
+      return {
+        entries: entries.map((entry) => mapAuditLogExplorerEntry(entry, (auditEntry) => this.canRevertEntry(auditEntry))),
+        total: searchResult.found,
+        skip,
+        take,
+        typesenseAvailable: true,
+      };
+    }
+
+    const where = buildAuditLogSqlWhere(input);
+    const [total, entries] = await Promise.all([
+      this.prisma.auditLogEntry.count({ where }),
+      this.prisma.auditLogEntry.findMany({
+        where,
+        orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+        skip,
+        take,
+      }),
+    ]);
+
+    return {
+      entries: entries.map((entry) => mapAuditLogExplorerEntry(entry, (auditEntry) => this.canRevertEntry(auditEntry))),
+      total,
+      skip,
+      take,
+      typesenseAvailable: false,
+    };
   }
 
   async revertEntry(
     input: { entryId: string; mode: AuditLogRevertMode },
     actor: AuthenticatedUser | undefined,
   ): Promise<AuditLogEntry> {
+    this.assertSuperAdminAuditAccess(actor);
+
     const targetEntry = await this.prisma.auditLogEntry.findUnique({
       where: {
         id: input.entryId,
@@ -306,11 +195,11 @@ export class AuditLogService {
       throw new ConflictException('Essa alteração já foi desfeita.');
     }
 
-    if (!this.isReversibleOperation(targetEntry.operation)) {
+    if (!isReversibleAuditOperation(targetEntry.operation)) {
       throw new BadRequestException('Esse tipo de alteração não pode ser desfeito automaticamente.');
     }
 
-    const config = this.getRevertConfig(targetEntry.entityType);
+    const config = getAuditLogRevertConfig(targetEntry.entityType);
     await this.assertCanRevert(targetEntry, config, actor);
 
     const entriesToRevert = await this.resolveEntriesToRevert(targetEntry, input.mode);
@@ -319,12 +208,12 @@ export class AuditLogService {
       : [];
     if (laterConflicts.length > 0) {
       throw new ConflictException(
-        `Campos alterados depois dessa entrada: ${laterConflicts.map((field) => this.getFieldLabel(field)).join(', ')}. Use "desfazer daqui em diante".`,
+        `Campos alterados depois dessa entrada: ${laterConflicts.map((field) => getAuditFieldLabel(field)).join(', ')}. Use "desfazer daqui em diante".`,
       );
     }
     this.assertEntriesCanBeReverted(entriesToRevert);
 
-    const currentRecord = await this.findCurrentEntityRecord(targetEntry.entityType, targetEntry.entityId);
+    const currentRecord = await findCurrentAuditEntityRecord(this.prisma, targetEntry.entityType, targetEntry.entityId);
     if (!currentRecord && targetEntry.operation !== AuditLogOperation.CREATE) {
       throw new NotFoundException('O registro atual não foi encontrado para desfazer a alteração.');
     }
@@ -338,9 +227,9 @@ export class AuditLogService {
     const resolvedActor = await this.resolveActor(actor);
     const now = new Date();
     const revertResult = await this.prisma.$transaction(async (tx) => {
-      const updated = await this.updateEntityRecord(tx, targetEntry.entityType, targetEntry.entityId, revertData);
-      await this.applyRevertInvariants(tx, targetEntry.entityType, updated);
-      const changes = this.diffRecords(this.normalizeSnapshot(currentRecord), this.normalizeSnapshot(updated));
+      const updated = await updateAuditEntityRecord(tx, targetEntry.entityType, targetEntry.entityId, revertData);
+      await applyAuditLogRevertInvariants(tx, targetEntry.entityType, updated);
+      const changes = diffAuditRecords(normalizeAuditSnapshot(currentRecord), normalizeAuditSnapshot(updated));
       const revertLog = await tx.auditLogEntry.create({
         data: {
           entityType: targetEntry.entityType,
@@ -359,15 +248,15 @@ export class AuditLogService {
           eventId: targetEntry.eventId,
           majorEventId: targetEntry.majorEventId,
           eventGroupId: targetEntry.eventGroupId,
-          before: this.toNullableJsonInput(this.normalizeSnapshot(currentRecord)),
-          after: this.toNullableJsonInput(this.normalizeSnapshot(updated)),
-          changes: this.toJsonInput(changes),
+          before: toNullableAuditJsonInput(normalizeAuditSnapshot(currentRecord)),
+          after: toNullableAuditJsonInput(normalizeAuditSnapshot(updated)),
+          changes: toAuditJsonInput(changes),
           changedFields: changes.map((change) => change.field),
           firstRecordedAt: now,
           lastRecordedAt: now,
           revertTargetId: targetEntry.id,
           revertMode: input.mode,
-          metadata: this.toJsonInput({
+          metadata: toAuditJsonInput({
             revertedEntryIds: entriesToRevert.map((entry) => entry.id),
           }),
         },
@@ -394,18 +283,57 @@ export class AuditLogService {
       return { revertLogId: revertLog.id, updated };
     });
 
-    await this.synchronizeRevertedEntity(targetEntry.entityType, targetEntry.entityId, revertResult.updated);
+    await synchronizeRevertedAuditEntity(
+      this.typesenseSearch,
+      this.attendanceRealtime,
+      targetEntry.entityType,
+      targetEntry.entityId,
+      revertResult.updated,
+    );
 
     const revertLog = await this.prisma.auditLogEntry.findUniqueOrThrow({
       where: {
         id: revertResult.revertLogId,
       },
     });
-    return this.mapEntry(revertLog);
+    const revertedEntries = await this.prisma.auditLogEntry.findMany({
+      where: {
+        revertedByEntryId: revertLog.id,
+      },
+    });
+    for (const entry of [revertLog, ...revertedEntries]) {
+      synchronizeAuditLogEntry(entry, this.prisma, this.prisma, this.typesenseSearch);
+    }
+    return mapAuditLogEntry(revertLog, (auditEntry) => this.canRevertEntry(auditEntry));
   }
 
   buildCompositeEntityId(parts: readonly string[]): string {
     return parts.map((part) => encodeURIComponent(part)).join(':');
+  }
+
+  private assertCanExploreAuditLogs(actor: AuthenticatedUser | undefined): void {
+    if (!this.authorizationPolicy.isSuperAdmin(actor)) {
+      throw new ForbiddenException('Somente super-admins podem consultar todos os logs de auditoria.');
+    }
+  }
+
+  private async findAuditLogEntriesByIds(ids: readonly string[]): Promise<PrismaAuditLogEntry[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const entries = await this.prisma.auditLogEntry.findMany({
+      where: {
+        id: {
+          in: [...ids],
+        },
+      },
+    });
+    const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+    return ids.flatMap((id) => {
+      const entry = entriesById.get(id);
+      return entry ? [entry] : [];
+    });
   }
 
   private async trySquashUpdate(
@@ -425,28 +353,28 @@ export class AuditLogService {
         revertedAt: null,
         revertTargetId: null,
       },
-      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
     });
 
     if (!lastEntry || !this.canSquashIntoEntry(lastEntry, options, actor, now, squashWindowMs)) {
       return false;
     }
 
-    const originalBefore = this.readSnapshot(lastEntry.before) ?? before;
-    const squashedChanges = this.diffRecords(originalBefore, after);
+    const originalBefore = readAuditSnapshot(lastEntry.before) ?? before;
+    const squashedChanges = diffAuditRecords(originalBefore, after);
     if (squashedChanges.length === 0) {
       return false;
     }
 
-    await prisma.auditLogEntry.update({
+    const updatedEntry = await prisma.auditLogEntry.update({
       where: {
         id: lastEntry.id,
       },
       data: {
         entityLabel: options.entityLabel ?? lastEntry.entityLabel,
         summary: options.summary ?? lastEntry.summary,
-        after: this.toNullableJsonInput(after),
-        changes: this.toJsonInput(squashedChanges),
+        after: toNullableAuditJsonInput(after),
+        changes: toAuditJsonInput(squashedChanges),
         changedFields: squashedChanges.map((change) => change.field),
         groupedCount: {
           increment: 1,
@@ -454,6 +382,7 @@ export class AuditLogService {
         lastRecordedAt: now,
       },
     });
+    synchronizeAuditLogEntry(updatedEntry, prisma, this.prisma, this.typesenseSearch);
 
     return true;
   }
@@ -519,210 +448,6 @@ export class AuditLogService {
     return typeof value === 'string' && value.trim() ? value.trim() : null;
   }
 
-  private diffRecords(before: Record<string, unknown>, after: Record<string, unknown>): StoredAuditChange[] {
-    const changes: StoredAuditChange[] = [];
-    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
-
-    for (const key of [...keys].sort()) {
-      if (IGNORED_AUDIT_FIELDS.has(key)) {
-        continue;
-      }
-
-      const beforeValue = this.normalizeValueForComparison(before[key]);
-      const afterValue = this.normalizeValueForComparison(after[key]);
-      if (this.stableStringify(beforeValue) === this.stableStringify(afterValue)) {
-        continue;
-      }
-
-      if (this.isPlainRecord(beforeValue) && this.isPlainRecord(afterValue)) {
-        const childChanges = this.diffRecords(beforeValue, afterValue).map((change) => ({
-          ...change,
-          field: `${key}.${change.field}`,
-          label: `${this.getFieldLabel(key)} · ${change.label}`,
-        }));
-        changes.push(...childChanges);
-        continue;
-      }
-
-      changes.push({
-        field: key,
-        label: this.getFieldLabel(key),
-        before: beforeValue,
-        after: afterValue,
-      });
-    }
-
-    return changes;
-  }
-
-  private normalizeSnapshot(value: unknown): Record<string, unknown> {
-    if (!this.isPlainRecord(value)) {
-      return {};
-    }
-
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([, child]) => child !== undefined)
-        .map(([key, child]) => [key, this.normalizeValueForComparison(child)]),
-    );
-  }
-
-  private normalizeValueForComparison(value: unknown): unknown {
-    if (value === undefined) {
-      return null;
-    }
-
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-
-    if (typeof value === 'bigint') {
-      return value.toString();
-    }
-
-    if (Array.isArray(value)) {
-      return value.map((item) => this.normalizeValueForComparison(item));
-    }
-
-    if (this.isPlainRecord(value)) {
-      return Object.fromEntries(
-        Object.entries(value)
-          .filter(([, child]) => child !== undefined)
-          .map(([key, child]) => [key, this.normalizeValueForComparison(child)]),
-      );
-    }
-
-    return value ?? null;
-  }
-
-  private readSnapshot(value: Prisma.JsonValue | null): Record<string, unknown> | null {
-    return this.isPlainRecord(value) ? value : null;
-  }
-
-  private isPlainRecord(value: unknown): value is Record<string, unknown> {
-    return Boolean(value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date));
-  }
-
-  private stableStringify(value: unknown): string {
-    if (Array.isArray(value)) {
-      return `[${value.map((item) => this.stableStringify(item)).join(',')}]`;
-    }
-
-    if (this.isPlainRecord(value)) {
-      return `{${Object.keys(value)
-        .sort()
-        .map((key) => `${JSON.stringify(key)}:${this.stableStringify(value[key])}`)
-        .join(',')}}`;
-    }
-
-    return JSON.stringify(value);
-  }
-
-  private toNullableJsonInput(value: Record<string, unknown>): Prisma.InputJsonValue | typeof Prisma.JsonNull {
-    if (Object.keys(value).length === 0) {
-      return Prisma.JsonNull;
-    }
-
-    return this.toJsonInput(value);
-  }
-
-  private toJsonInput(value: unknown): Prisma.InputJsonValue {
-    return this.normalizeValueForComparison(value) as Prisma.InputJsonValue;
-  }
-
-  private mapEntry(entry: PrismaAuditLogEntry): AuditLogEntry {
-    const changes = this.parseChanges(entry.changes);
-    return {
-      id: entry.id,
-      entityType: entry.entityType,
-      entityId: entry.entityId,
-      entityLabel: entry.entityLabel,
-      operation: entry.operation,
-      summary: entry.summary,
-      actorId: entry.actorId,
-      actorName: entry.actorName,
-      actorEmail: entry.actorEmail,
-      actorType: entry.actorType,
-      permission: entry.permission,
-      eventId: entry.eventId,
-      majorEventId: entry.majorEventId,
-      eventGroupId: entry.eventGroupId,
-      changes: changes.map((change) => ({
-        field: change.field,
-        label: change.label ?? this.getFieldLabel(change.field),
-        beforeValue: this.formatValue(change.before),
-        afterValue: this.formatValue(change.after),
-      })),
-      changedFields: entry.changedFields,
-      groupedCount: entry.groupedCount,
-      firstRecordedAt: entry.firstRecordedAt,
-      lastRecordedAt: entry.lastRecordedAt,
-      createdAt: entry.createdAt,
-      revertedAt: entry.revertedAt,
-      revertedById: entry.revertedById,
-      revertedByName: entry.revertedByName,
-      revertedByEntryId: entry.revertedByEntryId,
-      revertTargetId: entry.revertTargetId,
-      revertMode: entry.revertMode,
-      canRevert: this.canRevertEntry(entry),
-    };
-  }
-
-  private parseChanges(value: Prisma.JsonValue): StoredAuditChange[] {
-    if (!Array.isArray(value)) {
-      return [];
-    }
-
-    return value.flatMap((entry) => {
-      if (!this.isPlainRecord(entry) || typeof entry['field'] !== 'string') {
-        return [];
-      }
-
-      return [
-        {
-          field: entry['field'],
-          label: typeof entry['label'] === 'string' ? entry['label'] : undefined,
-          before: entry['before'],
-          after: entry['after'],
-        },
-      ];
-    });
-  }
-
-  private formatValue(value: unknown): string | null {
-    if (value === null || value === undefined) {
-      return null;
-    }
-
-    if (typeof value === 'boolean') {
-      return value ? 'Sim' : 'Não';
-    }
-
-    if (typeof value === 'number' || typeof value === 'bigint') {
-      return String(value);
-    }
-
-    if (typeof value === 'string') {
-      return value;
-    }
-
-    if (Array.isArray(value)) {
-      return value.length === 0 ? '[]' : value.map((item) => this.formatValue(item) ?? 'vazio').join(', ');
-    }
-
-    return JSON.stringify(value);
-  }
-
-  private getFieldLabel(field: string): string {
-    const exact = FIELD_LABELS[field];
-    if (exact) {
-      return exact;
-    }
-
-    const leaf = field.split('.').at(-1) ?? field;
-    return FIELD_LABELS[leaf] ?? leaf.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase());
-  }
-
   private async assertCanReadEntityHistory(
     entityType: AuditLogEntityType,
     entityId: string,
@@ -759,7 +484,7 @@ export class AuditLogService {
   }
 
   private getAccessConfig(entityType: AuditLogEntityType): Pick<RevertEntityConfig, 'readPermission'> {
-    return this.getRevertConfig(entityType);
+    return getAuditLogRevertConfig(entityType);
   }
 
   private async resolveAuthorizationContext(
@@ -867,7 +592,7 @@ export class AuditLogService {
     }
 
     for (const entry of entries) {
-      if (!this.isReversibleOperation(entry.operation)) {
+      if (!isReversibleAuditOperation(entry.operation)) {
         throw new BadRequestException('Esse tipo de alteração não pode ser desfeito automaticamente.');
       }
 
@@ -878,7 +603,7 @@ export class AuditLogService {
         continue;
       }
 
-      const before = this.readSnapshot(entry.before);
+      const before = readAuditSnapshot(entry.before);
       if (!before) {
         continue;
       }
@@ -886,7 +611,7 @@ export class AuditLogService {
       for (const field of entry.changedFields) {
         const rootField = field.split('.')[0];
         if (!mutableFields.has(rootField)) {
-          throw new BadRequestException(`O campo ${this.getFieldLabel(field)} não pode ser desfeito automaticamente.`);
+          throw new BadRequestException(`O campo ${getAuditFieldLabel(field)} não pode ser desfeito automaticamente.`);
         }
         data[rootField] = before[rootField] ?? null;
       }
@@ -896,7 +621,7 @@ export class AuditLogService {
   }
 
   private assertEntriesCanBeReverted(entries: PrismaAuditLogEntry[]): void {
-    const nonReversibleEntry = entries.find((entry) => !this.isReversibleOperation(entry.operation));
+    const nonReversibleEntry = entries.find((entry) => !isReversibleAuditOperation(entry.operation));
     if (nonReversibleEntry) {
       throw new BadRequestException(
         `A entrada ${nonReversibleEntry.id} tem um tipo de alteração que não pode ser desfeito automaticamente.`,
@@ -951,168 +676,13 @@ export class AuditLogService {
     return undefined;
   }
 
-  private async findCurrentEntityRecord(entityType: AuditLogEntityType, entityId: string): Promise<Record<string, unknown> | null> {
-    switch (entityType) {
-      case AuditLogEntityType.PERSON:
-        return this.prisma.people.findUnique({ where: { id: entityId }, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.EVENT:
-        return this.prisma.event.findUnique({ where: { id: entityId }, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.MAJOR_EVENT:
-        return this.prisma.majorEvent.findUnique({ where: { id: entityId }, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.EVENT_GROUP:
-        return this.prisma.eventGroup.findUnique({ where: { id: entityId }, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.PLACE_PRESET:
-        return this.prisma.placePreset.findUnique({ where: { id: entityId }, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.PERMISSION_GRANT:
-        return this.prisma.eventManagerPermissionGrant.findUnique({
-          where: { id: entityId },
-          select: this.getRevertConfig(entityType).select,
-        });
-      default:
-        return null;
-    }
-  }
-
-  private async updateEntityRecord(
-    tx: Prisma.TransactionClient,
-    entityType: AuditLogEntityType,
-    entityId: string,
-    data: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
-    switch (entityType) {
-      case AuditLogEntityType.PERSON:
-        return tx.people.update({ where: { id: entityId }, data, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.EVENT:
-        return tx.event.update({ where: { id: entityId }, data, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.MAJOR_EVENT:
-        return tx.majorEvent.update({ where: { id: entityId }, data, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.EVENT_GROUP:
-        return tx.eventGroup.update({ where: { id: entityId }, data, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.PLACE_PRESET:
-        return tx.placePreset.update({ where: { id: entityId }, data, select: this.getRevertConfig(entityType).select });
-      case AuditLogEntityType.PERMISSION_GRANT:
-        return tx.eventManagerPermissionGrant.update({
-          where: { id: entityId },
-          data,
-          select: this.getRevertConfig(entityType).select,
-        });
-      default:
-        throw new BadRequestException('Esse tipo de registro não pode ser desfeito automaticamente.');
-    }
-  }
-
-  private async synchronizeRevertedEntity(
-    entityType: AuditLogEntityType,
-    entityId: string,
-    updated: Record<string, unknown>,
-  ): Promise<void> {
-    const isDeleted = updated['deletedAt'] instanceof Date || typeof updated['deletedAt'] === 'string';
-
-    switch (entityType) {
-      case AuditLogEntityType.PERSON:
-        if (isDeleted) {
-          await this.typesenseSearch.deletePerson(entityId);
-          return;
-        }
-        await this.typesenseSearch.upsertPerson(updated as Parameters<TypesenseSearchService['upsertPerson']>[0]);
-        return;
-      case AuditLogEntityType.EVENT:
-        if (isDeleted) {
-          await this.typesenseSearch.deleteEvent(entityId);
-        } else {
-          await this.typesenseSearch.upsertEvent(updated as Parameters<TypesenseSearchService['upsertEvent']>[0]);
-        }
-        await this.attendanceRealtime.notifyAllConnectedPeople();
-        return;
-      case AuditLogEntityType.MAJOR_EVENT:
-        if (isDeleted) {
-          await this.typesenseSearch.deleteMajorEvent(entityId);
-          return;
-        }
-        await this.typesenseSearch.upsertMajorEvent(
-          updated as Parameters<TypesenseSearchService['upsertMajorEvent']>[0],
-        );
-        return;
-      case AuditLogEntityType.EVENT_GROUP:
-        if (isDeleted) {
-          await this.typesenseSearch.deleteEventGroup(entityId);
-          return;
-        }
-        await this.typesenseSearch.upsertEventGroup(
-          updated as Parameters<TypesenseSearchService['upsertEventGroup']>[0],
-        );
-        return;
-      case AuditLogEntityType.PLACE_PRESET:
-        if (isDeleted) {
-          await this.typesenseSearch.deletePlacePreset(entityId);
-          return;
-        }
-        await this.typesenseSearch.upsertPlacePreset(
-          updated as Parameters<TypesenseSearchService['upsertPlacePreset']>[0],
-        );
-        return;
-      default:
-        return;
-    }
-  }
-
-  private async applyRevertInvariants(
-    tx: Prisma.TransactionClient,
-    entityType: AuditLogEntityType,
-    updated: Record<string, unknown>,
-  ): Promise<void> {
-    if (entityType === AuditLogEntityType.EVENT) {
-      const eventGroupId = typeof updated['eventGroupId'] === 'string' ? updated['eventGroupId'] : null;
-      const majorEventId = typeof updated['majorEventId'] === 'string' ? updated['majorEventId'] : null;
-      if (eventGroupId && majorEventId) {
-        await tx.eventGroup.updateMany({
-          where: {
-            id: eventGroupId,
-            deletedAt: null,
-            shouldIssueCertificateForEachEvent: true,
-          },
-          data: { shouldIssueCertificateForEachEvent: false },
-        });
-      }
-      return;
-    }
-
-    if (entityType !== AuditLogEntityType.EVENT_GROUP || typeof updated['id'] !== 'string') {
-      return;
-    }
-
-    const shouldIssueCertificate = updated['shouldIssueCertificate'];
-    const shouldIssueForNonPaying = updated['shouldIssueCertificateForNonPayingAttendees'];
-    const shouldIssueForNonSubscribed = updated['shouldIssueCertificateForNonSubscribedAttendees'];
-    if (
-      shouldIssueCertificate !== false &&
-      shouldIssueForNonPaying !== false &&
-      shouldIssueForNonSubscribed !== false
-    ) {
-      return;
-    }
-
-    await tx.event.updateMany({
-      where: { eventGroupId: updated['id'], deletedAt: null },
-      data: {
-        ...(shouldIssueCertificate === false ? { shouldIssueCertificate: false } : {}),
-        ...(shouldIssueCertificate === false || shouldIssueForNonPaying === false
-          ? { shouldIssueCertificateForNonPayingAttendees: false }
-          : {}),
-        ...(shouldIssueCertificate === false || shouldIssueForNonSubscribed === false
-          ? { shouldIssueCertificateForNonSubscribedAttendees: false }
-          : {}),
-      },
-    });
-  }
-
   private canRevertEntry(entry: PrismaAuditLogEntry): boolean {
-    if (entry.revertedAt || !this.isReversibleOperation(entry.operation)) {
+    if (entry.revertedAt || !isReversibleAuditOperation(entry.operation)) {
       return false;
     }
 
     try {
-      const config = this.getRevertConfig(entry.entityType);
+      const config = getAuditLogRevertConfig(entry.entityType);
       if (entry.operation === AuditLogOperation.CREATE) {
         return Boolean(config.deletePermission && config.supportsSoftDelete);
       }
@@ -1154,215 +724,4 @@ export class AuditLogService {
     });
   }
 
-  private getRevertConfig(entityType: AuditLogEntityType): RevertEntityConfig {
-    switch (entityType) {
-      case AuditLogEntityType.PERSON:
-        return {
-          readPermission: Permission.Person.Read,
-          updatePermission: Permission.Person.Update,
-          deletePermission: Permission.Person.Delete,
-          supportsSoftDelete: true,
-          mutableFields: [
-            'name',
-            'email',
-            'secondaryEmails',
-            'phone',
-            'identityDocument',
-            'academicId',
-            'userId',
-            'mergedIntoId',
-            'externalRef',
-            'deletedAt',
-          ],
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            secondaryEmails: true,
-            phone: true,
-            identityDocument: true,
-            academicId: true,
-            userId: true,
-            mergedIntoId: true,
-            externalRef: true,
-            deletedAt: true,
-          },
-        };
-      case AuditLogEntityType.EVENT:
-        return {
-          readPermission: Permission.Event.Read,
-          updatePermission: Permission.Event.Update,
-          deletePermission: Permission.Event.Delete,
-          supportsSoftDelete: true,
-          mutableFields: EVENT_MUTABLE_FIELDS,
-          select: {
-            id: true,
-            ...Object.fromEntries(EVENT_MUTABLE_FIELDS.map((field) => [field, true])),
-          },
-        };
-      case AuditLogEntityType.MAJOR_EVENT:
-        return {
-          readPermission: Permission.MajorEvent.Read,
-          updatePermission: Permission.MajorEvent.Update,
-          deletePermission: Permission.MajorEvent.Delete,
-          supportsSoftDelete: true,
-          mutableFields: [
-            'name',
-            'startDate',
-            'endDate',
-            'description',
-            'emoji',
-            'subscriptionStartDate',
-            'subscriptionEndDate',
-            'maxCoursesPerAttendee',
-            'maxLecturesPerAttendee',
-            'maxUncategorizedPerAttendee',
-            'rankedSubscriptionEnabled',
-            'buttonText',
-            'buttonLink',
-            'contactInfo',
-            'contactType',
-            'isPaymentRequired',
-            'shouldIssueCertificateForNonPayingAttendees',
-            'shouldIssueCertificateForNonSubscribedAttendees',
-            'additionalPaymentInfo',
-            'deletedAt',
-          ],
-          select: {
-            id: true,
-            name: true,
-            startDate: true,
-            endDate: true,
-            description: true,
-            emoji: true,
-            subscriptionStartDate: true,
-            subscriptionEndDate: true,
-            maxCoursesPerAttendee: true,
-            maxLecturesPerAttendee: true,
-            maxUncategorizedPerAttendee: true,
-            rankedSubscriptionEnabled: true,
-            buttonText: true,
-            buttonLink: true,
-            contactInfo: true,
-            contactType: true,
-            isPaymentRequired: true,
-            shouldIssueCertificateForNonPayingAttendees: true,
-            shouldIssueCertificateForNonSubscribedAttendees: true,
-            additionalPaymentInfo: true,
-            publicationState: true,
-            scheduledPublishAt: true,
-            publishedAt: true,
-            unpublishedAt: true,
-            publicationScheduledBy: true,
-            publicationUpdatedBy: true,
-            deletedAt: true,
-          },
-        };
-      case AuditLogEntityType.EVENT_GROUP:
-        return {
-          readPermission: Permission.EventGroup.Read,
-          updatePermission: Permission.EventGroup.Update,
-          deletePermission: Permission.EventGroup.Delete,
-          supportsSoftDelete: true,
-          mutableFields: [
-            'name',
-            'emoji',
-            'shouldIssueCertificate',
-            'shouldIssueCertificateForNonPayingAttendees',
-            'shouldIssueCertificateForNonSubscribedAttendees',
-            'shouldIssueCertificateForEachEvent',
-            'shouldIssuePartialCertificate',
-            'deletedAt',
-          ],
-          select: {
-            id: true,
-            name: true,
-            emoji: true,
-            shouldIssueCertificate: true,
-            shouldIssueCertificateForNonPayingAttendees: true,
-            shouldIssueCertificateForNonSubscribedAttendees: true,
-            shouldIssueCertificateForEachEvent: true,
-            shouldIssuePartialCertificate: true,
-            deletedAt: true,
-          },
-        };
-      case AuditLogEntityType.PLACE_PRESET:
-        return {
-          readPermission: Permission.PlacePreset.Read,
-          updatePermission: Permission.PlacePreset.Update,
-          deletePermission: Permission.PlacePreset.Delete,
-          supportsSoftDelete: true,
-          mutableFields: ['name', 'latitude', 'longitude', 'locationDescription', 'deletedAt'],
-          select: {
-            id: true,
-            name: true,
-            latitude: true,
-            longitude: true,
-            locationDescription: true,
-            deletedAt: true,
-          },
-        };
-      case AuditLogEntityType.PERMISSION_GRANT:
-        return {
-          readPermission: Permission.PermissionGrant.Read,
-          updatePermission: Permission.PermissionGrant.Update,
-          deletePermission: Permission.PermissionGrant.Delete,
-          supportsSoftDelete: true,
-          mutableFields: [
-            'userId',
-            'personId',
-            'permission',
-            'scope',
-            'eventId',
-            'majorEventId',
-            'eventGroupId',
-            'validFrom',
-            'validUntil',
-            'deletedAt',
-          ],
-          select: {
-            userId: true,
-            personId: true,
-            permission: true,
-            scope: true,
-            eventId: true,
-            majorEventId: true,
-            eventGroupId: true,
-            validFrom: true,
-            validUntil: true,
-            deletedAt: true,
-          },
-        };
-      case AuditLogEntityType.EVENT_SUBSCRIPTION:
-      case AuditLogEntityType.EVENT_GROUP_SUBSCRIPTION:
-        return { readPermission: Permission.Subscription.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
-      case AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION:
-        return { readPermission: Permission.Subscription.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
-      case AuditLogEntityType.EVENT_ATTENDANCE:
-        return { readPermission: Permission.EventAttendance.Read, supportsSoftDelete: false, mutableFields: [], select: {} };
-      case AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR:
-        return {
-          readPermission: Permission.EventAttendanceCollector.Read,
-          supportsSoftDelete: false,
-          mutableFields: [],
-          select: {},
-        };
-      case AuditLogEntityType.EVENT_LECTURER:
-        return { readPermission: Permission.EventLecturer.Read, supportsSoftDelete: false, mutableFields: [], select: {} };
-      case AuditLogEntityType.CERTIFICATE_CONFIG:
-        return { readPermission: Permission.CertificateConfig.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
-      case AuditLogEntityType.CERTIFICATE:
-        return { readPermission: Permission.Certificate.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
-      case AuditLogEntityType.MERGE_CANDIDATE:
-        return { readPermission: Permission.MergeCandidate.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
-      case AuditLogEntityType.RECEIPT_VALIDATION:
-        return { readPermission: Permission.Receipt.Read, supportsSoftDelete: false, mutableFields: [], select: {} };
-      default:
-        throw new BadRequestException('Tipo de histórico não suportado.');
-    }
-  }
-
-  private isReversibleOperation(operation: AuditLogOperation): boolean {
-    return !NON_REVERSIBLE_OPERATIONS.has(operation);
-  }
 }

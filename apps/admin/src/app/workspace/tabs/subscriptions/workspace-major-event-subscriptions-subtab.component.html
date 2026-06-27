@@ -103,6 +103,30 @@
         </mat-list-item>
       }
     </mat-list>
+
+    <div class="list-pager" aria-label="Paginação de inscrições do grande evento">
+      <span>Itens {{ workspace.majorEventSubscriptionsPagination.label() }}</span>
+      <div class="list-pager-actions">
+        <button
+          mat-icon-button
+          type="button"
+          aria-label="Página anterior de inscrições"
+          matTooltip="Anterior"
+          [disabled]="!workspace.majorEventSubscriptionsPagination.hasPreviousPage()"
+          (click)="workspace.previousMajorEventSubscriptionsPage()">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          aria-label="Próxima página de inscrições"
+          matTooltip="Próxima"
+          [disabled]="!workspace.majorEventSubscriptionsPagination.hasNextPage()"
+          (click)="workspace.nextMajorEventSubscriptionsPage()">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
   </aside>
 
   <section class="panel subscription-detail">

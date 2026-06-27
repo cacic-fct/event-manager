@@ -86,7 +86,7 @@ export function applyStoryBulkOperation(workspace: PublicContentWorkspace, input
   }
 
   if (input.operation === 'PUBLISH_MISSING_CHILDREN') {
-    const pendingNodes = flatten(selected.children).filter((node) => node.publicationState !== 'PUBLISHED');
+    const pendingNodes = flatten(selected.children ?? []).filter((node) => node.publicationState !== 'PUBLISHED');
     return publicationActionResult(updateNodes(pendingNodes, 'PUBLISHED', null));
   }
 
@@ -172,7 +172,7 @@ function updateNodeAndDescendants(
   state: PublicationState,
   scheduledPublishAt: string | null | undefined,
 ): PublicContentNode[] {
-  return updateNodes([node, ...flatten(node.children)], state, scheduledPublishAt ?? null);
+  return updateNodes([node, ...flatten(node.children ?? [])], state, scheduledPublishAt ?? null);
 }
 
 function updateNodes(
@@ -234,7 +234,7 @@ function buildWarnings(args: PublicationStoryArgs) {
 }
 
 function flatten(nodes: PublicContentNode[]): PublicContentNode[] {
-  return nodes.flatMap((node) => [node, ...flatten(node.children)]);
+  return nodes.flatMap((node) => [node, ...flatten(node.children ?? [])]);
 }
 
 function findNode(
@@ -246,7 +246,7 @@ function findNode(
     if (node.targetType === targetType && node.id === targetId) {
       return node;
     }
-    const child = findNode(node.children, targetType, targetId);
+    const child = findNode(node.children ?? [], targetType, targetId);
     if (child) {
       return child;
     }

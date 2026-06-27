@@ -88,10 +88,11 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       majorEventSubscriptions: [],
       people: [],
       collectorUsers: [],
+      events: [],
       collectors: [
         {
           eventId: 'event-1',
-          event: { id: 'event-1', name: 'Aula aberta' },
+          event: { id: 'event-1', name: 'Aula aberta', startDate: new Date('2026-05-23T16:00:00.000Z') },
         },
       ],
     });
@@ -102,10 +103,21 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       prisma as never,
       currentUserContext as never,
       {} as never,
+      undefined,
+      {
+        accessibleEventTargets: jest.fn().mockResolvedValue({
+          eventIds: new Set(),
+          majorEventIds: new Set(),
+          eventGroupIds: new Set(),
+        }),
+      } as never,
     );
 
     await expect(resolver.currentUserAttendanceCollectionEvents(context as never)).resolves.toEqual([
-      { eventId: 'event-1', event: { id: 'event-1', name: 'Aula aberta' } },
+      {
+        eventId: 'event-1',
+        event: { id: 'event-1', name: 'Aula aberta', startDate: new Date('2026-05-23T16:00:00.000Z') },
+      },
     ]);
 
     const findManyArgs = prisma.eventAttendanceCollector.findMany.mock.calls[0][0];
@@ -127,6 +139,63 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     expect(startDateFilter.lte.getSeconds()).toBe(59);
     expect(startDateFilter.lte.getMilliseconds()).toBe(999);
     expect(startDateFilter.lte.getTime() - startDateFilter.gte.getTime()).toBe(30 * 60 * 60_000 - 1);
+    jest.useRealTimers();
+  });
+
+  it('includes collection events available through attendance management grants', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
+    const prisma = createPrisma({
+      attendances: [],
+      eventSubscriptions: [],
+      majorEventSubscriptions: [],
+      people: [],
+      collectorUsers: [],
+      collectors: [
+        {
+          eventId: 'event-1',
+          event: { id: 'event-1', name: 'Aula aberta', startDate: new Date('2026-05-23T16:00:00.000Z') },
+        },
+      ],
+      events: [
+        { id: 'event-1', name: 'Aula aberta', startDate: new Date('2026-05-23T16:00:00.000Z') },
+        { id: 'event-2', name: 'Minicurso', startDate: new Date('2026-05-23T17:00:00.000Z') },
+      ],
+    });
+    const currentUserContext = {
+      requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'collector-person' }),
+    };
+    const authorizationPolicy = {
+      accessibleEventTargets: jest
+        .fn()
+        .mockResolvedValueOnce({ eventIds: new Set(['event-2']), majorEventIds: new Set(), eventGroupIds: new Set() })
+        .mockResolvedValueOnce({ eventIds: new Set(), majorEventIds: new Set(), eventGroupIds: new Set() })
+        .mockResolvedValueOnce({ eventIds: new Set(), majorEventIds: new Set(), eventGroupIds: new Set() }),
+    };
+    const resolver = new CurrentUserAttendanceCollectionResolver(
+      prisma as never,
+      currentUserContext as never,
+      {} as never,
+      undefined,
+      authorizationPolicy as never,
+    );
+
+    await expect(resolver.currentUserAttendanceCollectionEvents(context as never)).resolves.toEqual([
+      {
+        eventId: 'event-1',
+        event: { id: 'event-1', name: 'Aula aberta', startDate: new Date('2026-05-23T16:00:00.000Z') },
+      },
+      {
+        eventId: 'event-2',
+        event: { id: 'event-2', name: 'Minicurso', startDate: new Date('2026-05-23T17:00:00.000Z') },
+      },
+    ]);
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [{ id: { in: ['event-2'] } }],
+        }),
+      }),
+    );
     jest.useRealTimers();
   });
 
@@ -778,9 +847,10 @@ function createPrisma(input: {
   attendances: ReturnType<typeof scannerAttendance>[];
   eventSubscriptions: { personId: string; eventId: string }[];
   majorEventSubscriptions: { personId: string; subscriptionStatus: string }[];
-	  collectors: { eventId: string; event: unknown }[];
-	  people: { id: string; mergedIntoId?: string | null }[];
-	  collectorUsers: { id: string; name: string }[];
+  collectors: { eventId: string; event: unknown }[];
+  events?: Array<{ id: string; startDate?: Date } & Record<string, unknown>>;
+  people: { id: string; mergedIntoId?: string | null }[];
+  collectorUsers: { id: string; name: string }[];
   offlineSubmissions?: OfflineSubmissionRecord[];
 }) {
   const offlineSubmissions = new Map<string, OfflineSubmissionRecord>();
@@ -798,6 +868,7 @@ function createPrisma(input: {
     },
     event: {
       findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }),
+      findMany: jest.fn().mockResolvedValue(input.events ?? []),
     },
     offlineEventAttendanceSubmission: {
       findUnique: jest.fn(async (args: OfflineSubmissionFindUniqueArgs) =>
@@ -863,9 +934,9 @@ function createCollectionResolver(input: {
   people?: { id: string; mergedIntoId?: string | null }[];
   transactionResult?: unknown;
   transactionError?: unknown;
-	  attendanceCategories?: { refreshForAttendance: jest.Mock };
-	  frozenResources?: { assertEventMutable: jest.Mock };
-	  grantsAttendancePermission?: boolean;
+  attendanceCategories?: { refreshForAttendance: jest.Mock };
+  frozenResources?: { assertEventMutable: jest.Mock };
+  grantsAttendancePermission?: boolean;
   offlineSubmissions?: OfflineSubmissionRecord[];
 }) {
   const prisma = createPrisma({

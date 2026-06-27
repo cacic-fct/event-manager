@@ -8,7 +8,7 @@ export interface PublicationListItem {
 }
 
 export function flattenPublicationNodes(nodes: PublicContentNode[]): PublicContentNode[] {
-  return nodes.flatMap((node) => [node, ...flattenPublicationNodes(node.children)]);
+  return nodes.flatMap((node) => [node, ...flattenPublicationNodes(node.children ?? [])]);
 }
 
 export function flattenPublicationListItems(
@@ -20,7 +20,7 @@ export function flattenPublicationListItems(
     const key = `${lineage}/${node.targetType}:${node.id}:${index}`;
     return [
       { key, level, node },
-      ...flattenPublicationListItems(node.children, level + 1, key),
+      ...flattenPublicationListItems(node.children ?? [], level + 1, key),
     ];
   });
 }

@@ -25,6 +25,11 @@ import { DashboardInsightsService } from '../../dashboard/insights.service';
 
 const MAX_LOCATION_ACCURACY_METERS = 200;
 const MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE = 150;
+const ATTENDANCE_COLLECTION_PERMISSIONS = [
+  Permission.EventAttendance.Collect,
+  Permission.EventAttendance.Import,
+  Permission.EventAttendance.Update,
+] as const;
 
 @Resolver(() => CurrentUserAttendanceCollectionEvent)
 export class CurrentUserAttendanceCollectionResolver {
@@ -38,6 +43,11 @@ export class CurrentUserAttendanceCollectionResolver {
     private readonly authorizationPolicy: AuthorizationPolicyService = {
       assertAttendanceCollectorForEvent: async () => undefined,
       assertPermissions: async () => undefined,
+      accessibleEventTargets: async () => ({
+        eventIds: new Set(),
+        majorEventIds: new Set(),
+        eventGroupIds: new Set(),
+      }),
     } as unknown as AuthorizationPolicyService,
     private readonly auditLog: AuditLogService = {
       record: async () => undefined,
@@ -87,10 +97,13 @@ export class CurrentUserAttendanceCollectionResolver {
       },
     });
 
-    return collectors.map((collector) => ({
+    const collectorEvents = collectors.map((collector) => ({
       eventId: collector.eventId,
       event: collector.event,
     }));
+    const managerEvents = await this.findManagerCollectionEvents(context, visibleFrom, endOfToday);
+
+    return this.mergeCollectionEvents([...collectorEvents, ...managerEvents]);
   }
 
   @Query(() => [EventAttendanceScannerFeedItem], { name: 'currentUserAttendanceCollectionFeed' })
@@ -192,9 +205,87 @@ export class CurrentUserAttendanceCollectionResolver {
     const collectorPerson = await this.currentUserContext.requireCurrentPerson(context);
     await this.authorizationPolicy.assertAttendanceCollectorForEvent(eventId, collectorPerson.id, {
       enforceCollectionWindow,
+      user: this.getAuthenticatedUser(context),
     });
 
     return collectorPerson;
+  }
+
+  private async findManagerCollectionEvents(
+    context: GraphqlContext,
+    visibleFrom: Date,
+    endOfToday: Date,
+  ): Promise<CurrentUserAttendanceCollectionEvent[]> {
+    const user = this.getAuthenticatedUser(context);
+    const targets = await Promise.all(
+      ATTENDANCE_COLLECTION_PERMISSIONS.map((permission) =>
+        this.authorizationPolicy.accessibleEventTargets(user, permission),
+      ),
+    );
+
+    const hasGlobalAccess = targets.some((target) => target === null);
+    const eventIds = new Set<string>();
+    const majorEventIds = new Set<string>();
+    const eventGroupIds = new Set<string>();
+    for (const target of targets) {
+      if (!target) {
+        continue;
+      }
+      target.eventIds.forEach((id) => eventIds.add(id));
+      target.majorEventIds.forEach((id) => majorEventIds.add(id));
+      target.eventGroupIds.forEach((id) => eventGroupIds.add(id));
+    }
+
+    if (!hasGlobalAccess && eventIds.size === 0 && majorEventIds.size === 0 && eventGroupIds.size === 0) {
+      return [];
+    }
+
+    const scopeFilters: Prisma.EventWhereInput[] = [];
+    if (eventIds.size > 0) {
+      scopeFilters.push({ id: { in: [...eventIds] } });
+    }
+    if (majorEventIds.size > 0) {
+      scopeFilters.push({ majorEventId: { in: [...majorEventIds] } });
+    }
+    if (eventGroupIds.size > 0) {
+      scopeFilters.push({ eventGroupId: { in: [...eventGroupIds] } });
+    }
+
+    const events = await this.prisma.event.findMany({
+      where: {
+        deletedAt: null,
+        shouldCollectAttendance: true,
+        startDate: {
+          gte: visibleFrom,
+          lte: endOfToday,
+        },
+        ...(hasGlobalAccess ? {} : { OR: scopeFilters }),
+      },
+      select: PUBLIC_EVENT_SELECT,
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
+
+    return events.map((event) => ({
+      eventId: event.id,
+      event,
+    }));
+  }
+
+  private mergeCollectionEvents(
+    events: CurrentUserAttendanceCollectionEvent[],
+  ): CurrentUserAttendanceCollectionEvent[] {
+    const byEventId = new Map<string, CurrentUserAttendanceCollectionEvent>();
+    for (const event of events) {
+      byEventId.set(event.eventId, event);
+    }
+
+    return [...byEventId.values()].sort((left, right) => {
+      const leftTime = left.event.startDate?.getTime?.() ?? 0;
+      const rightTime = right.event.startDate?.getTime?.() ?? 0;
+      return leftTime - rightTime;
+    });
   }
 
   private getAuthenticatedUser(context: GraphqlContext): AuthenticatedUser | undefined {
@@ -427,6 +518,7 @@ export class CurrentUserAttendanceCollectionResolver {
       if (!canCommitWithPermission) {
         await this.authorizationPolicy.assertAttendanceCollectorForEvent(item.eventId, sender.id, {
           enforceCollectionWindow: true,
+          user: this.getAuthenticatedUser(context),
         });
       }
       const authenticatedUser = this.getAuthenticatedUser(context);
@@ -471,7 +563,7 @@ export class CurrentUserAttendanceCollectionResolver {
     } catch (error: unknown) {
       if (
         !canCommitWithPermission &&
-        await this.shouldStageOfflineAttendance(item.eventId, sender.id, error)
+        await this.shouldStageOfflineAttendance(item.eventId, sender.id, error, context)
       ) {
         let stagedSubmission: OfflineEventAttendanceSubmission;
         try {
@@ -518,10 +610,19 @@ export class CurrentUserAttendanceCollectionResolver {
     }
 
     try {
-      await this.authorizationPolicy.assertPermissions(user, [Permission.EventAttendance.Collect], {
-        eventId,
-      });
-      return true;
+      for (const permission of ATTENDANCE_COLLECTION_PERMISSIONS) {
+        try {
+          await this.authorizationPolicy.assertPermissions(user, [permission], {
+            eventId,
+          });
+          return true;
+        } catch (error: unknown) {
+          if (!(error instanceof ForbiddenException)) {
+            throw error;
+          }
+        }
+      }
+      return false;
     } catch (error: unknown) {
       if (error instanceof ForbiddenException) {
         return false;
@@ -535,6 +636,7 @@ export class CurrentUserAttendanceCollectionResolver {
     eventId: string,
     senderPersonId: string,
     error: unknown,
+    context: GraphqlContext,
   ): Promise<boolean> {
     if (!(error instanceof HttpException)) {
       return false;
@@ -564,6 +666,7 @@ export class CurrentUserAttendanceCollectionResolver {
     try {
       await this.authorizationPolicy.assertAttendanceCollectorForEvent(eventId, senderPersonId, {
         enforceCollectionWindow: false,
+        user: this.getAuthenticatedUser(context),
       });
       return true;
     } catch {

@@ -64,6 +64,30 @@
           </mat-list-item>
         }
       </mat-list>
+
+      <div class="list-pager" aria-label="Paginação de grandes eventos">
+        <span>Itens {{ workspace.majorEventsPagination.label() }}</span>
+        <div class="list-pager-actions">
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Página anterior de grandes eventos"
+            matTooltip="Anterior"
+            [disabled]="!workspace.majorEventsPagination.hasPreviousPage()"
+            (click)="workspace.previousMajorEventsPage()">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Próxima página de grandes eventos"
+            matTooltip="Próxima"
+            [disabled]="!workspace.majorEventsPagination.hasNextPage()"
+            (click)="workspace.nextMajorEventsPage()">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      </div>
     </aside>
 
     <section class="panel panel-stack">

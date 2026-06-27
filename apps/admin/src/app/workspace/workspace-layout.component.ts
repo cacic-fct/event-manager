@@ -9,6 +9,7 @@ import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
+import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import { NovuNotificationBadgeComponent } from '@cacic-fct/shared-notifications-angular';
 import { filter, map, startWith } from 'rxjs';
 
@@ -56,7 +57,7 @@ export class WorkspaceLayoutComponent {
 
   protected readonly user = this.authService.user;
 
-  protected readonly navItems = workspaceNavItems;
+  protected readonly navItems = computed(() => workspaceNavItems.filter((item) => this.canShowNavItem(item)));
 
   private platformId = inject(PLATFORM_ID);
   private isDarkSignal = signal(false);
@@ -156,6 +157,18 @@ export class WorkspaceLayoutComponent {
 
   protected async logout(): Promise<void> {
     await this.authService.logout();
+  }
+
+  private canShowNavItem(item: (typeof workspaceNavItems)[number]): boolean {
+    if (item.kind === 'divider') {
+      return true;
+    }
+
+    if ('visibleFor' in item && item.visibleFor === 'super-admin') {
+      return this.authService.roles().includes(EventManagerKeycloakRole.SuperAdmin);
+    }
+
+    return true;
   }
 }
 

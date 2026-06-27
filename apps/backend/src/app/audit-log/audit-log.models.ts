@@ -6,6 +6,12 @@ import {
   AuditLogRevertMode,
 } from '@prisma/client';
 
+export enum AuditLogExplorerRevertedStatus {
+  ALL = 'ALL',
+  REVERTED = 'REVERTED',
+  NOT_REVERTED = 'NOT_REVERTED',
+}
+
 registerEnumType(AuditLogEntityType, {
   name: 'AuditLogEntityType',
 });
@@ -20,6 +26,10 @@ registerEnumType(AuditLogActorType, {
 
 registerEnumType(AuditLogRevertMode, {
   name: 'AuditLogRevertMode',
+});
+
+registerEnumType(AuditLogExplorerRevertedStatus, {
+  name: 'AuditLogExplorerRevertedStatus',
 });
 
 @ObjectType()
@@ -121,6 +131,36 @@ export class AuditLogEntry {
   canRevert!: boolean;
 }
 
+@ObjectType()
+export class AuditLogExplorerEntry extends AuditLogEntry {
+  @Field(() => String, { nullable: true })
+  beforeJson?: string | null;
+
+  @Field(() => String, { nullable: true })
+  afterJson?: string | null;
+
+  @Field(() => String, { nullable: true })
+  metadataJson?: string | null;
+}
+
+@ObjectType()
+export class AuditLogExplorerResult {
+  @Field(() => [AuditLogExplorerEntry])
+  entries!: AuditLogExplorerEntry[];
+
+  @Field(() => Int)
+  total!: number;
+
+  @Field(() => Int)
+  skip!: number;
+
+  @Field(() => Int)
+  take!: number;
+
+  @Field(() => Boolean)
+  typesenseAvailable!: boolean;
+}
+
 @InputType()
 export class AuditLogEntityHistoryInput {
   @Field(() => AuditLogEntityType)
@@ -137,4 +177,37 @@ export class AuditLogRevertInput {
 
   @Field(() => AuditLogRevertMode)
   mode!: AuditLogRevertMode;
+}
+
+@InputType()
+export class AuditLogExplorerInput {
+  @Field(() => String, { nullable: true })
+  query?: string | null;
+
+  @Field(() => String, { nullable: true })
+  actor?: string | null;
+
+  @Field(() => String, { nullable: true })
+  entity?: string | null;
+
+  @Field(() => AuditLogEntityType, { nullable: true })
+  entityType?: AuditLogEntityType | null;
+
+  @Field(() => AuditLogOperation, { nullable: true })
+  operation?: AuditLogOperation | null;
+
+  @Field(() => Date, { nullable: true })
+  dateFrom?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  dateTo?: Date | null;
+
+  @Field(() => AuditLogExplorerRevertedStatus, { nullable: true })
+  revertedStatus?: AuditLogExplorerRevertedStatus | null;
+
+  @Field(() => Int, { nullable: true })
+  skip?: number | null;
+
+  @Field(() => Int, { nullable: true })
+  take?: number | null;
 }

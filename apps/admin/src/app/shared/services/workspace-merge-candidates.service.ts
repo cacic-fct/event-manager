@@ -7,6 +7,7 @@ import { MergeCandidateApiService } from '../../graphql/merge-candidate-api.serv
 import { MergeCandidate, MergeCandidateStatus } from '../../graphql/models';
 import { MergeCandidateDialogComponent } from '../../workspace/dialogs/merge-candidate-dialog.component';
 import { getErrorMessage } from '../error-message';
+import { applyPagedResult, createWorkspaceListPagination, pageVariables, resetPagination } from '../list-pagination';
 import { WorkspacePeopleService } from './workspace-people.service';
 
 @Injectable({
@@ -20,13 +21,38 @@ export class WorkspaceMergeCandidatesService {
   private readonly peopleService = inject(WorkspacePeopleService);
 
   readonly mergeCandidates = signal<MergeCandidate[]>([]);
+  readonly mergeCandidatesPagination = createWorkspaceListPagination();
   readonly mergeFilterForm = this.formBuilder.nonNullable.group({
     status: ['PENDING'],
   });
 
   async refreshMergeCandidates(): Promise<void> {
     const status = this.mergeFilterForm.controls.status.value as MergeCandidateStatus;
-    this.mergeCandidates.set(await firstValueFrom(this.api.listMergeCandidates({ status, take: 100 })));
+    const items = await firstValueFrom(
+      this.api.listMergeCandidates({
+        status,
+        ...pageVariables(this.mergeCandidatesPagination.pageIndex()),
+      }),
+    );
+    this.mergeCandidates.set(applyPagedResult(items, this.mergeCandidatesPagination));
+  }
+
+  async applyMergeCandidateFilters(): Promise<void> {
+    resetPagination(this.mergeCandidatesPagination);
+    await this.refreshMergeCandidates();
+  }
+
+  async previousMergeCandidatesPage(): Promise<void> {
+    this.mergeCandidatesPagination.pageIndex.update((page) => Math.max(0, page - 1));
+    await this.refreshMergeCandidates();
+  }
+
+  async nextMergeCandidatesPage(): Promise<void> {
+    if (!this.mergeCandidatesPagination.hasNextPage()) {
+      return;
+    }
+    this.mergeCandidatesPagination.pageIndex.update((page) => page + 1);
+    await this.refreshMergeCandidates();
   }
 
   async scanMergeCandidates(showNotification = true): Promise<void> {

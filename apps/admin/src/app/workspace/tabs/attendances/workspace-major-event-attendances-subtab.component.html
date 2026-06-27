@@ -22,7 +22,7 @@
         </mat-select>
       </mat-form-field>
 
-      <button mat-flat-button type="button" (click)="workspace.loadMajorEventUserAttendances()">
+      <button mat-flat-button type="button" (click)="workspace.loadMajorEventUserAttendancesFromFirstPage()">
         <mat-icon>groups</mat-icon>
         Carregar inscrições
       </button>
@@ -87,6 +87,30 @@
         </mat-list-item>
       }
     </mat-list>
+
+    <div class="list-pager" aria-label="Paginação de presenças do grande evento">
+      <span>Itens {{ workspace.majorEventUserAttendancesPagination.label() }}</span>
+      <div class="list-pager-actions">
+        <button
+          mat-icon-button
+          type="button"
+          aria-label="Página anterior de presenças"
+          matTooltip="Anterior"
+          [disabled]="!workspace.majorEventUserAttendancesPagination.hasPreviousPage()"
+          (click)="workspace.previousMajorEventUserAttendancesPage()">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          aria-label="Próxima página de presenças"
+          matTooltip="Próxima"
+          [disabled]="!workspace.majorEventUserAttendancesPagination.hasNextPage()"
+          (click)="workspace.nextMajorEventUserAttendancesPage()">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
   </aside>
 
   <section class="panel attendance-detail">

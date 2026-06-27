@@ -79,6 +79,30 @@
           </mat-list-item>
         }
       </mat-list>
+
+      <div class="list-pager" aria-label="Paginação de grupos de eventos">
+        <span>Itens {{ workspace.eventGroupsPagination.label() }}</span>
+        <div class="list-pager-actions">
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Página anterior de grupos"
+            matTooltip="Anterior"
+            [disabled]="!workspace.eventGroupsPagination.hasPreviousPage()"
+            (click)="workspace.previousEventGroupsPage()">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Próxima página de grupos"
+            matTooltip="Próxima"
+            [disabled]="!workspace.eventGroupsPagination.hasNextPage()"
+            (click)="workspace.nextEventGroupsPage()">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      </div>
     </aside>
 
     <section class="panel panel-stack">

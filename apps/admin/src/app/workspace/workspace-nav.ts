@@ -9,6 +9,8 @@ type WorkspaceNavLink = {
   icon: string;
   group: string;
   helpLink: string | undefined;
+  visibleFor?: 'super-admin';
+  requiredRoleLabel?: string;
 };
 
 type WorkspaceNavDivider = {
@@ -164,6 +166,18 @@ export const workspaceNavItems = [
     icon: 'admin_panel_settings',
     group: 'Administração',
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Permissões%20e%20recursos%20congelados',
+  },
+  {
+    kind: 'link',
+    id: 'audit-logs',
+    path: 'audit-logs',
+    label: 'Auditoria',
+    description: 'Explore logs de auditoria de todo o sistema.',
+    icon: 'manage_search',
+    group: 'Administração',
+    helpLink: undefined,
+    visibleFor: 'super-admin',
+    requiredRoleLabel: 'super-admin',
   },
   {
     kind: 'link',

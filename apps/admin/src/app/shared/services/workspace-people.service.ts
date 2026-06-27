@@ -33,6 +33,12 @@ import {
 } from '../../graphql/models';
 import { getErrorMessage } from '../error-message';
 import { bindLiveSearch } from '../live-search';
+import {
+  WORKSPACE_LIST_PAGE_SIZE,
+  applyPagedResult,
+  createWorkspaceListPagination,
+  resetPagination,
+} from '../list-pagination';
 
 type PermissionGrantOption = {
   permission: Permission;
@@ -93,6 +99,7 @@ export class WorkspacePeopleService {
   private initializingPermissionGrantForm = false;
 
   readonly people = signal<Person[]>([]);
+  readonly peoplePagination = createWorkspaceListPagination();
   readonly selectedPerson = signal<Person | null>(null);
   readonly isCreatingPerson = signal(false);
   readonly peopleSearchQuery = signal('');
@@ -327,13 +334,32 @@ export class WorkspacePeopleService {
       this.peopleSearchForm.controls.query.setValue(query, { emitEvent: false });
     }
     this.peopleSearchQuery.set(normalizedQuery);
+    resetPagination(this.peoplePagination);
+    await this.loadPeoplePage(normalizedQuery);
+  }
+
+  async previousPeoplePage(): Promise<void> {
+    this.peoplePagination.pageIndex.update((page) => Math.max(0, page - 1));
+    await this.loadPeoplePage(this.peopleSearchQuery());
+  }
+
+  async nextPeoplePage(): Promise<void> {
+    if (!this.peoplePagination.hasNextPage()) {
+      return;
+    }
+    this.peoplePagination.pageIndex.update((page) => page + 1);
+    await this.loadPeoplePage(this.peopleSearchQuery());
+  }
+
+  private async loadPeoplePage(normalizedQuery: string): Promise<void> {
     const people = await firstValueFrom(
       this.api.listPeopleSummaries({
         query: normalizedQuery || undefined,
-        take: 50,
+        skip: this.peoplePagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
+        take: WORKSPACE_LIST_PAGE_SIZE + 1,
       }),
     );
-    this.people.set(people);
+    this.people.set(applyPagedResult(people, this.peoplePagination));
 
     const selectedPerson = this.selectedPerson();
     if (!selectedPerson) {

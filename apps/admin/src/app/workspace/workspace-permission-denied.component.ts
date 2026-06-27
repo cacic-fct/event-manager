@@ -17,7 +17,11 @@ import { WorkspaceNavLinkItem } from './workspace-nav';
       <h2>Seção indisponível</h2>
 
       <p>
-        Faltam permissões de leitura para abrir
+        @if (requiredRoleLabel(); as roleLabel) {
+          É necessário acessar como <strong>{{ roleLabel }}</strong> para abrir
+        } @else {
+          Faltam permissões de leitura para abrir
+        }
         <strong>{{ navItem().label }}</strong
         >.
       </p>
@@ -94,5 +98,10 @@ export class WorkspacePermissionDeniedComponent {
 
   protected readonly missingPermissions = computed(() => {
     return this.permissions.missingReadForTab(this.navItem().id);
+  });
+
+  protected readonly requiredRoleLabel = computed(() => {
+    const navItem = this.navItem();
+    return 'requiredRoleLabel' in navItem ? navItem.requiredRoleLabel : undefined;
   });
 }

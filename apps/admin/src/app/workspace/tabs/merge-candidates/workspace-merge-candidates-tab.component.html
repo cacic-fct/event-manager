@@ -16,7 +16,7 @@
             <mat-option value="STALE">Obsoleta</mat-option>
           </mat-select>
         </mat-form-field>
-        <button mat-stroked-button type="button" (click)="workspace.refreshMergeCandidates()">
+        <button mat-stroked-button type="button" (click)="workspace.applyMergeCandidateFilters()">
           <mat-icon>refresh</mat-icon>
           Atualizar
         </button>
@@ -95,5 +95,29 @@
         </mat-list-item>
       }
     </mat-list>
+
+    <div class="list-pager" aria-label="Paginação de candidatos de unificação">
+      <span>Itens {{ workspace.mergeCandidatesPagination.label() }}</span>
+      <div class="list-pager-actions">
+        <button
+          mat-icon-button
+          type="button"
+          aria-label="Página anterior de candidatos"
+          matTooltip="Anterior"
+          [disabled]="!workspace.mergeCandidatesPagination.hasPreviousPage()"
+          (click)="workspace.previousMergeCandidatesPage()">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          aria-label="Próxima página de candidatos"
+          matTooltip="Próxima"
+          [disabled]="!workspace.mergeCandidatesPagination.hasNextPage()"
+          (click)="workspace.nextMergeCandidatesPage()">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
   </section>
 </section>

@@ -1,11 +1,13 @@
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TypesenseSearchService } from '../search/typesense-search.service';
 import { S3Service } from '../s3/s3.service';
 import { LgpdService } from './lgpd.service';
 
 describe('LgpdService', () => {
   let prisma: ReturnType<typeof createPrismaMock>;
   let s3: ReturnType<typeof createS3Mock>;
+  let typesenseSearch: ReturnType<typeof createTypesenseSearchMock>;
   let tx: ReturnType<typeof createTransactionMock>;
   let service: LgpdService;
 
@@ -13,8 +15,13 @@ describe('LgpdService', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
     prisma = createPrismaMock();
     s3 = createS3Mock();
+    typesenseSearch = createTypesenseSearchMock();
     tx = createTransactionMock();
-    service = new LgpdService(prisma as unknown as PrismaService, s3 as unknown as S3Service);
+    service = new LgpdService(
+      prisma as unknown as PrismaService,
+      s3 as unknown as S3Service,
+      typesenseSearch as unknown as TypesenseSearchService,
+    );
 
     prisma.user.findMany.mockImplementation(async (args: UserFindManyArgs) => findUsers(args));
     prisma.accountUserMerge.findMany.mockResolvedValue([{ oldUserId: 'old-user', newUserId: 'new-user' }]);
@@ -101,6 +108,16 @@ describe('LgpdService', () => {
         after: { name: 'Event 3' },
         changes: [],
         metadata: null,
+      },
+    ]);
+    prisma.auditLogEntry.findMany.mockResolvedValue([
+      {
+        id: 'audit-1',
+        entityLabel: 'Dados anonimizados',
+      },
+      {
+        id: 'audit-attendance',
+        entityId: 'anonymized%3Aerase-1:event-1',
       },
     ]);
     tx.offlineEventAttendanceSubmission.findMany.mockResolvedValue([
@@ -223,6 +240,31 @@ describe('LgpdService', () => {
         ]),
       }),
     });
+    expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith({
+      where: {
+        id: {
+          in: expect.arrayContaining([
+            'audit-1',
+            'audit-attendance',
+            'audit-actor-only',
+            'audit-updater-snapshot',
+            'audit-actor-name-only',
+          ]),
+        },
+      },
+    });
+    expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'audit-1',
+        entityLabel: 'Dados anonimizados',
+      }),
+    );
+    expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'audit-attendance',
+        entityId: 'anonymized%3Aerase-1:event-1',
+      }),
+    );
     expect(tx.auditLogEntry.update).toHaveBeenCalledWith({
       where: { id: 'audit-actor-only' },
       data: expect.objectContaining({
@@ -545,6 +587,22 @@ describe('LgpdService', () => {
     });
   });
 
+  it('does not fail anonymization when Typesense rejects an audit-log reindex', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    prisma.auditLogEntry.findMany.mockResolvedValue([{ id: 'audit-1', entityLabel: 'Dados anonimizados' }]);
+    typesenseSearch.upsertAuditLogEntry.mockRejectedValueOnce(new Error('typesense down'));
+
+    await expect(
+      (
+        service as unknown as {
+          synchronizeAnonymizedAuditEntries(ids: readonly string[]): Promise<void>;
+        }
+      ).synchronizeAnonymizedAuditEntries(['audit-1']),
+    ).resolves.toBeUndefined();
+
+    expect(warn).toHaveBeenCalledWith('Falha ao reindexar audit log anonimizado audit-1: typesense down');
+  });
+
   it('anonymizes unresolved offline manual submissions matched by phone or identity document', async () => {
     tx.offlineEventAttendanceSubmission.findMany.mockResolvedValueOnce([
       {
@@ -836,5 +894,11 @@ function createTransactionMock() {
 function createS3Mock() {
   return {
     deleteFile: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
+function createTypesenseSearchMock() {
+  return {
+    upsertAuditLogEntry: jest.fn().mockResolvedValue(undefined),
   };
 }

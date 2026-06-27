@@ -35,6 +35,30 @@
         </mat-list-item>
       }
     </mat-list>
+
+    <div class="list-pager" aria-label="Paginação de eventos">
+      <span>Itens {{ workspace.attendanceEventResultsPagination.label() }}</span>
+      <div class="list-pager-actions">
+        <button
+          mat-icon-button
+          type="button"
+          aria-label="Página anterior de eventos"
+          matTooltip="Anterior"
+          [disabled]="!workspace.attendanceEventResultsPagination.hasPreviousPage()"
+          (click)="workspace.previousAttendanceEventResultsPage()">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          aria-label="Próxima página de eventos"
+          matTooltip="Próxima"
+          [disabled]="!workspace.attendanceEventResultsPagination.hasNextPage()"
+          (click)="workspace.nextAttendanceEventResultsPage()">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
   </aside>
 
   <section class="panel attendance-workbench">
@@ -289,6 +313,30 @@
             </mat-list-item>
           }
         </mat-list>
+
+        <div class="list-pager" aria-label="Paginação de presenças do evento">
+          <span>Itens {{ workspace.attendancesPagination.label() }}</span>
+          <div class="list-pager-actions">
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Página anterior de presenças"
+              matTooltip="Anterior"
+              [disabled]="!workspace.attendancesPagination.hasPreviousPage()"
+              (click)="workspace.previousAttendancesPage()">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Próxima página de presenças"
+              matTooltip="Próxima"
+              [disabled]="!workspace.attendancesPagination.hasNextPage()"
+              (click)="workspace.nextAttendancesPage()">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+        </div>
       </section>
     </div>
   </section>

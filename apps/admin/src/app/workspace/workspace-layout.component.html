@@ -28,7 +28,7 @@
     <div class="sidenav-shell">
       <nav class="nav-list" aria-label="Navegação interna">
         <span class="nav-group-label">Estrutura do evento</span>
-        @for (item of navItems; track item.id) {
+        @for (item of navItems(); track item.id) {
           @if (item.kind === 'divider') {
             <mat-divider></mat-divider>
             <span class="nav-group-label">{{ item.label }}</span>
