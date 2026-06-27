@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "major_event_subscription_event_selections_subscriptionId_eventI" RENAME TO "major_event_subscription_event_selections_subscriptionId_ev_idx";
