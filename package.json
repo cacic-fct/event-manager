@@ -4,9 +4,9 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "build:packages": "bunx nx run-many --target=build --projects=event-manager-m2m-contracts,event-manager-public-contracts",
-    "e2e:backend:keycloak": "node tools/run-backend-keycloak-e2e.mjs",
-    "publish:event-manager-m2m-contracts": "bunx nx build event-manager-m2m-contracts && cd dist/libs/event-manager-m2m-contracts && bun publish --access public",
-    "publish:event-manager-public-contracts": "bunx nx build event-manager-public-contracts && cd dist/libs/event-manager-public-contracts && bun publish --access public",
+    "e2e:backend:keycloak": "bunx nx run backend-e2e:e2e-keycloak",
+    "publish:event-manager-m2m-contracts": "bunx nx run event-manager-m2m-contracts:publish",
+    "publish:event-manager-public-contracts": "bunx nx run event-manager-public-contracts:publish",
     "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts"
   },
   "private": true,

@@ -4,7 +4,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { PlacePresetApiService } from '../../graphql/place-preset-api.service';
-import { PlacePresetInput } from '../../graphql/models';
+import { PlacePresetInput } from '@cacic-fct/event-manager-admin-contracts';
 import { createAdminPlacePreset } from '../../testing/admin-entity-fixtures';
 import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
 

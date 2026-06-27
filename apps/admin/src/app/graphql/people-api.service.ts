@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { LecturerProfile, LecturerProfileInput, Person, PersonInput } from './models';
+import { LecturerProfile, LecturerProfileInput, Person, PersonInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PERSON_DETAIL_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
 
 type PeopleFilters = {

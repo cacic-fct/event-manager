@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { Event, EventDraft } from '../../graphql/models';
+import { Event, EventDraft } from '@cacic-fct/event-manager-admin-contracts';
 
 export type EventDraftSelectorResult =
   | { kind: 'original' }

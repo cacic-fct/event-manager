@@ -8,7 +8,7 @@ import {
   EventManagerPermissionGrantScope,
   EventManagerPermissionGrantTarget,
   EventManagerPermissionGrantUpdateInput,
-} from './models';
+} from '@cacic-fct/event-manager-admin-contracts';
 
 @Injectable({ providedIn: 'root' })
 export class PermissionGrantsApiService {

@@ -4,7 +4,7 @@
   "sourceRoot": "libs/shared-angular/src",
   "prefix": "lib",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:shared", "type:ui"],
   "targets": {
     "lint": {
       "inputs": [

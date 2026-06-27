@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import type { PlacePreset } from '../../graphql/models';
+import type { PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import { PlacePresetMergeDialogComponent } from './place-preset-merge-dialog.component';
 
 faker.seed(20260616);

@@ -18,7 +18,7 @@ import {
   AuditLogExplorerResult,
   AuditLogExplorerRevertedStatus,
   AuditLogOperation,
-} from '../../../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import { getErrorMessage } from '../../../shared/error-message';
 import {
   AUDIT_LOG_ENTITY_TYPE_OPTIONS,

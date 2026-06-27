@@ -1,4 +1,4 @@
-import { Person } from '../graphql/models';
+import { Person } from '@cacic-fct/event-manager-admin-contracts';
 
 export type SubscriberCsvField = 'fullName' | 'email' | 'identityDocument' | 'enrollmentNumber' | 'unespRole' | 'phone';
 

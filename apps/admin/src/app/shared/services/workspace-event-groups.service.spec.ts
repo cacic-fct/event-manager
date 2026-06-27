@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
-import { EventGroupInput } from '../../graphql/models';
+import { EventGroupInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
 import {
   createAdminEvent,

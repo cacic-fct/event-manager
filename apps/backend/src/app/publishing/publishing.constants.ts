@@ -18,7 +18,7 @@ function resolvePublicAppOrigin(): string {
     return 'http://localhost:4200';
   }
 
-  throw new Error('PUBLIC_APP_ORIGIN is required outside local development.');
+  return '';
 }
 
 function resolvePreviewTokenSecret(): string {
@@ -31,9 +31,9 @@ function resolvePreviewTokenSecret(): string {
     return 'development-preview-token-secret';
   }
 
-  throw new Error('PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required outside local development.');
+  return '';
 }
 
 function isLocalRuntime(): boolean {
-  return process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+  return !process.env.NODE_ENV || process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 }

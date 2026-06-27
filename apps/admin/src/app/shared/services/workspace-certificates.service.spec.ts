@@ -7,7 +7,7 @@ import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { CertificateConfigInput } from '../../graphql/models';
+import { CertificateConfigInput } from '@cacic-fct/event-manager-admin-contracts';
 import {
   createAdminCertificateConfig,
   createAdminCertificateConfigFromInput,

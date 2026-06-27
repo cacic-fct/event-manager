@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { AuditLogApiService } from '../../graphql/audit-log-api.service';
-import { AuditLogEntry, AuditLogEntityType, AuditLogOperation, AuditLogRevertMode } from '../../graphql/models';
+import { AuditLogEntry, AuditLogEntityType, AuditLogOperation, AuditLogRevertMode } from '@cacic-fct/event-manager-admin-contracts';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../shared/components/confirmation-dialog.component';
 import { auditLogOperationIcon, auditLogOperationLabel } from '../tabs/audit-logs/workspace-audit-log-utils';
 

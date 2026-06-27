@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { DashboardInconsistency } from '@cacic-fct/shared-frontend-types';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { PublicationState, PublicationTargetType } from './models';
+import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 
 export type PublicationBulkOperation = 'PUBLISH_MISSING_CHILDREN' | 'SCHEDULE_BUNDLE' | 'UNPUBLISH_BUNDLE';
 

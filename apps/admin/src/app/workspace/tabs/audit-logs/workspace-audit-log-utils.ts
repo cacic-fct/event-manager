@@ -3,7 +3,7 @@ import {
   AuditLogEntityType,
   AuditLogExplorerRevertedStatus,
   AuditLogOperation,
-} from '../../../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 
 type SelectOption<T extends string> = {
   value: T;

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, Injector, computed, inject, input }
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import { Event, EventDraft } from '../../graphql/models';
+import { Event, EventDraft } from '@cacic-fct/event-manager-admin-contracts';
 import {
   EventDraftSelectorDialogComponent,
   EventDraftSelectorDialogData,

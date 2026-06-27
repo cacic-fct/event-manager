@@ -9,7 +9,7 @@ import {
 import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
 import { applicationConfig, type Decorator } from '@storybook/angular';
-import type { Event, EventDraft, EventGroup, EventSummary, MajorEvent, Person, PlacePreset } from '../../graphql/models';
+import type { Event, EventDraft, EventGroup, EventSummary, MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import { createWorkspaceListPagination } from '../../shared/list-pagination';
 import { WorkspaceAuditLogService } from '../../shared/services/workspace-audit-log.service';
 import { WorkspaceEventGroupsService } from '../../shared/services/workspace-event-groups.service';

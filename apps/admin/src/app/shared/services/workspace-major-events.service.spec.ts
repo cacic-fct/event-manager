@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
-import { MajorEventInput } from '../../graphql/models';
+import { MajorEventInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { createAdminEvent, createAdminMajorEventFromInput } from '../../testing/admin-entity-fixtures';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';

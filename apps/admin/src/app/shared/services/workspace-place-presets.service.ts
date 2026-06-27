@@ -5,7 +5,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { PlacePresetApiService } from '../../graphql/place-preset-api.service';
-import { PlacePreset, PlacePresetInput } from '../../graphql/models';
+import { PlacePreset, PlacePresetInput } from '@cacic-fct/event-manager-admin-contracts';
 import {
   PlacePresetMergeDialogComponent,
   PlacePresetMergeDialogResult,

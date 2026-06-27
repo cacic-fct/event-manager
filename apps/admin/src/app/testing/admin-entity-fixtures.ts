@@ -17,7 +17,7 @@ import type {
   WorkspaceEventSubscription,
   WorkspaceMajorEventSubscription,
   WorkspaceMajorEventSubscriptionEvent,
-} from '../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import type { AuthenticatedUser } from '@cacic-fct/shared-angular';
 import type {
   DashboardCalendarEvent,

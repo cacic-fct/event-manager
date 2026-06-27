@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MergeCandidate, Person, PersonMergeField } from '../../graphql/models';
+import { MergeCandidate, Person, PersonMergeField } from '@cacic-fct/event-manager-admin-contracts';
 
 export type MergeCandidateDialogResult = {
   targetPersonId: string;

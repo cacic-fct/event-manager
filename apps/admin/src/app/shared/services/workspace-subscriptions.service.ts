@@ -17,7 +17,7 @@ import {
   WorkspaceEventSubscription,
   WorkspaceMajorEventSubscription,
   WorkspaceMajorEventSubscriptionEvent,
-} from '../../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { SubscriptionApiService } from '../../graphql/subscription-api.service';
 import { SubscriptionCsvColumnDialogComponent } from '../../workspace/dialogs/subscription-csv-column-dialog.component';

@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
-import type { AttendanceCreationMethod } from '../../graphql/models';
+import type { AttendanceCreationMethod } from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspaceOfflineAttendanceSubmissionDialogComponent } from './workspace-offline-attendance-submission-dialog.component';
 
 type OfflineSubmissionStoryArgs = {

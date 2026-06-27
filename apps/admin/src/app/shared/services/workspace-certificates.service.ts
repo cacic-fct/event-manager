@@ -21,7 +21,7 @@ import {
   EventGroup,
   MajorEvent,
   Person,
-} from '../../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { bindLiveSearch } from '../live-search';

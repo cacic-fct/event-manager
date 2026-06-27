@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { MergeCandidateStatus, MergeMatchMethod } from '../../../graphql/models';
+import { MergeCandidateStatus, MergeMatchMethod } from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspaceMergeCandidatesService } from '../../../shared/services/workspace-merge-candidates.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 

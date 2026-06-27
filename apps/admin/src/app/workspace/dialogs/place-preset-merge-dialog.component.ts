@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatTabsModule } from '@angular/material/tabs';
-import { PlacePreset, PlacePresetInput } from '../../graphql/models';
+import { PlacePreset, PlacePresetInput } from '@cacic-fct/event-manager-admin-contracts';
 
 export type PlacePresetMergeDialogResult = {
   targetId: string;

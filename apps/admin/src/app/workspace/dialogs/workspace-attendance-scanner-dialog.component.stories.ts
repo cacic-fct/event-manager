@@ -7,7 +7,7 @@ import { expect, userEvent, within } from 'storybook/test';
 import { of } from 'rxjs';
 import { ScannerFeedbackService } from '@cacic-fct/shared-angular';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
-import type { AttendanceCategory, EventAttendance, EventAttendanceScannerFeedItem } from '../../graphql/models';
+import type { AttendanceCategory, EventAttendance, EventAttendanceScannerFeedItem } from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspaceAttendanceScannerDialogComponent } from './workspace-attendance-scanner-dialog.component';
 
 faker.seed(20260616);

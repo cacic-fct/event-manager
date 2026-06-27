@@ -5,11 +5,12 @@ describe('validateBackendEnvironment', () => {
     expect(() =>
       validateBackendEnvironment({
         NODE_ENV: 'production',
-        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
       }),
     ).toThrow(
       [
+        'DATABASE_URL is required.',
         'PUBLIC_APP_ORIGIN is required.',
+        'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required.',
         'KEYCLOAK_REALM_URL is required.',
         'KEYCLOAK_CLIENT_ID is required.',
         'KEYCLOAK_CLIENT_SECRET is required.',
@@ -23,6 +24,20 @@ describe('validateBackendEnvironment', () => {
         'ACCOUNT_MANAGER_M2M_AUDIENCE is required.',
         'CALENDAR_FEED_KEY_PEPPER is required.',
         'TURNSTILE_SECRET_KEY is required.',
+      ].join('\n- '),
+    );
+  });
+
+  it('requires publishing settings together outside local development', () => {
+    expect(() =>
+      validateBackendEnvironment({
+        NODE_ENV: 'staging',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+      }),
+    ).toThrow(
+      [
+        'PUBLIC_APP_ORIGIN is required.',
+        'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required.',
       ].join('\n- '),
     );
   });

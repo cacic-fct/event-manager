@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
-import { EventAttendanceCsvImportResult } from '../../graphql/models';
+import { EventAttendanceCsvImportResult } from '@cacic-fct/event-manager-admin-contracts';
 
 const MATCH_TYPE_LABELS: Record<string, string> = {
   IDENTITY_DOCUMENT: 'documento de identidade',

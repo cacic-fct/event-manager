@@ -14,7 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
-import { Certificate, CertificateConfig } from '../../../graphql/models';
+import { Certificate, CertificateConfig } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenEvent, isFrozenEventGroup, isFrozenMajorEvent } from '../../../shared/frozen-resource';
 import { WorkspaceCertificatesService } from '../../../shared/services/workspace-certificates.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';

@@ -12,6 +12,14 @@
         "cwd": "libs/event-manager-public-contracts",
         "command": "bun run tsc -p tsconfig.lib.json && cp package.json README.md ../../dist/libs/event-manager-public-contracts/"
       }
+    },
+    "publish": {
+      "dependsOn": ["build"],
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/libs/event-manager-public-contracts",
+        "command": "bun publish --access public"
+      }
     }
   }
 }

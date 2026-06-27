@@ -8,7 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
-import { Event, MajorEvent, MajorEventInput, PriceType } from '../../graphql/models';
+import { Event, MajorEvent, MajorEventInput, PriceType } from '@cacic-fct/event-manager-admin-contracts';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { applyPagedResult, createWorkspaceListPagination, pageVariables } from '../list-pagination';

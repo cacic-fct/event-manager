@@ -8,7 +8,7 @@ import {
   AuditLogExplorerRevertedStatus,
   AuditLogOperation,
   AuditLogRevertMode,
-} from './models';
+} from '@cacic-fct/event-manager-admin-contracts';
 
 export interface AuditLogEntityHistoryInput {
   entityType: AuditLogEntityType;

@@ -11,7 +11,7 @@ import {
   MajorEventUserAttendance,
   OfflineEventAttendanceSubmission,
   SubscriptionStatus,
-} from './models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import { PERSON_EXPORT_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })

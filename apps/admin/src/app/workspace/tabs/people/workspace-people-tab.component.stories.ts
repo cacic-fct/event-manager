@@ -3,7 +3,7 @@ import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import type { EventManagerPermissionGrant, EventManagerPermissionGrantTarget, Person } from '../../../graphql/models';
+import type { EventManagerPermissionGrant, EventManagerPermissionGrantTarget, Person } from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspacePeopleTabComponent } from './workspace-people-tab.component';
 
 faker.seed(20260621);

@@ -1,12 +1,32 @@
-import { Permission } from '@cacic-fct/shared-permissions';
-import ical, { ICalCalendarMethod, ICalEventClass, ICalEventStatus } from 'ical-generator';
-import type { ICalLocation } from 'ical-generator';
+import { ICalEventClass } from 'ical-generator';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { EventManagerPermissionGrantScope, Prisma, SubscriptionStatus } from '@prisma/client';
-import { createHmac, randomBytes } from 'node:crypto';
 import { subHours, subYears } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
+import {
+  ADMIN_FEED_ACCESS_CHECK_MAX_AGE_HOURS,
+  ADMIN_FEED_ITEM_TAKE,
+  PRIVATE_FEED_LAST_FETCH_WRITE_INTERVAL_HOURS,
+} from './calendar-feed.constants';
+import {
+  assertFeedKeyRotationAllowed,
+  deriveFeedKey,
+  generateFeedKeyNonce,
+  hashFeedKey,
+  readCalendarFeedKeyPepper,
+} from './calendar-feed-keys';
+import {
+  mapAdminSettings,
+  mapSettings,
+  mapSuperAdminSettings,
+} from './calendar-feed-settings.mapper';
+import {
+  buildCalendar,
+  buildPublicEventUrl,
+  mapEventToCalendarEntry,
+  mapPublicEventGroupToCalendarEntry,
+  slugifyFileName,
+} from './calendar-ical.builder';
 import {
   ADMIN_CALENDAR_FEED_DISABLED_NO_CURRENT_TARGETS,
   ADMIN_CALENDAR_FEED_DISABLED_STALE_ACCESS,
@@ -18,195 +38,24 @@ import {
   SUPER_ADMIN_CALENDAR_FEED_ID,
   SuperAdminCalendarFeedSettings,
 } from './calendar.models';
-
-const CALENDAR_FEED_KEY_NONCE_BYTES = 32;
-const CALENDAR_FEED_KEY_ROTATION_COOLDOWN_HOURS = 24;
-const PRIVATE_FEED_LAST_FETCH_WRITE_INTERVAL_HOURS = 6;
-const PRIVATE_FEED_EVENT_TAKE = 600;
-const ADMIN_FEED_ITEM_TAKE = 600;
-const ADMIN_EVENT_GROUP_RANGE_EVENT_TAKE = 1000;
-const PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE = 1000;
-const PUBLIC_EVENT_GROUP_RANGE_EVENT_QUERY_TAKE = PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE + 1;
-const ADMIN_FEED_ACCESS_CHECK_MAX_AGE_HOURS = 24;
-
-const ADMIN_CALENDAR_EVENT_PERMISSIONS = [Permission.Event.Read] as const satisfies readonly Permission[];
-
-const ADMIN_CALENDAR_EVENT_GROUP_PERMISSIONS = [Permission.EventGroup.Read] as const satisfies readonly Permission[];
-
-const ADMIN_CALENDAR_MAJOR_EVENT_PERMISSIONS = [Permission.MajorEvent.Read] as const satisfies readonly Permission[];
-
-const ADMIN_CALENDAR_FEED_PERMISSIONS = [
-  ...ADMIN_CALENDAR_EVENT_PERMISSIONS,
-  ...ADMIN_CALENDAR_EVENT_GROUP_PERMISSIONS,
-  ...ADMIN_CALENDAR_MAJOR_EVENT_PERMISSIONS,
-] as const satisfies readonly Permission[];
-
-const ADMIN_CALENDAR_EVENT_PERMISSION_SET = new Set<string>(ADMIN_CALENDAR_EVENT_PERMISSIONS);
-const ADMIN_CALENDAR_EVENT_GROUP_PERMISSION_SET = new Set<string>(ADMIN_CALENDAR_EVENT_GROUP_PERMISSIONS);
-const ADMIN_CALENDAR_MAJOR_EVENT_PERMISSION_SET = new Set<string>(ADMIN_CALENDAR_MAJOR_EVENT_PERMISSIONS);
-
-const CALENDAR_EVENT_SELECT = {
-  id: true,
-  name: true,
-  startDate: true,
-  endDate: true,
-  description: true,
-  shortDescription: true,
-  latitude: true,
-  longitude: true,
-  locationDescription: true,
-  createdAt: true,
-  updatedAt: true,
-  majorEvent: {
-    select: {
-      name: true,
-    },
-  },
-  eventGroup: {
-    select: {
-      name: true,
-    },
-  },
-} satisfies Prisma.EventSelect;
-
-const PUBLIC_EVENT_CALENDAR_SELECT = {
-  ...CALENDAR_EVENT_SELECT,
-  eventGroup: {
-    select: {
-      id: true,
-      name: true,
-      createdAt: true,
-      updatedAt: true,
-      events: {
-        where: PUBLIC_EVENT_WHERE,
-        orderBy: {
-          startDate: 'asc',
-        },
-        select: {
-          startDate: true,
-          endDate: true,
-        },
-        take: PUBLIC_EVENT_GROUP_RANGE_EVENT_QUERY_TAKE,
-      },
-    },
-  },
-} satisfies Prisma.EventSelect;
-
-const CALENDAR_FEED_SETTINGS_SELECT = {
-  feedKeyNonce: true,
-  feedKeyHash: true,
-  enabled: true,
-  disabledAt: true,
-  disabledReason: true,
-  lastFetchedAt: true,
-  rotatedAt: true,
-  updatedAt: true,
-} satisfies Prisma.UserCalendarFeedSettingsSelect;
-
-const ADMIN_CALENDAR_FEED_SETTINGS_SELECT = {
-  feedKeyNonce: true,
-  feedKeyHash: true,
-  enabled: true,
-  disabledAt: true,
-  disabledReason: true,
-  lastFetchedAt: true,
-  lastCheckedAt: true,
-  rotatedAt: true,
-  updatedAt: true,
-} satisfies Prisma.UserAdminCalendarFeedSettingsSelect;
-
-const SUPER_ADMIN_CALENDAR_FEED_SETTINGS_SELECT = {
-  feedKeyNonce: true,
-  feedKeyHash: true,
-  enabled: true,
-  lastFetchedAt: true,
-  rotatedAt: true,
-  updatedAt: true,
-} satisfies Prisma.SuperAdminCalendarFeedSettingsSelect;
-
-const ADMIN_MAJOR_EVENT_SELECT = {
-  id: true,
-  name: true,
-  startDate: true,
-  endDate: true,
-  description: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.MajorEventSelect;
-
-function buildAdminEventGroupSelect() {
-  return {
-    id: true,
-    name: true,
-    createdAt: true,
-    updatedAt: true,
-    events: {
-      where: {
-        deletedAt: null,
-      },
-      orderBy: {
-        startDate: 'asc',
-      },
-      select: {
-        startDate: true,
-        endDate: true,
-      },
-      take: ADMIN_EVENT_GROUP_RANGE_EVENT_TAKE,
-    },
-  } satisfies Prisma.EventGroupSelect;
-}
-
-const ADMIN_CALENDAR_GRANT_SELECT = {
-  permission: true,
-  scope: true,
-  eventId: true,
-  majorEventId: true,
-  eventGroupId: true,
-} satisfies Prisma.EventManagerPermissionGrantSelect;
-
-type CalendarEventRecord = Prisma.EventGetPayload<{ select: typeof CALENDAR_EVENT_SELECT }>;
-type PublicEventCalendarRecord = Prisma.EventGetPayload<{ select: typeof PUBLIC_EVENT_CALENDAR_SELECT }>;
-type CalendarFeedSettingsRecord = Prisma.UserCalendarFeedSettingsGetPayload<{
-  select: typeof CALENDAR_FEED_SETTINGS_SELECT;
-}>;
-type AdminCalendarFeedSettingsRecord = Prisma.UserAdminCalendarFeedSettingsGetPayload<{
-  select: typeof ADMIN_CALENDAR_FEED_SETTINGS_SELECT;
-}>;
-type SuperAdminCalendarFeedSettingsRecord = Prisma.SuperAdminCalendarFeedSettingsGetPayload<{
-  select: typeof SUPER_ADMIN_CALENDAR_FEED_SETTINGS_SELECT;
-}>;
-type AdminMajorEventRecord = Prisma.MajorEventGetPayload<{ select: typeof ADMIN_MAJOR_EVENT_SELECT }>;
-type AdminEventGroupRecord = Prisma.EventGroupGetPayload<{ select: ReturnType<typeof buildAdminEventGroupSelect> }>;
-type AdminCalendarGrantRecord = Prisma.EventManagerPermissionGrantGetPayload<{
-  select: typeof ADMIN_CALENDAR_GRANT_SELECT;
-}>;
-
-type CalendarEntry = {
-  id: string;
-  summary: string;
-  start: Date;
-  end: Date;
-  description: string | null;
-  location: ICalLocation | string | null;
-  created: Date;
-  lastModified: Date;
-  url: string | null;
-};
-
-type AdminFeedTargetPlan = {
-  globalEvents: boolean;
-  globalEventGroups: boolean;
-  globalMajorEvents: boolean;
-  eventIds: Set<string>;
-  eventMajorEventIds: Set<string>;
-  eventGroupIdsForEvents: Set<string>;
-  eventGroupIds: Set<string>;
-  majorEventIds: Set<string>;
-};
+import {
+  getAdminCalendarEntriesForUser,
+  getSuperAdminCalendarEntries,
+  hasCurrentAdminFeedTargets,
+} from './calendar-admin-feed.repository';
+import { getPrivateFeedEvents } from './calendar-private-feed.repository';
+import {
+  ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
+  CALENDAR_FEED_SETTINGS_SELECT,
+  CalendarFeedSettingsRecord,
+  PUBLIC_EVENT_CALENDAR_SELECT,
+  SUPER_ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
+  SuperAdminCalendarFeedSettingsRecord,
+} from './calendar-records';
 
 @Injectable()
 export class CalendarService {
-  private readonly calendarFeedKeyPepper = this.readCalendarFeedKeyPepper();
+  private readonly calendarFeedKeyPepper = readCalendarFeedKeyPepper();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -218,7 +67,7 @@ export class CalendarService {
       select: CALENDAR_FEED_SETTINGS_SELECT,
     });
 
-    return this.mapSettings(settings);
+    return mapSettings(settings, this.calendarFeedKeyPepper);
   }
 
   async setCurrentUserCalendarFeedEnabled(
@@ -238,11 +87,11 @@ export class CalendarService {
         select: CALENDAR_FEED_SETTINGS_SELECT,
       });
 
-      return this.mapSettings(settings[0] ?? null);
+      return mapSettings(settings[0] ?? null, this.calendarFeedKeyPepper);
     }
 
     const { feedKey, settings } = await this.enableCurrentUserCalendarFeed(userId);
-    return this.mapSettings(settings, feedKey);
+    return mapSettings(settings, this.calendarFeedKeyPepper, feedKey);
   }
 
   async rotateCurrentUserCalendarFeedKey(userId: string): Promise<CurrentUserCalendarFeedSettings> {
@@ -255,11 +104,11 @@ export class CalendarService {
         rotatedAt: true,
       },
     });
-    this.assertFeedKeyRotationAllowed(currentSettings?.rotatedAt ?? null, now);
+    assertFeedKeyRotationAllowed(currentSettings?.rotatedAt ?? null, now);
 
-    const feedKeyNonce = this.generateFeedKeyNonce();
-    const feedKey = this.deriveFeedKey(feedKeyNonce);
-    const feedKeyHash = this.hashFeedKey(feedKey);
+    const feedKeyNonce = generateFeedKeyNonce();
+    const feedKey = deriveFeedKey(feedKeyNonce, this.calendarFeedKeyPepper);
+    const feedKeyHash = hashFeedKey(feedKey, this.calendarFeedKeyPepper);
     const settings = await this.prisma.userCalendarFeedSettings.upsert({
       where: {
         userId,
@@ -280,7 +129,7 @@ export class CalendarService {
       select: CALENDAR_FEED_SETTINGS_SELECT,
     });
 
-    return this.mapSettings(settings, feedKey);
+    return mapSettings(settings, this.calendarFeedKeyPepper, feedKey);
   }
 
   async getCurrentUserAdminCalendarFeedSettings(userId: string): Promise<CurrentUserAdminCalendarFeedSettings> {
@@ -293,7 +142,7 @@ export class CalendarService {
     });
 
     if (!settings) {
-      return this.mapAdminSettings(null);
+      return mapAdminSettings(null, this.calendarFeedKeyPepper);
     }
 
     const refreshedSettings = await this.prisma.userAdminCalendarFeedSettings.update({
@@ -306,7 +155,7 @@ export class CalendarService {
       select: ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
     });
 
-    return this.mapAdminSettings(refreshedSettings);
+    return mapAdminSettings(refreshedSettings, this.calendarFeedKeyPepper);
   }
 
   async setCurrentUserAdminCalendarFeedEnabled(
@@ -329,10 +178,10 @@ export class CalendarService {
         select: ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
       });
 
-      return this.mapAdminSettings(settings[0] ?? null);
+      return mapAdminSettings(settings[0] ?? null, this.calendarFeedKeyPepper);
     }
 
-    if (!(await this.hasCurrentAdminFeedTargets(userId, now))) {
+    if (!(await hasCurrentAdminFeedTargets(this.prisma, userId, now, 1))) {
       throw new BadRequestException('Não há eventos administrativos atuais ou futuros para este usuário.');
     }
 
@@ -347,8 +196,8 @@ export class CalendarService {
     });
 
     if (currentSettings) {
-      const feedKeyNonce = currentSettings.feedKeyNonce ?? this.generateFeedKeyNonce();
-      const feedKey = this.deriveFeedKey(feedKeyNonce);
+      const feedKeyNonce = currentSettings.feedKeyNonce ?? generateFeedKeyNonce();
+      const feedKey = deriveFeedKey(feedKeyNonce, this.calendarFeedKeyPepper);
       const shouldRecoverMissingFeedKey = !currentSettings.feedKeyNonce;
       const settings = await this.prisma.userAdminCalendarFeedSettings.update({
         where: {
@@ -362,7 +211,7 @@ export class CalendarService {
           ...(shouldRecoverMissingFeedKey
             ? {
                 feedKeyNonce,
-                feedKeyHash: this.hashFeedKey(feedKey),
+                feedKeyHash: hashFeedKey(feedKey, this.calendarFeedKeyPepper),
                 rotatedAt: now,
                 lastFetchedAt: null,
               }
@@ -371,12 +220,12 @@ export class CalendarService {
         select: ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
       });
 
-      return this.mapAdminSettings(settings, feedKey);
+      return mapAdminSettings(settings, this.calendarFeedKeyPepper, feedKey);
     }
 
-    const feedKeyNonce = this.generateFeedKeyNonce();
-    const feedKey = this.deriveFeedKey(feedKeyNonce);
-    const feedKeyHash = this.hashFeedKey(feedKey);
+    const feedKeyNonce = generateFeedKeyNonce();
+    const feedKey = deriveFeedKey(feedKeyNonce, this.calendarFeedKeyPepper);
+    const feedKeyHash = hashFeedKey(feedKey, this.calendarFeedKeyPepper);
     const settings = await this.prisma.userAdminCalendarFeedSettings.create({
       data: {
         userId,
@@ -389,7 +238,7 @@ export class CalendarService {
       select: ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
     });
 
-    return this.mapAdminSettings(settings, feedKey);
+    return mapAdminSettings(settings, this.calendarFeedKeyPepper, feedKey);
   }
 
   async rotateCurrentUserAdminCalendarFeedKey(userId: string): Promise<CurrentUserAdminCalendarFeedSettings> {
@@ -402,11 +251,11 @@ export class CalendarService {
         rotatedAt: true,
       },
     });
-    this.assertFeedKeyRotationAllowed(currentSettings?.rotatedAt ?? null, now);
+    assertFeedKeyRotationAllowed(currentSettings?.rotatedAt ?? null, now);
 
-    const feedKeyNonce = this.generateFeedKeyNonce();
-    const feedKey = this.deriveFeedKey(feedKeyNonce);
-    const feedKeyHash = this.hashFeedKey(feedKey);
+    const feedKeyNonce = generateFeedKeyNonce();
+    const feedKey = deriveFeedKey(feedKeyNonce, this.calendarFeedKeyPepper);
+    const feedKeyHash = hashFeedKey(feedKey, this.calendarFeedKeyPepper);
     const settings = await this.prisma.userAdminCalendarFeedSettings.upsert({
       where: {
         userId,
@@ -429,12 +278,12 @@ export class CalendarService {
       select: ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
     });
 
-    return this.mapAdminSettings(settings, feedKey);
+    return mapAdminSettings(settings, this.calendarFeedKeyPepper, feedKey);
   }
 
   async getSuperAdminCalendarFeedSettings(): Promise<SuperAdminCalendarFeedSettings> {
     const { feedKey, settings } = await this.getOrCreateSuperAdminCalendarFeedSettings();
-    return this.mapSuperAdminSettings(settings, feedKey);
+    return mapSuperAdminSettings(settings, this.calendarFeedKeyPepper, feedKey);
   }
 
   async rotateSuperAdminCalendarFeedKey(): Promise<SuperAdminCalendarFeedSettings> {
@@ -447,11 +296,11 @@ export class CalendarService {
         rotatedAt: true,
       },
     });
-    this.assertFeedKeyRotationAllowed(currentSettings?.rotatedAt ?? null, now);
+    assertFeedKeyRotationAllowed(currentSettings?.rotatedAt ?? null, now);
 
-    const feedKeyNonce = this.generateFeedKeyNonce();
-    const feedKey = this.deriveFeedKey(feedKeyNonce);
-    const feedKeyHash = this.hashFeedKey(feedKey);
+    const feedKeyNonce = generateFeedKeyNonce();
+    const feedKey = deriveFeedKey(feedKeyNonce, this.calendarFeedKeyPepper);
+    const feedKeyHash = hashFeedKey(feedKey, this.calendarFeedKeyPepper);
     const settings = await this.prisma.superAdminCalendarFeedSettings.upsert({
       where: {
         id: SUPER_ADMIN_CALENDAR_FEED_ID,
@@ -473,7 +322,7 @@ export class CalendarService {
       select: SUPER_ADMIN_CALENDAR_FEED_SETTINGS_SELECT,
     });
 
-    return this.mapSuperAdminSettings(settings, feedKey);
+    return mapSuperAdminSettings(settings, this.calendarFeedKeyPepper, feedKey);
   }
 
   async buildPublicEventCalendar(eventId: string, publicAppOrigin: string): Promise<CalendarDownload> {
@@ -489,25 +338,25 @@ export class CalendarService {
     }
 
     const groupedEntry = event.eventGroup
-      ? this.mapPublicEventGroupToCalendarEntry(event.eventGroup, this.buildPublicEventUrl(publicAppOrigin, event.id))
+      ? mapPublicEventGroupToCalendarEntry(event.eventGroup, buildPublicEventUrl(publicAppOrigin, event.id))
       : null;
-    const entry = groupedEntry ?? this.mapEventToCalendarEntry(event, this.buildPublicEventUrl(publicAppOrigin, event.id));
+    const entry = groupedEntry ?? mapEventToCalendarEntry(event, buildPublicEventUrl(publicAppOrigin, event.id));
     const calendarName = groupedEntry ? event.eventGroup?.name : event.name;
 
     return {
-      content: this.buildCalendar({
+      content: buildCalendar({
         name: calendarName ?? event.name,
         description: groupedEntry ? groupedEntry.description : (event.shortDescription ?? event.description ?? null),
         entries: [entry],
         eventClass: ICalEventClass.PUBLIC,
         ttlSeconds: 60 * 60,
       }),
-      fileName: `${this.slugifyFileName(calendarName ?? event.name) || 'evento'}.ics`,
+      fileName: `${slugifyFileName(calendarName ?? event.name) || 'evento'}.ics`,
     };
   }
 
   async buildPrivateUserCalendarFeed(feedKey: string, publicAppOrigin: string): Promise<CalendarDownload> {
-    const feedKeyHash = this.hashFeedKey(feedKey);
+    const feedKeyHash = hashFeedKey(feedKey, this.calendarFeedKeyPepper);
     const settings = await this.prisma.userCalendarFeedSettings.findUnique({
       where: {
         feedKeyHash,
@@ -545,16 +394,16 @@ export class CalendarService {
     }
 
     const personIds = settings.user.people.map((person) => person.id);
-    const events = await this.getPrivateFeedEvents(personIds);
+    const events = await getPrivateFeedEvents(this.prisma, personIds);
 
     await this.sampleLastFetchedAt(settings.userId, settings.feedKeyHash, settings.lastFetchedAt, now);
 
     return {
-      content: this.buildCalendar({
+      content: buildCalendar({
         name: `CACiC Eventos - ${settings.user.name}`,
         description: 'Eventos vinculados a sua conta CACiC Eventos.',
         entries: events.map((event) =>
-          this.mapEventToCalendarEntry(event, this.buildPublicEventUrl(publicAppOrigin, event.id)),
+          mapEventToCalendarEntry(event, buildPublicEventUrl(publicAppOrigin, event.id)),
         ),
         eventClass: ICalEventClass.PRIVATE,
         ttlSeconds: 60 * 60,
@@ -564,7 +413,7 @@ export class CalendarService {
   }
 
   async buildPrivateAdminCalendarFeed(feedKey: string, publicAppOrigin: string): Promise<CalendarDownload> {
-    const feedKeyHash = this.hashFeedKey(feedKey);
+    const feedKeyHash = hashFeedKey(feedKey, this.calendarFeedKeyPepper);
     const settings = await this.prisma.userAdminCalendarFeedSettings.findUnique({
       where: {
         feedKeyHash,
@@ -593,7 +442,13 @@ export class CalendarService {
       throw new NotFoundException('Calendar feed was not found.');
     }
 
-    const entries = await this.getAdminCalendarEntriesForUser(settings.userId, now, publicAppOrigin);
+    const entries = await getAdminCalendarEntriesForUser(
+      this.prisma,
+      settings.userId,
+      now,
+      publicAppOrigin,
+      ADMIN_FEED_ITEM_TAKE,
+    );
     if (entries.length === 0) {
       await this.disableAdminCalendarFeedWithoutTargets(settings.userId, now);
       throw new NotFoundException('Calendar feed was not found.');
@@ -602,7 +457,7 @@ export class CalendarService {
     await this.sampleAdminLastFetchedAt(settings.userId, settings.feedKeyHash, settings.lastFetchedAt, now);
 
     return {
-      content: this.buildCalendar({
+      content: buildCalendar({
         name: `CACiC Eventos Admin - ${settings.user.name}`,
         description: 'Eventos, grupos e grandes eventos administrados por este usuário.',
         entries,
@@ -614,7 +469,7 @@ export class CalendarService {
   }
 
   async buildSuperAdminCalendarFeed(feedKey: string, publicAppOrigin: string): Promise<CalendarDownload> {
-    const feedKeyHash = this.hashFeedKey(feedKey);
+    const feedKeyHash = hashFeedKey(feedKey, this.calendarFeedKeyPepper);
     const settings = await this.prisma.superAdminCalendarFeedSettings.findUnique({
       where: {
         feedKeyHash,
@@ -632,11 +487,11 @@ export class CalendarService {
     }
 
     const now = new Date();
-    const entries = await this.getSuperAdminCalendarEntries(publicAppOrigin);
+    const entries = await getSuperAdminCalendarEntries(this.prisma, publicAppOrigin, ADMIN_FEED_ITEM_TAKE);
     await this.sampleSuperAdminLastFetchedAt(settings.feedKeyHash, settings.lastFetchedAt, now);
 
     return {
-      content: this.buildCalendar({
+      content: buildCalendar({
         name: 'CACiC Eventos Admin - Super-admins',
         description: 'Feed compartilhado de todos os eventos, grupos e grandes eventos administráveis.',
         entries,
@@ -666,8 +521,8 @@ export class CalendarService {
     });
 
     if (currentSettings) {
-      const feedKeyNonce = currentSettings.feedKeyNonce ?? this.generateFeedKeyNonce();
-      const feedKey = this.deriveFeedKey(feedKeyNonce);
+      const feedKeyNonce = currentSettings.feedKeyNonce ?? generateFeedKeyNonce();
+      const feedKey = deriveFeedKey(feedKeyNonce, this.calendarFeedKeyPepper);
       const shouldRecoverMissingFeedKey = !currentSettings.feedKeyNonce;
       const [, settings] = await this.prisma.$transaction([
         this.prisma.user.update({
@@ -692,7 +547,7 @@ export class CalendarService {
             ...(shouldRecoverMissingFeedKey
               ? {
                   feedKeyNonce,
-                  feedKeyHash: this.hashFeedKey(feedKey),
+                  feedKeyHash: hashFeedKey(feedKey, this.calendarFeedKeyPepper),
                   rotatedAt: now,
                   lastFetchedAt: null,
                 }
@@ -705,9 +560,9 @@ export class CalendarService {
       return { feedKey, settings };
     }
 
-    const feedKeyNonce = this.generateFeedKeyNonce();
-    const feedKey = this.deriveFeedKey(feedKeyNonce);
-    const feedKeyHash = this.hashFeedKey(feedKey);
+    const feedKeyNonce = generateFeedKeyNonce();
+    const feedKey = deriveFeedKey(feedKeyNonce, this.calendarFeedKeyPepper);
+    const feedKeyHash = hashFeedKey(feedKey, this.calendarFeedKeyPepper);
 
     const [, settings] = await this.prisma.$transaction([
       this.prisma.user.update({
@@ -736,662 +591,13 @@ export class CalendarService {
     return { feedKey, settings };
   }
 
-  private async getPrivateFeedEvents(personIds: string[]): Promise<CalendarEventRecord[]> {
-    if (personIds.length === 0) {
-      return [];
-    }
-
-    const eventWhere = this.privateFeedEventWhere();
-
-    const [eventSubscriptions, majorEventSelections, lecturerEvents, eventAttendances, certificates] =
-      await Promise.all([
-        this.prisma.eventSubscription.findMany({
-          where: {
-            personId: {
-              in: personIds,
-            },
-            deletedAt: null,
-            event: eventWhere,
-          },
-          select: {
-            event: {
-              select: CALENDAR_EVENT_SELECT,
-            },
-          },
-          orderBy: {
-            event: {
-              startDate: 'asc',
-            },
-          },
-          take: PRIVATE_FEED_EVENT_TAKE,
-        }),
-        this.prisma.majorEventSubscriptionEventSelection.findMany({
-          where: {
-            deletedAt: null,
-            subscription: {
-              personId: {
-                in: personIds,
-              },
-              deletedAt: null,
-              subscriptionStatus: {
-                in: [
-                  SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
-                  SubscriptionStatus.RECEIPT_UNDER_REVIEW,
-                  SubscriptionStatus.CONFIRMED,
-                ],
-              },
-            },
-            event: eventWhere,
-          },
-          select: {
-            event: {
-              select: CALENDAR_EVENT_SELECT,
-            },
-          },
-          orderBy: {
-            event: {
-              startDate: 'asc',
-            },
-          },
-          take: PRIVATE_FEED_EVENT_TAKE,
-        }),
-        this.prisma.eventLecturer.findMany({
-          where: {
-            personId: {
-              in: personIds,
-            },
-            event: eventWhere,
-          },
-          select: {
-            event: {
-              select: CALENDAR_EVENT_SELECT,
-            },
-          },
-          orderBy: {
-            event: {
-              startDate: 'asc',
-            },
-          },
-          take: PRIVATE_FEED_EVENT_TAKE,
-        }),
-        this.prisma.eventAttendance.findMany({
-          where: {
-            personId: {
-              in: personIds,
-            },
-            event: eventWhere,
-          },
-          select: {
-            event: {
-              select: CALENDAR_EVENT_SELECT,
-            },
-          },
-          orderBy: {
-            event: {
-              startDate: 'asc',
-            },
-          },
-          take: PRIVATE_FEED_EVENT_TAKE,
-        }),
-        this.prisma.certificate.findMany({
-          where: {
-            personId: {
-              in: personIds,
-            },
-            deletedAt: null,
-            config: {
-              deletedAt: null,
-              event: eventWhere,
-            },
-          },
-          select: {
-            config: {
-              select: {
-                event: {
-                  select: CALENDAR_EVENT_SELECT,
-                },
-              },
-            },
-          },
-          orderBy: {
-            issuedAt: 'desc',
-          },
-          take: PRIVATE_FEED_EVENT_TAKE,
-        }),
-      ]);
-
-    const eventsById = new Map<string, CalendarEventRecord>();
-    for (const event of [
-      ...eventSubscriptions.map((subscription) => subscription.event),
-      ...majorEventSelections.map((selection) => selection.event),
-      ...lecturerEvents.map((lecturer) => lecturer.event),
-      ...eventAttendances.map((attendance) => attendance.event),
-      ...certificates.map((certificate) => certificate.config.event).filter((event): event is CalendarEventRecord => !!event),
-    ]) {
-      eventsById.set(event.id, event);
-    }
-
-    return [...eventsById.values()].sort(
-      (left, right) => left.startDate.getTime() - right.startDate.getTime() || left.name.localeCompare(right.name),
-    );
-  }
-
-  private privateFeedEventWhere(): Prisma.EventWhereInput {
-    return PUBLIC_EVENT_WHERE;
-  }
-
-  private async getAdminCalendarEntriesForUser(
-    userId: string,
-    now: Date,
-    publicAppOrigin: string,
-    take = ADMIN_FEED_ITEM_TAKE,
-  ): Promise<CalendarEntry[]> {
-    const grants = await this.findActiveAdminCalendarGrants(userId, now);
-    const targetPlan = this.buildAdminFeedTargetPlan(grants);
-    return this.getAdminCalendarEntriesFromPlan(targetPlan, publicAppOrigin, take);
-  }
-
-  private async getSuperAdminCalendarEntries(
-    publicAppOrigin: string,
-    take = ADMIN_FEED_ITEM_TAKE,
-  ): Promise<CalendarEntry[]> {
-    return this.getAdminCalendarEntriesFromPlan(
-      {
-        globalEvents: true,
-        globalEventGroups: true,
-        globalMajorEvents: true,
-        eventIds: new Set(),
-        eventMajorEventIds: new Set(),
-        eventGroupIdsForEvents: new Set(),
-        eventGroupIds: new Set(),
-        majorEventIds: new Set(),
-      },
-      publicAppOrigin,
-      take,
-    );
-  }
-
-  private async getAdminCalendarEntriesFromPlan(
-    targetPlan: AdminFeedTargetPlan,
-    publicAppOrigin: string,
-    take: number,
-  ): Promise<CalendarEntry[]> {
-    const [events, eventGroups, majorEvents] = await Promise.all([
-      this.getAdminFeedEvents(targetPlan, take),
-      this.getAdminFeedEventGroups(targetPlan, take),
-      this.getAdminFeedMajorEvents(targetPlan, take),
-    ]);
-
-    return [
-      ...events.map((event) => this.mapEventToCalendarEntry(event, this.buildAdminEventUrl(publicAppOrigin, event.id))),
-      ...eventGroups
-        .map((eventGroup) => this.mapEventGroupToCalendarEntry(eventGroup, publicAppOrigin))
-        .filter((entry): entry is CalendarEntry => Boolean(entry)),
-      ...majorEvents.map((majorEvent) => this.mapMajorEventToCalendarEntry(majorEvent, publicAppOrigin)),
-    ].sort((left, right) => left.start.getTime() - right.start.getTime() || left.summary.localeCompare(right.summary));
-  }
-
-  private async getAdminFeedEvents(
-    targetPlan: AdminFeedTargetPlan,
-    take: number,
-  ): Promise<CalendarEventRecord[]> {
-    const where = this.buildAdminFeedEventWhere(targetPlan);
-    if (!where) {
-      return [];
-    }
-
-    return this.prisma.event.findMany({
-      where,
-      select: CALENDAR_EVENT_SELECT,
-      orderBy: {
-        startDate: 'asc',
-      },
-      take,
-    });
-  }
-
-  private async getAdminFeedEventGroups(
-    targetPlan: AdminFeedTargetPlan,
-    take: number,
-  ): Promise<AdminEventGroupRecord[]> {
-    const where = this.buildAdminFeedEventGroupWhere(targetPlan);
-    if (!where) {
-      return [];
-    }
-
-    return this.prisma.eventGroup.findMany({
-      where,
-      select: buildAdminEventGroupSelect(),
-      orderBy: {
-        name: 'asc',
-      },
-      take,
-    });
-  }
-
-  private async getAdminFeedMajorEvents(
-    targetPlan: AdminFeedTargetPlan,
-    take: number,
-  ): Promise<AdminMajorEventRecord[]> {
-    const where = this.buildAdminFeedMajorEventWhere(targetPlan);
-    if (!where) {
-      return [];
-    }
-
-    return this.prisma.majorEvent.findMany({
-      where,
-      select: ADMIN_MAJOR_EVENT_SELECT,
-      orderBy: {
-        startDate: 'asc',
-      },
-      take,
-    });
-  }
-
-  private buildAdminFeedEventWhere(targetPlan: AdminFeedTargetPlan): Prisma.EventWhereInput | null {
-    const where: Prisma.EventWhereInput = {
-      deletedAt: null,
-    };
-
-    if (targetPlan.globalEvents) {
-      return where;
-    }
-
-    const scopedTargets: Prisma.EventWhereInput[] = [];
-    if (targetPlan.eventIds.size > 0) {
-      scopedTargets.push({
-        id: {
-          in: [...targetPlan.eventIds],
-        },
-      });
-    }
-    if (targetPlan.eventMajorEventIds.size > 0) {
-      scopedTargets.push({
-        majorEventId: {
-          in: [...targetPlan.eventMajorEventIds],
-        },
-      });
-    }
-    if (targetPlan.eventGroupIdsForEvents.size > 0) {
-      scopedTargets.push({
-        eventGroupId: {
-          in: [...targetPlan.eventGroupIdsForEvents],
-        },
-      });
-    }
-
-    if (scopedTargets.length === 0) {
-      return null;
-    }
-
-    return {
-      ...where,
-      OR: scopedTargets,
-    };
-  }
-
-  private buildAdminFeedEventGroupWhere(
-    targetPlan: AdminFeedTargetPlan,
-  ): Prisma.EventGroupWhereInput | null {
-    const where: Prisma.EventGroupWhereInput = {
-      deletedAt: null,
-      events: {
-        some: {
-          deletedAt: null,
-        },
-      },
-    };
-
-    if (targetPlan.globalEventGroups) {
-      return where;
-    }
-
-    if (targetPlan.eventGroupIds.size === 0) {
-      return null;
-    }
-
-    return {
-      ...where,
-      id: {
-        in: [...targetPlan.eventGroupIds],
-      },
-    };
-  }
-
-  private buildAdminFeedMajorEventWhere(
-    targetPlan: AdminFeedTargetPlan,
-  ): Prisma.MajorEventWhereInput | null {
-    const where: Prisma.MajorEventWhereInput = {
-      deletedAt: null,
-    };
-
-    if (targetPlan.globalMajorEvents) {
-      return where;
-    }
-
-    if (targetPlan.majorEventIds.size === 0) {
-      return null;
-    }
-
-    return {
-      ...where,
-      id: {
-        in: [...targetPlan.majorEventIds],
-      },
-    };
-  }
-
-  private async findActiveAdminCalendarGrants(userId: string, now: Date): Promise<AdminCalendarGrantRecord[]> {
-    return this.prisma.eventManagerPermissionGrant.findMany({
-      where: {
-        userId,
-        deletedAt: null,
-        permission: {
-          in: [...ADMIN_CALENDAR_FEED_PERMISSIONS],
-        },
-        OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-        AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
-      },
-      select: ADMIN_CALENDAR_GRANT_SELECT,
-    });
-  }
-
-  private buildAdminFeedTargetPlan(grants: AdminCalendarGrantRecord[]): AdminFeedTargetPlan {
-    const targetPlan: AdminFeedTargetPlan = {
-      globalEvents: false,
-      globalEventGroups: false,
-      globalMajorEvents: false,
-      eventIds: new Set(),
-      eventMajorEventIds: new Set(),
-      eventGroupIdsForEvents: new Set(),
-      eventGroupIds: new Set(),
-      majorEventIds: new Set(),
-    };
-
-    for (const grant of grants) {
-      const grantsEvents = ADMIN_CALENDAR_EVENT_PERMISSION_SET.has(grant.permission);
-      const grantsEventGroups = ADMIN_CALENDAR_EVENT_GROUP_PERMISSION_SET.has(grant.permission);
-      const grantsMajorEvents = ADMIN_CALENDAR_MAJOR_EVENT_PERMISSION_SET.has(grant.permission);
-
-      if (grant.scope === EventManagerPermissionGrantScope.GLOBAL) {
-        targetPlan.globalEvents ||= grantsEvents;
-        targetPlan.globalEventGroups ||= grantsEventGroups;
-        targetPlan.globalMajorEvents ||= grantsMajorEvents;
-        continue;
-      }
-
-      if (grant.scope === EventManagerPermissionGrantScope.EVENT && grant.eventId && grantsEvents) {
-        targetPlan.eventIds.add(grant.eventId);
-        continue;
-      }
-
-      if (grant.scope === EventManagerPermissionGrantScope.EVENT_GROUP && grant.eventGroupId) {
-        if (grantsEvents) {
-          targetPlan.eventGroupIdsForEvents.add(grant.eventGroupId);
-        }
-        if (grantsEventGroups) {
-          targetPlan.eventGroupIds.add(grant.eventGroupId);
-        }
-        continue;
-      }
-
-      if (grant.scope === EventManagerPermissionGrantScope.MAJOR_EVENT && grant.majorEventId) {
-        if (grantsEvents) {
-          targetPlan.eventMajorEventIds.add(grant.majorEventId);
-        }
-        if (grantsMajorEvents) {
-          targetPlan.majorEventIds.add(grant.majorEventId);
-        }
-      }
-    }
-
-    return targetPlan;
-  }
-
-  private async hasCurrentAdminFeedTargets(userId: string, now: Date): Promise<boolean> {
-    const entries = await this.getAdminCalendarEntriesForUser(userId, now, 'https://eventos.cacic.dev.br', 1);
-    return entries.length > 0;
-  }
-
-  private buildCalendar(input: {
-    name: string;
-    description: string | null;
-    entries: CalendarEntry[];
-    eventClass: ICalEventClass;
-    ttlSeconds: number;
-  }): string {
-    const calendar = ical({
-      name: input.name,
-      description: input.description,
-      method: ICalCalendarMethod.PUBLISH,
-      prodId: {
-        company: 'CACiC FCT',
-        product: 'CACiC Eventos',
-        language: 'PT-BR',
-      },
-      ttl: input.ttlSeconds,
-    });
-
-    for (const entry of input.entries) {
-      calendar.createEvent({
-        id: entry.id,
-        summary: entry.summary,
-        start: entry.start,
-        end: entry.end,
-        description: entry.description,
-        location: entry.location,
-        created: entry.created,
-        lastModified: entry.lastModified,
-        status: ICalEventStatus.CONFIRMED,
-        class: input.eventClass,
-        url: entry.url ?? undefined,
-      });
-    }
-
-    return calendar.toString();
-  }
-
-  private mapEventToCalendarEntry(event: CalendarEventRecord, url: string): CalendarEntry {
-    return {
-      id: `event-${event.id}@eventos.cacic.dev.br`,
-      summary: event.name,
-      start: event.startDate,
-      end: event.endDate,
-      description: this.buildEventDescription(event),
-      location: this.buildEventLocation(event),
-      created: event.createdAt,
-      lastModified: event.updatedAt,
-      url,
-    };
-  }
-
-  private mapPublicEventGroupToCalendarEntry(
-    eventGroup: NonNullable<PublicEventCalendarRecord['eventGroup']>,
-    url: string,
-  ): CalendarEntry | null {
-    const events = eventGroup.events.slice(0, PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE);
-    if (events.length === 0) {
-      return null;
-    }
-
-    const isTruncated = eventGroup.events.length > PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE;
-    const start = events[0].startDate;
-    const end = events.reduce(
-      (latest, event) => (event.endDate > latest ? event.endDate : latest),
-      events[0].endDate,
-    );
-
-    return {
-      id: `event-group-${eventGroup.id}@eventos.cacic.dev.br`,
-      summary: eventGroup.name,
-      start,
-      end,
-      description: `Grupo de eventos com ${events.length}${isTruncated ? '+' : ''} evento(s).`,
-      location: null,
-      created: eventGroup.createdAt,
-      lastModified: eventGroup.updatedAt,
-      url,
-    };
-  }
-
-  private mapEventGroupToCalendarEntry(
-    eventGroup: AdminEventGroupRecord,
-    publicAppOrigin: string,
-  ): CalendarEntry | null {
-    const events = eventGroup.events;
-    if (events.length === 0) {
-      return null;
-    }
-
-    const start = events[0].startDate;
-    const end = events.reduce(
-      (latest, event) => (event.endDate > latest ? event.endDate : latest),
-      events[0].endDate,
-    );
-
-    return {
-      id: `event-group-${eventGroup.id}@eventos.cacic.dev.br`,
-      summary: eventGroup.name,
-      start,
-      end,
-      description: `Grupo de eventos com ${events.length} evento(s).`,
-      location: null,
-      created: eventGroup.createdAt,
-      lastModified: eventGroup.updatedAt,
-      url: this.buildAdminEventGroupUrl(publicAppOrigin, eventGroup.id),
-    };
-  }
-
-  private mapMajorEventToCalendarEntry(majorEvent: AdminMajorEventRecord, publicAppOrigin: string): CalendarEntry {
-    return {
-      id: `major-event-${majorEvent.id}@eventos.cacic.dev.br`,
-      summary: majorEvent.name,
-      start: majorEvent.startDate,
-      end: majorEvent.endDate,
-      description: majorEvent.description?.trim() || 'Grande evento.',
-      location: null,
-      created: majorEvent.createdAt,
-      lastModified: majorEvent.updatedAt,
-      url: this.buildAdminMajorEventUrl(publicAppOrigin, majorEvent.id),
-    };
-  }
-
-  private buildEventDescription(event: CalendarEventRecord): string | null {
-    const parts = [
-      event.description?.trim() || event.shortDescription?.trim() || null,
-      event.majorEvent?.name ? `Grande evento: ${event.majorEvent.name}` : null,
-      event.eventGroup?.name ? `Grupo de eventos: ${event.eventGroup.name}` : null,
-    ].filter((part): part is string => Boolean(part));
-
-    return parts.length > 0 ? parts.join('\n\n') : null;
-  }
-
-  private buildEventLocation(event: CalendarEventRecord): ICalLocation | string | null {
-    const title = event.locationDescription?.trim();
-    const latitude = event.latitude;
-    const longitude = event.longitude;
-    const hasCoordinates = latitude != null && longitude != null;
-
-    if (title && hasCoordinates) {
-      return {
-        title,
-        geo: {
-          lat: latitude,
-          lon: longitude,
-        },
-      };
-    }
-
-    if (title) {
-      return title;
-    }
-
-    if (hasCoordinates) {
-      return {
-        geo: {
-          lat: latitude,
-          lon: longitude,
-        },
-      };
-    }
-
-    return null;
-  }
-
-  private buildPublicEventUrl(publicAppOrigin: string, eventId: string): string {
-    return new URL(`/app/event/${encodeURIComponent(eventId)}`, publicAppOrigin).toString();
-  }
-
-  private buildAdminEventUrl(publicAppOrigin: string, eventId: string): string {
-    return new URL(`/admin/events/${encodeURIComponent(eventId)}`, publicAppOrigin).toString();
-  }
-
-  private buildAdminEventGroupUrl(publicAppOrigin: string, eventGroupId: string): string {
-    return new URL(`/admin/groups/${encodeURIComponent(eventGroupId)}`, publicAppOrigin).toString();
-  }
-
-  private buildAdminMajorEventUrl(publicAppOrigin: string, majorEventId: string): string {
-    return new URL(`/admin/major-events/${encodeURIComponent(majorEventId)}`, publicAppOrigin).toString();
-  }
-
-  private mapSettings(settings: CalendarFeedSettingsRecord | null, feedKey?: string): CurrentUserCalendarFeedSettings {
-    const resolvedFeedKey = feedKey ?? this.deriveStoredFeedKey(settings?.feedKeyNonce);
-
-    return {
-      enabled: settings?.enabled ?? false,
-      feedPath: settings?.enabled && resolvedFeedKey ? `/api/calendar/feeds/${encodeURIComponent(resolvedFeedKey)}.ics` : null,
-      disabledAt: settings?.disabledAt ?? null,
-      disabledReason: settings?.disabledReason ?? null,
-      lastFetchedAt: settings?.lastFetchedAt ?? null,
-      rotatedAt: settings?.rotatedAt ?? null,
-      updatedAt: settings?.updatedAt ?? null,
-    };
-  }
-
-  private mapAdminSettings(
-    settings: AdminCalendarFeedSettingsRecord | null,
-    feedKey?: string,
-  ): CurrentUserAdminCalendarFeedSettings {
-    const resolvedFeedKey = feedKey ?? this.deriveStoredFeedKey(settings?.feedKeyNonce);
-
-    return {
-      enabled: settings?.enabled ?? false,
-      feedPath:
-        settings?.enabled && resolvedFeedKey ? `/api/calendar/admin/feeds/${encodeURIComponent(resolvedFeedKey)}.ics` : null,
-      disabledAt: settings?.disabledAt ?? null,
-      disabledReason: settings?.disabledReason ?? null,
-      lastFetchedAt: settings?.lastFetchedAt ?? null,
-      lastCheckedAt: settings?.lastCheckedAt ?? null,
-      rotatedAt: settings?.rotatedAt ?? null,
-      updatedAt: settings?.updatedAt ?? null,
-    };
-  }
-
-  private mapSuperAdminSettings(
-    settings: SuperAdminCalendarFeedSettingsRecord | null,
-    feedKey?: string,
-  ): SuperAdminCalendarFeedSettings {
-    const resolvedFeedKey = feedKey ?? this.deriveStoredFeedKey(settings?.feedKeyNonce);
-
-    return {
-      enabled: settings?.enabled ?? false,
-      feedPath:
-        settings?.enabled && resolvedFeedKey
-          ? `/api/calendar/admin/super-admin/${encodeURIComponent(resolvedFeedKey)}.ics`
-          : null,
-      lastFetchedAt: settings?.lastFetchedAt ?? null,
-      rotatedAt: settings?.rotatedAt ?? null,
-      updatedAt: settings?.updatedAt ?? null,
-    };
-  }
-
   private async getOrCreateSuperAdminCalendarFeedSettings(): Promise<{
     feedKey?: string;
     settings: SuperAdminCalendarFeedSettingsRecord;
   }> {
-    const feedKeyNonce = this.generateFeedKeyNonce();
-    const feedKey = this.deriveFeedKey(feedKeyNonce);
-    const feedKeyHash = this.hashFeedKey(feedKey);
+    const feedKeyNonce = generateFeedKeyNonce();
+    const feedKey = deriveFeedKey(feedKeyNonce, this.calendarFeedKeyPepper);
+    const feedKeyHash = hashFeedKey(feedKey, this.calendarFeedKeyPepper);
     const settings = await this.prisma.superAdminCalendarFeedSettings.upsert({
       where: {
         id: SUPER_ADMIN_CALENDAR_FEED_ID,
@@ -1410,7 +616,7 @@ export class CalendarService {
 
     if (settings.feedKeyNonce) {
       return {
-        feedKey: this.deriveFeedKey(settings.feedKeyNonce),
+        feedKey: deriveFeedKey(settings.feedKeyNonce, this.calendarFeedKeyPepper),
         settings,
       };
     }
@@ -1500,7 +706,7 @@ export class CalendarService {
 
     let disabledCount = 0;
     for (const setting of settings) {
-      if (await this.hasCurrentAdminFeedTargets(setting.userId, now)) {
+      if (await hasCurrentAdminFeedTargets(this.prisma, setting.userId, now, 1)) {
         continue;
       }
 
@@ -1584,51 +790,4 @@ export class CalendarService {
     return !lastCheckedAt || lastCheckedAt < subHours(now, ADMIN_FEED_ACCESS_CHECK_MAX_AGE_HOURS);
   }
 
-  private assertFeedKeyRotationAllowed(rotatedAt: Date | null, now: Date): void {
-    if (rotatedAt && rotatedAt > subHours(now, CALENDAR_FEED_KEY_ROTATION_COOLDOWN_HOURS)) {
-      throw new BadRequestException('A chave do feed só pode ser rotacionada uma vez a cada 24 horas.');
-    }
-  }
-
-  private generateFeedKeyNonce(): string {
-    return randomBytes(CALENDAR_FEED_KEY_NONCE_BYTES).toString('base64url');
-  }
-
-  private deriveStoredFeedKey(feedKeyNonce: string | null | undefined): string | undefined {
-    return feedKeyNonce ? this.deriveFeedKey(feedKeyNonce) : undefined;
-  }
-
-  private deriveFeedKey(feedKeyNonce: string): string {
-    return createHmac('sha512', this.calendarFeedKeyPepper)
-      .update('calendar-feed-url-key', 'utf8')
-      .update(feedKeyNonce, 'utf8')
-      .digest('base64url');
-  }
-
-  private hashFeedKey(feedKey: string): string {
-    return createHmac('sha256', this.calendarFeedKeyPepper).update(feedKey, 'utf8').digest('base64url');
-  }
-
-  private readCalendarFeedKeyPepper(): string {
-    const pepper = process.env.CALENDAR_FEED_KEY_PEPPER?.trim();
-    if (pepper) {
-      return pepper;
-    }
-
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('CALENDAR_FEED_KEY_PEPPER must be configured in production.');
-    }
-
-    return 'development-calendar-feed-key-pepper';
-  }
-
-  private slugifyFileName(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-zA-Z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase()
-      .slice(0, 80);
-  }
 }

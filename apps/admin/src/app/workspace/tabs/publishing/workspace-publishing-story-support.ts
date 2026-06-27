@@ -5,7 +5,7 @@ import {
   PublicationBulkInput,
   PublicationStateInput,
 } from '../../../graphql/publishing-api.service';
-import { PublicationState } from '../../../graphql/models';
+import { PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 
 export type PublicationStoryState = 'loaded' | 'empty' | 'loading' | 'error';
 

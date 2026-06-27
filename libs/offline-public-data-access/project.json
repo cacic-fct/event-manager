@@ -5,7 +5,7 @@
   "sourceRoot": "libs/offline-public-data-access/src",
   "prefix": "lib",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:public", "type:data-access"],
   "targets": {
     "lint": {
       "inputs": [

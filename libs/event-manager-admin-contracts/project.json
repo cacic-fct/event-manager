@@ -1,0 +1,18 @@
+{
+  "name": "event-manager-admin-contracts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/event-manager-admin-contracts/src",
+  "projectType": "library",
+  "tags": ["scope:admin", "type:contract"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/event-manager-admin-contracts",
+        "main": "libs/event-manager-admin-contracts/src/index.ts",
+        "tsConfig": "libs/event-manager-admin-contracts/tsconfig.lib.json"
+      }
+    }
+  }
+}

@@ -3,7 +3,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { Person } from '../../graphql/models';
+import { Person } from '@cacic-fct/event-manager-admin-contracts';
 import { PersonCreateDialogComponent } from './person-create-dialog.component';
 
 describe('PersonCreateDialogComponent', () => {

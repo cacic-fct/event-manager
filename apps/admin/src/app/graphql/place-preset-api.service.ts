@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { DeletionResult, PlacePreset, PlacePresetInput } from './models';
+import { DeletionResult, PlacePreset, PlacePresetInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PLACE_PRESET_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })

@@ -124,3 +124,15 @@ Standalone events are events that are not part of a event group, nor are they pa
 Standalone event groups are groups of events that are not part of a major event. They are groups that exist independently. In Portuguese, they are called "grupos de eventos".
 
 Major events have event groups and/or events associated with them. They are the main events that encompass other events. In Portuguese, they are called "grandes eventos".
+
+# Coverage
+
+We aim for high test coverage, but we prioritize meaningful tests over achieving a specific percentage.
+
+Project has unit, integration, and end-to-end tests to ensure the quality and reliability of our codebase.
+
+Use shared fixtures and test utilities to reduce duplication and improve maintainability of tests.
+
+When creating or editing code, ensure that tests are updated accordingly to reflect the changes made. This includes updating existing tests, adding new tests for new functionality, and removing tests for deprecated or removed features.
+
+

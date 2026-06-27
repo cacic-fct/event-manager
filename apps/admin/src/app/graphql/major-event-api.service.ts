@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { DeletionResult, MajorEvent, MajorEventCloneInput, MajorEventInput, MajorEventUserAttendance } from './models';
+import { DeletionResult, MajorEvent, MajorEventCloneInput, MajorEventInput, MajorEventUserAttendance } from '@cacic-fct/event-manager-admin-contracts';
 import { MAJOR_EVENT_DETAIL_FIELDS, MAJOR_EVENT_LIST_FIELDS, PERSON_EXPORT_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })

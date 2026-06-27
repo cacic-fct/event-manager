@@ -30,7 +30,7 @@ import {
   LecturerProfileInput,
   Person,
   PersonInput,
-} from '../../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import { getErrorMessage } from '../error-message';
 import { bindLiveSearch } from '../live-search';
 import {

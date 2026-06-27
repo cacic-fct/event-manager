@@ -2,7 +2,7 @@ import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import type { PlacePreset } from '../../../graphql/models';
+import type { PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import { createAdminPlacePreset } from '../../../testing/admin-entity-fixtures';
 import { WorkspacePlacesTabComponent } from './workspace-places-tab.component';
 

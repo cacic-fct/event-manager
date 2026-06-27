@@ -11,7 +11,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
-import { EventGroup, PublicationState } from '../../../graphql/models';
+import { EventGroup, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenEventGroup } from '../../../shared/frozen-resource';
 import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { WorkspaceEventGroupsService } from '../../../shared/services/workspace-event-groups.service';

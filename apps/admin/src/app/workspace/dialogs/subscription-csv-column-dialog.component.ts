@@ -8,7 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { SUBSCRIPTION_STATUS_VALUES, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { startWith } from 'rxjs';
-import { MajorEventSubscriptionCsvColumnMapping, SubscriptionStatus } from '../../graphql/models';
+import { MajorEventSubscriptionCsvColumnMapping, SubscriptionStatus } from '@cacic-fct/event-manager-admin-contracts';
 
 export interface SubscriptionCsvColumnDialogData {
   fileName: string;

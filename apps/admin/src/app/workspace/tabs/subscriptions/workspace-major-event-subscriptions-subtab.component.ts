@@ -13,7 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
-import { WorkspaceMajorEventSubscription } from '../../../graphql/models';
+import { WorkspaceMajorEventSubscription } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
 import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';

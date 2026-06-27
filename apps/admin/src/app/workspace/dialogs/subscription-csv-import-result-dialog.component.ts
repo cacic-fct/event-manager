@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
-import { MajorEventSubscriptionCsvImportResult } from '../../graphql/models';
+import { MajorEventSubscriptionCsvImportResult } from '@cacic-fct/event-manager-admin-contracts';
 
 @Component({
   selector: 'app-subscription-csv-import-result-dialog',

@@ -4,7 +4,7 @@
   "root": "libs/shared-data-types",
   "sourceRoot": "libs/shared-data-types/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:shared", "type:contract"],
   "// targets": "to see all targets run: nx show project shared-data-types --web",
   "targets": {}
 }

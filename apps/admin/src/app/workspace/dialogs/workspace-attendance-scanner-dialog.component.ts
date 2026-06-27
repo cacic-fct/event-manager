@@ -25,7 +25,7 @@ import {
   AttendanceCreationMethod,
   EventAttendanceScannerFeedItem,
   SubscriptionStatus,
-} from '../../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 
 export interface WorkspaceAttendanceScannerDialogData {
   eventId: string;

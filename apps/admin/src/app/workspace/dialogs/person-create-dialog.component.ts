@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { firstValueFrom } from 'rxjs';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { Person } from '../../graphql/models';
+import { Person } from '@cacic-fct/event-manager-admin-contracts';
 
 @Component({
   selector: 'app-person-create-dialog',

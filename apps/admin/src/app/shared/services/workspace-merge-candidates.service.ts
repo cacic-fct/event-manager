@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { MergeCandidateApiService } from '../../graphql/merge-candidate-api.service';
-import { MergeCandidate, MergeCandidateStatus } from '../../graphql/models';
+import { MergeCandidate, MergeCandidateStatus } from '@cacic-fct/event-manager-admin-contracts';
 import { MergeCandidateDialogComponent } from '../../workspace/dialogs/merge-candidate-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { applyPagedResult, createWorkspaceListPagination, pageVariables, resetPagination } from '../list-pagination';

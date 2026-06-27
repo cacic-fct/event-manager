@@ -2,8 +2,12 @@ type Environment = Record<string, unknown>;
 
 const REQUIRED_ALWAYS = ['DATABASE_URL'] as const;
 
-const REQUIRED_IN_PRODUCTION = [
+const REQUIRED_OUTSIDE_LOCAL_DEVELOPMENT = [
   'PUBLIC_APP_ORIGIN',
+  'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET',
+] as const;
+
+const REQUIRED_IN_PRODUCTION = [
   'KEYCLOAK_REALM_URL',
   'KEYCLOAK_CLIENT_ID',
   'KEYCLOAK_CLIENT_SECRET',
@@ -27,6 +31,10 @@ export function validateBackendEnvironment(config: Environment): Environment {
   const production = readString(config, 'NODE_ENV') === 'production';
 
   requireKeys(config, REQUIRED_ALWAYS, errors);
+
+  if (!isLocalDevelopment(config)) {
+    requireKeys(config, REQUIRED_OUTSIDE_LOCAL_DEVELOPMENT, errors);
+  }
 
   if (production) {
     requireKeys(config, REQUIRED_IN_PRODUCTION, errors);
@@ -144,6 +152,11 @@ function requireOneOf(config: Environment, key: string, allowedValues: readonly 
 
 function isEnabled(config: Environment, key: string): boolean {
   return readString(config, key)?.toLowerCase() === 'true';
+}
+
+function isLocalDevelopment(config: Environment): boolean {
+  const nodeEnv = readString(config, 'NODE_ENV');
+  return !nodeEnv || nodeEnv === 'development' || nodeEnv === 'test';
 }
 
 function readString(config: Environment, key: string): string | undefined {

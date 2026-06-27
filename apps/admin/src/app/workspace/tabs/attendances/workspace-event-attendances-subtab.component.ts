@@ -9,7 +9,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { EventType } from '../../../graphql/models';
+import { EventType } from '@cacic-fct/event-manager-admin-contracts';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { isFrozenEvent } from '../../../shared/frozen-resource';
 import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';

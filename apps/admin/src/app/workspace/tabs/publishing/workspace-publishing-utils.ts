@@ -1,5 +1,5 @@
 import { PublicContentNode } from '../../../graphql/publishing-api.service';
-import { PublicationTargetType } from '../../../graphql/models';
+import { PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 
 export interface PublicationListItem {
   key: string;

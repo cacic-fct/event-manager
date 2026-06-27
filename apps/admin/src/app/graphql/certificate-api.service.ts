@@ -13,7 +13,7 @@ import {
   Event,
   EventGroup,
   MajorEvent,
-} from './models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import {
   CERTIFICATE_CONFIG_FIELDS,
   CERTIFICATE_DOWNLOAD_FIELDS,

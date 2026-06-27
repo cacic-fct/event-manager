@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { type AuditLogEntityType } from '../../graphql/models';
+import { type AuditLogEntityType } from '@cacic-fct/event-manager-admin-contracts';
 import { AuditLogDialogComponent } from '../../workspace/dialogs/audit-log-dialog.component';
 
 @Injectable({ providedIn: 'root' })

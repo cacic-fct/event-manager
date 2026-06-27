@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
-import type { AttendanceCategory } from '../../graphql/models';
+import type { AttendanceCategory } from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspaceAttendanceInfoDialogComponent } from './workspace-attendance-info-dialog.component';
 
 faker.seed(20260616);

@@ -9,7 +9,7 @@ import {
   WorkspaceEventSubscription,
   WorkspaceMajorEventSubscription,
   WorkspaceMajorEventSubscriptionEvent,
-} from '../../../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import { ReceiptValidationApiService } from '../../../graphql/receipt-validation-api.service';
 import {
   WorkspacePermissionScope,

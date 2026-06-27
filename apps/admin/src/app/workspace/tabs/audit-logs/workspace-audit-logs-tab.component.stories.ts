@@ -9,7 +9,7 @@ import {
   AuditLogExplorerEntry,
   AuditLogExplorerResult,
   AuditLogOperation,
-} from '../../../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import {
   AUDIT_LOG_ENTITY_TYPE_OPTIONS,
   AUDIT_LOG_OPERATION_OPTIONS,

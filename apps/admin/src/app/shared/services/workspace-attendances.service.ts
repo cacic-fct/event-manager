@@ -19,7 +19,7 @@ import {
   OfflineEventAttendanceSubmission,
   Person,
   SubscriptionStatus,
-} from '../../graphql/models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/attendance-csv-column-dialog.component';
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
 import { SubscriberCsvExportDialogComponent } from '../../workspace/dialogs/subscriber-csv-export-dialog.component';

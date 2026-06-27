@@ -7,7 +7,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { of } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
-import { EventInput } from '../../graphql/models';
+import { EventInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
 import {

@@ -42,6 +42,7 @@
       "@cacic-fct/event-manager-public-contracts/graphql/queries": [
         "./libs/event-manager-public-contracts/src/lib/graphql/queries.ts"
       ],
+      "@cacic-fct/event-manager-admin-contracts": ["./libs/event-manager-admin-contracts/src/index.ts"],
       "@cacic-fct/event-manager-m2m-contracts": ["./libs/event-manager-m2m-contracts/src/index.ts"]
     }
   },

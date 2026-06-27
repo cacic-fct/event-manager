@@ -1,4 +1,4 @@
-import { Event, EventGroup, EventSummary, MajorEvent } from '../graphql/models';
+import { Event, EventGroup, EventSummary, MajorEvent } from '@cacic-fct/event-manager-admin-contracts';
 
 export type FreezeDates = {
   createdAt?: string | Date | null;

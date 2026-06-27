@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
-import { OfflineEventAttendanceSubmission } from '../../graphql/models';
+import { OfflineEventAttendanceSubmission } from '@cacic-fct/event-manager-admin-contracts';
 
 export interface WorkspaceOfflineAttendanceSubmissionDialogData {
   submission: OfflineEventAttendanceSubmission & {

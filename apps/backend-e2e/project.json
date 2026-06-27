@@ -2,6 +2,7 @@
   "name": "backend-e2e",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
+  "tags": ["scope:e2e", "scope:backend", "type:e2e"],
   "implicitDependencies": [
     "backend"
   ],
@@ -13,6 +14,14 @@
       ],
       "options": {
         "passWithNoTests": true
+      }
+    },
+    "e2e-keycloak": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/backend-e2e"],
+      "options": {
+        "command": "node tools/run-backend-keycloak-e2e.mjs",
+        "forwardAllArgs": true
       }
     }
   }

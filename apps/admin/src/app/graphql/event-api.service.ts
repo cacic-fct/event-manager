@@ -10,7 +10,7 @@ import {
   EventInput,
   EventLecturer,
   EventSummary,
-} from './models';
+} from '@cacic-fct/event-manager-admin-contracts';
 import {
   EVENT_DETAIL_FIELDS,
   EVENT_DRAFT_FIELDS,

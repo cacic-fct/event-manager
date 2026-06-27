@@ -30,7 +30,7 @@ import {
   PublicationBulkOperation,
   PublicContentWorkspaceFilters,
 } from '../../../graphql/publishing-api.service';
-import { PublicationState, PublicationTargetType } from '../../../graphql/models';
+import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 import { bindLiveSearch } from '../../../shared/live-search';
 import {
   defaultScheduledPublicationDate,

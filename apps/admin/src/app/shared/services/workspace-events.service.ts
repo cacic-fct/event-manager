@@ -7,9 +7,15 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
-import { PeopleApiService } from '../../graphql/people-api.service';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
-import { Event, EventDraft, EventGroup, EventInput, Person, PlacePresetInput } from '../../graphql/models';
+import {
+  Event,
+  EventDraft,
+  EventGroup,
+  EventInput,
+  Person,
+  PlacePresetInput,
+} from '@cacic-fct/event-manager-admin-contracts';
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import {
   CloneAssetDialogComponent,
@@ -23,50 +29,29 @@ import { PersonCreateDialogComponent } from '../../workspace/dialogs/person-crea
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import {
+  DEFAULT_DRAFT_EVENT_EMOJI,
+  DEFAULT_DRAFT_EVENT_NAME,
+  calculateDurationMinutes,
+  createOnlineAttendanceCode,
+  eventFromDraft,
+  fromIsoToLocalInput,
+  resolveEventDates,
+  toOptionalIsoDateTime,
+  toOptionalNumber,
+} from './workspace-event-form.helpers';
+import {
   WORKSPACE_LIST_PAGE_SIZE,
   applyPagedResult,
   createWorkspaceListPagination,
   resetPagination,
 } from '../list-pagination';
 import { bindLiveSearch } from '../live-search';
+import { WorkspaceEventPeopleService } from './workspace-event-people.service';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
 import { WorkspaceUiService } from './workspace-ui.service';
 
-const NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS = '2345689ABCDEFGHKMNPQRSTWXYZ';
-const BANNED_ATTENDANCE_CODES = new Set([
-  '2222',
-  '3333',
-  '4444',
-  '5555',
-  '6666',
-  '7777',
-  '8888',
-  '9999',
-  'AAAA',
-  'BBBB',
-  'CCCC',
-  'DDDD',
-  'EEEE',
-  'FFFF',
-  'GGGG',
-  'HHHH',
-  'KKKK',
-  'MMMM',
-  'NNNN',
-  'PPPP',
-  'QQQQ',
-  'RRRR',
-  'SSSS',
-  'TTTT',
-  'WWWW',
-  'XXXX',
-  'YYYY',
-  'ZZZZ',
-  'PENS',
-  'ANWS',
-]);
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIfCurrent?: boolean };
 type DraftSelectionResult = EventDraft | null | undefined;
@@ -74,9 +59,6 @@ type EventGroupResolution =
   | { status: 'none' }
   | { status: 'found'; group: EventGroup }
   | { status: 'unresolved' };
-const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
-const DEFAULT_DRAFT_EVENT_EMOJI = '❔';
-const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
 
 @Injectable({
   providedIn: 'root',
@@ -85,7 +67,7 @@ export class WorkspaceEventsService {
   private readonly api = inject(EventApiService);
   private readonly publicationApi = inject(PublicationApiService);
   private readonly eventGroupsApi = inject(EventGroupApiService);
-  private readonly peopleApi = inject(PeopleApiService);
+  private readonly eventPeople = inject(WorkspaceEventPeopleService);
   private readonly snackbar = inject(MatSnackBar);
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
@@ -278,7 +260,7 @@ export class WorkspaceEventsService {
 
     this.selectedEvent.set(eventDetails);
     this.selectedEventDraft.set(selectedDraft);
-    await this.populateEventForm(selectedDraft ? this.eventFromDraft(eventDetails, selectedDraft) : eventDetails);
+    await this.populateEventForm(selectedDraft ? eventFromDraft(eventDetails, selectedDraft) : eventDetails);
     this.eventGroupSearchResults.set([]);
     await Promise.all([this.loadEventLecturers(eventId), this.loadEventAttendanceCollectors(eventId)]);
     await this.loadGroupLecturerSuggestions();
@@ -345,18 +327,7 @@ export class WorkspaceEventsService {
   }
 
   randomizeOnlineAttendanceCode(): void {
-    let code = '';
-    do {
-      code = Array.from(
-        { length: 4 },
-        () =>
-          NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS[
-            this.getRandomIndex(NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS.length)
-          ],
-      ).join('');
-    } while (BANNED_ATTENDANCE_CODES.has(code));
-
-    this.eventForm.controls.onlineAttendanceCode.setValue(code);
+    this.eventForm.controls.onlineAttendanceCode.setValue(createOnlineAttendanceCode());
   }
 
   async saveEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
@@ -483,7 +454,7 @@ export class WorkspaceEventsService {
 
     this.selectedEventDraft.set(selection.kind === 'draft' ? selection.draft : null);
     await this.populateEventForm(
-      selection.kind === 'draft' ? this.eventFromDraft(selectedEvent, selection.draft) : selectedEvent,
+      selection.kind === 'draft' ? eventFromDraft(selectedEvent, selection.draft) : selectedEvent,
     );
   }
 
@@ -638,12 +609,7 @@ export class WorkspaceEventsService {
       return;
     }
 
-    await firstValueFrom(
-      this.api.createEventLecturer({
-        eventId: selectedEvent.id,
-        personId: person.id,
-      }),
-    );
+    await this.eventPeople.addLecturer(selectedEvent.id, person.id);
     await this.loadEventLecturers(selectedEvent.id);
   }
 
@@ -658,12 +624,7 @@ export class WorkspaceEventsService {
       this.addPendingLecturer(person);
       return;
     }
-    await firstValueFrom(
-      this.api.createEventLecturer({
-        eventId: selectedEvent.id,
-        personId: person.id,
-      }),
-    );
+    await this.eventPeople.addLecturer(selectedEvent.id, person.id);
     await this.loadEventLecturers(selectedEvent.id);
   }
 
@@ -678,7 +639,7 @@ export class WorkspaceEventsService {
       this.eventLecturers.update((lecturers) => lecturers.filter((lecturer) => lecturer.personId !== personId));
       return;
     }
-    await firstValueFrom(this.api.deleteEventLecturer(selectedEvent.id, personId));
+    await this.eventPeople.removeLecturer(selectedEvent.id, personId);
     await this.loadEventLecturers(selectedEvent.id);
   }
 
@@ -702,12 +663,7 @@ export class WorkspaceEventsService {
       this.addPendingAttendanceCollector(person);
       return;
     }
-    await firstValueFrom(
-      this.api.createEventAttendanceCollector({
-        eventId: selectedEvent.id,
-        personId: person.id,
-      }),
-    );
+    await this.eventPeople.addAttendanceCollector(selectedEvent.id, person.id);
     await this.loadEventAttendanceCollectors(selectedEvent.id);
   }
 
@@ -724,18 +680,12 @@ export class WorkspaceEventsService {
       );
       return;
     }
-    await firstValueFrom(this.api.deleteEventAttendanceCollector(selectedEvent.id, personId));
+    await this.eventPeople.removeAttendanceCollector(selectedEvent.id, personId);
     await this.loadEventAttendanceCollectors(selectedEvent.id);
   }
 
   private async loadEventLecturers(eventId: string): Promise<void> {
-    const lecturers = await firstValueFrom(this.api.listEventLecturers(eventId));
-    this.eventLecturers.set(
-      lecturers.map((lecturer) => ({
-        personId: lecturer.personId,
-        name: lecturer.person?.name ?? lecturer.personId,
-      })),
-    );
+    this.eventLecturers.set(await this.eventPeople.listLecturers(eventId));
   }
 
   private async openCloneDialog(eventItem: Event): Promise<CloneAssetDialogResult | null | undefined> {
@@ -802,13 +752,7 @@ export class WorkspaceEventsService {
   }
 
   private async loadEventAttendanceCollectors(eventId: string): Promise<void> {
-    const collectors = await firstValueFrom(this.api.listEventAttendanceCollectors(eventId));
-    this.eventAttendanceCollectors.set(
-      collectors.map((collector) => ({
-        personId: collector.personId,
-        name: collector.person?.name ?? collector.personId,
-      })),
-    );
+    this.eventAttendanceCollectors.set(await this.eventPeople.listAttendanceCollectors(eventId));
   }
 
   private async loadGroupLecturerSuggestions(): Promise<void> {
@@ -818,57 +762,20 @@ export class WorkspaceEventsService {
       return;
     }
 
-    const currentEventId = this.eventForm.controls.id.value;
-    const groupEvents = await firstValueFrom(this.api.listEvents({ eventGroupId, take: 100 }));
-    const sourceEventIds = groupEvents.map((eventItem) => eventItem.id).filter((eventId) => eventId !== currentEventId);
-
-    if (sourceEventIds.length === 0) {
-      this.groupLecturerSuggestions.set([]);
-      return;
-    }
-
-    const lecturerGroups = await Promise.all(
-      sourceEventIds.map((eventId) => firstValueFrom(this.api.listEventLecturers(eventId))),
+    const suggestions = await this.eventPeople.listGroupLecturerSuggestions(
+      eventGroupId,
+      this.eventForm.controls.id.value,
     );
-    const suggestions = new Map<string, Person>();
-    for (const lecturer of lecturerGroups.flat()) {
-      if (lecturer.person) {
-        suggestions.set(lecturer.person.id, lecturer.person);
-      }
-    }
 
     if (this.eventForm.controls.eventGroupId.value !== eventGroupId) {
       return;
     }
 
-    this.groupLecturerSuggestions.set(
-      [...suggestions.values()].sort((left, right) => left.name.localeCompare(right.name)),
-    );
+    this.groupLecturerSuggestions.set(suggestions);
   }
 
   private async searchPeopleCandidates(query: string, take: number): Promise<Person[]> {
-    const searches = [firstValueFrom(this.peopleApi.listPeopleSummaries({ query, take }))];
-    const identityDocumentDigits = query.replace(/\D/g, '');
-
-    if (query.includes('@')) {
-      searches.unshift(firstValueFrom(this.peopleApi.listPeopleSummaries({ email: query, take })));
-    }
-
-    if (identityDocumentDigits.length >= 8) {
-      searches.unshift(firstValueFrom(this.peopleApi.listPeopleSummaries({ identityDocument: query, take })));
-      if (identityDocumentDigits !== query) {
-        searches.unshift(
-          firstValueFrom(this.peopleApi.listPeopleSummaries({ identityDocument: identityDocumentDigits, take })),
-        );
-      }
-    }
-
-    const peopleById = new Map<string, Person>();
-    for (const person of (await Promise.all(searches)).flat()) {
-      peopleById.set(person.id, person);
-    }
-
-    return [...peopleById.values()].slice(0, take);
+    return this.eventPeople.searchCandidates(query, take);
   }
 
   private async deleteEventById(eventId: string): Promise<void> {
@@ -971,84 +878,6 @@ export class WorkspaceEventsService {
     return action === 'DRAFT' && (eventItem.publicationState === 'PUBLISHED' || eventItem.publicationState === 'SCHEDULED');
   }
 
-  private eventFromDraft(eventItem: Event, draft: EventDraft): Event {
-    const payload = this.parseDraftPayload(draft);
-    return {
-      ...eventItem,
-      name: this.stringValue(payload.name, eventItem.name),
-      creditMinutes: this.numberOrNullValue(payload.creditMinutes, eventItem.creditMinutes ?? null),
-      startDate: this.stringValue(payload.startDate, eventItem.startDate),
-      endDate: this.stringValue(payload.endDate, eventItem.endDate),
-      emoji: this.stringValue(payload.emoji, eventItem.emoji),
-      type: this.stringValue(payload.type, eventItem.type) as Event['type'],
-      description: this.nullableStringValue(payload.description, eventItem.description ?? null),
-      shortDescription: this.nullableStringValue(payload.shortDescription, eventItem.shortDescription ?? null),
-      latitude: this.numberOrNullValue(payload.latitude, eventItem.latitude ?? null),
-      longitude: this.numberOrNullValue(payload.longitude, eventItem.longitude ?? null),
-      locationDescription: this.nullableStringValue(payload.locationDescription, eventItem.locationDescription ?? null),
-      majorEventId: this.nullableStringValue(payload.majorEventId, eventItem.majorEventId ?? null),
-      eventGroupId: this.nullableStringValue(payload.eventGroupId, eventItem.eventGroupId ?? null),
-      allowSubscription: this.booleanValue(payload.allowSubscription, eventItem.allowSubscription),
-      subscriptionStartDate: this.nullableStringValue(payload.subscriptionStartDate, eventItem.subscriptionStartDate ?? null),
-      subscriptionEndDate: this.nullableStringValue(payload.subscriptionEndDate, eventItem.subscriptionEndDate ?? null),
-      slots: this.numberOrNullValue(payload.slots, eventItem.slots ?? null),
-      autoSubscribe: this.booleanValue(payload.autoSubscribe, eventItem.autoSubscribe),
-      shouldIssueCertificate: this.booleanValue(payload.shouldIssueCertificate, eventItem.shouldIssueCertificate),
-      shouldIssueCertificateForNonPayingAttendees: this.booleanValue(
-        payload.shouldIssueCertificateForNonPayingAttendees,
-        eventItem.shouldIssueCertificateForNonPayingAttendees,
-      ),
-      shouldIssueCertificateForNonSubscribedAttendees: this.booleanValue(
-        payload.shouldIssueCertificateForNonSubscribedAttendees,
-        eventItem.shouldIssueCertificateForNonSubscribedAttendees,
-      ),
-      shouldCollectAttendance: this.booleanValue(payload.shouldCollectAttendance, eventItem.shouldCollectAttendance),
-      isOnlineAttendanceAllowed: this.booleanValue(payload.isOnlineAttendanceAllowed, eventItem.isOnlineAttendanceAllowed),
-      shouldProvideSubscriberListToLecturer: this.booleanValue(
-        payload.shouldProvideSubscriberListToLecturer,
-        eventItem.shouldProvideSubscriberListToLecturer ?? false,
-      ),
-      onlineAttendanceCode: this.nullableStringValue(payload.onlineAttendanceCode, eventItem.onlineAttendanceCode ?? null),
-      onlineAttendanceStartDate: this.nullableStringValue(
-        payload.onlineAttendanceStartDate,
-        eventItem.onlineAttendanceStartDate ?? null,
-      ),
-      onlineAttendanceEndDate: this.nullableStringValue(
-        payload.onlineAttendanceEndDate,
-        eventItem.onlineAttendanceEndDate ?? null,
-      ),
-      publiclyVisible: this.booleanValue(payload.publiclyVisible, eventItem.publiclyVisible),
-      youtubeCode: this.nullableStringValue(payload.youtubeCode, eventItem.youtubeCode ?? null),
-      buttonText: this.nullableStringValue(payload.buttonText, eventItem.buttonText ?? null),
-      buttonLink: this.nullableStringValue(payload.buttonLink, eventItem.buttonLink ?? null),
-    };
-  }
-
-  private parseDraftPayload(draft: EventDraft): EventInput {
-    try {
-      const parsed: unknown = JSON.parse(draft.payloadJson);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as EventInput) : {};
-    } catch {
-      return {};
-    }
-  }
-
-  private stringValue(value: unknown, fallback: string): string {
-    return typeof value === 'string' ? value : fallback;
-  }
-
-  private nullableStringValue(value: unknown, fallback: string | null): string | null {
-    return typeof value === 'string' || value === null ? value : fallback;
-  }
-
-  private numberOrNullValue(value: unknown, fallback: number | null): number | null {
-    return typeof value === 'number' || value === null ? value : fallback;
-  }
-
-  private booleanValue(value: unknown, fallback: boolean): boolean {
-    return typeof value === 'boolean' ? value : fallback;
-  }
-
   private async confirm(data: { title: string; message: string; confirmLabel?: string }): Promise<boolean> {
     const result = await firstValueFrom(
       this.dialog
@@ -1064,12 +893,12 @@ export class WorkspaceEventsService {
 
   private buildEventPayload(includePeople: boolean, options: { allowIncompleteDraft?: boolean } = {}): EventInput {
     const raw = this.eventForm.getRawValue();
-    const creditValue = this.toOptionalNumber(raw.creditValue);
-    const dates = this.resolveEventDates(raw.startDate, raw.endDate, options.allowIncompleteDraft === true);
+    const creditValue = toOptionalNumber(raw.creditValue);
+    const dates = resolveEventDates(raw.startDate, raw.endDate, options.allowIncompleteDraft === true);
     const creditMinutes =
       creditValue == null
         ? raw.startDate && raw.endDate
-          ? this.calculateDurationMinutes(raw.startDate, raw.endDate)
+          ? calculateDurationMinutes(raw.startDate, raw.endDate)
           : null
         : raw.creditDisplayMode === 'hours'
           ? Math.round(creditValue * 60)
@@ -1091,9 +920,9 @@ export class WorkspaceEventsService {
       majorEventId: raw.majorEventId || null,
       eventGroupId: raw.eventGroupId || null,
       allowSubscription: raw.allowSubscription,
-      subscriptionStartDate: this.toOptionalIsoDateTime(raw.subscriptionStartDate),
-      subscriptionEndDate: this.toOptionalIsoDateTime(raw.subscriptionEndDate),
-      slots: this.toOptionalNumber(raw.slots),
+      subscriptionStartDate: toOptionalIsoDateTime(raw.subscriptionStartDate),
+      subscriptionEndDate: toOptionalIsoDateTime(raw.subscriptionEndDate),
+      slots: toOptionalNumber(raw.slots),
       autoSubscribe: raw.autoSubscribe,
       shouldIssueCertificate: raw.shouldIssueCertificate,
       shouldIssueCertificateForNonPayingAttendees:
@@ -1109,10 +938,10 @@ export class WorkspaceEventsService {
       shouldProvideSubscriberListToLecturer: raw.shouldProvideSubscriberListToLecturer,
       onlineAttendanceCode: isOnlineAttendanceAllowed ? raw.onlineAttendanceCode.trim() || null : null,
       onlineAttendanceStartDate: isOnlineAttendanceAllowed
-        ? this.toOptionalIsoDateTime(raw.onlineAttendanceStartDate)
+        ? toOptionalIsoDateTime(raw.onlineAttendanceStartDate)
         : null,
       onlineAttendanceEndDate: isOnlineAttendanceAllowed
-        ? this.toOptionalIsoDateTime(raw.onlineAttendanceEndDate)
+        ? toOptionalIsoDateTime(raw.onlineAttendanceEndDate)
         : null,
       publiclyVisible: raw.publiclyVisible,
       youtubeCode: raw.youtubeCode.trim() || null,
@@ -1144,41 +973,6 @@ export class WorkspaceEventsService {
       latitude: raw.latitude ? Number(raw.latitude) : null,
       longitude: raw.longitude ? Number(raw.longitude) : null,
       locationDescription: name,
-    };
-  }
-
-  private resolveEventDates(
-    rawStartDate: string,
-    rawEndDate: string,
-    allowIncompleteDraft: boolean,
-  ): { startDate: string; endDate: string } {
-    if (!allowIncompleteDraft || (rawStartDate && rawEndDate)) {
-      return {
-        startDate: this.toIsoDateTime(rawStartDate),
-        endDate: this.toIsoDateTime(rawEndDate),
-      };
-    }
-
-    if (rawStartDate) {
-      const startDate = new Date(rawStartDate);
-      return {
-        startDate: startDate.toISOString(),
-        endDate: new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MS).toISOString(),
-      };
-    }
-
-    if (rawEndDate) {
-      const endDate = new Date(rawEndDate);
-      return {
-        startDate: new Date(endDate.getTime() - DEFAULT_EVENT_DURATION_MS).toISOString(),
-        endDate: endDate.toISOString(),
-      };
-    }
-
-    const startDate = new Date();
-    return {
-      startDate: startDate.toISOString(),
-      endDate: new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MS).toISOString(),
     };
   }
 
@@ -1222,8 +1016,8 @@ export class WorkspaceEventsService {
       name: eventItem.name,
       creditDisplayMode: 'hours',
       creditValue: eventItem.creditMinutes == null ? null : Number.isFinite(asHours) ? asHours : null,
-      startDate: this.fromIsoToLocalInput(eventItem.startDate),
-      endDate: this.fromIsoToLocalInput(eventItem.endDate),
+      startDate: fromIsoToLocalInput(eventItem.startDate),
+      endDate: fromIsoToLocalInput(eventItem.endDate),
       emoji: eventItem.emoji,
       type: eventItem.type,
       description: eventItem.description ?? '',
@@ -1236,9 +1030,9 @@ export class WorkspaceEventsService {
       eventGroupId: eventItem.eventGroupId ?? '',
       allowSubscription: eventItem.allowSubscription,
       subscriptionStartDate:
-        eventItem.subscriptionStartDate != null ? this.fromIsoToLocalInput(eventItem.subscriptionStartDate) : '',
+        eventItem.subscriptionStartDate != null ? fromIsoToLocalInput(eventItem.subscriptionStartDate) : '',
       subscriptionEndDate:
-        eventItem.subscriptionEndDate != null ? this.fromIsoToLocalInput(eventItem.subscriptionEndDate) : '',
+        eventItem.subscriptionEndDate != null ? fromIsoToLocalInput(eventItem.subscriptionEndDate) : '',
       slots: eventItem.slots?.toString() ?? '',
       autoSubscribe: eventItem.autoSubscribe,
       shouldIssueCertificate: eventItem.shouldIssueCertificate,
@@ -1250,10 +1044,10 @@ export class WorkspaceEventsService {
       onlineAttendanceCode: eventItem.onlineAttendanceCode ?? '',
       onlineAttendanceStartDate:
         eventItem.onlineAttendanceStartDate != null
-          ? this.fromIsoToLocalInput(eventItem.onlineAttendanceStartDate)
+          ? fromIsoToLocalInput(eventItem.onlineAttendanceStartDate)
           : '',
       onlineAttendanceEndDate:
-        eventItem.onlineAttendanceEndDate != null ? this.fromIsoToLocalInput(eventItem.onlineAttendanceEndDate) : '',
+        eventItem.onlineAttendanceEndDate != null ? fromIsoToLocalInput(eventItem.onlineAttendanceEndDate) : '',
       publiclyVisible: eventItem.publiclyVisible,
       youtubeCode: eventItem.youtubeCode ?? '',
       buttonText: eventItem.buttonText ?? '',
@@ -1319,38 +1113,6 @@ export class WorkspaceEventsService {
     );
   }
 
-  private toIsoDateTime(rawValue: string): string {
-    return new Date(rawValue).toISOString();
-  }
-
-  private toOptionalIsoDateTime(rawValue: string): string | null {
-    return rawValue.trim() ? this.toIsoDateTime(rawValue) : null;
-  }
-
-  private toOptionalNumber(rawValue: number | string | null): number | null {
-    if (rawValue == null || rawValue === '') {
-      return null;
-    }
-
-    return Number(rawValue);
-  }
-
-  private fromIsoToLocalInput(rawValue: string): string {
-    const date = new Date(rawValue);
-    const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
-    return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
-  }
-
-  private calculateDurationMinutes(startDate: string, endDate: string): number | null {
-    const start = new Date(startDate).getTime();
-    const end = new Date(endDate).getTime();
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-      return null;
-    }
-
-    return Math.round((end - start) / 60_000);
-  }
-
   private requireBothOrNeither(firstKey: string, secondKey: string) {
     return (control: AbstractControl): ValidationErrors | null => {
       const firstValue = control.get(firstKey)?.value?.toString().trim();
@@ -1409,9 +1171,4 @@ export class WorkspaceEventsService {
     nonSubscribedCertificateControl.disable({ emitEvent: false });
   }
 
-  private getRandomIndex(maxExclusive: number): number {
-    const randomValue = new Uint32Array(1);
-    crypto.getRandomValues(randomValue);
-    return randomValue[0] % maxExclusive;
-  }
 }

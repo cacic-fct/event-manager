@@ -5,7 +5,7 @@ import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, screen, userEvent, within } from 'storybook/test';
-import { AuditLogActorType, AuditLogEntry, AuditLogEntityType, AuditLogOperation } from '../../graphql/models';
+import { AuditLogActorType, AuditLogEntry, AuditLogEntityType, AuditLogOperation } from '@cacic-fct/event-manager-admin-contracts';
 import { AUDIT_LOG_ENTITY_TYPE_OPTIONS, auditLogEntityTypeLabel } from '../tabs/audit-logs/workspace-audit-log-utils';
 import { AuditLogDialogComponent } from './audit-log-dialog.component';
 
