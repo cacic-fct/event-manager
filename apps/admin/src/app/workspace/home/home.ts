@@ -98,7 +98,7 @@ export class Home implements OnInit, OnDestroy {
   readonly calendarHeadline = computed(() => {
     const count = this.insights()?.calendarEvents.length ?? 0;
     if (count === 0) {
-      return 'Nenhum evento nos próximos 7 dias.';
+      return '';
     }
 
     return `${count} ${count === 1 ? 'evento acontecerá' : 'eventos acontecerão'} esta semana.`;
@@ -204,7 +204,12 @@ export class Home implements OnInit, OnDestroy {
   }
 
   receiptValidationLink(item: DashboardPendingReceiptMajorEvent): string[] {
-    return [this.navMap()['subscriptions']?.path ?? 'subscriptions', 'major-event', item.majorEventId, 'validate-receipts'];
+    return [
+      this.navMap()['subscriptions']?.path ?? 'subscriptions',
+      'major-event',
+      item.majorEventId,
+      'validate-receipts',
+    ];
   }
 
   offlineAttendanceLink(item: DashboardPendingOfflineAttendanceEvent): string[] {
