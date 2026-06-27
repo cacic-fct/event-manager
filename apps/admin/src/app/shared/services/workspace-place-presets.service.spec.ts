@@ -65,7 +65,7 @@ describe('WorkspacePlacePresetsService', () => {
 
     await vi.advanceTimersByTimeAsync(250);
 
-    expect(api.listPlacePresets).toHaveBeenCalledWith({ query: 'lab', take: 300 });
+    expect(api.listPlacePresets).toHaveBeenCalledWith({ query: 'lab', skip: 0, take: 51 });
     expect(service.placePresets().map((place) => place.id)).toEqual(['lab']);
   });
 

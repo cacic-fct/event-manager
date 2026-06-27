@@ -118,7 +118,7 @@ describe('WorkspaceCertificatesService', () => {
 
     await vi.advanceTimersByTimeAsync(250);
 
-    expect(api.listCertificateIssuableEvents).toHaveBeenCalledWith({ query: 'aula', take: 200 });
+    expect(api.listCertificateIssuableEvents).toHaveBeenCalledWith({ query: 'aula', skip: 0, take: 51 });
     expect(service.issuableEvents().map((eventItem) => eventItem.id)).toEqual(['event-1']);
   });
 

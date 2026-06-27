@@ -11,6 +11,11 @@ import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { Event, EventGroup, EventGroupInput, EventSummary } from '../../graphql/models';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
+import {
+  applyPagedResult,
+  createWorkspaceListPagination,
+  pageVariables,
+} from '../list-pagination';
 import { bindLiveSearch } from '../live-search';
 import { WorkspaceEventsService } from './workspace-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
@@ -35,6 +40,7 @@ export class WorkspaceEventGroupsService {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly eventGroups = signal<EventGroup[]>([]);
+  readonly eventGroupsPagination = createWorkspaceListPagination();
   readonly eventSummaries = signal<EventSummary[]>([]);
   readonly selectedEventGroup = signal<EventGroup | null>(null);
   readonly eventGroupEvents = signal<Event[]>([]);
@@ -104,7 +110,8 @@ export class WorkspaceEventGroupsService {
   }
 
   async loadEventGroups(): Promise<void> {
-    this.eventGroups.set(await firstValueFrom(this.api.listEventGroups({ take: 200 })));
+    const items = await firstValueFrom(this.api.listEventGroups(pageVariables(this.eventGroupsPagination.pageIndex())));
+    this.eventGroups.set(applyPagedResult(items, this.eventGroupsPagination));
     await this.refreshEventSummaries();
     const selectedGroup = this.selectedEventGroup();
     if (selectedGroup) {
@@ -113,6 +120,19 @@ export class WorkspaceEventGroupsService {
         this.selectedEventGroup.set(refreshed);
       }
     }
+  }
+
+  async previousEventGroupsPage(): Promise<void> {
+    this.eventGroupsPagination.pageIndex.update((page) => Math.max(0, page - 1));
+    await this.loadEventGroups();
+  }
+
+  async nextEventGroupsPage(): Promise<void> {
+    if (!this.eventGroupsPagination.hasNextPage()) {
+      return;
+    }
+    this.eventGroupsPagination.pageIndex.update((page) => page + 1);
+    await this.loadEventGroups();
   }
 
   private async refreshEventSummaries(): Promise<void> {

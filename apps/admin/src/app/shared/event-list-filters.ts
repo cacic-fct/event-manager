@@ -16,6 +16,7 @@ export interface EventListApiFilters {
   startDateUntil?: string;
   isInGroup?: boolean;
   isInMajorEvent?: boolean;
+  skip?: number;
   take?: number;
 }
 

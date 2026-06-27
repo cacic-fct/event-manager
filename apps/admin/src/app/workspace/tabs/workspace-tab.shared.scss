@@ -109,6 +109,22 @@
   margin-top: 0.75rem;
 }
 
+.list-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.list-pager-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .permission-target-search {
   grid-column: span 2;
 }

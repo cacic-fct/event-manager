@@ -12,6 +12,7 @@ import {
 } from '../../workspace/dialogs/place-preset-merge-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { bindLiveSearch } from '../live-search';
+import { applyPagedResult, createWorkspaceListPagination, pageVariables, resetPagination } from '../list-pagination';
 
 @Injectable({
   providedIn: 'root',
@@ -25,6 +26,7 @@ export class WorkspacePlacePresetsService {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly placePresets = signal<PlacePreset[]>([]);
+  readonly placePresetsPagination = createWorkspaceListPagination();
   readonly selectedPlacePreset = signal<PlacePreset | null>(null);
   readonly mergeSource = signal<PlacePreset | null>(null);
   readonly sortedPlacePresets = computed(() =>
@@ -47,17 +49,42 @@ export class WorkspacePlacePresetsService {
     bindLiveSearch({
       control: this.filterForm.controls.query,
       destroyRef: this.destroyRef,
-      search: () => this.loadPlacePresets(),
+      search: () => this.applyFilters(),
     });
   }
 
   async loadPlacePresets(): Promise<void> {
     const query = this.filterForm.controls.query.value.trim();
-    this.placePresets.set(await firstValueFrom(this.api.listPlacePresets({ query: query || undefined, take: 300 })));
+    const items = await firstValueFrom(
+      this.api.listPlacePresets({
+        query: query || undefined,
+        ...pageVariables(this.placePresetsPagination.pageIndex()),
+      }),
+    );
+    this.placePresets.set(applyPagedResult(items, this.placePresetsPagination));
   }
 
   async resetFilters(): Promise<void> {
     this.filterForm.reset({ query: '' }, { emitEvent: false });
+    resetPagination(this.placePresetsPagination);
+    await this.loadPlacePresets();
+  }
+
+  async applyFilters(): Promise<void> {
+    resetPagination(this.placePresetsPagination);
+    await this.loadPlacePresets();
+  }
+
+  async previousPlacePresetsPage(): Promise<void> {
+    this.placePresetsPagination.pageIndex.update((page) => Math.max(0, page - 1));
+    await this.loadPlacePresets();
+  }
+
+  async nextPlacePresetsPage(): Promise<void> {
+    if (!this.placePresetsPagination.hasNextPage()) {
+      return;
+    }
+    this.placePresetsPagination.pageIndex.update((page) => page + 1);
     await this.loadPlacePresets();
   }
 

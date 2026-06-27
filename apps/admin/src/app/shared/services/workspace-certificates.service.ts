@@ -25,6 +25,7 @@ import {
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { bindLiveSearch } from '../live-search';
+import { applyPagedResult, createWorkspaceListPagination, pageVariables, resetPagination } from '../list-pagination';
 
 type IssuableScope = Exclude<CertificateScope, 'OTHER'>;
 type CertificateTargetType = 'event' | 'event-group' | 'major-event';
@@ -70,11 +71,14 @@ export class WorkspaceCertificatesService {
   readonly issuableEvents = signal<Event[]>([]);
   readonly issuableEventGroups = signal<EventGroup[]>([]);
   readonly issuableMajorEvents = signal<MajorEvent[]>([]);
+  readonly targetsPagination = createWorkspaceListPagination();
   readonly selectedTarget = signal<{ id: string; name: string } | null>(null);
   readonly certificateTemplates = signal<CertificateTemplate[]>([]);
   readonly certificateConfigs = signal<CertificateConfig[]>([]);
+  readonly certificateConfigsPagination = createWorkspaceListPagination();
   readonly selectedCertificateConfig = signal<CertificateConfig | null>(null);
   readonly certificates = signal<Certificate[]>([]);
+  readonly certificatesPagination = createWorkspaceListPagination();
   readonly personSearchResults = signal<Person[]>([]);
   readonly certificateFieldDefinitions = signal<CertificateFieldDefinition[]>([]);
   readonly shouldShowSecondPageText = computed(() => !this.certificateConfigModel().shouldAutofillSecondPage);
@@ -109,7 +113,7 @@ export class WorkspaceCertificatesService {
     bindLiveSearch({
       control: this.targetFiltersForm.controls.query,
       destroyRef: this.destroyRef,
-      search: () => this.searchTargets(),
+      search: () => this.applyTargetFilters(),
     });
     bindLiveSearch({
       control: this.personLookupForm.controls.query,
@@ -147,28 +151,46 @@ export class WorkspaceCertificatesService {
   async searchTargets(): Promise<void> {
     const scope = this.targetFiltersForm.controls.scope.value as IssuableScope;
     const query = this.targetFiltersForm.controls.query.value.trim() || undefined;
+    const pagination = pageVariables(this.targetsPagination.pageIndex());
 
     if (scope === 'EVENT') {
-      this.issuableEvents.set(await firstValueFrom(this.api.listCertificateIssuableEvents({ query, take: 200 })));
+      const items = await firstValueFrom(this.api.listCertificateIssuableEvents({ query, ...pagination }));
+      this.issuableEvents.set(applyPagedResult(items, this.targetsPagination));
       this.issuableEventGroups.set([]);
       this.issuableMajorEvents.set([]);
       return;
     }
 
     if (scope === 'EVENT_GROUP') {
-      this.issuableEventGroups.set(
-        await firstValueFrom(this.api.listCertificateIssuableEventGroups({ query, take: 200 })),
-      );
+      const items = await firstValueFrom(this.api.listCertificateIssuableEventGroups({ query, ...pagination }));
+      this.issuableEventGroups.set(applyPagedResult(items, this.targetsPagination));
       this.issuableEvents.set([]);
       this.issuableMajorEvents.set([]);
       return;
     }
 
-    this.issuableMajorEvents.set(
-      await firstValueFrom(this.api.listCertificateIssuableMajorEvents({ query, take: 200 })),
-    );
+    const items = await firstValueFrom(this.api.listCertificateIssuableMajorEvents({ query, ...pagination }));
+    this.issuableMajorEvents.set(applyPagedResult(items, this.targetsPagination));
     this.issuableEvents.set([]);
     this.issuableEventGroups.set([]);
+  }
+
+  async applyTargetFilters(): Promise<void> {
+    resetPagination(this.targetsPagination);
+    await this.searchTargets();
+  }
+
+  async previousTargetsPage(): Promise<void> {
+    this.targetsPagination.pageIndex.update((page) => Math.max(0, page - 1));
+    await this.searchTargets();
+  }
+
+  async nextTargetsPage(): Promise<void> {
+    if (!this.targetsPagination.hasNextPage()) {
+      return;
+    }
+    this.targetsPagination.pageIndex.update((page) => page + 1);
+    await this.searchTargets();
   }
 
   async onScopeChanged(scope: IssuableScope): Promise<void> {
@@ -180,6 +202,7 @@ export class WorkspaceCertificatesService {
     this.certificates.set([]);
     this.personSearchResults.set([]);
     this.resetCertificateConfigForm();
+    resetPagination(this.targetsPagination);
     await this.searchTargets();
   }
 
@@ -233,6 +256,8 @@ export class WorkspaceCertificatesService {
     this.personSearchResults.set([]);
     this.selectedCertificateConfig.set(null);
     this.resetCertificateConfigForm();
+    resetPagination(this.certificateConfigsPagination);
+    resetPagination(this.certificatesPagination);
     await Promise.all([this.loadCertificateConfigs(), this.loadCertificates()]);
   }
 
@@ -267,6 +292,7 @@ export class WorkspaceCertificatesService {
       certificateFields: {},
     });
     this.syncCertificateFieldsForm(config.certificateFieldsJson, config.certificateTemplateId);
+    resetPagination(this.certificatesPagination);
     void this.loadCertificates();
   }
 
@@ -283,6 +309,7 @@ export class WorkspaceCertificatesService {
     this.personLookupForm.reset({ query: '' }, { emitEvent: false });
     this.personSearchResults.set([]);
     this.resetCertificateConfigForm();
+    resetPagination(this.certificatesPagination);
     void this.loadCertificates();
   }
 
@@ -291,6 +318,8 @@ export class WorkspaceCertificatesService {
     this.selectedCertificateConfig.set(null);
     this.certificateConfigs.set([]);
     this.certificates.set([]);
+    resetPagination(this.certificateConfigsPagination);
+    resetPagination(this.certificatesPagination);
     this.personSearchResults.set([]);
     this.resetCertificateConfigForm();
   }
@@ -492,10 +521,10 @@ export class WorkspaceCertificatesService {
     const configs = await firstValueFrom(
       this.api.listCertificateConfigs(this.targetFiltersForm.controls.scope.value as IssuableScope, selectedTarget.id, {
         includeInactive: true,
-        take: 200,
+        ...pageVariables(this.certificateConfigsPagination.pageIndex()),
       }),
     );
-    this.certificateConfigs.set(configs);
+    this.certificateConfigs.set(applyPagedResult(configs, this.certificateConfigsPagination));
 
     const selectedConfig = this.selectedCertificateConfig();
     if (!selectedConfig) {
@@ -510,6 +539,19 @@ export class WorkspaceCertificatesService {
     }
 
     this.selectCertificateConfig(refreshedSelection);
+  }
+
+  async previousCertificateConfigsPage(): Promise<void> {
+    this.certificateConfigsPagination.pageIndex.update((page) => Math.max(0, page - 1));
+    await this.loadCertificateConfigs();
+  }
+
+  async nextCertificateConfigsPage(): Promise<void> {
+    if (!this.certificateConfigsPagination.hasNextPage()) {
+      return;
+    }
+    this.certificateConfigsPagination.pageIndex.update((page) => page + 1);
+    await this.loadCertificateConfigs();
   }
 
   private async confirm(data: { title: string; message: string; confirmLabel?: string }): Promise<boolean> {
@@ -533,13 +575,29 @@ export class WorkspaceCertificatesService {
     }
 
     this.certificates.set(
-      await firstValueFrom(
+      applyPagedResult(
+        await firstValueFrom(
         this.api.listCertificates(this.targetFiltersForm.controls.scope.value as IssuableScope, selectedTarget.id, {
           configId: this.selectedCertificateConfig()?.id,
-          take: 200,
+          ...pageVariables(this.certificatesPagination.pageIndex()),
         }),
       ),
+        this.certificatesPagination,
+      ),
     );
+  }
+
+  async previousCertificatesPage(): Promise<void> {
+    this.certificatesPagination.pageIndex.update((page) => Math.max(0, page - 1));
+    await this.loadCertificates();
+  }
+
+  async nextCertificatesPage(): Promise<void> {
+    if (!this.certificatesPagination.hasNextPage()) {
+      return;
+    }
+    this.certificatesPagination.pageIndex.update((page) => page + 1);
+    await this.loadCertificates();
   }
 
   private buildCertificateConfigPayload(targetId: string, raw = this.certificateConfigModel()): CertificateConfigInput {
