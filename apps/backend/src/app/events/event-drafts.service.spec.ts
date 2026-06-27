@@ -1,4 +1,5 @@
 import { AuditLogOperation, PublicationState } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { EventDraftsService } from './event-drafts.service';
 
 describe('EventDraftsService', () => {
@@ -61,10 +62,11 @@ describe('EventDraftsService', () => {
     const prisma = {
       event: {
         findFirst: jest.fn().mockResolvedValue(sourceEvent),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       eventDraft: {
         findUnique: jest.fn(),
-        findMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'Editora', email: 'editor@example.com' }),
@@ -112,6 +114,34 @@ describe('EventDraftsService', () => {
       typesenseSearch,
     };
   }
+
+  it('lists drafts only through editable event targets', async () => {
+    const { service, prisma, authorizationPolicy } = buildService();
+    authorizationPolicy.accessibleEventTargets.mockResolvedValue({
+      eventIds: new Set(['event-1']),
+      majorEventIds: new Set<string>(),
+      eventGroupIds: new Set<string>(),
+    });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }]);
+    prisma.eventDraft.findMany.mockResolvedValue([draftRecord]);
+
+    await expect(service.listEventDrafts(user as never, { sourceEventId: 'event-1' })).resolves.toEqual([
+      expect.objectContaining({ id: 'draft-1', payloadJson: expect.any(String) }),
+    ]);
+
+    expect(authorizationPolicy.accessibleEventTargets).toHaveBeenCalledWith(user, Permission.Event.Update);
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              OR: [{ id: { in: ['event-1'] } }],
+            },
+          ],
+        }),
+      }),
+    );
+  });
 
   it('saves a separate draft without updating the published event row', async () => {
     const { service, tx, authorizationPolicy, frozenResources, auditLog } = buildService();

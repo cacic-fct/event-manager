@@ -826,7 +826,7 @@ export class WorkspaceEventsService {
   }
 
   private async loadDraftsForEvents(eventIds: string[]): Promise<void> {
-    if (eventIds.length === 0) {
+    if (eventIds.length === 0 || !this.permissions.canEdit(Permission.Event.Update)) {
       this.eventDraftsByEventId.set({});
       return;
     }

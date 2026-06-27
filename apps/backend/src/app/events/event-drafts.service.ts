@@ -206,7 +206,7 @@ export class EventDraftsService {
     options: { sourceEventId?: string; sourceEventIds?: string[] } = {},
   ): Promise<EventDraft[]> {
     const requestedIds = [...new Set([...(options.sourceEventIds ?? []), options.sourceEventId].filter(Boolean))] as string[];
-    const sourceEventIds = await this.readableSourceEventIds(user, requestedIds);
+    const sourceEventIds = await this.editableSourceEventIds(user, requestedIds);
     if (sourceEventIds.length === 0) {
       return [];
     }
@@ -452,8 +452,8 @@ export class EventDraftsService {
     return drafts.length;
   }
 
-  private async readableSourceEventIds(user: AuthenticatedUser | undefined, requestedIds: string[]): Promise<string[]> {
-    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.Event.Read);
+  private async editableSourceEventIds(user: AuthenticatedUser | undefined, requestedIds: string[]): Promise<string[]> {
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.Event.Update);
     if (accessibleTargets && this.isEmptyAccessibleEventTargets(accessibleTargets)) {
       return [];
     }

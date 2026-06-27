@@ -17,7 +17,7 @@ export class EventDraftsResolver {
 
   @Query(() => [EventDraft], { name: 'eventDrafts' })
   @AllowScopedCollectionPermissions()
-  @RequirePermissions(Permission.Event.Read)
+  @RequirePermissions(Permission.Event.Update)
   async eventDrafts(
     @Context() context: GraphqlContext,
     @Args('sourceEventId', { type: () => String, nullable: true }) sourceEventId?: string,
