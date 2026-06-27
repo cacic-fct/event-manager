@@ -31,7 +31,7 @@ test('authenticated users are redirected away from the local login page', async 
 
   await expect(page).toHaveURL(/\/admin\/?$/);
   await expect(page.getByText('admin@example.edu')).toBeVisible();
-  await expect(page.getByRole('heading', { name: /bom dia|boa tarde|boa noite/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /boa madrugada|bom dia|boa tarde|boa noite/i })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Entrar' })).toHaveCount(0);
 });
 
