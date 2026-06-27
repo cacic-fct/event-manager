@@ -43,6 +43,12 @@ type ActiveGrant = {
   eventGroupId: string | null;
 };
 
+const ATTENDANCE_COLLECTION_PERMISSIONS = [
+  Permission.EventAttendance.Collect,
+  Permission.EventAttendance.Import,
+  Permission.EventAttendance.Update,
+] as const;
+
 @Injectable()
 export class AuthorizationPolicyService {
   constructor(private readonly prisma: PrismaService) {}
@@ -246,43 +252,58 @@ export class AuthorizationPolicyService {
   async assertAttendanceCollectorForEvent(
     eventId: string,
     personId: string,
-    options: { enforceCollectionWindow?: boolean } = {},
+    options: { enforceCollectionWindow?: boolean; user?: AuthenticatedUser } = {},
   ): Promise<void> {
-    const collector = await this.prisma.eventAttendanceCollector.findUnique({
-      where: {
-        eventId_personId: {
-          eventId,
-          personId,
-        },
-      },
-      select: {
-        event: {
-          select: {
-            startDate: true,
-            endDate: true,
-            deletedAt: true,
-            publiclyVisible: true,
-            shouldCollectAttendance: true,
+    const [collector, event] = await Promise.all([
+      this.prisma.eventAttendanceCollector.findUnique({
+        where: {
+          eventId_personId: {
+            eventId,
+            personId,
           },
         },
-      },
-    });
+        select: {
+          eventId: true,
+        },
+      }),
+      this.prisma.event.findUnique({
+        where: {
+          id: eventId,
+        },
+        select: {
+          startDate: true,
+          endDate: true,
+          deletedAt: true,
+          publiclyVisible: true,
+          shouldCollectAttendance: true,
+        },
+      }),
+    ]);
 
     if (
-      !collector ||
-      collector.event.deletedAt ||
-      !collector.event.publiclyVisible ||
-      !collector.event.shouldCollectAttendance
+      !event ||
+      event.deletedAt ||
+      !event.shouldCollectAttendance
     ) {
       throw new ForbiddenException('Você não pode coletar presença para este evento.');
     }
 
     if (
       options.enforceCollectionWindow &&
-      !this.isAttendanceCollectionOpen(collector.event.startDate, collector.event.endDate)
+      !this.isAttendanceCollectionOpen(event.startDate, event.endDate)
     ) {
       throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
     }
+
+    if (collector && event.publiclyVisible) {
+      return;
+    }
+
+    if (await this.hasAnyPermission(options.user, ATTENDANCE_COLLECTION_PERMISSIONS, { eventId })) {
+      return;
+    }
+
+    throw new ForbiddenException('Você não pode coletar presença para este evento.');
   }
 
   canLecturerViewSubscriberList(event: {
@@ -345,6 +366,24 @@ export class AuthorizationPolicyService {
       return grants.some((grant) => grant.scope !== EventManagerPermissionGrantScope.GLOBAL);
     }
     return grants.some((grant) => this.matchesScopedGrant(grant, target));
+  }
+
+  private async hasAnyPermission(
+    user: AuthenticatedUser | undefined,
+    permissions: readonly Permission[],
+    context: AuthorizationResourceContext,
+  ): Promise<boolean> {
+    if (!user || !this.hasEventManagerAccess(user)) {
+      return false;
+    }
+
+    for (const permission of permissions) {
+      if (await this.hasPermission(user, permission, context)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private normalizePermissions(permissions: readonly string[]): Permission[] {

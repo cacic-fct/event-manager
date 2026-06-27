@@ -178,6 +178,7 @@ export class CurrentUserAttendanceCollectionController {
     });
     await this.authorizationPolicy.assertAttendanceCollectorForEvent(eventId, collectorPerson.id, {
       enforceCollectionWindow,
+      user: request.user,
     });
 
     return {
