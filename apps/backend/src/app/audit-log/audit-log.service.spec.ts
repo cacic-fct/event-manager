@@ -713,7 +713,7 @@ describe('AuditLogService', () => {
       ].join(' && '),
       limit: 25,
       offset: 50,
-      sortBy: 'lastRecordedAt:desc,createdAt:desc,id:asc',
+      sortBy: 'lastRecordedAt:desc,createdAt:desc',
     });
     expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith({
       where: {

@@ -141,7 +141,7 @@ export class AuditLogService {
       filterBy: buildAuditLogTypesenseFilter(input),
       limit: take,
       offset: skip,
-      sortBy: 'lastRecordedAt:desc,createdAt:desc,id:asc',
+      sortBy: 'lastRecordedAt:desc,createdAt:desc',
     });
 
     if (searchResult.available) {
