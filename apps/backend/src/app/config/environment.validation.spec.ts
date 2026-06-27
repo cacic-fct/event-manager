@@ -47,6 +47,26 @@ describe('validateBackendEnvironment', () => {
     );
   });
 
+  it('rejects partial Novu configuration when secure mode is not enabled', () => {
+    expect(() =>
+      validateBackendEnvironment({
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        NOVU_SECRET_KEY: 'secret',
+      }),
+    ).toThrow(
+      'NOVU_SECURE_MODE_ENABLED must be true when NOVU_SECRET_KEY or NOVU_APPLICATION_IDENTIFIER is set.',
+    );
+
+    expect(() =>
+      validateBackendEnvironment({
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        NOVU_APPLICATION_IDENTIFIER: 'app-1',
+      }),
+    ).toThrow(
+      'NOVU_SECURE_MODE_ENABLED must be true when NOVU_SECRET_KEY or NOVU_APPLICATION_IDENTIFIER is set.',
+    );
+  });
+
   it('requires all S3 storage values when any S3 storage value is set', () => {
     expect(() =>
       validateBackendEnvironment({

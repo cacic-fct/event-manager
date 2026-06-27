@@ -1,15 +1,18 @@
-import { PLATFORM_ID } from '@angular/core';
+import { PLATFORM_ID, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
+import { CalendarPreferencesStorageService } from '@cacic-fct/offline-public-data-access';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { CalendarPreferencesApiService, CurrentUserCalendarFeedSettings } from './calendar-preferences-api.service';
 import { CalendarPreferences } from './calendar-preferences';
 
 type TestComponent = {
   feedUrl: () => string | null;
+  setDefaultItemView: (change: { value: unknown }) => void;
   setEnabled: (change: { checked: boolean; source: { checked: boolean } }) => Promise<void>;
 };
 
@@ -19,6 +22,12 @@ describe('CalendarPreferences', () => {
     setEnabled: ReturnType<typeof vi.fn>;
     rotateKey: ReturnType<typeof vi.fn>;
   };
+  let authState: ReturnType<typeof signal<boolean>>;
+  let authService: { isAuthenticated: ReturnType<typeof signal<boolean>> };
+  let calendarPreferences: {
+    watchDefaultItemView: ReturnType<typeof vi.fn>;
+    setDefaultItemView: ReturnType<typeof vi.fn>;
+  };
   let dialog: { open: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
 
@@ -27,6 +36,14 @@ describe('CalendarPreferences', () => {
       getSettings: vi.fn().mockReturnValue(of(settingsFixture())),
       setEnabled: vi.fn().mockReturnValue(of(settingsFixture())),
       rotateKey: vi.fn().mockReturnValue(of(settingsFixture({ enabled: false, feedPath: null }))),
+    };
+    authState = signal(true);
+    authService = {
+      isAuthenticated: authState,
+    };
+    calendarPreferences = {
+      watchDefaultItemView: vi.fn().mockReturnValue(of('automatic')),
+      setDefaultItemView: vi.fn().mockResolvedValue(undefined),
     };
     dialog = {
       open: vi.fn().mockReturnValue({
@@ -43,6 +60,8 @@ describe('CalendarPreferences', () => {
         provideRouter([]),
         provideNoopAnimations(),
         { provide: CalendarPreferencesApiService, useValue: api },
+        { provide: AuthService, useValue: authService },
+        { provide: CalendarPreferencesStorageService, useValue: calendarPreferences },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: PLATFORM_ID, useValue: 'server' },
@@ -58,6 +77,30 @@ describe('CalendarPreferences', () => {
 
     expect(api.getSettings).toHaveBeenCalledTimes(1);
     expect(component.feedUrl()).toBe(new URL('/api/calendar/feeds/user-key.ics', document.baseURI).toString());
+  });
+
+  it('persists an explicit default item view preference', async () => {
+    const { component } = await createComponent();
+
+    component.setDefaultItemView({ value: 'week' });
+
+    expect(calendarPreferences.setDefaultItemView).toHaveBeenCalledWith('week');
+  });
+
+  it('does not persist the automatic default item view yet', async () => {
+    const { component } = await createComponent();
+
+    component.setDefaultItemView({ value: 'automatic' });
+
+    expect(calendarPreferences.setDefaultItemView).not.toHaveBeenCalled();
+  });
+
+  it('keeps calendar feed settings hidden for unauthenticated visitors', async () => {
+    authState.set(false);
+
+    await createComponent();
+
+    expect(api.getSettings).not.toHaveBeenCalled();
   });
 
   it('enables a first-time feed without asking for key rotation', async () => {

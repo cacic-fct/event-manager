@@ -1,8 +1,14 @@
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
-import { ChangeDetectionStrategy, Component, LOCALE_ID, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, LOCALE_ID, input, signal } from '@angular/core';
+import {
+  CalendarDefaultItemViewPreference,
+  CalendarPreferencesStorageService,
+} from '@cacic-fct/offline-public-data-access';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
+import { of } from 'rxjs';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -14,7 +20,9 @@ registerLocaleData(localePt);
 type CalendarFeedRequestState = 'success' | 'loading' | 'error';
 
 type CalendarPreferencesStoryArgs = {
+  authenticated: boolean;
   requestState: CalendarFeedRequestState;
+  defaultItemView: CalendarDefaultItemViewPreference;
   enabled: boolean;
   includeFeedUrl: boolean;
   disabledAutomatically: boolean;
@@ -28,7 +36,9 @@ type GraphqlBody = {
 };
 
 const defaultArgs: CalendarPreferencesStoryArgs = {
+  authenticated: true,
   requestState: 'success',
+  defaultItemView: 'automatic',
   enabled: true,
   includeFeedUrl: true,
   disabledAutomatically: false,
@@ -40,6 +50,7 @@ let activeArgs = defaultArgs;
 let enabledOverride: boolean | null = null;
 let rotationVersion = 0;
 let storyRenderKey = 0;
+const storyAuthState = signal(defaultArgs.authenticated);
 
 @Component({
   selector: 'app-storybook-calendar-preferences-host',
@@ -63,7 +74,29 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
-      providers: [{ provide: LOCALE_ID, useValue: 'pt-BR' }],
+      providers: [
+        { provide: LOCALE_ID, useValue: 'pt-BR' },
+        {
+          provide: AuthService,
+          useValue: {
+            isAuthenticated: storyAuthState,
+          },
+        },
+        {
+          provide: CalendarPreferencesStorageService,
+          useValue: {
+            watchDefaultItemView: () => of(activeArgs.defaultItemView),
+            setDefaultItemView: (defaultItemView: CalendarDefaultItemViewPreference) => {
+              activeArgs = {
+                ...activeArgs,
+                defaultItemView,
+              };
+
+              return Promise.resolve();
+            },
+          },
+        },
+      ],
     }),
   ],
   args: defaultArgs,
@@ -72,6 +105,16 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
       control: 'select',
       options: ['success', 'loading', 'error'],
       description: 'Resposta simulada pela API GraphQL.',
+      if: { arg: 'authenticated' },
+    },
+    authenticated: {
+      control: 'boolean',
+      description: 'Exibe os controles privados do feed quando a sessão está autenticada.',
+    },
+    defaultItemView: {
+      control: 'select',
+      options: ['automatic', 'list', 'week'],
+      description: 'Preferência local salva para a visualização inicial dos itens.',
     },
     enabled: {
       control: 'boolean',
@@ -99,6 +142,7 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
   },
   render: (args) => {
     activeArgs = args;
+    storyAuthState.set(args.authenticated);
     enabledOverride = null;
     rotationVersion = 0;
     storyRenderKey += 1;
@@ -165,8 +209,22 @@ type Story = StoryObj<CalendarPreferencesStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Visualização padrão dos itens')).toBeVisible();
     await expect(await canvas.findByText('Feed privado')).toBeVisible();
     await userEvent.hover((await canvas.findAllByRole('button', { name: /copiar link/i }))[0]);
+  },
+};
+
+export const Unauthenticated: Story = {
+  args: {
+    authenticated: false,
+    responseDelay: 0,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByText('Visualização padrão dos itens')).toBeVisible();
+    await expect(canvas.queryByText('Feed privado')).not.toBeInTheDocument();
   },
 };
 

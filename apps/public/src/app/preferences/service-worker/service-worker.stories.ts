@@ -4,7 +4,7 @@ import { ServiceWorker } from './service-worker';
 
 const meta: Meta<ServiceWorker> = {
   component: ServiceWorker,
-  title: 'Public/About/Service Worker/Service Worker',
+  title: 'Public/Preferences/Service Worker/Service Worker',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',

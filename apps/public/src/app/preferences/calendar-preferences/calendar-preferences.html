@@ -6,90 +6,113 @@
 </mat-toolbar>
 
 <main class="global-container calendar-preferences">
-  @let state = settingsState();
-  @if (state.status === 'loading') {
-    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-  } @else if (state.status === 'error') {
-    <section class="empty-section" aria-live="polite">
-      <mat-icon aria-hidden="true">error</mat-icon>
-      <p>{{ state.message }}</p>
-      <button mat-stroked-button type="button" (click)="reload()">
-        <mat-icon>refresh</mat-icon>
-        Tentar novamente
-      </button>
-    </section>
-  } @else {
-    @let settings = state.settings;
+  <section>
+    <mat-list>
+      <h3 matSubheader>Visualização</h3>
+      <mat-list-item>
+        <mat-icon matListItemIcon>view_agenda</mat-icon>
+        <div matListItemTitle>Visualização padrão dos itens</div>
+        <div matListItemLine>Escolha como o calendário abre por padrão neste dispositivo.</div>
+      </mat-list-item>
+    </mat-list>
 
-    <section>
-      <mat-list>
-        <h3 matSubheader>Feed privado</h3>
-        <mat-list-item>
-          <mat-icon matListItemIcon>calendar_month</mat-icon>
-          <div matListItemTitle>Feed do calendário</div>
-          <mat-slide-toggle
-            matListItemMeta
-            aria-label="Ativar feed privado do calendário"
-            [checked]="settings.enabled"
-            [disabled]="isSaving()"
-            (change)="setEnabled($event)" />
-        </mat-list-item>
-      </mat-list>
-    </section>
+    <mat-button-toggle-group
+      class="default-view-toggle"
+      [value]="defaultItemView()"
+      (change)="setDefaultItemView($event)"
+      aria-label="Visualização padrão dos itens do calendário">
+      <mat-button-toggle value="automatic">Automática</mat-button-toggle>
+      <mat-button-toggle value="list">Lista</mat-button-toggle>
+      <mat-button-toggle value="week">Semana</mat-button-toggle>
+    </mat-button-toggle-group>
+  </section>
 
-    @if (disabledReasonMessage(settings); as disabledMessage) {
+  @if (isAuthenticated()) {
+    @let state = settingsState();
+    @if (state.status === 'loading') {
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    } @else if (state.status === 'error') {
+      <section class="empty-section" aria-live="polite">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ state.message }}</p>
+        <button mat-stroked-button type="button" (click)="reload()">
+          <mat-icon>refresh</mat-icon>
+          Tentar novamente
+        </button>
+      </section>
+    } @else {
+      @let settings = state.settings;
+
       <section>
         <mat-list>
+          <h3 matSubheader>Feed privado</h3>
           <mat-list-item>
-            <mat-icon matListItemIcon>info</mat-icon>
-            <div matListItemTitle>Feed desativado automaticamente</div>
-            <div matListItemLine>{{ disabledMessage }}</div>
+            <mat-icon matListItemIcon>calendar_month</mat-icon>
+            <div matListItemTitle>Feed do calendário</div>
+            <mat-slide-toggle
+              matListItemMeta
+              aria-label="Ativar feed privado do calendário"
+              [checked]="settings.enabled"
+              [disabled]="isSaving()"
+              (change)="setEnabled($event)" />
           </mat-list-item>
         </mat-list>
       </section>
-    }
 
-    @if (settings.enabled) {
-      <section class="feed-section">
-        @if (feedUrl(); as url) {
-          <mat-form-field appearance="outline" class="feed-url-field">
-            <mat-label>Link privado</mat-label>
-            <input matInput readonly [value]="url" />
-            <button matIconButton matSuffix type="button" matTooltip="Copiar link" aria-label="Copiar link" (click)="copyFeedUrl()">
-              <mat-icon>content_copy</mat-icon>
-            </button>
-          </mat-form-field>
-
-          <div class="feed-actions">
-            <button mat-stroked-button type="button" (click)="copyFeedUrl()">
-              <mat-icon>content_copy</mat-icon>
-              Copiar link
-            </button>
-            <a mat-stroked-button [href]="url">
-              <mat-icon>download</mat-icon>
-              Baixar feed
-            </a>
-            <button mat-stroked-button type="button" [disabled]="isRotating()" (click)="rotateKey()">
-              <mat-icon>sync</mat-icon>
-              Rotacionar chave
-            </button>
-          </div>
-        } @else {
+      @if (disabledReasonMessage(settings); as disabledMessage) {
+        <section>
           <mat-list>
             <mat-list-item>
-              <mat-icon matListItemIcon>link_off</mat-icon>
-              <div matListItemTitle>Link privado indisponível</div>
+              <mat-icon matListItemIcon>info</mat-icon>
+              <div matListItemTitle>Feed desativado automaticamente</div>
+              <div matListItemLine>{{ disabledMessage }}</div>
             </mat-list-item>
           </mat-list>
+        </section>
+      }
 
-          <div class="feed-actions">
-            <button mat-stroked-button type="button" [disabled]="isRotating()" (click)="rotateKey()">
-              <mat-icon>sync</mat-icon>
-              Gerar novo link
-            </button>
-          </div>
-        }
-      </section>
+      @if (settings.enabled) {
+        <section class="feed-section">
+          @if (feedUrl(); as url) {
+            <mat-form-field appearance="outline" class="feed-url-field">
+              <mat-label>Link privado</mat-label>
+              <input matInput readonly [value]="url" />
+              <button matIconButton matSuffix type="button" matTooltip="Copiar link" aria-label="Copiar link" (click)="copyFeedUrl()">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </mat-form-field>
+
+            <div class="feed-actions">
+              <button mat-stroked-button type="button" (click)="copyFeedUrl()">
+                <mat-icon>content_copy</mat-icon>
+                Copiar link
+              </button>
+              <a mat-stroked-button [href]="url">
+                <mat-icon>download</mat-icon>
+                Baixar feed
+              </a>
+              <button mat-stroked-button type="button" [disabled]="isRotating()" (click)="rotateKey()">
+                <mat-icon>sync</mat-icon>
+                Rotacionar chave
+              </button>
+            </div>
+          } @else {
+            <mat-list>
+              <mat-list-item>
+                <mat-icon matListItemIcon>link_off</mat-icon>
+                <div matListItemTitle>Link privado indisponível</div>
+              </mat-list-item>
+            </mat-list>
+
+            <div class="feed-actions">
+              <button mat-stroked-button type="button" [disabled]="isRotating()" (click)="rotateKey()">
+                <mat-icon>sync</mat-icon>
+                Gerar novo link
+              </button>
+            </div>
+          }
+        </section>
+      }
     }
   }
 </main>

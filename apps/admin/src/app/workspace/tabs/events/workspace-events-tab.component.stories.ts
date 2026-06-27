@@ -1,11 +1,30 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
 import { WorkspaceEventsTabComponent } from './workspace-events-tab.component';
+import {
+  defaultWorkspaceTabStoryArgs,
+  exerciseWorkspaceTabStory,
+  withWorkspaceTabStoryProviders,
+  type WorkspaceTabStoryArgs,
+} from '../workspace-tab-story-support';
 
-const meta: Meta<WorkspaceEventsTabComponent> = {
+const meta: Meta<WorkspaceTabStoryArgs> = {
   component: WorkspaceEventsTabComponent,
   title: 'CACiC Eventos/Workspace/Tabs/Events/Workspace Events Tab',
   tags: ['autodocs'],
+  args: defaultWorkspaceTabStoryArgs,
+  argTypes: {
+    mode: {
+      control: 'select',
+      options: ['populated', 'empty', 'readonly', 'loading', 'drafts'],
+    },
+    itemCount: { control: { type: 'range', min: 0, max: 8, step: 1 } },
+    selectedIndex: { control: { type: 'range', min: 0, max: 7, step: 1 } },
+    publicationState: {
+      control: 'select',
+      options: ['DRAFT', 'PUBLISHED', 'SCHEDULED', 'UNPUBLISHED'],
+    },
+  },
+  decorators: [withWorkspaceTabStoryProviders],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -14,27 +33,26 @@ const meta: Meta<WorkspaceEventsTabComponent> = {
 
 export default meta;
 
-type Story = StoryObj<WorkspaceEventsTabComponent>;
+type Story = StoryObj<WorkspaceTabStoryArgs>;
 
-const exerciseStory = async (canvasElement: HTMLElement) => {
-  const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find(
-    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
-  );
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
+export const Playground: Story = {
+  play: async ({ canvasElement }) => exerciseWorkspaceTabStory(canvasElement),
 };
 
-export const DataLoaded: Story = {
-  args: {},
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+export const WithDrafts: Story = {
+  args: {
+    mode: 'drafts',
+    publicationState: 'PUBLISHED',
+  },
+  play: async ({ canvasElement }) => exerciseWorkspaceTabStory(canvasElement),
+};
+
+export const EmptyReadonly: Story = {
+  args: {
+    mode: 'readonly',
+    itemCount: 0,
+    selectedIndex: 0,
+    publicationState: 'DRAFT',
+  },
+  play: async ({ canvasElement }) => exerciseWorkspaceTabStory(canvasElement),
 };

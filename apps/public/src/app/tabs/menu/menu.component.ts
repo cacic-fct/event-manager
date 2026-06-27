@@ -11,7 +11,6 @@ import { OfflineUserDataService } from '../../shared/offline-user-data.service';
 import { AttendanceCollectionApiService } from '../../attendance/collection/attendance-collection-api.service';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { isPlatformBrowser } from '@angular/common';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-menu.component',
@@ -23,7 +22,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatButtonModule,
     MatToolbarModule,
     CacicLogoComponent,
-    MatTooltipModule,
   ],
   templateUrl: './menu.component.html',
   styleUrl: './menu.component.css',

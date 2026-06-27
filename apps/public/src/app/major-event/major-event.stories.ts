@@ -1,15 +1,10 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { fakerPT_BR as faker } from '@faker-js/faker';
+import { createStoryPublicMajorEvent } from '@cacic-fct/event-manager-public-testing';
 import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
-import {
-  createPublicMajorEvent,
-  createPublicMajorEventPrice,
-  createPublicPaymentInfo,
-} from '../testing/public-entity-fixtures';
 import { MajorEvent } from './major-event';
 
 interface MajorEventStoryArgs {
@@ -133,50 +128,8 @@ function previewParameters(context: MajorEventStoryContext) {
 }
 
 function buildMajorEvent(args: MajorEventStoryArgs) {
-  faker.seed(20260803);
-  return createPublicMajorEvent({
-    id: 'major-preview',
-    name: faker.helpers.arrayElement(['SECOMPP 2026', 'CACiC 2026']),
-    emoji: '💻',
-    startDate: '2026-08-01T12:00:00.000Z',
-    endDate: '2026-08-04T21:00:00.000Z',
-    description: faker.lorem.paragraphs(2),
-    subscriptionStartDate: '2026-07-01T12:00:00.000Z',
-    subscriptionEndDate: '2026-07-31T21:00:00.000Z',
-    maxCoursesPerAttendee: 2,
-    maxLecturesPerAttendee: 4,
-    maxUncategorizedPerAttendee: 1,
+  return createStoryPublicMajorEvent(0, {
     rankedSubscriptionEnabled: args.rankedSubscriptionEnabled,
-    buttonText: 'Site oficial',
-    buttonLink: 'https://cacic.dev',
-    contactInfo: 'eventos@example.com',
-    contactType: 'EMAIL',
-    isPaymentRequired: args.requiresPayment,
-    additionalPaymentInfo: args.requiresPayment ? 'Pagamento validado por comprovante.' : null,
-    shouldIssueCertificate: true,
-    shouldIssueCertificateForNonPayingAttendees: false,
-    shouldIssueCertificateForNonSubscribedAttendees: false,
-    paymentInfo: args.requiresPayment
-      ? createPublicPaymentInfo({
-          id: 'payment-preview',
-          bankName: 'Banco Storybook',
-          agency: '0001',
-          account: '12345-6',
-          holder: 'CACiC FCT',
-          document: '12.345.678/0001-90',
-          pixKey: 'pagamentos@example.com',
-          pixCity: 'PRESIDENTE PRUDENTE',
-          majorEventId: 'major-preview',
-        })
-      : null,
-    majorEventPrices: args.requiresPayment
-      ? [
-          createPublicMajorEventPrice({
-            id: 'price-preview',
-            type: 'TIERED',
-            tiers: [{ id: 'tier-preview', name: 'Estudante', value: 2500 }],
-          }),
-        ]
-      : [],
+    requiresPayment: args.requiresPayment,
   });
 }

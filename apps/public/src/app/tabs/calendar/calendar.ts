@@ -10,7 +10,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
-import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import {
+  CalendarPreferencesStorageService,
+  OfflinePublicDataAccessService,
+} from '@cacic-fct/offline-public-data-access';
 import { getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { addDays, isAfter, isBefore, startOfDay, startOfWeek, subDays, subMonths } from 'date-fns';
 import {
@@ -64,6 +67,7 @@ interface CalendarFilterValue {
 })
 export class Calendar {
   private readonly api = inject(CalendarApiService);
+  private readonly calendarPreferences = inject(CalendarPreferencesStorageService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineData = inject(OfflinePublicDataAccessService);
@@ -114,6 +118,15 @@ export class Calendar {
   });
 
   constructor() {
+    this.calendarPreferences
+      .watchDefaultItemView()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((defaultItemView) => {
+        if (defaultItemView === 'list' || defaultItemView === 'week') {
+          this.viewMode.set(defaultItemView);
+        }
+      });
+
     this.networkStatus
       .watchStatusChanges()
       .pipe(

@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, 
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,8 +14,16 @@ import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/sl
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { CalendarFeedReenableChoice, CalendarFeedReenableDialogComponent } from '@cacic-fct/shared-angular';
-import { Observable, catchError, finalize, firstValueFrom, map, of, startWith, switchMap } from 'rxjs';
+import {
+  CalendarDefaultItemViewPreference,
+  CalendarPreferencesStorageService,
+} from '@cacic-fct/offline-public-data-access';
+import {
+  AuthService,
+  CalendarFeedReenableChoice,
+  CalendarFeedReenableDialogComponent,
+} from '@cacic-fct/shared-angular';
+import { Observable, catchError, combineLatest, finalize, firstValueFrom, map, of, startWith, switchMap } from 'rxjs';
 import {
   CalendarPreferencesApiService,
   CurrentUserCalendarFeedSettings,
@@ -32,6 +41,7 @@ const STALE_LOGIN_DISABLED_REASON = 'STALE_LOGIN';
   imports: [
     RouterLink,
     MatButtonModule,
+    MatButtonToggleModule,
     MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
@@ -49,6 +59,8 @@ const STALE_LOGIN_DISABLED_REASON = 'STALE_LOGIN';
 })
 export class CalendarPreferences {
   private readonly api = inject(CalendarPreferencesApiService);
+  private readonly authService = inject(AuthService);
+  private readonly calendarPreferences = inject(CalendarPreferencesStorageService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly document = inject(DOCUMENT);
@@ -63,6 +75,10 @@ export class CalendarPreferences {
 
   readonly isSaving = signal(false);
   readonly isRotating = signal(false);
+  readonly isAuthenticated = this.authService.isAuthenticated;
+  readonly defaultItemView = toSignal(this.calendarPreferences.watchDefaultItemView(), {
+    initialValue: 'automatic' satisfies CalendarDefaultItemViewPreference,
+  });
   readonly settingsState = computed(() => {
     const state = this.loadedSettingsState();
     const settings = this.settingsOverride();
@@ -76,6 +92,15 @@ export class CalendarPreferences {
 
     return new URL(state.settings.feedPath, this.baseOrigin()).toString();
   });
+
+  setDefaultItemView(change: MatButtonToggleChange): void {
+    const defaultItemView = this.parseDefaultItemView(change.value);
+    if (!defaultItemView || defaultItemView === 'automatic') {
+      return;
+    }
+
+    void this.calendarPreferences.setDefaultItemView(defaultItemView);
+  }
 
   reload(): void {
     this.settingsOverride.set(null);
@@ -157,9 +182,13 @@ export class CalendarPreferences {
   }
 
   private createSettingsState(): Observable<CalendarPreferencesState> {
-    return toObservable(this.reloadCounter).pipe(
-      switchMap(() =>
-        this.api.getSettings().pipe(
+    return combineLatest([toObservable(this.authService.isAuthenticated), toObservable(this.reloadCounter)]).pipe(
+      switchMap(([isAuthenticated]) => {
+        if (!isAuthenticated) {
+          return of({ status: 'loading' } satisfies CalendarPreferencesState);
+        }
+
+        return this.api.getSettings().pipe(
           map(
             (settings): CalendarPreferencesState => ({
               status: 'ready',
@@ -173,9 +202,17 @@ export class CalendarPreferences {
               message: error instanceof Error ? error.message : 'Não foi possível carregar as preferências.',
             } satisfies CalendarPreferencesState),
           ),
-        ),
-      ),
+        );
+      }),
     );
+  }
+
+  private parseDefaultItemView(value: unknown): CalendarDefaultItemViewPreference | null {
+    if (value === 'automatic' || value === 'list' || value === 'week') {
+      return value;
+    }
+
+    return null;
   }
 
   private getReenableChoice(): Promise<CalendarFeedReenableChoice | null> {

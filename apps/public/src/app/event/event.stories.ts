@@ -1,15 +1,10 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { fakerPT_BR as faker } from '@faker-js/faker';
+import { createStoryPublicEvent, publicStoryFixtureDate } from '@cacic-fct/event-manager-public-testing';
 import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
-import {
-  createPublicEvent,
-  createPublicLecturerProfile,
-  createPublicMajorEvent,
-} from '../testing/public-entity-fixtures';
 import { Event } from './event';
 
 interface EventStoryArgs {
@@ -128,87 +123,18 @@ function previewParameters(context: EventStoryContext) {
 }
 
 function buildPreview(args: EventStoryArgs) {
-  faker.seed(20260804);
   const event = buildEvent(args);
   return {
-    previewAt: '2026-08-01T12:00:00.000Z',
+    previewAt: publicStoryFixtureDate,
     expiresAt: '2026-08-01T13:00:00.000Z',
     event,
   };
 }
 
 function buildEvent(args: EventStoryArgs) {
-  const majorEvent = args.includeMajorEvent
-    ? createPublicMajorEvent({
-        id: 'major-preview',
-        name: 'SECOMPP 2026',
-        emoji: '💻',
-        startDate: '2026-08-01T12:00:00.000Z',
-        endDate: '2026-08-04T21:00:00.000Z',
-        description: faker.lorem.paragraph(),
-        subscriptionStartDate: '2026-07-01T12:00:00.000Z',
-        subscriptionEndDate: '2026-07-31T21:00:00.000Z',
-        maxCoursesPerAttendee: 2,
-        maxLecturesPerAttendee: 4,
-        maxUncategorizedPerAttendee: 1,
-        rankedSubscriptionEnabled: true,
-        buttonText: 'Site oficial',
-        buttonLink: 'https://cacic.dev',
-        contactInfo: 'eventos@example.com',
-        contactType: 'EMAIL',
-        isPaymentRequired: false,
-        additionalPaymentInfo: null,
-        shouldIssueCertificate: true,
-        shouldIssueCertificateForNonPayingAttendees: false,
-        shouldIssueCertificateForNonSubscribedAttendees: false,
-        paymentInfo: null,
-        majorEventPrices: [],
-      })
-    : null;
-
-  return createPublicEvent({
-    id: 'event-preview',
-    name: faker.helpers.arrayElement(['Workshop Docker', 'Palestra Segurança na Web', 'Minicurso Angular']),
-    creditMinutes: 120,
-    startDate: '2026-08-02T13:00:00.000Z',
-    endDate: '2026-08-02T15:00:00.000Z',
-    emoji: '🔐',
-    type: 'MINICURSO',
-    description: faker.lorem.paragraphs(2),
-    shortDescription: faker.lorem.sentence(),
-    latitude: -22.1211,
-    longitude: -51.4086,
-    locationDescription: 'Laboratório 1',
-    majorEventId: majorEvent?.id ?? null,
-    majorEvent,
-    eventGroupId: null,
-    eventGroup: null,
+  return createStoryPublicEvent(1, {
+    includeMajorEvent: args.includeMajorEvent,
+    includeEventGroup: false,
     allowSubscription: args.allowSubscription,
-    subscriptionStartDate: '2026-07-01T12:00:00.000Z',
-    subscriptionEndDate: '2026-08-01T12:00:00.000Z',
-    slots: 40,
-    slotsAvailable: 12,
-    queueCount: 0,
-    autoSubscribe: false,
-    shouldIssueCertificate: true,
-    shouldCollectAttendance: true,
-    isOnlineAttendanceAllowed: false,
-    onlineAttendanceStartDate: null,
-    onlineAttendanceEndDate: null,
-    publiclyVisible: true,
-    youtubeCode: null,
-    buttonText: 'Material de apoio',
-    buttonLink: 'https://cacic.dev',
-    lecturers: [
-      createPublicLecturerProfile({
-        id: 'lecturer-preview',
-        displayName: faker.person.fullName(),
-        biography: faker.lorem.paragraph(),
-        publishGoogleUserPicture: false,
-        googleUserPicture: null,
-        email: faker.internet.email(),
-        whatsapp: '+5518999999999',
-      }),
-    ],
   });
 }

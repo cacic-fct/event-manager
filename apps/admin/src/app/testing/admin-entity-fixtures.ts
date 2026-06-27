@@ -3,15 +3,186 @@ import type {
   CertificateConfigInput,
   CertificateTemplate,
   Event,
+  EventAttendance,
+  EventDraft,
   EventGroup,
   EventInput,
+  EventSummary,
   MajorEvent,
   MajorEventInput,
+  MajorEventUserAttendance,
+  OfflineEventAttendanceSubmission,
   Person,
   PlacePreset,
+  WorkspaceEventSubscription,
+  WorkspaceMajorEventSubscription,
+  WorkspaceMajorEventSubscriptionEvent,
 } from '../graphql/models';
+import type { AuthenticatedUser } from '@cacic-fct/shared-angular';
+import type {
+  DashboardCalendarEvent,
+  DashboardCertificatePendingItem,
+  DashboardInconsistency,
+  DashboardPendingOfflineAttendanceEvent,
+  DashboardPendingReceiptMajorEvent,
+  WorkspaceDashboardInsights,
+} from '@cacic-fct/shared-frontend-types';
+import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
 
 export const adminFixtureDate = '2026-05-21T12:00:00.000Z';
+
+export function createAdminAuthenticatedUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
+  return {
+    sub: 'admin-user-1',
+    preferredUsername: 'admin',
+    email: 'admin@example.edu',
+    roles: ['access'],
+    permissions: [...adminWorkspaceReadPermissions],
+    scopes: ['openid'],
+    claims: {
+      exp: 1_780_000_000,
+      is_onboarded: true,
+      name: 'Admin Teste',
+      email: 'admin@example.edu',
+    },
+    ...overrides,
+  };
+}
+
+export const adminWorkspaceReadPermissions = [
+  Permission.Event.Read,
+  Permission.MajorEvent.Read,
+  Permission.EventLecturer.Read,
+  Permission.EventGroup.Read,
+  Permission.EventAttendance.Read,
+  Permission.Subscription.Read,
+  Permission.Certificate.Read,
+  Permission.CertificateConfig.Read,
+  Permission.PlacePreset.Read,
+] as const satisfies readonly PermissionScope[];
+
+export function createAdminDashboardCalendarEvent(
+  overrides: Partial<DashboardCalendarEvent> = {},
+): DashboardCalendarEvent {
+  return {
+    id: 'event-1',
+    name: 'Credenciamento',
+    emoji: 'clipboard',
+    type: 'OTHER',
+    startDate: adminFixtureDate,
+    endDate: '2026-05-21T14:00:00.000Z',
+    locationDescription: 'Auditório principal',
+    majorEventName: 'Semana da Computação',
+    eventGroupName: null,
+    attendancesCount: 12,
+    subscriptionsCount: 40,
+    shouldCollectAttendance: true,
+    canCollectAttendanceNow: true,
+    ...overrides,
+  };
+}
+
+export function createAdminDashboardPendingReceiptMajorEvent(
+  overrides: Partial<DashboardPendingReceiptMajorEvent> = {},
+): DashboardPendingReceiptMajorEvent {
+  return {
+    majorEventId: 'major-event-1',
+    name: 'Semana da Computação',
+    emoji: 'festival',
+    startDate: adminFixtureDate,
+    endDate: '2026-05-23T21:00:00.000Z',
+    pendingCount: 3,
+    ...overrides,
+  };
+}
+
+export function createAdminDashboardPendingOfflineAttendanceEvent(
+  overrides: Partial<DashboardPendingOfflineAttendanceEvent> = {},
+): DashboardPendingOfflineAttendanceEvent {
+  return {
+    eventId: 'event-1',
+    name: 'Credenciamento',
+    emoji: 'clipboard',
+    startDate: adminFixtureDate,
+    endDate: '2026-05-21T14:00:00.000Z',
+    pendingCount: 2,
+    ...overrides,
+  };
+}
+
+export function createAdminDashboardPendingCertificate(
+  overrides: Partial<DashboardCertificatePendingItem> = {},
+): DashboardCertificatePendingItem {
+  return {
+    targetType: 'EVENT',
+    targetId: 'event-1',
+    title: 'Credenciamento',
+    subtitle: 'Certificado de participante',
+    finishedAt: adminFixtureDate,
+    ...overrides,
+  };
+}
+
+export function createAdminDashboardInconsistency(
+  overrides: Partial<DashboardInconsistency> = {},
+): DashboardInconsistency {
+  return {
+    type: 'EVENT_WITHOUT_PLACE',
+    action: 'OPEN_EVENT',
+    targetId: 'event-1',
+    severity: 'CRITICAL',
+    title: 'Evento sem local',
+    description: 'Defina um local antes de divulgar a atividade.',
+    eventId: 'event-1',
+    relatedEventId: null,
+    personId: null,
+    ...overrides,
+  };
+}
+
+export function createAdminWorkspaceDashboardInsights(
+  overrides: Partial<WorkspaceDashboardInsights> = {},
+): WorkspaceDashboardInsights {
+  return {
+    generatedAt: adminFixtureDate,
+    summary: {
+      eventsCount: 1,
+      eventGroupsCount: 1,
+      majorEventsCount: 1,
+    },
+    suggestions: [
+      {
+        action: 'CREATE_EVENT',
+        label: 'Novo evento',
+        targetId: null,
+      },
+      {
+        action: 'CREATE_EVENT_GROUP',
+        label: 'Novo grupo de eventos',
+        targetId: null,
+      },
+    ],
+    calendarEvents: [createAdminDashboardCalendarEvent()],
+    weatherAlerts: [],
+    pendingCertificates: [createAdminDashboardPendingCertificate()],
+    pendingReceiptValidationsCount: 3,
+    pendingReceiptMajorEvents: [createAdminDashboardPendingReceiptMajorEvent()],
+    pendingOfflineAttendancesCount: 2,
+    pendingOfflineAttendanceEvents: [createAdminDashboardPendingOfflineAttendanceEvent()],
+    inconsistencies: [
+      createAdminDashboardInconsistency(),
+      createAdminDashboardInconsistency({
+        type: 'WEAK_EVENT_DESCRIPTION',
+        severity: 'WARNING',
+        title: 'Descrição curta',
+        description: 'Revise a descrição para melhorar a divulgação.',
+      }),
+    ],
+    duplicatePeopleCount: 4,
+    permissions: [],
+    ...overrides,
+  };
+}
 
 export function createAdminPlacePreset(overrides: Partial<PlacePreset> = {}): PlacePreset {
   return {
@@ -184,6 +355,21 @@ export function createAdminEvent(overrides: Partial<Event> = {}): Event {
   };
 }
 
+export function createAdminEventSummary(overrides: Partial<EventSummary> = {}): EventSummary {
+  const event = createAdminEvent();
+
+  return {
+    id: event.id,
+    eventGroupId: event.eventGroupId ?? null,
+    startDate: event.startDate,
+    endDate: event.endDate,
+    createdAt: event.createdAt,
+    name: event.name,
+    majorEvent: event.majorEvent ? { id: event.majorEvent.id, name: event.majorEvent.name } : null,
+    ...overrides,
+  };
+}
+
 export function createAdminEventFromInput(input: EventInput = {}): Event {
   return createAdminEvent({
     id: input.id ?? 'event-1',
@@ -221,6 +407,30 @@ export function createAdminEventFromInput(input: EventInput = {}): Event {
   });
 }
 
+export function createAdminEventDraft(
+  overrides: Partial<EventDraft> = {},
+  payload: EventInput = {},
+): EventDraft {
+  const sourceEventId = overrides.sourceEventId ?? payload.id ?? 'event-1';
+
+  return {
+    id: 'event-draft-1',
+    sourceEventId,
+    name: payload.name ?? 'Rascunho do evento',
+    payloadJson: JSON.stringify(payload),
+    createdById: 'fixture-admin',
+    createdByName: 'Admin Teste',
+    createdByEmail: 'admin@example.edu',
+    updatedById: 'fixture-admin',
+    updatedByName: 'Admin Teste',
+    updatedByEmail: 'admin@example.edu',
+    createdAt: adminFixtureDate,
+    updatedAt: adminFixtureDate,
+    expiresAt: '2026-06-21T12:00:00.000Z',
+    ...overrides,
+  };
+}
+
 export function createAdminPerson(overrides: Partial<Person> = {}): Person {
   return {
     id: 'person-1',
@@ -240,6 +450,156 @@ export function createAdminPerson(overrides: Partial<Person> = {}): Person {
     updatedAt: adminFixtureDate,
     updatedById: 'fixture-admin',
     lecturerProfile: null,
+    ...overrides,
+  };
+}
+
+export function createAdminWorkspaceEventSubscription(
+  overrides: Partial<WorkspaceEventSubscription> = {},
+  person = createAdminPerson(),
+  event = createAdminEvent(),
+): WorkspaceEventSubscription {
+  return {
+    id: 'event-subscription-1',
+    eventId: event.id,
+    event,
+    personId: person.id,
+    person,
+    eventGroupSubscriptionId: null,
+    majorEventSubscriptionId: null,
+    createdAt: adminFixtureDate,
+    createdById: 'fixture-admin',
+    createdByMethod: 'ADMIN_DASHBOARD',
+    isLecturerSubscription: false,
+    ...overrides,
+  };
+}
+
+export function createAdminWorkspaceMajorEventSubscriptionEvent(
+  overrides: Partial<WorkspaceMajorEventSubscriptionEvent> = {},
+  event = createAdminEvent(),
+): WorkspaceMajorEventSubscriptionEvent {
+  return {
+    eventId: event.id,
+    eventName: event.name,
+    eventStartDate: event.startDate,
+    subscribed: true,
+    isLecturerSubscription: false,
+    ...overrides,
+  };
+}
+
+export function createAdminWorkspaceMajorEventSubscription(
+  overrides: Partial<WorkspaceMajorEventSubscription> = {},
+  person = createAdminPerson(),
+  majorEvent = createAdminMajorEvent(),
+): WorkspaceMajorEventSubscription {
+  return {
+    id: 'major-event-subscription-1',
+    majorEventId: majorEvent.id,
+    majorEvent,
+    personId: person.id,
+    person,
+    subscriptionStatus: 'CONFIRMED',
+    amountPaid: null,
+    paymentDate: null,
+    paymentTier: null,
+    createdAt: adminFixtureDate,
+    createdById: 'fixture-admin',
+    createdByMethod: 'ADMIN_DASHBOARD',
+    events: [createAdminWorkspaceMajorEventSubscriptionEvent({}, createAdminEvent({ majorEventId: majorEvent.id }))],
+    ...overrides,
+  };
+}
+
+export function createAdminEventAttendance(
+  overrides: Partial<EventAttendance> = {},
+  person = createAdminPerson(),
+  event = createAdminEvent(),
+): EventAttendance {
+  return {
+    eventId: event.id,
+    event,
+    personId: person.id,
+    person,
+    category: 'REGULAR',
+    attendedAt: adminFixtureDate,
+    createdAt: adminFixtureDate,
+    createdById: 'fixture-admin',
+    committedById: 'fixture-admin',
+    createdByMethod: 'MANUAL_INPUT',
+    collectedByFullName: 'Admin Teste',
+    committedByFullName: 'Admin Teste',
+    collectedLatitude: null,
+    collectedLongitude: null,
+    collectedAccuracyMeters: null,
+    ...overrides,
+  };
+}
+
+export function createAdminOfflineEventAttendanceSubmission(
+  overrides: Partial<OfflineEventAttendanceSubmission> = {},
+  event = createAdminEvent(),
+  person = createAdminPerson(),
+): OfflineEventAttendanceSubmission {
+  return {
+    id: 'offline-attendance-1',
+    clientId: 'offline-client-1',
+    eventId: event.id,
+    event,
+    personId: person.id,
+    person,
+    status: 'PENDING',
+    createdByMethod: 'MANUAL_INPUT',
+    scannerCode: null,
+    manualValue: person.email,
+    collectedAt: adminFixtureDate,
+    authorUserId: 'fixture-admin',
+    authorName: 'Admin Teste',
+    authorEmail: 'admin@example.edu',
+    submittedById: 'fixture-admin',
+    submittedByFullName: 'Admin Teste',
+    submittedAt: adminFixtureDate,
+    stagedReason: null,
+    resolutionError: null,
+    collectedLatitude: null,
+    collectedLongitude: null,
+    collectedAccuracyMeters: null,
+    committedAt: null,
+    committedById: null,
+    committedByFullName: null,
+    rejectedAt: null,
+    rejectedById: null,
+    rejectedByFullName: null,
+    rejectionReason: null,
+    ...overrides,
+  };
+}
+
+export function createAdminMajorEventUserAttendance(
+  overrides: Partial<MajorEventUserAttendance> = {},
+  person = createAdminPerson(),
+  majorEvent = createAdminMajorEvent(),
+): MajorEventUserAttendance {
+  return {
+    majorEventId: majorEvent.id,
+    subscriptionId: 'major-event-subscription-1',
+    personId: person.id,
+    person,
+    subscriptionStatus: 'CONFIRMED',
+    amountPaid: null,
+    paymentDate: null,
+    paymentTier: null,
+    attendances: [
+      {
+        eventId: 'event-1',
+        eventName: 'Evento',
+        eventStartDate: '2026-05-21T17:00:00.000Z',
+        attended: true,
+        attendedAt: adminFixtureDate,
+        category: 'REGULAR',
+      },
+    ],
     ...overrides,
   };
 }

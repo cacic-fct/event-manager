@@ -8,6 +8,7 @@ import type { OfflineAttendanceQueueItem } from './offline-public-data-schema';
 import { OfflinePublicDataDatabase } from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 import { CalendarOfflineDataService } from './calendar-offline-data.service';
+import { CalendarPreferencesStorageService } from './calendar-preferences-storage.service';
 import { OfflinePublicDataAccessService } from './public-offline-database';
 import { UserOfflineDataService } from './user-offline-data.service';
 
@@ -27,6 +28,7 @@ describe('offline public data access integration', () => {
         },
       },
       CalendarOfflineDataService,
+      CalendarPreferencesStorageService,
       UserOfflineDataService,
       OfflinePublicDataAccessService,
     ]);
@@ -76,6 +78,23 @@ describe('offline public data access integration', () => {
       { eventId: 'late-event', event: event('late-event', '2026-06-27T14:00:00.000Z') },
     ]);
     await expect(service.getCollectionEvent('user-1', 'other-user-event')).resolves.toBeNull();
+  });
+
+  it('stores the calendar default item view preference in IndexedDB', async () => {
+    const service = injectService(CalendarPreferencesStorageService);
+
+    await expect(service.getDefaultItemView()).resolves.toBe('automatic');
+
+    await service.setDefaultItemView('week');
+
+    await expect(service.getDefaultItemView()).resolves.toBe('week');
+    await expect(database.calendarPreferences.get('calendar')).resolves.toEqual(
+      expect.objectContaining({
+        key: 'calendar',
+        defaultItemView: 'week',
+        updatedAt: expect.any(Number),
+      }),
+    );
   });
 
   it('resets interrupted syncs once, lists retryable items oldest first, and counts unresolved items', async () => {

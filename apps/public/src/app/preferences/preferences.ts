@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-preferences',
@@ -18,13 +19,38 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 
     <main class="global-container">
       <mat-nav-list>
+        <h3 matSubheader>Aplicativo</h3>
+
         <a mat-list-item routerLink="/preferences/calendar">
           <mat-icon matListItemIcon>calendar_month</mat-icon>
           <span matListItemTitle>Calendário</span>
         </a>
+
+        <a mat-list-item routerLink="/preferences/service-worker">
+          <mat-icon matListItemIcon>handyman</mat-icon>
+          <span matListItemTitle>Service Worker</span>
+          <div matListItemLine>{{ serviceWorkerService.hasServiceWorker() ? 'Operacional' : 'Indisponível' }}</div>
+        </a>
+
+        @if (authService.isAuthenticated()) {
+          <h3 matSubheader>Conta</h3>
+
+          <a mat-list-item href="https://account.cacic.dev.br/app/">
+            <mat-icon matListItemIcon>person_edit</mat-icon>
+            <span matListItemTitle>Editar informações da conta</span>
+          </a>
+
+          <button mat-list-item type="button" (click)="authService.logout()">
+            <mat-icon matListItemIcon>logout</mat-icon>
+            <span matListItemTitle>Sair da conta</span>
+          </button>
+        }
       </mat-nav-list>
     </main>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class Preferences {}
+export class Preferences {
+  readonly authService = inject(AuthService);
+  readonly serviceWorkerService = inject(ServiceWorkerService);
+}

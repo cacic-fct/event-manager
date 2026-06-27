@@ -1,4 +1,3 @@
-import { authGuard } from '@cacic-fct/shared-angular';
 import { appRoutes } from './app.routes';
 
 describe('public auth route wiring', () => {
@@ -6,10 +5,10 @@ describe('public auth route wiring', () => {
     expect(hasRoutePath(appRoutes, 'login')).toBe(false);
   });
 
-  it('protects preferences with the shared backend-login guard', () => {
+  it('keeps preferences available without forcing backend login', () => {
     const preferencesRoute = appRoutes.find((route) => route.path === 'preferences');
 
-    expect(preferencesRoute?.canActivate).toContain(authGuard);
+    expect(preferencesRoute?.canActivate).toBeUndefined();
   });
 });
 

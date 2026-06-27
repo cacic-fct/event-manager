@@ -56,6 +56,14 @@ export interface OfflineFeatureFlagCacheRecord {
   value: unknown;
 }
 
+export type CalendarDefaultItemViewPreference = 'automatic' | 'list' | 'week';
+
+export interface OfflineCalendarPreferencesRecord {
+  key: 'calendar';
+  defaultItemView: CalendarDefaultItemViewPreference;
+  updatedAt: number;
+}
+
 export interface OfflineTotpSeedRecord {
   userId: string;
   primaryEmail: string;
@@ -111,6 +119,7 @@ export class OfflinePublicDataDatabase extends Dexie {
   attendanceFeeds!: Table<OfflineAttendanceFeedRecord, string>;
   attendanceDetails!: Table<OfflineAttendanceDetailRecord, string>;
   featureFlagCache!: Table<OfflineFeatureFlagCacheRecord, string>;
+  calendarPreferences!: Table<OfflineCalendarPreferencesRecord, string>;
   totpSeeds!: Table<OfflineTotpSeedRecord, string>;
   attendanceCollectionEvents!: Table<OfflineAttendanceCollectionEventRecord, string>;
   attendanceQueue!: Table<OfflineAttendanceQueueItem, string>;
@@ -188,6 +197,29 @@ export class OfflinePublicDataDatabase extends Dexie {
       attendanceFeeds: 'key, userId, updatedAt',
       attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
       featureFlagCache: 'key, updatedAt',
+      totpSeeds: 'userId, primaryEmail, sessionExpiresAt, updatedAt',
+      attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      attendanceQueue: [
+        'clientId',
+        'queuedByUserId',
+        'eventId',
+        'status',
+        'queuedAt',
+        'updatedAt',
+        '[queuedByUserId+eventId]',
+        '[queuedByUserId+status]',
+        '[eventId+status]',
+      ].join(', '),
+    });
+
+    this.version(7).stores({
+      calendarEvents: 'id, startDate, cachedAt',
+      syncMetadata: 'key',
+      userSnapshots: 'userId, updatedAt',
+      attendanceFeeds: 'key, userId, updatedAt',
+      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+      featureFlagCache: 'key, updatedAt',
+      calendarPreferences: 'key, updatedAt',
       totpSeeds: 'userId, primaryEmail, sessionExpiresAt, updatedAt',
       attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
       attendanceQueue: [

@@ -44,11 +44,6 @@
         <div matListItemLine>APP_VERSION_PLACEHOLDER</div>
       </mat-list-item>
 
-      <a mat-list-item role="button" (click)="redirectToSw()" (keydown)="redirectToSw()" tabindex="0">
-        <mat-icon matListItemIcon>handyman</mat-icon>
-        <div matListItemTitle>Service Worker</div>
-        <div matListItemLine>{{ serviceWorkerService.hasServiceWorker() ? 'Operacional' : 'Indisponível' }}</div>
-      </a>
       <a mat-list-item routerLink="./legal">
         <mat-icon matListItemIcon>gavel</mat-icon>
         <div matListItemTitle>Legal</div>

@@ -1,4 +1,9 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
+import {
+  createStoryPublicEvent,
+  createStoryPublicEventGroup,
+  createStoryPublicMajorEvent,
+} from '@cacic-fct/event-manager-public-testing';
 import { http, HttpResponse } from 'msw';
 
 faker.seed(20260516);
@@ -13,112 +18,18 @@ function isoDaysFromNow(days: number, hour = 14): string {
 }
 
 function publicMajorEvent(index = 0) {
-  return {
-    id: `major-${index + 1}`,
-    name: faker.helpers.arrayElement(['CACiC', 'SECOMPP']),
-    emoji: faker.helpers.arrayElement(['💻', '🚀', '🎓']),
-    startDate: isoDaysFromNow(index + 7, 9),
-    endDate: isoDaysFromNow(index + 10, 18),
-    description: faker.lorem.paragraphs(2),
-    subscriptionStartDate: isoDaysFromNow(-5, 8),
-    subscriptionEndDate: isoDaysFromNow(index + 5, 23),
-    maxCoursesPerAttendee: 2,
-    maxLecturesPerAttendee: 8,
-    maxUncategorizedPerAttendee: 1,
+  return createStoryPublicMajorEvent(index, {
+    requiresPayment: index % 2 === 0,
     rankedSubscriptionEnabled: true,
-    buttonText: 'Ver detalhes',
-    buttonLink: 'https://cacic.dev',
-    contactInfo: faker.internet.email(),
-    contactType: 'EMAIL',
-    isPaymentRequired: index % 2 === 0,
-    additionalPaymentInfo: 'Pagamento confirmado por comprovante.',
-    shouldIssueCertificate: true,
-    shouldIssueCertificateForNonPayingAttendees: false,
-    shouldIssueCertificateForNonSubscribedAttendees: false,
-    paymentInfo: {
-      id: `payment-${index + 1}`,
-      bankName: 'Banco Storybook',
-      agency: '0001',
-      account: '12345-6',
-      holder: 'CACiC FCT',
-      document: '12.345.678/0001-90',
-      pixKey: 'pagamentos@example.com',
-      pixCity: 'PRESIDENTE PRUDENTE',
-      majorEventId: `major-${index + 1}`,
-    },
-    majorEventPrices: [
-      {
-        id: `price-${index + 1}`,
-        type: 'STUDENT',
-        tiers: [
-          { id: `tier-${index + 1}-student`, name: 'Estudante', value: 2500 },
-          { id: `tier-${index + 1}-community`, name: 'Comunidade', value: 5000 },
-        ],
-      },
-    ],
-  };
+  });
 }
 
 function publicEvent(index = 0) {
-  const type = faker.helpers.arrayElement(['MINICURSO', 'PALESTRA', 'OTHER']);
-  return {
-    id: `event-${index + 1}`,
-    name: faker.helpers.arrayElement([
-      'Arquitetura Angular com Signals',
-      'OCR aplicado a eventos acadêmicos',
-      'Observabilidade para APIs GraphQL',
-      'Acessibilidade em produtos digitais',
-    ]),
-    creditMinutes: faker.helpers.arrayElement([60, 90, 120, 180]),
-    startDate: isoDaysFromNow(index, 14),
-    endDate: isoDaysFromNow(index, 16),
-    emoji: faker.helpers.arrayElement(['🧠', '🛠️', '📡', '✨']),
-    type,
-    description: faker.lorem.paragraphs(2),
-    shortDescription: faker.lorem.sentence(),
-    latitude: -22.1211,
-    longitude: -51.4086,
-    locationDescription: 'FCT-Unesp, Presidente Prudente',
-    majorEventId: 'major-1',
-    eventGroupId: `group-${(index % 2) + 1}`,
-    allowSubscription: true,
-    subscriptionStartDate: isoDaysFromNow(-3, 8),
-    subscriptionEndDate: isoDaysFromNow(index, 13),
-    slots: 40,
-    autoSubscribe: index === 0,
-    shouldIssueCertificate: true,
-    shouldCollectAttendance: true,
-    isOnlineAttendanceAllowed: index % 2 === 0,
-    onlineAttendanceStartDate: isoDaysFromNow(index, 13),
-    onlineAttendanceEndDate: isoDaysFromNow(index, 17),
-    publiclyVisible: true,
-    youtubeCode: null,
-    buttonText: null,
-    buttonLink: null,
+  return createStoryPublicEvent(index, {
     majorEvent: publicMajorEvent(0),
-    eventGroup: {
-      id: `group-${(index % 2) + 1}`,
-      name: faker.helpers.arrayElement(['Trilha Web', 'Trilha Dados']),
-      emoji: faker.helpers.arrayElement(['🌐', '📊']),
-      shouldIssueCertificateForEachEvent: true,
-      shouldIssuePartialCertificate: true,
-      shouldIssueCertificate: true,
-      shouldIssueCertificateForNonPayingAttendees: false,
-      shouldIssueCertificateForNonSubscribedAttendees: false,
-    },
-    lecturers: [
-      {
-        id: `lecturer-profile-${index + 1}`,
-        displayName: faker.person.fullName(),
-        biography:
-          'Pesquisa e desenvolve projetos de tecnologia educacional, com foco em experiências acessíveis para eventos acadêmicos.',
-        publishGoogleUserPicture: index % 2 === 0,
-        googleUserPicture: index % 2 === 0 ? 'https://lh3.googleusercontent.com/a/storybook-lecturer' : null,
-        email: faker.internet.email(),
-        whatsapp: '+5518999999999',
-      },
-    ],
-  };
+    eventGroup: createStoryPublicEventGroup(index % 2),
+    autoSubscribe: index === 0,
+  });
 }
 
 const events = Array.from({ length: 10 }, (_, index) => publicEvent(index));

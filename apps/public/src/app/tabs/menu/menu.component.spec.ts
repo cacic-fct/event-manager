@@ -65,6 +65,15 @@ describe('MenuComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('keeps preferences visible without account actions in the menu header', () => {
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('Preferências');
+    expect(text).not.toContain('Editar informações da conta');
+    expect(text).not.toContain('Sair da conta');
+    expect(fixture.nativeElement.querySelector('a[href="https://account.cacic.dev.br/app/"]')).toBeNull();
+  });
+
   it('should remove the color scheme listener on destroy', () => {
     const listener = addEventListener.mock.calls.find(([eventName]) => eventName === 'change')?.[1];
 

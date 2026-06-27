@@ -4,7 +4,7 @@ import { NgswState } from './ngsw-state';
 
 const meta: Meta<NgswState> = {
   component: NgswState,
-  title: 'Public/About/Service Worker/Ngsw State/Ngsw State',
+  title: 'Public/Preferences/Service Worker/Ngsw State/Ngsw State',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',

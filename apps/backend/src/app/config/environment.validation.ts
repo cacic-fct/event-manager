@@ -41,9 +41,7 @@ export function validateBackendEnvironment(config: Environment): Environment {
     requireKeys(config, ['TURNSTILE_SECRET_KEY'], errors);
   }
 
-  if (isEnabled(config, 'NOVU_SECURE_MODE_ENABLED')) {
-    requireKeys(config, ['NOVU_SECRET_KEY', 'NOVU_APPLICATION_IDENTIFIER'], errors);
-  }
+  validateNovuConfiguration(config, errors);
 
   validateCompleteGroup(config, S3_STORAGE_KEYS, errors);
 
@@ -90,6 +88,22 @@ function requireKeys(config: Environment, keys: readonly string[], errors: strin
     if (!readString(config, key)) {
       errors.push(`${key} is required.`);
     }
+  }
+}
+
+function validateNovuConfiguration(config: Environment, errors: string[]): void {
+  const configuredKeys = ['NOVU_SECRET_KEY', 'NOVU_APPLICATION_IDENTIFIER'].filter((key) => readString(config, key));
+  const secureModeEnabled = isEnabled(config, 'NOVU_SECURE_MODE_ENABLED');
+
+  if (secureModeEnabled) {
+    requireKeys(config, ['NOVU_SECRET_KEY', 'NOVU_APPLICATION_IDENTIFIER'], errors);
+    return;
+  }
+
+  if (configuredKeys.length > 0) {
+    errors.push(
+      'NOVU_SECURE_MODE_ENABLED must be true when NOVU_SECRET_KEY or NOVU_APPLICATION_IDENTIFIER is set.',
+    );
   }
 }
 

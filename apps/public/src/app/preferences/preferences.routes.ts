@@ -12,4 +12,9 @@ export const routes: Route[] = [
     loadComponent: () => import('./calendar-preferences/calendar-preferences').then((m) => m.CalendarPreferences),
     title: 'Calendário',
   },
+  {
+    path: 'service-worker',
+    loadComponent: () => import('./service-worker/service-worker').then((m) => m.ServiceWorker),
+    title: 'Service Worker',
+  },
 ];

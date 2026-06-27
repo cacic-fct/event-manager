@@ -18,20 +18,6 @@
               referrerpolicy="no-referrer"
               class="avatar-placeholder" />
             <span matListItemTitle>{{ user.name }}</span>
-            @if (authService.isAuthenticated()) {
-              <ng-container matListItemMeta>
-                <a
-                  matIconButton
-                  aria-label="Editar informações da conta"
-                  href="https://account.cacic.dev.br/app/"
-                  matTooltip="Editar informações da conta">
-                  <mat-icon>person_edit</mat-icon>
-                </a>
-                <button matIconButton aria-label="Sair da conta" (click)="authService.logout()" matTooltip="Sair">
-                  <mat-icon>logout</mat-icon>
-                </button>
-              </ng-container>
-            }
           </mat-list-item>
         </mat-list>
       } @else {
@@ -89,12 +75,10 @@
         <span matListItemTitle>Validar certificado</span>
       </a>
 
-      @if (authService.isAuthenticated()) {
-        <a mat-list-item routerLink="/preferences">
-          <mat-icon matListItemIcon>tune</mat-icon>
-          <span matListItemTitle>Preferências</span>
-        </a>
-      }
+      <a mat-list-item routerLink="/preferences">
+        <mat-icon matListItemIcon>tune</mat-icon>
+        <span matListItemTitle>Preferências</span>
+      </a>
 
       <a mat-list-item routerLink="/help" (click)="$event.preventDefault()">
         <mat-icon matListItemIcon>help</mat-icon>

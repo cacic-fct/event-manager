@@ -8,6 +8,10 @@
   gap: 12px;
 }
 
+.default-view-toggle {
+  margin-inline: 16px;
+}
+
 .feed-url-field {
   width: 100%;
 }

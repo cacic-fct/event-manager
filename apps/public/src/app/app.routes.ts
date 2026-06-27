@@ -1,6 +1,5 @@
 import { Route } from '@angular/router';
 import {
-  authGuard,
   developmentOnlyGuard,
   redirectAuthenticatedGuard,
 } from '@cacic-fct/shared-angular';
@@ -149,7 +148,6 @@ export const appRoutes: Route[] = [
     path: 'preferences',
     loadChildren: () => import('./preferences/preferences.routes').then((m) => m.routes),
     title: 'Preferências',
-    canActivate: [authGuard],
   },
   {
     path: 'about',
