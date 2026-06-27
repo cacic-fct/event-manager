@@ -30,7 +30,15 @@ describe('workspace publishing utils', () => {
       'group-event',
       'standalone-event',
     ]);
-    expect(tree[0].children[0].children).toHaveLength(1);
+    expect(tree[0].children?.[0].children).toHaveLength(1);
+  });
+
+  it('treats flat GraphQL nodes without children as leaves', () => {
+    const item = node('flat-event', 'EVENT');
+    delete item.children;
+
+    expect(flattenPublicationNodes([item]).map((node) => node.id)).toEqual(['flat-event']);
+    expect(flattenPublicationListItems([item]).map(({ node }) => node.id)).toEqual(['flat-event']);
   });
 
   it('keeps stable keys and levels for recursive list rendering', () => {
