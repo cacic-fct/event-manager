@@ -270,7 +270,7 @@ export class WorkspaceEventsService {
 
     this.selectedEvent.set(eventDetails);
     this.selectedEventDraft.set(selectedDraft);
-    this.populateEventForm(selectedDraft ? this.eventFromDraft(eventDetails, selectedDraft) : eventDetails);
+    await this.populateEventForm(selectedDraft ? this.eventFromDraft(eventDetails, selectedDraft) : eventDetails);
     this.eventGroupSearchResults.set([]);
     await Promise.all([this.loadEventLecturers(eventId), this.loadEventAttendanceCollectors(eventId)]);
     await this.loadGroupLecturerSuggestions();
@@ -474,7 +474,9 @@ export class WorkspaceEventsService {
     }
 
     this.selectedEventDraft.set(selection.kind === 'draft' ? selection.draft : null);
-    this.populateEventForm(selection.kind === 'draft' ? this.eventFromDraft(selectedEvent, selection.draft) : selectedEvent);
+    await this.populateEventForm(
+      selection.kind === 'draft' ? this.eventFromDraft(selectedEvent, selection.draft) : selectedEvent,
+    );
   }
 
   async deleteDraftsForSelectedEvent(): Promise<void> {
@@ -497,7 +499,7 @@ export class WorkspaceEventsService {
       await firstValueFrom(this.api.deleteEventDraftsForEvent(selectedEvent.id));
       this.mergeDraftsForEvent(selectedEvent.id, []);
       this.selectedEventDraft.set(null);
-      this.populateEventForm(selectedEvent);
+      await this.populateEventForm(selectedEvent);
       this.snackbar.open('Rascunhos excluídos.', 'Fechar', { duration: 2500 });
       await this.loadEvents();
     } catch (error) {
@@ -556,10 +558,7 @@ export class WorkspaceEventsService {
 
   assignEventGroupToEvent(group: EventGroup): void {
     this.eventForm.controls.eventGroupId.setValue(group.id);
-    this.selectedEventGroupName.set(group.name);
-    this.selectedEventGroupAllowsCertificates.set(group.shouldIssueCertificate);
-    this.selectedEventGroupAllowsNonPayingCertificates.set(group.shouldIssueCertificateForNonPayingAttendees);
-    this.selectedEventGroupAllowsNonSubscribedCertificates.set(group.shouldIssueCertificateForNonSubscribedAttendees);
+    this.applySelectedEventGroup(group, { hasEventGroup: true });
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
     void this.loadGroupLecturerSuggestions();
@@ -567,10 +566,7 @@ export class WorkspaceEventsService {
 
   clearEventGroupFromEvent(): void {
     this.eventForm.controls.eventGroupId.setValue('');
-    this.selectedEventGroupName.set('');
-    this.selectedEventGroupAllowsCertificates.set(true);
-    this.selectedEventGroupAllowsNonPayingCertificates.set(true);
-    this.selectedEventGroupAllowsNonSubscribedCertificates.set(true);
+    this.applySelectedEventGroup(null, { hasEventGroup: false });
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
     this.groupLecturerSuggestions.set([]);
@@ -1210,9 +1206,10 @@ export class WorkspaceEventsService {
     );
   }
 
-  private populateEventForm(eventItem: Event): void {
+  private async populateEventForm(eventItem: Event): Promise<void> {
     const asHours = (eventItem.creditMinutes ?? 0) / 60;
-    const selectedEventGroup = eventItem.eventGroup?.id === eventItem.eventGroupId ? eventItem.eventGroup : null;
+    const selectedEventGroup = await this.resolveSelectedEventGroup(eventItem);
+    const hasEventGroup = Boolean(eventItem.eventGroupId);
     this.eventForm.reset({
       id: eventItem.id,
       name: eventItem.name,
@@ -1257,16 +1254,37 @@ export class WorkspaceEventsService {
     });
     this.syncOnlineAttendanceControls();
     this.eventGroupLookupForm.controls.query.setValue(selectedEventGroup?.name ?? '', { emitEvent: false });
-    this.selectedEventGroupName.set(selectedEventGroup?.name ?? '');
-    this.selectedEventGroupAllowsCertificates.set(selectedEventGroup?.shouldIssueCertificate ?? true);
-    this.selectedEventGroupAllowsNonPayingCertificates.set(
-      selectedEventGroup?.shouldIssueCertificateForNonPayingAttendees ?? true,
-    );
-    this.selectedEventGroupAllowsNonSubscribedCertificates.set(
-      selectedEventGroup?.shouldIssueCertificateForNonSubscribedAttendees ?? true,
-    );
+    this.applySelectedEventGroup(selectedEventGroup, { hasEventGroup });
     this.eventGroupSearchResults.set([]);
     this.syncCertificateControl();
+  }
+
+  private async resolveSelectedEventGroup(eventItem: Event): Promise<EventGroup | null> {
+    if (!eventItem.eventGroupId) {
+      return null;
+    }
+
+    if (eventItem.eventGroup?.id === eventItem.eventGroupId) {
+      return eventItem.eventGroup;
+    }
+
+    try {
+      return await firstValueFrom(this.eventGroupsApi.getEventGroup(eventItem.eventGroupId));
+    } catch {
+      return null;
+    }
+  }
+
+  private applySelectedEventGroup(group: EventGroup | null, options: { hasEventGroup: boolean }): void {
+    const allowCertificates = group?.shouldIssueCertificate ?? !options.hasEventGroup;
+    this.selectedEventGroupName.set(group?.name ?? '');
+    this.selectedEventGroupAllowsCertificates.set(allowCertificates);
+    this.selectedEventGroupAllowsNonPayingCertificates.set(
+      group?.shouldIssueCertificateForNonPayingAttendees ?? allowCertificates,
+    );
+    this.selectedEventGroupAllowsNonSubscribedCertificates.set(
+      group?.shouldIssueCertificateForNonSubscribedAttendees ?? allowCertificates,
+    );
   }
 
   private toIsoDateTime(rawValue: string): string {
