@@ -124,6 +124,64 @@ describe('KeycloakAuthService', () => {
     });
   });
 
+  it('uses the imported local Keycloak realm defaults for development password login', async () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.KEYCLOAK_REALM_URL;
+    delete process.env.KEYCLOAK_CLIENT_ID;
+    delete process.env.KEYCLOAK_CLIENT_SECRET;
+    delete process.env.KEYCLOAK_LOGIN_IDP_HINT;
+    service = new KeycloakAuthService(
+      sessions as unknown as AuthSessionStoreService,
+      authorizationState as unknown as AuthorizationStateService,
+      userClaimSync as unknown as AuthenticatedUserSyncService,
+    );
+    mockedAxios.post.mockResolvedValueOnce({ data: { access_token: 'password-access-token' } });
+
+    const authorization = await service.buildAuthorizationUrl();
+    const authorizationUrl = new URL(authorization.authorizationUrl);
+    await expect(service.exchangePasswordForTokens('aluno@unesp.br', '1')).resolves.toEqual({
+      access_token: 'password-access-token',
+    });
+
+    expect(authorizationUrl.origin + authorizationUrl.pathname).toBe(
+      'http://localhost:8080/realms/cacic-sso/protocol/openid-connect/auth',
+    );
+    expect(authorizationUrl.searchParams.get('client_id')).toBe('cacic-event-manager');
+    expect(authorizationUrl.searchParams.has('kc_idp_hint')).toBe(false);
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'http://localhost:8080/realms/cacic-sso/protocol/openid-connect/token',
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: `Basic ${Buffer.from('cacic-event-manager:cacic-event-manager-dev-secret').toString(
+            'base64',
+          )}`,
+        }),
+      }),
+    );
+
+    const requestBody = new URLSearchParams(mockedAxios.post.mock.calls[0][1] as string);
+    expect(requestBody.get('grant_type')).toBe('password');
+    expect(requestBody.get('username')).toBe('aluno@unesp.br');
+    expect(requestBody.get('password')).toBe('1');
+    expect(requestBody.get('scope')).toBe('openid profile email phone identity-document academic-profile');
+    expect(requestBody.has('client_secret')).toBe(false);
+  });
+
+  it('forces the Google IdP hint only for production authorization redirects', async () => {
+    process.env.NODE_ENV = 'production';
+    service = new KeycloakAuthService(
+      sessions as unknown as AuthSessionStoreService,
+      authorizationState as unknown as AuthorizationStateService,
+      userClaimSync as unknown as AuthenticatedUserSyncService,
+    );
+
+    const authorization = await service.buildAuthorizationUrl();
+    const authorizationUrl = new URL(authorization.authorizationUrl);
+
+    expect(authorizationUrl.searchParams.get('kc_idp_hint')).toBe('google');
+  });
+
   it('fails fast when the production Keycloak client secret is blank', () => {
     process.env.NODE_ENV = 'production';
     process.env.KEYCLOAK_CLIENT_SECRET = '   ';
@@ -556,7 +614,8 @@ describe('KeycloakAuthService', () => {
     );
   });
 
-  it('rejects machine-to-machine tokens when audience or allowed clients are not configured', () => {
+  it('rejects machine-to-machine tokens in production when audience or allowed clients are not configured', () => {
+    process.env.NODE_ENV = 'production';
     const principal = principalFixture({
       preferredUsername: 'service-account-worker-client',
       roles: ['sync'],
@@ -579,6 +638,29 @@ describe('KeycloakAuthService', () => {
 
     expect(() => service.assertMachineToMachinePrincipal(principal, { requiredRoles: ['sync'] })).toThrow(
       ForbiddenException,
+    );
+  });
+
+  it('uses imported local realm M2M defaults outside production', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.KEYCLOAK_M2M_AUDIENCE;
+    delete process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS;
+
+    const principal = principalFixture({
+      preferredUsername: 'service-account-cacic-account-manager-m2m',
+      claims: {
+        aud: ['cacic-event-manager-audience'],
+        azp: 'cacic-account-manager-m2m',
+        resource_access: {
+          'cacic-event-manager-audience': {
+            roles: ['account-profile:write'],
+          },
+        },
+      },
+    });
+
+    expect(service.assertMachineToMachinePrincipal(principal, { requiredRoles: ['account-profile:write'] })).toBe(
+      principal,
     );
   });
 

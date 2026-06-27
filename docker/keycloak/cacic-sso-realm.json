@@ -1,0 +1,848 @@
+{
+  "realm": "cacic-sso",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "requiredCredentials": ["password"],
+  "roles": {
+    "realm": [
+      {
+        "name": "default-roles-cacic-sso",
+        "description": "Default realm roles for development users",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": ["offline_access", "uma_authorization"],
+          "client": {
+            "account": ["manage-account", "view-profile"]
+          }
+        }
+      },
+      {
+        "name": "offline_access",
+        "description": "${role_offline-access}",
+        "clientRole": false
+      },
+      {
+        "name": "uma_authorization",
+        "description": "${role_uma_authorization}",
+        "clientRole": false
+      }
+    ],
+    "client": {
+      "cacic-account-manager": [
+        {
+          "name": "access",
+          "description": "Can access CACiC Account Manager admin-aware surfaces",
+          "clientRole": true
+        },
+        {
+          "name": "super-admin",
+          "description": "Full CACiC Account Manager administration",
+          "clientRole": true
+        }
+      ],
+      "cacic-event-manager": [
+        {
+          "name": "access",
+          "description": "Can access CACiC Event Manager admin app",
+          "clientRole": true
+        },
+        {
+          "name": "super-admin",
+          "description": "Full CACiC Event Manager administration",
+          "clientRole": true
+        }
+      ],
+      "cacic-account-manager-audience": [
+        {
+          "name": "privacy:read",
+          "description": "Read account privacy data over M2M",
+          "clientRole": true
+        },
+        {
+          "name": "privacy:write",
+          "description": "Write account privacy data over M2M",
+          "clientRole": true
+        }
+      ],
+      "cacic-event-manager-audience": [
+        {
+          "name": "account-profile:write",
+          "description": "Write profile updates received from Account Manager",
+          "clientRole": true
+        },
+        {
+          "name": "account-merge:score",
+          "description": "Score possible account merges",
+          "clientRole": true
+        },
+        {
+          "name": "account-merge:write",
+          "description": "Apply account merge decisions",
+          "clientRole": true
+        },
+        {
+          "name": "lgpd:read",
+          "description": "Read LGPD data over M2M",
+          "clientRole": true
+        },
+        {
+          "name": "lgpd:delete",
+          "description": "Delete LGPD data over M2M",
+          "clientRole": true
+        },
+        {
+          "name": "voting-integration:read",
+          "description": "Read voting integration data over M2M",
+          "clientRole": true
+        }
+      ]
+    }
+  },
+  "groups": [
+    {
+      "name": "Super Admins",
+      "clientRoles": {
+        "cacic-account-manager": ["access", "super-admin"],
+        "cacic-event-manager": ["access", "super-admin"]
+      },
+      "subGroups": [
+        {
+          "name": "Discord Admin"
+        }
+      ]
+    },
+    {
+      "name": "Unesp"
+    },
+    {
+      "name": "student-entities",
+      "subGroups": [
+        {
+          "name": "cacic",
+          "clientRoles": {
+            "cacic-account-manager": ["access"]
+          }
+        },
+        {
+          "name": "ejcomp",
+          "clientRoles": {
+            "cacic-account-manager": ["access"]
+          }
+        }
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "profile",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${profileScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "preferred username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "firstName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "lastName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "set_fullname",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "fullName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "set_fullname",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "is_onboarded",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "isOnboarded",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "is_onboarded",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "name": "email",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${emailScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email verified",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "emailVerified",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email_verified",
+            "jsonType.label": "boolean"
+          }
+        }
+      ]
+    },
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${rolesScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "usermodel.clientRoleMapping.clientId": "",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "resource_access.${client_id}.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "audience resolve",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-resolve-mapper",
+          "consentRequired": false,
+          "config": {}
+        }
+      ]
+    },
+    {
+      "name": "phone",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "phone",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "phone",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "phone",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "name": "identity-document",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "identity_document",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "identity-document",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "identity_document",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "identityDocument",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "identity-document",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "identityDocument",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "is_foreigner",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "isForeigner",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "is_foreigner",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "is_foreign",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "isForeigner",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "is_foreign",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "name": "academic-profile",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "enrollment_number",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "enrollmentNumber",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "enrollment_number",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "enrollmentNumber",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "enrollmentNumber",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "enrollmentNumber",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "unesp_role",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "unespRole",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "unesp_role",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "unesp_role_verified",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "unespRoleVerified",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "unesp_role_verified",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cacic-account-manager-audience",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "cacic-account-manager-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "cacic-account-manager-audience",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cacic-event-manager-audience",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "cacic-event-manager-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "cacic-event-manager-audience",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "cacic-account-manager",
+      "name": "CACiC Account Manager",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "cacic-account-manager-dev-secret",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "rootUrl": "http://localhost:4200",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost:3000/api/auth/callback",
+        "http://127.0.0.1:3000/api/auth/callback",
+        "http://localhost:3333/api/auth/callback",
+        "http://127.0.0.1:3333/api/auth/callback"
+      ],
+      "webOrigins": [
+        "https://localhost:4200",
+        "https://127.0.0.1:4200",
+        "http://localhost:4200",
+        "http://127.0.0.1:4200",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "https://localhost:4200/*##https://127.0.0.1:4200/*##http://localhost:4200/*##http://127.0.0.1:4200/*"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "email",
+        "roles",
+        "phone",
+        "identity-document",
+        "academic-profile"
+      ],
+      "optionalClientScopes": ["offline_access"]
+    },
+    {
+      "clientId": "cacic-event-manager",
+      "name": "CACiC Event Manager",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "cacic-event-manager-dev-secret",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "rootUrl": "http://localhost:4200",
+      "baseUrl": "/admin/",
+      "redirectUris": [
+        "http://localhost:3000/api/auth/callback",
+        "http://127.0.0.1:3000/api/auth/callback",
+        "http://localhost:3333/api/auth/callback",
+        "http://127.0.0.1:3333/api/auth/callback"
+      ],
+      "webOrigins": [
+        "https://localhost:4200",
+        "https://127.0.0.1:4200",
+        "https://localhost:4201",
+        "https://127.0.0.1:4201",
+        "http://localhost:4200",
+        "http://127.0.0.1:4200",
+        "http://localhost:4201",
+        "http://127.0.0.1:4201",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "https://localhost:4200/*##https://127.0.0.1:4200/*##https://localhost:4201/*##https://127.0.0.1:4201/*##http://localhost:4200/*##http://127.0.0.1:4200/*##http://localhost:4201/*##http://127.0.0.1:4201/*"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "email",
+        "roles",
+        "phone",
+        "identity-document",
+        "academic-profile"
+      ],
+      "optionalClientScopes": ["offline_access"]
+    },
+    {
+      "clientId": "cacic-account-manager-admin-client",
+      "name": "CACiC Account Manager Admin Client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "cacic-account-manager-admin-client-dev-secret",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["roles", "profile", "email"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "cacic-account-manager-m2m",
+      "name": "CACiC Account Manager M2M",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "cacic-account-manager-m2m-dev-secret",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "roles",
+        "profile",
+        "email",
+        "cacic-event-manager-audience"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "cacic-event-manager-m2m",
+      "name": "CACiC Event Manager M2M",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "cacic-event-manager-m2m-dev-secret",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "roles",
+        "profile",
+        "email",
+        "cacic-account-manager-audience"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "cacic-account-manager-audience",
+      "name": "CACiC Account Manager Audience",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "cacic-event-manager-audience",
+      "name": "CACiC Event Manager Audience",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "username": "super-admin@unesp.br",
+      "email": "super-admin@unesp.br",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Super",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "1",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "fullName": ["Super Admin"],
+        "phone": ["+5518999990001"],
+        "identity-document": ["11111111111"],
+        "isForeigner": ["false"],
+        "isOnboarded": ["true"],
+        "enrollmentNumber": ["000001"],
+        "unespRole": ["DOCENTE"],
+        "unespRoleVerified": ["true"]
+      },
+      "groups": ["/Super Admins", "/Unesp", "/student-entities/cacic"],
+      "clientRoles": {
+        "cacic-account-manager": ["access", "super-admin"],
+        "cacic-event-manager": ["access", "super-admin"]
+      }
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "username": "aluno@unesp.br",
+      "email": "aluno@unesp.br",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Aluno",
+      "lastName": "Unesp",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "1",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "fullName": ["Aluno Unesp"],
+        "phone": ["+5518999990002"],
+        "identity-document": ["22222222222"],
+        "isForeigner": ["false"],
+        "isOnboarded": ["true"],
+        "enrollmentNumber": ["222222"],
+        "unespRole": ["ALUNO_GRADUACAO"],
+        "unespRoleVerified": ["true"]
+      },
+      "groups": ["/Unesp", "/student-entities/cacic"],
+      "clientRoles": {
+        "cacic-account-manager": ["access"],
+        "cacic-event-manager": ["access"]
+      }
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "username": "professor@unesp.br",
+      "email": "professor@unesp.br",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Professor",
+      "lastName": "Unesp",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "1",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "fullName": ["Professor Unesp"],
+        "phone": ["+5518999990003"],
+        "identity-document": ["33333333333"],
+        "isForeigner": ["false"],
+        "isOnboarded": ["true"],
+        "enrollmentNumber": ["333333"],
+        "unespRole": ["DOCENTE"],
+        "unespRoleVerified": ["true"]
+      },
+      "groups": ["/Unesp"],
+      "clientRoles": {
+        "cacic-event-manager": ["access"]
+      }
+    },
+    {
+      "id": "44444444-4444-4444-4444-444444444444",
+      "username": "externo@gmail.com",
+      "email": "externo@gmail.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Usuario",
+      "lastName": "Externo",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "1",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "fullName": ["Usuario Externo"],
+        "phone": [""],
+        "identity-document": [""],
+        "isForeigner": ["true"],
+        "isOnboarded": ["false"],
+        "unespRoleVerified": ["false"]
+      },
+      "groups": []
+    },
+    {
+      "username": "service-account-cacic-account-manager-admin-client",
+      "enabled": true,
+      "serviceAccountClientId": "cacic-account-manager-admin-client",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "query-groups",
+          "view-clients",
+          "query-clients"
+        ]
+      }
+    },
+    {
+      "username": "service-account-cacic-account-manager-m2m",
+      "enabled": true,
+      "serviceAccountClientId": "cacic-account-manager-m2m",
+      "clientRoles": {
+        "cacic-event-manager-audience": [
+          "account-profile:write",
+          "account-merge:score",
+          "account-merge:write",
+          "lgpd:read",
+          "lgpd:delete"
+        ]
+      }
+    },
+    {
+      "username": "service-account-cacic-event-manager-m2m",
+      "enabled": true,
+      "serviceAccountClientId": "cacic-event-manager-m2m",
+      "clientRoles": {
+        "cacic-account-manager-audience": ["privacy:read", "privacy:write"]
+      }
+    }
+  ]
+}

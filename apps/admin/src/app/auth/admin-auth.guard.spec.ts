@@ -39,12 +39,12 @@ describe('admin authGuardWithLocalLogin', () => {
     expect(authService.login).not.toHaveBeenCalled();
   });
 
-  it('sends unauthenticated admin users to the local login route while starting backend login', () => {
+  it('sends unauthenticated admin users to the local dev login route with the requested return path', () => {
     const result = runGuard('/');
 
     expect(result).toBeInstanceOf(UrlTree);
-    expect(router.serializeUrl(result as UrlTree)).toBe('/login');
-    expect(authService.login).toHaveBeenCalledWith({ returnTo: '/' });
+    expect(router.serializeUrl(result as UrlTree)).toBe('/login?returnTo=%2F');
+    expect(authService.login).not.toHaveBeenCalled();
   });
 
   it('keeps post-logout admin redirects on the local login route without immediately starting SSO again', () => {

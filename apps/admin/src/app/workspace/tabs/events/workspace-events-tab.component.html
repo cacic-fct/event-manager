@@ -435,7 +435,9 @@
               <input matInput type="number" formControlName="slots" />
             </mat-form-field>
 
-            <mat-checkbox formControlName="autoSubscribe"> Inscrever automaticamente pelo grande evento </mat-checkbox>
+            <mat-checkbox formControlName="autoSubscribe">
+              Inscrição automática e obrigatória pelo grande evento
+            </mat-checkbox>
 
             <mat-form-field>
               <mat-label>Código da presença on-line</mat-label>
@@ -486,7 +488,10 @@
             <mat-icon>person_search</mat-icon>
             Buscar
           </button>
-          @if (canEditSelectedEventRelation(Permission.EventLecturer.Create) && permissions.canEdit(Permission.Person.Create)) {
+          @if (
+            canEditSelectedEventRelation(Permission.EventLecturer.Create) &&
+            permissions.canEdit(Permission.Person.Create)
+          ) {
             <button mat-button type="button" (click)="workspace.createAndAddLecturer()">
               <mat-icon>person_add</mat-icon>
               Criar pessoa
@@ -598,7 +603,10 @@
         <div class="inline-list">
           @for (collector of workspace.eventAttendanceCollectors(); track collector.personId) {
             @if (canRemoveSelectedEventRelation(Permission.EventAttendanceCollector.Delete)) {
-              <button mat-stroked-button type="button" (click)="workspace.removeAttendanceCollector(collector.personId)">
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="workspace.removeAttendanceCollector(collector.personId)">
                 <mat-icon>close</mat-icon>
                 {{ collector.name }}
               </button>

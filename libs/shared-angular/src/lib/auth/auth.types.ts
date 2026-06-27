@@ -94,6 +94,10 @@ export type AuthRefreshResult = {
   sessionExpiresAt?: number;
 };
 
+export type PasswordLoginResult = AuthRefreshResult & {
+  user: AuthenticatedUser;
+};
+
 export type LoginOptions = {
   returnTo?: string;
   prompt?: string;

@@ -1,7 +1,10 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { DEFAULT_KEYCLOAK_REALM_URL } from './auth.constants';
+import {
+  DEFAULT_KEYCLOAK_DEV_REALM_URL,
+  DEFAULT_KEYCLOAK_REALM_URL,
+} from './auth.constants';
 import { summarizeKeycloakFailure } from './keycloak-error-logging';
 
 type ClientCredentialsTokenResponse = {
@@ -27,8 +30,12 @@ export class KeycloakM2mTokenService {
   constructor(private readonly configService: ConfigService) {}
 
   async getClientCredentialsToken(options: ClientCredentialsTokenOptions = {}): Promise<string> {
-    const clientId = options.clientId ?? this.configService.get<string>('KEYCLOAK_M2M_CLIENT_ID');
-    const clientSecret = options.clientSecret ?? this.configService.get<string>('KEYCLOAK_M2M_CLIENT_SECRET');
+    const clientId =
+      options.clientId ??
+      this.readConfigWithDevelopmentFallback('KEYCLOAK_M2M_CLIENT_ID', 'cacic-event-manager-m2m');
+    const clientSecret =
+      options.clientSecret ??
+      this.readConfigWithDevelopmentFallback('KEYCLOAK_M2M_CLIENT_SECRET', 'cacic-event-manager-m2m-dev-secret');
 
     if (!clientId || !clientSecret) {
       throw new ServiceUnavailableException('Keycloak M2M client credentials are not configured.');
@@ -92,7 +99,25 @@ export class KeycloakM2mTokenService {
   }
 
   private get realmUrl(): string {
-    return (this.configService.get<string>('KEYCLOAK_REALM_URL') ?? DEFAULT_KEYCLOAK_REALM_URL).replace(/\/+$/, '');
+    const fallbackRealmUrl =
+      process.env.NODE_ENV === 'production'
+        ? DEFAULT_KEYCLOAK_REALM_URL
+        : DEFAULT_KEYCLOAK_DEV_REALM_URL;
+
+    return (this.configService.get<string>('KEYCLOAK_REALM_URL') ?? fallbackRealmUrl).replace(/\/+$/, '');
+  }
+
+  private readConfigWithDevelopmentFallback(key: string, fallback: string): string | undefined {
+    const value = this.configService.get<string>(key)?.trim();
+    if (value) {
+      return value;
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+      return undefined;
+    }
+
+    return fallback;
   }
 
   private logKeycloakFailure(error: unknown): void {

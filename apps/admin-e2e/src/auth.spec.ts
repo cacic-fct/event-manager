@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await preventSilentSso(page);
 });
 
-test('login page starts the backend auth redirect with the admin return path', async ({ page }) => {
+test('login page starts the backend auth redirect with the admin return path from the SSO button', async ({ page }) => {
   let loginRedirect: URL | null = null;
   await mockAdminApi(page, {
     user: null,
@@ -16,10 +16,31 @@ test('login page starts the backend auth redirect with the admin return path', a
   await page.goto('/admin/login');
   await expect(page.getByRole('heading', { name: 'Event Manager' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Entrar' }).click();
+  await page.getByRole('button', { name: 'Entrar com SSO' }).click();
 
   await expect.poll(() => loginRedirect?.pathname).toBe('/api/auth/login/redirect');
   await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/admin/');
+});
+
+test('login page submits development password credentials without a real Keycloak redirect', async ({ page }) => {
+  let passwordLoginBody: Record<string, unknown> | null = null;
+  await mockAdminApi(page, {
+    user: null,
+    onPasswordLogin: (body) => {
+      passwordLoginBody = body;
+    },
+  });
+
+  await page.goto('/admin/login?returnTo=%2Fadmin%2Fevents');
+  await page.getByLabel('E-mail').fill('aluno@unesp.br');
+  await page.getByLabel('Senha').fill('1');
+  await page.getByRole('button', { name: /^Entrar$/ }).click();
+
+  await expect.poll(() => passwordLoginBody).toEqual({
+    email: 'aluno@unesp.br',
+    password: '1',
+  });
+  await expect(page).toHaveURL(/\/admin\/events/);
 });
 
 test('authenticated users are redirected away from the local login page', async ({ page }) => {
@@ -47,8 +68,10 @@ async function mockAdminApi(
   options: {
     user: Record<string, unknown> | null;
     onLoginRedirect?: (url: URL) => void;
+    onPasswordLogin?: (body: Record<string, unknown>) => void;
   },
 ): Promise<void> {
+  let currentUser = options.user;
   await page.route('https://unleash.cacic.dev.br/api/frontend/**', (route) =>
     route.fulfill({
       status: 304,
@@ -60,9 +83,9 @@ async function mockAdminApi(
 
     if (url.pathname === '/api/auth/me') {
       await route.fulfill({
-        status: options.user ? 200 : 403,
+        status: currentUser ? 200 : 403,
         contentType: 'application/json',
-        body: JSON.stringify(options.user ?? { message: 'User is not authenticated.' }),
+        body: JSON.stringify(currentUser ?? { message: 'User is not authenticated.' }),
       });
       return;
     }
@@ -77,11 +100,27 @@ async function mockAdminApi(
       return;
     }
 
+    if (url.pathname === '/api/auth/password-login') {
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      options.onPasswordLogin?.(body);
+      currentUser = authenticatedAdminUserFixture();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          user: currentUser,
+          expiresAt: Date.now() + 300_000,
+          sessionExpiresAt: Date.now() + 600_000,
+        }),
+      });
+      return;
+    }
+
     if (url.pathname === '/api/auth/permissions/evaluate') {
       await route.fulfill({
-        status: options.user ? 200 : 401,
+        status: currentUser ? 200 : 401,
         contentType: 'application/json',
-        body: JSON.stringify({ permissions: options.user ? ['event#read'] : [] }),
+        body: JSON.stringify({ permissions: currentUser ? ['event#read'] : [] }),
       });
       return;
     }
@@ -100,6 +139,26 @@ async function mockAdminApi(
       body: '',
     });
   });
+}
+
+function authenticatedAdminUserFixture(): Record<string, unknown> {
+  return {
+    realm_access: {
+      roles: [],
+    },
+    sub: 'user-1',
+    preferredUsername: 'aluno',
+    email: 'aluno@unesp.br',
+    roles: ['access'],
+    permissions: ['event#read'],
+    oidcScopes: ['openid'],
+    scopes: ['openid'],
+    claims: {
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      is_onboarded: true,
+      name: 'Aluno Unesp',
+    },
+  };
 }
 
 function authenticatedUserFixture(): Record<string, unknown> {
