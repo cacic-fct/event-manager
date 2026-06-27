@@ -86,6 +86,7 @@ export class WorkspaceAuditLogsTabComponent {
   protected readonly result = signal<AuditLogExplorerResult | null>(null);
   protected readonly skip = signal(0);
   protected readonly take = signal<(typeof AUDIT_LOG_PAGE_SIZE_OPTIONS)[number]>(25);
+  private loadRequestId = 0;
 
   protected readonly rangeStart = computed(() => {
     const result = this.result();
@@ -188,15 +189,27 @@ export class WorkspaceAuditLogsTabComponent {
   }
 
   protected async load(): Promise<void> {
+    const requestId = ++this.loadRequestId;
     this.loading.set(true);
     this.error.set(null);
 
     try {
-      this.result.set(await firstValueFrom(this.api.searchExplorer(this.buildInput())));
+      const result = await firstValueFrom(this.api.searchExplorer(this.buildInput()));
+      if (requestId !== this.loadRequestId) {
+        return;
+      }
+
+      this.result.set(result);
     } catch (error) {
+      if (requestId !== this.loadRequestId) {
+        return;
+      }
+
       this.error.set(getErrorMessage(error, 'Não foi possível carregar os logs de auditoria.'));
     } finally {
-      this.loading.set(false);
+      if (requestId === this.loadRequestId) {
+        this.loading.set(false);
+      }
     }
   }
 

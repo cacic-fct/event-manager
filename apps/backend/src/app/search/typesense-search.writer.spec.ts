@@ -32,6 +32,23 @@ describe('typesense writer helpers', () => {
     });
   });
 
+  it('leaves structurally drifted collections for rebuild instead of applying incremental updates', async () => {
+    const client = createClientMock();
+    client.collection.retrieve.mockResolvedValueOnce({
+      fields: [{ name: 'status', type: 'string', facet: false }],
+    });
+
+    await ensureTypesenseCollection(client.instance as never, {
+      name: 'events',
+      fields: [
+        { name: 'id', type: 'string' },
+        { name: 'status', type: 'string', facet: true },
+      ],
+    });
+
+    expect(client.collection.update).not.toHaveBeenCalled();
+  });
+
   it('ensures all configured collections', async () => {
     const client = createClientMock();
 
@@ -84,6 +101,59 @@ describe('typesense writer helpers', () => {
     expect(client.document.delete).toHaveBeenCalled();
   });
 
+  it('does not swap the alias when a bulk import row fails', async () => {
+    const client = createClientMock();
+    const logger = { error: jest.fn() };
+    client.documents.import.mockResolvedValueOnce([{ success: false, error: 'Invalid field type.', code: 400 }]);
+
+    await replaceTypesenseCollectionDocuments({
+      client: client.instance as never,
+      logger: logger as never,
+      schema: { name: 'events', fields: [{ name: 'id', type: 'string' }] },
+      documents: [{ id: 'event-1', name: 'Aula' }],
+    });
+
+    expect(client.aliasesRoot.upsert).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to replace Typesense documents for events.',
+      expect.objectContaining({
+        message: 'Failed to import Typesense documents into events: Invalid field type.',
+      }),
+    );
+  });
+
+  it('restores a direct public collection when alias migration fails after conflict cleanup', async () => {
+    const client = createClientMock();
+    const logger = { error: jest.fn() };
+    client.alias.retrieve.mockRejectedValueOnce({ httpStatus: 404 });
+    client.collection.retrieve.mockResolvedValue({
+      name: 'events',
+      fields: [{ name: 'id', type: 'string' }],
+    });
+    client.aliasesRoot.upsert.mockRejectedValueOnce({ httpStatus: 409 }).mockRejectedValueOnce(new Error('alias down'));
+
+    await replaceTypesenseCollectionDocuments({
+      client: client.instance as never,
+      logger: logger as never,
+      schema: { name: 'events', fields: [{ name: 'id', type: 'string' }] },
+      documents: [{ id: 'event-1', name: 'Aula' }],
+    });
+
+    expect(client.aliasesRoot.upsert).toHaveBeenCalledTimes(2);
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringMatching(/^events_migration_backup_reindex_/),
+      }),
+    );
+    expect(client.rootCollections.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'events',
+        fields: [{ name: 'id', type: 'string' }],
+      }),
+    );
+    expect(logger.error).toHaveBeenCalledWith('Failed to replace Typesense documents for events.', expect.any(Error));
+  });
+
   it('logs write failures instead of throwing', async () => {
     const client = createClientMock();
     const logger = { error: jest.fn() };
@@ -106,7 +176,8 @@ describe('typesense writer helpers', () => {
 
 function createClientMock() {
   const documents = {
-    import: jest.fn().mockResolvedValue(undefined),
+    export: jest.fn().mockResolvedValue('{"id":"event-1"}\n'),
+    import: jest.fn().mockResolvedValue([{ success: true }]),
     upsert: jest.fn().mockResolvedValue(undefined),
   };
   const document = {

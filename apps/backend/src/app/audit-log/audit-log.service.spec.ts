@@ -130,51 +130,52 @@ describe('AuditLogService', () => {
   });
 
   it('retries transaction-scoped Typesense synchronization when the committed row is not visible yet', async () => {
+    jest.useFakeTimers();
     const tx = createPrisma();
     tx.auditLogEntry.create.mockResolvedValue(createAuditEntry({ id: 'audit-retry' }));
     prisma.auditLogEntry.findUnique
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(createAuditEntry({ id: 'audit-retry', entityLabel: 'Committed after retry' }));
 
-    await service.record(
-      {
-        entityType: AuditLogEntityType.PERSON,
-        entityId: 'person-1',
-        entityLabel: 'Ana Silva',
-        operation: AuditLogOperation.UPDATE,
-        actor: {
-          id: 'admin-1',
-          name: 'Renan Yudi',
-          email: 'renan@example.com',
-          type: AuditLogActorType.USER,
+    try {
+      await service.record(
+        {
+          entityType: AuditLogEntityType.PERSON,
+          entityId: 'person-1',
+          entityLabel: 'Ana Silva',
+          operation: AuditLogOperation.UPDATE,
+          actor: {
+            id: 'admin-1',
+            name: 'Renan Yudi',
+            email: 'renan@example.com',
+            type: AuditLogActorType.USER,
+          },
+          before: {
+            name: 'Ana Silva',
+          },
+          after: {
+            name: 'Ana Clara Silva',
+          },
+          squashWindowMs: 0,
         },
-        before: {
-          name: 'Ana Silva',
-        },
-        after: {
-          name: 'Ana Clara Silva',
-        },
-        squashWindowMs: 0,
-      },
-      tx as never,
-    );
+        tx as never,
+      );
 
-    await new Promise<void>((resolve) => {
-      setImmediate(resolve);
-    });
-    expect(typesenseSearch.upsertAuditLogEntry).not.toHaveBeenCalled();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(typesenseSearch.upsertAuditLogEntry).not.toHaveBeenCalled();
 
-    await new Promise((resolve) => {
-      setTimeout(resolve, 35);
-    });
+      await jest.advanceTimersByTimeAsync(25);
 
-    expect(prisma.auditLogEntry.findUnique).toHaveBeenCalledTimes(2);
-    expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'audit-retry',
-        entityLabel: 'Committed after retry',
-      }),
-    );
+      expect(prisma.auditLogEntry.findUnique).toHaveBeenCalledTimes(2);
+      expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'audit-retry',
+          entityLabel: 'Committed after retry',
+        }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('skips no-op audit records unless they are forced', async () => {

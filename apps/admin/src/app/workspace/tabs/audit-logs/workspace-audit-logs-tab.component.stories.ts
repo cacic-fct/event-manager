@@ -1,7 +1,7 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
-import { delay, of, throwError, type Observable } from 'rxjs';
+import { delay, mergeMap, of, throwError, timer, type Observable } from 'rxjs';
 import { AuditLogApiService, type AuditLogExplorerInput } from '../../../graphql/audit-log-api.service';
 import {
   AuditLogActorType,
@@ -155,7 +155,9 @@ function createAuditLogApiService(args: AuditLogsStoryArgs): Pick<AuditLogApiSer
   return {
     searchExplorer: (input: AuditLogExplorerInput): Observable<AuditLogExplorerResult> => {
       if (args.requestState === 'error') {
-        return throwError(() => new Error('Falha simulada ao consultar auditoria.')).pipe(delay(args.responseDelay));
+        return timer(args.responseDelay).pipe(
+          mergeMap(() => throwError(() => new Error('Falha simulada ao consultar auditoria.'))),
+        );
       }
 
       return of(buildExplorerResult(args, input.skip ?? 0, input.take ?? 25)).pipe(delay(args.responseDelay));
