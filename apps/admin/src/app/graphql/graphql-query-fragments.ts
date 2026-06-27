@@ -86,6 +86,22 @@ export const EVENT_DETAIL_FIELDS = `
   }
 `;
 
+export const EVENT_DRAFT_FIELDS = `
+  id
+  sourceEventId
+  name
+  payloadJson
+  createdById
+  createdByName
+  createdByEmail
+  updatedById
+  updatedByName
+  updatedByEmail
+  createdAt
+  updatedAt
+  expiresAt
+`;
+
 export const EVENT_CERTIFICATE_TARGET_FIELDS = `
   id
   name

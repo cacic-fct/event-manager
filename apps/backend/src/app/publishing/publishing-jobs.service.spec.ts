@@ -1,5 +1,5 @@
 import { PublicationState } from '@cacic-fct/shared-data-types';
-import { PUBLISH_SCHEDULED_CONTENT_JOB } from './publishing.constants';
+import { CLEANUP_STALE_EVENT_DRAFTS_JOB, PUBLISH_SCHEDULED_CONTENT_JOB } from './publishing.constants';
 import { PublicationJobsService } from './publishing-jobs.service';
 
 describe('PublicationJobsService', () => {
@@ -17,7 +17,13 @@ describe('PublicationJobsService', () => {
     const publicationQueue = {
       add: jest.fn().mockResolvedValue({ id: 'job-1' }),
     };
-    const service = new PublicationJobsService({} as never, {} as never, {} as never, publicationQueue as never);
+    const service = new PublicationJobsService(
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      publicationQueue as never,
+    );
     const firstSchedule = new Date('2026-06-25T13:00:00.000Z');
     const secondSchedule = new Date('2026-06-25T14:00:00.000Z');
 
@@ -48,5 +54,53 @@ describe('PublicationJobsService', () => {
         delay: secondSchedule.getTime() - now.getTime(),
       }),
     );
+  });
+
+  it('schedules stale event draft cleanup on the publication queue', async () => {
+    const publicationQueue = {
+      add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+    };
+    const prisma = {
+      event: { findMany: jest.fn().mockResolvedValue([]) },
+      majorEvent: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const service = new PublicationJobsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      publicationQueue as never,
+    );
+
+    await service.schedulePublicationJobs();
+
+    expect(publicationQueue.add).toHaveBeenCalledWith(
+      CLEANUP_STALE_EVENT_DRAFTS_JOB,
+      {},
+      expect.objectContaining({
+        jobId: `publication:${CLEANUP_STALE_EVENT_DRAFTS_JOB}`,
+        repeat: expect.objectContaining({
+          pattern: '17 3 * * *',
+          tz: 'America/Sao_Paulo',
+        }),
+      }),
+    );
+  });
+
+  it('runs stale event draft cleanup through the draft service', async () => {
+    const eventDrafts = {
+      cleanupStaleDrafts: jest.fn().mockResolvedValue(3),
+    };
+    const service = new PublicationJobsService(
+      {} as never,
+      {} as never,
+      {} as never,
+      eventDrafts as never,
+      { add: jest.fn() } as never,
+    );
+
+    await service.cleanupStaleEventDrafts();
+
+    expect(eventDrafts.cleanupStaleDrafts).toHaveBeenCalledWith();
   });
 });

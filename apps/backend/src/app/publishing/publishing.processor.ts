@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { Job } from 'bullmq';
 import {
+  CLEANUP_STALE_EVENT_DRAFTS_JOB,
   PUBLICATION_QUEUE,
   PUBLISH_SCHEDULED_CONTENT_JOB,
   RECONCILE_PUBLICATION_STATES_JOB,
@@ -36,6 +37,11 @@ export class PublicationProcessor extends WorkerHost {
 
     if (job.name === RECONCILE_PUBLICATION_STATES_JOB) {
       await this.publicationJobs.reconcileScheduledPublications();
+      return;
+    }
+
+    if (job.name === CLEANUP_STALE_EVENT_DRAFTS_JOB) {
+      await this.publicationJobs.cleanupStaleEventDrafts();
       return;
     }
 

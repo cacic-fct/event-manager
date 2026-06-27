@@ -61,6 +61,24 @@
               </button>
             }
           </mat-list-item>
+          @for (draft of workspace.draftsForEvent(eventItem.id); track draft.id) {
+            <mat-list-item
+              class="draft-list-item"
+              (click)="workspace.selectEventDraft(eventItem, draft)"
+              [class.selected-list-item]="workspace.selectedEventDraft()?.id === draft.id">
+              <span matListItemTitle class="list-title">
+                <mat-icon>edit_note</mat-icon>
+                <span class="draft-label">Rascunho</span>
+                <span>{{ draft.name }}</span>
+              </span>
+              <span matListItemLine>
+                Original: {{ eventItem.name }} · Editado em {{ draft.updatedAt | date: 'short' }}
+              </span>
+              <span matListItemLine>
+                {{ draft.updatedByName || draft.createdByName || 'Usuário não identificado' }}
+              </span>
+            </mat-list-item>
+          }
         } @empty {
           <mat-list-item>
             <span matListItemTitle>Nenhum evento encontrado</span>
@@ -75,14 +93,22 @@
         <div>
           <h3>
             @if (workspace.selectedEvent()) {
-              Editar evento
+              @if (workspace.selectedEventDraft()) {
+                Editar rascunho
+              } @else {
+                Editar evento
+              }
             } @else {
               Novo evento
             }
           </h3>
           <p>
             @if (workspace.selectedEvent()) {
-              {{ workspace.selectedEvent()?.name }}
+              @if (workspace.selectedEventDraft(); as selectedDraft) {
+                Rascunho de {{ workspace.selectedEvent()?.name }} · {{ selectedDraft.updatedAt | date: 'short' }}
+              } @else {
+                {{ workspace.selectedEvent()?.name }}
+              }
             } @else {
               Preencha os dados principais para publicar na programação.
             }
@@ -113,6 +139,25 @@
                 <mat-icon>campaign</mat-icon>
                 Gerenciar publicação
               </button>
+              @if (workspace.draftsForEvent(selectedEvent.id).length > 0) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  matTooltip="Escolher entre a versão publicada e os rascunhos salvos deste evento."
+                  (click)="workspace.chooseSelectedEventVersion()">
+                  <mat-icon>rule</mat-icon>
+                  Escolher versão
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  matTooltip="Excluir permanentemente todos os rascunhos deste evento sem alterar a publicação atual."
+                  (click)="workspace.deleteDraftsForSelectedEvent()"
+                  [disabled]="workspace.loading()">
+                  <mat-icon>delete_sweep</mat-icon>
+                  Excluir rascunhos
+                </button>
+              }
             }
           </div>
 
@@ -122,15 +167,17 @@
               Limpar
             </button>
             @if (canEditEvent(workspace.selectedEvent())) {
-              <button
-                mat-stroked-button
-                type="button"
-                matTooltip="Salva como rascunho e abre o painel de publicação para escolher data, pré-visualizar ou revisar vínculos."
-                (click)="workspace.saveEvent('SCHEDULE')"
-                [disabled]="workspace.loading()">
-                <mat-icon>schedule</mat-icon>
-                Salvar e agendar
-              </button>
+              @if (!workspace.selectedEventDraft()) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  matTooltip="Salva como rascunho e abre o painel de publicação para escolher data, pré-visualizar ou revisar vínculos."
+                  (click)="workspace.saveEvent('SCHEDULE')"
+                  [disabled]="workspace.loading()">
+                  <mat-icon>schedule</mat-icon>
+                  Salvar e agendar
+                </button>
+              }
               <button
                 mat-stroked-button
                 type="button"

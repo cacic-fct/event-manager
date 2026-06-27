@@ -330,6 +330,22 @@
   background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
 }
 
+.draft-list-item {
+  --mat-list-list-item-leading-icon-color: var(--mat-sys-tertiary);
+
+  background: color-mix(in srgb, var(--mat-sys-tertiary) 8%, transparent);
+}
+
+.draft-label {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--mat-sys-tertiary) 45%, var(--mat-sys-outline-variant));
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  color: var(--mat-sys-on-tertiary-container);
+  background: var(--mat-sys-tertiary-container);
+  font: var(--mat-sys-label-small);
+}
+
 .empty-state {
   display: grid;
   min-height: 18rem;

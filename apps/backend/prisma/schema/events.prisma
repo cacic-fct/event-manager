@@ -39,6 +39,8 @@ model Event {
   eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id])
   eventGroupId String?
 
+  drafts EventDraft[]
+
   attendances                   EventAttendance[]
   attendanceCollectors          EventAttendanceCollector[]
   offlineAttendanceSubmissions  OfflineEventAttendanceSubmission[]
@@ -98,6 +100,33 @@ model Event {
   @@index([publicationState])
   @@index([scheduledPublishAt])
   @@map("events")
+}
+
+model EventDraft {
+  id String @id @default(uuid(7))
+
+  sourceEvent   Event  @relation(fields: [sourceEventId], references: [id], onDelete: Cascade)
+  sourceEventId String
+
+  name    String
+  payload Json
+
+  createdById    String?
+  createdByName  String?
+  createdByEmail String?
+  updatedById    String?
+  updatedByName  String?
+  updatedByEmail String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+
+  @@index([sourceEventId])
+  @@index([updatedAt])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@map("event_drafts")
 }
 
 model PlacePreset {

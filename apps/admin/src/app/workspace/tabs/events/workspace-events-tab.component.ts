@@ -98,8 +98,12 @@ export class WorkspaceEventsTabComponent {
   }
 
   protected draftEventActionLabel(): string {
+    if (this.workspace.selectedEventDraft()) {
+      return 'Salvar rascunho';
+    }
+
     const state = this.workspace.selectedEvent()?.publicationState;
-    return state === 'PUBLISHED' || state === 'SCHEDULED' ? 'Voltar para rascunho' : 'Salvar rascunho';
+    return state === 'PUBLISHED' || state === 'SCHEDULED' ? 'Salvar como rascunho' : 'Salvar rascunho';
   }
 
   protected draftEventActionTooltip(): string {
@@ -107,24 +111,34 @@ export class WorkspaceEventsTabComponent {
   }
 
   protected publishEventActionLabel(): string {
+    if (this.workspace.selectedEventDraft()) {
+      return 'Atualizar publicação';
+    }
+
     return this.publishActionLabel(this.workspace.selectedEvent()?.publicationState);
   }
 
   protected publishEventActionTooltip(): string {
+    if (this.workspace.selectedEventDraft()) {
+      return 'Aplica este rascunho ao evento publicado e mantém a publicação no ar com a versão atualizada.';
+    }
+
     return this.publishActionTooltip(this.workspace.selectedEvent()?.publicationState, 'evento');
   }
 
   protected publishEventActionIcon(): string {
-    return this.workspace.selectedEvent()?.publicationState === 'PUBLISHED' ? 'sync' : 'publish';
+    return this.workspace.selectedEventDraft() || this.workspace.selectedEvent()?.publicationState === 'PUBLISHED'
+      ? 'sync'
+      : 'publish';
   }
 
   private draftActionTooltip(state: PublicationState | null | undefined, targetLabel: string): string {
     if (state === 'PUBLISHED') {
-      return `Salva as alterações e retira o ${targetLabel} do ar, deixando-o como rascunho.`;
+      return `Cria um rascunho separado para o ${targetLabel}, sem alterar a publicação atual.`;
     }
 
     if (state === 'SCHEDULED') {
-      return `Salva as alterações e cancela o agendamento, deixando o ${targetLabel} como rascunho.`;
+      return `Cria um rascunho separado para o ${targetLabel}, sem cancelar o agendamento atual.`;
     }
 
     return `Salva sem publicar. O ${targetLabel} continua fora do ar.`;
