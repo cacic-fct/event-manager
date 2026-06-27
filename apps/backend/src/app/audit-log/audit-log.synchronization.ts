@@ -17,21 +17,21 @@ export function synchronizeAuditLogEntry(
   }
 
   setImmediate(() => {
-    void synchronizeCommittedAuditLogEntry(entry.id, committedPrisma, typesenseSearch).catch(() => undefined);
+    void synchronizeCommittedAuditLogEntry(entry, committedPrisma, typesenseSearch).catch(() => undefined);
   });
 }
 
 async function synchronizeCommittedAuditLogEntry(
-  id: string,
+  expectedEntry: PrismaAuditLogEntry,
   prisma: PrismaService,
   typesenseSearch: TypesenseSearchService,
   attempt = 0,
 ): Promise<void> {
   const entry = await prisma.auditLogEntry.findUnique({
-    where: { id },
+    where: { id: expectedEntry.id },
   });
-  if (!entry) {
-    scheduleCommittedAuditLogEntryRetry(id, prisma, typesenseSearch, attempt);
+  if (!entry || entry.lastRecordedAt.getTime() < expectedEntry.lastRecordedAt.getTime()) {
+    scheduleCommittedAuditLogEntryRetry(expectedEntry, prisma, typesenseSearch, attempt);
     return;
   }
 
@@ -39,7 +39,7 @@ async function synchronizeCommittedAuditLogEntry(
 }
 
 function scheduleCommittedAuditLogEntryRetry(
-  id: string,
+  expectedEntry: PrismaAuditLogEntry,
   prisma: PrismaService,
   typesenseSearch: TypesenseSearchService,
   attempt: number,
@@ -50,6 +50,6 @@ function scheduleCommittedAuditLogEntryRetry(
   }
 
   setTimeout(() => {
-    void synchronizeCommittedAuditLogEntry(id, prisma, typesenseSearch, attempt + 1).catch(() => undefined);
+    void synchronizeCommittedAuditLogEntry(expectedEntry, prisma, typesenseSearch, attempt + 1).catch(() => undefined);
   }, delayMs);
 }

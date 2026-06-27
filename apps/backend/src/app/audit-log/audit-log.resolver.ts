@@ -42,6 +42,7 @@ export class AuditLogResolver {
     return this.auditLog.exploreAuditLogs(input, this.getUser(context));
   }
 
+  @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
   @Mutation(() => AuditLogEntry, { name: 'revertAuditLogEntry' })
   revertAuditLogEntry(
     @Args('input', { type: () => AuditLogRevertInput }) input: AuditLogRevertInput,

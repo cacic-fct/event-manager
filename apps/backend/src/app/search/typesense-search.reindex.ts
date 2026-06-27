@@ -25,7 +25,12 @@ import type {
   PlacePresetSearchDocument,
 } from './typesense-search.types';
 import { AUDIT_LOG_SEARCH_SELECT, toAuditLogSearchDocument } from './typesense-search.audit-log';
-import { replaceTypesenseCollectionDocuments, upsertTypesenseDocument } from './typesense-search.writer';
+import {
+  assertTypesenseImportSucceeded,
+  replaceTypesenseCollection,
+  replaceTypesenseCollectionDocuments,
+  upsertTypesenseDocument,
+} from './typesense-search.writer';
 
 export async function reindexAllSearchDocuments(input: {
   client: TypesenseClient | null;
@@ -186,31 +191,37 @@ export async function replaceAuditLogSearchDocuments(input: {
   }
 
   try {
-    const collection = input.client.collections<AuditLogSearchDocument & Record<string, unknown>>(input.schema.name);
-    await collection.delete();
-    await input.client.collections().create(input.schema);
+    await replaceTypesenseCollection({
+      client: input.client,
+      logger: input.logger,
+      schema: input.schema,
+      importDocuments: async (collectionName) => {
+        const collection = input.client.collections<AuditLogSearchDocument & Record<string, unknown>>(collectionName);
 
-    let cursor: { id: string } | undefined;
-    for (;;) {
-      const entries = await input.prisma.auditLogEntry.findMany({
-        select: AUDIT_LOG_SEARCH_SELECT,
-        orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-        take: AUDIT_LOG_REINDEX_BATCH_SIZE,
-        ...(cursor ? { cursor, skip: 1 } : {}),
-      });
-      if (entries.length === 0) {
-        return;
-      }
+        let cursor: { id: string } | undefined;
+        for (;;) {
+          const entries = await input.prisma.auditLogEntry.findMany({
+            select: AUDIT_LOG_SEARCH_SELECT,
+            orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+            take: AUDIT_LOG_REINDEX_BATCH_SIZE,
+            ...(cursor ? { cursor, skip: 1 } : {}),
+          });
+          if (entries.length === 0) {
+            return;
+          }
 
-      await collection.documents().import(entries.map((entry) => toAuditLogSearchDocument(entry)), {
-        action: 'upsert',
-      });
+          const importResult = await collection.documents().import(entries.map((entry) => toAuditLogSearchDocument(entry)), {
+            action: 'upsert',
+          });
+          assertTypesenseImportSucceeded(importResult, input.schema.name);
 
-      cursor = { id: entries[entries.length - 1].id };
-      if (entries.length < AUDIT_LOG_REINDEX_BATCH_SIZE) {
-        return;
-      }
-    }
+          cursor = { id: entries[entries.length - 1].id };
+          if (entries.length < AUDIT_LOG_REINDEX_BATCH_SIZE) {
+            return;
+          }
+        }
+      },
+    });
   } catch (error) {
     input.logger.error(`Failed to replace Typesense documents for ${input.schema.name}.`, error);
   }

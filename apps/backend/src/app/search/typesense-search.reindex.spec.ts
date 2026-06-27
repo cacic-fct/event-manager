@@ -47,10 +47,10 @@ describe('typesense reindex helpers', () => {
       select: expect.objectContaining({ id: true, publicationState: true }),
     });
     expect(client.rootCollections.create).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'cacic_event_manager_events' }),
+      expect.objectContaining({ name: expect.stringMatching(/^cacic_event_manager_events_reindex_/) }),
     );
     expect(client.rootCollections.create).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'cacic_event_manager_audit_logs' }),
+      expect.objectContaining({ name: expect.stringMatching(/^cacic_event_manager_audit_logs_reindex_/) }),
     );
     expect(client.documents.import).toHaveBeenCalledWith(
       [expect.objectContaining({ id: 'event-1', publiclyVisible: true })],
@@ -112,6 +112,31 @@ describe('typesense reindex helpers', () => {
     expect(client.documents.import).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'audit-500' })], {
       action: 'upsert',
     });
+    expect(client.aliasesRoot.upsert).toHaveBeenCalledWith('audit_logs', {
+      collection_name: expect.stringMatching(/^audit_logs_reindex_/),
+    });
+  });
+
+  it('keeps the live audit-log collection published when a batch import fails', async () => {
+    const client = createClientMock();
+    const logger = { error: jest.fn() };
+    const prisma = createPrismaMock({ auditLogEntry: [createAuditLogEntry('audit-1')] });
+    client.documents.import.mockResolvedValueOnce([{ success: false, error: 'Invalid document.', code: 400 }]);
+
+    await replaceAuditLogSearchDocuments({
+      client: client.instance as never,
+      logger: logger as never,
+      prisma: prisma as never,
+      schema: { name: 'audit_logs', fields: [{ name: 'id', type: 'string' }] },
+    });
+
+    expect(client.aliasesRoot.upsert).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to replace Typesense documents for audit_logs.',
+      expect.objectContaining({
+        message: 'Failed to import Typesense documents into audit_logs: Invalid document.',
+      }),
+    );
   });
 });
 
@@ -123,15 +148,25 @@ function createClientMock() {
   const collection = {
     delete: jest.fn().mockResolvedValue(undefined),
     documents: jest.fn(() => documents),
+    retrieve: jest.fn().mockRejectedValue({ httpStatus: 404 }),
   };
   const rootCollections = {
     create: jest.fn().mockResolvedValue(undefined),
   };
+  const alias = {
+    retrieve: jest.fn().mockRejectedValue({ httpStatus: 404 }),
+  };
+  const aliasesRoot = {
+    upsert: jest.fn().mockResolvedValue({}),
+  };
   const instance = {
     collections: jest.fn((name?: string) => (name ? collection : rootCollections)),
+    aliases: jest.fn((name?: string) => (name ? alias : aliasesRoot)),
   };
 
   return {
+    alias,
+    aliasesRoot,
     collection,
     documents,
     instance,

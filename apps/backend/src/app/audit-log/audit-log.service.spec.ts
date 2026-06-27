@@ -178,6 +178,62 @@ describe('AuditLogService', () => {
     }
   });
 
+  it('retries transaction-scoped Typesense synchronization when the committed row is still stale', async () => {
+    jest.useFakeTimers();
+    const tx = createPrisma();
+    const expectedLastRecordedAt = new Date('2026-06-22T12:00:00.000Z');
+    tx.auditLogEntry.create.mockResolvedValue(createAuditEntry({ id: 'audit-stale', lastRecordedAt: expectedLastRecordedAt }));
+    prisma.auditLogEntry.findUnique
+      .mockResolvedValueOnce(
+        createAuditEntry({
+          id: 'audit-stale',
+          entityLabel: 'Stale before commit',
+          lastRecordedAt: new Date('2026-06-22T11:59:59.000Z'),
+        }),
+      )
+      .mockResolvedValueOnce(createAuditEntry({ id: 'audit-stale', entityLabel: 'Committed after retry' }));
+
+    try {
+      await service.record(
+        {
+          entityType: AuditLogEntityType.PERSON,
+          entityId: 'person-1',
+          entityLabel: 'Ana Silva',
+          operation: AuditLogOperation.UPDATE,
+          actor: {
+            id: 'admin-1',
+            name: 'Renan Yudi',
+            email: 'renan@example.com',
+            type: AuditLogActorType.USER,
+          },
+          before: {
+            name: 'Ana Silva',
+          },
+          after: {
+            name: 'Ana Clara Silva',
+          },
+          squashWindowMs: 0,
+        },
+        tx as never,
+      );
+
+      await jest.advanceTimersByTimeAsync(0);
+      expect(typesenseSearch.upsertAuditLogEntry).not.toHaveBeenCalled();
+
+      await jest.advanceTimersByTimeAsync(25);
+
+      expect(prisma.auditLogEntry.findUnique).toHaveBeenCalledTimes(2);
+      expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'audit-stale',
+          entityLabel: 'Committed after retry',
+        }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('skips no-op audit records unless they are forced', async () => {
     await service.record({
       entityType: AuditLogEntityType.PERSON,

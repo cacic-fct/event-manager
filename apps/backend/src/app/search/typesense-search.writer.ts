@@ -54,6 +54,30 @@ export async function replaceTypesenseCollectionDocuments<T extends { id: string
   schema: CollectionCreateSchema;
   documents: T[];
 }): Promise<void> {
+  await replaceTypesenseCollection({
+    client: input.client,
+    logger: input.logger,
+    schema: input.schema,
+    importDocuments: async (collectionName) => {
+      if (input.documents.length === 0) {
+        return;
+      }
+
+      const importResult = await input.client
+        ?.collections<T & Record<string, unknown>>(collectionName)
+        .documents()
+        .import(input.documents, { action: 'upsert' });
+      assertTypesenseImportSucceeded(importResult ?? [], input.schema.name);
+    },
+  });
+}
+
+export async function replaceTypesenseCollection(input: {
+  client: TypesenseClient | null;
+  logger: Logger;
+  schema: CollectionCreateSchema;
+  importDocuments(collectionName: string): Promise<void>;
+}): Promise<void> {
   const client = input.client;
   if (!client) {
     return;
@@ -69,13 +93,9 @@ export async function replaceTypesenseCollectionDocuments<T extends { id: string
     const existingCollection = await retrieveTypesenseCollectionIfExists(client.collections(collectionName));
     const previousCollectionName = existingAlias?.collection_name ?? null;
     const conflictingCollection = existingCollection && !existingAlias ? existingCollection : null;
-    const temporaryCollection = client.collections<T & Record<string, unknown>>(temporaryCollectionName);
 
     await client.collections().create(temporarySchema);
-    if (input.documents.length > 0) {
-      const importResult = await temporaryCollection.documents().import(input.documents, { action: 'upsert' });
-      assertTypesenseImportSucceeded(importResult, collectionName);
-    }
+    await input.importDocuments(temporaryCollectionName);
     await pointTypesenseAliasAtCollection(client, collectionName, temporaryCollectionName, conflictingCollection);
     aliasSwapSucceeded = true;
     await deletePreviousTypesenseCollection(client, previousCollectionName, temporaryCollectionName);
@@ -259,7 +279,14 @@ function hasTypesenseFieldDrift(expected: CollectionFieldSchema, current: Collec
   );
 }
 
-function assertTypesenseImportSucceeded(result: ImportResponse[] | string, collectionName: string): void {
+export function assertTypesenseImportSucceeded(
+  result: ImportResponse[] | string | null | undefined,
+  collectionName: string,
+): void {
+  if (result === null || result === undefined) {
+    return;
+  }
+
   const failures =
     typeof result === 'string' ? parseTypesenseImportFailures(result) : result.filter((entry) => !entry.success);
   if (failures.length === 0) {

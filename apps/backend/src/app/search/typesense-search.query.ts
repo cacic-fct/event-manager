@@ -40,7 +40,7 @@ export async function searchTypesensePagedDocumentIds<T extends { id: string }>(
 
   const { filterBy, limit, offset, sortBy } = normalizeSearchOptions(input.options);
   if (limit === 0) {
-    return { available: true, ids: [], found: 0 };
+    return { available: false, ids: [], found: 0 };
   }
 
   try {

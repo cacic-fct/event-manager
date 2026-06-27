@@ -62,7 +62,11 @@ export const AUDIT_LOG_QUERY_BY = [
 
 export function toAuditLogSearchDocument(input: AuditLogSearchDocumentInput): AuditLogSearchDocument {
   const changes = parseAuditLogChanges(input.changes);
-  const changedFieldLabels = changes.map((change) => change.label).filter(Boolean);
+  const changedFields = new Set(input.changedFields);
+  const changedFieldLabels = changes
+    .filter((change) => changedFields.has(change.field))
+    .map((change) => change.label)
+    .filter(Boolean);
   const changesText = toOptionalString(
     changes
       .flatMap((change) => [

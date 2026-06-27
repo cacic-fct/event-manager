@@ -100,6 +100,23 @@ describe('typesense query helpers', () => {
     );
   });
 
+  it('falls back when the requested offset exhausts the Typesense result window', async () => {
+    const client = createClientMock();
+
+    await expect(
+      searchTypesensePagedDocumentIds({
+        client: client.instance as never,
+        logger: { error: jest.fn() } as never,
+        collectionName: 'audit_logs',
+        query: '',
+        queryBy: 'actorName',
+        options: { limit: 25, offset: 10_000 },
+        allowMatchAll: true,
+      }),
+    ).resolves.toEqual({ available: false, ids: [], found: 0 });
+    expect(client.documents.search).not.toHaveBeenCalled();
+  });
+
   it('surfaces Typesense request validation errors instead of treating them as downtime', async () => {
     const client = createClientMock();
     const logger = { error: jest.fn() };
