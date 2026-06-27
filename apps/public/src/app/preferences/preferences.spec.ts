@@ -81,9 +81,9 @@ describe('Preferences', () => {
     authState.set(true);
     fixture.detectChanges();
 
-    const logoutButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find((button) =>
-      (button as HTMLButtonElement).textContent?.includes('Sair da conta'),
-    ) as HTMLButtonElement | undefined;
+    const logoutButton = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('[role="button"]')).find((button) =>
+      button.textContent?.includes('Sair da conta'),
+    );
 
     expect(logoutButton).toBeDefined();
 

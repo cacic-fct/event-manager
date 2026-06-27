@@ -40,10 +40,16 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
             <span matListItemTitle>Editar informações da conta</span>
           </a>
 
-          <button mat-list-item type="button" (click)="authService.logout()">
+          <a
+            mat-list-item
+            role="button"
+            tabindex="0"
+            (click)="authService.logout()"
+            (keydown.enter)="authService.logout()"
+            (keydown.space)="authService.logout()">
             <mat-icon matListItemIcon>logout</mat-icon>
             <span matListItemTitle>Sair da conta</span>
-          </button>
+          </a>
         }
       </mat-nav-list>
     </main>
