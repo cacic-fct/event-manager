@@ -413,6 +413,13 @@ describe('CalendarService', () => {
   });
 
   it('queries only public, non-deleted private-feed events and deduplicates the calendar output', async () => {
+    const pastPublicEvent = {
+      ...publicEvent,
+      id: 'past-event-1',
+      name: 'Oficina antiga de TypeScript',
+      startDate: new Date('2026-01-01T13:00:00.000Z'),
+      endDate: new Date('2026-01-01T15:00:00.000Z'),
+    };
     const prisma = createPrismaMock({
       userCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
@@ -429,10 +436,10 @@ describe('CalendarService', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       eventSubscription: {
-        findMany: jest.fn().mockResolvedValue([{ event: publicEvent }]),
+        findMany: jest.fn().mockResolvedValue([{ event: pastPublicEvent }]),
       },
       majorEventSubscriptionEventSelection: {
-        findMany: jest.fn().mockResolvedValue([{ event: publicEvent }]),
+        findMany: jest.fn().mockResolvedValue([{ event: pastPublicEvent }]),
       },
       eventLecturer: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -453,13 +460,13 @@ describe('CalendarService', () => {
         where: expect.objectContaining({
           personId: { in: ['person-1'] },
           deletedAt: null,
-          event: expect.objectContaining({
-            AND: expect.arrayContaining([PUBLIC_EVENT_WHERE]),
-          }),
+          event: PUBLIC_EVENT_WHERE,
         }),
       }),
     );
     expect(download.content.match(/BEGIN:VEVENT/g) ?? []).toHaveLength(1);
+    expect(download.content).toContain('SUMMARY:Oficina antiga de TypeScript');
+    expect(download.content).toContain('DTSTART:20260101T130000Z');
     expect(download.content).toContain('CLASS:PRIVATE');
   });
 
@@ -611,7 +618,7 @@ describe('CalendarService', () => {
     expect(prisma.userAdminCalendarFeedSettings.upsert).not.toHaveBeenCalled();
   });
 
-  it('does not enable current admin feed settings without current targets', async () => {
+  it('does not enable current admin feed settings without any targets', async () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         create: jest.fn(),
@@ -629,7 +636,7 @@ describe('CalendarService', () => {
     expect(prisma.userAdminCalendarFeedSettings.create).not.toHaveBeenCalled();
   });
 
-  it('creates a current admin feed key only for first-time admin feed enablement', async () => {
+  it('creates an admin feed key only for first-time admin feed enablement', async () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue(null),
@@ -677,9 +684,6 @@ describe('CalendarService', () => {
       expect.objectContaining({
         where: {
           deletedAt: null,
-          endDate: {
-            gte: now,
-          },
         },
         take: 1,
       }),
@@ -769,7 +773,7 @@ describe('CalendarService', () => {
     });
   });
 
-  it('generates private admin feeds from current scoped permission targets', async () => {
+  it('generates private admin feeds from all scoped permission targets', async () => {
     const adminOnlyEvent = {
       ...publicEvent,
       id: 'admin-event-1',
@@ -857,7 +861,6 @@ describe('CalendarService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           deletedAt: null,
-          endDate: { gte: now },
           OR: [{ id: { in: ['admin-event-1'] } }],
         }),
       }),
@@ -883,9 +886,9 @@ describe('CalendarService', () => {
     expect(download.content).toContain('SUMMARY:Reunião interna');
     expect(download.content).toContain('SUMMARY:Trilha de oficinas');
     expect(download.content).toContain('SUMMARY:Congresso CACiC');
-    expect(download.content).toContain('DTSTART:20260901T130000Z');
+    expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 3 evento(s).');
+    expect(download.content).toContain('DTSTART:20260601T130000Z');
     expect(download.content).toContain('DTEND:20260902T150000Z');
-    expect(download.content).not.toContain('DTSTART:20260601T130000Z');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/events/admin-event-1');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/groups/group-1');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/major-events/major-1');
@@ -986,7 +989,7 @@ describe('CalendarService', () => {
     });
   });
 
-  it('disables private admin feeds when no current permission target remains', async () => {
+  it('disables private admin feeds when no permission target remains', async () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
@@ -1025,7 +1028,7 @@ describe('CalendarService', () => {
     });
   });
 
-  it('weekly maintenance disables enabled admin feeds without current targets', async () => {
+  it('weekly maintenance disables enabled admin feeds without any targets', async () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         findMany: jest.fn().mockResolvedValue([{ userId: 'past-admin' }, { userId: 'current-admin' }]),
@@ -1179,7 +1182,7 @@ describe('CalendarService', () => {
     expect(prisma.superAdminCalendarFeedSettings.upsert).not.toHaveBeenCalled();
   });
 
-  it('generates shared super-admin feeds from every current administrative target', async () => {
+  it('generates shared super-admin feeds from every administrative target', async () => {
     const prisma = createPrismaMock({
       superAdminCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
@@ -1209,9 +1212,6 @@ describe('CalendarService', () => {
       expect.objectContaining({
         where: {
           deletedAt: null,
-          endDate: {
-            gte: now,
-          },
         },
       }),
     );
@@ -1222,9 +1222,6 @@ describe('CalendarService', () => {
           events: {
             some: {
               deletedAt: null,
-              endDate: {
-                gte: now,
-              },
             },
           },
         }),
@@ -1234,9 +1231,6 @@ describe('CalendarService', () => {
       expect.objectContaining({
         where: {
           deletedAt: null,
-          endDate: {
-            gte: now,
-          },
         },
       }),
     );

@@ -4,7 +4,7 @@ import type { ICalLocation } from 'ical-generator';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventManagerPermissionGrantScope, Prisma, SubscriptionStatus } from '@prisma/client';
 import { createHmac, randomBytes } from 'node:crypto';
-import { subHours, subMonths, subYears } from 'date-fns';
+import { subHours, subYears } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import {
@@ -22,7 +22,6 @@ import {
 const CALENDAR_FEED_KEY_NONCE_BYTES = 32;
 const CALENDAR_FEED_KEY_ROTATION_COOLDOWN_HOURS = 24;
 const PRIVATE_FEED_LAST_FETCH_WRITE_INTERVAL_HOURS = 6;
-const PRIVATE_FEED_LOOKBACK_MONTHS = 1;
 const PRIVATE_FEED_EVENT_TAKE = 600;
 const ADMIN_FEED_ITEM_TAKE = 600;
 const ADMIN_EVENT_GROUP_RANGE_EVENT_TAKE = 1000;
@@ -135,7 +134,7 @@ const ADMIN_MAJOR_EVENT_SELECT = {
   updatedAt: true,
 } satisfies Prisma.MajorEventSelect;
 
-function buildAdminEventGroupSelect(now: Date) {
+function buildAdminEventGroupSelect() {
   return {
     id: true,
     name: true,
@@ -144,9 +143,6 @@ function buildAdminEventGroupSelect(now: Date) {
     events: {
       where: {
         deletedAt: null,
-        endDate: {
-          gte: now,
-        },
       },
       orderBy: {
         startDate: 'asc',
@@ -549,7 +545,7 @@ export class CalendarService {
     }
 
     const personIds = settings.user.people.map((person) => person.id);
-    const events = await this.getPrivateFeedEvents(personIds, now);
+    const events = await this.getPrivateFeedEvents(personIds);
 
     await this.sampleLastFetchedAt(settings.userId, settings.feedKeyHash, settings.lastFetchedAt, now);
 
@@ -636,7 +632,7 @@ export class CalendarService {
     }
 
     const now = new Date();
-    const entries = await this.getSuperAdminCalendarEntries(now, publicAppOrigin);
+    const entries = await this.getSuperAdminCalendarEntries(publicAppOrigin);
     await this.sampleSuperAdminLastFetchedAt(settings.feedKeyHash, settings.lastFetchedAt, now);
 
     return {
@@ -740,12 +736,12 @@ export class CalendarService {
     return { feedKey, settings };
   }
 
-  private async getPrivateFeedEvents(personIds: string[], now: Date): Promise<CalendarEventRecord[]> {
+  private async getPrivateFeedEvents(personIds: string[]): Promise<CalendarEventRecord[]> {
     if (personIds.length === 0) {
       return [];
     }
 
-    const eventWhere = this.privateFeedEventWhere(now);
+    const eventWhere = this.privateFeedEventWhere();
 
     const [eventSubscriptions, majorEventSelections, lecturerEvents, eventAttendances, certificates] =
       await Promise.all([
@@ -880,17 +876,8 @@ export class CalendarService {
     );
   }
 
-  private privateFeedEventWhere(now: Date): Prisma.EventWhereInput {
-    return {
-      AND: [
-        PUBLIC_EVENT_WHERE,
-        {
-          endDate: {
-            gte: subMonths(now, PRIVATE_FEED_LOOKBACK_MONTHS),
-          },
-        },
-      ],
-    };
+  private privateFeedEventWhere(): Prisma.EventWhereInput {
+    return PUBLIC_EVENT_WHERE;
   }
 
   private async getAdminCalendarEntriesForUser(
@@ -901,11 +888,10 @@ export class CalendarService {
   ): Promise<CalendarEntry[]> {
     const grants = await this.findActiveAdminCalendarGrants(userId, now);
     const targetPlan = this.buildAdminFeedTargetPlan(grants);
-    return this.getAdminCalendarEntriesFromPlan(targetPlan, now, publicAppOrigin, take);
+    return this.getAdminCalendarEntriesFromPlan(targetPlan, publicAppOrigin, take);
   }
 
   private async getSuperAdminCalendarEntries(
-    now: Date,
     publicAppOrigin: string,
     take = ADMIN_FEED_ITEM_TAKE,
   ): Promise<CalendarEntry[]> {
@@ -920,7 +906,6 @@ export class CalendarService {
         eventGroupIds: new Set(),
         majorEventIds: new Set(),
       },
-      now,
       publicAppOrigin,
       take,
     );
@@ -928,20 +913,19 @@ export class CalendarService {
 
   private async getAdminCalendarEntriesFromPlan(
     targetPlan: AdminFeedTargetPlan,
-    now: Date,
     publicAppOrigin: string,
     take: number,
   ): Promise<CalendarEntry[]> {
     const [events, eventGroups, majorEvents] = await Promise.all([
-      this.getAdminFeedEvents(targetPlan, now, take),
-      this.getAdminFeedEventGroups(targetPlan, now, take),
-      this.getAdminFeedMajorEvents(targetPlan, now, take),
+      this.getAdminFeedEvents(targetPlan, take),
+      this.getAdminFeedEventGroups(targetPlan, take),
+      this.getAdminFeedMajorEvents(targetPlan, take),
     ]);
 
     return [
       ...events.map((event) => this.mapEventToCalendarEntry(event, this.buildAdminEventUrl(publicAppOrigin, event.id))),
       ...eventGroups
-        .map((eventGroup) => this.mapEventGroupToCalendarEntry(eventGroup, publicAppOrigin, now))
+        .map((eventGroup) => this.mapEventGroupToCalendarEntry(eventGroup, publicAppOrigin))
         .filter((entry): entry is CalendarEntry => Boolean(entry)),
       ...majorEvents.map((majorEvent) => this.mapMajorEventToCalendarEntry(majorEvent, publicAppOrigin)),
     ].sort((left, right) => left.start.getTime() - right.start.getTime() || left.summary.localeCompare(right.summary));
@@ -949,10 +933,9 @@ export class CalendarService {
 
   private async getAdminFeedEvents(
     targetPlan: AdminFeedTargetPlan,
-    now: Date,
     take: number,
   ): Promise<CalendarEventRecord[]> {
-    const where = this.buildAdminFeedEventWhere(targetPlan, now);
+    const where = this.buildAdminFeedEventWhere(targetPlan);
     if (!where) {
       return [];
     }
@@ -969,17 +952,16 @@ export class CalendarService {
 
   private async getAdminFeedEventGroups(
     targetPlan: AdminFeedTargetPlan,
-    now: Date,
     take: number,
   ): Promise<AdminEventGroupRecord[]> {
-    const where = this.buildAdminFeedEventGroupWhere(targetPlan, now);
+    const where = this.buildAdminFeedEventGroupWhere(targetPlan);
     if (!where) {
       return [];
     }
 
     return this.prisma.eventGroup.findMany({
       where,
-      select: buildAdminEventGroupSelect(now),
+      select: buildAdminEventGroupSelect(),
       orderBy: {
         name: 'asc',
       },
@@ -989,10 +971,9 @@ export class CalendarService {
 
   private async getAdminFeedMajorEvents(
     targetPlan: AdminFeedTargetPlan,
-    now: Date,
     take: number,
   ): Promise<AdminMajorEventRecord[]> {
-    const where = this.buildAdminFeedMajorEventWhere(targetPlan, now);
+    const where = this.buildAdminFeedMajorEventWhere(targetPlan);
     if (!where) {
       return [];
     }
@@ -1007,12 +988,9 @@ export class CalendarService {
     });
   }
 
-  private buildAdminFeedEventWhere(targetPlan: AdminFeedTargetPlan, now: Date): Prisma.EventWhereInput | null {
+  private buildAdminFeedEventWhere(targetPlan: AdminFeedTargetPlan): Prisma.EventWhereInput | null {
     const where: Prisma.EventWhereInput = {
       deletedAt: null,
-      endDate: {
-        gte: now,
-      },
     };
 
     if (targetPlan.globalEvents) {
@@ -1054,16 +1032,12 @@ export class CalendarService {
 
   private buildAdminFeedEventGroupWhere(
     targetPlan: AdminFeedTargetPlan,
-    now: Date,
   ): Prisma.EventGroupWhereInput | null {
     const where: Prisma.EventGroupWhereInput = {
       deletedAt: null,
       events: {
         some: {
           deletedAt: null,
-          endDate: {
-            gte: now,
-          },
         },
       },
     };
@@ -1086,13 +1060,9 @@ export class CalendarService {
 
   private buildAdminFeedMajorEventWhere(
     targetPlan: AdminFeedTargetPlan,
-    now: Date,
   ): Prisma.MajorEventWhereInput | null {
     const where: Prisma.MajorEventWhereInput = {
       deletedAt: null,
-      endDate: {
-        gte: now,
-      },
     };
 
     if (targetPlan.globalMajorEvents) {
@@ -1267,9 +1237,8 @@ export class CalendarService {
   private mapEventGroupToCalendarEntry(
     eventGroup: AdminEventGroupRecord,
     publicAppOrigin: string,
-    now: Date,
   ): CalendarEntry | null {
-    const events = eventGroup.events.filter((event) => event.endDate >= now);
+    const events = eventGroup.events;
     if (events.length === 0) {
       return null;
     }
