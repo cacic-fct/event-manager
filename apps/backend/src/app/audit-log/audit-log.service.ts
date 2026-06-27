@@ -355,6 +355,8 @@ export class AuditLogService {
     input: { entryId: string; mode: AuditLogRevertMode },
     actor: AuthenticatedUser | undefined,
   ): Promise<AuditLogEntry> {
+    this.assertSuperAdminAuditAccess(actor);
+
     const targetEntry = await this.prisma.auditLogEntry.findUnique({
       where: {
         id: input.entryId,

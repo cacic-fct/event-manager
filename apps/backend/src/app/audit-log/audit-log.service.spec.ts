@@ -794,6 +794,24 @@ describe('AuditLogService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('rejects audit log reverts for non-super-admins before loading the entry', async () => {
+    authorizationPolicy.isSuperAdmin.mockReturnValue(false);
+
+    await expect(
+      service.revertEntry(
+        { entryId: 'missing-or-existing-entry', mode: AuditLogRevertMode.ENTRY_ONLY },
+        createAuthenticatedUser({
+          sub: 'user-1',
+          roleSet: new Set([EventManagerKeycloakRole.Access]),
+          permissionSet: new Set([Permission.Event.Update]),
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(prisma.auditLogEntry.findUnique).not.toHaveBeenCalled();
+    expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
+  });
+
   it('rejects missing, already reverted, and unsupported audit log reverts', async () => {
     prisma.auditLogEntry.findUnique.mockResolvedValueOnce(null);
 

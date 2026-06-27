@@ -60,6 +60,7 @@ export async function replaceTypesenseCollectionDocuments<T extends { id: string
   }
 
   let temporaryCollectionName: string | null = null;
+  let aliasSwapSucceeded = false;
   try {
     const collectionName = input.schema.name;
     temporaryCollectionName = createTemporaryTypesenseCollectionName(collectionName);
@@ -76,9 +77,10 @@ export async function replaceTypesenseCollectionDocuments<T extends { id: string
       assertTypesenseImportSucceeded(importResult, collectionName);
     }
     await pointTypesenseAliasAtCollection(client, collectionName, temporaryCollectionName, conflictingCollection);
+    aliasSwapSucceeded = true;
     await deletePreviousTypesenseCollection(client, previousCollectionName, temporaryCollectionName);
   } catch (error) {
-    if (temporaryCollectionName) {
+    if (temporaryCollectionName && !aliasSwapSucceeded) {
       await deleteTypesenseCollectionIfExists(client, temporaryCollectionName).catch(() => undefined);
     }
     input.logger.error(`Failed to replace Typesense documents for ${input.schema.name}.`, error);

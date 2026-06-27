@@ -122,6 +122,26 @@ describe('typesense writer helpers', () => {
     );
   });
 
+  it('preserves the new active collection when old collection cleanup fails after alias swap', async () => {
+    const client = createClientMock();
+    const logger = { error: jest.fn() };
+    client.collection.delete.mockRejectedValueOnce(new Error('delete failed'));
+
+    await replaceTypesenseCollectionDocuments({
+      client: client.instance as never,
+      logger: logger as never,
+      schema: { name: 'events', fields: [{ name: 'id', type: 'string' }] },
+      documents: [{ id: 'event-1', name: 'Aula' }],
+    });
+
+    const temporaryCollectionName = client.rootCollections.create.mock.calls[0]?.[0]?.name;
+    expect(client.aliasesRoot.upsert).toHaveBeenCalledWith('events', {
+      collection_name: temporaryCollectionName,
+    });
+    expect(client.instance.collections.mock.calls.filter(([name]) => name === temporaryCollectionName)).toHaveLength(1);
+    expect(logger.error).toHaveBeenCalledWith('Failed to replace Typesense documents for events.', expect.any(Error));
+  });
+
   it('restores a direct public collection when alias migration fails after conflict cleanup', async () => {
     const client = createClientMock();
     const logger = { error: jest.fn() };
