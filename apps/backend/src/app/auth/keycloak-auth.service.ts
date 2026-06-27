@@ -3,7 +3,11 @@ import axios from 'axios';
 import { Buffer } from 'node:buffer';
 import { createPublicKey, type JsonWebKey, type KeyObject, randomBytes, verify as verifySignature } from 'node:crypto';
 import { AuthSessionStoreService } from './auth-session-store.service';
-import { DEFAULT_KEYCLOAK_CLIENT_ID, DEFAULT_KEYCLOAK_REALM_URL } from './auth.constants';
+import {
+  DEFAULT_KEYCLOAK_CLIENT_ID,
+  DEFAULT_KEYCLOAK_DEV_REALM_URL,
+  DEFAULT_KEYCLOAK_REALM_URL,
+} from './auth.constants';
 import { AuthorizationState, AuthorizationStateService } from './authorization-state.service';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
@@ -42,16 +46,17 @@ export class KeycloakAuthService {
   private readonly accessTokenRefreshSkewMs = 30_000;
   private readonly keycloakFailureLogSuppressionMs = 60_000;
 
-  private readonly realmUrl = this.readEnv('KEYCLOAK_REALM_URL', DEFAULT_KEYCLOAK_REALM_URL).replace(/\/+$/, '');
+  private readonly realmUrl = this.readKeycloakRealmUrl().replace(/\/+$/, '');
 
   private readonly clientId = this.readEnv('KEYCLOAK_CLIENT_ID', DEFAULT_KEYCLOAK_CLIENT_ID);
   private readonly allowedAccessTokenClients = this.readAllowedAccessTokenClients();
 
-  private readonly clientSecret = this.readOptionalEnv('KEYCLOAK_CLIENT_SECRET');
+  private readonly clientSecret = this.readClientSecret();
   private readonly tokenEndpointAuthMethod = this.readTokenEndpointAuthMethod();
   private readonly defaultRedirectUri = this.readEnv('KEYCLOAK_REDIRECT_URI', 'http://localhost:3000/api/auth/callback');
 
   private readonly defaultPostLogoutRedirectUri = this.readOptionalEnv('KEYCLOAK_POST_LOGOUT_REDIRECT_URI');
+  private readonly loginIdpHint = this.readLoginIdpHint();
 
   private readonly cacheTtlMs = this.parsePositiveIntegerEnv(
     process.env.KEYCLOAK_PRINCIPAL_CACHE_TTL_MS ?? process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS,
@@ -120,7 +125,7 @@ export class KeycloakAuthService {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: options?.scope ?? 'openid profile email identity-document academic-profile',
-      kc_idp_hint: 'google',
+      ...(this.loginIdpHint ? { kc_idp_hint: this.loginIdpHint } : {}),
       state,
       ...(options?.prompt ? { prompt: options.prompt } : {}),
     });
@@ -164,6 +169,31 @@ export class KeycloakAuthService {
         this.getTokenExchangeFailureContext(exchangeRedirectUri),
       );
       throw new UnauthorizedException('Could not exchange authorization code for tokens.');
+    }
+  }
+
+  async exchangePasswordForTokens(username: string, password: string): Promise<Record<string, unknown>> {
+    const payload = new URLSearchParams();
+    payload.set('grant_type', 'password');
+    payload.set('username', username);
+    payload.set('password', password);
+    payload.set('scope', 'openid profile email phone identity-document academic-profile');
+    const headers = this.createFormHeaders();
+    this.addClientAuthentication(payload, headers);
+
+    try {
+      const { data } = await axios.post<Record<string, unknown>>(
+        `${this.realmUrl}/protocol/openid-connect/token`,
+        payload.toString(),
+        {
+          headers,
+        },
+      );
+
+      return data;
+    } catch (error) {
+      this.logKeycloakFailure('password token exchange', error);
+      throw new UnauthorizedException('Could not exchange password credentials for tokens.');
     }
   }
 
@@ -854,6 +884,46 @@ export class KeycloakAuthService {
     return this.readOptionalEnv(key) ?? fallback;
   }
 
+  private readKeycloakRealmUrl(): string {
+    const configuredRealmUrl = this.readOptionalEnv('KEYCLOAK_REALM_URL');
+
+    if (configuredRealmUrl) {
+      return configuredRealmUrl;
+    }
+
+    return process.env.NODE_ENV === 'production'
+      ? DEFAULT_KEYCLOAK_REALM_URL
+      : DEFAULT_KEYCLOAK_DEV_REALM_URL;
+  }
+
+  private readClientSecret(): string | undefined {
+    const configuredSecret = this.readOptionalEnv('KEYCLOAK_CLIENT_SECRET');
+    if (configuredSecret) {
+      return configuredSecret;
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+      return undefined;
+    }
+
+    return 'cacic-event-manager-dev-secret';
+  }
+
+  private readLoginIdpHint(): string | undefined {
+    if (process.env.NODE_ENV === 'production') {
+      return 'google';
+    }
+
+    const configured = process.env.KEYCLOAK_LOGIN_IDP_HINT;
+
+    if (configured !== undefined) {
+      const value = configured.trim();
+      return value ? value : undefined;
+    }
+
+    return undefined;
+  }
+
   private readTokenEndpointAuthMethod(): ClientSecretAuthMethod {
     const value = process.env.KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD?.trim();
 
@@ -908,7 +978,15 @@ export class KeycloakAuthService {
   }
 
   private readRequiredM2mAudience(configuredAudience?: string): string {
-    const audience = (configuredAudience ?? process.env.KEYCLOAK_M2M_AUDIENCE ?? '').trim();
+    const fallbackAudience =
+      process.env.NODE_ENV === 'production'
+        ? ''
+        : 'cacic-event-manager-audience';
+    const audience = (
+      configuredAudience ??
+      process.env.KEYCLOAK_M2M_AUDIENCE ??
+      fallbackAudience
+    ).trim();
     if (!audience) {
       throw new ForbiddenException('M2M audience is not configured.');
     }
@@ -917,9 +995,11 @@ export class KeycloakAuthService {
   }
 
   private readRequiredAllowedM2mClients(configuredClients?: string[]): Set<string> {
+    const fallbackClients =
+      process.env.NODE_ENV === 'production' ? '' : 'cacic-account-manager-m2m';
     const clients =
       configuredClients ??
-      (process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS ?? '')
+      (process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS ?? fallbackClients)
         .split(',')
         .map((client) => client.trim());
     const allowedClients = new Set(clients.map((client) => client.trim()).filter((client) => client.length > 0));

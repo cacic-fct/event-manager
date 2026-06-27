@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME } from './auth.constants';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
@@ -12,7 +12,9 @@ describe('AuthController callback redirect validation', () => {
     clearSession: jest.Mock;
     consumeAuthorizationState: jest.Mock;
     createSession: jest.Mock;
+    authenticateSession: jest.Mock;
     exchangeCodeForTokens: jest.Mock;
+    exchangePasswordForTokens: jest.Mock;
     getPostLoginRedirectUri: jest.Mock;
     getSessionLogoutInput: jest.Mock;
     logout: jest.Mock;
@@ -43,8 +45,13 @@ describe('AuthController callback redirect validation', () => {
         expiresAt: Date.now() + 300_000,
         sessionExpiresAt: Date.now() + 600_000,
       }),
+      authenticateSession: jest.fn().mockResolvedValue(authenticatedUserFixture()),
       exchangeCodeForTokens: jest.fn().mockResolvedValue({
         access_token: 'access-token',
+      }),
+      exchangePasswordForTokens: jest.fn().mockResolvedValue({
+        access_token: 'password-access-token',
+        refresh_token: 'password-refresh-token',
       }),
       getPostLoginRedirectUri: jest.fn().mockReturnValue('/admin/'),
       getSessionLogoutInput: jest.fn(),
@@ -264,6 +271,76 @@ describe('AuthController callback redirect validation', () => {
       maxAge: 600_000,
       path: '/',
     });
+  });
+
+  it('creates a development session from Keycloak password credentials', async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.KEYCLOAK_PASSWORD_LOGIN_ENABLED = 'true';
+    const response = responseFixture();
+
+    await expect(
+      controller.passwordLogin(
+        requestFixture({
+          'x-forwarded-proto': 'https',
+        }),
+        response as never,
+        {
+          email: ' ALUNO@UNESP.BR ',
+          password: '1',
+          returnTo: '/admin/',
+        },
+      ),
+    ).resolves.toEqual({
+      expiresAt: Date.now() + 300_000,
+      sessionExpiresAt: Date.now() + 600_000,
+      user: expect.objectContaining({
+        sub: 'user-1',
+        email: 'student@example.edu',
+      }),
+    });
+
+    expect(keycloakAuthService.exchangePasswordForTokens).toHaveBeenCalledWith('aluno@unesp.br', '1');
+    expect(keycloakAuthService.createSession).toHaveBeenCalledWith({
+      access_token: 'password-access-token',
+      refresh_token: 'password-refresh-token',
+    });
+    expect(keycloakAuthService.authenticateSession).toHaveBeenCalledWith('session-id');
+    expect(response.cookie).toHaveBeenCalledWith(AUTH_SESSION_COOKIE_NAME, 'session-id', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: true,
+      expires: new Date(Date.now() + 600_000),
+      maxAge: 600_000,
+      path: '/',
+    });
+  });
+
+  it('keeps development password login disabled when explicitly configured off', async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.KEYCLOAK_PASSWORD_LOGIN_ENABLED = 'false';
+
+    await expect(
+      controller.passwordLogin(requestFixture(), responseFixture() as never, {
+        email: 'aluno@unesp.br',
+        password: '1',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(keycloakAuthService.exchangePasswordForTokens).not.toHaveBeenCalled();
+  });
+
+  it('hides the password-login endpoint in production even if the flag is set', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.KEYCLOAK_PASSWORD_LOGIN_ENABLED = 'true';
+
+    await expect(
+      controller.passwordLogin(requestFixture(), responseFixture() as never, {
+        email: 'aluno@unesp.br',
+        password: '1',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(keycloakAuthService.exchangePasswordForTokens).not.toHaveBeenCalled();
   });
 
   it('clears the local session and CACiC tracking cookies during logout', async () => {

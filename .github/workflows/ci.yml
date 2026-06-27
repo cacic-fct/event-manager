@@ -298,24 +298,8 @@ jobs:
       - name: Apply database migrations
         run: bunx prisma migrate deploy --config apps/backend/prisma.config.ts
 
-      - name: Run backend auth e2e tests
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          bunx nx serve backend > /tmp/fct-app-backend.log 2>&1 &
-          backend_pid="$!"
-
-          cleanup() {
-            kill "$backend_pid" 2>/dev/null || true
-            wait "$backend_pid" 2>/dev/null || true
-          }
-          trap cleanup EXIT
-
-          if ! bunx nx e2e backend-e2e --runInBand --coverage; then
-            cat /tmp/fct-app-backend.log
-            exit 1
-          fi
+      - name: Run backend auth e2e tests with fresh Keycloak
+        run: bun run e2e:backend:keycloak -- --coverage
 
       - name: Collect backend e2e coverage reports
         id: coverage
@@ -722,24 +706,8 @@ jobs:
       - name: Apply database migrations
         run: bunx prisma migrate deploy --config apps/backend/prisma.config.ts
 
-      - name: Run backend auth e2e tests
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          bunx nx serve backend > /tmp/fct-app-backend.log 2>&1 &
-          backend_pid="$!"
-
-          cleanup() {
-            kill "$backend_pid" 2>/dev/null || true
-            wait "$backend_pid" 2>/dev/null || true
-          }
-          trap cleanup EXIT
-
-          if ! bunx nx e2e backend-e2e --runInBand; then
-            cat /tmp/fct-app-backend.log
-            exit 1
-          fi
+      - name: Run backend auth e2e tests with fresh Keycloak
+        run: bun run e2e:backend:keycloak
 
   untrusted-pr-build:
     name: Untrusted PR build
