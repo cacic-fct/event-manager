@@ -69,6 +69,10 @@ const BANNED_ATTENDANCE_CODES = new Set([
 ]);
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIfCurrent?: boolean };
+type EventGroupResolution =
+  | { status: 'none' }
+  | { status: 'found'; group: EventGroup }
+  | { status: 'unresolved' };
 const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
 const DEFAULT_DRAFT_EVENT_EMOJI = '❔';
 const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
@@ -102,9 +106,9 @@ export class WorkspaceEventsService {
   readonly eventLecturers = signal<{ personId: string; name: string }[]>([]);
   readonly eventAttendanceCollectors = signal<{ personId: string; name: string }[]>([]);
   readonly selectedEventGroupName = signal('');
-  readonly selectedEventGroupAllowsCertificates = signal(true);
-  readonly selectedEventGroupAllowsNonPayingCertificates = signal(true);
-  readonly selectedEventGroupAllowsNonSubscribedCertificates = signal(true);
+  readonly selectedEventGroupAllowsCertificates = signal<boolean | null>(true);
+  readonly selectedEventGroupAllowsNonPayingCertificates = signal<boolean | null>(true);
+  readonly selectedEventGroupAllowsNonSubscribedCertificates = signal<boolean | null>(true);
   readonly eventGroupSearchResults = signal<EventGroup[]>([]);
   readonly lecturerSearchResults = signal<Person[]>([]);
   readonly attendanceCollectorSearchResults = signal<Person[]>([]);
@@ -1090,11 +1094,11 @@ export class WorkspaceEventsService {
       shouldIssueCertificate: raw.shouldIssueCertificate,
       shouldIssueCertificateForNonPayingAttendees:
         raw.shouldIssueCertificate &&
-        this.selectedEventGroupAllowsNonPayingCertificates() &&
+        this.selectedEventGroupAllowsNonPayingCertificates() !== false &&
         raw.shouldIssueCertificateForNonPayingAttendees,
       shouldIssueCertificateForNonSubscribedAttendees:
         raw.shouldIssueCertificate &&
-        this.selectedEventGroupAllowsNonSubscribedCertificates() &&
+        this.selectedEventGroupAllowsNonSubscribedCertificates() !== false &&
         raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: raw.shouldCollectAttendance,
       isOnlineAttendanceAllowed,
@@ -1209,7 +1213,6 @@ export class WorkspaceEventsService {
   private async populateEventForm(eventItem: Event): Promise<void> {
     const asHours = (eventItem.creditMinutes ?? 0) / 60;
     const selectedEventGroup = await this.resolveSelectedEventGroup(eventItem);
-    const hasEventGroup = Boolean(eventItem.eventGroupId);
     this.eventForm.reset({
       id: eventItem.id,
       name: eventItem.name,
@@ -1253,37 +1256,62 @@ export class WorkspaceEventsService {
       buttonLink: eventItem.buttonLink ?? '',
     });
     this.syncOnlineAttendanceControls();
-    this.eventGroupLookupForm.controls.query.setValue(selectedEventGroup?.name ?? '', { emitEvent: false });
-    this.applySelectedEventGroup(selectedEventGroup, { hasEventGroup });
+    this.eventGroupLookupForm.controls.query.setValue(
+      selectedEventGroup.status === 'found' ? selectedEventGroup.group.name : '',
+      { emitEvent: false },
+    );
+    this.applySelectedEventGroup(selectedEventGroup);
     this.eventGroupSearchResults.set([]);
     this.syncCertificateControl();
   }
 
-  private async resolveSelectedEventGroup(eventItem: Event): Promise<EventGroup | null> {
+  private async resolveSelectedEventGroup(eventItem: Event): Promise<EventGroupResolution> {
     if (!eventItem.eventGroupId) {
-      return null;
+      return { status: 'none' };
     }
 
     if (eventItem.eventGroup?.id === eventItem.eventGroupId) {
-      return eventItem.eventGroup;
+      return { status: 'found', group: eventItem.eventGroup };
     }
 
     try {
-      return await firstValueFrom(this.eventGroupsApi.getEventGroup(eventItem.eventGroupId));
+      return {
+        status: 'found',
+        group: await firstValueFrom(this.eventGroupsApi.getEventGroup(eventItem.eventGroupId)),
+      };
     } catch {
-      return null;
+      return { status: 'unresolved' };
     }
   }
 
-  private applySelectedEventGroup(group: EventGroup | null, options: { hasEventGroup: boolean }): void {
-    const allowCertificates = group?.shouldIssueCertificate ?? !options.hasEventGroup;
+  private applySelectedEventGroup(group: EventGroup | null, options: { hasEventGroup: boolean }): void;
+  private applySelectedEventGroup(resolution: EventGroupResolution): void;
+  private applySelectedEventGroup(
+    value: EventGroup | EventGroupResolution | null,
+    options?: { hasEventGroup: boolean },
+  ): void {
+    const resolution: EventGroupResolution =
+      options != null
+        ? value == null
+          ? options.hasEventGroup
+            ? { status: 'unresolved' }
+            : { status: 'none' }
+          : { status: 'found', group: value as EventGroup }
+        : (value as EventGroupResolution);
+    const group = resolution.status === 'found' ? resolution.group : null;
+    const allowCertificates =
+      resolution.status === 'unresolved' ? null : group?.shouldIssueCertificate ?? true;
     this.selectedEventGroupName.set(group?.name ?? '');
     this.selectedEventGroupAllowsCertificates.set(allowCertificates);
     this.selectedEventGroupAllowsNonPayingCertificates.set(
-      group?.shouldIssueCertificateForNonPayingAttendees ?? allowCertificates,
+      resolution.status === 'unresolved'
+        ? null
+        : group?.shouldIssueCertificateForNonPayingAttendees ?? allowCertificates,
     );
     this.selectedEventGroupAllowsNonSubscribedCertificates.set(
-      group?.shouldIssueCertificateForNonSubscribedAttendees ?? allowCertificates,
+      resolution.status === 'unresolved'
+        ? null
+        : group?.shouldIssueCertificateForNonSubscribedAttendees ?? allowCertificates,
     );
   }
 
@@ -1350,7 +1378,7 @@ export class WorkspaceEventsService {
     const certificateControl = this.eventForm.controls.shouldIssueCertificate;
     const nonPayingCertificateControl = this.eventForm.controls.shouldIssueCertificateForNonPayingAttendees;
     const nonSubscribedCertificateControl = this.eventForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
-    if (!this.selectedEventGroupAllowsCertificates()) {
+    if (this.selectedEventGroupAllowsCertificates() === false) {
       certificateControl.setValue(false, { emitEvent: false });
       nonPayingCertificateControl.setValue(false, { emitEvent: false });
       nonSubscribedCertificateControl.setValue(false, { emitEvent: false });
@@ -1361,14 +1389,14 @@ export class WorkspaceEventsService {
     }
 
     certificateControl.enable({ emitEvent: false });
-    if (certificateControl.value && this.selectedEventGroupAllowsNonPayingCertificates()) {
+    if (certificateControl.value && this.selectedEventGroupAllowsNonPayingCertificates() !== false) {
       nonPayingCertificateControl.enable({ emitEvent: false });
     } else {
       nonPayingCertificateControl.setValue(false, { emitEvent: false });
       nonPayingCertificateControl.disable({ emitEvent: false });
     }
 
-    if (certificateControl.value && this.selectedEventGroupAllowsNonSubscribedCertificates()) {
+    if (certificateControl.value && this.selectedEventGroupAllowsNonSubscribedCertificates() !== false) {
       nonSubscribedCertificateControl.enable({ emitEvent: false });
       return;
     }
