@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { DestroyRef, computed, inject, Injectable, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -85,6 +86,11 @@ export class WorkspaceSubscriptionsService {
   readonly majorEventForm = this.formBuilder.nonNullable.group({
     majorEventId: ['', [Validators.required]],
   });
+  readonly majorEventSearchForm = this.formBuilder.nonNullable.group({
+    query: [''],
+  });
+  private readonly selectedMajorEventId = signal('');
+  private readonly majorEventSearchQuery = signal('');
   readonly majorEventPersonForm = this.formBuilder.nonNullable.group({
     identifierType: ['email'],
     identifier: ['', [Validators.required]],
@@ -101,6 +107,20 @@ export class WorkspaceSubscriptionsService {
   readonly majorEventSubscriptionsPagination = createWorkspaceListPagination();
   readonly majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>([]);
   readonly selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(null);
+  readonly selectedMajorEvent = computed(() => {
+    return this.majorEvents().find((item) => item.id === this.selectedMajorEventId()) ?? null;
+  });
+  readonly filteredMajorEvents = computed(() => {
+    const query = this.majorEventSearchQuery().trim().toLocaleLowerCase('pt-BR');
+    if (!query) {
+      return this.majorEvents();
+    }
+
+    return this.majorEvents().filter((majorEvent) => {
+      const searchable = `${majorEvent.name} ${majorEvent.emoji ?? ''}`.toLocaleLowerCase('pt-BR');
+      return searchable.includes(query);
+    });
+  });
   readonly majorEventPaymentTiers = computed<MajorEventPriceTier[]>(() => {
     const majorEventId = this.majorEventForm.controls.majorEventId.value;
     const majorEvent = this.majorEvents().find((item) => item.id === majorEventId);
@@ -126,6 +146,12 @@ export class WorkspaceSubscriptionsService {
   readonly isImportingCsv = signal(false);
 
   constructor() {
+    this.majorEventForm.controls.majorEventId.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((majorEventId) => this.selectedMajorEventId.set(majorEventId));
+    this.majorEventSearchForm.controls.query.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((query) => this.majorEventSearchQuery.set(query));
     bindLiveSearch({
       control: this.eventFiltersForm,
       destroyRef: this.destroyRef,
@@ -328,6 +354,10 @@ export class WorkspaceSubscriptionsService {
 
   enableMajorEventEdit(): void {
     this.editMode.set(true);
+  }
+
+  cancelMajorEventSubscriptionEdit(): void {
+    this.selectMajorEventSubscription(this.selectedMajorEventSubscription());
   }
 
   toggleSelectedEvent(eventId: string): void {

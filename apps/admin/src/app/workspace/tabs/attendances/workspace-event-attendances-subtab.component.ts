@@ -73,6 +73,14 @@ export class WorkspaceEventAttendancesSubtabComponent implements OnInit {
     );
   }
 
+  protected isSelectedAttendanceEventFrozen(): boolean {
+    return isFrozenEvent(this.workspace.selectedAttendanceEvent());
+  }
+
+  protected isSelectedAttendanceEventLocked(): boolean {
+    return this.isSelectedAttendanceEventFrozen() && !this.permissions.has(Permission.Frozen.Update);
+  }
+
   protected canDeleteSelectedEventAttendances(): boolean {
     const event = this.workspace.selectedAttendanceEvent();
     return (

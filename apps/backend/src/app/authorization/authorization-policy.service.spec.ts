@@ -466,6 +466,23 @@ describe('AuthorizationPolicyService', () => {
     })).resolves.toBeUndefined();
   });
 
+  it('allows super-admins to collect without an explicit collector row or DB grant', async () => {
+    prisma.eventAttendanceCollector.findUnique.mockResolvedValue(null);
+    prisma.event.findUnique.mockResolvedValue({
+      startDate: new Date(Date.now() - 60_000),
+      endDate: new Date(Date.now() + 60_000),
+      deletedAt: null,
+      publiclyVisible: false,
+      shouldCollectAttendance: true,
+    });
+
+    await expect(service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
+      enforceCollectionWindow: true,
+      user: user([EventManagerKeycloakRole.SuperAdmin]),
+    })).resolves.toBeUndefined();
+    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+  });
+
   it('keeps lecturer subscriber-list access domain-derived', () => {
     expect(
       service.canLecturerViewSubscriberList({

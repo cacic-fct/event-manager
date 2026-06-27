@@ -199,6 +199,54 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     jest.useRealTimers();
   });
 
+  it('includes all matching collection events available through super-admin access', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
+    const prisma = createPrisma({
+      attendances: [],
+      eventSubscriptions: [],
+      majorEventSubscriptions: [],
+      people: [],
+      collectorUsers: [],
+      collectors: [],
+      events: [
+        { id: 'event-1', name: 'Aula aberta', startDate: new Date('2026-05-23T16:00:00.000Z') },
+        { id: 'event-2', name: 'Minicurso', startDate: new Date('2026-05-23T17:00:00.000Z') },
+      ],
+    });
+    const currentUserContext = {
+      requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'super-admin-person' }),
+    };
+    const authorizationPolicy = {
+      accessibleEventTargets: jest.fn().mockResolvedValue(null),
+    };
+    const resolver = new CurrentUserAttendanceCollectionResolver(
+      prisma as never,
+      currentUserContext as never,
+      {} as never,
+      undefined,
+      authorizationPolicy as never,
+    );
+
+    await expect(resolver.currentUserAttendanceCollectionEvents(context as never)).resolves.toEqual([
+      {
+        eventId: 'event-1',
+        event: { id: 'event-1', name: 'Aula aberta', startDate: new Date('2026-05-23T16:00:00.000Z') },
+      },
+      {
+        eventId: 'event-2',
+        event: { id: 'event-2', name: 'Minicurso', startDate: new Date('2026-05-23T17:00:00.000Z') },
+      },
+    ]);
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({
+          OR: expect.any(Array),
+        }),
+      }),
+    );
+    jest.useRealTimers();
+  });
+
   it('rejects scanner codes that are not current user Aztec payloads', async () => {
     const { resolver } = createCollectionResolver({
       collector: collectorPerson(),

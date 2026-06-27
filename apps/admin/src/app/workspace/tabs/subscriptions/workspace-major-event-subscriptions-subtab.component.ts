@@ -61,6 +61,20 @@ export class WorkspaceMajorEventSubscriptionsSubtabComponent {
     return subscription.events.some((eventItem) => eventItem.isLecturerSubscription && eventItem.subscribed);
   }
 
+  protected hasSubscribedLecturerInSelection(): boolean {
+    return this.workspace
+      .selectedMajorEventEvents()
+      .some((eventItem) => eventItem.isLecturerSubscription && eventItem.subscribed);
+  }
+
+  protected isSelectedMajorEventFrozen(): boolean {
+    return isFrozenMajorEvent(this.workspace.selectedMajorEvent());
+  }
+
+  protected isSelectedMajorEventLocked(): boolean {
+    return this.isSelectedMajorEventFrozen() && !this.permissions.has(Permission.Frozen.Update);
+  }
+
   protected statusLabel(status: string): string {
     return getSubscriptionStatusLabel(status);
   }

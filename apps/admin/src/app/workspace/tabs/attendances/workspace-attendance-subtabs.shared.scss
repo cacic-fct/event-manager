@@ -149,6 +149,12 @@
   grid-column: 1 / -1;
 }
 
+.manual-registration,
+.event-presence-list,
+.warning-section {
+  grid-column: 1 / -1;
+}
+
 .manual-form,
 .major-event-form,
 .detail-form {
@@ -164,6 +170,25 @@
 .detail-form {
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   margin-bottom: 1rem;
+}
+
+.form-fieldset {
+  display: contents;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.warning-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.warning-section p {
+  margin: 0.35rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
 }
 
 .editable-list-item {

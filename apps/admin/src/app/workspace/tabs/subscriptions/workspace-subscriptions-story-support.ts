@@ -41,6 +41,8 @@ function createWorkspacePermissionsStoryService(permissions: WorkspacePermission
 
   return {
     has: (scope: WorkspacePermissionScope) => granted().has(scope),
+    hasAny: (scopes: WorkspacePermissionScope[]) => scopes.some((scope) => granted().has(scope)),
+    hasAll: (scopes: WorkspacePermissionScope[]) => scopes.every((scope) => granted().has(scope)),
     canEdit: (...scopes: WorkspacePermissionScope[]) => scopes.every((scope) => granted().has(scope)),
     evaluateWorkspacePermissions: () => Promise.resolve(),
   } satisfies Partial<WorkspacePermissionsService>;
@@ -94,6 +96,12 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
   const majorEventForm = new FormGroup({
     majorEventId: new FormControl(selectedMajorEventId, { nonNullable: true }),
   });
+  const majorEventSearchForm = new FormGroup({
+    query: new FormControl('', { nonNullable: true }),
+  });
+  const selectedMajorEventIdSignal = signal(selectedMajorEventId);
+  const majorEventSearchQuery = signal('');
+  majorEventSearchForm.controls.query.valueChanges.subscribe((query) => majorEventSearchQuery.set(query));
   const editMode = signal(false);
 
   const service = {
@@ -121,6 +129,18 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       identifier: new FormControl('', { nonNullable: true }),
     }),
     majorEventForm,
+    majorEventSearchForm,
+    selectedMajorEvent: computed(
+      () => majorEvents().find((majorEvent) => majorEvent.id === selectedMajorEventIdSignal()) ?? null,
+    ),
+    filteredMajorEvents: computed(() => {
+      const query = majorEventSearchQuery().trim().toLocaleLowerCase('pt-BR');
+      if (!query) {
+        return majorEvents();
+      }
+
+      return majorEvents().filter((majorEvent) => majorEvent.name.toLocaleLowerCase('pt-BR').includes(query));
+    }),
     majorEventPersonForm: new FormGroup({
       identifierType: new FormControl('email', { nonNullable: true }),
       identifier: new FormControl('', { nonNullable: true }),
@@ -153,6 +173,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     createEventSubscription: () => Promise.resolve(),
     selectMajorEventById: (majorEventId: string): Promise<void> => {
       majorEventForm.controls.majorEventId.setValue(majorEventId);
+      selectedMajorEventIdSignal.set(majorEventId);
       return Promise.resolve();
     },
     loadMajorEventSubscriptions: () => Promise.resolve(),
@@ -169,6 +190,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       );
     },
     enableMajorEventEdit: () => editMode.set(true),
+    cancelMajorEventSubscriptionEdit: () => editMode.set(false),
     saveMajorEventSubscription: () => Promise.resolve(),
     findMajorEventPerson: () => Promise.resolve(),
     selectMajorEventPerson: () => undefined,
@@ -301,8 +323,8 @@ function buildMajorEventSubscription(
         eventId: 'major-event-item-2',
         eventName: 'GraphQL com NestJS',
         eventStartDate: '2026-06-03T12:00:00.000Z',
-        subscribed: false,
-        isLecturerSubscription: false,
+        subscribed: true,
+        isLecturerSubscription: true,
       },
     ],
   };

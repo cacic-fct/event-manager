@@ -65,6 +65,11 @@ jobs:
           set -euo pipefail
 
           HEAD="${{ github.event.workflow_run.head_sha }}"
+          DEPLOYABLE_APPS="$(printf '%s\n' \
+            admin \
+            backend \
+            public
+          )"
 
           BASE="$(git rev-parse "${HEAD}^" 2>/dev/null || true)"
 
@@ -72,11 +77,7 @@ jobs:
             echo "No parent commit found."
             echo "Publishing all deployable apps."
 
-            DEPLOYABLE="$(printf '%s\n' \
-              admin \
-              backend \
-              public
-            )"
+            DEPLOYABLE="$DEPLOYABLE_APPS"
           else
             echo "BASE=$BASE"
             echo "HEAD=$HEAD"
@@ -87,14 +88,9 @@ jobs:
             CHANGED_FILES="$(git diff --name-only "$BASE" "$HEAD")"
             DEPLOYABLE_APPS_PATTERN='^(admin|backend|public)$'
             GLOBAL_CHANGE_PATTERN='(^package\.json$|^bun\.lock$|^nx\.json$|^tsconfig\.base\.json$|^\.npmrc$|^bunfig\.toml$|^\.github/workflows/.*\.ya?ml$|^Dockerfile$|^apps/[^/]+/Dockerfile(\.dockerignore)?$)'
-            ADMIN_GRAPHQL_CONTRACT_PATTERN='^apps/admin/src/app/graphql/'
 
             if printf '%s\n' "$CHANGED_FILES" | grep -E "$GLOBAL_CHANGE_PATTERN"; then
-              DEPLOYABLE="$(printf '%s\n' \
-                admin \
-                backend \
-                public
-              )"
+              DEPLOYABLE="$DEPLOYABLE_APPS"
             else
               AFFECTED="$(
                 bunx nx show projects \
@@ -110,12 +106,9 @@ jobs:
                   || true
               )"
 
-              if printf '%s\n' "$CHANGED_FILES" | grep -E "$ADMIN_GRAPHQL_CONTRACT_PATTERN"; then
-                DEPLOYABLE="$(
-                  printf '%s\n%s\n' "$DEPLOYABLE" backend \
-                    | sed '/^[[:space:]]*$/d' \
-                    | sort -u
-                )"
+              if [ -n "$DEPLOYABLE" ]; then
+                echo "Deployable app change detected; publishing the runtime contract cohort."
+                DEPLOYABLE="$DEPLOYABLE_APPS"
               fi
             fi
           fi

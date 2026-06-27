@@ -7,20 +7,38 @@
       </div>
     </div>
 
-    <form [formGroup]="workspace.majorEventForm" class="major-event-form">
-      <mat-form-field>
-        <mat-label>Grande evento</mat-label>
-        <mat-select formControlName="majorEventId">
-          @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
-            <mat-option [value]="majorEvent.id">
-              <span class="item-title">
-                <app-twemoji [emoji]="majorEvent.emoji" />
-                <span>{{ majorEvent.name }}</span>
-              </span>
-            </mat-option>
-          }
-        </mat-select>
+    <form [formGroup]="workspace.majorEventSearchForm" class="major-event-search">
+      <mat-form-field class="query-field">
+        <mat-label>Buscar grande evento</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput formControlName="query" />
       </mat-form-field>
+    </form>
+
+    <mat-list class="major-event-result-list">
+      @for (majorEvent of workspace.filteredMajorEvents(); track majorEvent.id) {
+        <mat-list-item
+          (click)="workspace.selectMajorEventById(majorEvent.id)"
+          [class.selected-list-item]="workspace.majorEventForm.controls.majorEventId.value === majorEvent.id">
+          <span matListItemTitle class="list-title">
+            <app-twemoji [emoji]="majorEvent.emoji" />
+            <span>{{ majorEvent.name }}</span>
+          </span>
+          <span matListItemLine>
+            {{ majorEvent.startDate | date: 'shortDate' }} -
+            {{ majorEvent.endDate | date: 'shortDate' }}
+          </span>
+        </mat-list-item>
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>Nenhum grande evento encontrado</span>
+          <span matListItemLine>Ajuste a busca e tente novamente.</span>
+        </mat-list-item>
+      }
+    </mat-list>
+
+    <form [formGroup]="workspace.majorEventForm" class="major-event-form">
+      <input type="hidden" formControlName="majorEventId" />
 
       <button mat-flat-button type="button" (click)="workspace.loadMajorEventSubscriptions()">
         <mat-icon>groups</mat-icon>
@@ -81,6 +99,9 @@
           <span matListItemLine>
             {{ statusLabel(subscription.subscriptionStatus) }} ·
             {{ subscription.createdByMethod }}
+            @if (hasSubscribedLecturer(subscription)) {
+              · Palestrante inscrito no próprio evento
+            }
           </span>
           <div matListItemMeta class="item-actions">
             <button
@@ -169,6 +190,10 @@
             }
           } @else {
             @if (canEditSelectedMajorEventSubscriptions()) {
+              <button mat-button type="button" (click)="workspace.cancelMajorEventSubscriptionEdit()">
+                <mat-icon>close</mat-icon>
+                Cancelar
+              </button>
               <button mat-flat-button type="button" (click)="workspace.saveMajorEventSubscription()">
                 <mat-icon>save</mat-icon>
                 Salvar
@@ -177,6 +202,19 @@
           }
         </div>
       </div>
+
+      @if (isSelectedMajorEventFrozen()) {
+        <section class="surface warning-section">
+          <h4>
+            <mat-icon>lock</mat-icon>
+            Grande evento congelado
+          </h4>
+          <p>
+            Este grande evento está congelado. Alterações só podem ser salvas por pessoas com permissão para editar
+            recursos congelados.
+          </p>
+        </section>
+      }
 
       @if (!workspace.selectedMajorEventSubscription()) {
         <section class="surface">
@@ -233,34 +271,36 @@
       }
 
       <form [formGroup]="workspace.majorEventEditForm" class="detail-form">
-        <mat-form-field>
-          <mat-label>Status</mat-label>
-          <mat-select formControlName="subscriptionStatus" [disabled]="!workspace.editMode()">
-            @for (status of statuses; track status) {
-              <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+        <fieldset class="form-fieldset" [disabled]="isSelectedMajorEventLocked()">
+          <mat-form-field>
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="subscriptionStatus" [disabled]="!workspace.editMode()">
+              @for (status of statuses; track status) {
+                <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-        <mat-form-field>
-          <mat-label>Valor pago</mat-label>
-          <input matInput type="number" formControlName="amountPaid" [readonly]="!workspace.editMode()" />
-        </mat-form-field>
+          <mat-form-field>
+            <mat-label>Valor pago</mat-label>
+            <input matInput type="number" formControlName="amountPaid" [readonly]="!workspace.editMode()" />
+          </mat-form-field>
 
-        <mat-form-field>
-          <mat-label>Data do pagamento</mat-label>
-          <input matInput type="date" formControlName="paymentDate" [readonly]="!workspace.editMode()" />
-        </mat-form-field>
+          <mat-form-field>
+            <mat-label>Data do pagamento</mat-label>
+            <input matInput type="date" formControlName="paymentDate" [readonly]="!workspace.editMode()" />
+          </mat-form-field>
 
-        <mat-form-field>
-          <mat-label>Faixa de pagamento</mat-label>
-          <mat-select formControlName="paymentTier" [disabled]="!workspace.editMode()">
-            <mat-option [value]="null">Não informado</mat-option>
-            @for (tier of workspace.majorEventPaymentTiers(); track tier.id) {
-              <mat-option [value]="tier.name">{{ tier.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+          <mat-form-field>
+            <mat-label>Faixa de pagamento</mat-label>
+            <mat-select formControlName="paymentTier" [disabled]="!workspace.editMode()">
+              <mat-option [value]="null">Não informado</mat-option>
+              @for (tier of workspace.majorEventPaymentTiers(); track tier.id) {
+                <mat-option [value]="tier.name">{{ tier.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </fieldset>
       </form>
 
       <section class="surface event-selection">
@@ -268,6 +308,12 @@
           <h4>Eventos inscritos</h4>
           <span>{{ workspace.selectedEventIds().size }} selecionados</span>
         </div>
+
+        @if (hasSubscribedLecturerInSelection()) {
+          <p class="warning-copy">
+            Esta inscrição inclui pessoa palestrante em um evento próprio. Revise antes de salvar.
+          </p>
+        }
 
         <mat-selection-list [multiple]="true">
           @for (eventItem of workspace.selectedMajorEventEvents(); track eventItem.eventId) {

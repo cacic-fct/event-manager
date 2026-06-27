@@ -122,33 +122,52 @@
     </div>
 
     <div class="workbench-grid">
-      <section class="surface">
+      @if (isSelectedAttendanceEventFrozen()) {
+        <section class="surface warning-section">
+          <h4>
+            <mat-icon>lock</mat-icon>
+            Evento congelado
+          </h4>
+          <p>
+            Este evento está congelado. Registros de presença só podem ser alterados por pessoas com permissão para
+            editar recursos congelados.
+          </p>
+        </section>
+      }
+
+      <section class="surface manual-registration">
         <h4>Registro manual</h4>
         <form [formGroup]="workspace.attendanceForm" class="manual-form">
-          <mat-form-field>
-            <mat-label>Identificador</mat-label>
-            <mat-select formControlName="identifierType">
-              <mat-option value="query">Nome</mat-option>
-              <mat-option value="userId">ID de usuário</mat-option>
-              <mat-option value="identityDocument">Documento</mat-option>
-              <mat-option value="email">E-mail</mat-option>
-              <mat-option value="phone">Telefone</mat-option>
-            </mat-select>
-          </mat-form-field>
+          <fieldset class="form-fieldset" [disabled]="isSelectedAttendanceEventLocked()">
+            <mat-form-field>
+              <mat-label>Identificador</mat-label>
+              <mat-select formControlName="identifierType">
+                <mat-option value="query">Nome</mat-option>
+                <mat-option value="userId">ID de usuário</mat-option>
+                <mat-option value="identityDocument">Documento</mat-option>
+                <mat-option value="email">E-mail</mat-option>
+                <mat-option value="phone">Telefone</mat-option>
+              </mat-select>
+            </mat-form-field>
 
-          <mat-form-field>
-            <mat-label>Valor</mat-label>
-            <input matInput formControlName="identifier" />
-          </mat-form-field>
+            <mat-form-field>
+              <mat-label>Valor</mat-label>
+              <input matInput formControlName="identifier" />
+            </mat-form-field>
 
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="!workspace.selectedAttendanceEvent() || !permissions.has(Permission.Person.Read)"
-            (click)="workspace.findAttendancePerson()">
-            <mat-icon>person_search</mat-icon>
-            Buscar pessoa
-          </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="
+                !workspace.selectedAttendanceEvent() ||
+                !permissions.has(Permission.Person.Read) ||
+                isSelectedAttendanceEventLocked()
+              "
+              (click)="workspace.findAttendancePerson()">
+              <mat-icon>person_search</mat-icon>
+              Buscar pessoa
+            </button>
+          </fieldset>
         </form>
 
         <div class="inline-list">
@@ -173,79 +192,76 @@
         </div>
       </section>
 
-      <section class="surface offline-reconciliation">
-        <div class="surface-heading">
-          <div>
-            <h4>Presenças off-line em revisão</h4>
-            <span>{{ workspace.offlineAttendanceSubmissions().length }} pendência(s)</span>
-          </div>
-          @if (canEditSelectedEventAttendances() && workspace.offlineAttendanceSubmissions().length > 0) {
-            <div class="panel-actions">
-              <button mat-stroked-button type="button" (click)="workspace.rejectAllOfflineAttendanceSubmissions()">
-                <mat-icon>close</mat-icon>
-                Rejeitar lote
-              </button>
-              <button mat-flat-button type="button" (click)="workspace.approveAllOfflineAttendanceSubmissions()">
-                <mat-icon>done_all</mat-icon>
-                Aprovar lote
-              </button>
+      @if (workspace.offlineAttendanceSubmissions().length > 0) {
+        <section class="surface offline-reconciliation">
+          <div class="surface-heading">
+            <div>
+              <h4>Presenças off-line em revisão</h4>
+              <span>{{ workspace.offlineAttendanceSubmissions().length }} pendência(s)</span>
             </div>
-          }
-        </div>
-
-        <mat-list class="attendance-list">
-          @for (submission of workspace.offlineAttendanceSubmissions(); track submission.id) {
-            <mat-list-item>
-              <span matListItemTitle class="attendance-item-title">
-                {{ submission.personName }}
-              </span>
-              <span matListItemLine class="attendance-item-line">
-                Coletada em {{ submission.collectedAt | date: 'short' }} · enviada por
-                {{ submission.submittedByFullName || submission.submittedById }}
-              </span>
-              <span matListItemLine class="attendance-item-line">
-                {{ submission.stagedReason || submission.resolutionError || 'Aguardando revisão administrativa.' }}
-              </span>
-              <div matListItemMeta class="attendance-item-actions">
-                <button
-                  mat-icon-button
-                  type="button"
-                  aria-label="Inspecionar presença off-line"
-                  matTooltip="Inspecionar"
-                  (click)="workspace.inspectOfflineAttendanceSubmission(submission, canEditSelectedEventAttendances())">
-                  <mat-icon>visibility</mat-icon>
+            @if (canEditSelectedEventAttendances()) {
+              <div class="panel-actions">
+                <button mat-stroked-button type="button" (click)="workspace.rejectAllOfflineAttendanceSubmissions()">
+                  <mat-icon>close</mat-icon>
+                  Rejeitar lote
                 </button>
-                @if (canEditSelectedEventAttendances()) {
-                  <button
-                    mat-icon-button
-                    type="button"
-                    aria-label="Aprovar presença off-line"
-                    matTooltip="Aprovar"
-                    [disabled]="!!submission.resolutionError"
-                    (click)="workspace.approveOfflineAttendanceSubmission(submission)">
-                    <mat-icon>check</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    type="button"
-                    aria-label="Rejeitar presença off-line"
-                    matTooltip="Rejeitar"
-                    (click)="workspace.rejectOfflineAttendanceSubmission(submission)">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                }
+                <button mat-flat-button type="button" (click)="workspace.approveAllOfflineAttendanceSubmissions()">
+                  <mat-icon>done_all</mat-icon>
+                  Aprovar lote
+                </button>
               </div>
-            </mat-list-item>
-          } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhuma presença off-line em revisão</span>
-              <span matListItemLine>Coletas expiradas ou conflitantes aparecerão aqui depois da sincronização.</span>
-            </mat-list-item>
-          }
-        </mat-list>
-      </section>
+            }
+          </div>
 
-      <section class="surface">
+          <mat-list class="attendance-list">
+            @for (submission of workspace.offlineAttendanceSubmissions(); track submission.id) {
+              <mat-list-item>
+                <span matListItemTitle class="attendance-item-title">
+                  {{ submission.personName }}
+                </span>
+                <span matListItemLine class="attendance-item-line">
+                  Coletada em {{ submission.collectedAt | date: 'short' }} · enviada por
+                  {{ submission.submittedByFullName || submission.submittedById }}
+                </span>
+                <span matListItemLine class="attendance-item-line">
+                  {{ submission.stagedReason || submission.resolutionError || 'Aguardando revisão administrativa.' }}
+                </span>
+                <div matListItemMeta class="attendance-item-actions">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Inspecionar presença off-line"
+                    matTooltip="Inspecionar"
+                    (click)="workspace.inspectOfflineAttendanceSubmission(submission, canEditSelectedEventAttendances())">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  @if (canEditSelectedEventAttendances()) {
+                    <button
+                      mat-icon-button
+                      type="button"
+                      aria-label="Aprovar presença off-line"
+                      matTooltip="Aprovar"
+                      [disabled]="!!submission.resolutionError"
+                      (click)="workspace.approveOfflineAttendanceSubmission(submission)">
+                      <mat-icon>check</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      aria-label="Rejeitar presença off-line"
+                      matTooltip="Rejeitar"
+                      (click)="workspace.rejectOfflineAttendanceSubmission(submission)">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                </div>
+              </mat-list-item>
+            }
+          </mat-list>
+        </section>
+      }
+
+      <section class="surface event-presence-list">
         <div class="surface-heading">
           <h4>Presenças do evento</h4>
           <span>{{ workspace.attendances().length }} registros</span>

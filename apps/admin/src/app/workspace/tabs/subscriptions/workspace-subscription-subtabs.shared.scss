@@ -61,9 +61,18 @@
 }
 
 .event-result-list,
+.major-event-result-list,
 .subscription-list {
   max-height: 32rem;
   overflow: auto;
+}
+
+.major-event-result-list {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.major-event-search {
+  display: grid;
 }
 
 .list-title,
@@ -103,6 +112,16 @@
   gap: 0.5rem;
 }
 
+.warning-section p,
+.warning-copy {
+  margin: 0.35rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.warning-copy {
+  margin-bottom: 0.75rem;
+}
+
 .empty-state {
   min-height: 20rem;
   display: grid;
@@ -120,6 +139,14 @@
 
 .detail-form {
   margin-bottom: 1rem;
+}
+
+.form-fieldset {
+  display: contents;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .event-selection mat-list-item,
