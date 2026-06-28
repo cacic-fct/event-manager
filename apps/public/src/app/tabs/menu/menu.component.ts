@@ -5,12 +5,14 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
 import { OfflineUserSnapshot } from '@cacic-fct/offline-public-data-access';
+import { WORKSPACE_ENTRY_PERMISSIONS } from '@cacic-fct/shared-permissions';
 import { MatButtonModule } from '@angular/material/button';
 import { NetworkStatusService } from '../../shared/network-status.service';
 import { OfflineUserDataService } from '../../shared/offline-user-data.service';
 import { AttendanceCollectionApiService } from '../../attendance/collection/attendance-collection-api.service';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { isPlatformBrowser } from '@angular/common';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-menu.component',
@@ -33,6 +35,8 @@ export class MenuComponent {
   private readonly attendanceCollectionApi = inject(AttendanceCollectionApiService);
   private readonly offlineSnapshot = signal<OfflineUserSnapshot | null>(null);
   readonly canCollectAttendances = signal(false);
+  readonly canAccessWorkspace = signal(false);
+  readonly hasCollaborationLinks = computed(() => this.canCollectAttendances() || this.canAccessWorkspace());
   public isDevMode = isDevMode();
 
   private platformId = inject(PLATFORM_ID);
@@ -72,14 +76,23 @@ export class MenuComponent {
     effect((onCleanup) => {
       if (!this.authService.isAuthenticated()) {
         this.canCollectAttendances.set(false);
+        this.canAccessWorkspace.set(false);
         return;
       }
 
-      const subscription = this.attendanceCollectionApi.listCollectionEvents().subscribe({
+      const attendanceSubscription = this.attendanceCollectionApi.listCollectionEvents().subscribe({
         next: (events) => this.canCollectAttendances.set(events.length > 0),
         error: () => this.canCollectAttendances.set(false),
       });
-      onCleanup(() => subscription.unsubscribe());
+      const permissionSubscription = this.authService
+        .evaluatePermissions(WORKSPACE_ENTRY_PERMISSIONS)
+        .pipe(catchError(() => of([])))
+        .subscribe((permissions) => this.canAccessWorkspace.set(permissions.length > 0));
+
+      onCleanup(() => {
+        attendanceSubscription.unsubscribe();
+        permissionSubscription.unsubscribe();
+      });
     });
 
     if (isPlatformBrowser(this.platformId)) {
