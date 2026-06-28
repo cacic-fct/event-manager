@@ -13,7 +13,10 @@ describe('audit log explorer helpers', () => {
     const dateFrom = new Date('2026-06-20T00:00:00.000Z');
     const dateTo = new Date('2026-06-25T23:59:59.999Z');
 
-    expect(buildAuditLogSearchQuery({ query: '  nome  ' })).toBe('nome');
+    expect(buildAuditLogSearchQuery({ query: '  nome  ', actor: ' renan ', entity: ' person- ' })).toBe(
+      'nome renan person-',
+    );
+    expect(buildAuditLogSearchQuery({ actor: ' renan ', entity: ' person- ' })).toBe('renan person-');
     expect(
       buildAuditLogTypesenseFilter({
         actor: 'renan',
@@ -31,8 +34,6 @@ describe('audit log explorer helpers', () => {
         `lastRecordedAt:>=${Math.floor(dateFrom.getTime() / 1000)}`,
         `lastRecordedAt:<=${Math.floor(dateTo.getTime() / 1000)}`,
         'reverted:=false',
-        '(actorId:`renan` || actorName:`renan` || actorEmail:`renan`)',
-        '(entityId:`person-` || entityLabel:`person-` || eventId:`person-` || majorEventId:`person-` || eventGroupId:`person-`)',
       ].join(' && '),
     );
   });

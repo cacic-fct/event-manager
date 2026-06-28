@@ -701,15 +701,13 @@ describe('AuditLogService', () => {
       typesenseAvailable: true,
     });
 
-    expect(typesenseSearch.searchAuditLogEntries).toHaveBeenCalledWith('nome', {
+    expect(typesenseSearch.searchAuditLogEntries).toHaveBeenCalledWith('nome renan person-', {
       filterBy: [
         'entityType:=`PERSON`',
         'operation:=`UPDATE`',
         `lastRecordedAt:>=${Math.floor(dateFrom.getTime() / 1000)}`,
         `lastRecordedAt:<=${Math.floor(dateTo.getTime() / 1000)}`,
         'reverted:=false',
-        '(actorId:`renan` || actorName:`renan` || actorEmail:`renan`)',
-        '(entityId:`person-` || entityLabel:`person-` || eventId:`person-` || majorEventId:`person-` || eventGroupId:`person-`)',
       ].join(' && '),
       limit: 25,
       offset: 50,

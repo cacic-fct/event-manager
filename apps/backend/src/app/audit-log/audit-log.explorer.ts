@@ -2,9 +2,6 @@ import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuditLogExplorerInput, AuditLogExplorerRevertedStatus } from './audit-log.models';
 
-const AUDIT_LOG_ACTOR_FILTER_FIELDS = ['actorId', 'actorName', 'actorEmail'] as const;
-const AUDIT_LOG_ENTITY_FILTER_FIELDS = ['entityId', 'entityLabel', 'eventId', 'majorEventId', 'eventGroupId'] as const;
-
 export function assertValidAuditLogExplorerDateRange(dateFrom?: Date | null, dateTo?: Date | null): void {
   if (dateFrom && Number.isNaN(dateFrom.getTime())) {
     throw new BadRequestException('A data inicial do filtro de auditoria é inválida.');
@@ -18,7 +15,10 @@ export function assertValidAuditLogExplorerDateRange(dateFrom?: Date | null, dat
 }
 
 export function buildAuditLogSearchQuery(input: AuditLogExplorerInput): string {
-  return input.query?.trim() ?? '';
+  return [input.query, input.actor, input.entity]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .join(' ');
 }
 
 export function buildAuditLogTypesenseFilter(input: AuditLogExplorerInput): string {
@@ -42,15 +42,6 @@ export function buildAuditLogTypesenseFilter(input: AuditLogExplorerInput): stri
   if (input.revertedStatus === AuditLogExplorerRevertedStatus.NOT_REVERTED) {
     filters.push('reverted:=false');
   }
-  const actorFilter = buildAuditLogTypesenseTextFilter(input.actor, AUDIT_LOG_ACTOR_FILTER_FIELDS);
-  if (actorFilter) {
-    filters.push(actorFilter);
-  }
-  const entityFilter = buildAuditLogTypesenseTextFilter(input.entity, AUDIT_LOG_ENTITY_FILTER_FIELDS);
-  if (entityFilter) {
-    filters.push(entityFilter);
-  }
-
   return filters.join(' && ');
 }
 
@@ -140,16 +131,6 @@ function buildAuditLogTextCondition(
 
 function escapeTypesenseFilterValue(value: string): string {
   return `\`${value.replace(/[`\\]/g, '\\$&')}\``;
-}
-
-function buildAuditLogTypesenseTextFilter(value: string | null | undefined, fields: readonly string[]): string | null {
-  const normalized = value?.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  const escaped = escapeTypesenseFilterValue(normalized);
-  return `(${fields.map((field) => `${field}:${escaped}`).join(' || ')})`;
 }
 
 function toTypesenseTimestamp(date: Date): number {
