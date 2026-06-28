@@ -11,7 +11,6 @@
 }
 
 .summary-header div,
-.resource-group,
 .state-panel {
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 8px;
@@ -24,15 +23,17 @@
 }
 
 .summary-header span,
-.group-heading span,
+.group-heading,
 .resource-copy span,
 .resource-meta,
-.state-panel p {
+.state-panel p,
+.panel-state,
+.group-toolbar {
   color: var(--mat-sys-on-surface-variant);
 }
 
 .summary-header strong,
-.group-heading h3,
+.group-title,
 .resource-copy strong,
 .resource-copy span {
   overflow-wrap: anywhere;
@@ -51,27 +52,54 @@
 }
 
 .resource-group {
-  display: grid;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  box-shadow: none;
   overflow: hidden;
 }
 
+.resource-group .mat-expansion-panel-header {
+  height: auto;
+  min-height: 4.75rem;
+  padding-block: 0.75rem;
+}
+
+.resource-group :is(.mat-content, mat-panel-title) {
+  min-width: 0;
+}
+
+.resource-group .mat-content,
+.resource-group mat-panel-title {
+  gap: 0.75rem;
+}
+
 .group-heading,
+.group-toolbar,
+.pagination-actions,
 .resource-row,
 .resource-meta,
+.panel-state,
 .state-panel {
   align-items: center;
   display: flex;
 }
 
 .group-heading {
-  gap: 0.75rem;
-  padding: 0.875rem;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+  align-items: flex-start;
 }
 
-.group-heading h3,
+.group-title,
 .state-panel h3,
 .state-panel p {
   margin: 0;
+}
+
+.group-title {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-title-small);
 }
 
 .group-icon {
@@ -83,6 +111,16 @@
   height: 2.25rem;
   justify-content: center;
   width: 2.25rem;
+}
+
+.group-toolbar {
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.75rem 0.875rem;
+}
+
+.pagination-actions {
+  gap: 0.25rem;
 }
 
 .resource-row {
@@ -115,6 +153,14 @@
   padding: 0.125rem 0.5rem;
 }
 
+.panel-state {
+  gap: 0.75rem;
+  justify-content: center;
+  min-height: 4rem;
+  padding: 0.875rem;
+  text-align: center;
+}
+
 .state-panel {
   flex-direction: column;
   gap: 0.75rem;
@@ -139,6 +185,17 @@
   .summary-header,
   .resource-row {
     grid-template-columns: 1fr;
+  }
+
+  .resource-group .mat-expansion-panel-header {
+    min-height: auto;
+  }
+
+  .resource-group .mat-content,
+  .group-toolbar,
+  .panel-state {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .resource-row {

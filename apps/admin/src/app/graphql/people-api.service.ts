@@ -8,6 +8,7 @@ import {
   Person,
   PersonInput,
   PersonLinkedDataSummary,
+  PersonLinkedResourcePage,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { PERSON_DETAIL_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
 
@@ -162,20 +163,39 @@ export class PeopleApiService {
               label
               icon
               totalCount
-              items {
-                id
-                label
-                description
-                route
-                status
-                occurredAt
-              }
             }
           }
         }`,
         { id },
       )
       .pipe(map((data) => data.personLinkedDataSummary));
+  }
+
+  getPersonLinkedResources(personId: string, type: string, skip: number, take: number) {
+    return this.graphqlHttp
+      .request<{ personLinkedResources: PersonLinkedResourcePage }>(
+        `query PersonLinkedResources($personId: String!, $type: String!, $skip: Int, $take: Int) {
+          personLinkedResources(personId: $personId, type: $type, skip: $skip, take: $take) {
+            personId
+            type
+            label
+            icon
+            total
+            skip
+            take
+            items {
+              id
+              label
+              description
+              route
+              status
+              occurredAt
+            }
+          }
+        }`,
+        { personId, type, skip, take },
+      )
+      .pipe(map((data) => data.personLinkedResources));
   }
 
   deletePerson(id: string) {

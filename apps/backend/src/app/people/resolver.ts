@@ -5,6 +5,7 @@ import {
   PersonLinkedDataSummary,
   PersonLinkedResource,
   PersonLinkedResourceGroup,
+  PersonLinkedResourcePage,
   PersonUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
@@ -41,6 +42,23 @@ type PersonLinkedResourceInput = Omit<PersonLinkedResource, 'description' | 'rou
 type PersonLinkedResourceGroupInput = Omit<PersonLinkedResourceGroup, 'items' | 'totalCount'> & {
   items: PersonLinkedResourceInput[];
 };
+
+type PersonLinkedResourceGroupDefinition = Omit<PersonLinkedResourceGroup, 'items' | 'totalCount'>;
+
+const PERSON_LINKED_RESOURCE_GROUPS = [
+  { type: 'USER', label: 'Usuário vinculado', icon: 'account_circle' },
+  { type: 'CERTIFICATE', label: 'Certificados', icon: 'workspace_premium' },
+  { type: 'SUBSCRIPTION', label: 'Inscrições', icon: 'confirmation_number' },
+  { type: 'ATTENDANCE', label: 'Presenças', icon: 'how_to_reg' },
+  { type: 'EVENT_RELATION', label: 'Vínculos com eventos', icon: 'event_available' },
+  { type: 'OFFLINE_ATTENDANCE_SUBMISSION', label: 'Coletas offline', icon: 'sync_problem' },
+  { type: 'RECEIPT', label: 'Comprovantes', icon: 'receipt_long' },
+  { type: 'LECTURER_PROFILE', label: 'Perfil de ministrante', icon: 'badge' },
+  { type: 'PERMISSION_GRANT', label: 'Permissões', icon: 'admin_panel_settings' },
+  { type: 'MERGE', label: 'Unificações', icon: 'call_merge' },
+] satisfies PersonLinkedResourceGroupDefinition[];
+
+type PersonLinkedResourceGroupType = (typeof PERSON_LINKED_RESOURCE_GROUPS)[number]['type'];
 
 const PERSON_AUDIT_SELECT = {
   id: true,
@@ -201,6 +219,20 @@ export class PeopleResolver {
     return this.buildPersonLinkedDataSummary(id, grantedPermissions.includes(Permission.Person.Delete));
   }
 
+  @Query(() => PersonLinkedResourcePage, {
+    name: 'personLinkedResources',
+    description: 'Lists one paginated group of resources linked to a person. Restricted to Event Manager super-admin users.',
+  })
+  @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
+  async personLinkedResources(
+    @Args('personId', { type: () => String }) personId: string,
+    @Args('type', { type: () => String }) type: string,
+    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
+    @Args('take', { type: () => Int, nullable: true }) take?: number,
+  ): Promise<PersonLinkedResourcePage> {
+    return this.buildPersonLinkedResourcePage(personId, type, skip, take);
+  }
+
   @Mutation(() => Person, { name: 'createPerson' })
   @RequirePermissions(Permission.Person.Create)
   async createPerson(
@@ -359,6 +391,52 @@ export class PeopleResolver {
     hasDeletePermission: boolean,
     prisma: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<PersonLinkedDataSummary> {
+    const counts = await this.countPersonLinkedResourceGroups(personId, prisma);
+    const groups = PERSON_LINKED_RESOURCE_GROUPS.map((definition) => ({
+      ...definition,
+      items: [],
+      totalCount: counts[definition.type] ?? 0,
+    })).filter((group) => group.totalCount > 0);
+    const totalCount = groups.reduce((sum, group) => sum + group.totalCount, 0);
+
+    return {
+      personId,
+      groups,
+      totalCount,
+      hasLinkedData: totalCount > 0,
+      canDelete: hasDeletePermission && totalCount === 0,
+    };
+  }
+
+  private async buildPersonLinkedResourcePage(
+    personId: string,
+    type: string,
+    skip?: number,
+    take?: number,
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
+  ): Promise<PersonLinkedResourcePage> {
+    const definition = this.getLinkedResourceGroupDefinition(type);
+    const pagination = resolvePagination(skip, take);
+    const groups = await this.buildPersonLinkedResourceGroups(personId, prisma);
+    const group = groups.find((item) => item.type === definition.type);
+    const items = group?.items ?? [];
+
+    return {
+      personId,
+      type: definition.type,
+      label: definition.label,
+      icon: definition.icon,
+      items: items.slice(pagination.skip, pagination.skip + pagination.take),
+      total: group?.totalCount ?? 0,
+      skip: pagination.skip,
+      take: pagination.take,
+    };
+  }
+
+  private async buildPersonLinkedResourceGroups(
+    personId: string,
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
+  ): Promise<PersonLinkedResourceGroup[]> {
     const person = await prisma.people.findFirst({
       where: { id: personId, deletedAt: null },
       select: {
@@ -689,14 +767,82 @@ export class PeopleResolver {
       ),
     ]);
 
-    const totalCount = groups.reduce((sum, group) => sum + group.totalCount, 0);
+    return groups;
+  }
+
+  private async countPersonLinkedResourceGroups(
+    personId: string,
+    prisma: PrismaService | Prisma.TransactionClient,
+  ): Promise<Record<PersonLinkedResourceGroupType, number>> {
+    const person = await prisma.people.findFirst({
+      where: { id: personId, deletedAt: null },
+      select: { id: true, userId: true, mergedIntoId: true },
+    });
+
+    if (!person) {
+      throw new NotFoundException(`Person ${personId} was not found.`);
+    }
+
+    const [
+      certificate,
+      eventSubscription,
+      eventGroupSubscription,
+      majorEventSubscription,
+      attendance,
+      lecture,
+      attendanceCollector,
+      offlineAttendanceSubmission,
+      permissionGrant,
+      lecturerProfile,
+      mergedFrom,
+      mergeCandidate,
+      mergeOperationAsTarget,
+      mergeOperationAsSource,
+      receipt,
+    ] = await Promise.all([
+      prisma.certificate.count({ where: { personId, deletedAt: null } }),
+      prisma.eventSubscription.count({ where: { personId, deletedAt: null } }),
+      prisma.eventGroupSubscription.count({ where: { personId, deletedAt: null } }),
+      prisma.majorEventSubscription.count({ where: { personId, deletedAt: null } }),
+      prisma.eventAttendance.count({ where: { personId } }),
+      prisma.eventLecturer.count({ where: { personId } }),
+      prisma.eventAttendanceCollector.count({ where: { personId } }),
+      prisma.offlineEventAttendanceSubmission.count({ where: { personId } }),
+      prisma.eventManagerPermissionGrant.count({ where: { personId, deletedAt: null } }),
+      prisma.lecturerProfile.findUnique({ where: { personId }, select: { id: true } }),
+      prisma.people.count({ where: { mergedIntoId: personId, deletedAt: null } }),
+      prisma.mergeCandidate.count({ where: { OR: [{ personAId: personId }, { personBId: personId }] } }),
+      prisma.peopleMergeOperation.count({ where: { targetPersonId: personId } }),
+      prisma.peopleMergeOperation.count({ where: { sourcePersonId: personId } }),
+      prisma.majorEventReceipt.count({ where: { personId } }),
+    ]);
+
     return {
-      personId,
-      groups,
-      totalCount,
-      hasLinkedData: totalCount > 0,
-      canDelete: hasDeletePermission && totalCount === 0,
+      USER: person.userId ? 1 : 0,
+      CERTIFICATE: certificate,
+      SUBSCRIPTION: eventSubscription + eventGroupSubscription + majorEventSubscription,
+      ATTENDANCE: attendance,
+      EVENT_RELATION: lecture + attendanceCollector,
+      OFFLINE_ATTENDANCE_SUBMISSION: offlineAttendanceSubmission,
+      RECEIPT: receipt,
+      LECTURER_PROFILE: lecturerProfile ? 1 : 0,
+      PERMISSION_GRANT: permissionGrant,
+      MERGE:
+        (person.mergedIntoId ? 1 : 0) +
+        mergedFrom +
+        mergeCandidate +
+        mergeOperationAsTarget +
+        mergeOperationAsSource,
     };
+  }
+
+  private getLinkedResourceGroupDefinition(type: string): PersonLinkedResourceGroupDefinition {
+    const definition = PERSON_LINKED_RESOURCE_GROUPS.find((group) => group.type === type);
+    if (!definition) {
+      throw new NotFoundException(`Linked resource group ${type} was not found.`);
+    }
+
+    return definition;
   }
 
   private async personHasLinkedData(

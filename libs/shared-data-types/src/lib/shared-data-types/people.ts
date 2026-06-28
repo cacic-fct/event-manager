@@ -106,6 +106,33 @@ export class PersonLinkedResourceGroup {
 }
 
 @ObjectType()
+export class PersonLinkedResourcePage {
+  @Field(() => String)
+  personId!: string;
+
+  @Field(() => String)
+  type!: string;
+
+  @Field(() => String)
+  label!: string;
+
+  @Field(() => String)
+  icon!: string;
+
+  @Field(() => [PersonLinkedResource])
+  items!: PersonLinkedResource[];
+
+  @Field(() => Int)
+  total!: number;
+
+  @Field(() => Int)
+  skip!: number;
+
+  @Field(() => Int)
+  take!: number;
+}
+
+@ObjectType()
 export class PersonLinkedDataSummary {
   @Field(() => String)
   personId!: string;

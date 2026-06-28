@@ -377,7 +377,7 @@ export interface PersonLinkedResourceGroup {
   type: string;
   label: string;
   icon: string;
-  items: PersonLinkedResource[];
+  items?: PersonLinkedResource[];
   totalCount: number;
 }
 
@@ -387,6 +387,17 @@ export interface PersonLinkedDataSummary {
   totalCount: number;
   hasLinkedData: boolean;
   canDelete: boolean;
+}
+
+export interface PersonLinkedResourcePage {
+  personId: string;
+  type: string;
+  label: string;
+  icon: string;
+  items: PersonLinkedResource[];
+  total: number;
+  skip: number;
+  take: number;
 }
 
 export interface EventManagerPermissionGrant {

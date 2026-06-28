@@ -20,21 +20,28 @@ describe('PeopleResolver', () => {
       },
     ]);
 
+    prisma.eventLecturer.count.mockResolvedValue(1);
+
     const summary = await resolver.personLinkedDataSummary('person-1', userContext());
+    const page = await resolver.personLinkedResources('person-1', 'EVENT_RELATION', 0, 10);
 
     expect(summary.canDelete).toBe(false);
     expect(summary.groups).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           type: 'EVENT_RELATION',
-          items: [
-            expect.objectContaining({
-              id: 'event-1:person-1:lecturer',
-              label: 'Arquitetura Angular com Signals',
-              description: 'Ministrante',
-              route: '/events/event-1',
-            }),
-          ],
+          totalCount: 1,
+          items: [],
+        }),
+      ]),
+    );
+    expect(page.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'event-1:person-1:lecturer',
+          label: 'Arquitetura Angular com Signals',
+          description: 'Ministrante',
+          route: '/events/event-1',
         }),
       ]),
     );
@@ -105,6 +112,7 @@ function createPrisma() {
   const linkedModel = () => ({
     findFirst: jest.fn().mockResolvedValue(null),
     findMany: jest.fn().mockResolvedValue([]),
+    count: jest.fn().mockResolvedValue(0),
   });
   const prisma = {
     $transaction: jest.fn(),
@@ -113,6 +121,7 @@ function createPrisma() {
         where?.id === 'person-1' ? Promise.resolve(person()) : Promise.resolve(null),
       ),
       findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
       update: jest.fn().mockResolvedValue(person({ deletedAt: new Date('2026-06-21T12:00:00.000Z') })),
     },
     certificate: linkedModel(),

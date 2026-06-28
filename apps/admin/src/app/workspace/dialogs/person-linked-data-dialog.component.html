@@ -28,47 +28,94 @@
       </button>
     </div>
   } @else if (summary()?.hasLinkedData) {
-    <section class="group-list" aria-label="Recursos vinculados">
+    <mat-accordion class="group-list" aria-label="Recursos vinculados" multi>
       @for (group of summary()?.groups; track group.type) {
-        <article class="resource-group">
-          <header class="group-heading">
-            <span class="group-icon">
-              <mat-icon>{{ group.icon }}</mat-icon>
-            </span>
-            <div>
-              <h3>{{ group.label }}</h3>
-              <span>{{ group.totalCount }} {{ group.totalCount === 1 ? 'registro' : 'registros' }}</span>
+        <mat-expansion-panel class="resource-group" (opened)="ensureGroupLoaded(group.type)">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <span class="group-icon">
+                <mat-icon>{{ group.icon }}</mat-icon>
+              </span>
+              <span class="group-heading">
+                <span class="group-title">{{ group.label }}</span>
+                <span>{{ group.totalCount }} {{ group.totalCount === 1 ? 'registro' : 'registros' }}</span>
+              </span>
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          @let state = groupPage(group.type);
+          @if (state.loading) {
+            <mat-progress-bar mode="indeterminate" />
+          }
+
+          @if (state.error) {
+            <div class="panel-state" role="alert">
+              <mat-icon>error</mat-icon>
+              <span>{{ state.error }}</span>
+              <button mat-stroked-button type="button" (click)="loadGroup(group.type, state.skip)">
+                <mat-icon>refresh</mat-icon>
+                Tentar novamente
+              </button>
             </div>
-          </header>
-
-          <div class="resource-list">
-            @for (item of group.items; track item.id) {
-              <div class="resource-row">
-                <div class="resource-copy">
-                  <strong>{{ item.label }}</strong>
-                  <span>{{ resourceDescription(item) }}</span>
-                </div>
-
-                <div class="resource-meta">
-                  @if (item.status) {
-                    <span class="status-chip">{{ item.status }}</span>
-                  }
-                  @if (item.occurredAt) {
-                    <time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'short' }}</time>
-                  }
-                  @if (item.route) {
-                    <a mat-stroked-button [routerLink]="item.route" [mat-dialog-close]="false">
-                      <mat-icon>open_in_new</mat-icon>
-                      Abrir
-                    </a>
-                  }
-                </div>
+          } @else if (state.page; as page) {
+            <div class="group-toolbar">
+              <strong>{{ rangeStart(page) }}-{{ rangeEnd(page) }} de {{ page.total }}</strong>
+              <div class="pagination-actions">
+                <button
+                  matIconButton
+                  type="button"
+                  aria-label="Página anterior"
+                  matTooltip="Página anterior"
+                  [disabled]="!canGoPrevious(group.type)"
+                  (click)="previousPage(group.type)">
+                  <mat-icon>chevron_left</mat-icon>
+                </button>
+                <button
+                  matIconButton
+                  type="button"
+                  aria-label="Próxima página"
+                  matTooltip="Próxima página"
+                  [disabled]="!canGoNext(group.type)"
+                  (click)="nextPage(group.type)">
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
               </div>
-            }
-          </div>
-        </article>
+            </div>
+
+            <div class="resource-list">
+              @for (item of page.items; track item.id) {
+                <div class="resource-row">
+                  <div class="resource-copy">
+                    <strong>{{ item.label }}</strong>
+                    <span>{{ resourceDescription(item) }}</span>
+                  </div>
+
+                  <div class="resource-meta">
+                    @if (item.status) {
+                      <span class="status-chip">{{ item.status }}</span>
+                    }
+                    @if (item.occurredAt) {
+                      <time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'short' }}</time>
+                    }
+                    @if (item.route) {
+                      <a mat-stroked-button [routerLink]="item.route" [mat-dialog-close]="false">
+                        <mat-icon>open_in_new</mat-icon>
+                        Abrir
+                      </a>
+                    }
+                  </div>
+                </div>
+              } @empty {
+                <div class="panel-state">
+                  <mat-icon>link_off</mat-icon>
+                  <span>Nenhum registro nesta página.</span>
+                </div>
+              }
+            </div>
+          }
+        </mat-expansion-panel>
       }
-    </section>
+    </mat-accordion>
   } @else {
     <div class="state-panel empty-delete-state">
       <mat-icon>person_remove</mat-icon>

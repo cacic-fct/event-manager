@@ -11,6 +11,7 @@ import type {
   EventManagerPermissionGrantTarget,
   Person,
   PersonLinkedDataSummary,
+  PersonLinkedResourcePage,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspacePeopleTabComponent } from './workspace-people-tab.component';
 
@@ -206,6 +207,18 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     };
   }
 
+  if (query.includes('PersonLinkedResources')) {
+    const personId = String(variables['personId'] ?? activeData.people[0].id);
+    return {
+      personLinkedResources: linkedDataResources(
+        personId,
+        String(variables['type'] ?? 'CERTIFICATE'),
+        Number(variables['skip'] ?? 0),
+        Number(variables['take'] ?? 10),
+      ),
+    };
+  }
+
   if (query.includes('DeletePerson')) {
     return { deletePerson: { deleted: true, id: String(variables['id'] ?? activeData.people[0].id) } };
   }
@@ -313,6 +326,23 @@ function linkedDataSummary(personId: string, variant: 'active' | 'empty' = 'acti
     totalCount: groups.reduce((total, group) => total + group.totalCount, 0),
     hasLinkedData: true,
     canDelete: false,
+  };
+}
+
+function linkedDataResources(personId: string, type: string, skip: number, take: number): PersonLinkedResourcePage {
+  const summary = linkedDataSummary(personId);
+  const group = summary.groups.find((item) => item.type === type);
+  const items = group?.items ?? [];
+
+  return {
+    personId,
+    type,
+    label: group?.label ?? type,
+    icon: group?.icon ?? 'link',
+    items: items.slice(skip, skip + take),
+    total: group?.totalCount ?? 0,
+    skip,
+    take,
   };
 }
 
