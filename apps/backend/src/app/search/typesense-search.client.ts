@@ -13,9 +13,10 @@ export function buildTypesenseClient(input: {
     return null;
   }
 
+  const apiKey = normalizeTypesenseConfigValue(input.apiKey);
   const urlConfig = buildTypesenseNodeConfigFromUrl(input.rawUrl, input.logger);
 
-  if (!input.apiKey) {
+  if (!apiKey) {
     input.logger.warn('Typesense is enabled but TYPESENSE_API_KEY is missing. Disabling search indexing.');
     return null;
   }
@@ -26,7 +27,7 @@ export function buildTypesenseClient(input: {
   }
 
   return new Typesense.Client({
-    apiKey: input.apiKey,
+    apiKey,
     nodes: [urlConfig],
     connectionTimeoutSeconds: 5,
   });
@@ -36,7 +37,7 @@ export function buildTypesenseNodeConfigFromUrl(
   rawUrl: string | undefined,
   logger: Pick<Logger, 'warn'>,
 ): TypesenseNodeConfig | null {
-  const value = rawUrl?.trim();
+  const value = normalizeTypesenseConfigValue(rawUrl);
   if (!value) {
     return null;
   }
@@ -58,4 +59,18 @@ export function buildTypesenseNodeConfigFromUrl(
     logger.warn('Typesense URL is invalid.');
     return null;
   }
+}
+
+function normalizeTypesenseConfigValue(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const quote = trimmed[0];
+  if ((quote === '"' || quote === "'") && trimmed.endsWith(quote)) {
+    return trimmed.slice(1, -1).trim() || undefined;
+  }
+
+  return trimmed;
 }

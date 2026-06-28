@@ -28,6 +28,11 @@ describe('typesense search client helpers', () => {
       port: 8108,
       protocol: 'http',
     });
+    expect(buildTypesenseNodeConfigFromUrl(' "https://search.example.com" ', logger as never)).toEqual({
+      host: 'search.example.com',
+      port: 443,
+      protocol: 'https',
+    });
   });
 
   it('rejects missing, invalid, and unsupported URLs', () => {
@@ -60,6 +65,26 @@ describe('typesense search client helpers', () => {
     });
 
     expect(buildTypesenseClient({ enabled: false, logger: logger as never })).toBeNull();
+  });
+
+  it('normalizes quoted and whitespace-padded configuration before building the client', () => {
+    const logger = { warn: jest.fn() };
+    const instance = {};
+    typesenseClientConstructor.mockReturnValue(instance);
+
+    expect(
+      buildTypesenseClient({
+        enabled: true,
+        apiKey: ' "secret" ',
+        rawUrl: " 'https://search.example.com' ",
+        logger: logger as never,
+      }),
+    ).toBe(instance);
+    expect(typesenseClientConstructor).toHaveBeenCalledWith({
+      apiKey: 'secret',
+      nodes: [{ host: 'search.example.com', port: 443, protocol: 'https' }],
+      connectionTimeoutSeconds: 5,
+    });
   });
 
   it('logs configuration warnings when enabled values are missing', () => {

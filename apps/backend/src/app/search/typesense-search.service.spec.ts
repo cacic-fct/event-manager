@@ -48,6 +48,29 @@ describe('TypesenseSearchService', () => {
     });
   });
 
+  it('normalizes Typesense env values before constructing the client', () => {
+    const client = createTypesenseClientMock();
+    typesenseClientConstructor.mockReturnValue(client.instance);
+    process.env.TYPESENSE_ENABLED = 'true';
+    process.env.TYPESENSE_URL = ' "https://search.example.com" ';
+    process.env.TYPESENSE_API_KEY = ' "secret" ';
+
+    const service = new TypesenseSearchService(createPrismaMock() as never);
+
+    expect(service.isEnabled()).toBe(true);
+    expect(typesenseClientConstructor).toHaveBeenCalledWith({
+      apiKey: 'secret',
+      nodes: [
+        {
+          host: 'search.example.com',
+          port: 443,
+          protocol: 'https',
+        },
+      ],
+      connectionTimeoutSeconds: 5,
+    });
+  });
+
   it('keeps search unavailable when enabled without a valid TYPESENSE_URL', () => {
     process.env.TYPESENSE_ENABLED = 'true';
     process.env.TYPESENSE_URL = '';
