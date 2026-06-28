@@ -94,6 +94,12 @@
 
           <div class="panel-actions">
             @if (workspace.selectedPerson(); as selectedPerson) {
+              @if (isSuperAdmin()) {
+                <button mat-stroked-button type="button" (click)="workspace.openLinkedDataDialog(selectedPerson)">
+                  <mat-icon>account_tree</mat-icon>
+                  Vínculos
+                </button>
+              }
               <button
                 mat-stroked-button
                 type="button"

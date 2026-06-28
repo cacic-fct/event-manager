@@ -1,8 +1,9 @@
-import { Permission } from '@cacic-fct/shared-permissions';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -37,9 +38,11 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 export class WorkspacePeopleTabComponent {
   readonly workspace = inject(WorkspacePeopleService);
   private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
   protected readonly auditLog = inject(WorkspaceAuditLogService);
   protected readonly permissions = inject(WorkspacePermissionsService);
   protected readonly Permission = Permission;
+  protected readonly isSuperAdmin = computed(() => this.auth.roles().includes(EventManagerKeycloakRole.SuperAdmin));
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {

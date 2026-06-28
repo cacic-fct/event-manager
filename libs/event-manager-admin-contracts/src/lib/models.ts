@@ -364,6 +364,31 @@ export interface Person {
   lecturerProfile?: LecturerProfile | null;
 }
 
+export interface PersonLinkedResource {
+  id: string;
+  label: string;
+  description?: string | null;
+  route?: string | null;
+  status?: string | null;
+  occurredAt?: string | null;
+}
+
+export interface PersonLinkedResourceGroup {
+  type: string;
+  label: string;
+  icon: string;
+  items: PersonLinkedResource[];
+  totalCount: number;
+}
+
+export interface PersonLinkedDataSummary {
+  personId: string;
+  groups: PersonLinkedResourceGroup[];
+  totalCount: number;
+  hasLinkedData: boolean;
+  canDelete: boolean;
+}
+
 export interface EventManagerPermissionGrant {
   id: string;
   userId: string;
