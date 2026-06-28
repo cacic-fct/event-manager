@@ -203,7 +203,7 @@ export async function replaceAuditLogSearchDocuments(input: {
         for (;;) {
           const entries = await input.prisma.auditLogEntry.findMany({
             select: AUDIT_LOG_SEARCH_SELECT,
-            orderBy: [{ lastRecordedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+            orderBy: { id: 'asc' },
             take: AUDIT_LOG_REINDEX_BATCH_SIZE,
             ...(cursor ? { cursor, skip: 1 } : {}),
           });
