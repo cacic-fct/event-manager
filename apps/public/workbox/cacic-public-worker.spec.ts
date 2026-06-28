@@ -58,6 +58,7 @@ interface WorkerHarness {
   routes: RegisteredRoute[];
   catchHandler: ((options: { request: Pick<Request, 'mode'> }) => Promise<Response>) | null;
   networkFirstInstances: MockNetworkFirst[];
+  staleWhileRevalidateInstances: MockStaleWhileRevalidate[];
   cacheFirstInstances: MockCacheFirst[];
   cacheExpirations: MockCacheExpiration[];
   fetchMock: ReturnType<typeof vi.fn<(request: Request) => Promise<Response>>>;
@@ -94,6 +95,12 @@ class MockCacheFirst {
   constructor(readonly options: Record<string, unknown>) {}
 }
 
+class MockStaleWhileRevalidate {
+  readonly strategyName = 'StaleWhileRevalidate';
+
+  constructor(readonly options: Record<string, unknown>) {}
+}
+
 function loadWorkerSource(): string {
   return readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'cacic-public-worker.js'), 'utf8');
 }
@@ -106,6 +113,7 @@ function createWorkerHarness(): WorkerHarness {
   };
   const routes: RegisteredRoute[] = [];
   const networkFirstInstances: MockNetworkFirst[] = [];
+  const staleWhileRevalidateInstances: MockStaleWhileRevalidate[] = [];
   const cacheFirstInstances: MockCacheFirst[] = [];
   const cacheExpirations: MockCacheExpiration[] = [];
   const openedCaches = new Map<string, MockCache>();
@@ -144,6 +152,12 @@ function createWorkerHarness(): WorkerHarness {
         constructor(options: Record<string, unknown>) {
           super(options);
           networkFirstInstances.push(this);
+        }
+      },
+      StaleWhileRevalidate: class extends MockStaleWhileRevalidate {
+        constructor(options: Record<string, unknown>) {
+          super(options);
+          staleWhileRevalidateInstances.push(this);
         }
       },
       CacheFirst: class extends MockCacheFirst {
@@ -221,6 +235,7 @@ function createWorkerHarness(): WorkerHarness {
       return catchHandler;
     },
     networkFirstInstances,
+    staleWhileRevalidateInstances,
     cacheFirstInstances,
     cacheExpirations,
     fetchMock,
@@ -275,6 +290,54 @@ describe('cacic-public-worker', () => {
     expect(navigationRoute).toBeDefined();
     expect(navigationRoute?.matcher(requestContext('/api/graphql', { mode: 'navigate' }))).toBe(false);
     expect(navigationRoute?.matcher(requestContext('/api/auth/login', { mode: 'navigate' }))).toBe(false);
+  });
+
+  it('caches Google profile pictures briefly with background revalidation', () => {
+    const harness = createWorkerHarness();
+
+    const profileRoute = harness.routes.find((route) =>
+      route.matcher(
+        requestContext('https://lh3.googleusercontent.com/a/ACg8ocK=s512-c', {
+          destination: 'image',
+        }),
+      ),
+    );
+
+    expect(profileRoute?.handler).toBeInstanceOf(MockStaleWhileRevalidate);
+    expect(profileRoute?.matcher(requestContext('https://lh3.googleusercontent.com/not-a-profile.jpg'))).toBe(false);
+    expect((profileRoute?.handler as MockStaleWhileRevalidate).options).toMatchObject({
+      cacheName: 'google-profile-pictures',
+    });
+    expect(((profileRoute?.handler as MockStaleWhileRevalidate).options.plugins as Array<{ options?: unknown }>)[1].options).toMatchObject({
+      maxEntries: 80,
+      maxAgeSeconds: 60 * 60 * 24,
+      purgeOnQuotaError: true,
+    });
+  });
+
+  it('caches Twemoji SVG assets for one year', () => {
+    const harness = createWorkerHarness();
+
+    const twemojiRoute = harness.routes.find((route) =>
+      route.matcher(
+        requestContext('https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f389.svg', {
+          destination: 'image',
+        }),
+      ),
+    );
+
+    expect(twemojiRoute?.handler).toBeInstanceOf(MockCacheFirst);
+    expect(twemojiRoute?.matcher(requestContext('https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/png/1f389.png'))).toBe(
+      false,
+    );
+    expect((twemojiRoute?.handler as MockCacheFirst).options).toMatchObject({
+      cacheName: 'twemoji-svg',
+    });
+    expect(((twemojiRoute?.handler as MockCacheFirst).options.plugins as Array<{ options?: unknown }>)[1].options).toMatchObject({
+      maxEntries: 512,
+      maxAgeSeconds: 60 * 60 * 24 * 365,
+      purgeOnQuotaError: true,
+    });
   });
 
   it('returns the precached CSR shell when an offline navigation misses the network', async () => {

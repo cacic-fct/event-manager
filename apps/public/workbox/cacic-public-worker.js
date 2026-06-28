@@ -71,6 +71,10 @@ const isCertificateDownload = (url) =>
 const isZxingWasmUrl = (url) =>
   ['https://fastly.jsdelivr.net', 'https://cdn.jsdelivr.net'].includes(url.origin) &&
   /^\/npm\/zxing-wasm@[^/]+\/dist\/full\/zxing_full\.wasm$/.test(url.pathname);
+const isGoogleProfilePictureUrl = (url) =>
+  url.origin === 'https://lh3.googleusercontent.com' && /^\/a(?:-|\/)/.test(url.pathname);
+const isTwemojiSvgUrl = (url) =>
+  url.origin === 'https://cdn.jsdelivr.net' && /^\/gh\/twitter\/twemoji@latest\/assets\/svg\/[^/]+\.svg$/.test(url.pathname);
 const hasPrivateCacheControl = (response) => {
   const cacheControl = response.headers.get('Cache-Control')?.toLowerCase() ?? '';
   return cacheControl.includes('no-store') || cacheControl.includes('private');
@@ -172,6 +176,40 @@ workbox.routing.registerRoute(
       new workbox.expiration.ExpirationPlugin({
         maxEntries: 120,
         maxAgeSeconds: 60 * 60 * 24 * 30,
+        purgeOnQuotaError: true,
+      }),
+    ],
+  }),
+);
+
+workbox.routing.registerRoute(
+  ({ request, url }) => request.method === 'GET' && request.destination === 'image' && isGoogleProfilePictureUrl(url),
+  new workbox.strategies.StaleWhileRevalidate({
+    cacheName: 'google-profile-pictures',
+    plugins: [
+      new workbox.cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 80,
+        maxAgeSeconds: 60 * 60 * 24,
+        purgeOnQuotaError: true,
+      }),
+    ],
+  }),
+);
+
+workbox.routing.registerRoute(
+  ({ request, url }) => request.method === 'GET' && request.destination === 'image' && isTwemojiSvgUrl(url),
+  new workbox.strategies.CacheFirst({
+    cacheName: 'twemoji-svg',
+    plugins: [
+      new workbox.cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 512,
+        maxAgeSeconds: 60 * 60 * 24 * 365,
         purgeOnQuotaError: true,
       }),
     ],
