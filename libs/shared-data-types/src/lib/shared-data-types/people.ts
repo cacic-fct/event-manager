@@ -1,4 +1,4 @@
-import { Field, Float, ObjectType } from '@nestjs/graphql';
+import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 
 import { MergeCandidateStatus, MergeMatchMethod } from './enums';
 import { EventAttendance } from './attendance';
@@ -64,6 +64,63 @@ export class Person {
 
   @Field(() => String, { nullable: true })
   updatedById?: string | null;
+}
+
+@ObjectType()
+export class PersonLinkedResource {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  label!: string;
+
+  @Field(() => String, { nullable: true })
+  description?: string | null;
+
+  @Field(() => String, { nullable: true })
+  route?: string | null;
+
+  @Field(() => String, { nullable: true })
+  status?: string | null;
+
+  @Field(() => Date, { nullable: true })
+  occurredAt?: Date | null;
+}
+
+@ObjectType()
+export class PersonLinkedResourceGroup {
+  @Field(() => String)
+  type!: string;
+
+  @Field(() => String)
+  label!: string;
+
+  @Field(() => String)
+  icon!: string;
+
+  @Field(() => [PersonLinkedResource])
+  items!: PersonLinkedResource[];
+
+  @Field(() => Int)
+  totalCount!: number;
+}
+
+@ObjectType()
+export class PersonLinkedDataSummary {
+  @Field(() => String)
+  personId!: string;
+
+  @Field(() => [PersonLinkedResourceGroup])
+  groups!: PersonLinkedResourceGroup[];
+
+  @Field(() => Int)
+  totalCount!: number;
+
+  @Field(() => Boolean)
+  hasLinkedData!: boolean;
+
+  @Field(() => Boolean)
+  canDelete!: boolean;
 }
 
 @ObjectType()

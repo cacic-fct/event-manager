@@ -1,9 +1,17 @@
-import { EventManagerPermissionGrantScope, Permission } from '@cacic-fct/shared-permissions';
+import { EventManagerKeycloakRole, EventManagerPermissionGrantScope, Permission } from '@cacic-fct/shared-permissions';
+import { computed, signal } from '@angular/core';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, http } from 'msw';
+import { applicationConfig } from '@storybook/angular';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
-import type { EventManagerPermissionGrant, EventManagerPermissionGrantTarget, Person } from '@cacic-fct/event-manager-admin-contracts';
+import { expect, screen, userEvent, within } from 'storybook/test';
+import type {
+  EventManagerPermissionGrant,
+  EventManagerPermissionGrantTarget,
+  Person,
+  PersonLinkedDataSummary,
+} from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspacePeopleTabComponent } from './workspace-people-tab.component';
 
 faker.seed(20260621);
@@ -43,6 +51,25 @@ type GraphqlBody = {
 };
 
 const now = new Date('2026-06-21T12:00:00.000-03:00');
+const storyRoles = signal<string[]>([EventManagerKeycloakRole.SuperAdmin]);
+const storyAuthService = {
+  user: computed(() => ({
+    sub: 'storybook-admin',
+    preferredUsername: 'storybook-admin',
+    email: 'admin@example.com',
+    roles: storyRoles(),
+    scopes: ['profile', 'email'],
+    permissions: [],
+    claims: {},
+  })),
+  roles: storyRoles,
+  scopes: () => ['profile', 'email'],
+  isAuthenticated: () => true,
+  initialize: async () => undefined,
+  login: async () => undefined,
+  logout: async () => undefined,
+  getAccessToken: () => null,
+};
 const defaultArgs: PeoplePermissionsStoryArgs = {
   personCount: 6,
   grantCount: 4,
@@ -62,10 +89,16 @@ const meta: Meta<PeoplePermissionsStoryArgs> = {
     includeExpiredGrant: { control: 'boolean' },
   },
   render: (args) => {
+    storyRoles.set([EventManagerKeycloakRole.SuperAdmin]);
     activeArgs = args;
     activeData = buildStoryData(args);
     return { props: args };
   },
+  decorators: [
+    applicationConfig({
+      providers: [{ provide: AuthService, useValue: storyAuthService }],
+    }),
+  ],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -93,6 +126,12 @@ export const PermissionManagement: Story = {
     await userEvent.click(await canvas.findByText(activeData.people[0].name));
 
     await expect(await canvas.findByText('Permissões do Event Manager')).toBeVisible();
+    await userEvent.click(await canvas.findByRole('button', { name: /vínculos/i }));
+    await expect(await screen.findByRole('heading', { name: 'Vínculos da pessoa' })).toBeVisible();
+    await expect(await screen.findByText('Certificados')).toBeVisible();
+    await expect(await screen.findByText('Ministrante')).toBeVisible();
+    await userEvent.click(await screen.findByRole('button', { name: 'Fechar' }));
+
     await expect(await canvas.findByLabelText('Preset')).toBeVisible();
     await expect(await canvas.findByLabelText('Categoria')).toBeVisible();
     await expect(await canvas.findByLabelText('Permissões')).toBeVisible();
@@ -129,6 +168,21 @@ export const EmptyPermissions: Story = {
   },
 };
 
+export const DeletablePersonWithoutLinks: Story = {
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const deletablePerson = activeData.people[1];
+    await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), deletablePerson.name);
+    await userEvent.click(await canvas.findByRole('button', { name: /buscar/i }));
+    await userEvent.click(await canvas.findByText(deletablePerson.name));
+    await userEvent.click(await canvas.findByRole('button', { name: /vínculos/i }));
+    await expect(await screen.findByRole('heading', { name: 'Vínculos da pessoa' })).toBeVisible();
+    await expect(await screen.findByText('Nenhum vínculo encontrado')).toBeVisible();
+    await expect(await screen.findByRole('button', { name: 'Excluir pessoa' })).toBeEnabled();
+  },
+};
+
 function graphqlData(query: string, variables: Record<string, unknown>) {
   if (query.includes('ListPeople') || query.includes('ListPeopleSummaries')) {
     const search = typeof variables['query'] === 'string' ? variables['query'].toLocaleLowerCase('pt-BR') : '';
@@ -143,6 +197,17 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     return {
       person: activeData.people.find((person) => person.id === variables['id']) ?? activeData.people[0],
     };
+  }
+
+  if (query.includes('PersonLinkedDataSummary')) {
+    const personId = String(variables['id'] ?? activeData.people[0].id);
+    return {
+      personLinkedDataSummary: linkedDataSummary(personId, personId === activeData.people[1]?.id ? 'empty' : 'active'),
+    };
+  }
+
+  if (query.includes('DeletePerson')) {
+    return { deletePerson: { deleted: true, id: String(variables['id'] ?? activeData.people[0].id) } };
   }
 
   if (query.includes('EventManagerPermissionGrants')) {
@@ -191,6 +256,64 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
   }
 
   return {};
+}
+
+function linkedDataSummary(personId: string, variant: 'active' | 'empty' = 'active'): PersonLinkedDataSummary {
+  const person = activeData.people.find((item) => item.id === personId) ?? activeData.people[0];
+  const event = activeData.events[0];
+  const majorEvent = activeData.majorEvents[0];
+  if (variant === 'empty') {
+    return {
+      personId: person.id,
+      groups: [],
+      totalCount: 0,
+      hasLinkedData: false,
+      canDelete: true,
+    };
+  }
+
+  const groups = [
+    {
+      type: 'CERTIFICATE',
+      label: 'Certificados',
+      icon: 'workspace_premium',
+      totalCount: 1,
+      items: [
+        {
+          id: 'certificate-story',
+          label: 'Certificado de participação',
+          description: `Grande evento: ${majorEvent.name}`,
+          route: `/certificates/major-event/${majorEvent.id}/certificate-config-story`,
+          status: null,
+          occurredAt: isoDaysFromNow(-2),
+        },
+      ],
+    },
+    {
+      type: 'EVENT_RELATION',
+      label: 'Vínculos com eventos',
+      icon: 'event_available',
+      totalCount: 1,
+      items: [
+        {
+          id: `${event.id}:${person.id}:lecturer`,
+          label: event.name,
+          description: 'Ministrante',
+          route: `/events/${event.id}`,
+          status: null,
+          occurredAt: isoDaysFromNow(-12),
+        },
+      ],
+    },
+  ];
+
+  return {
+    personId: person.id,
+    groups,
+    totalCount: groups.reduce((total, group) => total + group.totalCount, 0),
+    hasLinkedData: true,
+    canDelete: false,
+  };
 }
 
 function permissionGrantTargets(scope: unknown): EventManagerPermissionGrantTarget[] {

@@ -1,0 +1,92 @@
+<h2 mat-dialog-title>Vínculos da pessoa</h2>
+
+<mat-dialog-content class="linked-data-content">
+  <header class="summary-header">
+    <div>
+      <span>Pessoa</span>
+      <strong>{{ data.personName }}</strong>
+    </div>
+    <div>
+      <span>Recursos vinculados</span>
+      <strong>{{ summary()?.totalCount ?? '-' }}</strong>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="state-panel">
+      <mat-spinner diameter="36" />
+      <span>Carregando vínculos...</span>
+    </div>
+  } @else if (error()) {
+    <div class="state-panel">
+      <mat-icon>error</mat-icon>
+      <h3>Não foi possível carregar os vínculos</h3>
+      <p>{{ error() }}</p>
+      <button mat-stroked-button type="button" (click)="load()">
+        <mat-icon>refresh</mat-icon>
+        Tentar novamente
+      </button>
+    </div>
+  } @else if (summary()?.hasLinkedData) {
+    <section class="group-list" aria-label="Recursos vinculados">
+      @for (group of summary()?.groups; track group.type) {
+        <article class="resource-group">
+          <header class="group-heading">
+            <span class="group-icon">
+              <mat-icon>{{ group.icon }}</mat-icon>
+            </span>
+            <div>
+              <h3>{{ group.label }}</h3>
+              <span>{{ group.totalCount }} {{ group.totalCount === 1 ? 'registro' : 'registros' }}</span>
+            </div>
+          </header>
+
+          <div class="resource-list">
+            @for (item of group.items; track item.id) {
+              <div class="resource-row">
+                <div class="resource-copy">
+                  <strong>{{ item.label }}</strong>
+                  <span>{{ resourceDescription(item) }}</span>
+                </div>
+
+                <div class="resource-meta">
+                  @if (item.status) {
+                    <span class="status-chip">{{ item.status }}</span>
+                  }
+                  @if (item.occurredAt) {
+                    <time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'short' }}</time>
+                  }
+                  @if (item.route) {
+                    <a mat-stroked-button [routerLink]="item.route" [mat-dialog-close]="false">
+                      <mat-icon>open_in_new</mat-icon>
+                      Abrir
+                    </a>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </section>
+  } @else {
+    <div class="state-panel empty-delete-state">
+      <mat-icon>person_remove</mat-icon>
+      <h3>Nenhum vínculo encontrado</h3>
+      <p>Esta pessoa não tem recursos ativos vinculados no Event Manager e pode ser excluída por super-admins.</p>
+      <button
+        mat-flat-button
+        type="button"
+        color="warn"
+        [disabled]="deleting() || !summary()?.canDelete"
+        (click)="requestDelete()">
+        <mat-icon>delete</mat-icon>
+        Excluir pessoa
+      </button>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close type="button">Fechar</button>
+</mat-dialog-actions>
