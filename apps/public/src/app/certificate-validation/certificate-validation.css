@@ -59,7 +59,6 @@ h3 {
 }
 
 .turnstile-section-active {
-  border-inline-start: 3px solid var(--mat-sys-primary);
   padding-inline-start: 12px;
 }
 
