@@ -8,6 +8,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CERTIFICATE_CONFIG_SELECT,
@@ -32,6 +33,7 @@ export class CertificateIssuingService {
     private readonly prisma: PrismaService,
     private readonly validation: CertificateValidationService,
     private readonly eligibilityService: CertificateEligibilityService,
+    private readonly notifications?: NovuNotificationsService,
   ) {}
 
   async listCertificatesByTarget(
@@ -379,7 +381,7 @@ export class CertificateIssuingService {
     const renderedData = this.buildRenderedData(config, recipient, issuedAt);
 
     if (!existingCertificate) {
-      return this.prisma.certificate.create({
+      const certificate = await this.prisma.certificate.create({
         data: {
           personId: recipient.person.id,
           configId: config.id,
@@ -390,9 +392,11 @@ export class CertificateIssuingService {
         },
         select: CERTIFICATE_SELECT,
       });
+      await this.notifyCertificateAvailable(certificate);
+      return certificate;
     }
 
-    return this.prisma.certificate.update({
+    const certificate = await this.prisma.certificate.update({
       where: {
         id: existingCertificate.id,
       },
@@ -407,6 +411,40 @@ export class CertificateIssuingService {
       },
       select: CERTIFICATE_SELECT,
     });
+    await this.notifyCertificateAvailable(certificate);
+    return certificate;
+  }
+
+  private async notifyCertificateAvailable(certificate: CertificateRecord): Promise<void> {
+    const notifications = this.notifications;
+    if (!notifications) {
+      return;
+    }
+
+    await notifications.notifyCertificateAvailable({
+      certificateId: certificate.id,
+      configId: certificate.configId,
+      certificateName: certificate.config.name,
+      targetName: this.getCertificateTargetName(certificate.config),
+      issuedAt: certificate.issuedAt,
+      recipient: notifications.mapPersonToRecipient(certificate.person),
+    });
+  }
+
+  private getCertificateTargetName(config: CertificateConfigRecord): string | null {
+    if (config.scope === CertificateScope.EVENT) {
+      return config.event?.name ?? null;
+    }
+
+    if (config.scope === CertificateScope.EVENT_GROUP) {
+      return config.eventGroup?.name ?? null;
+    }
+
+    if (config.scope === CertificateScope.MAJOR_EVENT) {
+      return config.majorEvent?.name ?? null;
+    }
+
+    return null;
   }
 
   private buildRenderedData(

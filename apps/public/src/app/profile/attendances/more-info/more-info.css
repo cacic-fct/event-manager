@@ -16,7 +16,6 @@
 .emoji-frame,
 .small-emoji-frame {
   align-items: center;
-  border-radius: 8px;
   display: inline-flex;
   justify-content: center;
 }

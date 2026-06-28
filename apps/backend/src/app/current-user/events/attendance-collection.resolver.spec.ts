@@ -394,6 +394,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
 
   it('stages offline attendances when send-time collection authorization has expired', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
+    const notifications = createNotificationsMock();
     const { resolver, prisma } = createCollectionResolver({
       collector: collectorPerson({
         event: {
@@ -405,6 +406,8 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         },
       }),
       people: [{ id: 'person-1' }],
+      notificationUsers: [{ id: 'admin-user', email: 'admin@example.com', name: 'Admin User' }],
+      notifications,
     });
 
     await expect(
@@ -459,6 +462,88 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         }),
       }),
     );
+    expect(notifications.notifyOfflineAttendanceReviewQueued).toHaveBeenCalledWith(
+      expect.objectContaining({
+        submissionId: 'submission-1',
+        eventId: 'event-1',
+        eventName: 'Evento',
+        submittedById: 'collector-user',
+        recipients: [
+          {
+            subscriberId: 'admin-user',
+            email: 'admin@example.com',
+            firstName: 'Admin',
+            lastName: 'User',
+            data: { userId: 'admin-user' },
+          },
+        ],
+      }),
+    );
+    jest.useRealTimers();
+  });
+
+  it('does not notify reviewers again when an offline retry updates an already pending submission', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
+    const notifications = createNotificationsMock();
+    const { resolver, prisma } = createCollectionResolver({
+      collector: collectorPerson({
+        event: {
+          startDate: new Date('2026-05-20T12:00:00.000Z'),
+          endDate: new Date('2026-05-20T13:00:00.000Z'),
+          deletedAt: null,
+          publiclyVisible: true,
+          shouldCollectAttendance: true,
+        },
+      }),
+      people: [{ id: 'person-1' }],
+      offlineSubmissions: [
+        buildOfflineSubmissionRecord({
+          clientId: 'queue-1',
+          eventId: 'event-1',
+          personId: 'person-1',
+          createdByMethod: AttendanceCreationMethod.SCANNER,
+          scannerCode: 'user:user-1',
+          manualValue: null,
+          collectedAt: new Date('2026-05-20T12:30:00.000Z'),
+          authorUserId: 'offline-user',
+          submittedById: 'collector-user',
+          stagedReason: 'A coleta de presença não está aberta para este evento.',
+          collectedLatitude: -22.12,
+          collectedLongitude: -51.4,
+          collectedAccuracyMeters: 15,
+        }),
+      ],
+      notificationUsers: [{ id: 'admin-user', email: 'admin@example.com', name: 'Admin User' }],
+      notifications,
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-1',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.SCANNER,
+              code: 'user:user-1',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-20T12:30:00.000Z'),
+              authorUserId: 'offline-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        clientId: 'queue-1',
+        eventId: 'event-1',
+        status: 'STAGED',
+      }),
+    ]);
+
+    expect(prisma.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledTimes(1);
+    expect(notifications.notifyOfflineAttendanceReviewQueued).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
 
@@ -986,6 +1071,8 @@ function createCollectionResolver(input: {
   frozenResources?: { assertEventMutable: jest.Mock };
   grantsAttendancePermission?: boolean;
   offlineSubmissions?: OfflineSubmissionRecord[];
+  notificationUsers?: { id: string; email: string; name: string }[];
+  notifications?: ReturnType<typeof createNotificationsMock>;
 }) {
   const prisma = createPrisma({
     attendances: [],
@@ -993,7 +1080,7 @@ function createCollectionResolver(input: {
     majorEventSubscriptions: [],
     collectors: [],
     people: input.people ?? [],
-    collectorUsers: [],
+    collectorUsers: input.notificationUsers ?? [],
     offlineSubmissions: input.offlineSubmissions,
   }) as ReturnType<typeof createPrisma> & {
     $transaction: jest.Mock;
@@ -1056,10 +1143,29 @@ function createCollectionResolver(input: {
       attendanceCategories as never,
       frozenResources as never,
       authorizationPolicy as never,
+      undefined,
+      undefined,
+      input.notifications as never,
     ),
     prisma,
     frozenResources,
     authorizationPolicy,
+  };
+}
+
+function createNotificationsMock() {
+  return {
+    notifyOfflineAttendanceReviewQueued: jest.fn().mockResolvedValue(undefined),
+    mapUserToRecipient: jest.fn((user: { id: string; email: string; name: string }) => {
+      const [firstName, ...lastNameParts] = user.name.trim().split(/\s+/);
+      return {
+        subscriberId: user.id,
+        email: user.email,
+        firstName,
+        lastName: lastNameParts.join(' ') || undefined,
+        data: { userId: user.id },
+      };
+    }),
   };
 }
 

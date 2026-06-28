@@ -67,15 +67,15 @@
               (click)="workspace.selectEventDraft(eventItem, draft)"
               [class.selected-list-item]="workspace.selectedEventDraft()?.id === draft.id">
               <span matListItemTitle class="list-title">
-                <mat-icon>edit_note</mat-icon>
-                <span class="draft-label">Rascunho</span>
+                <app-twemoji [emoji]="eventItem.emoji" />
                 <span>{{ draft.name }}</span>
               </span>
               <span matListItemLine>
                 Original: {{ eventItem.name }} · Editado em {{ draft.updatedAt | date: 'short' }}
               </span>
-              <span matListItemLine>
-                {{ draft.updatedByName || draft.createdByName || 'Usuário não identificado' }}
+              <span matListItemLine class="draft-line">
+                <span class="draft-label">Rascunho</span>
+                <span>{{ draft.updatedByName || draft.createdByName || 'Usuário não identificado' }}</span>
               </span>
             </mat-list-item>
           }

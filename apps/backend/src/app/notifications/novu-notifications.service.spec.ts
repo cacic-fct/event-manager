@@ -226,6 +226,130 @@ describe('NovuNotificationsService', () => {
     );
   });
 
+  it('sends offline attendance review notifications to Novu once per submission transaction', async () => {
+    await service.notifyOfflineAttendanceReviewQueued({
+      submissionId: 'submission-1',
+      eventId: 'event-1',
+      eventName: 'Aula aberta',
+      submittedById: 'collector-user',
+      submittedAt: new Date('2026-05-23T15:30:00.000Z'),
+      authorName: 'Offline Collector',
+      recipients: [
+        {
+          subscriberId: 'admin-user',
+          email: 'admin@example.com',
+        },
+        {
+          subscriberId: 'reviewer-user',
+          email: 'reviewer@example.com',
+        },
+      ],
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://novu.example.com/v1/events/trigger',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'ApiKey secret',
+          'Content-Type': 'application/json',
+        },
+      }),
+    );
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toEqual(
+      expect.objectContaining({
+        name: 'offline-attendance-review-queued',
+        transactionId: 'offline-attendance-review:submission-1',
+        to: [
+          {
+            subscriberId: 'admin-user',
+            email: 'admin@example.com',
+          },
+          {
+            subscriberId: 'reviewer-user',
+            email: 'reviewer@example.com',
+          },
+        ],
+        payload: expect.objectContaining({
+          title: 'Presença off-line para revisar',
+          eventId: 'event-1',
+          eventName: 'Aula aberta',
+          submissionId: 'submission-1',
+          submittedById: 'collector-user',
+          submittedAt: '2026-05-23T15:30:00.000Z',
+          authorName: 'Offline Collector',
+          actionLabel: 'Revisar presença',
+          actionUrl: '/admin/attendances/event/event-1?offlineReview=pending',
+        }),
+      }),
+    );
+    expect(body.overrides.webPush.data).toEqual(
+      expect.objectContaining({
+        url: '/admin/attendances/event/event-1?offlineReview=pending',
+        eventId: 'event-1',
+        submissionId: 'submission-1',
+      }),
+    );
+  });
+
+  it('sends certificate availability notifications with an idempotent issue transaction', async () => {
+    await service.notifyCertificateAvailable({
+      certificateId: 'certificate-1',
+      configId: 'config-1',
+      certificateName: 'Certificado de participacao',
+      targetName: 'Semana da Computacao',
+      issuedAt: new Date('2026-05-23T15:30:00.000Z'),
+      recipient: {
+        subscriberId: 'user-1',
+        email: 'ada@example.com',
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://novu.example.com/v1/events/trigger',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'ApiKey secret',
+          'Content-Type': 'application/json',
+        },
+      }),
+    );
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toEqual(
+      expect.objectContaining({
+        name: 'certificate-available',
+        transactionId: 'certificate-available:config-1:certificate-1:2026-05-23T15:30:00.000Z',
+        to: {
+          subscriberId: 'user-1',
+          email: 'ada@example.com',
+        },
+        payload: expect.objectContaining({
+          title: 'Certificado disponível',
+          body: 'Seu certificado de Semana da Computacao está disponível.',
+          certificateId: 'certificate-1',
+          configId: 'config-1',
+          certificateName: 'Certificado de participacao',
+          targetName: 'Semana da Computacao',
+          issuedAt: '2026-05-23T15:30:00.000Z',
+          actionLabel: 'Ver certificados',
+          actionUrl: '/profile/attendances',
+        }),
+      }),
+    );
+    expect(body.overrides.webPush.data).toEqual(
+      expect.objectContaining({
+        url: '/profile/attendances',
+        certificateId: 'certificate-1',
+        configId: 'config-1',
+        subscriberId: 'user-1',
+      }),
+    );
+  });
+
   it.each([
     [SubscriptionStatus.WAITING_RECEIPT_UPLOAD, 'Aguardando comprovante', false, false],
     [SubscriptionStatus.RECEIPT_UNDER_REVIEW, 'Comprovante em análise', false, false],

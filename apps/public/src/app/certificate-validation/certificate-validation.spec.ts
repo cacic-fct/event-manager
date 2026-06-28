@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Params, Router, convertToParamMap } from '@angular/router';
 import type { PublicCertificateValidation } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, CacicAnalyticsService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { MatDialog } from '@angular/material/dialog';
 import { BehaviorSubject, of } from 'rxjs';
 import { CertificateFileDownloadService } from '../shared/certificate-file-download.service';
@@ -131,13 +131,8 @@ async function createFixture({
       {
         provide: AuthService,
         useValue: {
+          user: signal(null),
           isAuthenticated: signal(false),
-        },
-      },
-      {
-        provide: CacicAnalyticsService,
-        useValue: {
-          trackEvent: vi.fn(),
         },
       },
       {

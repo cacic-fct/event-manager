@@ -160,7 +160,7 @@ type TotpDialogState =
       }
 
       .code {
-        font-family: 'Source Code Pro Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-family: 'Source Code Pro Variable', 'Source Code Pro', monospace;
         font-size: 2.6rem;
         line-height: 1;
         letter-spacing: 0;

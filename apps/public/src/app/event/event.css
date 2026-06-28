@@ -20,7 +20,6 @@
 
 .emoji-frame {
   align-items: center;
-  border-radius: 8px;
   display: inline-flex;
   height: 72px;
   justify-content: center;
@@ -123,7 +122,6 @@ h3 {
 
 .weather-summary {
   align-items: center;
-  background: var(--mat-sys-surface-container-low);
   border-radius: 8px;
   display: flex;
   gap: 12px;
@@ -176,7 +174,6 @@ h3 {
 }
 
 .lecturer-card {
-  background: var(--mat-sys-surface-container-low);
   border-radius: 8px;
   display: grid;
   gap: 16px;

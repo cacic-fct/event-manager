@@ -1,8 +1,9 @@
-import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { OfflineEventAttendanceSubmission } from '@cacic-fct/event-manager-admin-contracts';
+import { AttendanceLocationMapComponent } from './attendance-location-map.component';
 
 export interface WorkspaceOfflineAttendanceSubmissionDialogData {
   submission: OfflineEventAttendanceSubmission & {
@@ -14,10 +15,10 @@ export interface WorkspaceOfflineAttendanceSubmissionDialogData {
 
 @Component({
   selector: 'app-workspace-offline-attendance-submission-dialog',
-  imports: [DatePipe, MatButtonModule, MatDialogModule],
+  imports: [AttendanceLocationMapComponent, DatePipe, DecimalPipe, MatButtonModule, MatDialogModule],
   template: `
     <h2 mat-dialog-title>Presença off-line em revisão</h2>
-    <div mat-dialog-content>
+    <div mat-dialog-content class="offline-submission-content">
       <dl>
         <div>
           <dt>Evento</dt>
@@ -56,15 +57,11 @@ export interface WorkspaceOfflineAttendanceSubmissionDialogData {
         <div>
           <dt>Localização</dt>
           <dd>
-            @if (
-              data.submission.collectedLatitude !== null &&
-              data.submission.collectedLatitude !== undefined &&
-              data.submission.collectedLongitude !== null &&
-              data.submission.collectedLongitude !== undefined
-            ) {
-              {{ data.submission.collectedLatitude }}, {{ data.submission.collectedLongitude }}
+            @if (hasLocation()) {
+              {{ data.submission.collectedLatitude | number: '1.6-6' }},
+              {{ data.submission.collectedLongitude | number: '1.6-6' }}
               @if (data.submission.collectedAccuracyMeters !== null && data.submission.collectedAccuracyMeters !== undefined) {
-                · precisão {{ data.submission.collectedAccuracyMeters }} m
+                · precisão de {{ data.submission.collectedAccuracyMeters | number: '1.0-1' }} m
               }
             } @else {
               -
@@ -72,6 +69,16 @@ export interface WorkspaceOfflineAttendanceSubmissionDialogData {
           </dd>
         </div>
       </dl>
+
+      @if (hasLocation()) {
+        <app-attendance-location-map
+          [latitude]="data.submission.collectedLatitude"
+          [longitude]="data.submission.collectedLongitude"
+          [accuracyMeters]="data.submission.collectedAccuracyMeters"
+          [markerLabel]="data.submission.personName"
+          ariaLabel="Mapa do local onde a presença off-line foi coletada"
+        />
+      }
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>Fechar</button>
@@ -84,6 +91,12 @@ export interface WorkspaceOfflineAttendanceSubmissionDialogData {
     </div>
   `,
   styles: `
+    .offline-submission-content {
+      display: grid;
+      gap: 1rem;
+      min-width: min(28rem, 100%);
+    }
+
     dl {
       display: grid;
       gap: 0.75rem;
@@ -106,4 +119,12 @@ export interface WorkspaceOfflineAttendanceSubmissionDialogData {
 })
 export class WorkspaceOfflineAttendanceSubmissionDialogComponent {
   readonly data = inject<WorkspaceOfflineAttendanceSubmissionDialogData>(MAT_DIALOG_DATA);
+
+  protected readonly hasLocation = computed(
+    () =>
+      this.data.submission.collectedLatitude !== null &&
+      this.data.submission.collectedLatitude !== undefined &&
+      this.data.submission.collectedLongitude !== null &&
+      this.data.submission.collectedLongitude !== undefined,
+  );
 }

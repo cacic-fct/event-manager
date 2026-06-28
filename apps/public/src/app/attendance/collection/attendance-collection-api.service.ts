@@ -79,6 +79,8 @@ const PUBLIC_EVENT_FIELDS = `
   emoji
   type
   locationDescription
+  onlineAttendanceStartDate
+  onlineAttendanceEndDate
   majorEventId
   eventGroupId
   majorEvent {

@@ -24,6 +24,25 @@ type SubscriptionStatusNotification = {
   rejectionReason?: string | null;
 };
 
+type OfflineAttendanceReviewQueuedNotification = {
+  submissionId: string;
+  eventId: string;
+  eventName: string;
+  recipients: NotificationRecipient[];
+  submittedById: string;
+  authorName?: string | null;
+  submittedAt: Date;
+};
+
+type CertificateAvailableNotification = {
+  certificateId: string;
+  configId: string;
+  certificateName: string;
+  targetName?: string | null;
+  issuedAt: Date;
+  recipient: NotificationRecipient;
+};
+
 type NovuTriggerResponse = {
   acknowledged: boolean;
   status: string;
@@ -37,6 +56,14 @@ export class NovuNotificationsService {
   private readonly workflowIdentifier = this.config.get<string>(
     'NOVU_MAJOR_EVENT_SUBSCRIPTION_WORKFLOW_IDENTIFIER',
     'major-event-subscription-status-changed',
+  );
+  private readonly offlineAttendanceReviewWorkflowIdentifier = this.config.get<string>(
+    'NOVU_OFFLINE_ATTENDANCE_REVIEW_WORKFLOW_IDENTIFIER',
+    'offline-attendance-review-queued',
+  );
+  private readonly certificateAvailableWorkflowIdentifier = this.config.get<string>(
+    'NOVU_CERTIFICATE_AVAILABLE_WORKFLOW_IDENTIFIER',
+    'certificate-available',
   );
 
   constructor(private readonly config: ConfigService) {}
@@ -203,6 +230,153 @@ export class NovuNotificationsService {
     });
   }
 
+  async notifyOfflineAttendanceReviewQueued(input: OfflineAttendanceReviewQueuedNotification): Promise<void> {
+    if (!this.isSecureModeEnabled()) {
+      return;
+    }
+
+    const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
+    if (!secretKey || input.recipients.length === 0) {
+      return;
+    }
+
+    const actionUrl = `/admin/attendances/event/${input.eventId}?offlineReview=pending`;
+    const title = `Presença off-line para revisar`;
+    const body = `Uma presença off-line de ${input.eventName} foi enviada para revisão administrativa.`;
+
+    try {
+      const response = await fetch(`${this.apiUrl()}/v1/events/trigger`, {
+        method: 'POST',
+        headers: {
+          Authorization: `ApiKey ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: this.offlineAttendanceReviewWorkflowIdentifier,
+          to: input.recipients,
+          transactionId: `offline-attendance-review:${input.submissionId}`,
+          payload: {
+            title,
+            subject: title,
+            body,
+            eventId: input.eventId,
+            eventName: input.eventName,
+            submissionId: input.submissionId,
+            submittedById: input.submittedById,
+            authorName: input.authorName ?? null,
+            submittedAt: input.submittedAt.toISOString(),
+            actionLabel: 'Revisar presença',
+            actionUrl,
+            redirectUrl: actionUrl,
+          },
+          overrides: {
+            fcm: {
+              data: {
+                url: actionUrl,
+                eventId: input.eventId,
+                submissionId: input.submissionId,
+              },
+            },
+            webPush: {
+              data: {
+                url: actionUrl,
+                eventId: input.eventId,
+                submissionId: input.submissionId,
+              },
+            },
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
+        return;
+      }
+
+      const result = (await response.json()) as NovuTriggerResponse;
+      if (!result.acknowledged) {
+        this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
+      }
+    } catch (error) {
+      this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async notifyCertificateAvailable(input: CertificateAvailableNotification): Promise<void> {
+    if (!this.isSecureModeEnabled()) {
+      return;
+    }
+
+    const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
+    if (!secretKey) {
+      return;
+    }
+
+    const actionUrl = '/profile/attendances';
+    const title = 'Certificado disponível';
+    const targetLabel = input.targetName?.trim() || input.certificateName;
+    const body = `Seu certificado de ${targetLabel} está disponível.`;
+
+    try {
+      const response = await fetch(`${this.apiUrl()}/v1/events/trigger`, {
+        method: 'POST',
+        headers: {
+          Authorization: `ApiKey ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: this.certificateAvailableWorkflowIdentifier,
+          to: input.recipient,
+          transactionId: `certificate-available:${input.configId}:${input.certificateId}:${input.issuedAt.toISOString()}`,
+          payload: {
+            title,
+            subject: title,
+            body,
+            certificateId: input.certificateId,
+            configId: input.configId,
+            certificateName: input.certificateName,
+            targetName: input.targetName ?? null,
+            issuedAt: input.issuedAt.toISOString(),
+            actionLabel: 'Ver certificados',
+            actionUrl,
+            redirectUrl: actionUrl,
+            subscriberId: input.recipient.subscriberId,
+          },
+          overrides: {
+            fcm: {
+              data: {
+                url: actionUrl,
+                certificateId: input.certificateId,
+                configId: input.configId,
+                subscriberId: input.recipient.subscriberId,
+              },
+            },
+            webPush: {
+              data: {
+                url: actionUrl,
+                certificateId: input.certificateId,
+                configId: input.configId,
+                subscriberId: input.recipient.subscriberId,
+              },
+            },
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
+        return;
+      }
+
+      const result = (await response.json()) as NovuTriggerResponse;
+      if (!result.acknowledged) {
+        this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
+      }
+    } catch (error) {
+      this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   mapPersonToRecipient(person: {
     id: string;
     name: string;
@@ -221,6 +395,20 @@ export class NovuNotificationsService {
       lastName: lastNameParts.join(' ') || undefined,
       data: {
         personId: person.id,
+      },
+    };
+  }
+
+  mapUserToRecipient(user: { id: string; email: string; name: string }): NotificationRecipient {
+    const [firstName, ...lastNameParts] = user.name.trim().split(/\s+/);
+
+    return {
+      subscriberId: user.id,
+      email: user.email,
+      firstName: firstName || undefined,
+      lastName: lastNameParts.join(' ') || undefined,
+      data: {
+        userId: user.id,
       },
     };
   }

@@ -120,6 +120,7 @@
         "styles": [
           "@fontsource/material-symbols-outlined",
           "@fontsource-variable/inter",
+          "@fontsource-variable/source-code-pro",
           "apps/admin/src/styles.scss"
         ]
       },
@@ -143,6 +144,7 @@
         "styles": [
           "@fontsource/material-symbols-outlined",
           "@fontsource-variable/inter",
+          "@fontsource-variable/source-code-pro",
           "apps/admin/src/styles.scss"
         ]
       },

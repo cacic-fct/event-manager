@@ -8,8 +8,6 @@
 
 .emoji-frame {
   align-items: center;
-  background: var(--mat-sys-surface-container-high);
-  border-radius: 8px;
   display: flex;
   height: 44px;
   justify-content: center;

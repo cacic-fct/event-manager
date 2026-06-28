@@ -29,10 +29,15 @@
         {{ item.event.majorEvent?.name || item.event.eventGroup?.name || 'Coleta de presença' }}
       </div>
       <div matListItemLine>{{ item.event.locationDescription || 'Local não informado' }}</div>
+      <div matListItemLine>{{ collectionWindowLabel(item) }}</div>
       <div matListItemMeta class="time-range">
+        @if (item.event.startDate || item.event.endDate) { @if (item.event.startDate) {
         <span>{{ item.event.startDate | date: 'HH:mm' }}</span>
+        } @if (item.event.startDate && item.event.endDate) {
         <br />
+        } @if (item.event.endDate) {
         <span>{{ item.event.endDate | date: 'HH:mm' }}</span>
+        } }
       </div>
     </mat-list-item>
     } @empty {

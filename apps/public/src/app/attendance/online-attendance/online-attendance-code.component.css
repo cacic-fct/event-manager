@@ -19,8 +19,6 @@
 
 .emoji-frame {
   align-items: center;
-  background: var(--mat-sys-surface-container-high);
-  border-radius: 8px;
   display: flex;
   flex: 0 0 auto;
   height: 72px;
@@ -68,7 +66,7 @@
   border: 1px solid var(--mat-sys-outline);
   border-radius: 8px;
   display: flex;
-  font-family: 'Source Code Pro Variable', monospace;
+  font-family: 'Source Code Pro Variable', 'Source Code Pro', monospace;
   font-size: 2rem;
   font-weight: 700;
   justify-content: center;

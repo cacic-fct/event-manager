@@ -48,11 +48,20 @@ describe('CertificateIssuingService', () => {
         update: jest.fn(),
       },
     };
-    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never);
+    const notifications = {
+      notifyCertificateAvailable: jest.fn(),
+      mapPersonToRecipient: jest.fn(),
+    };
+    const serviceWithNotifications = new CertificateIssuingService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      notifications as never,
+    );
 
     await expect(
       (
-        service as unknown as {
+        serviceWithNotifications as unknown as {
           upsertCertificateForRecipient(config: unknown, recipient: unknown): Promise<unknown>;
         }
       ).upsertCertificateForRecipient(certificateConfig, recipient),
@@ -60,6 +69,7 @@ describe('CertificateIssuingService', () => {
 
     expect(prisma.certificate.create).not.toHaveBeenCalled();
     expect(prisma.certificate.update).not.toHaveBeenCalled();
+    expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
   });
 
   it('keeps the original issue date when rendered data only differs by object key order', async () => {
@@ -231,6 +241,10 @@ describe('CertificateIssuingService', () => {
 
   it('creates certificates when no previous person/config certificate exists', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-23T12:00:00.000Z'));
+    const notifications = {
+      mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
+      notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
+    };
     const prisma = {
       certificate: {
         findUnique: jest.fn().mockResolvedValue(null),
@@ -238,7 +252,7 @@ describe('CertificateIssuingService', () => {
         update: jest.fn(),
       },
     };
-    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never);
+    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
 
     await expect(
       (
@@ -260,10 +274,61 @@ describe('CertificateIssuingService', () => {
       }),
     );
     expect(prisma.certificate.update).not.toHaveBeenCalled();
+    expect(notifications.mapPersonToRecipient).toHaveBeenCalledWith(mappedCertificateRecord.person);
+    expect(notifications.notifyCertificateAvailable).toHaveBeenCalledWith({
+      certificateId: 'certificate-1',
+      configId: 'config-1',
+      certificateName: 'Config',
+      targetName: null,
+      issuedAt: mappedCertificateRecord.issuedAt,
+      recipient: { subscriberId: 'user-1' },
+    });
     jest.useRealTimers();
   });
 
+  it('notifies when a manual certificate is first issued', async () => {
+    const notifications = {
+      mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
+      notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
+    };
+    const manualCertificateRecord = {
+      ...mappedCertificateRecord,
+      config: {
+        ...mappedCertificateRecord.config,
+        issuedTo: CertificateIssuedTo.OTHER,
+      },
+    };
+    const prisma = {
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(manualCertificateRecord),
+        update: jest.fn(),
+      },
+    };
+    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
+
+    await (
+      service as unknown as {
+        upsertCertificateForRecipient(config: unknown, recipient: unknown, issuedById?: string): Promise<unknown>;
+      }
+    ).upsertCertificateForRecipient(manualCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] });
+
+    expect(notifications.mapPersonToRecipient).toHaveBeenCalledWith(mappedCertificateRecord.person);
+    expect(notifications.notifyCertificateAvailable).toHaveBeenCalledWith({
+      certificateId: 'certificate-1',
+      configId: 'config-1',
+      certificateName: 'Config',
+      targetName: null,
+      issuedAt: mappedCertificateRecord.issuedAt,
+      recipient: { subscriberId: 'user-1' },
+    });
+  });
+
   it('updates soft-deleted certificates when rendered data or template changed', async () => {
+    const notifications = {
+      mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
+      notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
+    };
     const prisma = {
       certificate: {
         findUnique: jest.fn().mockResolvedValue({
@@ -275,7 +340,7 @@ describe('CertificateIssuingService', () => {
         update: jest.fn().mockResolvedValue(mappedCertificateRecord),
       },
     };
-    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never);
+    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
 
     await (
       service as unknown as {
@@ -290,6 +355,54 @@ describe('CertificateIssuingService', () => {
           certificateTemplateId: 'template-1',
           deletedAt: null,
         }),
+      }),
+    );
+    expect(notifications.notifyCertificateAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        certificateId: 'certificate-1',
+        certificateName: 'Config',
+        recipient: { subscriberId: 'user-1' },
+      }),
+    );
+  });
+
+  it('notifies when an active certificate is materially replaced', async () => {
+    const notifications = {
+      mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
+      notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
+    };
+    const prisma = {
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue({
+          ...mappedCertificateRecord,
+          certificateTemplateId: 'old-template',
+          deletedAt: null,
+        }),
+        create: jest.fn(),
+        update: jest.fn().mockResolvedValue(mappedCertificateRecord),
+      },
+    };
+    const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
+
+    await (
+      service as unknown as {
+        upsertCertificateForRecipient(config: unknown, recipient: unknown): Promise<unknown>;
+      }
+    ).upsertCertificateForRecipient(mappedCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] });
+
+    expect(prisma.certificate.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'certificate-1' },
+        data: expect.objectContaining({
+          certificateTemplateId: 'template-1',
+          deletedAt: null,
+        }),
+      }),
+    );
+    expect(notifications.notifyCertificateAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        certificateId: 'certificate-1',
+        recipient: { subscriberId: 'user-1' },
       }),
     );
   });

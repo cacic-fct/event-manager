@@ -10,7 +10,14 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import {
+  AttendanceCreationMethod,
+  AuditLogEntityType,
+  AuditLogOperation,
+  EventManagerPermissionGrantScope,
+  Prisma,
+  UserRole,
+} from '@prisma/client';
 import { CurrentUserAttendanceCollectionEvent } from '../models';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
@@ -22,6 +29,7 @@ import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.inte
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
+import { NovuNotificationsService } from '../../notifications/novu-notifications.service';
 
 const MAX_LOCATION_ACCURACY_METERS = 200;
 const MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE = 150;
@@ -56,6 +64,13 @@ export class CurrentUserAttendanceCollectionResolver {
     private readonly dashboardInsights: DashboardInsightsService = {
       invalidateCachedInsights: async () => undefined,
     } as unknown as DashboardInsightsService,
+    private readonly notifications: NovuNotificationsService = {
+      notifyOfflineAttendanceReviewQueued: async () => undefined,
+      mapUserToRecipient: (user: { id: string; email: string; name: string }) => ({
+        subscriberId: user.id,
+        email: user.email,
+      }),
+    } as unknown as NovuNotificationsService,
   ) {}
 
   @Query(() => [CurrentUserAttendanceCollectionEvent], {
@@ -717,6 +732,9 @@ export class CurrentUserAttendanceCollectionResolver {
       summary: 'Presença off-line enviada para revisão administrativa.',
     });
     await this.dashboardInsights.invalidateCachedInsights();
+    if (submissionWrite.queuedForReview) {
+      await this.notifyOfflineAttendanceReviewQueued(submission);
+    }
 
     return this.toOfflineSubmission(submission);
   }
@@ -775,6 +793,7 @@ export class CurrentUserAttendanceCollectionResolver {
           },
         }),
         changed: true,
+        queuedForReview: true,
       };
     } catch (error: unknown) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -825,7 +844,99 @@ export class CurrentUserAttendanceCollectionResolver {
     return {
       submission,
       changed: update.count === 1,
+      queuedForReview: false,
     };
+  }
+
+  private async notifyOfflineAttendanceReviewQueued(submission: {
+    id: string;
+    eventId: string;
+    event: {
+      name: string;
+      majorEventId?: string | null;
+      eventGroupId?: string | null;
+    };
+    submittedById: string;
+    submittedAt: Date;
+    authorName?: string | null;
+  }): Promise<void> {
+    const recipients = await this.findOfflineAttendanceReviewRecipients(submission.eventId, {
+      majorEventId: submission.event.majorEventId ?? null,
+      eventGroupId: submission.event.eventGroupId ?? null,
+    });
+
+    await this.notifications.notifyOfflineAttendanceReviewQueued({
+      submissionId: submission.id,
+      eventId: submission.eventId,
+      eventName: submission.event.name,
+      recipients,
+      submittedById: submission.submittedById,
+      submittedAt: submission.submittedAt,
+      authorName: submission.authorName,
+    });
+  }
+
+  private async findOfflineAttendanceReviewRecipients(
+    eventId: string,
+    event: { majorEventId: string | null; eventGroupId: string | null },
+  ) {
+    const now = new Date();
+    const scopedGrantMatches: Prisma.EventManagerPermissionGrantWhereInput[] = [
+      { scope: EventManagerPermissionGrantScope.GLOBAL },
+      { scope: EventManagerPermissionGrantScope.EVENT, eventId },
+    ];
+    if (event.majorEventId) {
+      scopedGrantMatches.push({
+        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        majorEventId: event.majorEventId,
+      });
+    }
+    if (event.eventGroupId) {
+      scopedGrantMatches.push({
+        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        eventGroupId: event.eventGroupId,
+      });
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        OR: [
+          { role: UserRole.ADMIN },
+          {
+            eventManagerPermissionGrants: {
+              some: {
+                permission: Permission.EventAttendance.Update,
+                deletedAt: null,
+                OR: [{ validFrom: null }, { validFrom: { lte: now } }],
+                AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }, { OR: scopedGrantMatches }],
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
+
+    const recipientsBySubscriberId = new Map<
+      string,
+      {
+        subscriberId: string;
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+        data?: Record<string, unknown>;
+      }
+    >();
+    for (const user of users) {
+      const recipient = this.notifications.mapUserToRecipient(user);
+      recipientsBySubscriberId.set(recipient.subscriberId, recipient);
+    }
+
+    return Array.from(recipientsBySubscriberId.values());
   }
 
   private offlineSubmissionWhere(submittedById: string, clientId: string) {

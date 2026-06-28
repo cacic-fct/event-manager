@@ -54,6 +54,19 @@ export class ScannerEventList implements OnInit {
     return this.access.isCollectionOpen(item);
   }
 
+  protected collectionWindowLabel(item: AttendanceCollectionEvent): string {
+    const start = new Date(item.event.startDate).getTime();
+    const end = new Date(item.event.endDate).getTime();
+
+    if (!Number.isFinite(start) || !Number.isFinite(end)) {
+      return 'Coleta de presença';
+    }
+
+    const allowedStart = new Date(start - 3 * 60 * 60_000);
+    const allowedEnd = new Date(end + 6 * 60 * 60_000);
+    return `Coleta de presença: ${this.formatHour(allowedStart)}-${this.formatHour(allowedEnd)}`;
+  }
+
   protected canOpen(item: AttendanceCollectionEvent): boolean {
     return this.hasPreciseLocation() && this.isCollectionOpen(item);
   }
@@ -94,5 +107,9 @@ export class ScannerEventList implements OnInit {
     const events = userId ? await this.offlineQueue.getCollectionEvents(userId) : [];
     this.events.set(events);
     this.loading.set(false);
+  }
+
+  private formatHour(date: Date): string {
+    return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(date);
   }
 }

@@ -1,20 +1,10 @@
-import { DOCUMENT, DecimalPipe, isPlatformBrowser } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  OnDestroy,
-  PLATFORM_ID,
-  afterNextRender,
-  computed,
-  effect,
-  inject,
-  viewChild,
-} from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { AttendanceCategory } from '@cacic-fct/event-manager-admin-contracts';
+import { AttendanceLocationMapComponent } from './attendance-location-map.component';
 
 type AttendanceInfoDialogData = {
   eventId: string;
@@ -42,7 +32,7 @@ type AttendanceDetail = {
 @Component({
   selector: 'app-workspace-attendance-info-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DecimalPipe, MatButtonModule, MatDialogModule, MatIconModule],
+  imports: [AttendanceLocationMapComponent, DecimalPipe, MatButtonModule, MatDialogModule, MatIconModule],
   template: `
     <h2 mat-dialog-title>Detalhes da presença</h2>
 
@@ -73,7 +63,12 @@ type AttendanceDetail = {
         </div>
 
         @if (hasLocation()) {
-          <div #mapTarget class="map-preview" aria-label="Mapa do local onde a presença foi coletada"></div>
+          <app-attendance-location-map
+            [latitude]="data.collectedLatitude"
+            [longitude]="data.collectedLongitude"
+            [accuracyMeters]="data.collectedAccuracyMeters"
+            [markerLabel]="data.personName"
+          />
           <p class="location-coordinates">
             {{ data.collectedLatitude | number: '1.6-6' }},
             {{ data.collectedLongitude | number: '1.6-6' }}
@@ -150,14 +145,6 @@ type AttendanceDetail = {
       margin: 0;
     }
 
-    .map-preview {
-      aspect-ratio: 16 / 9;
-      background: color-mix(in srgb, currentColor 8%, transparent);
-      border-radius: 8px;
-      overflow: hidden;
-      width: 100%;
-    }
-
     .location-coordinates {
       margin: 0.5rem 0 0;
     }
@@ -176,18 +163,8 @@ type AttendanceDetail = {
     }
   `,
 })
-export class WorkspaceAttendanceInfoDialogComponent implements OnDestroy {
+export class WorkspaceAttendanceInfoDialogComponent {
   protected readonly data = inject<AttendanceInfoDialogData>(MAT_DIALOG_DATA);
-  private readonly document = inject(DOCUMENT);
-  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
-  private readonly markerIconUrl = this.isBrowser
-    ? new URL('assets/shared/pin.svg', this.document.baseURI).toString()
-    : '';
-
-  private map: { setTarget(target: HTMLElement | undefined): void; updateSize(): void } | null = null;
-  private hasRendered = false;
-  private renderVersion = 0;
 
   protected readonly hasLocation = computed(() => this.location() !== null);
 
@@ -203,134 +180,6 @@ export class WorkspaceAttendanceInfoDialogComponent implements OnDestroy {
     { label: 'ID de Envio', value: this.data.committedById },
   ]);
 
-  constructor() {
-    afterNextRender(() => {
-      this.hasRendered = true;
-      void this.renderMap();
-    });
-
-    effect(() => {
-      this.location();
-
-      if (this.hasRendered) {
-        void this.renderMap();
-      }
-    });
-  }
-
-  ngOnDestroy(): void {
-    this.destroyMap();
-  }
-
-  private async renderMap(): Promise<void> {
-    const target = this.mapTarget()?.nativeElement;
-    const location = this.location();
-
-    if (!target || !location) {
-      this.destroyMap();
-      return;
-    }
-
-    const version = ++this.renderVersion;
-
-    const [
-      { default: Feature },
-      { default: Map },
-      { default: View },
-      { default: Circle },
-      { default: Point },
-      { Tile: TileLayer, Vector: VectorLayer },
-      { fromLonLat },
-      { default: OSM },
-      { default: VectorSource },
-      { Fill, Icon, Stroke, Style },
-    ] = await Promise.all([
-      import('ol/Feature'),
-      import('ol/Map'),
-      import('ol/View'),
-      import('ol/geom/Circle'),
-      import('ol/geom/Point'),
-      import('ol/layer'),
-      import('ol/proj'),
-      import('ol/source/OSM'),
-      import('ol/source/Vector'),
-      import('ol/style'),
-    ]);
-
-    if (version !== this.renderVersion) {
-      return;
-    }
-
-    this.destroyMap();
-
-    const center = fromLonLat([location.longitude, location.latitude]);
-    const features = [];
-    const accuracy = this.data.collectedAccuracyMeters;
-
-    if (accuracy !== null && accuracy !== undefined && accuracy > 0) {
-      const accuracyCircle = new Feature({
-        geometry: new Circle(center, accuracy),
-      });
-
-      accuracyCircle.setStyle(
-        new Style({
-          fill: new Fill({ color: 'rgba(25, 118, 210, 0.14)' }),
-          stroke: new Stroke({ color: 'rgba(25, 118, 210, 0.7)', width: 2 }),
-        }),
-      );
-      features.push(accuracyCircle);
-    }
-
-    const marker = new Feature({
-      geometry: new Point(center),
-      name: this.data.personName,
-    });
-
-    marker.setStyle(
-      new Style({
-        image: new Icon({
-          anchor: [400, 700],
-          anchorXUnits: 'pixels',
-          anchorYUnits: 'pixels',
-          src: this.markerIconUrl,
-          scale: 0.065,
-        }),
-      }),
-    );
-    features.push(marker);
-
-    const view = new View({
-      center,
-      zoom: 17,
-      maxZoom: 19,
-    });
-
-    this.map = new Map({
-      target,
-      layers: [
-        new TileLayer({
-          source: new OSM(),
-        }),
-        new VectorLayer({
-          source: new VectorSource({
-            features,
-          }),
-        }),
-      ],
-      view,
-      controls: [],
-    });
-
-    if (accuracy !== null && accuracy !== undefined && accuracy > 0) {
-      view.fit(new Circle(center, accuracy).getExtent(), {
-        maxZoom: 18,
-        padding: [40, 40, 40, 40],
-      });
-    }
-
-    requestAnimationFrame(() => this.map?.updateSize());
-  }
-
   private location(): { latitude: number; longitude: number } | null {
     const latitude = this.data.collectedLatitude;
     const longitude = this.data.collectedLongitude;
@@ -342,24 +191,11 @@ export class WorkspaceAttendanceInfoDialogComponent implements OnDestroy {
     return { latitude, longitude };
   }
 
-  private destroyMap(): void {
-    if (!this.map) {
-      return;
-    }
-
-    this.map.setTarget(undefined);
-    this.map = null;
-  }
-
   private formatDate(value: string): string {
     return new Intl.DateTimeFormat('pt-BR', {
       dateStyle: 'short',
       timeStyle: 'short',
     }).format(new Date(value));
-  }
-
-  private formatAccuracy(value: number | null | undefined): string | null {
-    return value == null ? null : `${value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m`;
   }
 
   private getCategoryLabel(category: AttendanceCategory): string {

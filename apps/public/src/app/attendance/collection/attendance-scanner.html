@@ -14,6 +14,7 @@
     <span>{{ locationStatus() }}</span>
   </section>
 
+  @if (hasPreciseLocation()) {
   <lib-aztec-scanner
     title="Escanear presença"
     [acceptedPrefixes]="['user:']"
@@ -30,6 +31,7 @@
       Registrar manualmente
     </button>
   </form>
+  }
 
   @if (queuedAttendances().length > 0) {
   <section class="queue-panel" aria-live="polite">
