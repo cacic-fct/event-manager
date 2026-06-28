@@ -90,9 +90,13 @@ export class PersonLinkedDataDialogComponent {
 
     this.deleting.set(true);
     try {
-      await firstValueFrom(this.api.deletePerson(this.data.personId));
-      this.snackbar.open('Pessoa excluída.', 'Fechar', { duration: 2500 });
-      this.dialogRef.close(true);
+      const result = await firstValueFrom(this.api.deletePerson(this.data.personId));
+      if (result.deleted) {
+        this.snackbar.open('Pessoa excluída.', 'Fechar', { duration: 2500 });
+        this.dialogRef.close(true);
+        return;
+      }
+      this.snackbar.open('Não foi possível excluir a pessoa.', 'Fechar', { duration: 5000 });
     } catch (error) {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir a pessoa.'), 'Fechar', {
         duration: 5000,

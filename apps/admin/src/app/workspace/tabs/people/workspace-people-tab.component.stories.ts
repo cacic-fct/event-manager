@@ -168,6 +168,21 @@ export const EmptyPermissions: Story = {
   },
 };
 
+export const DeletablePersonWithoutLinks: Story = {
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const deletablePerson = activeData.people[1];
+    await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), deletablePerson.name);
+    await userEvent.click(await canvas.findByRole('button', { name: /buscar/i }));
+    await userEvent.click(await canvas.findByText(deletablePerson.name));
+    await userEvent.click(await canvas.findByRole('button', { name: /vínculos/i }));
+    await expect(await screen.findByRole('heading', { name: 'Vínculos da pessoa' })).toBeVisible();
+    await expect(await screen.findByText('Nenhum vínculo encontrado')).toBeVisible();
+    await expect(await screen.findByRole('button', { name: 'Excluir pessoa' })).toBeEnabled();
+  },
+};
+
 function graphqlData(query: string, variables: Record<string, unknown>) {
   if (query.includes('ListPeople') || query.includes('ListPeopleSummaries')) {
     const search = typeof variables['query'] === 'string' ? variables['query'].toLocaleLowerCase('pt-BR') : '';
@@ -185,8 +200,9 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
   }
 
   if (query.includes('PersonLinkedDataSummary')) {
+    const personId = String(variables['id'] ?? activeData.people[0].id);
     return {
-      personLinkedDataSummary: linkedDataSummary(String(variables['id'] ?? activeData.people[0].id)),
+      personLinkedDataSummary: linkedDataSummary(personId, personId === activeData.people[1]?.id ? 'empty' : 'active'),
     };
   }
 
@@ -242,10 +258,20 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
   return {};
 }
 
-function linkedDataSummary(personId: string): PersonLinkedDataSummary {
+function linkedDataSummary(personId: string, variant: 'active' | 'empty' = 'active'): PersonLinkedDataSummary {
   const person = activeData.people.find((item) => item.id === personId) ?? activeData.people[0];
   const event = activeData.events[0];
   const majorEvent = activeData.majorEvents[0];
+  if (variant === 'empty') {
+    return {
+      personId: person.id,
+      groups: [],
+      totalCount: 0,
+      hasLinkedData: false,
+      canDelete: true,
+    };
+  }
+
   const groups = [
     {
       type: 'CERTIFICATE',

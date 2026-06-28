@@ -20,6 +20,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { RequireRoles } from '../auth/decorators/require-roles.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
@@ -66,6 +67,7 @@ export class PeopleResolver {
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly certificateIssuingService: CertificateIssuingService,
     private readonly auditLog: AuditLogService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   @Query(() => [Person], { name: 'people' })
@@ -189,8 +191,14 @@ export class PeopleResolver {
     description: 'Lists app resources linked to a person. Restricted to Event Manager super-admin users.',
   })
   @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
-  async personLinkedDataSummary(@Args('id', { type: () => String }) id: string) {
-    return this.buildPersonLinkedDataSummary(id);
+  async personLinkedDataSummary(
+    @Args('id', { type: () => String }) id: string,
+    @Context() context: GraphqlContext,
+  ) {
+    const grantedPermissions = await this.authorizationPolicy.evaluatePermissions(this.getUser(context), [
+      Permission.Person.Delete,
+    ]);
+    return this.buildPersonLinkedDataSummary(id, grantedPermissions.includes(Permission.Person.Delete));
   }
 
   @Mutation(() => Person, { name: 'createPerson' })
@@ -317,8 +325,7 @@ export class PeopleResolver {
         select: PERSON_AUDIT_SELECT,
       });
       if (!existingPerson) throw new NotFoundException(`Person ${id} was not found.`);
-      const linkedData = await this.buildPersonLinkedDataSummary(id, tx);
-      if (linkedData.hasLinkedData) {
+      if (await this.personHasLinkedData(existingPerson, tx)) {
         throw new ConflictException(
           `Person ${id} has linked app data and cannot be deleted. Review linked resources before deleting.`,
         );
@@ -349,6 +356,7 @@ export class PeopleResolver {
 
   private async buildPersonLinkedDataSummary(
     personId: string,
+    hasDeletePermission: boolean,
     prisma: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<PersonLinkedDataSummary> {
     const person = await prisma.people.findFirst({
@@ -687,8 +695,84 @@ export class PeopleResolver {
       groups,
       totalCount,
       hasLinkedData: totalCount > 0,
-      canDelete: totalCount === 0,
+      canDelete: hasDeletePermission && totalCount === 0,
     };
+  }
+
+  private async personHasLinkedData(
+    person: Pick<Prisma.PeopleGetPayload<{ select: typeof PERSON_AUDIT_SELECT }>, 'id' | 'userId' | 'mergedIntoId'>,
+    prisma: PrismaService | Prisma.TransactionClient,
+  ): Promise<boolean> {
+    if (person.userId || person.mergedIntoId) {
+      return true;
+    }
+
+    const [
+      certificate,
+      eventSubscription,
+      eventGroupSubscription,
+      majorEventSubscription,
+      attendance,
+      lecture,
+      attendanceCollector,
+      offlineAttendanceSubmission,
+      permissionGrant,
+      lecturerProfile,
+      mergedFrom,
+      mergeCandidate,
+      mergeOperationAsTarget,
+      mergeOperationAsSource,
+      receipt,
+    ] = await Promise.all([
+      prisma.certificate.findFirst({ where: { personId: person.id, deletedAt: null }, select: { id: true } }),
+      prisma.eventSubscription.findFirst({ where: { personId: person.id, deletedAt: null }, select: { id: true } }),
+      prisma.eventGroupSubscription.findFirst({
+        where: { personId: person.id, deletedAt: null },
+        select: { id: true },
+      }),
+      prisma.majorEventSubscription.findFirst({
+        where: { personId: person.id, deletedAt: null },
+        select: { id: true },
+      }),
+      prisma.eventAttendance.findFirst({ where: { personId: person.id }, select: { personId: true } }),
+      prisma.eventLecturer.findFirst({ where: { personId: person.id }, select: { personId: true } }),
+      prisma.eventAttendanceCollector.findFirst({ where: { personId: person.id }, select: { personId: true } }),
+      prisma.offlineEventAttendanceSubmission.findFirst({ where: { personId: person.id }, select: { id: true } }),
+      prisma.eventManagerPermissionGrant.findFirst({
+        where: { personId: person.id, deletedAt: null },
+        select: { id: true },
+      }),
+      prisma.lecturerProfile.findUnique({ where: { personId: person.id }, select: { id: true } }),
+      prisma.people.findFirst({
+        where: { mergedIntoId: person.id, deletedAt: null },
+        select: { id: true },
+      }),
+      prisma.mergeCandidate.findFirst({
+        where: { OR: [{ personAId: person.id }, { personBId: person.id }] },
+        select: { id: true },
+      }),
+      prisma.peopleMergeOperation.findFirst({ where: { targetPersonId: person.id }, select: { id: true } }),
+      prisma.peopleMergeOperation.findFirst({ where: { sourcePersonId: person.id }, select: { id: true } }),
+      prisma.majorEventReceipt.findFirst({ where: { personId: person.id }, select: { id: true } }),
+    ]);
+
+    return Boolean(
+      certificate ||
+        eventSubscription ||
+        eventGroupSubscription ||
+        majorEventSubscription ||
+        attendance ||
+        lecture ||
+        attendanceCollector ||
+        offlineAttendanceSubmission ||
+        permissionGrant ||
+        lecturerProfile ||
+        mergedFrom ||
+        mergeCandidate ||
+        mergeOperationAsTarget ||
+        mergeOperationAsSource ||
+        receipt,
+    );
   }
 
   private buildLinkedGroup(

@@ -1,4 +1,5 @@
 import { ConflictException } from '@nestjs/common';
+import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { PeopleResolver } from './resolver';
 
 describe('PeopleResolver', () => {
@@ -19,7 +20,7 @@ describe('PeopleResolver', () => {
       },
     ]);
 
-    const summary = await resolver.personLinkedDataSummary('person-1');
+    const summary = await resolver.personLinkedDataSummary('person-1', userContext());
 
     expect(summary.canDelete).toBe(false);
     expect(summary.groups).toEqual(
@@ -43,6 +44,9 @@ describe('PeopleResolver', () => {
     const prisma = createPrisma();
     const resolver = createResolver(prisma);
 
+    prisma.eventAttendance.findFirst.mockResolvedValue({
+      personId: 'person-1',
+    });
     prisma.eventAttendance.findMany.mockResolvedValue([
       {
         personId: 'person-1',
@@ -59,6 +63,11 @@ describe('PeopleResolver', () => {
 
     await expect(resolver.deletePerson('person-1', {})).rejects.toBeInstanceOf(ConflictException);
     expect(prisma.people.update).not.toHaveBeenCalled();
+    expect(prisma.eventAttendance.findFirst).toHaveBeenCalledWith({
+      where: { personId: 'person-1' },
+      select: { personId: true },
+    });
+    expect(prisma.eventAttendance.findMany).not.toHaveBeenCalled();
   });
 
   it('allows deleting people without linked app resources', async () => {
@@ -86,33 +95,53 @@ function createResolver(prisma: ReturnType<typeof createPrisma>): PeopleResolver
     } as never,
     { refreshIssuedCertificatesForPerson: jest.fn() } as never,
     { record: jest.fn().mockResolvedValue(undefined) } as never,
+    {
+      evaluatePermissions: jest.fn().mockResolvedValue([Permission.Person.Delete]),
+    } as never,
   );
 }
 
 function createPrisma() {
+  const linkedModel = () => ({
+    findFirst: jest.fn().mockResolvedValue(null),
+    findMany: jest.fn().mockResolvedValue([]),
+  });
   const prisma = {
     $transaction: jest.fn(),
     people: {
-      findFirst: jest.fn().mockResolvedValue(person()),
+      findFirst: jest.fn().mockImplementation(({ where }: { where?: { id?: string } } = {}) =>
+        where?.id === 'person-1' ? Promise.resolve(person()) : Promise.resolve(null),
+      ),
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue(person({ deletedAt: new Date('2026-06-21T12:00:00.000Z') })),
     },
-    certificate: { findMany: jest.fn().mockResolvedValue([]) },
-    eventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
-    eventGroupSubscription: { findMany: jest.fn().mockResolvedValue([]) },
-    majorEventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
-    eventAttendance: { findMany: jest.fn().mockResolvedValue([]) },
-    eventLecturer: { findMany: jest.fn().mockResolvedValue([]) },
-    eventAttendanceCollector: { findMany: jest.fn().mockResolvedValue([]) },
-    offlineEventAttendanceSubmission: { findMany: jest.fn().mockResolvedValue([]) },
-    eventManagerPermissionGrant: { findMany: jest.fn().mockResolvedValue([]) },
+    certificate: linkedModel(),
+    eventSubscription: linkedModel(),
+    eventGroupSubscription: linkedModel(),
+    majorEventSubscription: linkedModel(),
+    eventAttendance: linkedModel(),
+    eventLecturer: linkedModel(),
+    eventAttendanceCollector: linkedModel(),
+    offlineEventAttendanceSubmission: linkedModel(),
+    eventManagerPermissionGrant: linkedModel(),
     lecturerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
-    mergeCandidate: { findMany: jest.fn().mockResolvedValue([]) },
-    peopleMergeOperation: { findMany: jest.fn().mockResolvedValue([]) },
-    majorEventReceipt: { findMany: jest.fn().mockResolvedValue([]) },
+    mergeCandidate: linkedModel(),
+    peopleMergeOperation: linkedModel(),
+    majorEventReceipt: linkedModel(),
   };
   prisma.$transaction.mockImplementation(async (callback: (tx: typeof prisma) => unknown) => callback(prisma));
   return prisma;
+}
+
+function userContext() {
+  return {
+    req: {
+      user: {
+        sub: 'admin',
+        roleSet: new Set([EventManagerKeycloakRole.SuperAdmin]),
+      },
+    },
+  };
 }
 
 function person(overrides: Partial<{ deletedAt: Date | null }> = {}) {
