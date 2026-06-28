@@ -99,6 +99,7 @@ describe('WorkspaceFormsService integration', () => {
       eventId: 'event-1',
       insertInSubscriptionFlow: true,
       requiredInSubscriptionFlow: true,
+      allowLecturerManualPublish: true,
     });
     expect(service.selectedResults()?.responseCount).toBe(1);
   });
@@ -147,6 +148,7 @@ describe('WorkspaceFormsService integration', () => {
       requiredInSubscriptionFlow: false,
       enforceRequiredAnswers: true,
       displayOrder: 3,
+      allowLecturerManualPublish: false,
     });
   });
 });

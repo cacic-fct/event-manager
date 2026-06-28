@@ -560,6 +560,7 @@ export function createAdminE2EEventForm(overrides: Partial<AdminE2EEventFormFixt
         availableFrom: null,
         availableUntil: null,
         notifyOnPublish: true,
+        allowLecturerManualPublish: true,
         lastNotifiedAt: null,
         responseCount: 2,
         createdAt: '2026-05-20T12:00:00.000Z',

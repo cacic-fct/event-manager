@@ -73,6 +73,17 @@ export class EventFormsResolver {
     return this.forms.getCurrentUserResponse(context, { formId, targetType, eventId, majorEventId });
   }
 
+  @Query(() => EventFormResults, { name: 'currentUserEventFormResults' })
+  currentUserEventFormResults(
+    @Context() context: GraphqlContext,
+    @Args('formId', { type: () => String }) formId: string,
+    @Args('targetType', { type: () => EventFormTargetType }) targetType: EventFormTargetType,
+    @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
+    @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
+  ): Promise<EventFormResults> {
+    return this.forms.getCurrentUserResults(context, { formId, targetType, eventId, majorEventId });
+  }
+
   @Query(() => [EventForm], { name: 'lecturerEventForms' })
   lecturerEventForms(
     @Context() context: GraphqlContext,

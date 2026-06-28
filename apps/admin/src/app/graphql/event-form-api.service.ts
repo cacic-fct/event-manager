@@ -28,6 +28,7 @@ const EVENT_FORM_LINK_FIELDS = `
   availableFrom
   availableUntil
   notifyOnPublish
+  allowLecturerManualPublish
   lastNotifiedAt
   responseCount
   createdAt

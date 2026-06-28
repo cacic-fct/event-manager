@@ -415,8 +415,12 @@ export class EventFormsService {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     await this.assertPersonIsEventLecturer(person.id, eventId);
     const form = await this.requireForm(formId);
-    if (!this.formHasEventLink(form, eventId)) {
+    const link = this.findEventLinkRecord(form, eventId);
+    if (!link) {
       throw new NotFoundException('Formulário não vinculado a este evento.');
+    }
+    if (!link.allowLecturerManualPublish) {
+      throw new ForbiddenException('Publicação por ministrantes não habilitada para este vínculo.');
     }
 
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
@@ -553,6 +557,33 @@ export class EventFormsService {
     return this.toResponseModel(response, form.sigilo, 'self');
   }
 
+  async getCurrentUserResults(
+    context: GraphqlContext,
+    input: TargetInput & { formId: string },
+  ): Promise<EventFormResults> {
+    const target = this.normalizeTarget(input);
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const form = await this.requirePublishedForm(input.formId);
+
+    if (await this.canAdminViewResults(authenticatedUser, form.id)) {
+      return this.getResults(form.id, 'admin');
+    }
+
+    if (!form.resultsPublic) {
+      throw new NotFoundException('Resultados do formulário não disponíveis.');
+    }
+
+    const link = this.findLinkRecordForTarget(form, target);
+    if (!link) {
+      throw new NotFoundException('Formulário não vinculado a este evento ou grande evento.');
+    }
+
+    const person = await this.currentUserContext.requireCurrentPerson(context);
+    await this.assertPersonCanViewPublicResults(person.id, link);
+
+    return this.getResults(form.id, 'public');
+  }
+
   async getResults(formId: string, viewer: ResultViewer = 'admin'): Promise<EventFormResults> {
     const form = await this.requireForm(formId);
     const responses = await this.prisma.eventFormResponse.findMany({
@@ -587,7 +618,7 @@ export class EventFormsService {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     await this.assertPersonIsEventLecturer(person.id, eventId);
     const form = await this.requireForm(formId);
-    if (!this.formHasEventLink(form, eventId)) {
+    if (!this.findEventLinkRecord(form, eventId)) {
       throw new NotFoundException('Formulário não vinculado a este evento.');
     }
 
@@ -879,6 +910,8 @@ export class EventFormsService {
         availableFrom: link.availableFrom ?? null,
         availableUntil: link.availableUntil ?? null,
         notifyOnPublish: link.notifyOnPublish ?? true,
+        allowLecturerManualPublish:
+          target.targetType === EventFormTargetType.EVENT ? (link.allowLecturerManualPublish ?? false) : false,
         updatedById: actorId,
       } satisfies Prisma.EventFormLinkUncheckedUpdateInput;
 
@@ -1191,6 +1224,19 @@ export class EventFormsService {
     }
   }
 
+  private async assertPersonCanViewPublicResults(personId: string, link: EventFormLinkRecord): Promise<void> {
+    const linkModel = this.toLinkModel(link);
+    const [isSubscriber, isAttendee, isLecturer] = await Promise.all([
+      this.isPersonSubscriber(personId, linkModel, {}),
+      this.isPersonAttendee(personId, linkModel),
+      this.isPersonLecturerForLink(personId, linkModel),
+    ]);
+
+    if (!isSubscriber && !isAttendee && !isLecturer) {
+      throw new ForbiddenException('Você não pode visualizar os resultados deste formulário.');
+    }
+  }
+
   private async assertPersonIsEventLecturer(personId: string, eventId: string): Promise<void> {
     const lecturer = await this.prisma.eventLecturer.findUnique({
       where: {
@@ -1208,8 +1254,36 @@ export class EventFormsService {
     }
   }
 
-  private formHasEventLink(form: EventFormRecord, eventId: string): boolean {
-    return form.links.some((link) => link.eventId === eventId || link.event?.id === eventId);
+  private findEventLinkRecord(form: EventFormRecord, eventId: string): EventFormLinkRecord | null {
+    return form.links.find((link) => link.eventId === eventId || link.event?.id === eventId) ?? null;
+  }
+
+  private findLinkRecordForTarget(
+    form: EventFormRecord,
+    target: ReturnType<EventFormsService['normalizeTarget']>,
+  ): EventFormLinkRecord | null {
+    return (
+      form.links.find(
+        (link) =>
+          link.targetType === target.targetType &&
+          link.eventId === target.eventId &&
+          link.majorEventId === target.majorEventId,
+      ) ?? null
+    );
+  }
+
+  private async canAdminViewResults(user: AuthenticatedUser | undefined, formId: string): Promise<boolean> {
+    try {
+      await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Results], {
+        eventFormId: formId,
+      });
+      return true;
+    } catch (error) {
+      if (!(error instanceof ForbiddenException)) {
+        throw error;
+      }
+      return false;
+    }
   }
 
   private async isPersonSubscriber(
@@ -1283,6 +1357,41 @@ export class EventFormsService {
     return false;
   }
 
+  private async isPersonLecturerForLink(
+    personId: string,
+    link: Pick<EventFormLinkModel, 'eventId' | 'majorEventId'>,
+  ): Promise<boolean> {
+    if (link.eventId) {
+      return Boolean(
+        await this.prisma.eventLecturer.findUnique({
+          where: {
+            eventId_personId: {
+              eventId: link.eventId,
+              personId,
+            },
+          },
+          select: { eventId: true },
+        }),
+      );
+    }
+
+    if (link.majorEventId) {
+      return Boolean(
+        await this.prisma.eventLecturer.findFirst({
+          where: {
+            personId,
+            event: {
+              majorEventId: link.majorEventId,
+            },
+          },
+          select: { eventId: true },
+        }),
+      );
+    }
+
+    return false;
+  }
+
   private toEventFormModel(form: EventFormRecord): EventFormModel {
     return {
       id: form.id,
@@ -1333,6 +1442,7 @@ export class EventFormsService {
       availableFrom: link.availableFrom,
       availableUntil: link.availableUntil,
       notifyOnPublish: link.notifyOnPublish,
+      allowLecturerManualPublish: link.allowLecturerManualPublish,
       lastNotifiedAt: link.lastNotifiedAt,
       responseCount: link._count.responses,
       createdAt: link.createdAt,

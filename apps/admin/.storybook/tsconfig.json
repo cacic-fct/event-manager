@@ -3,10 +3,6 @@
   "compilerOptions": {
     "emitDecoratorMetadata": true
   },
-  "files": [
-    "../../../node_modules/@cacic-fct/form-contracts/src/index.ts",
-    "../../../node_modules/@cacic-fct/form-contracts/src/lib/form-contracts.ts"
-  ],
   "exclude": ["../**/*.spec.ts"],
   "include": [
     "../src/**/*.stories.ts",

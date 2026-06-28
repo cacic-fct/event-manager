@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -33,6 +34,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
     MatInputModule,
     MatSelectModule,
     MatTooltipModule,
+    DragDropModule,
   ],
   template: `
     <div class="form-builder">
@@ -55,14 +57,23 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
         <p class="empty-state">Adicione perguntas, textos ou seções para montar o formulário.</p>
       }
 
-      @for (element of elements(); track element.id; let index = $index) {
-        <section class="builder-item">
+      <div
+        cdkDropList
+        class="builder-list"
+        [cdkDropListData]="elements()"
+        (cdkDropListDropped)="drop($event)"
+      >
+        @for (element of elements(); track element.id; let index = $index) {
+        <section class="builder-item" cdkDrag>
           <header>
             <div>
               <span>{{ labels[element.type] }}</span>
               <h3>{{ element.title }}</h3>
             </div>
             <div class="item-actions">
+              <button mat-icon-button type="button" class="drag-handle" matTooltip="Arrastar item" cdkDragHandle>
+                <mat-icon>drag_indicator</mat-icon>
+              </button>
               <button mat-icon-button type="button" matTooltip="Mover para cima" [disabled]="index === 0" (click)="move(index, -1)">
                 <mat-icon>arrow_upward</mat-icon>
               </button>
@@ -314,7 +325,8 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
             </div>
           }
         </section>
-      }
+        }
+      </div>
     </div>
   `,
   styles: `
@@ -337,6 +349,11 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
       width: 100%;
     }
 
+    .builder-list {
+      display: grid;
+      gap: 16px;
+    }
+
     .empty-state {
       color: var(--mat-sys-on-surface-variant);
       margin: 0;
@@ -349,6 +366,22 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
       border-radius: 8px;
       padding: 16px;
       background: var(--mat-sys-surface);
+    }
+
+    .builder-item.cdk-drag-preview {
+      box-shadow: var(--mat-sys-level3);
+    }
+
+    .builder-item.cdk-drag-placeholder {
+      opacity: 0.35;
+    }
+
+    .builder-list.cdk-drop-list-dragging .builder-item:not(.cdk-drag-placeholder) {
+      transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    .drag-handle {
+      cursor: grab;
     }
 
     header {
@@ -436,6 +469,16 @@ export class EventFormBuilderComponent {
     }
     next.splice(index, 1);
     next.splice(targetIndex, 0, item);
+    this.elementsChange.emit(next);
+  }
+
+  drop(event: CdkDragDrop<readonly FormElement[]>): void {
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
+
+    const next = cloneFormElements(this.elements());
+    moveItemInArray(next, event.previousIndex, event.currentIndex);
     this.elementsChange.emit(next);
   }
 

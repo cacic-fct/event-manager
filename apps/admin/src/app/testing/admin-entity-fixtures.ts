@@ -487,6 +487,7 @@ export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventF
         availableFrom: null,
         availableUntil: null,
         notifyOnPublish: true,
+        allowLecturerManualPublish: true,
         lastNotifiedAt: null,
         responseCount: 1,
         createdAt: adminFixtureDate,
@@ -545,6 +546,8 @@ export function createAdminEventFormFromInput(input: EventFormInput): EventForm 
         availableFrom: link.availableFrom ?? null,
         availableUntil: link.availableUntil ?? null,
         notifyOnPublish: link.notifyOnPublish ?? true,
+        allowLecturerManualPublish:
+          link.targetType === 'EVENT' ? (link.allowLecturerManualPublish ?? false) : false,
         lastNotifiedAt: null,
         responseCount: 0,
         createdAt: adminFixtureDate,

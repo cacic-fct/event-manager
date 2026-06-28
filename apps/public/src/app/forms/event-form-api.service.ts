@@ -5,6 +5,7 @@ import {
   type GraphqlResponse,
   type PublicEventForm,
   type PublicEventFormResponse,
+  type PublicEventFormResults,
   type SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
@@ -39,6 +40,7 @@ const PUBLIC_EVENT_FORM_FIELDS = `
     availableFrom
     availableUntil
     notifyOnPublish
+    allowLecturerManualPublish
     lastNotifiedAt
     responseCount
     createdAt
@@ -63,6 +65,19 @@ const PUBLIC_EVENT_FORM_RESPONSE_FIELDS = `
   source
   submittedAt
   updatedAt
+`;
+
+const PUBLIC_EVENT_FORM_RESULTS_FIELDS = `
+  responseCount
+  anonymous
+  answersReleased
+  summaryJson
+  form {
+    ${PUBLIC_EVENT_FORM_FIELDS}
+  }
+  responses {
+    ${PUBLIC_EVENT_FORM_RESPONSE_FIELDS}
+  }
 `;
 
 @Injectable({ providedIn: 'root' })
@@ -123,6 +138,34 @@ export class PublicEventFormApiService {
       `,
       input,
     ).pipe(map((data) => data.currentUserEventFormResponse));
+  }
+
+  getCurrentUserResults(input: {
+    formId: string;
+    targetType: EventFormTargetType;
+    eventId?: string | null;
+    majorEventId?: string | null;
+  }) {
+    return this.query<{ currentUserEventFormResults: PublicEventFormResults }>(
+      `
+        query CurrentUserEventFormResults(
+          $formId: String!
+          $targetType: EventFormTargetType!
+          $eventId: String
+          $majorEventId: String
+        ) {
+          currentUserEventFormResults(
+            formId: $formId
+            targetType: $targetType
+            eventId: $eventId
+            majorEventId: $majorEventId
+          ) {
+            ${PUBLIC_EVENT_FORM_RESULTS_FIELDS}
+          }
+        }
+      `,
+      input,
+    ).pipe(map((data) => data.currentUserEventFormResults));
   }
 
   submit(input: SubmitPublicEventFormResponseInput): Observable<PublicEventFormResponse> {

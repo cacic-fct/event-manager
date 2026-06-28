@@ -4,9 +4,5 @@
     "outDir": "../../dist/out-tsc",
     "types": ["vitest/globals"]
   },
-  "files": [
-    "../../node_modules/@cacic-fct/form-contracts/src/index.ts",
-    "../../node_modules/@cacic-fct/form-contracts/src/lib/form-contracts.ts"
-  ],
   "include": ["src/**/*.ts", "src/**/*.d.ts"]
 }

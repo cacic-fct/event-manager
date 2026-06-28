@@ -166,6 +166,7 @@ export class WorkspaceFormsService {
         enforceRequiredAnswers: true,
         displayOrder: links.length,
         notifyOnPublish: true,
+        allowLecturerManualPublish: false,
       },
     ]);
   }
@@ -186,6 +187,10 @@ export class WorkspaceFormsService {
                 (patch.targetType ?? link.targetType) === 'MAJOR_EVENT'
                   ? (patch.majorEventId ?? link.majorEventId ?? '')
                   : null,
+              allowLecturerManualPublish:
+                (patch.targetType ?? link.targetType) === 'EVENT'
+                  ? (patch.allowLecturerManualPublish ?? link.allowLecturerManualPublish ?? false)
+                  : false,
             }
           : link,
       ),
@@ -385,6 +390,8 @@ export class WorkspaceFormsService {
         availableFrom: link.availableFrom ?? null,
         availableUntil: link.availableUntil ?? null,
         notifyOnPublish: link.notifyOnPublish ?? true,
+        allowLecturerManualPublish:
+          link.targetType === 'EVENT' ? (link.allowLecturerManualPublish ?? false) : false,
       })),
     };
   }

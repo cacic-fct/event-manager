@@ -301,6 +301,13 @@
                     (change)="workspace.updateLink(link.localId, { notifyOnPublish: $event.checked })">
                     Notificar ao publicar
                   </mat-checkbox>
+                  @if (link.targetType === 'EVENT') {
+                    <mat-checkbox
+                      [checked]="link.allowLecturerManualPublish ?? false"
+                      (change)="workspace.updateLink(link.localId, { allowLecturerManualPublish: $event.checked })">
+                      Ministrante pode publicar
+                    </mat-checkbox>
+                  }
                 </div>
               </article>
             } @empty {

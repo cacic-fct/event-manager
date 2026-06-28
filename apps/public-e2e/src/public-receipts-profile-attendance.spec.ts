@@ -544,6 +544,7 @@ function publicEventFormFixture(): Record<string, unknown> {
         availableFrom: null,
         availableUntil: null,
         notifyOnPublish: true,
+        allowLecturerManualPublish: false,
         lastNotifiedAt: null,
         responseCount: 0,
         createdAt: '2026-06-26T12:00:00.000Z',

@@ -27,6 +27,7 @@ export interface PublicEventFormLink {
   availableFrom?: DateTimeString | null;
   availableUntil?: DateTimeString | null;
   notifyOnPublish: boolean;
+  allowLecturerManualPublish: boolean;
   lastNotifiedAt?: DateTimeString | null;
   responseCount: number;
   createdAt: DateTimeString;
@@ -62,6 +63,15 @@ export interface PublicEventFormResponse {
   source: EventFormResponseSource;
   submittedAt?: DateTimeString | null;
   updatedAt: DateTimeString;
+}
+
+export interface PublicEventFormResults {
+  form: PublicEventForm;
+  responseCount: number;
+  anonymous: boolean;
+  answersReleased: boolean;
+  summaryJson: string;
+  responses: PublicEventFormResponse[];
 }
 
 export interface SubmitPublicEventFormResponseInput {

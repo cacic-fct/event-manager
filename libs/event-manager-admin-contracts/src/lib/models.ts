@@ -348,6 +348,7 @@ export interface EventFormLink {
   availableFrom?: string | null;
   availableUntil?: string | null;
   notifyOnPublish: boolean;
+  allowLecturerManualPublish: boolean;
   lastNotifiedAt?: string | null;
   responseCount: number;
   createdAt: string;
@@ -916,6 +917,7 @@ export interface EventFormLinkInput {
   availableFrom?: string | null;
   availableUntil?: string | null;
   notifyOnPublish?: boolean | null;
+  allowLecturerManualPublish?: boolean | null;
 }
 
 export interface EventFormInput {

@@ -89,6 +89,7 @@ model EventFormLink {
   availableFrom DateTime?
   availableUntil DateTime?
   notifyOnPublish Boolean @default(true)
+  allowLecturerManualPublish Boolean @default(false)
   lastNotifiedAt DateTime?
 
   deletedAt DateTime?

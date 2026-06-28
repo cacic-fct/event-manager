@@ -60,6 +60,9 @@ export class EventFormLink {
   @Field(() => Boolean)
   notifyOnPublish!: boolean;
 
+  @Field(() => Boolean)
+  allowLecturerManualPublish!: boolean;
+
   @Field(() => Date, { nullable: true })
   lastNotifiedAt?: Date | null;
 
@@ -281,6 +284,9 @@ export class EventFormLinkInput {
 
   @Field(() => Boolean, { nullable: true })
   notifyOnPublish?: boolean | null;
+
+  @Field(() => Boolean, { nullable: true })
+  allowLecturerManualPublish?: boolean | null;
 }
 
 @InputType()
