@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -8,7 +9,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
 
 @Component({
   selector: 'app-workspace-permissions-tab',
-  imports: [MatChipsModule, MatIconModule, MatListModule, MatTooltip],
+  imports: [MatButtonModule, MatChipsModule, MatIconModule, MatListModule, MatTooltip],
   templateUrl: './workspace-permissions-tab.component.html',
   styleUrl: './workspace-permissions-tab.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
