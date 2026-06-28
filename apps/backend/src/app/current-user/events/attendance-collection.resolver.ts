@@ -763,7 +763,7 @@ export class CurrentUserAttendanceCollectionResolver {
 
     if (existing) {
       if (existing.status !== 'PENDING') {
-        return { submission: existing, changed: false };
+        return { submission: existing, changed: false, queuedForReview: false };
       }
 
       return this.updatePendingOfflineAttendanceSubmission(item, metadata, resolvedPerson, locationData);
