@@ -262,7 +262,7 @@
             </div>
 
             @if (workspace.selectedPerson()?.user || workspace.selectedPerson()?.userId) {
-              <form [formGroup]="workspace.permissionGrantForm" class="compact-form">
+              <form [formGroup]="workspace.permissionGrantForm" class="compact-form permission-grant-form">
                 @if (!workspace.editingPermissionGrant()) {
                   <mat-form-field>
                     <mat-label>Preset</mat-label>
@@ -315,13 +315,14 @@
                   <button
                     mat-stroked-button
                     type="button"
+                    matTooltip="Inclui as permissões sugeridas pelo preset na lista a salvar. Nada é gravado até clicar em Salvar permissões."
                     [disabled]="
                       !workspace.permissionGrantForm.controls.presetId.value ||
                       !permissions.canEdit(Permission.PermissionGrant.Create)
                     "
                     (click)="workspace.applySelectedPermissionPreset()">
                     <mat-icon>auto_awesome</mat-icon>
-                    Adicionar preset à revisão
+                    Adicionar permissões do preset
                   </button>
                 }
 
@@ -466,10 +467,11 @@
                   <button
                     mat-stroked-button
                     type="button"
+                    matTooltip="Inclui as permissões selecionadas na lista a salvar. Nada é gravado até clicar em Salvar permissões."
                     [disabled]="!permissions.canEdit(Permission.PermissionGrant.Create)"
                     (click)="workspace.addSelectedPermissionGrantsToReview()">
                     <mat-icon>playlist_add</mat-icon>
-                    Adicionar à revisão
+                    Adicionar permissões
                   </button>
                 }
               </form>

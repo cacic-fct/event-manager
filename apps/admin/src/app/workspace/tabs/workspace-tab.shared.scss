@@ -257,6 +257,29 @@
   min-width: min(100%, 14rem);
 }
 
+.permission-grant-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  align-items: start;
+}
+
+.permission-grant-form mat-form-field {
+  min-width: 0;
+}
+
+.permission-grant-form > button {
+  width: fit-content;
+  max-width: 100%;
+  justify-self: start;
+  white-space: normal;
+}
+
+.permission-grant-form > .permission-target-search,
+.permission-grant-form > .permission-target-list,
+.permission-grant-form > .permission-preset-preview {
+  grid-column: 1 / -1;
+}
+
 .editor-form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

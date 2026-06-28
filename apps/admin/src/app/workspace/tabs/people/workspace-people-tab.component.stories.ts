@@ -99,7 +99,7 @@ export const PermissionManagement: Story = {
     await expect(await canvas.findByLabelText('Escopo da permissão')).toBeVisible();
     await expect(await canvas.findByLabelText('Válida a partir de')).toBeVisible();
     await expect(await canvas.findByLabelText('Válida até')).toBeVisible();
-    await userEvent.click(await canvas.findByRole('button', { name: /adicionar à revisão/i }));
+    await userEvent.click(await canvas.findByRole('button', { name: /adicionar permissões/i }));
     await expect(await canvas.findByText('Permissões em revisão')).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /salvar permissões/i })).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /remover permissão da revisão/i })).toBeVisible();
