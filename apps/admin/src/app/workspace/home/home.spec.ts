@@ -106,6 +106,16 @@ describe('Home', () => {
     expect(component.hasSystemHealth()).toBe(true);
   });
 
+  it('updates the greeting when the component clock crosses an hour boundary', () => {
+    component.currentDate.set(new Date('2026-05-22T08:59:00-03:00'));
+
+    expect(component.greetings()).toBe('Bom dia, Admin Teste!');
+
+    component.currentDate.set(new Date('2026-05-22T12:00:00-03:00'));
+
+    expect(component.greetings()).toBe('Boa tarde, Admin Teste!');
+  });
+
   it('renders loaded dashboard queues and creation shortcuts', async () => {
     fixture.detectChanges();
     await fixture.whenStable();

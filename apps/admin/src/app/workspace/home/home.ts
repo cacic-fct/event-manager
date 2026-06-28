@@ -269,7 +269,7 @@ export class Home implements OnInit, OnDestroy {
   }
 
   private getGreetings(): string {
-    const hour = new Date().getHours();
+    const hour = this.currentDate().getHours();
     const name = this.authService.user()?.claims?.name;
     const greeting = hour < 5 ? 'Boa madrugada' : hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
 
