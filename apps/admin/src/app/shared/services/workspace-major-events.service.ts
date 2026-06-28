@@ -219,6 +219,15 @@ export class WorkspaceMajorEventsService {
     void this.router.navigate(this.majorEventPublicationRoute(selectedMajorEvent.id));
   }
 
+  openMajorEventForms(): void {
+    const selectedMajorEvent = this.selectedMajorEvent();
+    if (!selectedMajorEvent) {
+      return;
+    }
+
+    void this.router.navigate(['/forms', 'major-event', selectedMajorEvent.id]);
+  }
+
   resetMajorEventForm(): void {
     void this.router.navigate(['/major-events']);
     this.selectedMajorEvent.set(null);

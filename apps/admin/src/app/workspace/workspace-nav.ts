@@ -98,6 +98,16 @@ export const workspaceNavItems = [
     helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Certificados',
   },
   {
+    kind: 'link',
+    id: 'forms',
+    path: 'forms',
+    label: 'Formulários',
+    description: 'Crie formulários, vincule a eventos e acompanhe respostas.',
+    icon: 'dynamic_form',
+    group: 'Participação',
+    helpLink: undefined,
+  },
+  {
     kind: 'divider',
     id: 'divider-participation-people',
     label: 'Pessoas',

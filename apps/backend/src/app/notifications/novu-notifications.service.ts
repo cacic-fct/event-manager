@@ -43,6 +43,15 @@ type CertificateAvailableNotification = {
   recipient: NotificationRecipient;
 };
 
+type EventFormAvailableNotification = {
+  formId: string;
+  formName: string;
+  targetType: 'EVENT' | 'MAJOR_EVENT';
+  targetId: string;
+  targetName: string;
+  recipients: NotificationRecipient[];
+};
+
 type NovuTriggerResponse = {
   acknowledged: boolean;
   status: string;
@@ -64,6 +73,10 @@ export class NovuNotificationsService {
   private readonly certificateAvailableWorkflowIdentifier = this.config.get<string>(
     'NOVU_CERTIFICATE_AVAILABLE_WORKFLOW_IDENTIFIER',
     'certificate-available',
+  );
+  private readonly eventFormAvailableWorkflowIdentifier = this.config.get<string>(
+    'NOVU_EVENT_FORM_AVAILABLE_WORKFLOW_IDENTIFIER',
+    'event-form-available',
   );
 
   constructor(private readonly config: ConfigService) {}
@@ -357,6 +370,83 @@ export class NovuNotificationsService {
                 certificateId: input.certificateId,
                 configId: input.configId,
                 subscriberId: input.recipient.subscriberId,
+              },
+            },
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
+        return;
+      }
+
+      const result = (await response.json()) as NovuTriggerResponse;
+      if (!result.acknowledged) {
+        this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
+      }
+    } catch (error) {
+      this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async notifyEventFormAvailable(input: EventFormAvailableNotification): Promise<void> {
+    if (!this.isSecureModeEnabled()) {
+      return;
+    }
+
+    const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
+    if (!secretKey || input.recipients.length === 0) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams({
+      targetType: input.targetType,
+      targetId: input.targetId,
+    });
+    const actionUrl = `/profile/forms/${input.formId}?${searchParams.toString()}`;
+    const title = 'Formulário disponível';
+    const body = `O formulário "${input.formName}" está disponível para ${input.targetName}.`;
+
+    try {
+      const response = await fetch(`${this.apiUrl()}/v1/events/trigger`, {
+        method: 'POST',
+        headers: {
+          Authorization: `ApiKey ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: this.eventFormAvailableWorkflowIdentifier,
+          to: input.recipients,
+          transactionId: `event-form-available:${input.formId}:${input.targetType}:${input.targetId}`,
+          payload: {
+            title,
+            subject: title,
+            body,
+            formId: input.formId,
+            formName: input.formName,
+            targetType: input.targetType,
+            targetId: input.targetId,
+            targetName: input.targetName,
+            actionLabel: 'Responder formulário',
+            actionUrl,
+            redirectUrl: actionUrl,
+          },
+          overrides: {
+            fcm: {
+              data: {
+                url: actionUrl,
+                formId: input.formId,
+                targetType: input.targetType,
+                targetId: input.targetId,
+              },
+            },
+            webPush: {
+              data: {
+                url: actionUrl,
+                formId: input.formId,
+                targetType: input.targetType,
+                targetId: input.targetId,
               },
             },
           },

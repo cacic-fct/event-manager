@@ -15,10 +15,17 @@ type AdminE2EEventFixture = AdminE2ENamedFixture & {
   majorEvent: AdminE2ENamedFixture | null;
   eventGroup: AdminE2ENamedFixture | null;
 };
+type AdminE2EEventFormFixture = AdminE2ENamedFixture & {
+  links: Record<string, unknown>[];
+  elementsJson: string;
+};
 
 export const adminE2EReadPermissions = [
   'event#read',
   'major-event#read',
+  'event-form#read',
+  'event-form#results',
+  'event-form#export',
   'event-lecturer#read',
   'event-group#read',
   'event-attendance#read',
@@ -36,6 +43,12 @@ export const adminE2ECriticalFlowPermissions = [
   'event-group#update',
   'major-event#create',
   'major-event#update',
+  'event-form#create',
+  'event-form#update',
+  'event-form#delete',
+  'event-form#publish',
+  'event-form#results',
+  'event-form#export',
   'subscription#create',
   'subscription#update',
   'subscription#import',
@@ -490,6 +503,79 @@ export function createAdminE2EEventAttendance(overrides: Record<string, unknown>
   };
 }
 
+export function createAdminE2EEventForm(overrides: Partial<AdminE2EEventFormFixture> = {}): AdminE2EEventFormFixture {
+  const event = createAdminE2EEvent();
+
+  return {
+    id: 'form-1',
+    name: 'Pesquisa de camiseta',
+    description: 'Coleta o tamanho da camiseta dos inscritos.',
+    ownerEventId: event.id,
+    ownerMajorEventId: null,
+    owner: {
+      type: 'EVENT',
+      id: event.id,
+      name: event.name,
+      emoji: event['emoji'],
+    },
+    elementsJson: JSON.stringify([
+      {
+        id: 'shirt-size',
+        type: 'singleChoice',
+        title: 'Tamanho da camiseta',
+        description: 'Escolha o tamanho preferido.',
+        required: true,
+        options: [
+          { id: 'p', label: 'P' },
+          { id: 'm', label: 'M' },
+          { id: 'g', label: 'G' },
+        ],
+      },
+    ]),
+    sigilo: 'PARTIALLY_SECRET',
+    resultsPublic: false,
+    resultsLive: false,
+    publicationState: 'PUBLISHED',
+    scheduledPublishAt: null,
+    publishedAt: '2026-05-20T12:00:00.000Z',
+    unpublishedAt: null,
+    links: [
+      {
+        id: 'form-link-1',
+        formId: 'form-1',
+        targetType: 'EVENT',
+        eventId: event.id,
+        majorEventId: null,
+        target: {
+          type: 'EVENT',
+          id: event.id,
+          name: event.name,
+          emoji: event['emoji'],
+        },
+        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        insertInSubscriptionFlow: true,
+        requiredInSubscriptionFlow: true,
+        enforceRequiredAnswers: true,
+        displayOrder: 0,
+        availableFrom: null,
+        availableUntil: null,
+        notifyOnPublish: true,
+        lastNotifiedAt: null,
+        responseCount: 2,
+        createdAt: '2026-05-20T12:00:00.000Z',
+        updatedAt: '2026-05-20T12:00:00.000Z',
+      },
+    ],
+    responseCount: 2,
+    deletedAt: null,
+    createdAt: '2026-05-20T12:00:00.000Z',
+    createdById: 'admin-1',
+    updatedAt: '2026-05-20T12:00:00.000Z',
+    updatedById: 'admin-1',
+    ...overrides,
+  };
+}
+
 export function createAdminE2EMajorEventUserAttendance(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const person = createAdminE2EPerson();
 
@@ -601,6 +687,59 @@ function graphqlData(body: unknown, dashboardInsights: AdminE2EDashboardInsights
 
   if (query.includes('query WorkspaceEventSubscriptions')) {
     return { workspaceEventSubscriptions: [createAdminE2EEventSubscription()] };
+  }
+
+  if (query.includes('query EventForms')) {
+    return { eventForms: [createAdminE2EEventForm()] };
+  }
+
+  if (query.includes('query EventFormResults')) {
+    const form = createAdminE2EEventForm();
+    return {
+      eventFormResults: {
+        responseCount: 2,
+        anonymous: false,
+        answersReleased: true,
+        summaryJson: JSON.stringify({
+          questions: [
+            {
+              elementId: 'shirt-size',
+              title: 'Tamanho da camiseta',
+              type: 'singleChoice',
+              answeredCount: 2,
+              buckets: [
+                { label: 'P', value: 0 },
+                { label: 'M', value: 1 },
+                { label: 'G', value: 1 },
+              ],
+              textAnswers: [],
+            },
+          ],
+        }),
+        form,
+        responses: [
+          {
+            id: 'form-response-1',
+            formId: form.id,
+            linkId: 'form-link-1',
+            targetType: 'EVENT',
+            eventId: event.id,
+            majorEventId: null,
+            personId: 'person-1',
+            respondentName: 'Ada Lovelace',
+            respondentEmail: 'ada@example.edu',
+            answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+            source: 'SUBSCRIPTION_FLOW',
+            submittedAt: '2026-05-21T12:00:00.000Z',
+            updatedAt: '2026-05-21T12:00:00.000Z',
+          },
+        ],
+      },
+    };
+  }
+
+  if (query.includes('query EventForm(')) {
+    return { eventForm: createAdminE2EEventForm() };
   }
 
   if (query.includes('query WorkspaceMajorEventSubscriptions')) {

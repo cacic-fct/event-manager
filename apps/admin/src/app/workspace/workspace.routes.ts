@@ -11,6 +11,7 @@ const publicationData = getWorkspaceRouteData('publication');
 const peopleData = getWorkspaceRouteData('people');
 const mergeCandidatesData = getWorkspaceRouteData('merge-candidates');
 const certificatesData = getWorkspaceRouteData('certificates');
+const formsData = getWorkspaceRouteData('forms');
 const attendancesData = getWorkspaceRouteData('attendances');
 const subscriptionsData = getWorkspaceRouteData('subscriptions');
 const notificationsData = getWorkspaceRouteData('notifications');
@@ -132,6 +133,15 @@ export const workspaceRoutes: Route[] = [
         import('./tabs/certificates/workspace-certificates-tab.component').then(
           (m) => m.WorkspaceCertificatesTabComponent,
         ),
+      ),
+      ...guardedWorkspaceTabRoute(formsData.path, formsData, () =>
+        import('./tabs/forms/workspace-forms-tab.component').then((m) => m.WorkspaceFormsTabComponent),
+      ),
+      ...guardedWorkspaceTabRoute(`${formsData.path}/event/:eventId`, formsData, () =>
+        import('./tabs/forms/workspace-forms-tab.component').then((m) => m.WorkspaceFormsTabComponent),
+      ),
+      ...guardedWorkspaceTabRoute(`${formsData.path}/major-event/:majorEventId`, formsData, () =>
+        import('./tabs/forms/workspace-forms-tab.component').then((m) => m.WorkspaceFormsTabComponent),
       ),
 
       ...guardedWorkspaceTabRoute(attendancesData.path, attendancesData, () =>

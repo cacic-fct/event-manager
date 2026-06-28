@@ -1,0 +1,51 @@
+.filter-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.filter-form mat-form-field {
+  flex: 1 1 16rem;
+}
+
+.link-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.link-item {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.link-item-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tab-panel {
+  padding: 1rem 0;
+}
+
+.results-actions {
+  margin-bottom: 1rem;
+}
+
+.disabled-link {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+@media (max-width: 900px) {
+  .filter-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

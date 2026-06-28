@@ -9,6 +9,9 @@ model MajorEvent {
 
   events Event[]
   eventManagerPermissionGrants EventManagerPermissionGrant[]
+  ownedForms    EventForm[]         @relation("EventFormOwnerMajorEvent")
+  formLinks     EventFormLink[]     @relation("EventFormLinkMajorEvent")
+  formResponses EventFormResponse[] @relation("EventFormResponseMajorEvent")
 
   subscriptions         MajorEventSubscription[]
   subscriptionStartDate DateTime?

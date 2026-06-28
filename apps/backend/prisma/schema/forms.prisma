@@ -1,0 +1,170 @@
+enum EventFormSigilo {
+  PUBLIC
+  PARTIALLY_SECRET
+  SECRET
+  ANONYMOUS
+}
+
+enum EventFormAudience {
+  SUBSCRIBERS
+  ATTENDEES
+  SUBSCRIBERS_OR_ATTENDEES
+}
+
+enum EventFormTargetType {
+  EVENT
+  MAJOR_EVENT
+}
+
+enum EventFormResponseSource {
+  PUBLIC_FORM
+  SUBSCRIPTION_FLOW
+  LECTURER_PUBLISH
+}
+
+model EventForm {
+  id          String  @id @default(uuid(7))
+  name        String
+  description String?
+
+  ownerEvent   Event?  @relation("EventFormOwnerEvent", fields: [ownerEventId], references: [id], onDelete: Restrict)
+  ownerEventId String?
+
+  ownerMajorEvent   MajorEvent? @relation("EventFormOwnerMajorEvent", fields: [ownerMajorEventId], references: [id], onDelete: Restrict)
+  ownerMajorEventId String?
+
+  elements Json
+  sigilo   EventFormSigilo @default(SECRET)
+
+  resultsPublic Boolean @default(false)
+  resultsLive   Boolean @default(false)
+
+  publicationState      PublicationState @default(DRAFT)
+  scheduledPublishAt    DateTime?
+  publishedAt           DateTime?
+  unpublishedAt         DateTime?
+  publicationScheduledBy String?
+  publicationUpdatedBy   String?
+
+  links     EventFormLink[]
+  responses EventFormResponse[]
+  drafts    EventFormDraft[]
+
+  deletedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@index([ownerEventId])
+  @@index([ownerMajorEventId])
+  @@index([deletedAt])
+  @@index([publicationState])
+  @@index([scheduledPublishAt])
+  @@map("event_forms")
+}
+
+model EventFormLink {
+  id     String    @id @default(uuid(7))
+  form   EventForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  formId String
+
+  targetType EventFormTargetType
+
+  event   Event?  @relation("EventFormLinkEvent", fields: [eventId], references: [id], onDelete: Restrict)
+  eventId String?
+
+  majorEvent   MajorEvent? @relation("EventFormLinkMajorEvent", fields: [majorEventId], references: [id], onDelete: Restrict)
+  majorEventId String?
+
+  audience EventFormAudience @default(SUBSCRIBERS_OR_ATTENDEES)
+
+  insertInSubscriptionFlow Boolean @default(false)
+  requiredInSubscriptionFlow Boolean @default(false)
+  enforceRequiredAnswers Boolean @default(true)
+
+  displayOrder Int @default(0)
+
+  availableFrom DateTime?
+  availableUntil DateTime?
+  notifyOnPublish Boolean @default(true)
+  lastNotifiedAt DateTime?
+
+  deletedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  responses EventFormResponse[]
+
+  @@index([formId])
+  @@index([eventId])
+  @@index([majorEventId])
+  @@index([targetType])
+  @@index([deletedAt])
+  @@index([availableFrom])
+  @@index([availableUntil])
+  @@map("event_form_links")
+}
+
+model EventFormResponse {
+  id     String    @id @default(uuid(7))
+  form   EventForm @relation(fields: [formId], references: [id], onDelete: Restrict)
+  formId String
+
+  link   EventFormLink? @relation(fields: [linkId], references: [id], onDelete: SetNull)
+  linkId String?
+
+  targetType EventFormTargetType
+
+  event   Event?  @relation("EventFormResponseEvent", fields: [eventId], references: [id], onDelete: Restrict)
+  eventId String?
+
+  majorEvent   MajorEvent? @relation("EventFormResponseMajorEvent", fields: [majorEventId], references: [id], onDelete: Restrict)
+  majorEventId String?
+
+  person   People @relation(fields: [personId], references: [id], onDelete: Restrict)
+  personId String
+
+  answers Json
+  source  EventFormResponseSource @default(PUBLIC_FORM)
+
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([formId])
+  @@index([linkId])
+  @@index([eventId])
+  @@index([majorEventId])
+  @@index([personId])
+  @@index([submittedAt])
+  @@map("event_form_responses")
+}
+
+model EventFormDraft {
+  id String @id @default(uuid(7))
+
+  sourceForm   EventForm @relation(fields: [sourceFormId], references: [id], onDelete: Cascade)
+  sourceFormId String
+
+  name    String
+  payload Json
+
+  createdById    String?
+  createdByName  String?
+  createdByEmail String?
+  updatedById    String?
+  updatedByName  String?
+  updatedByEmail String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+
+  @@index([sourceFormId, updatedAt(sort: Desc), createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("event_form_drafts")
+}

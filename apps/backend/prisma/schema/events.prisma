@@ -40,6 +40,9 @@ model Event {
   eventGroupId String?
 
   drafts EventDraft[]
+  ownedForms    EventForm[]     @relation("EventFormOwnerEvent")
+  formLinks     EventFormLink[] @relation("EventFormLinkEvent")
+  formResponses EventFormResponse[] @relation("EventFormResponseEvent")
 
   attendances                   EventAttendance[]
   attendanceCollectors          EventAttendanceCollector[]

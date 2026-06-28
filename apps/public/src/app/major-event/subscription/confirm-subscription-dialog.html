@@ -26,9 +26,33 @@
     </mat-list-item>
     } } }
   </mat-list>
+
+  @if (data.forms.length > 0) {
+  <section class="forms-section">
+    <h3>Formulários</h3>
+    @for (formContext of data.forms; track formKey(formContext)) {
+    <article class="form-card">
+      <header>
+        <p>{{ formContext.targetName }}</p>
+        <h4>{{ formContext.form.name }}</h4>
+      </header>
+      @if (formContext.form.description) {
+      <p class="form-description">{{ formContext.form.description }}</p>
+      }
+      <lib-event-form-renderer
+        [elements]="formElements(formContext.form)"
+        [showSubmit]="false"
+        (answersChange)="updateFormAnswers(formContext, $event)" />
+      @if (hasMissingRequired(formContext)) {
+      <p class="validation">Responda as perguntas obrigatórias para continuar.</p>
+      }
+    </article>
+    }
+  </section>
+  }
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
   <button mat-button type="button" (click)="close()">Cancelar</button>
-  <button mat-flat-button type="button" (click)="confirm()">Inscrever-se</button>
+  <button mat-flat-button type="button" [disabled]="!canConfirm()" (click)="confirm()">Inscrever-se</button>
 </mat-dialog-actions>

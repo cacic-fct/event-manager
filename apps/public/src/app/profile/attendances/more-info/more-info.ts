@@ -1,4 +1,4 @@
-import type { EventTargetType } from '@cacic-fct/event-manager-public-contracts';
+import type { EventFormTargetType, EventTargetType, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,15 +12,24 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { OfflineAttendanceDetail, OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
 import { DetailViewModel, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
-import { Observable, catchError, from, map, of, startWith, switchMap } from 'rxjs';
+import { Observable, catchError, forkJoin, from, map, of, startWith, switchMap } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import { CertificateDialog, CertificateDialogData } from '../my-attendances/certificate-dialog/certificate-dialog';
 import { EmojiService } from '../../../shared/emoji.service';
+import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
+
+type DetailFormLink = {
+  formId: string;
+  name: string;
+  targetType: EventFormTargetType;
+  targetId: string;
+  targetName: string;
+};
 
 type DetailState =
   | { status: 'loading' }
-  | { status: 'ready'; detail: DetailViewModel }
+  | { status: 'ready'; detail: DetailViewModel; formLinks: DetailFormLink[] }
   | { status: 'error'; message: string };
 
 @Component({
@@ -47,6 +56,7 @@ export class MoreInfo {
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineData = inject(OfflinePublicDataAccessService);
   private readonly dialog = inject(MatDialog);
+  private readonly formsApi = inject(PublicEventFormApiService);
   readonly emoji = inject(EmojiService);
 
   readonly detailState = toSignal(
@@ -87,6 +97,17 @@ export class MoreInfo {
     return ['/profile', 'attendances', detail.targetType, detail.targetId, 'organizer'];
   }
 
+  formRoute(link: DetailFormLink): string[] {
+    return ['/profile', 'forms', link.formId];
+  }
+
+  formQueryParams(link: DetailFormLink): { targetType: EventFormTargetType; targetId: string } {
+    return {
+      targetType: link.targetType,
+      targetId: link.targetId,
+    };
+  }
+
   canUploadMajorEventReceipt(detail: DetailViewModel): boolean {
     return (
       detail.targetType === 'major-event' &&
@@ -108,14 +129,18 @@ export class MoreInfo {
     }
 
     return this.loadDetail(eventType, eventId).pipe(
-      map((detail) =>
-        detail
-          ? ({ status: 'ready', detail } satisfies DetailState)
-          : ({
-              status: 'error',
-              message: 'Inscrição não encontrada.',
-            } satisfies DetailState),
-      ),
+      switchMap((detail) => {
+        if (!detail) {
+          return of({
+            status: 'error',
+            message: 'Inscrição não encontrada.',
+          } satisfies DetailState);
+        }
+
+        return this.loadFormLinks(detail).pipe(
+          map((formLinks) => ({ status: 'ready', detail, formLinks } satisfies DetailState)),
+        );
+      }),
       startWith({ status: 'loading' } satisfies DetailState),
       catchError((error: unknown) =>
         of({
@@ -174,6 +199,93 @@ export class MoreInfo {
     const cachedDetail = userId ? await this.offlineData.getAttendanceDetail(userId, eventType, eventId) : null;
 
     return cachedDetail ? this.buildCachedDetail(cachedDetail) : null;
+  }
+
+  private loadFormLinks(detail: DetailViewModel): Observable<DetailFormLink[]> {
+    if (!this.networkStatus.isOnline()) {
+      return of([]);
+    }
+
+    const targets: DetailFormLink[] = [];
+    if (detail.targetType === 'event') {
+      targets.push({
+        formId: '',
+        name: '',
+        targetType: 'EVENT',
+        targetId: detail.targetId,
+        targetName: detail.title,
+      });
+    } else if (detail.targetType === 'major-event') {
+      targets.push({
+        formId: '',
+        name: '',
+        targetType: 'MAJOR_EVENT',
+        targetId: detail.targetId,
+        targetName: detail.title,
+      });
+      for (const item of detail.events) {
+        targets.push({
+          formId: '',
+          name: '',
+          targetType: 'EVENT',
+          targetId: item.event.id,
+          targetName: item.event.name,
+        });
+      }
+    } else {
+      for (const item of detail.events) {
+        targets.push({
+          formId: '',
+          name: '',
+          targetType: 'EVENT',
+          targetId: item.event.id,
+          targetName: item.event.name,
+        });
+      }
+    }
+
+    if (targets.length === 0) {
+      return of([]);
+    }
+
+    return forkJoin(targets.map((target) => this.loadTargetFormLinks(target))).pipe(
+      map((groups) => {
+        const seen = new Set<string>();
+        return groups
+          .flat()
+          .filter((link) => {
+            const key = `${link.formId}:${link.targetType}:${link.targetId}`;
+            if (seen.has(key)) {
+              return false;
+            }
+            seen.add(key);
+            return true;
+          });
+      }),
+    );
+  }
+
+  private loadTargetFormLinks(target: DetailFormLink): Observable<DetailFormLink[]> {
+    return this.formsApi
+      .listCurrentUserForms({
+        targetType: target.targetType,
+        eventId: target.targetType === 'EVENT' ? target.targetId : null,
+        majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
+      })
+      .pipe(
+        map((forms) => forms.map((form) => this.toDetailFormLink(form, target))),
+        catchError(() => of([])),
+      );
+  }
+
+  private toDetailFormLink(form: PublicEventForm, target: DetailFormLink): DetailFormLink {
+    return {
+      formId: form.id,
+      name: form.name,
+      targetType: target.targetType,
+      targetId: target.targetId,
+      targetName: target.targetName,
+    };
   }
 
   private buildCachedDetail(cachedDetail: OfflineAttendanceDetail): DetailViewModel | null {

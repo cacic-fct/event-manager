@@ -49,6 +49,10 @@ import { EventSubscriptionCountersService } from './events/subscription-counters
 import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
 import { EventDraftsResolver } from './events/event-drafts.resolver';
 import { EventDraftsService } from './events/event-drafts.service';
+import { EventFormsController } from './event-forms/event-forms.controller';
+import { EventFormsResolver } from './event-forms/event-forms.resolver';
+import { EventFormsScheduler } from './event-forms/event-forms.scheduler';
+import { EventFormsService } from './event-forms/event-forms.service';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
 import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
@@ -191,6 +195,7 @@ import { validateBackendEnvironment } from './config/environment.validation';
     CalendarController,
     AccountProfileUpdateController,
     EventAttendancesController,
+    EventFormsController,
     MajorEventReceiptsController,
     NovuNotificationsController,
     PrivacyController,
@@ -259,6 +264,9 @@ import { validateBackendEnvironment } from './config/environment.validation';
     EventAttendancesQueriesResolver,
     MajorEventSubscriptionCsvImportResolver,
     EventSubscriptionsResolver,
+    EventFormsResolver,
+    EventFormsService,
+    EventFormsScheduler,
     EventLecturersResolver,
     MergeCandidatesResolver,
     MergeCandidateOperationsService,

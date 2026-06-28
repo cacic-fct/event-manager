@@ -435,6 +435,15 @@ export class WorkspaceEventsService {
     void this.router.navigate(this.eventPublicationRoute(selectedEvent.id));
   }
 
+  openEventForms(): void {
+    const selectedEvent = this.selectedEvent();
+    if (!selectedEvent) {
+      return;
+    }
+
+    void this.router.navigate(['/forms', 'event', selectedEvent.id]);
+  }
+
   async deleteEventFromList(eventItem: Event): Promise<void> {
     await this.deleteEventById(eventItem.id);
   }

@@ -1,0 +1,32 @@
+<mat-toolbar>
+  <a matIconButton routerLink="/profile/attendances" aria-label="Voltar para participações">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <span>Formulário</span>
+</mat-toolbar>
+
+<main class="form-page">
+  @let currentState = state();
+  @if (currentState.status === 'loading') {
+    <mat-progress-bar mode="indeterminate" />
+  } @else if (currentState.status === 'error') {
+    <section class="empty-section" aria-live="polite">
+      <mat-icon>error</mat-icon>
+      <p>{{ currentState.message }}</p>
+    </section>
+  } @else {
+    <header>
+      <p>Formulário</p>
+      <h1>{{ currentState.form.name }}</h1>
+      @if (currentState.form.description) {
+        <span>{{ currentState.form.description }}</span>
+      }
+    </header>
+
+    <lib-event-form-renderer
+      [elements]="elements(currentState.form)"
+      [initialAnswers]="answers(currentState.response)"
+      submitLabel="Salvar respostas"
+      (formSubmitted)="submit(currentState, $event)" />
+  }
+</main>

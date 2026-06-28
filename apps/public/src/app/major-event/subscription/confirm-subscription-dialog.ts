@@ -1,16 +1,50 @@
 import { DatePipe, formatDate } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
+import type {
+  EventFormTargetType,
+  PublicEvent,
+  PublicEventForm,
+  PublicMajorEvent,
+} from '@cacic-fct/event-manager-public-contracts';
+import {
+  EventFormRendererComponent,
+  answerValue,
+  parseFormElementsJson,
+} from '@cacic-fct/shared-angular';
+import { isFormAnswerElementType, type FormElement, type FormResponseAnswer } from '@cacic-fct/form-contracts';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { EmojiService } from '../../shared/emoji.service';
+
+export interface SubscriptionFormContext {
+  form: PublicEventForm;
+  targetType: EventFormTargetType;
+  targetId: string;
+  targetName: string;
+  linkId: string | null;
+  enforceRequiredAnswers: boolean;
+}
+
+export interface SubscriptionFormAnswer {
+  formId: string;
+  linkId: string | null;
+  targetType: EventFormTargetType;
+  targetId: string;
+  answers: FormResponseAnswer[];
+}
+
+export interface ConfirmSubscriptionDialogResult {
+  confirmed: boolean;
+  answers: SubscriptionFormAnswer[];
+}
 
 export interface ConfirmSubscriptionDialogData {
   majorEvent: PublicMajorEvent;
   events: PublicEvent[];
+  forms: SubscriptionFormContext[];
 }
 
 interface ConfirmSubscriptionListMonth {
@@ -27,7 +61,7 @@ interface ConfirmSubscriptionListDay {
 
 @Component({
   selector: 'app-confirm-subscription-dialog',
-  imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule, MatListModule],
+  imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule, MatListModule, EventFormRendererComponent],
   templateUrl: './confirm-subscription-dialog.html',
   styleUrl: './confirm-subscription-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,15 +70,65 @@ export class ConfirmSubscriptionDialog {
   private readonly dialogRef = inject(MatDialogRef<ConfirmSubscriptionDialog>);
   readonly data = inject<ConfirmSubscriptionDialogData>(MAT_DIALOG_DATA);
   readonly emoji = inject(EmojiService);
+  readonly answersByKey = signal<Record<string, FormResponseAnswer[]>>({});
 
   readonly groupedEvents = computed(() => this.groupByMonthAndDay(this.data.events));
+  readonly canConfirm = computed(() => this.data.forms.every((form) => !this.hasMissingRequired(form)));
 
   confirm(): void {
-    this.dialogRef.close(true);
+    this.dialogRef.close({
+      confirmed: true,
+      answers: this.data.forms.map((form) => ({
+        formId: form.form.id,
+        linkId: form.linkId,
+        targetType: form.targetType,
+        targetId: form.targetId,
+        answers: this.answersByKey()[this.formKey(form)] ?? [],
+      })),
+    } satisfies ConfirmSubscriptionDialogResult);
   }
 
   close(): void {
-    this.dialogRef.close(false);
+    this.dialogRef.close({ confirmed: false, answers: [] } satisfies ConfirmSubscriptionDialogResult);
+  }
+
+  formElements(form: PublicEventForm): FormElement[] {
+    return parseFormElementsJson(form.elementsJson);
+  }
+
+  updateFormAnswers(form: SubscriptionFormContext, answers: FormResponseAnswer[]): void {
+    this.answersByKey.update((current) => ({
+      ...current,
+      [this.formKey(form)]: answers,
+    }));
+  }
+
+  hasMissingRequired(form: SubscriptionFormContext): boolean {
+    if (!form.enforceRequiredAnswers) {
+      return false;
+    }
+
+    const answers = this.answersByKey()[this.formKey(form)] ?? [];
+    return this.formElements(form.form).some((element) => {
+      if (!element.required || !isFormAnswerElementType(element.type)) {
+        return false;
+      }
+      const value = answerValue(answers, element.id);
+      if (value === null || value === undefined || value === '') {
+        return true;
+      }
+      if (Array.isArray(value)) {
+        return value.length === 0;
+      }
+      if (typeof value === 'object') {
+        return Object.keys(value).length === 0;
+      }
+      return false;
+    });
+  }
+
+  formKey(form: SubscriptionFormContext): string {
+    return `${form.form.id}:${form.targetType}:${form.targetId}`;
   }
 
   private groupByMonthAndDay(events: PublicEvent[]): ConfirmSubscriptionListMonth[] {

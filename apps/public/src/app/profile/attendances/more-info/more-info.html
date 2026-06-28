@@ -66,6 +66,17 @@
     }
   </div>
 
+  @if (currentState.formLinks.length > 0) {
+  <div class="actions form-actions" aria-label="Formulários vinculados">
+    @for (formLink of currentState.formLinks; track formLink.formId + formLink.targetType + formLink.targetId) {
+    <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
+      <mat-icon>dynamic_form</mat-icon>
+      {{ formLink.name }}
+    </a>
+    }
+  </div>
+  }
+
   @if (detail.description) {
   <section class="detail-section">
     <h2>Sobre</h2>

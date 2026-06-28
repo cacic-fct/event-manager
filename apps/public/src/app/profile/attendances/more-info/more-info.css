@@ -78,6 +78,10 @@ h2 {
   margin: 16px 0 24px;
 }
 
+.form-actions {
+  margin-top: -12px;
+}
+
 .detail-section + .detail-section {
   margin-top: 28px;
 }

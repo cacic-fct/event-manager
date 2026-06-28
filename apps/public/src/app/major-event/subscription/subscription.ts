@@ -18,21 +18,28 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { EventFormTargetType, PublicEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
-import { filter, finalize, map } from 'rxjs';
+import { catchError, filter, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
-import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
+import {
+  ConfirmSubscriptionDialog,
+  type ConfirmSubscriptionDialogData,
+  type ConfirmSubscriptionDialogResult,
+  type SubscriptionFormAnswer,
+  type SubscriptionFormContext,
+} from './confirm-subscription-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from './subscription-api.service';
 import { SubscriptionEventList } from './subscription-event-list';
 import {
   MajorEventSubscriptionRealtimeDelta,
   MajorEventSubscriptionRealtimeService,
 } from './subscription-realtime.service';
+import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 
 type SubscriptionPageState =
   | { status: 'loading' }
@@ -66,6 +73,7 @@ export class MajorEventSubscription {
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly realtime = inject(MajorEventSubscriptionRealtimeService);
+  private readonly formsApi = inject(PublicEventFormApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -360,24 +368,30 @@ export class MajorEventSubscription {
       return;
     }
 
-    const dialogRef = this.dialog.open<ConfirmSubscriptionDialog, ConfirmSubscriptionDialogData, boolean>(
-      ConfirmSubscriptionDialog,
-      {
-        data: {
-          majorEvent: data.majorEvent,
-          events: this.selectedEvents(),
-        },
-        width: 'min(720px, 96vw)',
-      },
-    );
-
-    dialogRef
-      .afterClosed()
+    this.loadSubscriptionForms(data)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((confirmed) => {
-        if (confirmed) {
-          this.confirmSubscription(data, selectedPaymentTier ?? null);
-        }
+      .subscribe((forms) => {
+        const dialogRef = this.dialog.open<
+          ConfirmSubscriptionDialog,
+          ConfirmSubscriptionDialogData,
+          ConfirmSubscriptionDialogResult
+        >(ConfirmSubscriptionDialog, {
+          data: {
+            majorEvent: data.majorEvent,
+            events: this.selectedEvents(),
+            forms,
+          },
+          width: 'min(760px, 96vw)',
+        });
+
+        dialogRef
+          .afterClosed()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe((result) => {
+            if (result?.confirmed) {
+              this.confirmSubscription(data, selectedPaymentTier ?? null, result.answers);
+            }
+          });
       });
   }
 
@@ -385,7 +399,11 @@ export class MajorEventSubscription {
     this.selectedPriceTierName.set(tierName);
   }
 
-  private confirmSubscription(data: PublicMajorEventSubscriptionPage, paymentTier: string | null): void {
+  private confirmSubscription(
+    data: PublicMajorEventSubscriptionPage,
+    paymentTier: string | null,
+    formAnswers: SubscriptionFormAnswer[],
+  ): void {
     if (this.subscriptionCooldownSeconds() > 0) {
       this.snackBar.open(`Aguarde ${this.subscriptionCooldownSeconds()}s para alterar a inscrição.`, 'OK', {
         duration: 3000,
@@ -397,6 +415,9 @@ export class MajorEventSubscription {
     this.api
       .upsertSubscription(data.majorEvent.id, [...this.effectiveSelectedEventIds()], paymentTier)
       .pipe(
+        switchMap((subscription) =>
+          this.submitSubscriptionFormAnswers(formAnswers).pipe(map(() => subscription)),
+        ),
         finalize(() => this.isSubmitting.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -426,6 +447,101 @@ export class MajorEventSubscription {
           });
         },
       });
+  }
+
+  private loadSubscriptionForms(data: PublicMajorEventSubscriptionPage) {
+    const targets = [
+      {
+        targetType: 'MAJOR_EVENT' as const,
+        targetId: data.majorEvent.id,
+        targetName: data.majorEvent.name,
+      },
+      ...this.selectedEvents().map((event) => ({
+        targetType: 'EVENT' as const,
+        targetId: event.id,
+        targetName: event.name,
+      })),
+    ];
+
+    return forkJoin(
+      targets.map((target) =>
+        this.formsApi
+          .listCurrentUserForms({
+            targetType: target.targetType,
+            eventId: target.targetType === 'EVENT' ? target.targetId : null,
+            majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
+            subscriptionFlowOnly: true,
+          })
+          .pipe(
+            map((forms) => forms.map((form) => this.toSubscriptionFormContext(form, target))),
+            catchError(() => of([])),
+          ),
+      ),
+    ).pipe(
+      map((groups) => {
+        const seen = new Set<string>();
+        return groups
+          .flat()
+          .filter((form) => {
+            const key = `${form.form.id}:${form.targetType}:${form.targetId}`;
+            if (seen.has(key)) {
+              return false;
+            }
+            seen.add(key);
+            return true;
+          })
+          .sort((left, right) => this.formDisplayOrder(left) - this.formDisplayOrder(right));
+      }),
+    );
+  }
+
+  private toSubscriptionFormContext(
+    form: PublicEventForm,
+    target: { targetType: EventFormTargetType; targetId: string; targetName: string },
+  ): SubscriptionFormContext {
+    const link =
+      form.links.find(
+        (item) =>
+          item.targetType === target.targetType &&
+          (item.eventId ?? null) === (target.targetType === 'EVENT' ? target.targetId : null) &&
+          (item.majorEventId ?? null) === (target.targetType === 'MAJOR_EVENT' ? target.targetId : null),
+      ) ?? null;
+
+    return {
+      form,
+      targetType: target.targetType,
+      targetId: target.targetId,
+      targetName: target.targetName,
+      linkId: link?.id ?? null,
+      enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
+    };
+  }
+
+  private formDisplayOrder(form: SubscriptionFormContext): number {
+    return (
+      form.form.links.find((link) => link.id === form.linkId)?.displayOrder ??
+      Number.MAX_SAFE_INTEGER
+    );
+  }
+
+  private submitSubscriptionFormAnswers(formAnswers: SubscriptionFormAnswer[]) {
+    if (formAnswers.length === 0) {
+      return of([]);
+    }
+
+    return forkJoin(
+      formAnswers.map((answer) =>
+        this.formsApi.submit({
+          formId: answer.formId,
+          linkId: answer.linkId,
+          targetType: answer.targetType,
+          eventId: answer.targetType === 'EVENT' ? answer.targetId : null,
+          majorEventId: answer.targetType === 'MAJOR_EVENT' ? answer.targetId : null,
+          answersJson: JSON.stringify(answer.answers),
+          source: 'SUBSCRIPTION_FLOW',
+        }),
+      ),
+    );
   }
 
   private computeDisabledReasons(): ReadonlyMap<string, string> {

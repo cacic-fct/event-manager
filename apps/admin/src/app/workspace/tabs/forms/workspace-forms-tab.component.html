@@ -1,0 +1,346 @@
+<section class="section workspace-tab-shell">
+  <div class="tab-grid tab-grid-wide">
+    <aside class="panel">
+      <div class="panel-heading">
+        <form [formGroup]="workspace.filtersForm" class="filter-form">
+          <mat-form-field>
+            <mat-label>Buscar formulário</mat-label>
+            <input matInput formControlName="query" />
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="workspace.loadForms()">
+            <mat-icon>search</mat-icon>
+            Buscar
+          </button>
+        </form>
+
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="!permissions.canEdit(Permission.EventForm.Create)"
+          (click)="workspace.createForm()">
+          <mat-icon>add</mat-icon>
+          Novo
+        </button>
+      </div>
+
+      <mat-list class="result-list">
+        @for (form of workspace.forms(); track form.id) {
+          <mat-list-item
+            (click)="workspace.selectForm(form)"
+            [class.selected-list-item]="workspace.selectedForm()?.id === form.id">
+            <span matListItemTitle class="list-title">
+              <mat-icon>{{ form.publicationState === 'PUBLISHED' ? 'fact_check' : 'dynamic_form' }}</mat-icon>
+              <span>{{ form.name }}</span>
+            </span>
+            <span matListItemLine>
+              {{ stateLabel(form) }} · {{ form.responseCount }} resposta{{ form.responseCount === 1 ? '' : 's' }}
+            </span>
+            <button
+              matIconButton
+              type="button"
+              aria-label="Editar formulário"
+              matTooltip="Editar"
+              [disabled]="!permissions.canEdit(Permission.EventForm.Update)"
+              (click)="$event.stopPropagation(); workspace.selectForm(form)">
+              <mat-icon>edit</mat-icon>
+            </button>
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            <span matListItemTitle>Nenhum formulário encontrado</span>
+            <span matListItemLine>Crie o primeiro formulário no painel ao lado.</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    </aside>
+
+    <section class="panel panel-stack">
+      <div class="panel-heading">
+        <div>
+          <h3>
+            @if (workspace.selectedForm()) {
+              Editar formulário
+            } @else {
+              Novo formulário
+            }
+          </h3>
+          <p>Campos, vínculo com eventos, sigilo e publicação.</p>
+        </div>
+
+        <div class="panel-actions editor-action-row">
+          <div class="editor-action-group">
+            @if (workspace.selectedForm(); as selectedForm) {
+              <a
+                mat-stroked-button
+                [href]="workspace.exportUrl(selectedForm)"
+                target="_blank"
+                rel="noopener"
+                [class.disabled-link]="!permissions.has(Permission.EventForm.Export)">
+                <mat-icon>download</mat-icon>
+                CSV
+              </a>
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!permissions.has(Permission.EventForm.Publish)"
+                (click)="workspace.unpublish()">
+                <mat-icon>visibility_off</mat-icon>
+                Despublicar
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!permissions.canDelete(Permission.EventForm.Delete)"
+                (click)="workspace.delete()">
+                <mat-icon>delete</mat-icon>
+                Excluir
+              </button>
+            }
+          </div>
+
+          <div class="editor-action-group editor-action-group--publication">
+            <button mat-button type="button" (click)="workspace.createForm()">
+              <mat-icon>restart_alt</mat-icon>
+              Limpar
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!canEditSelected() || workspace.loading()"
+              (click)="workspace.saveDraft()">
+              <mat-icon>edit_note</mat-icon>
+              Rascunho
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!permissions.has(Permission.EventForm.Publish) || workspace.loading()"
+              (click)="workspace.schedulePublication()">
+              <mat-icon>schedule</mat-icon>
+              Agendar
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="!canEditSelected() || workspace.loading() || workspace.form.invalid"
+              (click)="workspace.save()">
+              <mat-icon>save</mat-icon>
+              Salvar
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="!permissions.has(Permission.EventForm.Publish) || workspace.loading()"
+              (click)="workspace.publishNow()">
+              <mat-icon>publish</mat-icon>
+              Publicar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <form [formGroup]="workspace.form" class="panel-stack">
+        <section class="surface field-group">
+          <h4>Identidade e sigilo</h4>
+          <div class="field-grid">
+            <mat-form-field class="span-2">
+              <mat-label>Nome</mat-label>
+              <input matInput formControlName="name" />
+            </mat-form-field>
+
+            <mat-form-field class="span-2">
+              <mat-label>Descrição</mat-label>
+              <textarea matInput rows="2" formControlName="description"></textarea>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Pertence a</mat-label>
+              <mat-select formControlName="ownerType">
+                <mat-option value="NONE">Sem proprietário fixo</mat-option>
+                <mat-option value="EVENT">Evento</mat-option>
+                <mat-option value="MAJOR_EVENT">Grande evento</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            @if (workspace.form.controls.ownerType.value === 'EVENT') {
+              <mat-form-field>
+                <mat-label>Evento</mat-label>
+                <mat-select formControlName="ownerEventId">
+                  @for (event of workspace.events(); track event.id) {
+                    <mat-option [value]="event.id">{{ event.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            }
+
+            @if (workspace.form.controls.ownerType.value === 'MAJOR_EVENT') {
+              <mat-form-field>
+                <mat-label>Grande evento</mat-label>
+                <mat-select formControlName="ownerMajorEventId">
+                  @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+                    <mat-option [value]="majorEvent.id">{{ majorEvent.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            }
+
+            <mat-form-field>
+              <mat-label>Sigilo</mat-label>
+              <mat-select formControlName="sigilo">
+                <mat-option value="PUBLIC">Público</mat-option>
+                <mat-option value="PARTIALLY_SECRET">Parcialmente sigiloso</mat-option>
+                <mat-option value="SECRET">Sigiloso</mat-option>
+                <mat-option value="ANONYMOUS">Anônimo</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Agendar publicação</mat-label>
+              <input matInput type="datetime-local" formControlName="scheduledPublishAt" />
+            </mat-form-field>
+
+            <mat-checkbox formControlName="resultsPublic">Resultados visíveis fora da administração</mat-checkbox>
+            <mat-checkbox formControlName="resultsLive">Atualização em tempo real dos resultados</mat-checkbox>
+          </div>
+        </section>
+
+        <section class="surface field-group">
+          <div class="surface-heading">
+            <div>
+              <h4>Vínculos</h4>
+              <span>Defina onde o formulário aparece e se entra no fluxo de inscrição.</span>
+            </div>
+            <div class="actions">
+              <button mat-stroked-button type="button" (click)="workspace.addLink('EVENT')">
+                <mat-icon>event</mat-icon>
+                Evento
+              </button>
+              <button mat-stroked-button type="button" (click)="workspace.addLink('MAJOR_EVENT')">
+                <mat-icon>festival</mat-icon>
+                Grande evento
+              </button>
+            </div>
+          </div>
+
+          <div class="link-list">
+            @for (link of workspace.links(); track link.localId) {
+              <article class="link-item">
+                <div class="link-item-heading">
+                  <strong>{{ workspace.targetName(link) }}</strong>
+                  <button mat-icon-button type="button" matTooltip="Remover vínculo" (click)="workspace.removeLink(link.localId)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+
+                <div class="field-grid">
+                  <mat-form-field>
+                    <mat-label>Tipo</mat-label>
+                    <mat-select [value]="link.targetType" (selectionChange)="workspace.updateLink(link.localId, { targetType: $event.value })">
+                      <mat-option value="EVENT">Evento</mat-option>
+                      <mat-option value="MAJOR_EVENT">Grande evento</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  @if (link.targetType === 'EVENT') {
+                    <mat-form-field>
+                      <mat-label>Evento</mat-label>
+                      <mat-select [value]="link.eventId" (selectionChange)="workspace.updateLink(link.localId, { eventId: $event.value })">
+                        @for (event of workspace.events(); track event.id) {
+                          <mat-option [value]="event.id">{{ event.name }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  } @else {
+                    <mat-form-field>
+                      <mat-label>Grande evento</mat-label>
+                      <mat-select
+                        [value]="link.majorEventId"
+                        (selectionChange)="workspace.updateLink(link.localId, { majorEventId: $event.value })">
+                        @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+                          <mat-option [value]="majorEvent.id">{{ majorEvent.name }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  }
+
+                  <mat-form-field>
+                    <mat-label>Quem pode responder</mat-label>
+                    <mat-select [value]="link.audience" (selectionChange)="workspace.updateLink(link.localId, { audience: $event.value })">
+                      <mat-option value="SUBSCRIBERS">Inscritos</mat-option>
+                      <mat-option value="ATTENDEES">Participantes com presença</mat-option>
+                      <mat-option value="SUBSCRIBERS_OR_ATTENDEES">Inscritos ou presentes</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Ordem</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      [value]="link.displayOrder ?? 0"
+                      (input)="updateLinkOrder(link.localId, $event)" />
+                  </mat-form-field>
+
+                  <mat-checkbox
+                    [checked]="link.insertInSubscriptionFlow ?? false"
+                    (change)="workspace.updateLink(link.localId, { insertInSubscriptionFlow: $event.checked })">
+                    Inserir na inscrição
+                  </mat-checkbox>
+                  <mat-checkbox
+                    [checked]="link.requiredInSubscriptionFlow ?? false"
+                    (change)="workspace.updateLink(link.localId, { requiredInSubscriptionFlow: $event.checked })">
+                    Exigir no fluxo
+                  </mat-checkbox>
+                  <mat-checkbox
+                    [checked]="link.enforceRequiredAnswers ?? true"
+                    (change)="workspace.updateLink(link.localId, { enforceRequiredAnswers: $event.checked })">
+                    Validar obrigatórias
+                  </mat-checkbox>
+                  <mat-checkbox
+                    [checked]="link.notifyOnPublish ?? true"
+                    (change)="workspace.updateLink(link.localId, { notifyOnPublish: $event.checked })">
+                    Notificar ao publicar
+                  </mat-checkbox>
+                </div>
+              </article>
+            } @empty {
+              <p class="empty-note">Este formulário ainda não aparece em nenhum evento ou grande evento.</p>
+            }
+          </div>
+        </section>
+      </form>
+
+      <mat-tab-group>
+        <mat-tab label="Editor">
+          <div class="tab-panel">
+            <lib-event-form-builder
+              [elements]="workspace.elements()"
+              (elementsChange)="workspace.updateElements($event)" />
+          </div>
+        </mat-tab>
+        <mat-tab label="Prévia">
+          <div class="tab-panel">
+            <lib-event-form-renderer
+              [elements]="workspace.elements()"
+              submitLabel="Enviar respostas de teste" />
+          </div>
+        </mat-tab>
+        <mat-tab label="Resultados">
+          <div class="tab-panel">
+            <div class="panel-actions results-actions">
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!workspace.selectedForm() || !permissions.has(Permission.EventForm.Results)"
+                (click)="workspace.loadResults()">
+                <mat-icon>refresh</mat-icon>
+                Atualizar
+              </button>
+            </div>
+            <app-workspace-form-results [results]="workspace.selectedResults()" />
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </section>
+  </div>
+</section>

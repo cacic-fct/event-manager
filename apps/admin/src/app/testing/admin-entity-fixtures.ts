@@ -5,6 +5,9 @@ import type {
   Event,
   EventAttendance,
   EventDraft,
+  EventForm,
+  EventFormInput,
+  EventFormResults,
   EventGroup,
   EventInput,
   EventSummary,
@@ -427,6 +430,166 @@ export function createAdminEventDraft(
     createdAt: adminFixtureDate,
     updatedAt: adminFixtureDate,
     expiresAt: '2026-06-21T12:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventForm {
+  const event = createAdminEvent({ id: overrides.ownerEventId ?? 'event-1', name: 'Oficina de Angular' });
+
+  return {
+    id: 'form-1',
+    name: 'Pesquisa de camiseta',
+    description: 'Coleta o tamanho da camiseta dos inscritos.',
+    ownerEventId: event.id,
+    ownerMajorEventId: null,
+    owner: {
+      type: 'EVENT',
+      id: event.id,
+      name: event.name,
+      emoji: event.emoji,
+    },
+    elementsJson: JSON.stringify([
+      {
+        id: 'shirt-size',
+        type: 'shortText',
+        title: 'Tamanho da camiseta',
+        description: 'Exemplo: P, M, G ou GG.',
+        required: true,
+        options: [],
+      },
+    ]),
+    sigilo: 'PARTIALLY_SECRET',
+    resultsPublic: false,
+    resultsLive: false,
+    publicationState: 'PUBLISHED',
+    scheduledPublishAt: null,
+    publishedAt: adminFixtureDate,
+    unpublishedAt: null,
+    links: [
+      {
+        id: 'form-link-1',
+        formId: 'form-1',
+        targetType: 'EVENT',
+        eventId: event.id,
+        majorEventId: null,
+        target: {
+          type: 'EVENT',
+          id: event.id,
+          name: event.name,
+          emoji: event.emoji,
+        },
+        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        insertInSubscriptionFlow: true,
+        requiredInSubscriptionFlow: true,
+        enforceRequiredAnswers: true,
+        displayOrder: 0,
+        availableFrom: null,
+        availableUntil: null,
+        notifyOnPublish: true,
+        lastNotifiedAt: null,
+        responseCount: 1,
+        createdAt: adminFixtureDate,
+        updatedAt: adminFixtureDate,
+      },
+    ],
+    responseCount: 1,
+    deletedAt: null,
+    createdAt: adminFixtureDate,
+    createdById: 'fixture-admin',
+    updatedAt: adminFixtureDate,
+    updatedById: 'fixture-admin',
+    ...overrides,
+  };
+}
+
+export function createAdminEventFormFromInput(input: EventFormInput): EventForm {
+  return createAdminEventForm({
+    id: input.id ?? 'form-1',
+    name: input.name ?? 'Pesquisa de camiseta',
+    description: input.description,
+    ownerEventId: input.ownerEventId,
+    ownerMajorEventId: input.ownerMajorEventId,
+    owner: input.ownerEventId
+      ? {
+          type: 'EVENT',
+          id: input.ownerEventId,
+          name: 'Oficina de Angular',
+          emoji: 'event',
+        }
+      : input.ownerMajorEventId
+        ? {
+            type: 'MAJOR_EVENT',
+            id: input.ownerMajorEventId,
+            name: 'Grande evento',
+            emoji: 'event',
+          }
+        : null,
+    elementsJson: input.elementsJson ?? '[]',
+    sigilo: input.sigilo ?? 'SECRET',
+    resultsPublic: input.resultsPublic ?? false,
+    resultsLive: input.resultsLive ?? false,
+    links:
+      input.links?.map((link, index) => ({
+        id: link.id ?? `form-link-${index + 1}`,
+        formId: input.id ?? 'form-1',
+        targetType: link.targetType,
+        eventId: link.targetType === 'EVENT' ? link.eventId ?? null : null,
+        majorEventId: link.targetType === 'MAJOR_EVENT' ? link.majorEventId ?? null : null,
+        target: null,
+        audience: link.audience ?? 'SUBSCRIBERS_OR_ATTENDEES',
+        insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
+        requiredInSubscriptionFlow: link.requiredInSubscriptionFlow ?? false,
+        enforceRequiredAnswers: link.enforceRequiredAnswers ?? true,
+        displayOrder: link.displayOrder ?? index,
+        availableFrom: link.availableFrom ?? null,
+        availableUntil: link.availableUntil ?? null,
+        notifyOnPublish: link.notifyOnPublish ?? true,
+        lastNotifiedAt: null,
+        responseCount: 0,
+        createdAt: adminFixtureDate,
+        updatedAt: adminFixtureDate,
+      })) ?? [],
+  });
+}
+
+export function createAdminEventFormResults(overrides: Partial<EventFormResults> = {}): EventFormResults {
+  const form = overrides.form ?? createAdminEventForm();
+
+  return {
+    form,
+    responseCount: 1,
+    anonymous: false,
+    answersReleased: true,
+    summaryJson: JSON.stringify({
+      questions: [
+        {
+          elementId: 'shirt-size',
+          title: 'Tamanho da camiseta',
+          type: 'shortText',
+          answeredCount: 1,
+          buckets: [],
+          textAnswers: ['M'],
+        },
+      ],
+    }),
+    responses: [
+      {
+        id: 'form-response-1',
+        formId: form.id,
+        linkId: form.links[0]?.id ?? null,
+        targetType: 'EVENT',
+        eventId: form.links[0]?.eventId ?? 'event-1',
+        majorEventId: null,
+        personId: 'person-1',
+        respondentName: 'Ada Lovelace',
+        respondentEmail: 'ada@example.com',
+        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'M' }]),
+        source: 'PUBLIC_FORM',
+        submittedAt: adminFixtureDate,
+        updatedAt: adminFixtureDate,
+      },
+    ],
     ...overrides,
   };
 }

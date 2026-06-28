@@ -3,6 +3,7 @@ export * from './shared-data-types/auth';
 export * from './shared-data-types/major-events';
 export * from './shared-data-types/event-groups';
 export * from './shared-data-types/events';
+export * from './shared-data-types/forms';
 export * from './shared-data-types/people';
 export * from './shared-data-types/attendance';
 export * from './shared-data-types/subscriptions';

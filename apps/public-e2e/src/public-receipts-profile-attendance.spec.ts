@@ -59,6 +59,28 @@ test('lists current-user subscriptions and downloads the certificate archive', a
   expect(api.certificateArchiveDownloads()).toBe(1);
 });
 
+test('opens a current-user event form and submits answers', async ({ page }) => {
+  const api = await mockPublicApi(page);
+
+  await page.goto('/app/profile/forms/form-1?targetType=EVENT&targetId=standalone-event');
+
+  await expect(page.getByRole('heading', { name: 'Pesquisa de camiseta' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tamanho da camiseta' })).toBeVisible();
+  await page.getByLabel('Resposta').fill('M');
+  await page.getByRole('button', { name: 'Salvar respostas' }).click();
+
+  await expect(page.getByText('Respostas salvas.')).toBeVisible();
+  await expect.poll(() => api.formSubmissions()).toHaveLength(1);
+  expect(api.formSubmissions()).toEqual([
+    expect.objectContaining({
+      formId: 'form-1',
+      targetType: 'EVENT',
+      eventId: 'standalone-event',
+      answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'M' }]),
+    }),
+  ]);
+});
+
 test('confirms online attendance from the pending attendance list', async ({ page }) => {
   const api = await mockPublicApi(page, { pendingOnlineAttendance: true });
 
@@ -119,11 +141,13 @@ async function mockPublicApi(
   options: { pendingOnlineAttendance?: boolean } = {},
 ): Promise<{
   certificateArchiveDownloads: () => number;
+  formSubmissions: () => Record<string, unknown>[];
   onlineAttendanceConfirmations: () => Array<{ eventId: string; code: string }>;
   receiptUploads: () => Array<{ majorEventId: string; contentType: string; body: string }>;
 }> {
   let certificateArchiveDownloads = 0;
   let onlineAttendanceConfirmed = false;
+  const formSubmissions: Record<string, unknown>[] = [];
   const onlineAttendanceConfirmations: Array<{ eventId: string; code: string }> = [];
   const receiptUploads: Array<{ majorEventId: string; contentType: string; body: string }> = [];
 
@@ -180,6 +204,7 @@ async function mockPublicApi(
         setOnlineAttendanceConfirmed: (nextValue) => {
           onlineAttendanceConfirmed = nextValue;
         },
+        formSubmissions,
         hasPendingOnlineAttendance: () => options.pendingOnlineAttendance === true,
         onlineAttendanceConfirmations,
       });
@@ -194,6 +219,7 @@ async function mockPublicApi(
 
   return {
     certificateArchiveDownloads: () => certificateArchiveDownloads,
+    formSubmissions: () => formSubmissions,
     onlineAttendanceConfirmations: () => onlineAttendanceConfirmations,
     receiptUploads: () => receiptUploads,
   };
@@ -205,6 +231,7 @@ async function fulfillGraphql(
     certificateArchiveDownloads: () => void;
     getOnlineAttendanceConfirmed: () => boolean;
     setOnlineAttendanceConfirmed: (nextValue: boolean) => void;
+    formSubmissions: Record<string, unknown>[];
     hasPendingOnlineAttendance: () => boolean;
     onlineAttendanceConfirmations: Array<{ eventId: string; code: string }>;
   },
@@ -253,6 +280,43 @@ async function fulfillGraphql(
         fileName: 'certificados.zip',
         mimeType: 'application/zip',
         contentBase64: 'UEs=',
+      },
+    });
+    return;
+  }
+
+  if (query.includes('query CurrentUserEventForms')) {
+    await fulfillGraphqlData(route, {
+      currentUserEventForms: [publicEventFormFixture()],
+    });
+    return;
+  }
+
+  if (query.includes('query CurrentUserEventFormResponse')) {
+    await fulfillGraphqlData(route, {
+      currentUserEventFormResponse: null,
+    });
+    return;
+  }
+
+  if (query.includes('mutation SubmitCurrentUserEventFormResponse')) {
+    const input = isRecord(variables['input']) ? variables['input'] : {};
+    state.formSubmissions.push(input);
+    await fulfillGraphqlData(route, {
+      submitCurrentUserEventFormResponse: {
+        id: 'form-response-1',
+        formId: typeof input['formId'] === 'string' ? input['formId'] : 'form-1',
+        linkId: typeof input['linkId'] === 'string' ? input['linkId'] : 'form-link-1',
+        targetType: typeof input['targetType'] === 'string' ? input['targetType'] : 'EVENT',
+        eventId: typeof input['eventId'] === 'string' ? input['eventId'] : null,
+        majorEventId: typeof input['majorEventId'] === 'string' ? input['majorEventId'] : null,
+        personId: 'user-1',
+        respondentName: 'Usuário Teste',
+        respondentEmail: 'usuario.teste@example.edu',
+        answersJson: typeof input['answersJson'] === 'string' ? input['answersJson'] : '[]',
+        source: typeof input['source'] === 'string' ? input['source'] : 'PUBLIC_FORM',
+        submittedAt: '2026-06-26T12:10:00.000Z',
+        updatedAt: '2026-06-26T12:10:00.000Z',
       },
     });
     return;
@@ -437,6 +501,58 @@ function subscriptionsFeedFixture(): Record<string, unknown> {
         attendedAt: '2027-08-01T14:30:00.000Z',
       },
     ],
+  };
+}
+
+function publicEventFormFixture(): Record<string, unknown> {
+  return {
+    id: 'form-1',
+    name: 'Pesquisa de camiseta',
+    description: 'Informe o tamanho para retirada no evento.',
+    elementsJson: JSON.stringify([
+      {
+        id: 'shirt-size',
+        type: 'shortText',
+        title: 'Tamanho da camiseta',
+        description: 'Exemplo: P, M, G ou GG.',
+        required: true,
+        options: [],
+      },
+    ]),
+    sigilo: 'PARTIALLY_SECRET',
+    resultsPublic: false,
+    resultsLive: false,
+    publicationState: 'PUBLISHED',
+    links: [
+      {
+        id: 'form-link-1',
+        formId: 'form-1',
+        targetType: 'EVENT',
+        eventId: 'standalone-event',
+        majorEventId: null,
+        target: {
+          type: 'EVENT',
+          id: 'standalone-event',
+          name: 'Oficina pública',
+          emoji: '💻',
+        },
+        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        insertInSubscriptionFlow: false,
+        requiredInSubscriptionFlow: false,
+        enforceRequiredAnswers: true,
+        displayOrder: 0,
+        availableFrom: null,
+        availableUntil: null,
+        notifyOnPublish: true,
+        lastNotifiedAt: null,
+        responseCount: 0,
+        createdAt: '2026-06-26T12:00:00.000Z',
+        updatedAt: '2026-06-26T12:00:00.000Z',
+      },
+    ],
+    responseCount: 0,
+    createdAt: '2026-06-26T12:00:00.000Z',
+    updatedAt: '2026-06-26T12:00:00.000Z',
   };
 }
 

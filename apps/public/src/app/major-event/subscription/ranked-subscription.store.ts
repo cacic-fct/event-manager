@@ -15,7 +15,11 @@ import {
 import { finalize, map } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
-import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
+import {
+  ConfirmSubscriptionDialog,
+  type ConfirmSubscriptionDialogData,
+  type ConfirmSubscriptionDialogResult,
+} from './confirm-subscription-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from './subscription-api.service';
 import {
   MajorEventSubscriptionRealtimeDelta,
@@ -260,12 +264,13 @@ export class RankedSubscriptionStore {
       return;
     }
 
-    const dialogRef = this.dialog.open<ConfirmSubscriptionDialog, ConfirmSubscriptionDialogData, boolean>(
+    const dialogRef = this.dialog.open<ConfirmSubscriptionDialog, ConfirmSubscriptionDialogData, ConfirmSubscriptionDialogResult>(
       ConfirmSubscriptionDialog,
       {
         data: {
           majorEvent: data.majorEvent,
           events: rankedEventIds.map((eventId) => this.eventsById().get(eventId)).filter((event): event is PublicEvent => Boolean(event)),
+          forms: [],
         },
         width: 'min(720px, 96vw)',
       },
@@ -274,8 +279,8 @@ export class RankedSubscriptionStore {
     dialogRef
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((confirmed) => {
-        if (confirmed) {
+      .subscribe((result) => {
+        if (result?.confirmed) {
           this.confirmSubscription(data, rankedEventIds, selectedPaymentTier ?? null);
         }
       });
