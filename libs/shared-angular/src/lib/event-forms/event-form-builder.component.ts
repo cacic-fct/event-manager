@@ -17,6 +17,7 @@ import {
 import {
   cloneFormElements,
   createEventFormElement,
+  EVENT_FORM_ELEMENT_ICONS,
   EVENT_FORM_ELEMENT_LABELS,
   EVENT_FORM_ELEMENT_TYPES,
 } from './event-form-utils';
@@ -42,8 +43,19 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
         <mat-form-field appearance="outline">
           <mat-label>Tipo de item</mat-label>
           <mat-select [value]="addType()" (selectionChange)="addType.set($event.value)">
+            <mat-select-trigger>
+              <span class="select-trigger">
+                <mat-icon>{{ icons[addType()] }}</mat-icon>
+                {{ labels[addType()] }}
+              </span>
+            </mat-select-trigger>
             @for (type of elementTypes; track type) {
-              <mat-option [value]="type">{{ labels[type] }}</mat-option>
+              <mat-option [value]="type">
+                <span class="option-with-icon">
+                  <mat-icon>{{ icons[type] }}</mat-icon>
+                  {{ labels[type] }}
+                </span>
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -338,7 +350,9 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
     .builder-toolbar,
     .item-actions,
     .option-row,
-    .availability-row {
+    .availability-row,
+    .select-trigger,
+    .option-with-icon {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -453,6 +467,7 @@ export class EventFormBuilderComponent {
 
   protected readonly elementTypes = EVENT_FORM_ELEMENT_TYPES;
   protected readonly labels = EVENT_FORM_ELEMENT_LABELS;
+  protected readonly icons = EVENT_FORM_ELEMENT_ICONS;
 
   addElement(): void {
     const next = cloneFormElements(this.elements());

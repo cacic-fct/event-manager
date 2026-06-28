@@ -51,6 +51,7 @@ const meta: Meta<ConfirmSubscriptionDialog> = {
                     },
                   ]),
                   sigilo: 'SECRET',
+                  responseMode: 'ONE_PER_TARGET',
                   resultsPublic: false,
                   resultsLive: false,
                   publicationState: 'PUBLISHED',

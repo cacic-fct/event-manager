@@ -12,6 +12,7 @@ import {
   EventFormInput,
   EventFormLink as EventFormLinkModel,
   EventFormResults,
+  EventFormResponseMode as ContractResponseMode,
   EventFormResponse as EventFormResponseModel,
   EventFormResponseSource as ContractResponseSource,
   EventFormSigilo as ContractSigilo,
@@ -32,6 +33,7 @@ import {
 } from '@cacic-fct/form-contracts';
 import {
   EventFormAudience,
+  EventFormResponseMode,
   EventFormResponseSource,
   EventFormSigilo,
   EventFormTargetType,
@@ -268,6 +270,7 @@ export class EventFormsService {
             ownerMajorEventId: target.ownerMajorEventId,
             elements: elements as unknown as Prisma.InputJsonValue,
             sigilo: this.toDbSigilo(input.sigilo ?? existing.sigilo),
+            responseMode: this.toDbResponseMode(input.responseMode ?? existing.responseMode),
             resultsPublic: input.resultsPublic ?? existing.resultsPublic,
             resultsLive: input.resultsPublic === false ? false : (input.resultsLive ?? existing.resultsLive),
             updatedById: actorId,
@@ -299,6 +302,7 @@ export class EventFormsService {
           ownerMajorEventId: target.ownerMajorEventId,
           elements: elements as unknown as Prisma.InputJsonValue,
           sigilo: this.toDbSigilo(input.sigilo ?? ContractSigilo.SECRET),
+          responseMode: this.toDbResponseMode(input.responseMode ?? ContractResponseMode.ONE_PER_TARGET),
           resultsPublic: input.resultsPublic ?? false,
           resultsLive: input.resultsPublic === true ? (input.resultsLive ?? false) : false,
           createdById: actorId,
@@ -485,18 +489,18 @@ export class EventFormsService {
     const answers = this.normalizeAnswers(input.answersJson, form.elements as unknown as FormElement[], link.enforceRequiredAnswers);
 
     const response = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.eventFormResponse.findFirst({
-        where: {
-          formId: form.id,
-          personId: person.id,
-          targetType: target.targetType,
-          eventId: target.eventId,
-          majorEventId: target.majorEventId,
-        },
-        select: {
-          id: true,
-        },
-      });
+      const existingWhere = this.responseLookupWhere(form, person.id, target);
+      const existing = existingWhere
+        ? await tx.eventFormResponse.findFirst({
+            where: existingWhere,
+            select: {
+              id: true,
+            },
+            orderBy: {
+              submittedAt: 'desc',
+            },
+          })
+        : null;
 
       if (existing) {
         return tx.eventFormResponse.update({
@@ -505,6 +509,9 @@ export class EventFormsService {
           },
           data: {
             linkId: link.id,
+            targetType: target.targetType,
+            eventId: target.eventId,
+            majorEventId: target.majorEventId,
             answers: answers as unknown as Prisma.InputJsonValue,
             source: this.toDbResponseSource(input.source ?? ContractResponseSource.PUBLIC_FORM),
           },
@@ -538,22 +545,19 @@ export class EventFormsService {
   ): Promise<EventFormResponseModel | null> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const target = this.normalizeTarget(input);
+    const form = await this.requireForm(input.formId);
     const response = await this.prisma.eventFormResponse.findFirst({
-      where: {
-        formId: input.formId,
-        personId: person.id,
-        targetType: target.targetType,
-        eventId: target.eventId,
-        majorEventId: target.majorEventId,
-      },
+      where: this.responseLookupWhere(form, person.id, target) ?? this.responseTargetWhere(form.id, person.id, target),
       include: responseInclude,
+      orderBy: {
+        submittedAt: 'desc',
+      },
     });
 
     if (!response) {
       return null;
     }
 
-    const form = await this.requireForm(input.formId);
     return this.toResponseModel(response, form.sigilo, 'self');
   }
 
@@ -904,14 +908,16 @@ export class EventFormsService {
         majorEventId: target.majorEventId,
         audience: this.toDbAudience(link.audience ?? ContractAudience.SUBSCRIBERS_OR_ATTENDEES),
         insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
-        requiredInSubscriptionFlow: link.requiredInSubscriptionFlow ?? false,
+        requiredInSubscriptionFlow: link.insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
         enforceRequiredAnswers: link.enforceRequiredAnswers ?? true,
         displayOrder: link.displayOrder ?? 0,
         availableFrom: link.availableFrom ?? null,
         availableUntil: link.availableUntil ?? null,
-        notifyOnPublish: link.notifyOnPublish ?? true,
+        notifyOnPublish: link.insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
         allowLecturerManualPublish:
-          target.targetType === EventFormTargetType.EVENT ? (link.allowLecturerManualPublish ?? false) : false,
+          target.targetType === EventFormTargetType.EVENT && !link.insertInSubscriptionFlow
+            ? (link.allowLecturerManualPublish ?? false)
+            : false,
         updatedById: actorId,
       } satisfies Prisma.EventFormLinkUncheckedUpdateInput;
 
@@ -1406,6 +1412,7 @@ export class EventFormsService {
           : null,
       elementsJson: JSON.stringify(form.elements),
       sigilo: form.sigilo,
+      responseMode: form.responseMode,
       resultsPublic: form.resultsPublic,
       resultsLive: form.resultsLive,
       publicationState: form.publicationState,
@@ -1581,6 +1588,9 @@ export class EventFormsService {
     if (ownerEventId && ownerMajorEventId) {
       throw new BadRequestException('Um formulário deve pertencer a um evento ou a um grande evento, não ambos.');
     }
+    if (!ownerEventId && !ownerMajorEventId) {
+      throw new BadRequestException('Formulário deve pertencer a um evento ou a um grande evento.');
+    }
     return { ownerEventId, ownerMajorEventId };
   }
 
@@ -1624,8 +1634,45 @@ export class EventFormsService {
     return value as EventFormAudience;
   }
 
+  private toDbResponseMode(value: ContractResponseMode | EventFormResponseMode): EventFormResponseMode {
+    return value as EventFormResponseMode;
+  }
+
   private toDbResponseSource(value: ContractResponseSource | EventFormResponseSource): EventFormResponseSource {
     return value as EventFormResponseSource;
+  }
+
+  private responseLookupWhere(
+    form: Pick<EventFormRecord, 'id' | 'responseMode'>,
+    personId: string,
+    target: ReturnType<EventFormsService['normalizeTarget']>,
+  ): Prisma.EventFormResponseWhereInput | null {
+    if (form.responseMode === EventFormResponseMode.MULTIPLE_PER_TARGET) {
+      return null;
+    }
+
+    if (form.responseMode === EventFormResponseMode.SINGLE_PER_FORM) {
+      return {
+        formId: form.id,
+        personId,
+      };
+    }
+
+    return this.responseTargetWhere(form.id, personId, target);
+  }
+
+  private responseTargetWhere(
+    formId: string,
+    personId: string,
+    target: ReturnType<EventFormsService['normalizeTarget']>,
+  ): Prisma.EventFormResponseWhereInput {
+    return {
+      formId,
+      personId,
+      targetType: target.targetType,
+      eventId: target.eventId,
+      majorEventId: target.majorEventId,
+    };
   }
 
   private normalizeName(value: string | null | undefined, fallback: string): string {

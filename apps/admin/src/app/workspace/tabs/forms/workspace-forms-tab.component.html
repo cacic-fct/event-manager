@@ -35,6 +35,7 @@
             <span matListItemLine>
               {{ stateLabel(form) }} · {{ form.responseCount }} resposta{{ form.responseCount === 1 ? '' : 's' }}
             </span>
+            <span matListItemLine class="list-meta">{{ workspace.linkedTargetSummary(form) }}</span>
             <button
               matIconButton
               type="button"
@@ -91,7 +92,7 @@
                 mat-stroked-button
                 type="button"
                 [disabled]="!permissions.canDelete(Permission.EventForm.Delete)"
-                (click)="workspace.delete()">
+                (click)="confirmDelete()">
                 <mat-icon>delete</mat-icon>
                 Excluir
               </button>
@@ -156,7 +157,6 @@
             <mat-form-field>
               <mat-label>Pertence a</mat-label>
               <mat-select formControlName="ownerType">
-                <mat-option value="NONE">Sem proprietário fixo</mat-option>
                 <mat-option value="EVENT">Evento</mat-option>
                 <mat-option value="MAJOR_EVENT">Grande evento</mat-option>
               </mat-select>
@@ -166,7 +166,7 @@
               <mat-form-field>
                 <mat-label>Evento</mat-label>
                 <mat-select formControlName="ownerEventId">
-                  @for (event of workspace.events(); track event.id) {
+                  @for (event of workspace.selectableEvents(); track event.id) {
                     <mat-option [value]="event.id">{{ event.name }}</mat-option>
                   }
                 </mat-select>
@@ -177,7 +177,7 @@
               <mat-form-field>
                 <mat-label>Grande evento</mat-label>
                 <mat-select formControlName="ownerMajorEventId">
-                  @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+                  @for (majorEvent of workspace.selectableMajorEvents(); track majorEvent.id) {
                     <mat-option [value]="majorEvent.id">{{ majorEvent.name }}</mat-option>
                   }
                 </mat-select>
@@ -187,20 +187,63 @@
             <mat-form-field>
               <mat-label>Sigilo</mat-label>
               <mat-select formControlName="sigilo">
-                <mat-option value="PUBLIC">Público</mat-option>
-                <mat-option value="PARTIALLY_SECRET">Parcialmente sigiloso</mat-option>
-                <mat-option value="SECRET">Sigiloso</mat-option>
-                <mat-option value="ANONYMOUS">Anônimo</mat-option>
+                <mat-select-trigger>
+                  <span class="select-trigger">
+                    <mat-icon>{{ sigiloIcon(workspace.form.controls.sigilo.value) }}</mat-icon>
+                    {{ sigiloLabel(workspace.form.controls.sigilo.value) }}
+                  </span>
+                </mat-select-trigger>
+                @for (sigilo of sigiloOptions; track sigilo) {
+                  <mat-option [value]="sigilo">
+                    <span class="option-with-icon">
+                      <mat-icon>{{ sigiloIcon(sigilo) }}</mat-icon>
+                      <span>
+                        <strong>{{ sigiloLabel(sigilo) }}</strong>
+                        <small>{{ sigiloDescription(sigilo) }}</small>
+                      </span>
+                    </span>
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field class="span-2">
+              <mat-label>Como contar respostas</mat-label>
+              <mat-select formControlName="responseMode">
+                <mat-select-trigger>
+                  {{ responseModeLabel(workspace.form.controls.responseMode.value) }}
+                </mat-select-trigger>
+                @for (mode of responseModeOptions; track mode) {
+                  <mat-option [value]="mode">
+                    <span class="option-with-icon">
+                      <mat-icon>{{ mode === 'MULTIPLE_PER_TARGET' ? 'dynamic_feed' : mode === 'SINGLE_PER_FORM' ? 'done_all' : 'assignment_turned_in' }}</mat-icon>
+                      <span>
+                        <strong>{{ responseModeLabel(mode) }}</strong>
+                        <small>{{ responseModeDescription(mode) }}</small>
+                      </span>
+                    </span>
+                  </mat-option>
+                }
               </mat-select>
             </mat-form-field>
 
             <mat-form-field>
               <mat-label>Agendar publicação</mat-label>
               <input matInput type="datetime-local" formControlName="scheduledPublishAt" />
+              <mat-hint>Data e hora em que o formulário sai do rascunho.</mat-hint>
             </mat-form-field>
 
-            <mat-checkbox formControlName="resultsPublic">Resultados visíveis fora da administração</mat-checkbox>
-            <mat-checkbox formControlName="resultsLive">Atualização em tempo real dos resultados</mat-checkbox>
+            <mat-checkbox
+              formControlName="resultsPublic"
+              matTooltip="Visível para administradores, ministrantes do evento e pessoas inscritas ou presentes no evento vinculado.">
+              Resultados visíveis para público autorizado
+            </mat-checkbox>
+            <mat-checkbox
+              formControlName="resultsLive"
+              [disabled]="!workspace.form.controls.resultsPublic.value"
+              matTooltip="Mantém a tela de resultados aberta recebendo novas respostas sem atualizar a página.">
+              Atualizar resultados publicados automaticamente
+            </mat-checkbox>
           </div>
         </section>
 
@@ -245,7 +288,7 @@
                     <mat-form-field>
                       <mat-label>Evento</mat-label>
                       <mat-select [value]="link.eventId" (selectionChange)="workspace.updateLink(link.localId, { eventId: $event.value })">
-                        @for (event of workspace.events(); track event.id) {
+                        @for (event of workspace.selectableEvents(); track event.id) {
                           <mat-option [value]="event.id">{{ event.name }}</mat-option>
                         }
                       </mat-select>
@@ -256,7 +299,7 @@
                       <mat-select
                         [value]="link.majorEventId"
                         (selectionChange)="workspace.updateLink(link.localId, { majorEventId: $event.value })">
-                        @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+                        @for (majorEvent of workspace.selectableMajorEvents(); track majorEvent.id) {
                           <mat-option [value]="majorEvent.id">{{ majorEvent.name }}</mat-option>
                         }
                       </mat-select>
@@ -279,31 +322,58 @@
                       type="number"
                       [value]="link.displayOrder ?? 0"
                       (input)="updateLinkOrder(link.localId, $event)" />
+                    <mat-hint>Empates são exibidos pelo vínculo criado primeiro.</mat-hint>
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Disponível para respostas a partir de</mat-label>
+                    <input
+                      matInput
+                      type="datetime-local"
+                      [value]="link.availableFrom ?? ''"
+                      (input)="updateLinkDate(link.localId, 'availableFrom', $event)" />
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Encerrar respostas em</mat-label>
+                    <input
+                      matInput
+                      type="datetime-local"
+                      [value]="link.availableUntil ?? ''"
+                      (input)="updateLinkDate(link.localId, 'availableUntil', $event)" />
                   </mat-form-field>
 
                   <mat-checkbox
                     [checked]="link.insertInSubscriptionFlow ?? false"
+                    matTooltip="Mostra este formulário no diálogo de confirmação da inscrição desse evento ou grande evento."
                     (change)="workspace.updateLink(link.localId, { insertInSubscriptionFlow: $event.checked })">
                     Inserir na inscrição
                   </mat-checkbox>
                   <mat-checkbox
                     [checked]="link.requiredInSubscriptionFlow ?? false"
+                    [disabled]="!(link.insertInSubscriptionFlow ?? false)"
+                    matTooltip="Só vale para formulários inseridos na inscrição. A pessoa não conclui a inscrição enquanto não responder."
                     (change)="workspace.updateLink(link.localId, { requiredInSubscriptionFlow: $event.checked })">
-                    Exigir no fluxo
+                    Obrigatório para concluir inscrição
                   </mat-checkbox>
                   <mat-checkbox
                     [checked]="link.enforceRequiredAnswers ?? true"
+                    matTooltip="Impede envio sem responder perguntas marcadas como obrigatórias no editor."
                     (change)="workspace.updateLink(link.localId, { enforceRequiredAnswers: $event.checked })">
                     Validar obrigatórias
                   </mat-checkbox>
                   <mat-checkbox
                     [checked]="link.notifyOnPublish ?? true"
+                    [disabled]="link.insertInSubscriptionFlow ?? false"
+                    matTooltip="Indisponível quando o formulário faz parte da inscrição, porque a pessoa já vê o formulário ao se inscrever."
                     (change)="workspace.updateLink(link.localId, { notifyOnPublish: $event.checked })">
-                    Notificar ao publicar
+                    Avisar quando ficar disponível
                   </mat-checkbox>
                   @if (link.targetType === 'EVENT') {
                     <mat-checkbox
                       [checked]="link.allowLecturerManualPublish ?? false"
+                      [disabled]="link.insertInSubscriptionFlow ?? false"
+                      matTooltip="Indisponível para formulários da inscrição; nesses casos a publicação é administrada pela inscrição."
                       (change)="workspace.updateLink(link.localId, { allowLecturerManualPublish: $event.checked })">
                       Ministrante pode publicar
                     </mat-checkbox>

@@ -22,6 +22,12 @@ enum EventFormResponseSource {
   LECTURER_PUBLISH
 }
 
+enum EventFormResponseMode {
+  ONE_PER_TARGET
+  MULTIPLE_PER_TARGET
+  SINGLE_PER_FORM
+}
+
 model EventForm {
   id          String  @id @default(uuid(7))
   name        String
@@ -35,6 +41,7 @@ model EventForm {
 
   elements Json
   sigilo   EventFormSigilo @default(SECRET)
+  responseMode EventFormResponseMode @default(ONE_PER_TARGET)
 
   resultsPublic Boolean @default(false)
   resultsLive   Boolean @default(false)

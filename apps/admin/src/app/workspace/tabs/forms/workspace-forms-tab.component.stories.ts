@@ -4,6 +4,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import {
   EventForm,
   EventFormLinkInput,
+  EventFormResponseMode,
   EventFormResults,
   EventFormSigilo,
   EventFormTargetType,
@@ -35,6 +36,7 @@ interface WorkspaceFormsStoryArgs {
   itemCount: number;
   selectedIndex: number;
   sigilo: EventFormSigilo;
+  responseMode: EventFormResponseMode;
   resultsPublic: boolean;
   resultsLive: boolean;
   lecturerPublish: boolean;
@@ -46,6 +48,7 @@ const defaultArgs: WorkspaceFormsStoryArgs = {
   itemCount: 4,
   selectedIndex: 0,
   sigilo: 'PARTIALLY_SECRET',
+  responseMode: 'ONE_PER_TARGET',
   resultsPublic: false,
   resultsLive: false,
   lecturerPublish: true,
@@ -80,6 +83,10 @@ const meta: Meta<WorkspaceFormsStoryArgs> = {
     sigilo: {
       control: 'select',
       options: ['PUBLIC', 'PARTIALLY_SECRET', 'SECRET', 'ANONYMOUS'],
+    },
+    responseMode: {
+      control: 'select',
+      options: ['ONE_PER_TARGET', 'MULTIPLE_PER_TARGET', 'SINGLE_PER_FORM'],
     },
     resultsPublic: { control: 'boolean' },
     resultsLive: { control: 'boolean' },
@@ -139,9 +146,9 @@ export const PublicResults: Story = {
     resultsLive: true,
   },
   globals: { theme: 'light' },
-  play: async ({ canvasElement }) => {
+    play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(/resultados visíveis fora da administração/i)).toBeVisible();
+    await expect(canvas.getByText(/resultados visíveis para público autorizado/i)).toBeVisible();
   },
 };
 
@@ -228,6 +235,8 @@ function createFormsStoryService(formBuilder: FormBuilder, args: WorkspaceFormsS
     links,
     events: signal(events),
     majorEvents: signal(majorEvents),
+    selectableEvents: computed(() => events),
+    selectableMajorEvents: computed(() => majorEvents),
     targetFilter: signal<{ eventId?: string; majorEventId?: string } | null>(null),
     selectedFormPublished: computed(() => selectedFormSignal()?.publicationState === 'PUBLISHED'),
     selectedFormScheduled: computed(() => selectedFormSignal()?.publicationState === 'SCHEDULED'),
@@ -280,17 +289,14 @@ function createFormsStoryService(formBuilder: FormBuilder, args: WorkspaceFormsS
     updateLink: (localId: string, patch: Partial<EventFormLinkInput>) => {
       links.update((current) =>
         current.map((link) =>
-          link.localId === localId
-            ? {
-                ...link,
-                ...patch,
-                allowLecturerManualPublish:
-                  (patch.targetType ?? link.targetType) === 'EVENT'
-                    ? (patch.allowLecturerManualPublish ?? link.allowLecturerManualPublish ?? false)
-                    : false,
-              }
+          link.localId === localId ? normalizeStoryLink({ ...link, ...patch }, link, events, majorEvents)
             : link,
         ),
+      );
+    },
+    updateLinkDate: (localId: string, key: 'availableFrom' | 'availableUntil', value: string) => {
+      links.update((current) =>
+        current.map((link) => (link.localId === localId ? { ...link, [key]: value || null } : link)),
       );
     },
     save: async () => undefined,
@@ -303,6 +309,8 @@ function createFormsStoryService(formBuilder: FormBuilder, args: WorkspaceFormsS
       selectedResultsSignal.set(selectedFormSignal() ? buildResults(selectedFormSignal() as EventForm, args) : null);
     },
     exportUrl: (currentForm: EventForm) => `/api/event-forms/${encodeURIComponent(currentForm.id)}/results.csv`,
+    linkedTargetSummary: (currentForm: EventForm) =>
+      currentForm.links.map((link) => link.target?.name ?? 'Vínculo').join(' · ') || 'Sem vínculos de exibição',
     targetName: (link: EventFormLinkInput) =>
       link.targetType === 'EVENT'
         ? events.find((event) => event.id === link.eventId)?.name ?? 'Evento'
@@ -348,6 +356,7 @@ function buildForms(args: WorkspaceFormsStoryArgs, events: Event[], majorEvents:
       ownerEventId: targetType === 'EVENT' ? event.id : null,
       ownerMajorEventId: targetType === 'MAJOR_EVENT' ? majorEvent.id : null,
       sigilo: args.sigilo,
+      responseMode: args.responseMode,
       resultsPublic: args.mode === 'public-results' ? true : args.resultsPublic,
       resultsLive: args.mode === 'public-results' ? true : args.resultsLive,
       publicationState: index === 1 ? 'SCHEDULED' : index === 2 ? 'DRAFT' : 'PUBLISHED',
@@ -372,8 +381,8 @@ function buildForms(args: WorkspaceFormsStoryArgs, events: Event[], majorEvents:
           displayOrder: index,
           availableFrom: null,
           availableUntil: null,
-          notifyOnPublish: true,
-          allowLecturerManualPublish: targetType === 'EVENT' ? args.lecturerPublish : false,
+          notifyOnPublish: index === 0 ? false : true,
+          allowLecturerManualPublish: index === 0 ? false : targetType === 'EVENT' ? args.lecturerPublish : false,
           lastNotifiedAt: null,
           responseCount: index === 0 ? 12 : index,
           createdAt: '2026-06-20T12:00:00.000Z',
@@ -446,10 +455,11 @@ function createEditorForm(formBuilder: FormBuilder) {
     id: [''],
     name: ['', [Validators.required]],
     description: [''],
-    ownerType: ['NONE' as 'NONE' | EventFormTargetType],
+    ownerType: ['EVENT' as EventFormTargetType],
     ownerEventId: [''],
     ownerMajorEventId: [''],
     sigilo: ['SECRET' as EventFormSigilo],
+    responseMode: ['ONE_PER_TARGET' as EventFormResponseMode],
     resultsPublic: [false],
     resultsLive: [false],
     scheduledPublishAt: [''],
@@ -461,14 +471,38 @@ function patchForm(form: ReturnType<typeof createEditorForm>, selectedForm: Even
     id: selectedForm?.id ?? '',
     name: selectedForm?.name ?? 'Novo formulário',
     description: selectedForm?.description ?? '',
-    ownerType: selectedForm?.ownerEventId ? 'EVENT' : selectedForm?.ownerMajorEventId ? 'MAJOR_EVENT' : 'NONE',
+    ownerType: selectedForm ? (selectedForm.ownerEventId ? 'EVENT' : 'MAJOR_EVENT') : 'EVENT',
     ownerEventId: selectedForm?.ownerEventId ?? '',
     ownerMajorEventId: selectedForm?.ownerMajorEventId ?? '',
     sigilo: selectedForm?.sigilo ?? 'SECRET',
+    responseMode: selectedForm?.responseMode ?? 'ONE_PER_TARGET',
     resultsPublic: selectedForm?.resultsPublic ?? false,
     resultsLive: selectedForm?.resultsLive ?? false,
     scheduledPublishAt: selectedForm?.scheduledPublishAt?.slice(0, 16) ?? '',
   });
+}
+
+function normalizeStoryLink(
+  link: EventFormLinkDraft,
+  previous: EventFormLinkDraft,
+  events: readonly Event[],
+  majorEvents: readonly MajorEvent[],
+): EventFormLinkDraft {
+  const targetType = link.targetType;
+  const insertInSubscriptionFlow = link.requiredInSubscriptionFlow === true ? true : (link.insertInSubscriptionFlow ?? false);
+  return {
+    ...link,
+    eventId: targetType === 'EVENT' ? (link.eventId || previous.eventId || events[0]?.id || '') : null,
+    majorEventId:
+      targetType === 'MAJOR_EVENT'
+        ? (link.majorEventId || previous.majorEventId || majorEvents[0]?.id || '')
+        : null,
+    insertInSubscriptionFlow,
+    requiredInSubscriptionFlow: insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
+    notifyOnPublish: insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
+    allowLecturerManualPublish:
+      targetType === 'EVENT' && !insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
+  };
 }
 
 function selectedIndex(index: number, length: number): number {

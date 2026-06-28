@@ -7,6 +7,7 @@ import {
   EventForm,
   EventFormInput,
   EventFormLinkInput,
+  EventFormResponseMode,
   EventFormResults,
   EventFormSigilo,
   EventFormTargetType,
@@ -23,7 +24,7 @@ import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { getErrorMessage } from '../error-message';
 import { WorkspaceUiService } from './workspace-ui.service';
 
-type FormOwnerType = 'NONE' | EventFormTargetType;
+type FormOwnerType = EventFormTargetType;
 
 export interface EventFormLinkDraft extends EventFormLinkInput {
   localId: string;
@@ -49,6 +50,48 @@ export class WorkspaceFormsService {
   readonly targetFilter = signal<{ eventId?: string; majorEventId?: string } | null>(null);
   readonly selectedFormPublished = computed(() => this.selectedForm()?.publicationState === 'PUBLISHED');
   readonly selectedFormScheduled = computed(() => this.selectedForm()?.publicationState === 'SCHEDULED');
+  readonly selectableEvents = computed(() => {
+    const selectedIds = this.selectedEventIds();
+    return this.events().filter((event) => selectedIds.has(event.id) || this.isOngoingOrFuture(event.endDate));
+  });
+  readonly selectableMajorEvents = computed(() => {
+    const selectedIds = this.selectedMajorEventIds();
+    return this.majorEvents().filter((majorEvent) => selectedIds.has(majorEvent.id) || this.isOngoingOrFuture(majorEvent.endDate));
+  });
+  private readonly selectedEventIds = computed(() => {
+    const ids = new Set<string>();
+    const ownerEventId = this.form.controls.ownerEventId.value;
+    if (ownerEventId) {
+      ids.add(ownerEventId);
+    }
+    const targetFilter = this.targetFilter();
+    if (targetFilter?.eventId) {
+      ids.add(targetFilter.eventId);
+    }
+    for (const link of this.links()) {
+      if (link.eventId) {
+        ids.add(link.eventId);
+      }
+    }
+    return ids;
+  });
+  private readonly selectedMajorEventIds = computed(() => {
+    const ids = new Set<string>();
+    const ownerMajorEventId = this.form.controls.ownerMajorEventId.value;
+    if (ownerMajorEventId) {
+      ids.add(ownerMajorEventId);
+    }
+    const targetFilter = this.targetFilter();
+    if (targetFilter?.majorEventId) {
+      ids.add(targetFilter.majorEventId);
+    }
+    for (const link of this.links()) {
+      if (link.majorEventId) {
+        ids.add(link.majorEventId);
+      }
+    }
+    return ids;
+  });
   private resultsEventSource: EventSource | null = null;
 
   readonly filtersForm = this.formBuilder.nonNullable.group({
@@ -59,10 +102,11 @@ export class WorkspaceFormsService {
     id: [''],
     name: ['', [Validators.required]],
     description: [''],
-    ownerType: ['NONE' as FormOwnerType],
+    ownerType: ['EVENT' as FormOwnerType],
     ownerEventId: [''],
     ownerMajorEventId: [''],
     sigilo: ['SECRET' as EventFormSigilo],
+    responseMode: ['ONE_PER_TARGET' as EventFormResponseMode],
     resultsPublic: [false],
     resultsLive: [false],
     scheduledPublishAt: [''],
@@ -117,14 +161,16 @@ export class WorkspaceFormsService {
     this.closeResultsStream();
     this.elements.set([]);
     this.links.set([]);
+    const owner = this.defaultOwner();
     this.form.reset({
       id: '',
       name: 'Novo formulário',
       description: '',
-      ownerType: 'NONE',
-      ownerEventId: '',
-      ownerMajorEventId: '',
+      ownerType: owner.type,
+      ownerEventId: owner.type === 'EVENT' ? owner.id : '',
+      ownerMajorEventId: owner.type === 'MAJOR_EVENT' ? owner.id : '',
       sigilo: 'SECRET',
+      responseMode: 'ONE_PER_TARGET',
       resultsPublic: false,
       resultsLive: false,
       scheduledPublishAt: '',
@@ -158,8 +204,8 @@ export class WorkspaceFormsService {
       {
         localId: crypto.randomUUID(),
         targetType,
-        eventId: targetType === 'EVENT' ? this.events()[0]?.id ?? '' : null,
-        majorEventId: targetType === 'MAJOR_EVENT' ? this.majorEvents()[0]?.id ?? '' : null,
+        eventId: targetType === 'EVENT' ? this.selectableEvents()[0]?.id ?? '' : null,
+        majorEventId: targetType === 'MAJOR_EVENT' ? this.selectableMajorEvents()[0]?.id ?? '' : null,
         audience: 'SUBSCRIBERS_OR_ATTENDEES',
         insertInSubscriptionFlow: false,
         requiredInSubscriptionFlow: false,
@@ -177,24 +223,12 @@ export class WorkspaceFormsService {
 
   updateLink(localId: string, patch: Partial<EventFormLinkInput>): void {
     this.links.update((links) =>
-      links.map((link) =>
-        link.localId === localId
-          ? {
-              ...link,
-              ...patch,
-              eventId: (patch.targetType ?? link.targetType) === 'EVENT' ? (patch.eventId ?? link.eventId ?? '') : null,
-              majorEventId:
-                (patch.targetType ?? link.targetType) === 'MAJOR_EVENT'
-                  ? (patch.majorEventId ?? link.majorEventId ?? '')
-                  : null,
-              allowLecturerManualPublish:
-                (patch.targetType ?? link.targetType) === 'EVENT'
-                  ? (patch.allowLecturerManualPublish ?? link.allowLecturerManualPublish ?? false)
-                  : false,
-            }
-          : link,
-      ),
+      links.map((link) => (link.localId === localId ? this.normalizeLinkDraft({ ...link, ...patch }, link) : link)),
     );
+  }
+
+  updateLinkDate(localId: string, key: 'availableFrom' | 'availableUntil', value: string): void {
+    this.updateLink(localId, { [key]: value || null });
   }
 
   async save(): Promise<void> {
@@ -308,6 +342,19 @@ export class WorkspaceFormsService {
     return `/api/event-forms/${encodeURIComponent(form.id)}/results.csv`;
   }
 
+  linkedTargetSummary(form: EventForm): string {
+    const targets = form.links
+      .map((link) => link.target?.name ?? this.targetName(link))
+      .filter((target, index, all) => target && all.indexOf(target) === index);
+    if (targets.length === 0) {
+      return 'Sem vínculos de exibição';
+    }
+    if (targets.length <= 2) {
+      return targets.join(' · ');
+    }
+    return `${targets.slice(0, 2).join(' · ')} +${targets.length - 2}`;
+  }
+
   targetName(link: EventFormLinkInput): string {
     if (link.targetType === 'EVENT') {
       return this.events().find((event) => event.id === link.eventId)?.name ?? 'Evento';
@@ -348,16 +395,19 @@ export class WorkspaceFormsService {
       form.links.map((link) => ({
         ...link,
         localId: link.id,
+        availableFrom: link.availableFrom ? this.toLocalInput(link.availableFrom) : null,
+        availableUntil: link.availableUntil ? this.toLocalInput(link.availableUntil) : null,
       })),
     );
     this.form.reset({
       id: form.id,
       name: form.name,
       description: form.description ?? '',
-      ownerType: form.ownerEventId ? 'EVENT' : form.ownerMajorEventId ? 'MAJOR_EVENT' : 'NONE',
+      ownerType: form.ownerEventId ? 'EVENT' : 'MAJOR_EVENT',
       ownerEventId: form.ownerEventId ?? '',
       ownerMajorEventId: form.ownerMajorEventId ?? '',
       sigilo: form.sigilo,
+      responseMode: form.responseMode,
       resultsPublic: form.resultsPublic,
       resultsLive: form.resultsLive,
       scheduledPublishAt: form.scheduledPublishAt ? this.toLocalInput(form.scheduledPublishAt) : '',
@@ -375,6 +425,7 @@ export class WorkspaceFormsService {
       ownerMajorEventId: value.ownerType === 'MAJOR_EVENT' ? value.ownerMajorEventId || null : null,
       elementsJson: serializeFormElements(this.elements()),
       sigilo: value.sigilo,
+      responseMode: value.responseMode,
       resultsPublic: value.resultsPublic,
       resultsLive: value.resultsPublic ? value.resultsLive : false,
       links: this.links().map((link, index) => ({
@@ -387,13 +438,63 @@ export class WorkspaceFormsService {
         requiredInSubscriptionFlow: link.requiredInSubscriptionFlow ?? false,
         enforceRequiredAnswers: link.enforceRequiredAnswers ?? true,
         displayOrder: link.displayOrder ?? index,
-        availableFrom: link.availableFrom ?? null,
-        availableUntil: link.availableUntil ?? null,
-        notifyOnPublish: link.notifyOnPublish ?? true,
+        availableFrom: this.localInputToIso(link.availableFrom),
+        availableUntil: this.localInputToIso(link.availableUntil),
+        notifyOnPublish: link.insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
         allowLecturerManualPublish:
-          link.targetType === 'EVENT' ? (link.allowLecturerManualPublish ?? false) : false,
+          link.targetType === 'EVENT' && !link.insertInSubscriptionFlow
+            ? (link.allowLecturerManualPublish ?? false)
+            : false,
       })),
     };
+  }
+
+  private normalizeLinkDraft(link: EventFormLinkDraft, previous?: EventFormLinkDraft): EventFormLinkDraft {
+    const targetType = link.targetType;
+    const insertInSubscriptionFlow = link.requiredInSubscriptionFlow === true ? true : (link.insertInSubscriptionFlow ?? false);
+    const fallbackEventId =
+      previous?.eventId && this.selectableEvents().some((event) => event.id === previous.eventId)
+        ? previous.eventId
+        : this.selectableEvents()[0]?.id ?? '';
+    const fallbackMajorEventId =
+      previous?.majorEventId && this.selectableMajorEvents().some((majorEvent) => majorEvent.id === previous.majorEventId)
+        ? previous.majorEventId
+        : this.selectableMajorEvents()[0]?.id ?? '';
+
+    return {
+      ...link,
+      targetType,
+      eventId: targetType === 'EVENT' ? link.eventId || fallbackEventId : null,
+      majorEventId: targetType === 'MAJOR_EVENT' ? link.majorEventId || fallbackMajorEventId : null,
+      insertInSubscriptionFlow,
+      requiredInSubscriptionFlow: insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
+      notifyOnPublish: insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
+      allowLecturerManualPublish:
+        targetType === 'EVENT' && !insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
+    };
+  }
+
+  private defaultOwner(): { type: FormOwnerType; id: string } {
+    const filter = this.targetFilter();
+    if (filter?.eventId) {
+      return { type: 'EVENT', id: filter.eventId };
+    }
+    if (filter?.majorEventId) {
+      return { type: 'MAJOR_EVENT', id: filter.majorEventId };
+    }
+    const event = this.selectableEvents()[0];
+    if (event) {
+      return { type: 'EVENT', id: event.id };
+    }
+    return { type: 'MAJOR_EVENT', id: this.selectableMajorEvents()[0]?.id ?? '' };
+  }
+
+  private localInputToIso(value: string | null | undefined): string | null {
+    if (!value) {
+      return null;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
   }
 
   private toLocalInput(value: string): string {
@@ -407,6 +508,14 @@ export class WorkspaceFormsService {
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day}T${hour}:${minute}`;
+  }
+
+  private isOngoingOrFuture(value: string | null | undefined): boolean {
+    if (!value) {
+      return true;
+    }
+    const time = Date.parse(value);
+    return Number.isNaN(time) || time >= Date.now();
   }
 
   private showError(error: unknown, fallback: string): void {

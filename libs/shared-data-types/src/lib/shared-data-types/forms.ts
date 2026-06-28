@@ -1,5 +1,12 @@
 import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
-import { EventFormAudience, EventFormResponseSource, EventFormSigilo, EventFormTargetType, PublicationState } from './enums';
+import {
+  EventFormAudience,
+  EventFormResponseMode,
+  EventFormResponseSource,
+  EventFormSigilo,
+  EventFormTargetType,
+  PublicationState,
+} from './enums';
 
 @ObjectType()
 export class EventFormTargetSummary {
@@ -101,6 +108,9 @@ export class EventForm {
 
   @Field(() => EventFormSigilo)
   sigilo!: EventFormSigilo;
+
+  @Field(() => EventFormResponseMode)
+  responseMode!: EventFormResponseMode;
 
   @Field(() => Boolean)
   resultsPublic!: boolean;
@@ -311,6 +321,9 @@ export class EventFormInput {
 
   @Field(() => EventFormSigilo, { nullable: true })
   sigilo?: EventFormSigilo | null;
+
+  @Field(() => EventFormResponseMode, { nullable: true })
+  responseMode?: EventFormResponseMode | null;
 
   @Field(() => Boolean, { nullable: true })
   resultsPublic?: boolean | null;

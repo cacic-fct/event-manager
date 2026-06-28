@@ -1,13 +1,15 @@
-import type { EventType, PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { EventType, PublicEvent, PublicEventForm, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { HttpResponse, http } from 'msw';
 import { NEVER } from 'rxjs';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, within } from 'storybook/test';
 import {
   createPublicEvent,
+  createPublicEventForm,
+  createPublicEventFormLink,
   createPublicEventGroup,
   createPublicMajorEvent,
   createPublicMajorEventPrice,
@@ -47,6 +49,7 @@ type StoryScenario = 'default' | 'payment' | 'auto-only' | 'existing';
 interface RankedStoryData {
   majorEvent: PublicMajorEvent;
   events: PublicEvent[];
+  forms: PublicEventForm[];
   subscription: CurrentUserMajorEventSubscription | null;
 }
 
@@ -209,6 +212,62 @@ function createStoryData(scenario: StoryScenario): RankedStoryData {
   return {
     majorEvent,
     events,
+    forms: [
+      createPublicEventForm({
+        id: 'ranked-form-major-shirt',
+        name: 'Camiseta do evento',
+        responseMode: 'SINGLE_PER_FORM',
+        links: [
+          createPublicEventFormLink({
+            id: 'ranked-link-major-shirt',
+            formId: 'ranked-form-major-shirt',
+            targetType: 'MAJOR_EVENT',
+            eventId: null,
+            majorEventId: majorEvent.id,
+            target: {
+              type: 'MAJOR_EVENT',
+              id: majorEvent.id,
+              name: majorEvent.name,
+              emoji: majorEvent.emoji,
+            },
+            displayOrder: 0,
+          }),
+        ],
+      }),
+      createPublicEventForm({
+        id: 'ranked-form-event-accessibility',
+        name: 'Preferência da atividade',
+        responseMode: 'ONE_PER_TARGET',
+        elementsJson: JSON.stringify([
+          {
+            id: 'accessibility',
+            type: 'singleChoice',
+            title: 'Precisa de recurso de acessibilidade?',
+            required: true,
+            options: [
+              { id: 'yes', label: 'Sim' },
+              { id: 'no', label: 'Não' },
+            ],
+          },
+        ]),
+        links: [
+          createPublicEventFormLink({
+            id: 'ranked-link-event-accessibility',
+            formId: 'ranked-form-event-accessibility',
+            targetType: 'EVENT',
+            eventId: events[1].id,
+            majorEventId: null,
+            target: {
+              type: 'EVENT',
+              id: events[1].id,
+              name: events[1].name,
+              emoji: events[1].emoji,
+            },
+            displayOrder: 1,
+          }),
+        ],
+      }),
+    ],
     subscription:
       scenario === 'existing'
         ? {
@@ -259,6 +318,22 @@ function rankedHandlers(scenario: StoryScenario) {
         });
       }
 
+      if (query.includes('CurrentUserEventForms')) {
+        const targetType = String(body.variables?.['targetType']);
+        const targetId = targetType === 'EVENT' ? String(body.variables?.['eventId']) : String(body.variables?.['majorEventId']);
+        return HttpResponse.json({
+          data: {
+            currentUserEventForms: storyData.forms.filter((form) =>
+              form.links.some(
+                (link) =>
+                  link.targetType === targetType &&
+                  (targetType === 'EVENT' ? link.eventId === targetId : link.majorEventId === targetId),
+              ),
+            ),
+          },
+        });
+      }
+
       if (query.includes('UpsertCurrentUserRankedMajorEventSubscription')) {
         const selectedEvents = storyData.events.filter((event) => selectedEventIds.includes(event.id));
         return HttpResponse.json({
@@ -273,6 +348,29 @@ function rankedHandlers(scenario: StoryScenario) {
               majorEvent: storyData.majorEvent,
               selectedEvents,
               notSubscribedEvents: storyData.events.filter((event) => !selectedEventIds.includes(event.id)),
+            },
+          },
+        });
+      }
+
+      if (query.includes('SubmitCurrentUserEventFormResponse')) {
+        const input = body.variables?.['input'] as Record<string, unknown>;
+        return HttpResponse.json({
+          data: {
+            submitCurrentUserEventFormResponse: {
+              id: `response-${String(input['formId'])}`,
+              formId: input['formId'],
+              linkId: input['linkId'] ?? null,
+              targetType: input['targetType'],
+              eventId: input['eventId'] ?? null,
+              majorEventId: input['majorEventId'] ?? null,
+              personId: 'person-storybook',
+              respondentName: 'Storybook User',
+              respondentEmail: 'storybook@example.com',
+              answersJson: input['answersJson'],
+              source: 'SUBSCRIPTION_FLOW',
+              submittedAt: now.toISOString(),
+              updatedAt: now.toISOString(),
             },
           },
         });
@@ -316,6 +414,25 @@ export const Ranking: Story = {
   },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => goToRankingStep(canvasElement),
+};
+
+export const RankingWithFormsFlow: Story = {
+  parameters: {
+    msw: { handlers: rankedHandlers('default') },
+  },
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    await goToRankingStep(canvasElement);
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: /Inscrever-se/i }));
+    const dialog = within(await screen.findByRole('dialog', { name: /Confirmar inscrição/i }));
+    await expect(await dialog.findByText('Formulários')).toBeVisible();
+    await expect(await dialog.findByText('Camiseta do evento')).toBeVisible();
+    await expect(await dialog.findByText('Preferência da atividade')).toBeVisible();
+    await userEvent.click(await dialog.findByRole('radio', { name: 'M' }));
+    await userEvent.click(await dialog.findByRole('radio', { name: 'Sim' }));
+    await userEvent.click(await dialog.findByRole('button', { name: /Inscrever-se/i }));
+  },
 };
 
 export const PaymentRanking: Story = {

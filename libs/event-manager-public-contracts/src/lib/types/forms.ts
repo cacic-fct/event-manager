@@ -4,6 +4,7 @@ export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYM
 export type EventFormAudience = 'SUBSCRIBERS' | 'ATTENDEES' | 'SUBSCRIBERS_OR_ATTENDEES';
 export type EventFormTargetType = 'EVENT' | 'MAJOR_EVENT';
 export type EventFormResponseSource = 'PUBLIC_FORM' | 'SUBSCRIPTION_FLOW' | 'LECTURER_PUBLISH';
+export type EventFormResponseMode = 'ONE_PER_TARGET' | 'MULTIPLE_PER_TARGET' | 'SINGLE_PER_FORM';
 
 export interface PublicEventFormTargetSummary {
   type: EventFormTargetType;
@@ -40,6 +41,7 @@ export interface PublicEventForm {
   description?: string | null;
   elementsJson: string;
   sigilo: EventFormSigilo;
+  responseMode: EventFormResponseMode;
   resultsPublic: boolean;
   resultsLive: boolean;
   publicationState: string;

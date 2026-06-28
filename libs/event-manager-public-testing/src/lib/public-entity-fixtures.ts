@@ -1,6 +1,8 @@
 import type {
   PublicEvent,
   PublicEventGroup,
+  PublicEventForm,
+  PublicEventFormLink,
   PublicLecturerProfile,
   PublicMajorEvent,
   PublicMajorEventPrice,
@@ -142,6 +144,73 @@ export function createPublicEvent(overrides: Partial<PublicEvent> = {}): PublicE
     buttonText: null,
     buttonLink: null,
     lecturers: [],
+    ...overrides,
+  };
+}
+
+export function createPublicEventFormLink(overrides: Partial<PublicEventFormLink> = {}): PublicEventFormLink {
+  const targetType = overrides.targetType ?? 'EVENT';
+  const eventId = targetType === 'EVENT' ? (overrides.eventId ?? 'event-1') : null;
+  const majorEventId = targetType === 'MAJOR_EVENT' ? (overrides.majorEventId ?? 'major-1') : null;
+
+  return {
+    id: 'form-link-1',
+    formId: 'form-1',
+    targetType,
+    eventId,
+    majorEventId,
+    target: {
+      type: targetType,
+      id: targetType === 'EVENT' ? eventId ?? 'event-1' : majorEventId ?? 'major-1',
+      name: targetType === 'EVENT' ? 'Arquitetura Angular com Signals' : 'CACiC Storybook',
+      emoji: 'event',
+    },
+    audience: 'SUBSCRIBERS_OR_ATTENDEES',
+    insertInSubscriptionFlow: true,
+    requiredInSubscriptionFlow: true,
+    enforceRequiredAnswers: true,
+    displayOrder: 0,
+    availableFrom: null,
+    availableUntil: null,
+    notifyOnPublish: false,
+    allowLecturerManualPublish: false,
+    lastNotifiedAt: null,
+    responseCount: 0,
+    createdAt: publicFixtureDate,
+    updatedAt: publicFixtureDate,
+    ...overrides,
+  };
+}
+
+export function createPublicEventForm(overrides: Partial<PublicEventForm> = {}): PublicEventForm {
+  return {
+    id: 'form-1',
+    name: 'Pesquisa de camiseta',
+    description: 'Dados usados pela organização durante a inscrição.',
+    elementsJson: JSON.stringify([
+      {
+        id: 'shirt-size',
+        type: 'singleChoice',
+        title: 'Tamanho da camiseta',
+        description: 'Escolha o tamanho desejado.',
+        required: true,
+        options: [
+          { id: 'p', label: 'P' },
+          { id: 'm', label: 'M' },
+          { id: 'g', label: 'G' },
+          { id: 'gg', label: 'GG' },
+        ],
+      },
+    ]),
+    sigilo: 'SECRET',
+    responseMode: 'ONE_PER_TARGET',
+    resultsPublic: false,
+    resultsLive: false,
+    publicationState: 'PUBLISHED',
+    links: [createPublicEventFormLink()],
+    responseCount: 0,
+    createdAt: publicFixtureDate,
+    updatedAt: publicFixtureDate,
     ...overrides,
   };
 }

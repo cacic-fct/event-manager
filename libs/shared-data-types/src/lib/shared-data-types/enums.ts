@@ -82,6 +82,16 @@ registerEnumType(EventFormResponseSource, {
   name: 'EventFormResponseSource',
 });
 
+export const EventFormResponseMode = {
+  ONE_PER_TARGET: 'ONE_PER_TARGET',
+  MULTIPLE_PER_TARGET: 'MULTIPLE_PER_TARGET',
+  SINGLE_PER_FORM: 'SINGLE_PER_FORM',
+} as const;
+export type EventFormResponseMode = (typeof EventFormResponseMode)[keyof typeof EventFormResponseMode];
+registerEnumType(EventFormResponseMode, {
+  name: 'EventFormResponseMode',
+});
+
 export const ContactType = {
   EMAIL: 'EMAIL',
   PHONE: 'PHONE',

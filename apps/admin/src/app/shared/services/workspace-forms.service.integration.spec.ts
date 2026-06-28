@@ -99,7 +99,8 @@ describe('WorkspaceFormsService integration', () => {
       eventId: 'event-1',
       insertInSubscriptionFlow: true,
       requiredInSubscriptionFlow: true,
-      allowLecturerManualPublish: true,
+      notifyOnPublish: false,
+      allowLecturerManualPublish: false,
     });
     expect(service.selectedResults()?.responseCount).toBe(1);
   });
@@ -113,6 +114,7 @@ describe('WorkspaceFormsService integration', () => {
       ownerEventId: '',
       ownerMajorEventId: 'major-event-1',
       sigilo: 'ANONYMOUS',
+      responseMode: 'MULTIPLE_PER_TARGET',
       resultsPublic: true,
       resultsLive: true,
     });
@@ -123,6 +125,8 @@ describe('WorkspaceFormsService integration', () => {
       insertInSubscriptionFlow: false,
       requiredInSubscriptionFlow: false,
       displayOrder: 3,
+      notifyOnPublish: true,
+      allowLecturerManualPublish: true,
     });
 
     await service.save();
@@ -134,6 +138,7 @@ describe('WorkspaceFormsService integration', () => {
       ownerEventId: null,
       ownerMajorEventId: 'major-event-1',
       sigilo: 'ANONYMOUS',
+      responseMode: 'MULTIPLE_PER_TARGET',
       resultsPublic: true,
       resultsLive: true,
     });
@@ -148,6 +153,27 @@ describe('WorkspaceFormsService integration', () => {
       requiredInSubscriptionFlow: false,
       enforceRequiredAnswers: true,
       displayOrder: 3,
+      allowLecturerManualPublish: false,
+    });
+  });
+
+  it('normalizes impossible link combinations before saving', async () => {
+    await service.initialize();
+    await service.selectForm(service.forms()[0]);
+
+    service.updateLink('form-link-1', {
+      insertInSubscriptionFlow: true,
+      requiredInSubscriptionFlow: true,
+      notifyOnPublish: true,
+      allowLecturerManualPublish: true,
+    });
+
+    await service.save();
+
+    expect(savedInput?.links?.[0]).toMatchObject({
+      insertInSubscriptionFlow: true,
+      requiredInSubscriptionFlow: true,
+      notifyOnPublish: false,
       allowLecturerManualPublish: false,
     });
   });

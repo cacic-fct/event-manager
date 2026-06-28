@@ -30,6 +30,32 @@
   gap: 0.75rem;
 }
 
+.list-meta {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.select-trigger,
+.option-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.option-with-icon {
+  min-height: 3rem;
+}
+
+.option-with-icon > span {
+  display: grid;
+  gap: 0.125rem;
+  line-height: 1.2;
+}
+
+.option-with-icon small {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+}
+
 .tab-panel {
   padding: 1rem 0;
 }

@@ -5,6 +5,7 @@ export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYM
 export type EventFormAudience = 'SUBSCRIBERS' | 'ATTENDEES' | 'SUBSCRIBERS_OR_ATTENDEES';
 export type EventFormTargetType = 'EVENT' | 'MAJOR_EVENT';
 export type EventFormResponseSource = 'PUBLIC_FORM' | 'SUBSCRIPTION_FLOW' | 'LECTURER_PUBLISH';
+export type EventFormResponseMode = 'ONE_PER_TARGET' | 'MULTIPLE_PER_TARGET' | 'SINGLE_PER_FORM';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 export type PriceType = 'SINGLE' | 'TIERED';
 export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
@@ -364,6 +365,7 @@ export interface EventForm {
   owner?: EventFormTargetSummary | null;
   elementsJson: string;
   sigilo: EventFormSigilo;
+  responseMode: EventFormResponseMode;
   resultsPublic: boolean;
   resultsLive: boolean;
   publicationState: PublicationState;
@@ -928,6 +930,7 @@ export interface EventFormInput {
   ownerMajorEventId?: string | null;
   elementsJson?: string | null;
   sigilo?: EventFormSigilo | null;
+  responseMode?: EventFormResponseMode | null;
   resultsPublic?: boolean | null;
   resultsLive?: boolean | null;
   links?: EventFormLinkInput[] | null;

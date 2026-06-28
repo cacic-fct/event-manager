@@ -27,6 +27,23 @@ export const EVENT_FORM_ELEMENT_LABELS: Record<FormElementType, string> = {
   scheduling: 'Agendamento',
 };
 
+export const EVENT_FORM_ELEMENT_ICONS: Record<FormElementType, string> = {
+  section: 'splitscreen',
+  statement: 'notes',
+  shortText: 'short_text',
+  longText: 'subject',
+  singleChoice: 'radio_button_checked',
+  multipleChoice: 'check_box',
+  singleSelectionGrid: 'table_rows',
+  multipleSelectionGrid: 'checklist',
+  selectionDropdown: 'arrow_drop_down_circle',
+  linearScale: 'linear_scale',
+  starRating: 'star',
+  date: 'calendar_today',
+  time: 'schedule',
+  scheduling: 'event_available',
+};
+
 export const EVENT_FORM_ELEMENT_TYPES = FORM_ELEMENT_TYPES;
 
 export type EventFormSchedulingSlot = {

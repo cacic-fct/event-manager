@@ -460,6 +460,7 @@ export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventF
       },
     ]),
     sigilo: 'PARTIALLY_SECRET',
+    responseMode: 'ONE_PER_TARGET',
     resultsPublic: false,
     resultsLive: false,
     publicationState: 'PUBLISHED',
@@ -486,8 +487,8 @@ export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventF
         displayOrder: 0,
         availableFrom: null,
         availableUntil: null,
-        notifyOnPublish: true,
-        allowLecturerManualPublish: true,
+        notifyOnPublish: false,
+        allowLecturerManualPublish: false,
         lastNotifiedAt: null,
         responseCount: 1,
         createdAt: adminFixtureDate,
@@ -528,6 +529,7 @@ export function createAdminEventFormFromInput(input: EventFormInput): EventForm 
         : null,
     elementsJson: input.elementsJson ?? '[]',
     sigilo: input.sigilo ?? 'SECRET',
+    responseMode: input.responseMode ?? 'ONE_PER_TARGET',
     resultsPublic: input.resultsPublic ?? false,
     resultsLive: input.resultsLive ?? false,
     links:
@@ -545,9 +547,11 @@ export function createAdminEventFormFromInput(input: EventFormInput): EventForm 
         displayOrder: link.displayOrder ?? index,
         availableFrom: link.availableFrom ?? null,
         availableUntil: link.availableUntil ?? null,
-        notifyOnPublish: link.notifyOnPublish ?? true,
+        notifyOnPublish: link.insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
         allowLecturerManualPublish:
-          link.targetType === 'EVENT' ? (link.allowLecturerManualPublish ?? false) : false,
+          link.targetType === 'EVENT' && !link.insertInSubscriptionFlow
+            ? (link.allowLecturerManualPublish ?? false)
+            : false,
         lastNotifiedAt: null,
         responseCount: 0,
         createdAt: adminFixtureDate,

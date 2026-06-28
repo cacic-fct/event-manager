@@ -520,6 +520,7 @@ function publicEventFormFixture(): Record<string, unknown> {
       },
     ]),
     sigilo: 'PARTIALLY_SECRET',
+    responseMode: 'ONE_PER_TARGET',
     resultsPublic: false,
     resultsLive: false,
     publicationState: 'PUBLISHED',

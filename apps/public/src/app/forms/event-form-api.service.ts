@@ -17,6 +17,7 @@ const PUBLIC_EVENT_FORM_FIELDS = `
   description
   elementsJson
   sigilo
+  responseMode
   resultsPublic
   resultsLive
   publicationState

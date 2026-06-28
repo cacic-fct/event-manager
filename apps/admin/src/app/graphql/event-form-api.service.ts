@@ -49,6 +49,7 @@ const EVENT_FORM_FIELDS = `
   }
   elementsJson
   sigilo
+  responseMode
   resultsPublic
   resultsLive
   publicationState

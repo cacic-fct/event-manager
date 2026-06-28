@@ -1,6 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   EventFormAudience,
+  EventFormResponseMode,
   EventFormSigilo,
   EventFormTargetType,
   PublicationState,
@@ -129,16 +130,79 @@ describe('EventFormsService', () => {
     );
     expect(currentUserContext.requireCurrentPerson).not.toHaveBeenCalled();
   });
+
+  it('creates a new response when the form allows multiple answers per target', async () => {
+    prisma.eventForm.findFirst.mockResolvedValue(formRecord({ responseMode: EventFormResponseMode.MULTIPLE_PER_TARGET }));
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+    prisma.eventFormResponse.create.mockResolvedValue(responseRecord());
+
+    await service.submitCurrentUserResponse(context, {
+      formId: 'form-1',
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+      answersJson: '[]',
+    });
+
+    expect(prisma.eventFormResponse.findFirst).not.toHaveBeenCalled();
+    expect(prisma.eventFormResponse.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          formId: 'form-1',
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+        }),
+      }),
+    );
+  });
+
+  it('updates one response per whole form and stores the submitted target', async () => {
+    prisma.eventForm.findFirst.mockResolvedValue(formRecord({ responseMode: EventFormResponseMode.SINGLE_PER_FORM }));
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+    prisma.eventFormResponse.findFirst.mockResolvedValue({ id: 'response-1' });
+    prisma.eventFormResponse.update.mockResolvedValue(responseRecord());
+
+    await service.submitCurrentUserResponse(context, {
+      formId: 'form-1',
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+      answersJson: '[]',
+    });
+
+    expect(prisma.eventFormResponse.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          formId: 'form-1',
+          personId: 'person-1',
+        },
+      }),
+    );
+    expect(prisma.eventFormResponse.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'response-1' },
+        data: expect.objectContaining({
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+          majorEventId: null,
+        }),
+      }),
+    );
+  });
 });
 
 function createPrisma() {
-  return {
+  const client = {
+    $transaction: jest.fn(async (callback: (tx: unknown) => unknown) => callback(client)),
     eventForm: {
       findFirst: jest.fn(),
       update: jest.fn(),
     },
     eventFormResponse: {
+      findFirst: jest.fn(),
       findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
     },
     eventLecturer: {
       findUnique: jest.fn(),
@@ -160,6 +224,7 @@ function createPrisma() {
       update: jest.fn(),
     },
   };
+  return client;
 }
 
 function createAuthorizationPolicy() {
@@ -196,6 +261,7 @@ function formRecord(
     allowLecturerManualPublish?: boolean;
     resultsPublic?: boolean;
     sigilo?: EventFormSigilo;
+    responseMode?: EventFormResponseMode;
   } = {},
 ) {
   const now = new Date('2026-06-28T12:00:00.000Z');
@@ -242,6 +308,7 @@ function formRecord(
     ownerMajorEvent: null,
     elements: [],
     sigilo: options.sigilo ?? EventFormSigilo.SECRET,
+    responseMode: options.responseMode ?? EventFormResponseMode.ONE_PER_TARGET,
     resultsPublic: options.resultsPublic ?? false,
     resultsLive: false,
     publicationState: PublicationState.PUBLISHED,
@@ -259,5 +326,27 @@ function formRecord(
     _count: {
       responses: 0,
     },
+  };
+}
+
+function responseRecord() {
+  const now = new Date('2026-06-28T12:00:00.000Z');
+  return {
+    id: 'response-1',
+    formId: 'form-1',
+    linkId: 'link-1',
+    targetType: EventFormTargetType.EVENT,
+    eventId: 'event-1',
+    majorEventId: null,
+    personId: 'person-1',
+    person: {
+      id: 'person-1',
+      name: 'Ana Silva',
+      email: 'ana@example.com',
+    },
+    answers: [],
+    source: 'PUBLIC_FORM',
+    submittedAt: now,
+    updatedAt: now,
   };
 }
