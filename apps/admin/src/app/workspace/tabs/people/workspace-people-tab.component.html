@@ -19,7 +19,10 @@
           <mat-icon matPrefix>search</mat-icon>
           <input matInput formControlName="query" />
         </mat-form-field>
-        <button mat-flat-button type="button" (click)="workspace.searchPeople(workspace.peopleSearchForm.controls.query.value)">
+        <button
+          mat-flat-button
+          type="button"
+          (click)="workspace.searchPeople(workspace.peopleSearchForm.controls.query.value)">
           <mat-icon>search</mat-icon>
           Buscar
         </button>
@@ -112,7 +115,9 @@
             <button
               mat-flat-button
               type="button"
-              [disabled]="!permissions.canEdit(workspace.selectedPerson() ? Permission.Person.Update : Permission.Person.Create)"
+              [disabled]="
+                !permissions.canEdit(workspace.selectedPerson() ? Permission.Person.Update : Permission.Person.Create)
+              "
               (click)="workspace.savePerson()">
               <mat-icon>save</mat-icon>
               Salvar
@@ -193,7 +198,8 @@
             <p class="notice">
               <mat-icon>info</mat-icon>
               O nome da pessoa sempre aparece nas páginas públicas dos eventos em que ela estiver vinculada como
-              ministrante, mesmo sem perfil de ministrante. Crie o perfil apenas para publicar biografia, foto e contatos.
+              ministrante, mesmo sem perfil de ministrante. Crie o perfil apenas para publicar biografia, foto e
+              contatos.
             </p>
 
             <div class="field-grid">
@@ -253,7 +259,11 @@
             <div class="surface-heading">
               <div>
                 <h4>Permissões do Event Manager</h4>
-                <span>Concessões gravadas no Event Manager para o usuário vinculado.</span>
+                <p>Concessões gravadas no Event Manager para o usuário vinculado.</p>
+                <p>
+                  Para designar permissões apenas para a coleta de presenças por meio da interface pública, use a página
+                  de edição do evento.
+                </p>
               </div>
             </div>
 
@@ -272,7 +282,11 @@
                       }
                     </mat-select>
                     @if (workspace.permissionGrantForm.controls.presetId.value) {
-                      <mat-hint>{{ workspace.getPermissionGrantPresetDescription(workspace.permissionGrantForm.controls.presetId.value) }}</mat-hint>
+                      <mat-hint>{{
+                        workspace.getPermissionGrantPresetDescription(
+                          workspace.permissionGrantForm.controls.presetId.value
+                        )
+                      }}</mat-hint>
                     }
                   </mat-form-field>
 
@@ -287,7 +301,10 @@
                             <div class="included-data-list">
                               <span class="included-data-list__title">Inclui dados limitados</span>
                               <ul>
-                                @for (item of group.includedData; track item.label + ':' + workspace.formatPermissionIncludedDataFields(item)) {
+                                @for (
+                                  item of group.includedData;
+                                  track item.label + ':' + workspace.formatPermissionIncludedDataFields(item)
+                                ) {
                                   <li>
                                     <strong>{{ item.label }}</strong>
                                     <span>{{ workspace.formatPermissionIncludedDataFields(item) }}</span>
@@ -304,7 +321,10 @@
                   <button
                     mat-stroked-button
                     type="button"
-                    [disabled]="!workspace.permissionGrantForm.controls.presetId.value || !permissions.canEdit(Permission.PermissionGrant.Create)"
+                    [disabled]="
+                      !workspace.permissionGrantForm.controls.presetId.value ||
+                      !permissions.canEdit(Permission.PermissionGrant.Create)
+                    "
                     (click)="workspace.applySelectedPermissionPreset()">
                     <mat-icon>auto_awesome</mat-icon>
                     Adicionar preset à revisão
@@ -391,8 +411,7 @@
                       matInput
                       formControlName="targetSearch"
                       [placeholder]="workspace.permissionGrantTargetSearchLabel()"
-                      [attr.aria-label]="workspace.permissionGrantTargetSearchLabel()"
-                    />
+                      [attr.aria-label]="workspace.permissionGrantTargetSearchLabel()" />
                   </mat-form-field>
 
                   <mat-list
@@ -559,7 +578,13 @@
                       type="button"
                       aria-label="Ver histórico da permissão"
                       matTooltip="Histórico"
-                      (click)="auditLog.openHistory('PERMISSION_GRANT', grant.id, workspace.getPermissionGrantLabel(grant.permission))">
+                      (click)="
+                        auditLog.openHistory(
+                          'PERMISSION_GRANT',
+                          grant.id,
+                          workspace.getPermissionGrantLabel(grant.permission)
+                        )
+                      ">
                       <mat-icon>history</mat-icon>
                     </button>
                     <button
