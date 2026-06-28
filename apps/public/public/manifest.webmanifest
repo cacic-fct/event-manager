@@ -1,24 +1,24 @@
 {
   "name": "CACiC Eventos",
-  "short_name": "CACiC Eventos",
-  "theme_color": "#009fe0",
-  "background_color": "#000000",
-  "display": "fullscreen",
-  "orientation": "portrait",
-  "scope": "./",
-  "start_url": "./",
+  "short_name": "Eventos",
   "icons": [
     {
-      "src": "icons/192.webp",
-      "type": "image/webp",
+      "src": "/app/icons/web-app-manifest-192x192.png",
       "sizes": "192x192",
-      "purpose": "maskable any"
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
-      "src": "icons/512.webp",
-      "type": "image/webp",
+      "src": "/app/icons/web-app-manifest-512x512.png",
       "sizes": "512x512",
-      "purpose": "maskable any"
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "theme_color": "#3d3f97",
+  "background_color": "#3d3f97",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/app",
+  "start_url": "/app"
 }

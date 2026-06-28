@@ -8,19 +8,23 @@
 
     <title>CACiC Eventos</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/png" href="icons/favicon.png" />
-    <!-- 
-      User avatar is not fetched early, therefore no preconnect is needed 
-      But we can prefetch the domain to speed up the connection a bit
-    -->
+    <link rel="icon" type="image/png" href="/app/icons/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/app/icons/favicon.svg" />
+    <link rel="shortcut icon" href="/app/icons/favicon.ico" />
+
+    <!-- User profile pictures -->
     <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
+    <!-- Turnstile -->
     <link rel="dns-prefetch" href="https://challenges.cloudflare.com" />
     <!-- 
-      Emojis are fetched from jsdelivr, so we can preconnect to it to speed up the connection
+      Emojis 
+      Service Worker caches emojis aggressively, therefore no need to preconnect.
     -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="preconnect" href="https://a.cacic.dev.br" />
-    <link rel="preconnect" href="https://unleash.cacic.dev.br" />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+
+    <!-- CACiC Services -->
+    <link rel="preconnect" href="https://a.cacic.dev.br" crossorigin />
+    <link rel="preconnect" href="https://unleash.cacic.dev.br" crossorigin />
 
     <!-- Disable zoom -->
     <meta
@@ -40,13 +44,14 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="CACiC Eventos" />
     <meta property="og:description" content="Calendário de eventos dos estudantes da FCT-Unesp." />
-    <meta property="og:image" content="https://eventos.cacic.dev.br/app/icons/favicon.png" />
+    <meta property="og:image" content="https://eventos.cacic.dev.br/app/icons/ogp.png" />
 
     <!-- PWA  -->
     <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="CACiC Eventos" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/app/icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#009ee2" />
   </head>
   <body>
