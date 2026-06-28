@@ -20,6 +20,8 @@
 }
 
 lib-cacic-logo {
+  display: block;
+  flex: 0 0 auto;
   height: 50px;
-  margin-top: 0.5rem;
+  aspect-ratio: 427.97 / 248.98;
 }
