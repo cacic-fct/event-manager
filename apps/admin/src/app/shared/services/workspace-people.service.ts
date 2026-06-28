@@ -18,6 +18,7 @@ import { DestroyRef, LOCALE_ID, computed, Injectable, inject, signal } from '@an
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { PermissionGrantsApiService } from '../../graphql/permission-grants-api.service';
@@ -33,6 +34,10 @@ import {
 } from '@cacic-fct/event-manager-admin-contracts';
 import { getErrorMessage } from '../error-message';
 import { bindLiveSearch } from '../live-search';
+import {
+  PersonLinkedDataDialogComponent,
+  PersonLinkedDataDialogData,
+} from '../../workspace/dialogs/person-linked-data-dialog.component';
 import {
   WORKSPACE_LIST_PAGE_SIZE,
   applyPagedResult,
@@ -90,6 +95,7 @@ export class WorkspacePeopleService {
   private readonly api = inject(PeopleApiService);
   private readonly permissionGrantsApi = inject(PermissionGrantsApiService);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -543,6 +549,31 @@ export class WorkspacePeopleService {
         duration: 5000,
       });
     }
+  }
+
+  async openLinkedDataDialog(person: Person): Promise<void> {
+    const deleted = await firstValueFrom(
+      this.dialog
+        .open<PersonLinkedDataDialogComponent, PersonLinkedDataDialogData, boolean>(
+          PersonLinkedDataDialogComponent,
+          {
+            width: 'min(54rem, calc(100vw - 2rem))',
+            maxWidth: '100vw',
+            data: {
+              personId: person.id,
+              personName: person.name,
+            },
+          },
+        )
+        .afterClosed(),
+    );
+
+    if (!deleted) {
+      return;
+    }
+
+    this.resetPersonForm();
+    await this.searchPeople(this.peopleSearchQuery());
   }
 
   setPermissionGrantScope(scope: EventManagerPermissionGrantScope): void {

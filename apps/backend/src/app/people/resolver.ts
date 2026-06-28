@@ -1,5 +1,13 @@
-import { DeletionResult, Person, PersonCreateInput, PersonUpdateInput } from '@cacic-fct/shared-data-types';
-import { Permission } from '@cacic-fct/shared-permissions';
+import {
+  DeletionResult,
+  Person,
+  PersonCreateInput,
+  PersonLinkedDataSummary,
+  PersonLinkedResource,
+  PersonLinkedResourceGroup,
+  PersonUpdateInput,
+} from '@cacic-fct/shared-data-types';
+import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import {
   ConflictException,
   Logger,
@@ -9,6 +17,7 @@ import {
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { RequireRoles } from '../auth/decorators/require-roles.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
@@ -19,6 +28,17 @@ import { TypesenseSearchService } from '../search/typesense-search.service';
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
   request?: { user?: AuthenticatedUser };
+};
+
+type PersonLinkedResourceInput = Omit<PersonLinkedResource, 'description' | 'route' | 'status' | 'occurredAt'> & {
+  description?: string | null;
+  route?: string | null;
+  status?: string | null;
+  occurredAt?: Date | null;
+};
+
+type PersonLinkedResourceGroupInput = Omit<PersonLinkedResourceGroup, 'items' | 'totalCount'> & {
+  items: PersonLinkedResourceInput[];
 };
 
 const PERSON_AUDIT_SELECT = {
@@ -164,6 +184,15 @@ export class PeopleResolver {
     return person;
   }
 
+  @Query(() => PersonLinkedDataSummary, {
+    name: 'personLinkedDataSummary',
+    description: 'Lists app resources linked to a person. Restricted to Event Manager super-admin users.',
+  })
+  @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
+  async personLinkedDataSummary(@Args('id', { type: () => String }) id: string) {
+    return this.buildPersonLinkedDataSummary(id);
+  }
+
   @Mutation(() => Person, { name: 'createPerson' })
   @RequirePermissions(Permission.Person.Create)
   async createPerson(
@@ -278,6 +307,7 @@ export class PeopleResolver {
   }
 
   @Mutation(() => DeletionResult, { name: 'deletePerson' })
+  @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
   @RequirePermissions(Permission.Person.Delete)
   async deletePerson(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     const deletedAt = new Date();
@@ -287,6 +317,12 @@ export class PeopleResolver {
         select: PERSON_AUDIT_SELECT,
       });
       if (!existingPerson) throw new NotFoundException(`Person ${id} was not found.`);
+      const linkedData = await this.buildPersonLinkedDataSummary(id, tx);
+      if (linkedData.hasLinkedData) {
+        throw new ConflictException(
+          `Person ${id} has linked app data and cannot be deleted. Review linked resources before deleting.`,
+        );
+      }
       await tx.people.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {
@@ -309,6 +345,423 @@ export class PeopleResolver {
       deleted: true,
       id,
     };
+  }
+
+  private async buildPersonLinkedDataSummary(
+    personId: string,
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
+  ): Promise<PersonLinkedDataSummary> {
+    const person = await prisma.people.findFirst({
+      where: { id: personId, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        userId: true,
+        mergedIntoId: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            updatedAt: true,
+          },
+        },
+        mergedInto: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!person) {
+      throw new NotFoundException(`Person ${personId} was not found.`);
+    }
+
+    const [
+      certificates,
+      eventSubscriptions,
+      eventGroupSubscriptions,
+      majorEventSubscriptions,
+      attendances,
+      lectures,
+      attendanceCollectors,
+      offlineAttendanceSubmissions,
+      permissionGrants,
+      lecturerProfile,
+      mergedFrom,
+      mergeCandidates,
+      mergeOperationsAsTarget,
+      mergeOperationsAsSource,
+      receipts,
+    ] = await Promise.all([
+      prisma.certificate.findMany({
+        where: { personId, deletedAt: null },
+        include: {
+          config: {
+            select: {
+              id: true,
+              name: true,
+              scope: true,
+              eventId: true,
+              eventGroupId: true,
+              majorEventId: true,
+              event: { select: { id: true, name: true } },
+              eventGroup: { select: { id: true, name: true } },
+              majorEvent: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: { issuedAt: 'desc' },
+      }),
+      prisma.eventSubscription.findMany({
+        where: { personId, deletedAt: null },
+        include: { event: { select: { id: true, name: true, startDate: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.eventGroupSubscription.findMany({
+        where: { personId, deletedAt: null },
+        include: { eventGroup: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.majorEventSubscription.findMany({
+        where: { personId, deletedAt: null },
+        include: { majorEvent: { select: { id: true, name: true, startDate: true } } },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      prisma.eventAttendance.findMany({
+        where: { personId },
+        include: { event: { select: { id: true, name: true, startDate: true } } },
+        orderBy: { attendedAt: 'desc' },
+      }),
+      prisma.eventLecturer.findMany({
+        where: { personId },
+        include: { event: { select: { id: true, name: true, startDate: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.eventAttendanceCollector.findMany({
+        where: { personId },
+        include: { event: { select: { id: true, name: true, startDate: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.offlineEventAttendanceSubmission.findMany({
+        where: { personId },
+        include: { event: { select: { id: true, name: true, startDate: true } } },
+        orderBy: { submittedAt: 'desc' },
+      }),
+      prisma.eventManagerPermissionGrant.findMany({
+        where: { personId, deletedAt: null },
+        include: {
+          event: { select: { id: true, name: true } },
+          eventGroup: { select: { id: true, name: true } },
+          majorEvent: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.lecturerProfile.findUnique({
+        where: { personId },
+        select: { id: true, displayName: true, updatedAt: true },
+      }),
+      prisma.people.findMany({
+        where: { mergedIntoId: personId, deletedAt: null },
+        select: { id: true, name: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      prisma.mergeCandidate.findMany({
+        where: { OR: [{ personAId: personId }, { personBId: personId }] },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      prisma.peopleMergeOperation.findMany({
+        where: { targetPersonId: personId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.peopleMergeOperation.findMany({
+        where: { sourcePersonId: personId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.majorEventReceipt.findMany({
+        where: { personId },
+        include: { subscription: { select: { majorEventId: true } } },
+        orderBy: { uploadedAt: 'desc' },
+      }),
+    ]);
+
+    const groups = this.normalizeLinkedResourceGroups([
+      this.buildLinkedGroup('USER', 'Usuário vinculado', 'account_circle', [
+        ...(person.user
+          ? [
+              {
+                id: person.user.id,
+                label: person.user.name,
+                description: person.user.email,
+                route: `/people/${person.id}`,
+                occurredAt: person.user.updatedAt,
+              },
+            ]
+          : []),
+      ]),
+      this.buildLinkedGroup(
+        'CERTIFICATE',
+        'Certificados',
+        'workspace_premium',
+        certificates.map((certificate) => ({
+          id: certificate.id,
+          label: certificate.config.name,
+          description: this.getCertificateTargetLabel(certificate.config),
+          route: this.getCertificateRoute(certificate.config),
+          occurredAt: certificate.issuedAt,
+        })),
+      ),
+      this.buildLinkedGroup(
+        'SUBSCRIPTION',
+        'Inscrições',
+        'confirmation_number',
+        [
+          ...eventSubscriptions.map((subscription) => ({
+            id: subscription.id,
+            label: subscription.event.name,
+            description: 'Inscrição em evento',
+            route: `/subscriptions/event/${subscription.eventId}`,
+            occurredAt: subscription.createdAt,
+          })),
+          ...eventGroupSubscriptions.map((subscription) => ({
+            id: subscription.id,
+            label: subscription.eventGroup.name,
+            description: 'Inscrição em grupo de eventos',
+            route: `/groups/${subscription.eventGroupId}`,
+            occurredAt: subscription.createdAt,
+          })),
+          ...majorEventSubscriptions.map((subscription) => ({
+            id: subscription.id,
+            label: subscription.majorEvent.name,
+            description: 'Inscrição em grande evento',
+            route: `/subscriptions/major-event/${subscription.majorEventId}`,
+            status: subscription.subscriptionStatus,
+            occurredAt: subscription.updatedAt,
+          })),
+        ],
+      ),
+      this.buildLinkedGroup(
+        'ATTENDANCE',
+        'Presenças',
+        'how_to_reg',
+        attendances.map((attendance) => ({
+          id: `${attendance.personId}:${attendance.eventId}`,
+          label: attendance.event.name,
+          description: 'Presença em evento',
+          route: `/attendances/event/${attendance.eventId}`,
+          status: attendance.category,
+          occurredAt: attendance.attendedAt,
+        })),
+      ),
+      this.buildLinkedGroup(
+        'EVENT_RELATION',
+        'Vínculos com eventos',
+        'event_available',
+        [
+          ...lectures.map((lecture) => ({
+            id: `${lecture.eventId}:${lecture.personId}:lecturer`,
+            label: lecture.event.name,
+            description: 'Ministrante',
+            route: `/events/${lecture.eventId}`,
+            occurredAt: lecture.createdAt,
+          })),
+          ...attendanceCollectors.map((collector) => ({
+            id: `${collector.eventId}:${collector.personId}:collector`,
+            label: collector.event.name,
+            description: 'Coletor de presença',
+            route: `/events/${collector.eventId}`,
+            occurredAt: collector.createdAt,
+          })),
+        ],
+      ),
+      this.buildLinkedGroup(
+        'OFFLINE_ATTENDANCE_SUBMISSION',
+        'Coletas offline',
+        'sync_problem',
+        offlineAttendanceSubmissions.map((submission) => ({
+          id: submission.id,
+          label: submission.event.name,
+          description: 'Submissão offline de presença',
+          route: `/attendances/event/${submission.eventId}`,
+          status: submission.status,
+          occurredAt: submission.submittedAt,
+        })),
+      ),
+      this.buildLinkedGroup(
+        'RECEIPT',
+        'Comprovantes',
+        'receipt_long',
+        receipts.map((receipt) => ({
+          id: receipt.id,
+          label: receipt.fileName,
+          description: 'Comprovante de inscrição em grande evento',
+          route: `/subscriptions/major-event/${receipt.subscription.majorEventId}/validate-receipts`,
+          status: receipt.processingStatus,
+          occurredAt: receipt.uploadedAt,
+        })),
+      ),
+      this.buildLinkedGroup(
+        'LECTURER_PROFILE',
+        'Perfil de ministrante',
+        'badge',
+        lecturerProfile
+          ? [
+              {
+                id: lecturerProfile.id,
+                label: lecturerProfile.displayName,
+                description: 'Perfil público de ministrante',
+                route: `/people/${person.id}`,
+                occurredAt: lecturerProfile.updatedAt,
+              },
+            ]
+          : [],
+      ),
+      this.buildLinkedGroup(
+        'PERMISSION_GRANT',
+        'Permissões',
+        'admin_panel_settings',
+        permissionGrants.map((grant) => ({
+          id: grant.id,
+          label: grant.permission,
+          description: this.getPermissionGrantTargetLabel(grant),
+          route: `/people/${person.id}`,
+          status: grant.scope,
+          occurredAt: grant.createdAt,
+        })),
+      ),
+      this.buildLinkedGroup(
+        'MERGE',
+        'Unificações',
+        'call_merge',
+        [
+          ...(person.mergedInto
+            ? [
+                {
+                  id: `${person.id}:merged-into:${person.mergedInto.id}`,
+                  label: `Unificada em ${person.mergedInto.name}`,
+                  description: 'Esta pessoa aponta para outro cadastro',
+                  route: `/people/${person.mergedInto.id}`,
+                },
+              ]
+            : []),
+          ...mergedFrom.map((mergedPerson) => ({
+            id: `${mergedPerson.id}:merged-from:${person.id}`,
+            label: `${mergedPerson.name} foi unificada neste cadastro`,
+            description: 'Outro cadastro aponta para esta pessoa',
+            route: `/people/${mergedPerson.id}`,
+            occurredAt: mergedPerson.updatedAt,
+          })),
+          ...mergeCandidates.map((candidate) => ({
+            id: candidate.id,
+            label: `Candidato de unificação ${candidate.status.toLocaleLowerCase('pt-BR')}`,
+            description: candidate.matchValue ?? candidate.matchMethod ?? 'Candidato de unificação',
+            route: '/merge-candidates',
+            status: candidate.status,
+            occurredAt: candidate.updatedAt,
+          })),
+          ...mergeOperationsAsTarget.map((operation) => ({
+            id: `${operation.id}:target`,
+            label: 'Operação de unificação como destino',
+            description: operation.status,
+            route: '/merge-candidates',
+            status: operation.status,
+            occurredAt: operation.createdAt,
+          })),
+          ...mergeOperationsAsSource.map((operation) => ({
+            id: `${operation.id}:source`,
+            label: 'Operação de unificação como origem',
+            description: operation.status,
+            route: '/merge-candidates',
+            status: operation.status,
+            occurredAt: operation.createdAt,
+          })),
+        ],
+      ),
+    ]);
+
+    const totalCount = groups.reduce((sum, group) => sum + group.totalCount, 0);
+    return {
+      personId,
+      groups,
+      totalCount,
+      hasLinkedData: totalCount > 0,
+      canDelete: totalCount === 0,
+    };
+  }
+
+  private buildLinkedGroup(
+    type: string,
+    label: string,
+    icon: string,
+    items: PersonLinkedResourceInput[],
+  ): PersonLinkedResourceGroupInput {
+    return { type, label, icon, items };
+  }
+
+  private normalizeLinkedResourceGroups(
+    groups: PersonLinkedResourceGroupInput[],
+  ): PersonLinkedResourceGroup[] {
+    return groups
+      .filter((group) => group.items.length > 0)
+      .map((group) => ({
+        type: group.type,
+        label: group.label,
+        icon: group.icon,
+        items: group.items,
+        totalCount: group.items.length,
+      }));
+  }
+
+  private getCertificateTargetLabel(config: {
+    scope: string;
+    event?: { name: string } | null;
+    eventGroup?: { name: string } | null;
+    majorEvent?: { name: string } | null;
+  }): string | null {
+    if (config.event) {
+      return `Evento: ${config.event.name}`;
+    }
+
+    if (config.eventGroup) {
+      return `Grupo de eventos: ${config.eventGroup.name}`;
+    }
+
+    if (config.majorEvent) {
+      return `Grande evento: ${config.majorEvent.name}`;
+    }
+
+    return config.scope;
+  }
+
+  private getCertificateRoute(config: {
+    id: string;
+    eventId?: string | null;
+    eventGroupId?: string | null;
+    majorEventId?: string | null;
+  }): string | null {
+    if (config.eventId) {
+      return `/certificates/event/${config.eventId}/${config.id}`;
+    }
+
+    if (config.eventGroupId) {
+      return `/certificates/event-group/${config.eventGroupId}/${config.id}`;
+    }
+
+    if (config.majorEventId) {
+      return `/certificates/major-event/${config.majorEventId}/${config.id}`;
+    }
+
+    return '/certificates';
+  }
+
+  private getPermissionGrantTargetLabel(grant: {
+    event?: { name: string } | null;
+    eventGroup?: { name: string } | null;
+    majorEvent?: { name: string } | null;
+  }): string {
+    return grant.event?.name ?? grant.eventGroup?.name ?? grant.majorEvent?.name ?? 'Escopo global';
   }
 
   private async ensureNoDuplicateIdentity(

@@ -1,7 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { LecturerProfile, LecturerProfileInput, Person, PersonInput } from '@cacic-fct/event-manager-admin-contracts';
+import {
+  DeletionResult,
+  LecturerProfile,
+  LecturerProfileInput,
+  Person,
+  PersonInput,
+  PersonLinkedDataSummary,
+} from '@cacic-fct/event-manager-admin-contracts';
 import { PERSON_DETAIL_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
 
 type PeopleFilters = {
@@ -139,6 +146,50 @@ export class PeopleApiService {
         { personId, input },
       )
       .pipe(map((data) => data.upsertLecturerProfile));
+  }
+
+  getPersonLinkedDataSummary(id: string) {
+    return this.graphqlHttp
+      .request<{ personLinkedDataSummary: PersonLinkedDataSummary }>(
+        `query PersonLinkedDataSummary($id: String!) {
+          personLinkedDataSummary(id: $id) {
+            personId
+            totalCount
+            hasLinkedData
+            canDelete
+            groups {
+              type
+              label
+              icon
+              totalCount
+              items {
+                id
+                label
+                description
+                route
+                status
+                occurredAt
+              }
+            }
+          }
+        }`,
+        { id },
+      )
+      .pipe(map((data) => data.personLinkedDataSummary));
+  }
+
+  deletePerson(id: string) {
+    return this.graphqlHttp
+      .request<{ deletePerson: DeletionResult }>(
+        `mutation DeletePerson($id: String!) {
+          deletePerson(id: $id) {
+            deleted
+            id
+          }
+        }`,
+        { id },
+      )
+      .pipe(map((data) => data.deletePerson));
   }
 }
 
