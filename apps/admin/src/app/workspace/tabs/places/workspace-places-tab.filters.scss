@@ -1,0 +1,13 @@
+.filter-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+  min-width: min(100%, 28rem);
+}
+
+@media (max-width: 760px) {
+  .filter-form {
+    grid-template-columns: 1fr;
+  }
+}

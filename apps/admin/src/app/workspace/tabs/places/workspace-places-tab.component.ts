@@ -35,7 +35,11 @@ import { WorkspacePlacePresetsService } from '../../../shared/services/workspace
     MatTooltipModule,
   ],
   templateUrl: './workspace-places-tab.component.html',
-  styleUrl: './workspace-places-tab.component.scss',
+  styleUrls: [
+    '../workspace-tab.shared.scss',
+    './workspace-places-tab.filters.scss',
+    './workspace-places-tab.map.scss',
+  ],
 })
 export class WorkspacePlacesTabComponent implements OnDestroy {
   readonly workspace = inject(WorkspacePlacePresetsService);
