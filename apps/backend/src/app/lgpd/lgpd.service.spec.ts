@@ -369,12 +369,27 @@ describe('LgpdService', () => {
         id: 'audit-person',
         entityType: 'PERSON',
         entityId: 'source-person',
+        operation: 'UPDATE',
         actorId: 'admin-user',
-        actorName: 'Admin User',
-        actorEmail: 'admin@example.com',
+        actorType: 'USER',
+        permission: 'person:update',
+        eventId: null,
+        majorEventId: null,
+        eventGroupId: null,
         before: { id: 'source-person', name: 'Source Person', email: 'old@example.com' },
         after: { id: 'target-person', name: 'Target Person', email: 'new@example.com' },
         changes: [{ field: 'email', before: 'old@example.com', after: 'new@example.com' }],
+        changedFields: ['email'],
+        groupedCount: 1,
+        firstRecordedAt: new Date('2026-05-20T12:00:00.000Z'),
+        lastRecordedAt: new Date('2026-05-20T12:00:00.000Z'),
+        createdAt: new Date('2026-05-20T12:00:00.000Z'),
+        revertedAt: null,
+        revertedById: null,
+        revertedByEntryId: null,
+        revertTargetId: null,
+        revertMode: null,
+        metadata: null,
       },
     ];
     prisma.eventSubscription.findMany.mockResolvedValue([{ id: 'moved-subscription' }]);
@@ -423,9 +438,13 @@ describe('LgpdService', () => {
         expect.objectContaining({ id: 'target-person' }),
       ]),
     });
+    const exportedPeople = (result.people as { records: Record<string, unknown>[] }).records;
+    expect(exportedPeople[0]).not.toHaveProperty('user');
+    expect(exportedPeople[0]).not.toHaveProperty('mergedFrom');
+    expect(exportedPeople[0]).not.toHaveProperty('mergedInto');
     expect(result.subscriptions).toEqual(
       expect.objectContaining({
-        eventSubscriptions: [{ id: 'moved-subscription' }],
+        eventSubscriptions: [expect.objectContaining({ id: 'moved-subscription' })],
       }),
     );
     expect(result.mergeHistory).toEqual(
@@ -433,67 +452,130 @@ describe('LgpdService', () => {
         accountUserMerges: [{ oldUserId: 'old-user', newUserId: 'new-user' }],
       }),
     );
-    expect(result.receipts).toEqual({
-      majorEventReceipts: [
-        {
+    expect(result.receipts).toEqual(
+      expect.objectContaining({
+        majorEventReceipts: [
+          expect.objectContaining({
           id: 'receipt-1',
           personId: 'source-person',
-          objectKey: 'receipts/receipt-1.avif',
           ocrText: 'Pagamento PIX de R$ 50,00',
-        },
-      ],
-      receiptValidationActions: [
-        {
+          }),
+        ],
+        receiptValidationActions: [
+          expect.objectContaining({
           id: 'action-1',
           subscriptionId: 'subscription-1',
           receiptId: 'receipt-1',
           nextRejectionReason: null,
-        },
+          }),
+        ],
+      }),
+    );
+    const exportedReceipts = (result.receipts as { majorEventReceipts: Record<string, unknown>[] }).majorEventReceipts;
+    expect(exportedReceipts[0]).not.toHaveProperty('objectKey');
+    expect(result.attendances).toEqual(
+      expect.objectContaining({
+        records: expect.any(Array),
+        offlineSubmissions: [
+          expect.objectContaining({
+            id: 'offline-submission-1',
+            personId: 'source-person',
+            authorUserId: 'old-user',
+            submittedById: null,
+          }),
+        ],
+      }),
+    );
+    const exportedOfflineSubmissions = (
+      result.attendances as { offlineSubmissions: Record<string, unknown>[] }
+    ).offlineSubmissions;
+    expect(exportedOfflineSubmissions[0]).not.toHaveProperty('event');
+    expect(exportedOfflineSubmissions[0]).not.toHaveProperty('person');
+    expect(result.auditHistory).toEqual({
+      records: [
+        expect.objectContaining({
+          id: 'audit-person',
+          entityType: 'PERSON',
+          entityId: 'source-person',
+          operation: 'UPDATE',
+          actorId: null,
+          actorMatchesSubject: false,
+          entityMatchesSubject: true,
+          payloadMatchesSubject: true,
+          changedFields: ['email'],
+        }),
       ],
     });
-    expect(result.attendances).toEqual({
-      records: expect.any(Array),
-      offlineSubmissions: [{ id: 'offline-submission-1', personId: 'source-person', authorUserId: 'old-user' }],
-    });
-    expect(result.auditHistory).toEqual({ records: auditLogEntries });
+    const exportedAuditRecords = (result.auditHistory as { records: Record<string, unknown>[] }).records;
+    expect(exportedAuditRecords[0]).not.toHaveProperty('before');
+    expect(exportedAuditRecords[0]).not.toHaveProperty('after');
+    expect(exportedAuditRecords[0]).not.toHaveProperty('changes');
+    expect(exportedAuditRecords[0]).not.toHaveProperty('metadata');
+    expect(exportedAuditRecords[0]).not.toHaveProperty('actorName');
+    expect(exportedAuditRecords[0]).not.toHaveProperty('actorEmail');
     expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { personId: { in: ['source-person', 'target-person'] } },
+        select: expect.objectContaining({
+          id: true,
+          eventId: true,
+          personId: true,
+        }),
       }),
     );
     expect(prisma.majorEventReceipt.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { personId: { in: ['source-person', 'target-person'] } },
-        include: expect.objectContaining({
-          validationActions: true,
+        select: expect.objectContaining({
+          id: true,
         }),
       }),
     );
-    expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith({
-      where: {
-        OR: expect.arrayContaining([
-          { actorId: { in: expect.arrayContaining(['old-user', 'new-user']) } },
-          {
-            entityType: 'PERSON',
-            entityId: { in: ['source-person', 'target-person'] },
-          },
-          {
-            entityType: 'EVENT_ATTENDANCE',
-            entityId: { startsWith: 'source-person:' },
-          },
-          {
-            before: { path: ['personId'], equals: 'source-person' },
-          },
-          {
-            after: { path: ['userId'], equals: 'new-user' },
-          },
-          {
-            metadata: { path: ['offlineAttendanceAuthor', 'userId'], equals: 'old-user' },
-          },
-        ]),
-      },
-      orderBy: { lastRecordedAt: 'desc' },
-    });
+    const receiptSelect = prisma.majorEventReceipt.findMany.mock.calls[0]?.[0]?.select;
+    expect(receiptSelect).not.toHaveProperty('objectKey');
+    expect(receiptSelect).not.toHaveProperty('subscription');
+    expect(receiptSelect).not.toHaveProperty('validationActions');
+    expect(prisma.auditLogEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: expect.arrayContaining([
+            { actorId: { in: expect.arrayContaining(['old-user', 'new-user']) } },
+            {
+              entityType: 'PERSON',
+              entityId: { in: ['source-person', 'target-person'] },
+            },
+            {
+              entityType: 'EVENT_ATTENDANCE',
+              entityId: { startsWith: 'source-person:' },
+            },
+            {
+              before: { path: ['personId'], equals: 'source-person' },
+            },
+            {
+              after: { path: ['userId'], equals: 'new-user' },
+            },
+            {
+              metadata: { path: ['offlineAttendanceAuthor', 'userId'], equals: 'old-user' },
+            },
+          ]),
+        },
+        select: expect.objectContaining({
+          id: true,
+          entityType: true,
+          operation: true,
+          before: true,
+          after: true,
+          changes: true,
+          metadata: true,
+        }),
+        orderBy: { lastRecordedAt: 'desc' },
+      }),
+    );
+    const auditSelect = prisma.auditLogEntry.findMany.mock.calls[0]?.[0]?.select;
+    expect(auditSelect).not.toHaveProperty('actorName');
+    expect(auditSelect).not.toHaveProperty('actorEmail');
+    expect(auditSelect).not.toHaveProperty('entityLabel');
+    expect(auditSelect).not.toHaveProperty('summary');
     expect(prisma.offlineEventAttendanceSubmission.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {

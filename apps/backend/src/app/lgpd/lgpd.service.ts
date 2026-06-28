@@ -38,6 +38,229 @@ const PERSONAL_AUDIT_FIELDS = new Set([
   'academicId',
   'externalRef',
 ]);
+const LGPD_ACCOUNT_USER_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  identityDocument: true,
+  academicId: true,
+  unespRole: true,
+  role: true,
+  lastLoginAt: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.UserSelect;
+const LGPD_EVENT_SUBSCRIPTION_SELECT = {
+  id: true,
+  eventId: true,
+  personId: true,
+  eventGroupSubscriptionId: true,
+  createdAt: true,
+  createdByMethod: true,
+  deletedAt: true,
+} satisfies Prisma.EventSubscriptionSelect;
+const LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT = {
+  id: true,
+  eventGroupId: true,
+  personId: true,
+  createdAt: true,
+  createdByMethod: true,
+  deletedAt: true,
+  eventSubscriptions: {
+    select: {
+      id: true,
+      eventId: true,
+      deletedAt: true,
+    },
+  },
+} satisfies Prisma.EventGroupSubscriptionSelect;
+const LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT = {
+  id: true,
+  majorEventId: true,
+  personId: true,
+  amountPaid: true,
+  paymentDate: true,
+  paymentTier: true,
+  subscriptionStatus: true,
+  subscriptionFlow: true,
+  desiredCourses: true,
+  desiredLectures: true,
+  desiredUncategorized: true,
+  receiptRejectionReason: true,
+  receiptValidatedAt: true,
+  createdAt: true,
+  createdByMethod: true,
+  updatedAt: true,
+  deletedAt: true,
+  selectedEvents: {
+    select: {
+      id: true,
+      eventId: true,
+      preferenceOrder: true,
+      createdAt: true,
+      deletedAt: true,
+    },
+  },
+} satisfies Prisma.MajorEventSubscriptionSelect;
+const LGPD_EVENT_ATTENDANCE_SELECT = {
+  personId: true,
+  eventId: true,
+  category: true,
+  attendedAt: true,
+  createdAt: true,
+  createdByMethod: true,
+  collectedLatitude: true,
+  collectedLongitude: true,
+  collectedAccuracyMeters: true,
+} satisfies Prisma.EventAttendanceSelect;
+const LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT = {
+  id: true,
+  clientId: true,
+  eventId: true,
+  personId: true,
+  status: true,
+  createdByMethod: true,
+  scannerCode: true,
+  manualValue: true,
+  collectedAt: true,
+  authorUserId: true,
+  authorName: true,
+  authorEmail: true,
+  submittedById: true,
+  submittedAt: true,
+  stagedReason: true,
+  resolutionError: true,
+  collectedLatitude: true,
+  collectedLongitude: true,
+  collectedAccuracyMeters: true,
+  committedAt: true,
+  committedById: true,
+  rejectedAt: true,
+  rejectedById: true,
+  rejectionReason: true,
+} satisfies Prisma.OfflineEventAttendanceSubmissionSelect;
+const LGPD_EVENT_LECTURER_SELECT = {
+  eventId: true,
+  personId: true,
+  createdAt: true,
+} satisfies Prisma.EventLecturerSelect;
+const LGPD_CERTIFICATE_SELECT = {
+  id: true,
+  personId: true,
+  configId: true,
+  renderedData: true,
+  issuedAt: true,
+  certificateTemplateId: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+} satisfies Prisma.CertificateSelect;
+const LGPD_MAJOR_EVENT_RECEIPT_SELECT = {
+  id: true,
+  subscriptionId: true,
+  majorEventId: true,
+  personId: true,
+  fileName: true,
+  mimeType: true,
+  sizeBytes: true,
+  expiresAt: true,
+  uploadedAt: true,
+  processingStatus: true,
+  processedAt: true,
+  processingError: true,
+  ocrText: true,
+  expectedAmountCents: true,
+  matchedAmountCents: true,
+  amountMatched: true,
+  matchedAmountText: true,
+  nameMatched: true,
+  matchedNameText: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.MajorEventReceiptSelect;
+const LGPD_RECEIPT_VALIDATION_ACTION_SELECT = {
+  id: true,
+  subscriptionId: true,
+  receiptId: true,
+  action: true,
+  previousStatus: true,
+  nextStatus: true,
+  previousRejectionReason: true,
+  nextRejectionReason: true,
+  createdAt: true,
+  undoneAt: true,
+} satisfies Prisma.MajorEventReceiptValidationActionSelect;
+const LGPD_PEOPLE_MERGE_OPERATION_SELECT = {
+  id: true,
+  targetPersonId: true,
+  sourcePersonId: true,
+  mergeCandidateId: true,
+  status: true,
+  rolledBackAt: true,
+  createdAt: true,
+} satisfies Prisma.PeopleMergeOperationSelect;
+const LGPD_MERGE_CANDIDATE_SELECT = {
+  id: true,
+  personAId: true,
+  personBId: true,
+  score: true,
+  matchMethod: true,
+  matchValue: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.MergeCandidateSelect;
+const LGPD_ACCOUNT_USER_MERGE_SELECT = {
+  oldUserId: true,
+  newUserId: true,
+  createdAt: true,
+} satisfies Prisma.AccountUserMergeSelect;
+const LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT = {
+  id: true,
+  eventId: true,
+  type: true,
+  oldUserId: true,
+  newUserId: true,
+  occurredAt: true,
+  status: true,
+  result: true,
+  peopleMergeOperationId: true,
+  errorMessage: true,
+  attemptCount: true,
+  rolledBackAt: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.ExternalAccountMergeOperationSelect;
+const LGPD_AUDIT_LOG_SELECT = {
+  id: true,
+  entityType: true,
+  entityId: true,
+  operation: true,
+  actorId: true,
+  actorType: true,
+  permission: true,
+  eventId: true,
+  majorEventId: true,
+  eventGroupId: true,
+  changedFields: true,
+  groupedCount: true,
+  firstRecordedAt: true,
+  lastRecordedAt: true,
+  createdAt: true,
+  revertedAt: true,
+  revertedById: true,
+  revertedByEntryId: true,
+  revertTargetId: true,
+  revertMode: true,
+  before: true,
+  after: true,
+  changes: true,
+  metadata: true,
+} satisfies Prisma.AuditLogEntrySelect;
+type LgpdOfflineSubmission = Prisma.OfflineEventAttendanceSubmissionGetPayload<{
+  select: typeof LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT;
+}>;
+type LgpdAuditLogEntry = Prisma.AuditLogEntryGetPayload<{ select: typeof LGPD_AUDIT_LOG_SELECT }>;
 
 @Injectable()
 export class LgpdService {
@@ -74,128 +297,129 @@ export class LgpdService {
     ] = await Promise.all([
       this.prisma.user.findMany({
         where: { id: { in: userIds } },
+        select: LGPD_ACCOUNT_USER_SELECT,
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.accountUserMerge.findMany({
         where: userWhere,
+        select: LGPD_ACCOUNT_USER_MERGE_SELECT,
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.externalAccountMergeOperation.findMany({
         where: userWhere,
+        select: LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT,
         orderBy: { occurredAt: 'desc' },
       }),
       personIds.length > 0 ? this.prisma.eventSubscription.findMany({
         where: { personId: { in: personIds } },
-        include: { event: true, eventGroupSubscription: true },
+        select: LGPD_EVENT_SUBSCRIPTION_SELECT,
         orderBy: { createdAt: 'desc' },
       }) : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.eventGroupSubscription.findMany({
         where: { personId: { in: personIds } },
-        include: { eventGroup: true, eventSubscriptions: true },
+        select: LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT,
         orderBy: { createdAt: 'desc' },
       }) : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.majorEventSubscription.findMany({
         where: { personId: { in: personIds } },
-        include: {
-          majorEvent: true,
-          selectedEvents: {
-            include: { event: true },
-          },
-        },
+        select: LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT,
         orderBy: { createdAt: 'desc' },
       }) : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.eventAttendance.findMany({
         where: { personId: { in: personIds } },
-        include: { event: true },
+        select: LGPD_EVENT_ATTENDANCE_SELECT,
         orderBy: { attendedAt: 'desc' },
       }) : Promise.resolve([]),
       offlineSubmissionWhere
         ? this.prisma.offlineEventAttendanceSubmission.findMany({
             where: offlineSubmissionWhere,
-            include: { event: true, person: true },
+            select: LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT,
             orderBy: { submittedAt: 'desc' },
           })
         : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.eventLecturer.findMany({
         where: { personId: { in: personIds } },
-        include: { event: true },
+        select: LGPD_EVENT_LECTURER_SELECT,
         orderBy: { createdAt: 'desc' },
       }) : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.certificate.findMany({
         where: { personId: { in: personIds } },
-        include: {
-          config: true,
-          certificateTemplate: true,
-        },
+        select: LGPD_CERTIFICATE_SELECT,
         orderBy: { issuedAt: 'desc' },
       }) : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.majorEventReceipt.findMany({
         where: { personId: { in: personIds } },
-        include: {
-          subscription: {
-            include: {
-              majorEvent: true,
-            },
-          },
-          validationActions: true,
-        },
+        select: LGPD_MAJOR_EVENT_RECEIPT_SELECT,
         orderBy: { uploadedAt: 'desc' },
       }) : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.majorEventReceiptValidationAction.findMany({
         where: {
           subscription: { personId: { in: personIds } },
         },
-        include: {
-          receipt: true,
-          subscription: {
-            include: {
-              majorEvent: true,
-            },
-          },
-        },
+        select: LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
         orderBy: { createdAt: 'desc' },
       }) : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.peopleMergeOperation.findMany({
         where: {
           OR: [{ targetPersonId: { in: personIds } }, { sourcePersonId: { in: personIds } }],
         },
+        select: LGPD_PEOPLE_MERGE_OPERATION_SELECT,
         orderBy: { createdAt: 'desc' },
       }) : Promise.resolve([]),
       personIds.length > 0 ? this.prisma.mergeCandidate.findMany({
         where: {
           OR: [{ personAId: { in: personIds } }, { personBId: { in: personIds } }],
         },
+        select: LGPD_MERGE_CANDIDATE_SELECT,
         orderBy: { createdAt: 'desc' },
       }) : Promise.resolve([]),
       this.prisma.auditLogEntry.findMany({
         where: this.buildAuditLogSubjectWhere(dataSubject),
+        select: LGPD_AUDIT_LOG_SELECT,
         orderBy: { lastRecordedAt: 'desc' },
       }),
     ]);
 
     return {
       metadata: this.metadata(input, dataSubject),
-      accountUsers: { records: accountUsers },
-      people: { records: people },
+      accountUsers: { records: this.selectManyForExport(accountUsers, LGPD_ACCOUNT_USER_SELECT) },
+      people: { records: people.map((person) => this.mapPersonForExport(person)) },
       subscriptions: {
-        eventSubscriptions,
-        eventGroupSubscriptions,
-        majorEventSubscriptions,
+        eventSubscriptions: this.selectManyForExport(eventSubscriptions, LGPD_EVENT_SUBSCRIPTION_SELECT),
+        eventGroupSubscriptions: this.selectManyForExport(
+          eventGroupSubscriptions,
+          LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT,
+        ),
+        majorEventSubscriptions: this.selectManyForExport(
+          majorEventSubscriptions,
+          LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT,
+        ),
       },
-      attendances: { records: attendances, offlineSubmissions: offlineAttendanceSubmissions },
-      lecturerActivities: { records: lectures },
-      certificates: { records: certificates },
+      attendances: {
+        records: this.selectManyForExport(attendances, LGPD_EVENT_ATTENDANCE_SELECT),
+        offlineSubmissions: offlineAttendanceSubmissions.map((submission) =>
+          this.mapOfflineSubmissionForExport(submission, dataSubject),
+        ),
+      },
+      lecturerActivities: { records: this.selectManyForExport(lectures, LGPD_EVENT_LECTURER_SELECT) },
+      certificates: { records: this.selectManyForExport(certificates, LGPD_CERTIFICATE_SELECT) },
       receipts: {
-        majorEventReceipts,
-        receiptValidationActions,
+        majorEventReceipts: this.selectManyForExport(majorEventReceipts, LGPD_MAJOR_EVENT_RECEIPT_SELECT),
+        receiptValidationActions: this.selectManyForExport(
+          receiptValidationActions,
+          LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
+        ),
       },
       mergeHistory: {
-        mergeOperations,
-        mergeCandidates,
-        accountUserMerges,
-        externalAccountMergeOperations,
+        mergeOperations: this.selectManyForExport(mergeOperations, LGPD_PEOPLE_MERGE_OPERATION_SELECT),
+        mergeCandidates: this.selectManyForExport(mergeCandidates, LGPD_MERGE_CANDIDATE_SELECT),
+        accountUserMerges: this.selectManyForExport(accountUserMerges, LGPD_ACCOUNT_USER_MERGE_SELECT),
+        externalAccountMergeOperations: this.selectManyForExport(
+          externalAccountMergeOperations,
+          LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT,
+        ),
       },
-      auditHistory: { records: auditLogEntries },
+      auditHistory: { records: auditLogEntries.map((entry) => this.mapAuditLogEntryForExport(entry, dataSubject)) },
     };
   }
 
@@ -355,6 +579,152 @@ export class LgpdService {
     );
 
     return { success: true, ...result };
+  }
+
+  private mapPersonForExport(person: LgpdResolvedPerson) {
+    return {
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      secondaryEmails: person.secondaryEmails,
+      phone: person.phone,
+      identityDocument: person.identityDocument,
+      isCPF: person.isCPF,
+      academicId: person.academicId,
+      userId: person.userId,
+      externalRef: person.externalRef,
+      mergedIntoId: person.mergedIntoId,
+      mergedFromIds: person.mergedFrom.map((mergedPerson) => mergedPerson.id),
+      deletedAt: person.deletedAt,
+      createdAt: person.createdAt,
+      updatedAt: person.updatedAt,
+    };
+  }
+
+  private selectManyForExport(records: readonly object[], select: object): Record<string, unknown>[] {
+    return records.map((record) => this.selectForExport(record, select));
+  }
+
+  private selectForExport(record: object, select: object): Record<string, unknown> {
+    const source = record as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+
+    for (const [key, selector] of Object.entries(select)) {
+      if (selector === true) {
+        result[key] = source[key];
+        continue;
+      }
+
+      if (!this.hasNestedSelect(selector)) {
+        continue;
+      }
+
+      const nestedValue = source[key];
+      if (Array.isArray(nestedValue)) {
+        result[key] = nestedValue
+          .filter((value): value is Record<string, unknown> => this.isPlainRecord(value))
+          .map((value) => this.selectForExport(value, selector.select));
+        continue;
+      }
+
+      result[key] = this.isPlainRecord(nestedValue) ? this.selectForExport(nestedValue, selector.select) : nestedValue;
+    }
+
+    return result;
+  }
+
+  private hasNestedSelect(value: unknown): value is { select: object } {
+    return this.isPlainRecord(value) && this.isPlainRecord(value['select']);
+  }
+
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return value != null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private mapOfflineSubmissionForExport(
+    submission: LgpdOfflineSubmission,
+    dataSubject: DataSubjectResolution,
+  ): Record<string, unknown> {
+    const userIds = new Set(dataSubject.userIds);
+    const emails = new Set(dataSubject.emails.map((email) => email.toLowerCase()));
+    const scannerUserId = submission.scannerCode ? this.parseScannerUserId(submission.scannerCode) : null;
+    const scannerMatchesSubject = scannerUserId == null || userIds.has(scannerUserId);
+    const authorMatchesSubject =
+      (submission.authorUserId != null && userIds.has(submission.authorUserId)) ||
+      (submission.authorEmail != null && emails.has(submission.authorEmail.toLowerCase()));
+
+    return {
+      id: submission.id,
+      clientId: submission.clientId,
+      eventId: submission.eventId,
+      personId: submission.personId,
+      status: submission.status,
+      createdByMethod: submission.createdByMethod,
+      scannerCode: scannerMatchesSubject ? submission.scannerCode : null,
+      manualValue: submission.manualValue,
+      collectedAt: submission.collectedAt,
+      authorUserId: authorMatchesSubject ? submission.authorUserId : null,
+      authorName: authorMatchesSubject ? submission.authorName : null,
+      authorEmail: authorMatchesSubject ? submission.authorEmail : null,
+      submittedById: userIds.has(submission.submittedById) ? submission.submittedById : null,
+      submittedBySubject: userIds.has(submission.submittedById),
+      submittedAt: submission.submittedAt,
+      stagedReason: submission.stagedReason,
+      resolutionError: submission.resolutionError,
+      collectedLatitude: submission.collectedLatitude,
+      collectedLongitude: submission.collectedLongitude,
+      collectedAccuracyMeters: submission.collectedAccuracyMeters,
+      committedAt: submission.committedAt,
+      committedById:
+        submission.committedById != null && userIds.has(submission.committedById) ? submission.committedById : null,
+      committedBySubject: submission.committedById != null && userIds.has(submission.committedById),
+      rejectedAt: submission.rejectedAt,
+      rejectedById:
+        submission.rejectedById != null && userIds.has(submission.rejectedById) ? submission.rejectedById : null,
+      rejectedBySubject: submission.rejectedById != null && userIds.has(submission.rejectedById),
+      rejectionReason: submission.rejectionReason,
+    };
+  }
+
+  private mapAuditLogEntryForExport(
+    entry: LgpdAuditLogEntry,
+    dataSubject: DataSubjectResolution,
+  ): Record<string, unknown> {
+    const identityValues = new Set([...dataSubject.userIds, ...dataSubject.personIds]);
+    const actorMatchesSubject = entry.actorId != null && dataSubject.userIds.includes(entry.actorId);
+    const entityMatchesSubject =
+      (entry.entityType === AuditLogEntityType.PERSON && dataSubject.personIds.includes(entry.entityId)) ||
+      this.isEventAttendanceAuditEntityForPerson(entry.entityType, entry.entityId, dataSubject.personIds);
+    const payloadMatchesSubject =
+      this.containsAuditIdentity(entry.before, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
+      this.containsAuditIdentity(entry.after, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
+      this.containsAuditIdentity(entry.changes, identityValues, false) ||
+      this.containsAuditIdentity(entry.metadata, identityValues, false);
+    const revertedBySubject = entry.revertedById != null && dataSubject.userIds.includes(entry.revertedById);
+
+    return {
+      id: entry.id,
+      entityType: entry.entityType,
+      entityId: entityMatchesSubject ? entry.entityId : null,
+      operation: entry.operation,
+      actorId: actorMatchesSubject ? entry.actorId : null,
+      actorType: actorMatchesSubject ? entry.actorType : null,
+      actorMatchesSubject,
+      entityMatchesSubject,
+      payloadMatchesSubject,
+      permission: entry.permission,
+      changedFields: entityMatchesSubject || payloadMatchesSubject ? entry.changedFields : [],
+      groupedCount: entry.groupedCount,
+      firstRecordedAt: entry.firstRecordedAt,
+      lastRecordedAt: entry.lastRecordedAt,
+      createdAt: entry.createdAt,
+      revertedAt: entry.revertedAt,
+      revertedById: revertedBySubject ? entry.revertedById : null,
+      revertedBySubject,
+      revertedByEntryId: entry.revertedByEntryId,
+      revertTargetId: entry.revertTargetId,
+      revertMode: entry.revertMode,
+    };
   }
 
   private async anonymizeAuditEntries(
