@@ -58,13 +58,21 @@
       </mat-nav-list>
     }
 
-    @if (canCollectAttendances()) {
+    @if (hasCollaborationLinks()) {
       <mat-nav-list>
         <h3 matSubheader>Colaboração</h3>
-        <a mat-list-item routerLink="/attendance/collect">
-          <mat-icon matListItemIcon>qr_code_scanner</mat-icon>
-          <span matListItemTitle>Coletar presenças</span>
-        </a>
+        @if (canCollectAttendances()) {
+          <a mat-list-item routerLink="/attendance/collect">
+            <mat-icon matListItemIcon>qr_code_scanner</mat-icon>
+            <span matListItemTitle>Coletar presenças</span>
+          </a>
+        }
+        @if (canAccessWorkspace()) {
+          <a mat-list-item href="/admin">
+            <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+            <span matListItemTitle>Painel administrativo</span>
+          </a>
+        }
       </mat-nav-list>
     }
 

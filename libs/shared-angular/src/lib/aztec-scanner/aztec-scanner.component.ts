@@ -4,7 +4,6 @@ import {
   Component,
   DestroyRef,
   ElementRef,
-  InputSignal,
   PLATFORM_ID,
   computed,
   inject,
@@ -28,6 +27,16 @@ type ScannerState =
   | 'permission-denied'
   | 'no-camera'
   | 'error';
+
+interface ScreenWakeLockSentinel extends EventTarget {
+  release(): Promise<void>;
+}
+
+interface ScreenWakeLockNavigator {
+  wakeLock?: {
+    request(type: 'screen'): Promise<ScreenWakeLockSentinel>;
+  };
+}
 
 @Component({
   selector: 'lib-aztec-scanner',
@@ -164,10 +173,31 @@ export class AztecScannerComponent {
   private animationFrameId: number | null = null;
   private pauseUntil = 0;
   private startAttemptId = 0;
+  private wakeLock: ScreenWakeLockSentinel | null = null;
+
+  private readonly handleWakeLockRelease = (): void => {
+    this.wakeLock = null;
+  };
+
+  private readonly handleVisibilityChange = (): void => {
+    if (this.document.visibilityState === 'visible' && this.hasActiveStream()) {
+      void this.requestWakeLock();
+      return;
+    }
+
+    void this.releaseWakeLock();
+  };
 
   constructor() {
+    if (isPlatformBrowser(this.platformId)) {
+      this.document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    }
+
     queueMicrotask(() => void this.start());
-    this.destroyRef.onDestroy(() => this.stop());
+    this.destroyRef.onDestroy(() => {
+      this.document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+      this.stop();
+    });
   }
 
   async start(): Promise<void> {
@@ -272,6 +302,7 @@ export class AztecScannerComponent {
 
         this.selectedDevice.set(device);
         this.state.set('scanning');
+        await this.requestWakeLock();
         this.scheduleFrame();
         return;
       } catch (error) {
@@ -430,11 +461,54 @@ export class AztecScannerComponent {
     const video = this.video().nativeElement;
 
     this.terminateStream(video.srcObject instanceof MediaStream ? video.srcObject : null);
+    void this.releaseWakeLock();
 
     video.srcObject = null;
   }
 
   private terminateStream(stream: MediaStream | null): void {
     stream?.getTracks().forEach((track) => track.stop());
+  }
+
+  private async requestWakeLock(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId) || this.document.visibilityState !== 'visible' || this.wakeLock) {
+      return;
+    }
+
+    const wakeLock = (navigator as unknown as ScreenWakeLockNavigator).wakeLock;
+
+    if (!wakeLock) {
+      return;
+    }
+
+    try {
+      this.wakeLock = await wakeLock.request('screen');
+      this.wakeLock?.addEventListener('release', this.handleWakeLockRelease);
+    } catch {
+      this.wakeLock = null;
+    }
+  }
+
+  private async releaseWakeLock(): Promise<void> {
+    const wakeLock = this.wakeLock;
+
+    if (!wakeLock) {
+      return;
+    }
+
+    this.wakeLock = null;
+    wakeLock.removeEventListener('release', this.handleWakeLockRelease);
+
+    try {
+      await wakeLock.release();
+    } catch {
+      // Wake Lock is best-effort and must not block scanner teardown.
+    }
+  }
+
+  private hasActiveStream(): boolean {
+    const stream = this.video().nativeElement.srcObject;
+
+    return stream instanceof MediaStream && stream.getVideoTracks().some((track) => track.readyState === 'live');
   }
 }

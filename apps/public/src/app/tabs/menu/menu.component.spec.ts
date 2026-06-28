@@ -1,5 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute } from '@angular/router';
+import { AuthService } from '@cacic-fct/shared-angular';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -8,6 +12,8 @@ import { MenuComponent } from './menu.component';
 describe('MenuComponent', () => {
   let component: MenuComponent;
   let fixture: ComponentFixture<MenuComponent>;
+  let authService: AuthService;
+  let httpTesting: HttpTestingController;
   let addEventListener: ReturnType<
     typeof vi.fn<(type: string, listener: EventListenerOrEventListenerObject) => void>
   >;
@@ -40,6 +46,8 @@ describe('MenuComponent', () => {
     await TestBed.configureTestingModule({
       imports: [MenuComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         {
           provide: ActivatedRoute,
           useValue: {
@@ -56,9 +64,16 @@ describe('MenuComponent', () => {
 
     fixture = TestBed.createComponent(MenuComponent);
     component = fixture.componentInstance;
+    authService = TestBed.inject(AuthService);
+    httpTesting = TestBed.inject(HttpTestingController);
 
     fixture.detectChanges();
     await fixture.whenStable();
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+    authService.clearSession();
   });
 
   it('should create', () => {
@@ -72,6 +87,33 @@ describe('MenuComponent', () => {
     expect(text).not.toContain('Editar informações da conta');
     expect(text).not.toContain('Sair da conta');
     expect(fixture.nativeElement.querySelector('a[href="https://account.cacic.dev.br/app/"]')).toBeNull();
+  });
+
+  it('shows the admin panel link for users with workspace entry permissions', async () => {
+    authService.user.set({
+      sub: 'admin-user',
+      roles: ['access'],
+      permissions: [],
+      claims: {},
+    });
+    fixture.detectChanges();
+
+    httpTesting.expectOne('/api/graphql').flush({
+      data: {
+        currentUserAttendanceCollectionEvents: [],
+      },
+    });
+    httpTesting.expectOne('/api/auth/permissions/evaluate').flush({
+      permissions: [Permission.Event.Read],
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const adminLink = fixture.nativeElement.querySelector('a[href="/admin"]');
+
+    expect(fixture.nativeElement.textContent).toContain('Colaboração');
+    expect(fixture.nativeElement.textContent).toContain('Painel administrativo');
+    expect(adminLink).not.toBeNull();
   });
 
   it('should remove the color scheme listener on destroy', () => {
