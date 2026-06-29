@@ -13,9 +13,10 @@ import type {
 import {
   EventFormRendererComponent,
   answerValue,
+  isRequiredFormAnswerMissing,
   parseFormElementsJson,
 } from '@cacic-fct/shared-angular';
-import { isFormAnswerElementType, type FormElement, type FormResponseAnswer } from '@cacic-fct/form-contracts';
+import { type FormElement, type FormResponseAnswer } from '@cacic-fct/form-contracts';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { EmojiService } from '../../shared/emoji.service';
 
@@ -119,25 +120,12 @@ export class ConfirmSubscriptionDialog {
 
     const answers = this.answersByKey()[this.formKey(form)] ?? [];
     return this.formElements(form.form).some((element) => {
-      if (!element.required || !isFormAnswerElementType(element.type)) {
-        return false;
-      }
-      const value = answerValue(answers, element.id);
-      if (value === null || value === undefined || value === '') {
-        return true;
-      }
-      if (Array.isArray(value)) {
-        return value.length === 0;
-      }
-      if (typeof value === 'object') {
-        return Object.keys(value).length === 0;
-      }
-      return false;
+      return isRequiredFormAnswerMissing(element, answerValue(answers, element.id));
     });
   }
 
   formKey(form: SubscriptionFormContext): string {
-    return `${form.form.id}:${form.targetType}:${form.targetId}`;
+    return `${form.form.id}:${form.linkId ?? 'sem-vinculo'}:${form.targetType}:${form.targetId}`;
   }
 
   private groupByMonthAndDay(events: PublicEvent[]): ConfirmSubscriptionListMonth[] {

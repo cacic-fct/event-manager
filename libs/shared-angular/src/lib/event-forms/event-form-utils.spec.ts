@@ -1,6 +1,7 @@
 import {
   answerValue,
   createSchedulingSlots,
+  isRequiredFormAnswerMissing,
   parseFormAnswersJson,
   parseFormElementsJson,
   setAnswerValue,
@@ -36,5 +37,35 @@ describe('event form utilities', () => {
       { id: 'window-1:09:00-09:30', label: '01/07/2026 09:00-09:30' },
       { id: 'window-1:09:30-10:00', label: '01/07/2026 09:30-10:00' },
     ]);
+  });
+
+  it('requires invitees when a required scheduling field asks for them', () => {
+    const element = {
+      id: 'meeting',
+      type: 'scheduling',
+      title: 'Reunião',
+      required: true,
+      options: [],
+      settings: {
+        scheduling: {
+          timezone: 'America/Sao_Paulo',
+          durationMinutes: 30,
+          slotIntervalMinutes: 30,
+          bufferBeforeMinutes: 0,
+          bufferAfterMinutes: 0,
+          inviteeMode: 'required',
+          maxInvitees: 2,
+          availability: [],
+        },
+      },
+    } as const;
+
+    expect(isRequiredFormAnswerMissing(element, { slotId: 'window-1:09:00-09:30', invitees: [] })).toBe(true);
+    expect(
+      isRequiredFormAnswerMissing(element, {
+        slotId: 'window-1:09:00-09:30',
+        invitees: [{ name: 'Ada Lovelace' }],
+      }),
+    ).toBe(false);
   });
 });

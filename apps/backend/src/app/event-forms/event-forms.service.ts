@@ -121,6 +121,11 @@ type TargetInput = {
 
 type ResultViewer = 'admin' | 'lecturer' | 'public' | 'self';
 
+type SubscriptionFlowTargetScope = {
+  majorEventId: string;
+  selectedEventIds: Set<string>;
+};
+
 type FormResultSummary = {
   questions: Array<{
     elementId: string;
@@ -236,7 +241,7 @@ export class EventFormsService {
           allowFutureSubscriber: Boolean(options.subscriptionFlowOnly),
         }))
       ) {
-        eligible.push(form);
+        eligible.push(this.toPublicEventFormModel(form));
       }
     }
 
@@ -253,7 +258,7 @@ export class EventFormsService {
       await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], {
         eventFormId: existing.id,
       });
-      await this.assertCanManageLinkedTargets(user, input.links ?? [], Permission.EventForm.Update);
+      await this.assertCanManageLinkedTargets(user, this.manageableLinksForReplace(existing.links, input.links ?? []), Permission.EventForm.Update);
 
       const updated = await this.prisma.$transaction(async (tx) => {
         await tx.eventForm.update({
@@ -476,31 +481,75 @@ export class EventFormsService {
     input: SubmitEventFormResponseInput,
   ): Promise<EventFormResponseModel> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
+    const result = await this.prisma.$transaction((tx) =>
+      this.submitResponseForPerson(tx, person.id, input, {
+        requireSubscriptionFlowLink: false,
+      }),
+    );
+
+    await this.emitResultsDelta(result.formId);
+
+    return this.toResponseModel(result.response, result.sigilo, 'self');
+  }
+
+  async submitSubscriptionFlowResponses(
+    tx: Prisma.TransactionClient,
+    personId: string,
+    inputs: readonly SubmitEventFormResponseInput[] | null | undefined,
+    scope: SubscriptionFlowTargetScope,
+  ): Promise<string[]> {
+    const submittedFormIds: string[] = [];
+    for (const input of inputs ?? []) {
+      this.assertSubscriptionFlowTargetAllowed(input, scope);
+      const result = await this.submitResponseForPerson(tx, personId, input, {
+        requireSubscriptionFlowLink: true,
+      });
+      submittedFormIds.push(result.formId);
+    }
+
+    await this.assertRequiredSubscriptionFlowResponses(tx, personId, scope);
+    return submittedFormIds;
+  }
+
+  async emitResultsDeltas(formIds: readonly string[]): Promise<void> {
+    for (const formId of [...new Set(formIds)]) {
+      await this.emitResultsDelta(formId);
+    }
+  }
+
+  private async submitResponseForPerson(
+    tx: Prisma.TransactionClient,
+    personId: string,
+    input: SubmitEventFormResponseInput,
+    options: { requireSubscriptionFlowLink: boolean },
+  ): Promise<{ formId: string; response: EventFormResponseRecord; sigilo: EventFormSigilo }> {
     const target = this.normalizeTarget(input);
-    const form = await this.requirePublishedForm(input.formId);
-    const link = await this.requireActiveLinkForTarget(form.id, target, input.linkId ?? undefined);
-    await this.assertPersonCanAnswerLink(person.id, link, {
+    const form = await this.requirePublishedFormWithClient(tx, input.formId);
+    const link = await this.requireActiveLinkForTargetWithClient(tx, form.id, target, input.linkId ?? undefined);
+    if (options.requireSubscriptionFlowLink && !link.insertInSubscriptionFlow) {
+      throw new NotFoundException('Formulário não disponível no fluxo de inscrição.');
+    }
+    await this.assertPersonCanAnswerLink(personId, link, {
       allowFutureSubscriber: link.insertInSubscriptionFlow,
     });
     const answers = this.normalizeAnswers(input.answersJson, form.elements as unknown as FormElement[], link.enforceRequiredAnswers);
     const responseSource = link.insertInSubscriptionFlow ? ContractResponseSource.SUBSCRIPTION_FLOW : ContractResponseSource.PUBLIC_FORM;
 
-    const response = await this.prisma.$transaction(async (tx) => {
-      const existingWhere = this.responseLookupWhere(form, person.id, target);
-      const existing = existingWhere
-        ? await tx.eventFormResponse.findFirst({
-            where: existingWhere,
-            select: {
-              id: true,
-            },
-            orderBy: {
-              submittedAt: 'desc',
-            },
-          })
-        : null;
+    const existingWhere = this.responseLookupWhere(form, personId, target, link.id);
+    const existing = existingWhere
+      ? await tx.eventFormResponse.findFirst({
+          where: existingWhere,
+          select: {
+            id: true,
+          },
+          orderBy: {
+            submittedAt: 'desc',
+          },
+        })
+      : null;
 
-      if (existing) {
-        return tx.eventFormResponse.update({
+    const response = existing
+      ? await tx.eventFormResponse.update({
           where: {
             id: existing.id,
           },
@@ -513,38 +562,102 @@ export class EventFormsService {
             source: this.toDbResponseSource(responseSource),
           },
           include: responseInclude,
+        })
+      : await tx.eventFormResponse.create({
+          data: {
+            formId: form.id,
+            linkId: link.id,
+            targetType: target.targetType,
+            eventId: target.eventId,
+            majorEventId: target.majorEventId,
+            personId,
+            answers: answers as unknown as Prisma.InputJsonValue,
+            source: this.toDbResponseSource(responseSource),
+          },
+          include: responseInclude,
         });
-      }
 
-      return tx.eventFormResponse.create({
-        data: {
-          formId: form.id,
-          linkId: link.id,
-          targetType: target.targetType,
-          eventId: target.eventId,
-          majorEventId: target.majorEventId,
-          personId: person.id,
-          answers: answers as unknown as Prisma.InputJsonValue,
-          source: this.toDbResponseSource(responseSource),
+    return {
+      formId: form.id,
+      response,
+      sigilo: form.sigilo,
+    };
+  }
+
+  private async assertRequiredSubscriptionFlowResponses(
+    tx: Prisma.TransactionClient,
+    personId: string,
+    scope: SubscriptionFlowTargetScope,
+  ): Promise<void> {
+    const now = new Date();
+    const selectedEventIds = [...scope.selectedEventIds];
+    const requiredLinks = await tx.eventFormLink.findMany({
+      where: {
+        deletedAt: null,
+        insertInSubscriptionFlow: true,
+        requiredInSubscriptionFlow: true,
+        OR: [
+          {
+            targetType: EventFormTargetType.MAJOR_EVENT,
+            majorEventId: scope.majorEventId,
+          },
+          {
+            targetType: EventFormTargetType.EVENT,
+            eventId: {
+              in: selectedEventIds,
+            },
+          },
+        ],
+        AND: [
+          { OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
+          { OR: [{ availableUntil: null }, { availableUntil: { gt: now } }] },
+        ],
+        form: {
+          deletedAt: null,
+          publicationState: PublicationState.PUBLISHED,
         },
-        include: responseInclude,
-      });
+      },
+      include: {
+        form: {
+          select: {
+            id: true,
+            name: true,
+            responseMode: true,
+          },
+        },
+      },
     });
 
-    await this.emitResultsDelta(form.id);
+    for (const link of requiredLinks) {
+      const target =
+        link.targetType === EventFormTargetType.EVENT
+          ? { targetType: EventFormTargetType.EVENT, eventId: link.eventId, majorEventId: null }
+          : { targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: link.majorEventId };
+      const responseWhere =
+        this.responseLookupWhere(link.form, personId, target, link.id) ??
+        this.responseTargetWhere(link.formId, personId, target);
+      const response = await tx.eventFormResponse.findFirst({
+        where: responseWhere,
+        select: {
+          id: true,
+        },
+      });
 
-    return this.toResponseModel(response, form.sigilo, 'self');
+      if (!response) {
+        throw new BadRequestException(`Responda o formulário obrigatório "${link.form.name}" para concluir a inscrição.`);
+      }
+    }
   }
 
   async getCurrentUserResponse(
     context: GraphqlContext,
-    input: TargetInput & { formId: string },
+    input: TargetInput & { formId: string; linkId?: string | null },
   ): Promise<EventFormResponseModel | null> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const target = this.normalizeTarget(input);
     const form = await this.requireForm(input.formId);
     const response = await this.prisma.eventFormResponse.findFirst({
-      where: this.responseLookupWhere(form, person.id, target) ?? this.responseTargetWhere(form.id, person.id, target),
+      where: this.responseLookupWhere(form, person.id, target, input.linkId ?? undefined) ?? this.responseTargetWhere(form.id, person.id, target),
       include: responseInclude,
       orderBy: {
         submittedAt: 'desc',
@@ -587,6 +700,19 @@ export class EventFormsService {
 
   async getAdminResults(user: AuthenticatedUser | undefined, formId: string): Promise<EventFormResults> {
     const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.EventForm.Results);
+    if (accessibleTargets && this.isEmptyAccessibleTargets(accessibleTargets)) {
+      throw new NotFoundException('Resultados do formulário não disponíveis.');
+    }
+    return this.getResults(formId, 'admin', {
+      accessibleTargets: accessibleTargets ?? undefined,
+    });
+  }
+
+  async getAdminExportResults(user: AuthenticatedUser | undefined, formId: string): Promise<EventFormResults> {
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.EventForm.Export);
+    if (accessibleTargets && this.isEmptyAccessibleTargets(accessibleTargets)) {
+      throw new NotFoundException('Resultados do formulário não disponíveis.');
+    }
     return this.getResults(formId, 'admin', {
       accessibleTargets: accessibleTargets ?? undefined,
     });
@@ -678,7 +804,7 @@ export class EventFormsService {
   }
 
   async exportAdminResultsCsv(user: AuthenticatedUser | undefined, formId: string): Promise<string> {
-    const results = await this.getAdminResults(user, formId);
+    const results = await this.getAdminExportResults(user, formId);
     return this.resultsToCsv(results);
   }
 
@@ -920,12 +1046,64 @@ export class EventFormsService {
     return form;
   }
 
+  private async requirePublishedFormWithClient(
+    tx: Prisma.TransactionClient,
+    formId: string,
+  ): Promise<EventFormRecord> {
+    const form = await tx.eventForm.findFirst({
+      where: {
+        id: formId,
+        deletedAt: null,
+      },
+      include: eventFormInclude,
+    });
+    if (!form) {
+      throw new NotFoundException(`Event form ${formId} was not found.`);
+    }
+    if (form.publicationState !== PublicationState.PUBLISHED) {
+      throw new NotFoundException(`Event form ${formId} is not published.`);
+    }
+    return form;
+  }
+
   private async requireActiveLinkForTarget(
     formId: string,
     target: ReturnType<EventFormsService['normalizeTarget']>,
     linkId?: string,
   ): Promise<EventFormLinkRecord> {
     const form = await this.requireForm(formId);
+    const link = form.links.find(
+      (item) =>
+        (!linkId || item.id === linkId) &&
+        item.targetType === target.targetType &&
+        item.eventId === target.eventId &&
+        item.majorEventId === target.majorEventId,
+    );
+    if (!link) {
+      throw new NotFoundException('Formulário não vinculado a este evento ou grande evento.');
+    }
+    if (!this.isLinkAvailable(link)) {
+      throw new NotFoundException('Formulário não disponível para este período.');
+    }
+    return link;
+  }
+
+  private async requireActiveLinkForTargetWithClient(
+    tx: Prisma.TransactionClient,
+    formId: string,
+    target: ReturnType<EventFormsService['normalizeTarget']>,
+    linkId?: string,
+  ): Promise<EventFormLinkRecord> {
+    const form = await tx.eventForm.findFirst({
+      where: {
+        id: formId,
+        deletedAt: null,
+      },
+      include: eventFormInclude,
+    });
+    if (!form) {
+      throw new NotFoundException(`Event form ${formId} was not found.`);
+    }
     const link = form.links.find(
       (item) =>
         (!linkId || item.id === linkId) &&
@@ -1004,7 +1182,7 @@ export class EventFormsService {
 
   private async assertCanManageLinkedTargets(
     user: AuthenticatedUser | undefined,
-    links: readonly NonNullable<EventFormInput['links']>[number][],
+    links: readonly TargetInput[],
     permission: Permission,
   ): Promise<void> {
     for (const link of links) {
@@ -1014,6 +1192,33 @@ export class EventFormsService {
         majorEventId: target.majorEventId ?? undefined,
       });
     }
+  }
+
+  private manageableLinksForReplace(
+    existingLinks: readonly EventFormLinkRecord[],
+    nextLinks: readonly NonNullable<EventFormInput['links']>[number][],
+  ): TargetInput[] {
+    const affectedLinks: TargetInput[] = [...nextLinks];
+    const nextLinksById = new Map(nextLinks.flatMap((link) => (link.id ? [[link.id, link] as const] : [])));
+
+    for (const existingLink of existingLinks) {
+      const nextLink = nextLinksById.get(existingLink.id);
+      if (!nextLink || !this.isSameTarget(existingLink, nextLink)) {
+        affectedLinks.push(existingLink);
+      }
+    }
+
+    return affectedLinks;
+  }
+
+  private isSameTarget(left: TargetInput, right: TargetInput): boolean {
+    const leftTarget = this.normalizeTarget(left);
+    const rightTarget = this.normalizeTarget(right);
+    return (
+      leftTarget.targetType === rightTarget.targetType &&
+      leftTarget.eventId === rightTarget.eventId &&
+      leftTarget.majorEventId === rightTarget.majorEventId
+    );
   }
 
   private isLinkAvailable(link: Pick<EventFormLinkRecord, 'availableFrom' | 'availableUntil'>): boolean {
@@ -1097,7 +1302,7 @@ export class EventFormsService {
 
     if (enforceRequiredAnswers) {
       for (const element of answerElements) {
-        if (element.required && this.isEmptyAnswer(answersById.get(element.id) ?? null)) {
+        if (element.required && this.isMissingRequiredAnswer(element, answersById.get(element.id) ?? null)) {
           throw new BadRequestException(`A pergunta "${element.title}" é obrigatória.`);
         }
       }
@@ -1129,39 +1334,134 @@ export class EventFormsService {
     switch (element.type) {
       case 'shortText':
       case 'longText':
+        return typeof value === 'string' && value.trim() ? value.trim() : null;
       case 'date':
+        return this.normalizeDateAnswer(element, value);
       case 'time':
+        return this.normalizeTimeAnswer(element, value);
       case 'singleChoice':
       case 'selectionDropdown':
-        return typeof value === 'string' && value.trim() ? value.trim() : null;
+        return this.normalizeChoiceAnswer(element, value);
       case 'multipleChoice':
-        return Array.isArray(value)
-          ? [...new Set(value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean))]
-          : null;
+        return this.normalizeMultipleChoiceAnswer(element, value);
       case 'linearScale':
+        return this.normalizeLinearScaleAnswer(element, value);
       case 'starRating':
-        return typeof value === 'number' && Number.isFinite(value) ? value : null;
+        return this.normalizeStarRatingAnswer(element, value);
       case 'singleSelectionGrid':
-        return this.normalizeGridAnswer(value, false);
+        return this.normalizeGridAnswer(element, value, false);
       case 'multipleSelectionGrid':
-        return this.normalizeGridAnswer(value, true);
+        return this.normalizeGridAnswer(element, value, true);
       case 'scheduling':
-        return this.normalizeSchedulingAnswer(value);
+        return this.normalizeSchedulingAnswer(element, value);
       default:
         return null;
     }
   }
 
-  private normalizeGridAnswer(value: FormAnswerValue, multiple: boolean): FormAnswerValue {
+  private normalizeChoiceAnswer(element: FormElement, value: FormAnswerValue): FormAnswerValue {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+    if (!this.optionIds(element).has(normalized)) {
+      throw new BadRequestException(`Opção inválida para a pergunta "${element.title}".`);
+    }
+    return normalized;
+  }
+
+  private normalizeMultipleChoiceAnswer(element: FormElement, value: FormAnswerValue): FormAnswerValue {
+    if (!Array.isArray(value)) {
+      return null;
+    }
+    const optionIds = this.optionIds(element);
+    const normalized = [...new Set(value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean))];
+    const invalid = normalized.find((item) => !optionIds.has(item));
+    if (invalid) {
+      throw new BadRequestException(`Opção inválida para a pergunta "${element.title}".`);
+    }
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizeDateAnswer(element: FormElement, value: FormAnswerValue): FormAnswerValue {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized) || Number.isNaN(Date.parse(`${normalized}T00:00:00`))) {
+      throw new BadRequestException(`Data inválida para a pergunta "${element.title}".`);
+    }
+    return normalized;
+  }
+
+  private normalizeTimeAnswer(element: FormElement, value: FormAnswerValue): FormAnswerValue {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+    const match = /^(\d{2}):(\d{2})$/.exec(normalized);
+    const hour = match ? Number(match[1]) : Number.NaN;
+    const minute = match ? Number(match[2]) : Number.NaN;
+    if (!match || hour > 23 || minute > 59) {
+      throw new BadRequestException(`Hora inválida para a pergunta "${element.title}".`);
+    }
+    return normalized;
+  }
+
+  private normalizeLinearScaleAnswer(element: FormElement, value: FormAnswerValue): FormAnswerValue {
+    if (typeof value !== 'number' || !Number.isInteger(value)) {
+      return null;
+    }
+    const min = element.settings?.linearScale?.min ?? 1;
+    const max = element.settings?.linearScale?.max ?? 5;
+    if (value < min || value > max) {
+      throw new BadRequestException(`Valor fora da escala da pergunta "${element.title}".`);
+    }
+    return value;
+  }
+
+  private normalizeStarRatingAnswer(element: FormElement, value: FormAnswerValue): FormAnswerValue {
+    if (typeof value !== 'number' || !Number.isInteger(value)) {
+      return null;
+    }
+    const max = element.settings?.starRating?.max ?? 5;
+    if (value < 1 || value > max) {
+      throw new BadRequestException(`Valor fora da avaliação da pergunta "${element.title}".`);
+    }
+    return value;
+  }
+
+  private normalizeGridAnswer(element: FormElement, value: FormAnswerValue, multiple: boolean): FormAnswerValue {
     if (!this.isRecord(value)) {
       return null;
     }
 
+    const rowIds = new Set((element.settings?.grid?.rows ?? []).map((row) => row.id));
+    const columnIds = new Set((element.settings?.grid?.columns ?? []).map((column) => column.id));
     if (multiple) {
       const answer: Record<string, string[]> = {};
       for (const [rowId, rawValue] of Object.entries(value)) {
+        if (!rowIds.has(rowId)) {
+          throw new BadRequestException(`Linha inválida para a pergunta "${element.title}".`);
+        }
         if (Array.isArray(rawValue)) {
-          answer[rowId] = rawValue.filter((item): item is string => typeof item === 'string');
+          const normalized = [...new Set(rawValue.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean))];
+          const invalid = normalized.find((item) => !columnIds.has(item));
+          if (invalid) {
+            throw new BadRequestException(`Coluna inválida para a pergunta "${element.title}".`);
+          }
+          if (normalized.length > 0) {
+            answer[rowId] = normalized;
+          }
         }
       }
 
@@ -1170,20 +1470,34 @@ export class EventFormsService {
 
     const answer: Record<string, string> = {};
     for (const [rowId, rawValue] of Object.entries(value)) {
+      if (!rowIds.has(rowId)) {
+        throw new BadRequestException(`Linha inválida para a pergunta "${element.title}".`);
+      }
       if (typeof rawValue === 'string') {
-        answer[rowId] = rawValue;
+        const normalized = rawValue.trim();
+        if (!columnIds.has(normalized)) {
+          throw new BadRequestException(`Coluna inválida para a pergunta "${element.title}".`);
+        }
+        answer[rowId] = normalized;
       }
     }
 
     return Object.keys(answer).length > 0 ? answer : null;
   }
 
-  private normalizeSchedulingAnswer(value: FormAnswerValue): FormSchedulingAnswer | null {
+  private normalizeSchedulingAnswer(element: FormElement, value: FormAnswerValue): FormSchedulingAnswer | null {
     if (!this.isRecord(value) || typeof value['slotId'] !== 'string') {
       return null;
     }
 
     const record = value as Record<string, unknown>;
+    const slotId = value['slotId'].trim();
+    if (!slotId) {
+      return null;
+    }
+    if (!this.schedulingSlotIds(element).has(slotId)) {
+      throw new BadRequestException(`Horário inválido para a pergunta "${element.title}".`);
+    }
     const inviteesValue = record['invitees'];
     const invitees = Array.isArray(inviteesValue)
       ? inviteesValue
@@ -1194,11 +1508,37 @@ export class EventFormsService {
           }))
           .filter((invitee) => invitee.name)
       : [];
+    const maxInvitees = element.settings?.scheduling?.maxInvitees ?? 0;
+    if (invitees.length > maxInvitees) {
+      throw new BadRequestException(`Número de convidados acima do limite da pergunta "${element.title}".`);
+    }
 
     return {
-      slotId: value['slotId'],
+      slotId,
       invitees,
     };
+  }
+
+  private isMissingRequiredAnswer(element: FormElement, value: FormAnswerValue): boolean {
+    if (this.isEmptyAnswer(value)) {
+      return true;
+    }
+    if ((element.type === 'singleSelectionGrid' || element.type === 'multipleSelectionGrid') && this.isRecord(value)) {
+      const rows = element.settings?.grid?.rows ?? [];
+      const answer = value as Record<string, FormAnswerValue>;
+      return rows.length > 0 && rows.some((row) => this.isEmptyAnswer(answer[row.id] ?? null));
+    }
+    if (element.type === 'scheduling' && this.isSchedulingAnswer(value)) {
+      if (!value.slotId) {
+        return true;
+      }
+      return element.settings?.scheduling?.inviteeMode === 'required' && value.invitees.length === 0;
+    }
+    return false;
+  }
+
+  private isSchedulingAnswer(value: FormAnswerValue): value is FormSchedulingAnswer {
+    return this.isRecord(value) && typeof value['slotId'] === 'string' && Array.isArray(value['invitees']);
   }
 
   private isEmptyAnswer(value: FormAnswerValue): boolean {
@@ -1215,6 +1555,38 @@ export class EventFormsService {
       return Object.keys(value).length === 0;
     }
     return false;
+  }
+
+  private optionIds(element: FormElement): Set<string> {
+    return new Set(element.options.map((option) => option.id));
+  }
+
+  private schedulingSlotIds(element: FormElement): Set<string> {
+    const settings = element.settings?.scheduling;
+    if (!settings) {
+      return new Set();
+    }
+
+    const slotIds = new Set<string>();
+    const stepMs = Math.max(settings.slotIntervalMinutes, 1) * 60_000;
+    const durationMs = Math.max(settings.durationMinutes, 1) * 60_000;
+    for (const window of settings.availability) {
+      const start = Date.parse(`${window.date}T${window.startTime}`);
+      const end = Date.parse(`${window.date}T${window.endTime}`);
+      if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+        continue;
+      }
+      for (let cursor = start; cursor + durationMs <= end; cursor += stepMs) {
+        const slotStart = new Date(cursor);
+        const slotEnd = new Date(cursor + durationMs);
+        slotIds.add(`${window.id}:${this.toTime(slotStart)}-${this.toTime(slotEnd)}`);
+      }
+    }
+    return slotIds;
+  }
+
+  private toTime(date: Date): string {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   }
 
   private buildSummary(
@@ -1560,6 +1932,21 @@ export class EventFormsService {
     };
   }
 
+  private toPublicEventFormModel(form: EventFormModel): EventFormModel {
+    if (form.resultsPublic) {
+      return form;
+    }
+
+    return {
+      ...form,
+      responseCount: 0,
+      links: form.links.map((link) => ({
+        ...link,
+        responseCount: 0,
+      })),
+    };
+  }
+
   private toLinkModel(link: EventFormLinkRecord): EventFormLinkModel {
     return {
       id: link.id,
@@ -1745,6 +2132,24 @@ export class EventFormsService {
     return { targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId };
   }
 
+  private assertSubscriptionFlowTargetAllowed(
+    input: TargetInput,
+    scope: SubscriptionFlowTargetScope,
+  ): void {
+    const target = this.normalizeTarget(input);
+    if (target.targetType === EventFormTargetType.MAJOR_EVENT) {
+      if (target.majorEventId === scope.majorEventId) {
+        return;
+      }
+      throw new BadRequestException('Formulário obrigatório fora da inscrição selecionada.');
+    }
+
+    if (target.eventId && scope.selectedEventIds.has(target.eventId)) {
+      return;
+    }
+    throw new BadRequestException('Formulário obrigatório fora dos eventos selecionados.');
+  }
+
   private findLinkForTarget(form: EventFormModel, input: TargetInput): EventFormLinkModel | null {
     const target = this.normalizeTarget(input);
     return (
@@ -1777,6 +2182,7 @@ export class EventFormsService {
     form: Pick<EventFormRecord, 'id' | 'responseMode'>,
     personId: string,
     target: ReturnType<EventFormsService['normalizeTarget']>,
+    linkId?: string,
   ): Prisma.EventFormResponseWhereInput | null {
     if (form.responseMode === EventFormResponseMode.MULTIPLE_PER_TARGET) {
       return null;
@@ -1789,7 +2195,10 @@ export class EventFormsService {
       };
     }
 
-    return this.responseTargetWhere(form.id, personId, target);
+    return {
+      ...this.responseTargetWhere(form.id, personId, target),
+      ...(linkId ? { linkId } : {}),
+    };
   }
 
   private responseTargetWhere(

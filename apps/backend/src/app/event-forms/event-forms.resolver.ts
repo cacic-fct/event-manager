@@ -72,8 +72,9 @@ export class EventFormsResolver {
     @Args('targetType', { type: () => EventFormTargetType }) targetType: EventFormTargetType,
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
+    @Args('linkId', { type: () => String, nullable: true }) linkId?: string,
   ): Promise<EventFormResponse | null> {
-    return this.forms.getCurrentUserResponse(context, { formId, targetType, eventId, majorEventId });
+    return this.forms.getCurrentUserResponse(context, { formId, targetType, eventId, majorEventId, linkId });
   }
 
   @Query(() => EventFormResults, { name: 'currentUserEventFormResults' })

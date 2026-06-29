@@ -115,6 +115,7 @@ export class PublicEventFormApiService {
 
   getCurrentUserResponse(input: {
     formId: string;
+    linkId?: string | null;
     targetType: EventFormTargetType;
     eventId?: string | null;
     majorEventId?: string | null;
@@ -123,12 +124,14 @@ export class PublicEventFormApiService {
       `
         query CurrentUserEventFormResponse(
           $formId: String!
+          $linkId: String
           $targetType: EventFormTargetType!
           $eventId: String
           $majorEventId: String
         ) {
           currentUserEventFormResponse(
             formId: $formId
+            linkId: $linkId
             targetType: $targetType
             eventId: $eventId
             majorEventId: $majorEventId

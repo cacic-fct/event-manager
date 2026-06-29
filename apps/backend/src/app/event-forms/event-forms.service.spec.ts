@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   EventFormAudience,
   EventFormResponseMode,
@@ -189,6 +189,157 @@ describe('EventFormsService', () => {
       }),
     );
   });
+
+  it('redacts response counts from current-user form listings until results are public', async () => {
+    prisma.eventForm.findMany.mockResolvedValue([formRecord({ responseCount: 7, linkResponseCount: 3 })]);
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+
+    const forms = await service.listCurrentUserForms(context, {
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+    });
+
+    expect(forms).toHaveLength(1);
+    expect(forms[0].responseCount).toBe(0);
+    expect(forms[0].links[0].responseCount).toBe(0);
+  });
+
+  it('rejects submitted choice values that are not present in the form options', async () => {
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        elements: [
+          {
+            id: 'shirt-size',
+            type: 'singleChoice',
+            title: 'Tamanho da camiseta',
+            required: true,
+            options: [{ id: 'm', label: 'M' }],
+          },
+        ],
+      }),
+    );
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.submitCurrentUserResponse(context, {
+        formId: 'form-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'xl' }]),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.eventFormResponse.create).not.toHaveBeenCalled();
+  });
+
+  it('requires every row in a required grid answer', async () => {
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        elements: [
+          {
+            id: 'availability',
+            type: 'singleSelectionGrid',
+            title: 'Disponibilidade',
+            required: true,
+            options: [],
+            settings: {
+              grid: {
+                rows: [
+                  { id: 'mon', label: 'Segunda' },
+                  { id: 'tue', label: 'Terça' },
+                ],
+                columns: [
+                  { id: 'yes', label: 'Sim' },
+                  { id: 'no', label: 'Não' },
+                ],
+              },
+            },
+          },
+        ],
+      }),
+    );
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.submitCurrentUserResponse(context, {
+        formId: 'form-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        answersJson: JSON.stringify([{ elementId: 'availability', value: { mon: 'yes' } }]),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.eventFormResponse.create).not.toHaveBeenCalled();
+  });
+
+  it('requires invitees for required scheduling answers when configured', async () => {
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        elements: [
+          {
+            id: 'meeting',
+            type: 'scheduling',
+            title: 'Reunião',
+            required: true,
+            options: [],
+            settings: {
+              scheduling: {
+                timezone: 'America/Sao_Paulo',
+                durationMinutes: 30,
+                slotIntervalMinutes: 30,
+                bufferBeforeMinutes: 0,
+                bufferAfterMinutes: 0,
+                inviteeMode: 'required',
+                maxInvitees: 2,
+                availability: [{ id: 'window-1', date: '2026-07-01', startTime: '09:00', endTime: '10:00' }],
+              },
+            },
+          },
+        ],
+      }),
+    );
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.submitCurrentUserResponse(context, {
+        formId: 'form-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        answersJson: JSON.stringify([{ elementId: 'meeting', value: { slotId: 'window-1:09:00-09:30', invitees: [] } }]),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.eventFormResponse.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects subscription completion when required subscription-flow forms are missing', async () => {
+    prisma.eventFormLink.findMany.mockResolvedValue([
+      {
+        id: 'link-1',
+        formId: 'form-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        majorEventId: null,
+        form: {
+          id: 'form-1',
+          name: 'Pesquisa de camiseta',
+          responseMode: EventFormResponseMode.ONE_PER_TARGET,
+        },
+      },
+    ]);
+    prisma.eventFormResponse.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.submitSubscriptionFlowResponses(prisma as never, 'person-1', [], {
+        majorEventId: 'major-1',
+        selectedEventIds: new Set(['event-1']),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
 });
 
 function createPrisma() {
@@ -196,6 +347,7 @@ function createPrisma() {
     $transaction: jest.fn(async (callback: (tx: unknown) => unknown) => callback(client)),
     eventForm: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn(),
     },
     eventFormResponse: {
@@ -221,6 +373,7 @@ function createPrisma() {
       findMany: jest.fn(),
     },
     eventFormLink: {
+      findMany: jest.fn(),
       update: jest.fn(),
     },
   };
@@ -236,6 +389,14 @@ function createAuthorizationPolicy() {
 function createCurrentUserContext(user: AuthenticatedUser) {
   return {
     getAuthenticatedUser: jest.fn(() => user),
+    resolveCurrentUserContext: jest.fn(async () => ({
+      person: {
+        id: 'person-1',
+        name: 'Ana Silva',
+        email: 'ana@example.com',
+        userId: user.sub,
+      },
+    })),
     requireCurrentPerson: jest.fn(async () => ({
       id: 'person-1',
       name: 'Ana Silva',
@@ -259,9 +420,14 @@ function createNotifications() {
 function formRecord(
   options: {
     allowLecturerManualPublish?: boolean;
+    insertInSubscriptionFlow?: boolean;
+    requiredInSubscriptionFlow?: boolean;
     resultsPublic?: boolean;
     sigilo?: EventFormSigilo;
     responseMode?: EventFormResponseMode;
+    responseCount?: number;
+    linkResponseCount?: number;
+    elements?: unknown[];
   } = {},
 ) {
   const now = new Date('2026-06-28T12:00:00.000Z');
@@ -279,8 +445,8 @@ function formRecord(
     },
     majorEvent: null,
     audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
-    insertInSubscriptionFlow: false,
-    requiredInSubscriptionFlow: false,
+    insertInSubscriptionFlow: options.insertInSubscriptionFlow ?? false,
+    requiredInSubscriptionFlow: options.requiredInSubscriptionFlow ?? false,
     enforceRequiredAnswers: true,
     displayOrder: 0,
     availableFrom: null,
@@ -294,7 +460,7 @@ function formRecord(
     updatedAt: now,
     updatedById: 'admin-1',
     _count: {
-      responses: 0,
+      responses: options.linkResponseCount ?? 0,
     },
   };
 
@@ -306,7 +472,7 @@ function formRecord(
     ownerMajorEventId: null,
     ownerEvent: null,
     ownerMajorEvent: null,
-    elements: [],
+    elements: options.elements ?? [],
     sigilo: options.sigilo ?? EventFormSigilo.SECRET,
     responseMode: options.responseMode ?? EventFormResponseMode.ONE_PER_TARGET,
     resultsPublic: options.resultsPublic ?? false,
@@ -324,7 +490,7 @@ function formRecord(
     updatedAt: now,
     updatedById: 'admin-1',
     _count: {
-      responses: 0,
+      responses: options.responseCount ?? 0,
     },
   };
 }

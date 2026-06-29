@@ -18,6 +18,7 @@ import {
   type PublicMajorEventSubscriptionPageQuery,
 } from '@cacic-fct/event-manager-public-contracts';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
+import type { SubmitPublicEventFormResponseInput } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';
 
@@ -168,6 +169,7 @@ export class MajorEventSubscriptionApiService {
     majorEventId: string,
     selectedEventIds: string[],
     paymentTier?: string | null,
+    formResponses?: SubmitPublicEventFormResponseInput[],
   ): Observable<CurrentUserMajorEventSubscription> {
     return this.query<{
       upsertCurrentUserMajorEventSubscription: CurrentUserMajorEventSubscription;
@@ -177,12 +179,14 @@ export class MajorEventSubscriptionApiService {
           $majorEventId: String!
           $selectedEventIds: [String!]!
           $paymentTier: String
+          $formResponses: [SubmitEventFormResponseInput!]
         ) {
           upsertCurrentUserMajorEventSubscription(
             input: {
               majorEventId: $majorEventId
               selectedEventIds: $selectedEventIds
               paymentTier: $paymentTier
+              formResponses: $formResponses
             }
           ) {
             id
@@ -200,7 +204,7 @@ export class MajorEventSubscriptionApiService {
           }
         }
       `,
-      { majorEventId, selectedEventIds, paymentTier },
+      { majorEventId, selectedEventIds, paymentTier, formResponses },
     ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
   }
 
@@ -213,6 +217,7 @@ export class MajorEventSubscriptionApiService {
       desiredUncategorized?: number | null;
     },
     paymentTier?: string | null,
+    formResponses?: SubmitPublicEventFormResponseInput[],
   ): Observable<CurrentUserMajorEventSubscription> {
     return this.query<{
       upsertCurrentUserMajorEventSubscription: CurrentUserMajorEventSubscription;
@@ -225,6 +230,7 @@ export class MajorEventSubscriptionApiService {
           $desiredLectures: Int
           $desiredUncategorized: Int
           $paymentTier: String
+          $formResponses: [SubmitEventFormResponseInput!]
         ) {
           upsertCurrentUserMajorEventSubscription(
             input: {
@@ -234,6 +240,7 @@ export class MajorEventSubscriptionApiService {
               desiredLectures: $desiredLectures
               desiredUncategorized: $desiredUncategorized
               paymentTier: $paymentTier
+              formResponses: $formResponses
             }
           ) {
             id
@@ -251,7 +258,7 @@ export class MajorEventSubscriptionApiService {
           }
         }
       `,
-      { majorEventId, selectedEventIds, ...desiredCounts, paymentTier },
+      { majorEventId, selectedEventIds, ...desiredCounts, paymentTier, formResponses },
     ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
   }
 

@@ -17,7 +17,7 @@ import {
   getEventTypeLabel,
   getSubscriptionStatusLabel,
 } from '@cacic-fct/shared-utils';
-import { finalize, forkJoin, map, of, switchMap } from 'rxjs';
+import { EMPTY, catchError, finalize, forkJoin, map } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
@@ -274,7 +274,15 @@ export class RankedSubscriptionStore {
     }
 
     this.loadSubscriptionForms(data, rankedEventIds)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        catchError(() => {
+          this.snackBar.open('Não foi possível carregar os formulários da inscrição.', 'OK', {
+            duration: 5000,
+          });
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe((forms) => {
         const dialogRef = this.dialog.open<
           ConfirmSubscriptionDialog,
@@ -344,20 +352,19 @@ export class RankedSubscriptionStore {
     formAnswers: SubscriptionFormAnswer[],
   ): void {
     this.isSubmitting.set(true);
-    this.submitSubscriptionFormAnswers(formAnswers)
+    this.api
+      .upsertRankedSubscription(
+        data.majorEvent.id,
+        eventIds,
+        {
+          desiredCourses: this.desiredCourses(),
+          desiredLectures: this.desiredLectures(),
+          desiredUncategorized: this.desiredUncategorized(),
+        },
+        paymentTier,
+        this.toSubmitFormResponses(formAnswers),
+      )
       .pipe(
-        switchMap(() =>
-          this.api.upsertRankedSubscription(
-            data.majorEvent.id,
-            eventIds,
-            {
-              desiredCourses: this.desiredCourses(),
-              desiredLectures: this.desiredLectures(),
-              desiredUncategorized: this.desiredUncategorized(),
-            },
-            paymentTier,
-          ),
-        ),
         finalize(() => this.isSubmitting.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -424,7 +431,7 @@ export class RankedSubscriptionStore {
         return groups
           .flat()
           .filter((form) => {
-            const key = `${form.form.id}:${form.targetType}:${form.targetId}`;
+            const key = `${form.form.id}:${form.linkId ?? 'sem-vinculo'}:${form.targetType}:${form.targetId}`;
             if (seen.has(key)) {
               return false;
             }
@@ -463,33 +470,25 @@ export class RankedSubscriptionStore {
     return form.form.links.find((link) => link.id === form.linkId)?.displayOrder ?? Number.MAX_SAFE_INTEGER;
   }
 
-  private submitSubscriptionFormAnswers(formAnswers: SubscriptionFormAnswer[]) {
-    if (formAnswers.length === 0) {
-      return of([]);
-    }
-
-    return forkJoin(
-      formAnswers.map((answer) =>
-        this.formsApi.submit(
-          answer.targetType === 'EVENT'
-            ? {
-                formId: answer.formId,
-                linkId: answer.linkId,
-                targetType: answer.targetType,
-                eventId: answer.targetId,
-                majorEventId: null,
-                answersJson: JSON.stringify(answer.answers),
-              }
-            : {
-                formId: answer.formId,
-                linkId: answer.linkId,
-                targetType: answer.targetType,
-                eventId: null,
-                majorEventId: answer.targetId,
-                answersJson: JSON.stringify(answer.answers),
-              },
-        ),
-      ),
+  private toSubmitFormResponses(formAnswers: SubscriptionFormAnswer[]) {
+    return formAnswers.map((answer) =>
+      answer.targetType === 'EVENT'
+        ? {
+            formId: answer.formId,
+            linkId: answer.linkId,
+            targetType: answer.targetType,
+            eventId: answer.targetId,
+            majorEventId: null,
+            answersJson: JSON.stringify(answer.answers),
+          }
+        : {
+            formId: answer.formId,
+            linkId: answer.linkId,
+            targetType: answer.targetType,
+            eventId: null,
+            majorEventId: answer.targetId,
+            answersJson: JSON.stringify(answer.answers),
+          },
     );
   }
 

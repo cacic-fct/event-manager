@@ -9,7 +9,6 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
-  isFormAnswerElementType,
   type FormAnswerValue,
   type FormElement,
   type FormResponseAnswer,
@@ -20,6 +19,7 @@ import {
   answerValue,
   createSchedulingSlots,
   EVENT_FORM_ELEMENT_LABELS,
+  isRequiredFormAnswerMissing,
   setAnswerValue,
 } from './event-form-utils';
 
@@ -590,24 +590,7 @@ export class EventFormRendererComponent {
   }
 
   isMissingRequired(element: FormElement): boolean {
-    if (!element.required || !isFormAnswerElementType(element.type)) {
-      return false;
-    }
-
-    const value = answerValue(this.answers(), element.id);
-    if (value === null || value === undefined || value === '') {
-      return true;
-    }
-    if (Array.isArray(value)) {
-      return value.length === 0;
-    }
-    if (this.isSchedulingAnswer(value)) {
-      return !value.slotId;
-    }
-    if (this.isRecord(value)) {
-      return Object.keys(value).length === 0 || Object.values(value).some((entry) => Array.isArray(entry) && entry.length === 0);
-    }
-    return false;
+    return isRequiredFormAnswerMissing(element, answerValue(this.answers(), element.id));
   }
 
   protected readonly labels = EVENT_FORM_ELEMENT_LABELS;

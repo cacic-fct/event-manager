@@ -119,7 +119,7 @@ export class EventFormPage {
         if (!link) {
           return of({ status: 'error', message: 'Vínculo de formulário inválido.' } satisfies FormPageState);
         }
-        return this.api.getCurrentUserResponse({ formId, targetType, ...target }).pipe(
+        return this.api.getCurrentUserResponse({ formId, linkId: link.id, targetType, ...target }).pipe(
           map(
             (response) =>
               ({

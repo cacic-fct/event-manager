@@ -59,6 +59,14 @@ type NovuTriggerResponse = {
   transactionId?: string;
 };
 
+type NovuTriggerRequest = {
+  name: string;
+  to: NotificationRecipient | NotificationRecipient[];
+  transactionId: string;
+  payload: Record<string, unknown>;
+  overrides?: Record<string, unknown>;
+};
+
 @Injectable()
 export class NovuNotificationsService {
   private readonly logger = new Logger(NovuNotificationsService.name);
@@ -164,14 +172,7 @@ export class NovuNotificationsService {
     const title = `Inscrição em ${input.majorEventName}`;
     const body = this.statusBody(input.majorEventName, input.nextStatus);
 
-    try {
-      const response = await fetch(`${this.apiUrl()}/v1/events/trigger`, {
-        method: 'POST',
-        headers: {
-          Authorization: `ApiKey ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    await this.triggerNovu(secretKey, {
           name: this.workflowIdentifier,
           to: input.recipient,
           transactionId: `major-event-subscription:${input.subscriptionId}:${input.nextStatus}`,
@@ -211,21 +212,7 @@ export class NovuNotificationsService {
               },
             },
           },
-        }),
-      });
-
-      if (!response.ok) {
-        this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
-        return;
-      }
-
-      const result = (await response.json()) as NovuTriggerResponse;
-      if (!result.acknowledged) {
-        this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
-      }
-    } catch (error) {
-      this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    });
   }
 
   async notifyMajorEventSubscriptionRecordChanged(
@@ -257,14 +244,7 @@ export class NovuNotificationsService {
     const title = `Presença off-line para revisar`;
     const body = `Uma presença off-line de ${input.eventName} foi enviada para revisão administrativa.`;
 
-    try {
-      const response = await fetch(`${this.apiUrl()}/v1/events/trigger`, {
-        method: 'POST',
-        headers: {
-          Authorization: `ApiKey ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    await this.triggerNovu(secretKey, {
           name: this.offlineAttendanceReviewWorkflowIdentifier,
           to: input.recipients,
           transactionId: `offline-attendance-review:${input.submissionId}`,
@@ -298,21 +278,7 @@ export class NovuNotificationsService {
               },
             },
           },
-        }),
-      });
-
-      if (!response.ok) {
-        this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
-        return;
-      }
-
-      const result = (await response.json()) as NovuTriggerResponse;
-      if (!result.acknowledged) {
-        this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
-      }
-    } catch (error) {
-      this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    });
   }
 
   async notifyCertificateAvailable(input: CertificateAvailableNotification): Promise<void> {
@@ -330,14 +296,7 @@ export class NovuNotificationsService {
     const targetLabel = input.targetName?.trim() || input.certificateName;
     const body = `Seu certificado de ${targetLabel} está disponível.`;
 
-    try {
-      const response = await fetch(`${this.apiUrl()}/v1/events/trigger`, {
-        method: 'POST',
-        headers: {
-          Authorization: `ApiKey ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    await this.triggerNovu(secretKey, {
           name: this.certificateAvailableWorkflowIdentifier,
           to: input.recipient,
           transactionId: `certificate-available:${input.configId}:${input.certificateId}:${input.issuedAt.toISOString()}`,
@@ -373,21 +332,7 @@ export class NovuNotificationsService {
               },
             },
           },
-        }),
-      });
-
-      if (!response.ok) {
-        this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
-        return;
-      }
-
-      const result = (await response.json()) as NovuTriggerResponse;
-      if (!result.acknowledged) {
-        this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
-      }
-    } catch (error) {
-      this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    });
   }
 
   async notifyEventFormAvailable(input: EventFormAvailableNotification): Promise<boolean> {
@@ -408,14 +353,7 @@ export class NovuNotificationsService {
     const title = 'Formulário disponível';
     const body = `O formulário "${input.formName}" está disponível para ${input.targetName}.`;
 
-    try {
-      const response = await fetch(`${this.apiUrl()}/v1/events/trigger`, {
-        method: 'POST',
-        headers: {
-          Authorization: `ApiKey ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    return this.triggerNovu(secretKey, {
           name: this.eventFormAvailableWorkflowIdentifier,
           to: input.recipients,
           transactionId: `event-form-available:${input.formId}:${input.targetType}:${input.targetId}`,
@@ -450,24 +388,7 @@ export class NovuNotificationsService {
               },
             },
           },
-        }),
-      });
-
-      if (!response.ok) {
-        this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
-        return false;
-      }
-
-      const result = (await response.json()) as NovuTriggerResponse;
-      if (!result.acknowledged) {
-        this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
-        return false;
-      }
-      return true;
-    } catch (error) {
-      this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
-      return false;
-    }
+    });
   }
 
   mapPersonToRecipient(person: {
@@ -508,6 +429,47 @@ export class NovuNotificationsService {
 
   private apiUrl(): string {
     return this.config.get<string>('NOVU_API_URL', 'https://api.novu.co').replace(/\/$/, '');
+  }
+
+  private async triggerNovu(secretKey: string, body: NovuTriggerRequest): Promise<boolean> {
+    const controller = new AbortController();
+    const timeoutMs = this.novuTriggerTimeoutMs();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(`${this.apiUrl()}/v1/events/trigger`, {
+        method: 'POST',
+        headers: {
+          Authorization: `ApiKey ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
+        return false;
+      }
+
+      const result = (await response.json()) as NovuTriggerResponse;
+      if (!result.acknowledged) {
+        this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private novuTriggerTimeoutMs(): number {
+    const configuredValue = Number(this.config.get<string>('NOVU_TRIGGER_TIMEOUT_MS', '10000'));
+    return Number.isFinite(configuredValue) && configuredValue > 0 ? configuredValue : 10000;
   }
 
   private getOptionalConfig(key: string): string | undefined {

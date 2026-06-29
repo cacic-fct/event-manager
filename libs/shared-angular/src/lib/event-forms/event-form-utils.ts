@@ -6,6 +6,7 @@ import {
   type FormElement,
   type FormElementType,
   type FormResponseAnswer,
+  type FormSchedulingAnswer,
   type FormSchedulingAvailabilityWindow,
   type FormSchedulingSettings,
 } from '@cacic-fct/form-contracts';
@@ -106,6 +107,30 @@ export function answerValue(answers: readonly FormResponseAnswer[], elementId: s
   return answers.find((answer) => answer.elementId === elementId)?.value ?? null;
 }
 
+export function isRequiredFormAnswerMissing(element: FormElement, value: FormAnswerValue): boolean {
+  if (!element.required || !isFormAnswerElementType(element.type)) {
+    return false;
+  }
+
+  if (isEmptyAnswerValue(value)) {
+    return true;
+  }
+
+  if ((element.type === 'singleSelectionGrid' || element.type === 'multipleSelectionGrid') && isRecord(value)) {
+    const rows = element.settings?.grid?.rows ?? [];
+    return rows.length > 0 && rows.some((row) => isEmptyAnswerValue(value[row.id] ?? null));
+  }
+
+  if (element.type === 'scheduling' && isSchedulingAnswer(value)) {
+    if (!value.slotId) {
+      return true;
+    }
+    return element.settings?.scheduling?.inviteeMode === 'required' && value.invitees.length === 0;
+  }
+
+  return false;
+}
+
 export function setAnswerValue(
   answers: readonly FormResponseAnswer[],
   elementId: string,
@@ -164,6 +189,30 @@ function toTime(date: Date): string {
 function formatDate(date: string): string {
   const [year, month, day] = date.split('-');
   return year && month && day ? `${day}/${month}/${year}` : date;
+}
+
+function isEmptyAnswerValue(value: FormAnswerValue): boolean {
+  if (value === null || value === undefined) {
+    return true;
+  }
+  if (typeof value === 'string') {
+    return value.trim().length === 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0;
+  }
+  if (isRecord(value)) {
+    return Object.keys(value).length === 0;
+  }
+  return false;
+}
+
+function isRecord(value: unknown): value is Record<string, FormAnswerValue> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function isSchedulingAnswer(value: FormAnswerValue): value is FormSchedulingAnswer {
+  return isRecord(value) && typeof value['slotId'] === 'string' && Array.isArray(value['invitees']);
 }
 
 function defaultTitle(type: FormElementType, index: number): string {

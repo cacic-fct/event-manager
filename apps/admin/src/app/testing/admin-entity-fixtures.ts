@@ -573,10 +573,27 @@ export function createAdminEventFormResults(overrides: Partial<EventFormResults>
   const form = overrides.form ?? createAdminEventForm();
   const link = form.links[0];
   const targetType = link?.targetType ?? 'EVENT';
+  const responses = overrides.responses ?? [
+    {
+      id: 'form-response-1',
+      formId: form.id,
+      linkId: link?.id ?? null,
+      targetType,
+      eventId: targetType === 'EVENT' ? (link?.eventId ?? 'event-1') : null,
+      majorEventId: targetType === 'MAJOR_EVENT' ? (link?.majorEventId ?? 'major-event-1') : null,
+      personId: 'person-1',
+      respondentName: 'Ada Lovelace',
+      respondentEmail: 'ada@example.com',
+      answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'M' }]),
+      source: 'PUBLIC_FORM',
+      submittedAt: adminFixtureDate,
+      updatedAt: adminFixtureDate,
+    },
+  ];
 
   return {
     form,
-    responseCount: 1,
+    responseCount: overrides.responseCount ?? responses.length,
     anonymous: false,
     answersReleased: true,
     summaryJson: JSON.stringify({
@@ -591,23 +608,7 @@ export function createAdminEventFormResults(overrides: Partial<EventFormResults>
         },
       ],
     }),
-    responses: [
-      {
-        id: 'form-response-1',
-        formId: form.id,
-        linkId: link?.id ?? null,
-        targetType,
-        eventId: targetType === 'EVENT' ? (link?.eventId ?? 'event-1') : null,
-        majorEventId: targetType === 'MAJOR_EVENT' ? (link?.majorEventId ?? 'major-event-1') : null,
-        personId: 'person-1',
-        respondentName: 'Ada Lovelace',
-        respondentEmail: 'ada@example.com',
-        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'M' }]),
-        source: 'PUBLIC_FORM',
-        submittedAt: adminFixtureDate,
-        updatedAt: adminFixtureDate,
-      },
-    ],
+    responses,
     ...overrides,
   };
 }
