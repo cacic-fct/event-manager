@@ -33,6 +33,10 @@ export class EventFormsScheduler implements OnModuleInit, OnModuleDestroy {
       if (count > 0) {
         this.logger.log(`Published ${count} scheduled event form${count === 1 ? '' : 's'}.`);
       }
+      const notified = await this.forms.notifyDueAvailableLinks();
+      if (notified > 0) {
+        this.logger.log(`Sent ${notified} event form availability notification${notified === 1 ? '' : 's'}.`);
+      }
     } catch (error) {
       this.logger.warn(`Scheduled event form publication failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {

@@ -4,6 +4,7 @@ import {
   EventFormResponseMode,
   EventFormSigilo,
   EventFormTargetType,
+  Prisma,
   PublicationState,
 } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -144,16 +145,10 @@ describe('EventFormsService', () => {
       answersJson: '[]',
     });
 
-    expect(prisma.eventFormResponse.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          formId: 'form-1',
-          targetType: EventFormTargetType.EVENT,
-          eventId: 'event-1',
-          linkId: 'link-1',
-        }),
-      }),
-    );
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+    expect(prisma.eventFormResponse.findFirst).not.toHaveBeenCalled();
     expect(prisma.eventFormResponse.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -162,6 +157,59 @@ describe('EventFormsService', () => {
           eventId: 'event-1',
         }),
       }),
+    );
+  });
+
+  it('requires update permission on the new owner target when a form owner changes', async () => {
+    const existing = formRecord({ ownerEventId: 'event-1' });
+    const updated = formRecord({ ownerMajorEventId: 'major-2' });
+    prisma.eventForm.findFirst.mockResolvedValue(existing);
+    prisma.eventForm.update.mockResolvedValue(updated);
+    prisma.eventForm.findUniqueOrThrow.mockResolvedValue(updated);
+    prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
+
+    await service.saveForm({
+      id: 'form-1',
+      name: 'Pesquisa',
+      ownerMajorEventId: 'major-2',
+      elementsJson: '[]',
+      links: [],
+    }, authenticatedUser);
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      authenticatedUser,
+      [Permission.EventForm.Update],
+      { majorEventId: 'major-2' },
+    );
+  });
+
+  it('requires publish permission on every owner and linked target before publishing', async () => {
+    const form = formRecord({
+      ownerEventId: 'event-1',
+      links: [
+        linkRecord({ id: 'link-1', eventId: 'event-1' }),
+        linkRecord({ id: 'link-2', targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-2' }),
+      ],
+    });
+    prisma.eventForm.findFirst.mockResolvedValue(form);
+    prisma.eventForm.update.mockResolvedValue({ ...form, publicationState: PublicationState.PUBLISHED });
+
+    await service.publishForm('form-1', null, authenticatedUser);
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      authenticatedUser,
+      [Permission.EventForm.Publish],
+      { eventFormId: 'form-1' },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      authenticatedUser,
+      [Permission.EventForm.Publish],
+      { eventId: 'event-1', majorEventId: undefined },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      authenticatedUser,
+      [Permission.EventForm.Publish],
+      { eventId: undefined, majorEventId: 'major-2' },
     );
   });
 
@@ -349,6 +397,80 @@ describe('EventFormsService', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('does not require attendee-only forms in subscription flow completion', async () => {
+    prisma.eventFormLink.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.submitSubscriptionFlowResponses(prisma as never, 'person-1', [], {
+        majorEventId: 'major-1',
+        selectedEventIds: new Set(['event-1']),
+      }),
+    ).resolves.toEqual([]);
+
+    expect(prisma.eventFormLink.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          audience: {
+            not: EventFormAudience.ATTENDEES,
+          },
+        }),
+      }),
+    );
+  });
+
+  it('returns redacted identities for partially secret public results', async () => {
+    authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.eventForm.findFirst.mockResolvedValue(formRecord({ resultsPublic: true, sigilo: EventFormSigilo.PARTIALLY_SECRET }));
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+    prisma.eventLecturer.findUnique.mockResolvedValue(null);
+    prisma.eventFormResponse.findMany.mockResolvedValue([responseRecord({ answers: [{ elementId: 'shirt-size', value: 'm' }] })]);
+
+    const results = await service.getCurrentUserResults(context, {
+      formId: 'form-1',
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+    });
+
+    expect(results.answersReleased).toBe(false);
+    expect(results.responses).toHaveLength(1);
+    expect(results.responses[0]).toMatchObject({
+      personId: 'person-1',
+      respondentName: 'Ana Silva',
+      respondentEmail: 'ana@example.com',
+      answersJson: '[]',
+    });
+  });
+
+  it('includes single-form responses across linked targets in target results', async () => {
+    authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        resultsPublic: true,
+        sigilo: EventFormSigilo.PUBLIC,
+        responseMode: EventFormResponseMode.SINGLE_PER_FORM,
+      }),
+    );
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+    prisma.eventLecturer.findUnique.mockResolvedValue(null);
+    prisma.eventFormResponse.findMany.mockResolvedValue([responseRecord({ targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-1' })]);
+
+    await service.getCurrentUserResults(context, {
+      formId: 'form-1',
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+    });
+
+    expect(prisma.eventFormResponse.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          formId: 'form-1',
+        },
+      }),
+    );
+  });
 });
 
 function createPrisma() {
@@ -357,6 +479,8 @@ function createPrisma() {
     eventForm: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
     },
     eventFormResponse: {
@@ -385,6 +509,8 @@ function createPrisma() {
     eventFormLink: {
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
+      create: jest.fn(),
     },
   };
   return client;
@@ -432,29 +558,110 @@ function formRecord(
     allowLecturerManualPublish?: boolean;
     insertInSubscriptionFlow?: boolean;
     requiredInSubscriptionFlow?: boolean;
+    ownerEventId?: string | null;
+    ownerMajorEventId?: string | null;
     resultsPublic?: boolean;
     sigilo?: EventFormSigilo;
     responseMode?: EventFormResponseMode;
     responseCount?: number;
     linkResponseCount?: number;
     elements?: unknown[];
+    links?: ReturnType<typeof linkRecord>[];
   } = {},
 ) {
   const now = new Date('2026-06-28T12:00:00.000Z');
-  const link = {
-    id: 'link-1',
-    formId: 'form-1',
-    targetType: EventFormTargetType.EVENT,
-    eventId: 'event-1',
-    majorEventId: null,
-    event: {
-      id: 'event-1',
-      name: 'Oficina de Angular',
-      emoji: 'computer',
-      endDate: new Date('2026-07-01T12:00:00.000Z'),
+  const link = linkRecord({
+    allowLecturerManualPublish: options.allowLecturerManualPublish,
+    insertInSubscriptionFlow: options.insertInSubscriptionFlow,
+    requiredInSubscriptionFlow: options.requiredInSubscriptionFlow,
+    responseCount: options.linkResponseCount,
+  });
+
+  return {
+    id: 'form-1',
+    name: 'Pesquisa de camiseta',
+    description: null,
+    ownerEventId: options.ownerEventId ?? null,
+    ownerMajorEventId: options.ownerMajorEventId ?? null,
+    ownerEvent: options.ownerEventId
+      ? {
+          id: options.ownerEventId,
+          name: 'Oficina de Angular',
+          emoji: 'computer',
+        }
+      : null,
+    ownerMajorEvent: options.ownerMajorEventId
+      ? {
+          id: options.ownerMajorEventId,
+          name: 'Semana da Computação',
+          emoji: 'calendar',
+        }
+      : null,
+    elements: options.elements ?? [],
+    sigilo: options.sigilo ?? EventFormSigilo.SECRET,
+    responseMode: options.responseMode ?? EventFormResponseMode.ONE_PER_TARGET,
+    resultsPublic: options.resultsPublic ?? false,
+    resultsLive: false,
+    publicationState: PublicationState.PUBLISHED,
+    scheduledPublishAt: null,
+    publishedAt: now,
+    unpublishedAt: null,
+    publicationScheduledBy: null,
+    publicationUpdatedBy: null,
+    links: options.links ?? [link],
+    deletedAt: null,
+    createdAt: now,
+    createdById: 'admin-1',
+    updatedAt: now,
+    updatedById: 'admin-1',
+    _count: {
+      responses: options.responseCount ?? 0,
     },
-    majorEvent: null,
-    audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
+  };
+}
+
+function linkRecord(
+  options: {
+    id?: string;
+    targetType?: EventFormTargetType;
+    eventId?: string | null;
+    majorEventId?: string | null;
+    audience?: EventFormAudience;
+    insertInSubscriptionFlow?: boolean;
+    requiredInSubscriptionFlow?: boolean;
+    allowLecturerManualPublish?: boolean;
+    responseCount?: number;
+  } = {},
+) {
+  const now = new Date('2026-06-28T12:00:00.000Z');
+  const targetType = options.targetType ?? EventFormTargetType.EVENT;
+  const eventId = options.eventId === undefined ? (targetType === EventFormTargetType.EVENT ? 'event-1' : null) : options.eventId;
+  const majorEventId = options.majorEventId === undefined ? (targetType === EventFormTargetType.MAJOR_EVENT ? 'major-1' : null) : options.majorEventId;
+  return {
+    id: options.id ?? 'link-1',
+    formId: 'form-1',
+    targetType,
+    eventId,
+    majorEventId,
+    event: eventId
+      ? {
+          id: eventId,
+          name: 'Oficina de Angular',
+          emoji: 'computer',
+          majorEventId: 'major-1',
+          eventGroupId: 'group-1',
+          endDate: new Date('2026-07-01T12:00:00.000Z'),
+        }
+      : null,
+    majorEvent: majorEventId
+      ? {
+          id: majorEventId,
+          name: 'Semana da Computação',
+          emoji: 'calendar',
+          endDate: new Date('2026-07-01T12:00:00.000Z'),
+        }
+      : null,
+    audience: options.audience ?? EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
     insertInSubscriptionFlow: options.insertInSubscriptionFlow ?? false,
     requiredInSubscriptionFlow: options.requiredInSubscriptionFlow ?? false,
     enforceRequiredAnswers: true,
@@ -470,57 +677,34 @@ function formRecord(
     updatedAt: now,
     updatedById: 'admin-1',
     _count: {
-      responses: options.linkResponseCount ?? 0,
-    },
-  };
-
-  return {
-    id: 'form-1',
-    name: 'Pesquisa de camiseta',
-    description: null,
-    ownerEventId: null,
-    ownerMajorEventId: null,
-    ownerEvent: null,
-    ownerMajorEvent: null,
-    elements: options.elements ?? [],
-    sigilo: options.sigilo ?? EventFormSigilo.SECRET,
-    responseMode: options.responseMode ?? EventFormResponseMode.ONE_PER_TARGET,
-    resultsPublic: options.resultsPublic ?? false,
-    resultsLive: false,
-    publicationState: PublicationState.PUBLISHED,
-    scheduledPublishAt: null,
-    publishedAt: now,
-    unpublishedAt: null,
-    publicationScheduledBy: null,
-    publicationUpdatedBy: null,
-    links: [link],
-    deletedAt: null,
-    createdAt: now,
-    createdById: 'admin-1',
-    updatedAt: now,
-    updatedById: 'admin-1',
-    _count: {
       responses: options.responseCount ?? 0,
     },
   };
 }
 
-function responseRecord() {
+function responseRecord(
+  options: {
+    targetType?: EventFormTargetType;
+    eventId?: string | null;
+    majorEventId?: string | null;
+    answers?: unknown[];
+  } = {},
+) {
   const now = new Date('2026-06-28T12:00:00.000Z');
   return {
     id: 'response-1',
     formId: 'form-1',
     linkId: 'link-1',
-    targetType: EventFormTargetType.EVENT,
-    eventId: 'event-1',
-    majorEventId: null,
+    targetType: options.targetType ?? EventFormTargetType.EVENT,
+    eventId: options.eventId === undefined ? 'event-1' : options.eventId,
+    majorEventId: options.majorEventId === undefined ? null : options.majorEventId,
     personId: 'person-1',
     person: {
       id: 'person-1',
       name: 'Ana Silva',
       email: 'ana@example.com',
     },
-    answers: [],
+    answers: options.answers ?? [],
     source: 'PUBLIC_FORM',
     submittedAt: now,
     updatedAt: now,

@@ -73,6 +73,8 @@ const eventFormInclude = {
           id: true,
           name: true,
           emoji: true,
+          majorEventId: true,
+          eventGroupId: true,
           endDate: true,
         },
       },
@@ -258,6 +260,7 @@ export class EventFormsService {
       await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], {
         eventFormId: existing.id,
       });
+      await this.assertCanManageLinkedTargets(user, [this.ownerTargetInput(target)], Permission.EventForm.Update);
       await this.assertCanManageLinkedTargets(user, this.manageableLinksForReplace(existing.links, input.links ?? []), Permission.EventForm.Update);
 
       const updated = await this.prisma.$transaction(async (tx) => {
@@ -390,6 +393,7 @@ export class EventFormsService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Publish], {
       eventFormId: form.id,
     });
+    await this.assertCanManageLinkedTargets(user, this.formTargetInputs(form), Permission.EventForm.Publish);
 
     if (scheduledPublishAt && scheduledPublishAt.getTime() > Date.now()) {
       const scheduled = await this.prisma.eventForm.update({
@@ -437,6 +441,7 @@ export class EventFormsService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Publish], {
       eventFormId: form.id,
     });
+    await this.assertCanManageLinkedTargets(user, this.formTargetInputs(form), Permission.EventForm.Publish);
 
     const updated = await this.prisma.eventForm.update({
       where: { id: form.id },
@@ -457,6 +462,7 @@ export class EventFormsService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Delete], {
       eventFormId: form.id,
     });
+    await this.assertCanManageLinkedTargets(user, this.formTargetInputs(form), Permission.EventForm.Delete);
 
     const updated = await this.prisma.eventForm.update({
       where: { id: form.id },
@@ -481,7 +487,7 @@ export class EventFormsService {
     input: SubmitEventFormResponseInput,
   ): Promise<EventFormResponseModel> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    const result = await this.prisma.$transaction((tx) =>
+    const result = await this.runSerializableFormTransaction((tx) =>
       this.submitResponseForPerson(tx, person.id, input, {
         requireSubscriptionFlowLink: false,
       }),
@@ -596,6 +602,9 @@ export class EventFormsService {
         deletedAt: null,
         insertInSubscriptionFlow: true,
         requiredInSubscriptionFlow: true,
+        audience: {
+          not: EventFormAudience.ATTENDEES,
+        },
         OR: [
           {
             targetType: EventFormTargetType.MAJOR_EVENT,
@@ -731,7 +740,7 @@ export class EventFormsService {
     } = {},
   ): Promise<EventFormResults> {
     const form = await this.requireForm(formId);
-    const responseWhere = this.resultResponseWhere(formId, options);
+    const responseWhere = this.resultResponseWhere(form, options);
     const responses = await this.prisma.eventFormResponse.findMany({
       where: responseWhere,
       include: responseInclude,
@@ -741,6 +750,7 @@ export class EventFormsService {
     });
     const elements = form.elements as unknown as FormElement[];
     const answersReleased = this.canShowIndividualAnswers(form.sigilo, viewer);
+    const identitiesReleased = this.canShowIdentity(form.sigilo, viewer);
     const summary = this.buildSummary(elements, responses, answersReleased);
 
     return {
@@ -749,8 +759,8 @@ export class EventFormsService {
       anonymous: form.sigilo === EventFormSigilo.ANONYMOUS,
       answersReleased,
       summaryJson: JSON.stringify(summary),
-      responses: answersReleased
-        ? responses.map((response) => this.toResponseModel(response, form.sigilo, viewer))
+      responses: answersReleased || identitiesReleased
+        ? responses.map((response) => this.toResponseModel(response, form.sigilo, viewer, { includeAnswers: answersReleased }))
         : [],
     };
   }
@@ -833,6 +843,41 @@ export class EventFormsService {
     return dueForms.length;
   }
 
+  async notifyDueAvailableLinks(): Promise<number> {
+    const now = new Date();
+    const forms = await this.prisma.eventForm.findMany({
+      where: {
+        deletedAt: null,
+        publicationState: PublicationState.PUBLISHED,
+        links: {
+          some: {
+            deletedAt: null,
+            notifyOnPublish: true,
+            lastNotifiedAt: null,
+            AND: [
+              { OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
+              { OR: [{ availableUntil: null }, { availableUntil: { gt: now } }] },
+            ],
+            OR: [
+              { event: { endDate: { gte: now } } },
+              { majorEvent: { endDate: { gte: now } } },
+            ],
+          },
+        },
+      },
+      include: eventFormInclude,
+      take: 100,
+      orderBy: [{ publishedAt: 'asc' }, { updatedAt: 'asc' }],
+    });
+
+    let notifiedLinks = 0;
+    for (const form of forms) {
+      notifiedLinks += await this.notifyEligiblePeople(form);
+    }
+
+    return notifiedLinks;
+  }
+
   private async publishFormNow(formId: string, actorId: string | undefined): Promise<EventFormModel> {
     const published = await this.prisma.eventForm.update({
       where: { id: formId },
@@ -877,9 +922,14 @@ export class EventFormsService {
     return rows.map((row) => row.map((cell) => this.csvCell(cell)).join(',')).join('\n');
   }
 
-  private async notifyEligiblePeople(form: EventFormRecord): Promise<void> {
+  private async notifyEligiblePeople(form: EventFormRecord): Promise<number> {
+    let notifiedLinks = 0;
     for (const link of form.links) {
       if (!link.notifyOnPublish || link.lastNotifiedAt) {
+        continue;
+      }
+
+      if (!this.isLinkAvailable(link)) {
         continue;
       }
 
@@ -912,7 +962,9 @@ export class EventFormsService {
           lastNotifiedAt: new Date(),
         },
       });
+      notifiedLinks += 1;
     }
+    return notifiedLinks;
   }
 
   private async findNotificationRecipients(link: EventFormLinkRecord) {
@@ -1193,6 +1245,24 @@ export class EventFormsService {
         majorEventId: target.majorEventId ?? undefined,
       });
     }
+  }
+
+  private ownerTargetInput(target: { ownerEventId: string | null; ownerMajorEventId: string | null }): TargetInput {
+    return target.ownerEventId
+      ? { targetType: EventFormTargetType.EVENT, eventId: target.ownerEventId }
+      : { targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: target.ownerMajorEventId };
+  }
+
+  private formTargetInputs(form: EventFormRecord): TargetInput[] {
+    const targets: TargetInput[] = [];
+    if (form.ownerEventId) {
+      targets.push({ targetType: EventFormTargetType.EVENT, eventId: form.ownerEventId });
+    }
+    if (form.ownerMajorEventId) {
+      targets.push({ targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: form.ownerMajorEventId });
+    }
+    targets.push(...form.links);
+    return targets;
   }
 
   private manageableLinksForReplace(
@@ -1637,7 +1707,7 @@ export class EventFormsService {
   }
 
   private resultResponseWhere(
-    formId: string,
+    form: EventFormRecord,
     options: {
       target?: ReturnType<EventFormsService['normalizeTarget']>;
       accessibleTargets?: {
@@ -1647,7 +1717,17 @@ export class EventFormsService {
       };
     },
   ): Prisma.EventFormResponseWhereInput {
-    const where: Prisma.EventFormResponseWhereInput = { formId };
+    const where: Prisma.EventFormResponseWhereInput = { formId: form.id };
+    if (form.responseMode === EventFormResponseMode.SINGLE_PER_FORM) {
+      if (options.target) {
+        return where;
+      }
+      if (options.accessibleTargets && !this.formIntersectsAccessibleTargets(form, options.accessibleTargets)) {
+        return { ...where, id: { in: [] } };
+      }
+      return where;
+    }
+
     if (options.target) {
       return {
         ...where,
@@ -1678,6 +1758,46 @@ export class EventFormsService {
     }
 
     return targetWhere.length > 0 ? { ...where, OR: targetWhere } : { ...where, id: { in: [] } };
+  }
+
+  private formIntersectsAccessibleTargets(
+    form: EventFormRecord,
+    targets: {
+      eventIds: Set<string>;
+      majorEventIds: Set<string>;
+      eventGroupIds: Set<string>;
+    },
+  ): boolean {
+    if (form.ownerEventId && targets.eventIds.has(form.ownerEventId)) {
+      return true;
+    }
+    if (form.ownerMajorEventId && targets.majorEventIds.has(form.ownerMajorEventId)) {
+      return true;
+    }
+    return form.links.some((link) => this.linkIntersectsAccessibleTargets(link, targets));
+  }
+
+  private linkIntersectsAccessibleTargets(
+    link: EventFormLinkRecord,
+    targets: {
+      eventIds: Set<string>;
+      majorEventIds: Set<string>;
+      eventGroupIds: Set<string>;
+    },
+  ): boolean {
+    if (link.eventId && targets.eventIds.has(link.eventId)) {
+      return true;
+    }
+    if (link.majorEventId && targets.majorEventIds.has(link.majorEventId)) {
+      return true;
+    }
+    if (link.event?.eventGroupId && targets.eventGroupIds.has(link.event.eventGroupId)) {
+      return true;
+    }
+    if (link.event?.majorEventId && targets.majorEventIds.has(link.event.majorEventId)) {
+      return true;
+    }
+    return false;
   }
 
   private buildBuckets(element: FormElement, values: readonly FormAnswerValue[]): Array<{ label: string; value: number }> {
@@ -2045,9 +2165,11 @@ export class EventFormsService {
     response: EventFormResponseRecord,
     sigilo: EventFormSigilo,
     viewer: ResultViewer,
+    options: { includeAnswers?: boolean } = {},
   ): EventFormResponseModel {
     const canShowIdentity = this.canShowIdentity(sigilo, viewer);
     const canShowSubmittedAt = sigilo !== EventFormSigilo.ANONYMOUS || viewer === 'self';
+    const includeAnswers = options.includeAnswers ?? true;
 
     return {
       id: response.id,
@@ -2059,7 +2181,7 @@ export class EventFormsService {
       personId: canShowIdentity ? response.personId : null,
       respondentName: canShowIdentity ? response.person.name : null,
       respondentEmail: canShowIdentity ? response.person.email : null,
-      answersJson: JSON.stringify(response.answers),
+      answersJson: JSON.stringify(includeAnswers ? response.answers : []),
       source: response.source,
       submittedAt: canShowSubmittedAt ? response.submittedAt : null,
       updatedAt: response.updatedAt,
@@ -2207,7 +2329,7 @@ export class EventFormsService {
     linkId?: string,
   ): Prisma.EventFormResponseWhereInput | null {
     if (form.responseMode === EventFormResponseMode.MULTIPLE_PER_TARGET) {
-      return linkId ? { ...this.responseTargetWhere(form.id, personId, target), linkId } : null;
+      return null;
     }
 
     if (form.responseMode === EventFormResponseMode.SINGLE_PER_FORM) {
@@ -2221,6 +2343,26 @@ export class EventFormsService {
       ...this.responseTargetWhere(form.id, personId, target),
       ...(linkId ? { linkId } : {}),
     };
+  }
+
+  private async runSerializableFormTransaction<T>(
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(operation, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        });
+      } catch (error) {
+        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new BadRequestException('Não foi possível salvar a resposta do formulário.');
   }
 
   private responseTargetWhere(
