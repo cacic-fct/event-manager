@@ -19,6 +19,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { toSVG } from '@bwip-js/browser';
+import { isBefore, parseISO } from 'date-fns';
 import { forkJoin } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
@@ -169,7 +170,7 @@ export class PaymentInfo {
     }
 
     const subscriptionEndDate = subscription.majorEvent.subscriptionEndDate;
-    return !subscriptionEndDate || new Date(subscriptionEndDate).getTime() >= Date.now();
+    return !subscriptionEndDate || !isBefore(parseISO(subscriptionEndDate), new Date());
   }
 
   private loadPage(): void {

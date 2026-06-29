@@ -3,6 +3,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { addHours, isValid, isWithinInterval, parseISO, subHours } from 'date-fns';
 import { firstValueFrom, map } from 'rxjs';
 import { AttendanceCollectionApiService, AttendanceCollectionEvent, AttendanceCollectionLocation } from './attendance-collection-api.service';
 
@@ -13,10 +14,16 @@ export class AttendanceCollectionAccessService {
   private readonly platformId = inject(PLATFORM_ID);
 
   isCollectionOpen(item: AttendanceCollectionEvent): boolean {
-    const now = Date.now();
-    const start = new Date(item.event.startDate).getTime();
-    const end = new Date(item.event.endDate).getTime();
-    return now >= start - 3 * 60 * 60_000 && now <= end + 6 * 60 * 60_000;
+    const start = parseISO(item.event.startDate);
+    const end = parseISO(item.event.endDate);
+    return (
+      isValid(start) &&
+      isValid(end) &&
+      isWithinInterval(new Date(), {
+        start: subHours(start, 3),
+        end: addHours(end, 6),
+      })
+    );
   }
 
   getPreciseLocation(): Promise<AttendanceCollectionLocation> {

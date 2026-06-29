@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
-import { getEventTypeLabel } from '@cacic-fct/shared-utils';
+import { compareIsoDateAsc, getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { EmojiService } from '../../shared/emoji.service';
 import type { PublicEventSubscriptionSummary } from './subscription-api.service';
@@ -83,9 +83,7 @@ export class SubscriptionEventList {
   }
 
   private groupByMonthDayAndGroup(): SubscriptionListMonth[] {
-    const sortedEvents = [...this.events()].sort(
-      (left, right) => Date.parse(left.startDate) - Date.parse(right.startDate),
-    );
+    const sortedEvents = [...this.events()].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
     const months: SubscriptionListMonth[] = [];
 
     for (const event of sortedEvents) {

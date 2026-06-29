@@ -28,6 +28,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { isAfter, isBefore, parseISO } from 'date-fns';
 import { Observable, catchError, combineLatest, finalize, map, of, startWith, switchMap } from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
 import { EventLocationMap } from './components/event-location-map';
@@ -266,7 +267,7 @@ export class Event {
       return false;
     }
 
-    const now = Date.now();
+    const now = new Date();
     const event = data.event;
     const subscriptionStart = event.subscriptionStartDate ?? event.majorEvent?.subscriptionStartDate;
     const subscriptionEnd = event.subscriptionEndDate ?? event.majorEvent?.subscriptionEndDate;
@@ -276,9 +277,9 @@ export class Event {
       this.isOnline() &&
       !data.currentUserSubscription &&
       this.hasAvailableSlots(data) &&
-      Date.parse(event.startDate) > now &&
-      (!subscriptionStart || Date.parse(subscriptionStart) <= now) &&
-      (!subscriptionEnd || Date.parse(subscriptionEnd) >= now)
+      isAfter(parseISO(event.startDate), now) &&
+      (!subscriptionStart || !isAfter(parseISO(subscriptionStart), now)) &&
+      (!subscriptionEnd || !isBefore(parseISO(subscriptionEnd), now))
     );
   }
 
@@ -288,7 +289,7 @@ export class Event {
       this.hasStandaloneSubscription(data.event) &&
       Boolean(data.currentUserSubscription) &&
       this.isOnline() &&
-      Date.parse(data.event.startDate) > Date.now()
+      isAfter(parseISO(data.event.startDate), new Date())
     );
   }
 
@@ -356,19 +357,19 @@ export class Event {
       return 'Não há mais vagas.';
     }
 
-    const now = Date.now();
+    const now = new Date();
     const subscriptionStart = data.event.subscriptionStartDate ?? data.event.majorEvent?.subscriptionStartDate;
     const subscriptionEnd = data.event.subscriptionEndDate ?? data.event.majorEvent?.subscriptionEndDate;
 
-    if (Date.parse(data.event.startDate) <= now) {
+    if (!isAfter(parseISO(data.event.startDate), now)) {
       return 'O evento já começou.';
     }
 
-    if (subscriptionStart && Date.parse(subscriptionStart) > now) {
+    if (subscriptionStart && isAfter(parseISO(subscriptionStart), now)) {
       return 'Inscrições ainda não abertas.';
     }
 
-    if (subscriptionEnd && Date.parse(subscriptionEnd) < now) {
+    if (subscriptionEnd && isBefore(parseISO(subscriptionEnd), now)) {
       return 'Inscrições encerradas.';
     }
 

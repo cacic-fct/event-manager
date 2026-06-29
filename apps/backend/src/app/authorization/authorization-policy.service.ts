@@ -8,6 +8,7 @@ import {
 } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { CertificateScope, EventManagerPermissionGrantScope } from '@prisma/client';
+import { addHours, isFuture, isWithinInterval, subHours } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -313,7 +314,7 @@ export class AuthorizationPolicyService {
     endDate: Date;
     shouldProvideSubscriberListToLecturer: boolean;
   }): boolean {
-    return event.shouldProvideSubscriberListToLecturer && event.endDate.getTime() > Date.now();
+    return event.shouldProvideSubscriberListToLecturer && isFuture(event.endDate);
   }
 
   assertLecturerCanViewSubscriberList(
@@ -830,8 +831,10 @@ export class AuthorizationPolicyService {
   }
 
   private isAttendanceCollectionOpen(startDate: Date, endDate: Date): boolean {
-    const now = Date.now();
-    return now >= startDate.getTime() - 3 * 60 * 60_000 && now <= endDate.getTime() + 6 * 60 * 60_000;
+    return isWithinInterval(new Date(), {
+      start: subHours(startDate, 3),
+      end: addHours(endDate, 6),
+    });
   }
 
   private collectResourceIds(value: unknown, context: AuthorizationResourceContext): void {

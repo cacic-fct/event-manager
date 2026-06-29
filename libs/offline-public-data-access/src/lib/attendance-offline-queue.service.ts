@@ -7,6 +7,7 @@ import {
   OfflineAttendanceQueueStatus,
 } from './offline-public-data-schema';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import { compareIsoDateAsc, compareIsoDateDesc } from '@cacic-fct/shared-utils';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 
 export interface OfflineAttendanceCommitResultLike {
@@ -60,7 +61,7 @@ export class AttendanceOfflineQueueService {
 
     return records
       .map((record) => ({ eventId: record.eventId, event: record.event }))
-      .sort((left, right) => Date.parse(left.event.startDate) - Date.parse(right.event.startDate));
+      .sort((left, right) => compareIsoDateAsc(left.event.startDate, right.event.startDate));
   }
 
   async getCollectionEvent(userId: string, eventId: string): Promise<{ eventId: string; event: PublicEvent } | null> {
@@ -327,7 +328,7 @@ export class AttendanceOfflineQueueService {
   }
 
   private sortNewestFirst(items: OfflineAttendanceQueueItem[]): OfflineAttendanceQueueItem[] {
-    return items.sort((left, right) => Date.parse(right.collectedAt) - Date.parse(left.collectedAt));
+    return items.sort((left, right) => compareIsoDateDesc(left.collectedAt, right.collectedAt));
   }
 
   private sortOldestFirst(items: OfflineAttendanceQueueItem[]): OfflineAttendanceQueueItem[] {

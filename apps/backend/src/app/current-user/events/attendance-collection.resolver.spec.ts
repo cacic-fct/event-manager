@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { addHours, isWithinInterval, subHours } from 'date-fns';
 import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
 
 describe('CurrentUserAttendanceCollectionResolver scanner feed', () => {
@@ -1170,8 +1171,10 @@ function createNotificationsMock() {
 }
 
 function isCollectionOpen(startDate: Date, endDate: Date): boolean {
-  const now = Date.now();
-  return now >= startDate.getTime() - 3 * 60 * 60_000 && now <= endDate.getTime() + 6 * 60 * 60_000;
+  return isWithinInterval(new Date(), {
+    start: subHours(startDate, 3),
+    end: addHours(endDate, 6),
+  });
 }
 
 function createTxMock(attendance: unknown) {

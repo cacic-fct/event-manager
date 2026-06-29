@@ -16,6 +16,7 @@ import {
   isRequiredFormAnswerMissing,
   parseFormElementsJson,
 } from '@cacic-fct/shared-angular';
+import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { type FormElement, type FormResponseAnswer } from '@cacic-fct/form-contracts';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { EmojiService } from '../../shared/emoji.service';
@@ -129,7 +130,7 @@ export class ConfirmSubscriptionDialog {
   }
 
   private groupByMonthAndDay(events: PublicEvent[]): ConfirmSubscriptionListMonth[] {
-    const sortedEvents = [...events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
+    const sortedEvents = [...events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
     const months: ConfirmSubscriptionListMonth[] = [];
 
     for (const event of sortedEvents) {

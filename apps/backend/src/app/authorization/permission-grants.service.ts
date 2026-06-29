@@ -20,6 +20,7 @@ import {
   EventManagerPermissionGrantTarget,
   EventManagerPermissionGrantUpdateInput,
 } from './permission-grants.models';
+import { isAfter, isEqual, isValid, parseISO } from 'date-fns';
 
 const GRANT_SELECT = {
   id: true,
@@ -528,11 +529,11 @@ export class PermissionGrantsService {
     const normalizedValidFrom = this.normalizeOptionalDate(validFrom, 'início da validade');
     const normalizedValidUntil = this.normalizeOptionalDate(validUntil, 'fim da validade');
 
-    if (normalizedValidFrom && normalizedValidUntil && normalizedValidUntil.getTime() <= normalizedValidFrom.getTime()) {
+    if (normalizedValidFrom && normalizedValidUntil && !isAfter(normalizedValidUntil, normalizedValidFrom)) {
       throw new BadRequestException('O fim da validade precisa ser posterior ao início.');
     }
 
-    if (normalizedValidUntil && normalizedValidUntil.getTime() <= Date.now()) {
+    if (normalizedValidUntil && !isAfter(normalizedValidUntil, new Date())) {
       throw new BadRequestException('O fim da validade precisa ser futuro.');
     }
 
@@ -547,8 +548,8 @@ export class PermissionGrantsService {
       return null;
     }
 
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) {
+    const date = this.toDate(value);
+    if (!isValid(date)) {
       throw new BadRequestException(`Informe uma data válida para ${fieldLabel}.`);
     }
 
@@ -563,9 +564,16 @@ export class PermissionGrantsService {
   }
 
   private sameInstant(left: Date | string | null | undefined, right: Date | string | null | undefined): boolean {
-    const leftTime = left ? new Date(left).getTime() : null;
-    const rightTime = right ? new Date(right).getTime() : null;
-    return leftTime === rightTime;
+    const leftDate = left ? this.toDate(left) : null;
+    const rightDate = right ? this.toDate(right) : null;
+    if (!leftDate || !rightDate) {
+      return leftDate === rightDate;
+    }
+    return isEqual(leftDate, rightDate);
+  }
+
+  private toDate(value: Date | string): Date {
+    return value instanceof Date ? value : parseISO(value);
   }
 
   private assertNoScopedTargets(input: EventManagerPermissionGrantCreateInput): void {

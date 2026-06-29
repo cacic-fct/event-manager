@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { CalendarEventListItem } from './calendar-event-list-item';
 
@@ -36,7 +37,7 @@ export class CalendarListView {
   readonly groupedEvents = computed(() => this.groupByMonthAndDay(this.events()));
 
   private groupByMonthAndDay(events: PublicEvent[]): CalendarListMonth[] {
-    const sortedEvents = [...events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
+    const sortedEvents = [...events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
     const months: CalendarListMonth[] = [];
 
     for (const event of sortedEvents) {

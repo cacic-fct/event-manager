@@ -4,6 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { compareIsoDateDesc } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
@@ -825,7 +826,7 @@ export class WorkspaceEventsService {
   }
 
   private sortDrafts(drafts: EventDraft[]): EventDraft[] {
-    return [...drafts].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+    return [...drafts].sort((left, right) => compareIsoDateDesc(left.updatedAt, right.updatedAt));
   }
 
   private async resolveDraftSelection(

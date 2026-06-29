@@ -2,6 +2,7 @@ import { DeletionResult, Event, EventCloneInput, EventCreateInput, EventUpdateIn
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { addHours, subHours } from 'date-fns';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -196,7 +197,7 @@ const EVENT_CLONE_SOURCE_SELECT = {
 } satisfies Prisma.EventSelect;
 
 const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
-const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
+const DEFAULT_EVENT_DURATION_HOURS = 1;
 
 @Resolver(() => Event)
 export class EventsResolver {
@@ -877,7 +878,7 @@ export class EventsResolver {
     input: EventCreateInput,
   ): EventCreateInput & { name: string; startDate: Date; endDate: Date; emoji: string } {
     const startDate = input.startDate ?? this.defaultEventStartDate(input.endDate);
-    const endDate = input.endDate ?? new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MS);
+    const endDate = input.endDate ?? addHours(startDate, DEFAULT_EVENT_DURATION_HOURS);
 
     return {
       ...input,
@@ -891,7 +892,7 @@ export class EventsResolver {
 
   private defaultEventStartDate(endDate: Date | undefined): Date {
     if (endDate) {
-      return new Date(endDate.getTime() - DEFAULT_EVENT_DURATION_MS);
+      return subHours(endDate, DEFAULT_EVENT_DURATION_HOURS);
     }
 
     return new Date();

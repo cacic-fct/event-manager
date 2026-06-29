@@ -627,29 +627,37 @@ export class EventFormBuilderComponent {
     key: 'durationMinutes' | 'slotIntervalMinutes' | 'maxInvitees',
     event: Event,
   ): void {
-    this.updateElement(elementId, (element) => ({
-      ...element,
-      settings: {
-        ...element.settings,
-        scheduling: {
-          ...this.ensureScheduling(element),
-          [key]: Math.max(key === 'maxInvitees' ? 0 : 1, this.eventNumber(event, key === 'maxInvitees' ? 0 : 30)),
+    this.updateElement(elementId, (element) => {
+      const scheduling = this.ensureScheduling(element);
+      const minimum = key === 'maxInvitees' && scheduling.inviteeMode === 'required' ? 1 : key === 'maxInvitees' ? 0 : 1;
+      return {
+        ...element,
+        settings: {
+          ...element.settings,
+          scheduling: {
+            ...scheduling,
+            [key]: Math.max(minimum, this.eventNumber(event, key === 'maxInvitees' ? minimum : 30)),
+          },
         },
-      },
-    }));
+      };
+    });
   }
 
   updateSchedulingInviteeMode(elementId: string, inviteeMode: FormSchedulingInviteeMode): void {
-    this.updateElement(elementId, (element) => ({
-      ...element,
-      settings: {
-        ...element.settings,
-        scheduling: {
-          ...this.ensureScheduling(element),
-          inviteeMode,
+    this.updateElement(elementId, (element) => {
+      const scheduling = this.ensureScheduling(element);
+      return {
+        ...element,
+        settings: {
+          ...element.settings,
+          scheduling: {
+            ...scheduling,
+            inviteeMode,
+            maxInvitees: inviteeMode === 'required' ? Math.max(1, scheduling.maxInvitees) : scheduling.maxInvitees,
+          },
         },
-      },
-    }));
+      };
+    });
   }
 
   updateAvailability(

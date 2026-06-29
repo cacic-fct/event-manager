@@ -30,6 +30,7 @@ import { AuthorizationPolicyService } from '../../authorization/authorization-po
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { NovuNotificationsService } from '../../notifications/novu-notifications.service';
+import { endOfDay, startOfDay, subHours } from 'date-fns';
 
 const MAX_LOCATION_ACCURACY_METERS = 200;
 const MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE = 150;
@@ -81,11 +82,8 @@ export class CurrentUserAttendanceCollectionResolver {
   ): Promise<CurrentUserAttendanceCollectionEvent[]> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const now = new Date();
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-    const visibleFrom = new Date(startOfToday.getTime() - 6 * 60 * 60_000);
-    const endOfToday = new Date(now);
-    endOfToday.setHours(23, 59, 59, 999);
+    const visibleFrom = subHours(startOfDay(now), 6);
+    const endOfToday = endOfDay(now);
 
     const collectors = await this.prisma.eventAttendanceCollector.findMany({
       where: {

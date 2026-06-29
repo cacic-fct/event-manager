@@ -8,7 +8,9 @@ import {
 } from '@cacic-fct/event-manager-public-testing';
 import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
+import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { applicationConfig, type Decorator } from '@storybook/angular';
+import { addDays, addHours, parseISO } from 'date-fns';
 import type { Event, EventDraft, EventGroup, EventSummary, MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import { createWorkspaceListPagination } from '../../shared/list-pagination';
 import { WorkspaceAuditLogService } from '../../shared/services/workspace-audit-log.service';
@@ -246,7 +248,7 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: Workspace
         group.id,
         eventSummariesSignal()
           .filter((eventItem) => eventItem.eventGroupId === group.id)
-          .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0],
+          .sort((a, b) => compareIsoDateAsc(a.startDate, b.startDate))[0],
       );
     }
     return result;
@@ -628,10 +630,7 @@ function selectedIndex(args: WorkspaceTabStoryArgs, length: number): number {
 }
 
 function offsetDate(days: number, hours = 0): string {
-  const date = new Date(storyNow);
-  date.setUTCDate(date.getUTCDate() + days);
-  date.setUTCHours(date.getUTCHours() + hours);
-  return date.toISOString();
+  return addHours(addDays(parseISO(storyNow), days), hours).toISOString();
 }
 
 function localDateTime(value: string | null | undefined): string {

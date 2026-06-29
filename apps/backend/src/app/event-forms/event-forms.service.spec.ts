@@ -291,6 +291,35 @@ describe('EventFormsService', () => {
     expect(prisma.eventFormResponse.create).not.toHaveBeenCalled();
   });
 
+  it('rejects impossible calendar dates in submitted answers', async () => {
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        elements: [
+          {
+            id: 'birth-date',
+            type: 'date',
+            title: 'Data de nascimento',
+            required: true,
+            options: [],
+          },
+        ],
+      }),
+    );
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.submitCurrentUserResponse(context, {
+        formId: 'form-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        answersJson: JSON.stringify([{ elementId: 'birth-date', value: '2026-02-31' }]),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.eventFormResponse.create).not.toHaveBeenCalled();
+  });
+
   it('requires every row in a required grid answer', async () => {
     prisma.eventForm.findFirst.mockResolvedValue(
       formRecord({

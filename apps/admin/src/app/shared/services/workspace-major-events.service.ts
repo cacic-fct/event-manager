@@ -9,6 +9,8 @@ import { EventApiService } from '../../graphql/event-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
 import { Event, MajorEvent, MajorEventInput, PriceType } from '@cacic-fct/event-manager-admin-contracts';
+import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
+import { addDays, format, parseISO, subDays } from 'date-fns';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { applyPagedResult, createWorkspaceListPagination, pageVariables } from '../list-pagination';
@@ -19,7 +21,7 @@ import { WorkspaceUiService } from './workspace-ui.service';
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 const DEFAULT_DRAFT_MAJOR_EVENT_NAME = 'Grande evento sem título';
 const DEFAULT_DRAFT_MAJOR_EVENT_EMOJI = '📌';
-const DEFAULT_MAJOR_EVENT_DURATION_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_MAJOR_EVENT_DURATION_DAYS = 1;
 
 @Injectable({
   providedIn: 'root',
@@ -502,17 +504,17 @@ export class WorkspaceMajorEventsService {
     }
 
     if (rawStartDate) {
-      const startDate = new Date(rawStartDate);
+      const startDate = parseISO(rawStartDate);
       return {
         startDate: startDate.toISOString(),
-        endDate: new Date(startDate.getTime() + DEFAULT_MAJOR_EVENT_DURATION_MS).toISOString(),
+        endDate: addDays(startDate, DEFAULT_MAJOR_EVENT_DURATION_DAYS).toISOString(),
       };
     }
 
     if (rawEndDate) {
-      const endDate = new Date(rawEndDate);
+      const endDate = parseISO(rawEndDate);
       return {
-        startDate: new Date(endDate.getTime() - DEFAULT_MAJOR_EVENT_DURATION_MS).toISOString(),
+        startDate: subDays(endDate, DEFAULT_MAJOR_EVENT_DURATION_DAYS).toISOString(),
         endDate: endDate.toISOString(),
       };
     }
@@ -520,7 +522,7 @@ export class WorkspaceMajorEventsService {
     const startDate = new Date();
     return {
       startDate: startDate.toISOString(),
-      endDate: new Date(startDate.getTime() + DEFAULT_MAJOR_EVENT_DURATION_MS).toISOString(),
+      endDate: addDays(startDate, DEFAULT_MAJOR_EVENT_DURATION_DAYS).toISOString(),
     };
   }
 
@@ -537,12 +539,12 @@ export class WorkspaceMajorEventsService {
     );
 
     this.majorEventEvents.set(
-      [...events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate)),
+      [...events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)),
     );
   }
 
   private toIsoDateTime(rawValue: string): string {
-    return new Date(rawValue).toISOString();
+    return parseISO(rawValue).toISOString();
   }
 
   private toOptionalIsoDateTime(rawValue: string | null | undefined): string | null {
@@ -584,9 +586,7 @@ export class WorkspaceMajorEventsService {
   }
 
   private fromIsoToLocalInput(rawValue: string): string {
-    const date = new Date(rawValue);
-    const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
-    return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+    return format(parseISO(rawValue), "yyyy-MM-dd'T'HH:mm");
   }
 
   private requireBothOrNeither(firstKey: string, secondKey: string) {

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { compareAsc } from 'date-fns';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -389,7 +390,7 @@ export class CurrentUserEventSubscriptionService {
       });
     }
 
-    return items.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    return items.sort((a, b) => compareAsc(a.startDate, b.startDate));
   }
 
   private async subscribeCurrentUserEventGroupTx(

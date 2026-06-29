@@ -21,6 +21,7 @@ import {
   PublicContentPreviewResult,
 } from './publishing.models';
 import { previewPath, previewRedisKey, publicUrl } from './publishing-preview-url';
+import { addDays, addSeconds } from 'date-fns';
 
 @Injectable()
 export class PublicationPreviewService {
@@ -58,8 +59,8 @@ export class PublicationPreviewService {
     const target = await this.previewContent.resolvePreviewTarget(input.targetType, input.targetId);
     const actorId = resolvePublicationActorId(user);
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + PREVIEW_TTL_SECONDS * 1000);
-    const trimAfter = new Date(now.getTime() + PREVIEW_TRIM_DAYS * 24 * 60 * 60 * 1000);
+    const expiresAt = addSeconds(now, PREVIEW_TTL_SECONDS);
+    const trimAfter = addDays(now, PREVIEW_TRIM_DAYS);
     const previewToken = this.buildPreviewToken(
       input.targetType as PublicContentPreviewTargetType,
       input.targetId,

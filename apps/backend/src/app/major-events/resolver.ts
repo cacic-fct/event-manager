@@ -10,6 +10,7 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { addDays, subDays } from 'date-fns';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -100,7 +101,7 @@ const MAJOR_EVENT_WITH_PAYMENT_INFO_SELECT = {
 type PaymentInfoCloneRecord = Prisma.PaymentInfoGetPayload<{ select: typeof PAYMENT_INFO_SELECT }>;
 
 const DEFAULT_DRAFT_MAJOR_EVENT_NAME = 'Grande evento sem título';
-const DEFAULT_MAJOR_EVENT_DURATION_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_MAJOR_EVENT_DURATION_DAYS = 1;
 
 const MAJOR_EVENT_CERTIFICATE_CONFIG_CLONE_SELECT = {
   where: {
@@ -538,7 +539,7 @@ export class MajorEventsResolver {
     paymentInfoTableExists: boolean,
   ): Prisma.MajorEventCreateInput {
     const startDate = input.startDate ?? this.defaultMajorEventStartDate(input.endDate);
-    const endDate = input.endDate ?? new Date(startDate.getTime() + DEFAULT_MAJOR_EVENT_DURATION_MS);
+    const endDate = input.endDate ?? addDays(startDate, DEFAULT_MAJOR_EVENT_DURATION_DAYS);
     const data: Prisma.MajorEventCreateInput = {
       name: input.name?.trim() || DEFAULT_DRAFT_MAJOR_EVENT_NAME,
       emoji: input.emoji?.trim() || '📌',
@@ -611,7 +612,7 @@ export class MajorEventsResolver {
 
   private defaultMajorEventStartDate(endDate: Date | undefined): Date {
     if (endDate) {
-      return new Date(endDate.getTime() - DEFAULT_MAJOR_EVENT_DURATION_MS);
+      return subDays(endDate, DEFAULT_MAJOR_EVENT_DURATION_DAYS);
     }
 
     return new Date();

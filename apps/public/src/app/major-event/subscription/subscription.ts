@@ -21,7 +21,8 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from 
 import type { EventFormTargetType, PublicEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
-import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import { areIntervalsOverlapping, isBefore, parseISO } from 'date-fns';
 import { EMPTY, catchError, filter, finalize, forkJoin, map } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
@@ -123,7 +124,7 @@ export class MajorEventSubscription {
       return [];
     }
 
-    return [...data.events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
+    return [...data.events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
   });
 
   readonly summariesByEventId = computed(
@@ -561,7 +562,7 @@ export class MajorEventSubscription {
       return reasons;
     }
 
-    const now = Date.now();
+    const now = new Date();
     const selectedEventIds = this.selectedEventIds();
     const autoSelectedEventIds = this.autoSelectedEventIds();
 
@@ -576,7 +577,7 @@ export class MajorEventSubscription {
         continue;
       }
 
-      if (Date.parse(event.startDate) <= now) {
+      if (!isBefore(now, parseISO(event.startDate))) {
         reasons.set(event.id, 'Evento já iniciado.');
         continue;
       }
@@ -651,8 +652,10 @@ export class MajorEventSubscription {
   private eventsConflict(left: PublicEvent, right: PublicEvent): boolean {
     return (
       left.id !== right.id &&
-      Date.parse(left.startDate) < Date.parse(right.endDate) &&
-      Date.parse(left.endDate) > Date.parse(right.startDate)
+      areIntervalsOverlapping(
+        { start: parseISO(left.startDate), end: parseISO(left.endDate) },
+        { start: parseISO(right.startDate), end: parseISO(right.endDate) },
+      )
     );
   }
 

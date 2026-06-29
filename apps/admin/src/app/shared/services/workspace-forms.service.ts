@@ -17,6 +17,7 @@ import {
   serializeFormElements,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { type FormElement } from '@cacic-fct/form-contracts';
+import { format, isBefore, isValid, parseISO } from 'date-fns';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventFormApiService } from '../../graphql/event-form-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
@@ -566,29 +567,24 @@ export class WorkspaceFormsService {
     if (!value) {
       return null;
     }
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    const date = parseISO(value);
+    return isValid(date) ? date.toISOString() : null;
   }
 
   private toLocalInput(value: string): string {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
+    const date = parseISO(value);
+    if (!isValid(date)) {
       return '';
     }
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hour = String(date.getHours()).padStart(2, '0');
-    const minute = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hour}:${minute}`;
+    return format(date, "yyyy-MM-dd'T'HH:mm");
   }
 
   private isOngoingOrFuture(value: string | null | undefined): boolean {
     if (!value) {
       return true;
     }
-    const time = Date.parse(value);
-    return Number.isNaN(time) || time >= Date.now();
+    const date = parseISO(value);
+    return !isValid(date) || !isBefore(date, new Date());
   }
 
   private showError(error: unknown, fallback: string): void {

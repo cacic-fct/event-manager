@@ -10,6 +10,7 @@ import {
   type PublicEvent,
   type PublicEventGroup,
 } from '@cacic-fct/event-manager-public-contracts';
+import { compareIsoDateDesc } from '@cacic-fct/shared-utils';
 import type {
   Certificate,
   CertificateTarget,
@@ -611,8 +612,6 @@ export class AttendancesApiService {
       certificatesById.set(certificate.id, certificate);
     }
 
-    return [...certificatesById.values()].sort(
-      (left, right) => new Date(right.issuedAt).getTime() - new Date(left.issuedAt).getTime(),
-    );
+    return [...certificatesById.values()].sort((left, right) => compareIsoDateDesc(left.issuedAt, right.issuedAt));
   }
 }

@@ -5,6 +5,7 @@ import {
   MessageEvent,
   NotFoundException,
 } from '@nestjs/common';
+import { addDays, isFuture, isPast } from 'date-fns';
 import {
   EventForm as EventFormModel,
   EventFormAudience as ContractAudience,
@@ -341,7 +342,7 @@ export class EventFormsService {
       }),
     ) as Prisma.InputJsonObject;
     const actor = this.actorInfo(user);
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60_000);
+    const expiresAt = addDays(new Date(), 30);
 
     const draft = input.draftId
       ? await this.updateDraftForSourceForm(input.draftId, form.id, {
@@ -395,7 +396,7 @@ export class EventFormsService {
     });
     await this.assertCanManageLinkedTargets(user, this.formTargetInputs(form), Permission.EventForm.Publish);
 
-    if (scheduledPublishAt && scheduledPublishAt.getTime() > Date.now()) {
+    if (scheduledPublishAt && isFuture(scheduledPublishAt)) {
       const scheduled = await this.prisma.eventForm.update({
         where: { id: form.id },
         data: {
@@ -934,7 +935,7 @@ export class EventFormsService {
       }
 
       const targetEndDate = link.event?.endDate ?? link.majorEvent?.endDate;
-      if (!targetEndDate || targetEndDate.getTime() < Date.now()) {
+      if (!targetEndDate || isPast(targetEndDate)) {
         continue;
       }
 
@@ -1465,10 +1466,29 @@ export class EventFormsService {
     if (!normalized) {
       return null;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized) || Number.isNaN(Date.parse(`${normalized}T00:00:00`))) {
+    if (!this.isValidIsoDate(normalized)) {
       throw new BadRequestException(`Data inválida para a pergunta "${element.title}".`);
     }
     return normalized;
+  }
+
+  private isValidIsoDate(value: string): boolean {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) {
+      return false;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(0, month - 1, day));
+    date.setUTCFullYear(year);
+
+    return (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    );
   }
 
   private normalizeTimeAnswer(element: FormElement, value: FormAnswerValue): FormAnswerValue {

@@ -20,6 +20,7 @@ import { buildPendingCertificates } from './insights/pending-certificates';
 import { buildSuggestions } from './insights/suggestions';
 import { buildWeatherAlerts } from './insights/weather-alerts';
 import { buildPublicationConsistencyWarnings } from '../publishing/publishing-consistency';
+import { addDays, startOfDay, subDays } from 'date-fns';
 
 export const DASHBOARD_INSIGHTS_QUEUE = 'dashboard-insights';
 const DASHBOARD_INCONSISTENCY_LIMIT = 30;
@@ -120,13 +121,10 @@ export class DashboardInsightsService {
     options: { canReadGlobalInsights: boolean } = { canReadGlobalInsights: true },
   ): Promise<WorkspaceDashboardInsights> {
     const now = new Date();
-    const today = startOfLocalDay(now);
-    const sevenDaysFromToday = new Date(today);
-    sevenDaysFromToday.setDate(sevenDaysFromToday.getDate() + 7);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const inconsistencyWindowStart = new Date(now);
-    inconsistencyWindowStart.setDate(inconsistencyWindowStart.getDate() - 14);
+    const today = startOfDay(now);
+    const sevenDaysFromToday = addDays(today, 7);
+    const tomorrow = addDays(today, 1);
+    const inconsistencyWindowStart = subDays(now, 14);
 
     const grantedPermissionSet = new Set(permissions);
     if (grantedPermissionSet.size === 0) {
@@ -588,8 +586,4 @@ export class DashboardInsightsService {
       permissions: formatPermissions(permissions),
     };
   }
-}
-
-function startOfLocalDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }

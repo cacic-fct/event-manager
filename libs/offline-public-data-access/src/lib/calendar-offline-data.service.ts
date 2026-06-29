@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
+import { subMonths } from 'date-fns';
 import { OfflineCalendarEvent } from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 
@@ -17,7 +19,7 @@ export class CalendarOfflineDataService {
 
     const events = await database.calendarEvents.where('startDate').aboveOrEqual(startDateFrom).toArray();
 
-    return events.map((entry) => entry.event).sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
+    return events.map((entry) => entry.event).sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
   }
 
   async upsertEvents(events: PublicEvent[]): Promise<void> {
@@ -71,9 +73,6 @@ export class CalendarOfflineDataService {
   }
 
   private expirationThreshold(): string {
-    const threshold = new Date();
-    threshold.setMonth(threshold.getMonth() - 1);
-
-    return threshold.toISOString();
+    return subMonths(new Date(), 1).toISOString();
   }
 }

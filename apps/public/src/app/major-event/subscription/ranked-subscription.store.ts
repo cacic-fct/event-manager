@@ -13,10 +13,12 @@ import type {
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import {
+  compareIsoDateAsc,
   formatDateRange,
   getEventTypeLabel,
   getSubscriptionStatusLabel,
 } from '@cacic-fct/shared-utils';
+import { isBefore, parseISO } from 'date-fns';
 import { EMPTY, catchError, finalize, forkJoin, map } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
@@ -91,7 +93,7 @@ export class RankedSubscriptionStore {
   });
 
   readonly sortedEvents = computed(() =>
-    [...(this.data()?.events ?? [])].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate)),
+    [...(this.data()?.events ?? [])].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)),
   );
   readonly eventsById = computed(() => new Map(this.sortedEvents().map((event) => [event.id, event])));
   readonly summariesByEventId = computed(
@@ -494,7 +496,7 @@ export class RankedSubscriptionStore {
 
   private computeDisabledReasons(): ReadonlyMap<string, string> {
     const reasons = new Map<string, string>();
-    const now = Date.now();
+    const now = new Date();
     for (const event of this.sortedEvents()) {
       if (this.effectiveSelectedEventIds().has(event.id)) {
         continue;
@@ -502,7 +504,7 @@ export class RankedSubscriptionStore {
       const summary = this.summariesByEventId().get(event.id);
       if (summary && !summary.hasAvailableSlots) {
         reasons.set(event.id, 'Sem vagas disponíveis.');
-      } else if (Date.parse(event.startDate) <= now) {
+      } else if (!isBefore(now, parseISO(event.startDate))) {
         reasons.set(event.id, 'Evento já iniciado.');
       }
     }

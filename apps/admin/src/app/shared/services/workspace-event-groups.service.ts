@@ -4,6 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { compareIsoDateAsc, compareIsoDateDesc } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
@@ -63,9 +64,7 @@ export class WorkspaceEventGroupsService {
       if (!bFirstEvent) return 1;
 
       // Sort by start date descending
-      const aDate = new Date(aFirstEvent.startDate).getTime();
-      const bDate = new Date(bFirstEvent.startDate).getTime();
-      return bDate - aDate;
+      return compareIsoDateDesc(aFirstEvent.startDate, bFirstEvent.startDate);
     });
   });
 
@@ -408,7 +407,7 @@ export class WorkspaceEventGroupsService {
   private getFirstEventForGroup(groupId: string, events: EventSummary[]): EventSummary | undefined {
     return events
       .filter((event) => event.eventGroupId === groupId)
-      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+      .sort((a, b) => compareIsoDateAsc(a.startDate, b.startDate))
       .at(0);
   }
 

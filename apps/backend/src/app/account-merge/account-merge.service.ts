@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ExternalAccountMergeResult, People, Prisma } from '@prisma/client';
+import { differenceInDays, isValid, parseISO } from 'date-fns';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -63,7 +64,7 @@ type MovedRelationsSnapshot = {
 @Injectable()
 export class AccountMergeService {
   private readonly logger = new Logger(AccountMergeService.name);
-  private readonly establishedAccountAgeMs = 180 * 24 * 60 * 60 * 1000;
+  private readonly establishedAccountAgeDays = 180;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -284,7 +285,7 @@ export class AccountMergeService {
   }
 
   private scoreEstablishedDate(createdAt: Date): number {
-    return Date.now() - createdAt.getTime() >= this.establishedAccountAgeMs ? 3 : 0;
+    return differenceInDays(new Date(), createdAt) >= this.establishedAccountAgeDays ? 3 : 0;
   }
 
   private async applyLocalMerge(
@@ -640,8 +641,8 @@ export class AccountMergeService {
     }
 
     const occurredAtValue = this.readRequiredString(body.occurredAt, 'occurredAt');
-    const occurredAt = new Date(occurredAtValue);
-    if (Number.isNaN(occurredAt.getTime())) {
+    const occurredAt = parseISO(occurredAtValue);
+    if (!isValid(occurredAt)) {
       throw new BadRequestException('occurredAt must be a valid ISO date.');
     }
 

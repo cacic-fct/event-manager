@@ -20,6 +20,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
+import { format, isAfter, isValid, parseISO } from 'date-fns';
 import { firstValueFrom } from 'rxjs';
 import { PermissionGrantsApiService } from '../../graphql/permission-grants-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
@@ -1016,15 +1017,15 @@ export class WorkspacePeopleService {
   }
 
   getPermissionGrantStatusLabel(grant: EventManagerPermissionGrant): string {
-    const now = Date.now();
-    const validFrom = grant.validFrom ? new Date(grant.validFrom).getTime() : null;
-    const validUntil = grant.validUntil ? new Date(grant.validUntil).getTime() : null;
+    const now = new Date();
+    const validFrom = grant.validFrom ? parseISO(grant.validFrom) : null;
+    const validUntil = grant.validUntil ? parseISO(grant.validUntil) : null;
 
-    if (validFrom && validFrom > now) {
+    if (validFrom && isAfter(validFrom, now)) {
       return 'Agendada';
     }
 
-    if (validUntil && validUntil <= now) {
+    if (validUntil && !isAfter(validUntil, now)) {
       return 'Expirada';
     }
 
@@ -1282,12 +1283,12 @@ export class WorkspacePeopleService {
       return null;
     }
 
-    if (validFrom && validUntil && new Date(validUntil).getTime() <= new Date(validFrom).getTime()) {
+    if (validFrom && validUntil && !isAfter(parseISO(validUntil), parseISO(validFrom))) {
       this.snackbar.open('O fim da validade precisa ser posterior ao início.', 'Fechar', { duration: 4000 });
       return null;
     }
 
-    if (validUntil && new Date(validUntil).getTime() <= Date.now()) {
+    if (validUntil && !isAfter(parseISO(validUntil), new Date())) {
       this.snackbar.open('O fim da validade precisa ser futuro.', 'Fechar', { duration: 4000 });
       return null;
     }
@@ -1304,8 +1305,8 @@ export class WorkspacePeopleService {
       return null;
     }
 
-    const date = new Date(trimmed);
-    if (Number.isNaN(date.getTime())) {
+    const date = parseISO(trimmed);
+    if (!isValid(date)) {
       this.snackbar.open(`Informe uma data válida para ${label}.`, 'Fechar', { duration: 4000 });
       return false;
     }
@@ -1325,17 +1326,12 @@ export class WorkspacePeopleService {
       return '';
     }
 
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
+    const date = parseISO(value);
+    if (!isValid(date)) {
       return '';
     }
 
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return format(date, "yyyy-MM-dd'T'HH:mm");
   }
 
   private normalizeSearchText(value: string): string {

@@ -11,7 +11,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
-import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
 import { forkJoin, map, of } from 'rxjs';
 import { EmojiService } from '../shared/emoji.service';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -72,7 +73,7 @@ export class MajorEvent {
       return [];
     }
 
-    return [...state.events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
+    return [...state.events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
   });
 
   readonly subscriptionsByMajorEventId = computed(() => {
@@ -100,11 +101,11 @@ export class MajorEvent {
   }
 
   isSubscriptionOpen(majorEvent: PublicMajorEvent): boolean {
-    const now = Date.now();
-    if (majorEvent.subscriptionStartDate && now < Date.parse(majorEvent.subscriptionStartDate)) {
+    const now = new Date();
+    if (majorEvent.subscriptionStartDate && isBefore(now, parseISO(majorEvent.subscriptionStartDate))) {
       return false;
     }
-    if (majorEvent.subscriptionEndDate && now > Date.parse(majorEvent.subscriptionEndDate)) {
+    if (majorEvent.subscriptionEndDate && isAfter(now, parseISO(majorEvent.subscriptionEndDate))) {
       return false;
     }
     return true;
@@ -151,9 +152,7 @@ export class MajorEvent {
       return;
     }
 
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setHours(0, 0, 0, 0);
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const threeMonthsAgo = subMonths(startOfDay(new Date()), 3);
 
     this.pageState.set({ status: 'loading' });
     forkJoin({
