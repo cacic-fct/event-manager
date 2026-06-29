@@ -116,12 +116,18 @@ export function isRequiredFormAnswerMissing(element: FormElement, value: FormAns
     return true;
   }
 
-  if ((element.type === 'singleSelectionGrid' || element.type === 'multipleSelectionGrid') && isRecord(value)) {
+  if (element.type === 'singleSelectionGrid' || element.type === 'multipleSelectionGrid') {
+    if (!isRecord(value)) {
+      return true;
+    }
     const rows = element.settings?.grid?.rows ?? [];
     return rows.length > 0 && rows.some((row) => isEmptyAnswerValue(value[row.id] ?? null));
   }
 
-  if (element.type === 'scheduling' && isSchedulingAnswer(value)) {
+  if (element.type === 'scheduling') {
+    if (!isSchedulingAnswer(value)) {
+      return true;
+    }
     if (!value.slotId) {
       return true;
     }
@@ -155,35 +161,44 @@ function slotsForWindow(
   window: FormSchedulingAvailabilityWindow,
   settings: FormSchedulingSettings,
 ): EventFormSchedulingSlot[] {
-  const start = parseLocalDateTime(window.date, window.startTime);
-  const end = parseLocalDateTime(window.date, window.endTime);
-  if (!start || !end || end.getTime() <= start.getTime()) {
+  const start = parseLocalTime(window.startTime);
+  const end = parseLocalTime(window.endTime);
+  if (start === null || end === null || end <= start) {
     return [];
   }
 
   const slots: EventFormSchedulingSlot[] = [];
-  const stepMs = Math.max(settings.slotIntervalMinutes, 1) * 60_000;
-  const durationMs = Math.max(settings.durationMinutes, 1) * 60_000;
-  for (let cursor = start.getTime(); cursor + durationMs <= end.getTime(); cursor += stepMs) {
-    const slotStart = new Date(cursor);
-    const slotEnd = new Date(cursor + durationMs);
-    const id = `${window.id}:${toTime(slotStart)}-${toTime(slotEnd)}`;
+  const stepMinutes = Math.max(settings.slotIntervalMinutes, 1);
+  const durationMinutes = Math.max(settings.durationMinutes, 1);
+  for (let cursor = start; cursor + durationMinutes <= end; cursor += stepMinutes) {
+    const slotStart = toTime(cursor);
+    const slotEnd = toTime(cursor + durationMinutes);
+    const id = `${window.id}:${slotStart}-${slotEnd}`;
     slots.push({
       id,
-      label: `${formatDate(window.date)} ${toTime(slotStart)}-${toTime(slotEnd)}`,
+      label: `${formatDate(window.date)} ${slotStart}-${slotEnd}`,
     });
   }
   return slots;
 }
 
-function parseLocalDateTime(date: string, time: string): Date | null {
-  const value = `${date}T${time}`;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+function parseLocalTime(time: string): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(time);
+  if (!match) {
+    return null;
+  }
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+  return hours * 60 + minutes;
 }
 
-function toTime(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+function toTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(remainingMinutes).padStart(2, '0')}`;
 }
 
 function formatDate(date: string): string {

@@ -68,4 +68,31 @@ describe('event form utilities', () => {
       }),
     ).toBe(false);
   });
+
+  it('treats malformed structured required answers as missing', () => {
+    const schedulingElement = {
+      id: 'meeting',
+      type: 'scheduling',
+      title: 'Reunião',
+      required: true,
+      options: [],
+    } as const;
+    const gridElement = {
+      id: 'availability',
+      type: 'singleSelectionGrid',
+      title: 'Disponibilidade',
+      required: true,
+      options: [],
+      settings: {
+        grid: {
+          rows: [{ id: 'mon', label: 'Segunda' }],
+          columns: [{ id: 'yes', label: 'Sim' }],
+        },
+      },
+    } as const;
+
+    expect(isRequiredFormAnswerMissing(schedulingElement, { slotId: 'window-1:09:00-09:30' })).toBe(true);
+    expect(isRequiredFormAnswerMissing(gridElement, 'yes')).toBe(true);
+    expect(isRequiredFormAnswerMissing(gridElement, { mon: 'yes' })).toBe(false);
+  });
 });

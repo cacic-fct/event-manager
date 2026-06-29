@@ -144,7 +144,16 @@ describe('EventFormsService', () => {
       answersJson: '[]',
     });
 
-    expect(prisma.eventFormResponse.findFirst).not.toHaveBeenCalled();
+    expect(prisma.eventFormResponse.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          formId: 'form-1',
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+          linkId: 'link-1',
+        }),
+      }),
+    );
     expect(prisma.eventFormResponse.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -353,6 +362,7 @@ function createPrisma() {
     eventFormResponse: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     },

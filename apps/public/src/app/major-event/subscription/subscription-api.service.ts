@@ -16,9 +16,9 @@ import {
   type PublicMajorEvent,
   type PublicMajorEventSubscriptionPage,
   type PublicMajorEventSubscriptionPageQuery,
+  type SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
-import type { SubmitPublicEventFormResponseInput } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';
 

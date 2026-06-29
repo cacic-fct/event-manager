@@ -423,7 +423,7 @@ export class RankedSubscriptionStore {
             majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
             subscriptionFlowOnly: true,
           })
-          .pipe(map((forms) => forms.map((form) => this.toSubscriptionFormContext(form, target)))),
+          .pipe(map((forms) => forms.flatMap((form) => this.toSubscriptionFormContexts(form, target)))),
       ),
     ).pipe(
       map((groups) => {
@@ -443,19 +443,19 @@ export class RankedSubscriptionStore {
     );
   }
 
-  private toSubscriptionFormContext(
+  private toSubscriptionFormContexts(
     form: PublicEventForm,
     target: { targetType: EventFormTargetType; targetId: string; targetName: string },
-  ): SubscriptionFormContext {
-    const link =
-      form.links.find(
-        (item) =>
-          item.targetType === target.targetType &&
-          (item.eventId ?? null) === (target.targetType === 'EVENT' ? target.targetId : null) &&
-          (item.majorEventId ?? null) === (target.targetType === 'MAJOR_EVENT' ? target.targetId : null),
-      ) ?? null;
+  ): SubscriptionFormContext[] {
+    const links = form.links.filter(
+      (item) =>
+        item.targetType === target.targetType &&
+        (item.eventId ?? null) === (target.targetType === 'EVENT' ? target.targetId : null) &&
+        (item.majorEventId ?? null) === (target.targetType === 'MAJOR_EVENT' ? target.targetId : null),
+    );
+    const matchingLinks = links.length > 0 ? links : [null];
 
-    return {
+    return matchingLinks.map((link) => ({
       form,
       targetType: target.targetType,
       targetId: target.targetId,
@@ -463,7 +463,7 @@ export class RankedSubscriptionStore {
       linkId: link?.id ?? null,
       requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
       enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
-    };
+    }));
   }
 
   private formDisplayOrder(form: SubscriptionFormContext): number {

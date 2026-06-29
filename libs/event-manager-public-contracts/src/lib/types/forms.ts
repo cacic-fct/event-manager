@@ -1,4 +1,4 @@
-import type { DateTimeString } from './common';
+import type { DateTimeString, GraphqlVariables } from './common';
 
 export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYMOUS';
 export type EventFormAudience = 'SUBSCRIBERS' | 'ATTENDEES' | 'SUBSCRIBERS_OR_ATTENDEES';
@@ -77,11 +77,11 @@ export interface PublicEventFormResults {
   responses: PublicEventFormResponse[];
 }
 
-interface SubmitPublicEventFormResponseBaseInput {
+type SubmitPublicEventFormResponseBaseInput = GraphqlVariables & {
   formId: string;
   linkId?: string | null;
   answersJson: string;
-}
+};
 
 export type SubmitPublicEventFormResponseInput =
   | (SubmitPublicEventFormResponseBaseInput & {

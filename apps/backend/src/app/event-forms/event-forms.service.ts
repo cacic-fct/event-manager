@@ -530,7 +530,7 @@ export class EventFormsService {
       throw new NotFoundException('Formulário não disponível no fluxo de inscrição.');
     }
     await this.assertPersonCanAnswerLink(personId, link, {
-      allowFutureSubscriber: link.insertInSubscriptionFlow,
+      allowFutureSubscriber: options.requireSubscriptionFlowLink && link.insertInSubscriptionFlow,
     });
     const answers = this.normalizeAnswers(input.answersJson, form.elements as unknown as FormElement[], link.enforceRequiredAnswers);
     const responseSource = link.insertInSubscriptionFlow ? ContractResponseSource.SUBSCRIPTION_FLOW : ContractResponseSource.PUBLIC_FORM;
@@ -895,6 +895,7 @@ export class EventFormsService {
 
       const notified = await this.notifications.notifyEventFormAvailable({
         formId: form.id,
+        linkId: link.id,
         formName: form.name,
         targetType: link.targetType,
         targetId: link.eventId ?? link.majorEventId ?? '',
@@ -1523,12 +1524,18 @@ export class EventFormsService {
     if (this.isEmptyAnswer(value)) {
       return true;
     }
-    if ((element.type === 'singleSelectionGrid' || element.type === 'multipleSelectionGrid') && this.isRecord(value)) {
+    if (element.type === 'singleSelectionGrid' || element.type === 'multipleSelectionGrid') {
+      if (!this.isRecord(value)) {
+        return true;
+      }
       const rows = element.settings?.grid?.rows ?? [];
       const answer = value as Record<string, FormAnswerValue>;
       return rows.length > 0 && rows.some((row) => this.isEmptyAnswer(answer[row.id] ?? null));
     }
-    if (element.type === 'scheduling' && this.isSchedulingAnswer(value)) {
+    if (element.type === 'scheduling') {
+      if (!this.isSchedulingAnswer(value)) {
+        return true;
+      }
       if (!value.slotId) {
         return true;
       }
@@ -1568,25 +1575,40 @@ export class EventFormsService {
     }
 
     const slotIds = new Set<string>();
-    const stepMs = Math.max(settings.slotIntervalMinutes, 1) * 60_000;
-    const durationMs = Math.max(settings.durationMinutes, 1) * 60_000;
+    const stepMinutes = Math.max(settings.slotIntervalMinutes, 1);
+    const durationMinutes = Math.max(settings.durationMinutes, 1);
     for (const window of settings.availability) {
-      const start = Date.parse(`${window.date}T${window.startTime}`);
-      const end = Date.parse(`${window.date}T${window.endTime}`);
-      if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+      const start = this.parseLocalTimeMinutes(window.startTime);
+      const end = this.parseLocalTimeMinutes(window.endTime);
+      if (start === null || end === null || end <= start) {
         continue;
       }
-      for (let cursor = start; cursor + durationMs <= end; cursor += stepMs) {
-        const slotStart = new Date(cursor);
-        const slotEnd = new Date(cursor + durationMs);
-        slotIds.add(`${window.id}:${this.toTime(slotStart)}-${this.toTime(slotEnd)}`);
+      for (let cursor = start; cursor + durationMinutes <= end; cursor += stepMinutes) {
+        slotIds.add(
+          `${window.id}:${this.formatLocalTimeMinutes(cursor)}-${this.formatLocalTimeMinutes(cursor + durationMinutes)}`,
+        );
       }
     }
     return slotIds;
   }
 
-  private toTime(date: Date): string {
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  private parseLocalTimeMinutes(time: string): number | null {
+    const match = /^(\d{2}):(\d{2})$/.exec(time);
+    if (!match) {
+      return null;
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+    return hours * 60 + minutes;
+  }
+
+  private formatLocalTimeMinutes(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(remainingMinutes).padStart(2, '0')}`;
   }
 
   private buildSummary(
@@ -2185,7 +2207,7 @@ export class EventFormsService {
     linkId?: string,
   ): Prisma.EventFormResponseWhereInput | null {
     if (form.responseMode === EventFormResponseMode.MULTIPLE_PER_TARGET) {
-      return null;
+      return linkId ? { ...this.responseTargetWhere(form.id, personId, target), linkId } : null;
     }
 
     if (form.responseMode === EventFormResponseMode.SINGLE_PER_FORM) {

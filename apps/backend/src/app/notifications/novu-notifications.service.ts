@@ -45,6 +45,7 @@ type CertificateAvailableNotification = {
 
 type EventFormAvailableNotification = {
   formId: string;
+  linkId?: string | null;
   formName: string;
   targetType: 'EVENT' | 'MAJOR_EVENT';
   targetId: string;
@@ -349,6 +350,9 @@ export class NovuNotificationsService {
       targetType: input.targetType,
       targetId: input.targetId,
     });
+    if (input.linkId) {
+      searchParams.set('linkId', input.linkId);
+    }
     const actionUrl = `/profile/forms/${input.formId}?${searchParams.toString()}`;
     const title = 'Formulário disponível';
     const body = `O formulário "${input.formName}" está disponível para ${input.targetName}.`;
@@ -448,7 +452,7 @@ export class NovuNotificationsService {
       });
 
       if (!response.ok) {
-        this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
+        this.logger.warn(`Novu trigger failed with HTTP ${response.status}.`);
         return false;
       }
 

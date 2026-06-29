@@ -382,15 +382,17 @@ describe('NovuNotificationsService', () => {
 
   it('logs and returns when Novu responds with an HTTP error', async () => {
     const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
+    const text = jest.fn().mockResolvedValue('server exploded');
     fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 500,
-      text: jest.fn().mockResolvedValue('server exploded'),
+      text,
     });
 
     await expect(service.notifyMajorEventSubscriptionStatusChanged(notificationFixture())).resolves.toBeUndefined();
 
-    expect(warnSpy).toHaveBeenCalledWith('Novu trigger failed with HTTP 500: server exploded');
+    expect(text).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith('Novu trigger failed with HTTP 500.');
   });
 
   it('logs unacknowledged Novu responses and thrown fetch errors', async () => {
@@ -441,6 +443,7 @@ describe('NovuNotificationsService', () => {
   it('notifies recipients when an event form becomes available', async () => {
     await service.notifyEventFormAvailable({
       formId: 'form-1',
+      linkId: 'link-1',
       formName: 'Camiseta',
       targetType: 'MAJOR_EVENT',
       targetId: 'major-event-1',
@@ -484,13 +487,13 @@ describe('NovuNotificationsService', () => {
           targetId: 'major-event-1',
           targetName: 'Semana da Computacao',
           actionLabel: 'Responder formulário',
-          actionUrl: '/profile/forms/form-1?targetType=MAJOR_EVENT&targetId=major-event-1',
+          actionUrl: '/profile/forms/form-1?targetType=MAJOR_EVENT&targetId=major-event-1&linkId=link-1',
         }),
       }),
     );
     expect(body.overrides.webPush.data).toEqual(
       expect.objectContaining({
-        url: '/profile/forms/form-1?targetType=MAJOR_EVENT&targetId=major-event-1',
+        url: '/profile/forms/form-1?targetType=MAJOR_EVENT&targetId=major-event-1&linkId=link-1',
         formId: 'form-1',
         targetType: 'MAJOR_EVENT',
         targetId: 'major-event-1',

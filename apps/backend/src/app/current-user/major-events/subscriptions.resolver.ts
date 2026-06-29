@@ -259,8 +259,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     const selfServicePayment = this.majorEventSubscriptions.resolveSelfServicePayment(majorEvent, input.paymentTier);
 
     const now = new Date();
-    const submittedFormIds: string[] = [];
     const upsertResult = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const submittedFormIds: string[] = [];
       const existingSubscription = await tx.majorEventSubscription.findFirst({
         where: {
           majorEventId: input.majorEventId,
@@ -568,9 +568,10 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       return {
         subscription: updatedSubscription,
         createdSubscription: !existingSubscription,
+        submittedFormIds,
       };
     });
-    await this.eventForms.emitResultsDeltas(submittedFormIds);
+    await this.eventForms.emitResultsDeltas(upsertResult.submittedFormIds);
     const subscription = upsertResult.subscription;
 
     const orderedEvents = selectedEventIds.map((eventId) =>
