@@ -127,7 +127,8 @@ mat-card-header {
 }
 
 mat-card-header h1,
-h2 {
+mat-card-header h2 {
+  text-align: center;
   margin: 0;
 }
 
