@@ -367,8 +367,6 @@ export class SubmitEventFormResponseInput {
   @Field(() => String)
   answersJson!: string;
 
-  @Field(() => EventFormResponseSource, { nullable: true })
-  source?: EventFormResponseSource | null;
 }
 
 @InputType()

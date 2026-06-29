@@ -1,3 +1,5 @@
+import type { FormElement } from '@cacic-fct/form-contracts';
+
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type PublicationState = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'UNPUBLISHED';
 export type PublicationTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
@@ -906,11 +908,8 @@ export interface EventCloneInput {
   parts?: EventClonePartsInput;
 }
 
-export interface EventFormLinkInput {
+interface EventFormLinkInputBase {
   id?: string | null;
-  targetType: EventFormTargetType;
-  eventId?: string | null;
-  majorEventId?: string | null;
   audience?: EventFormAudience | null;
   insertInSubscriptionFlow?: boolean | null;
   requiredInSubscriptionFlow?: boolean | null;
@@ -922,12 +921,22 @@ export interface EventFormLinkInput {
   allowLecturerManualPublish?: boolean | null;
 }
 
-export interface EventFormInput {
+export type EventFormLinkInput =
+  | (EventFormLinkInputBase & {
+      targetType: 'EVENT';
+      eventId: string;
+      majorEventId?: null;
+    })
+  | (EventFormLinkInputBase & {
+      targetType: 'MAJOR_EVENT';
+      eventId?: null;
+      majorEventId: string;
+    });
+
+interface EventFormInputBase {
   id?: string | null;
   name?: string | null;
   description?: string | null;
-  ownerEventId?: string | null;
-  ownerMajorEventId?: string | null;
   elementsJson?: string | null;
   sigilo?: EventFormSigilo | null;
   responseMode?: EventFormResponseMode | null;
@@ -936,14 +945,49 @@ export interface EventFormInput {
   links?: EventFormLinkInput[] | null;
 }
 
-export interface SubmitEventFormResponseInput {
+export type EventFormInput =
+  | (EventFormInputBase & {
+      ownerEventId: string;
+      ownerMajorEventId?: null;
+    })
+  | (EventFormInputBase & {
+      ownerEventId?: null;
+      ownerMajorEventId: string;
+    });
+
+interface SubmitEventFormResponseBaseInput {
   formId: string;
   linkId?: string | null;
-  targetType: EventFormTargetType;
-  eventId?: string | null;
-  majorEventId?: string | null;
   answersJson: string;
-  source?: EventFormResponseSource | null;
+}
+
+export type SubmitEventFormResponseInput =
+  | (SubmitEventFormResponseBaseInput & {
+      targetType: 'EVENT';
+      eventId: string;
+      majorEventId?: null;
+    })
+  | (SubmitEventFormResponseBaseInput & {
+      targetType: 'MAJOR_EVENT';
+      eventId?: null;
+      majorEventId: string;
+    });
+
+export function parseFormElementsJson(value: string | null | undefined): FormElement[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (parsed as FormElement[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function serializeFormElements(elements: readonly FormElement[]): string {
+  return JSON.stringify(elements);
 }
 
 export interface PlacePresetInput {

@@ -17,7 +17,7 @@ import {
   getEventTypeLabel,
   getSubscriptionStatusLabel,
 } from '@cacic-fct/shared-utils';
-import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
+import { finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
@@ -344,20 +344,19 @@ export class RankedSubscriptionStore {
     formAnswers: SubscriptionFormAnswer[],
   ): void {
     this.isSubmitting.set(true);
-    this.api
-      .upsertRankedSubscription(
-        data.majorEvent.id,
-        eventIds,
-        {
-          desiredCourses: this.desiredCourses(),
-          desiredLectures: this.desiredLectures(),
-          desiredUncategorized: this.desiredUncategorized(),
-        },
-        paymentTier,
-      )
+    this.submitSubscriptionFormAnswers(formAnswers)
       .pipe(
-        switchMap((subscription) =>
-          this.submitSubscriptionFormAnswers(formAnswers).pipe(map(() => subscription)),
+        switchMap(() =>
+          this.api.upsertRankedSubscription(
+            data.majorEvent.id,
+            eventIds,
+            {
+              desiredCourses: this.desiredCourses(),
+              desiredLectures: this.desiredLectures(),
+              desiredUncategorized: this.desiredUncategorized(),
+            },
+            paymentTier,
+          ),
         ),
         finalize(() => this.isSubmitting.set(false)),
         takeUntilDestroyed(this.destroyRef),
@@ -417,10 +416,7 @@ export class RankedSubscriptionStore {
             majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
             subscriptionFlowOnly: true,
           })
-          .pipe(
-            map((forms) => forms.map((form) => this.toSubscriptionFormContext(form, target))),
-            catchError(() => of([])),
-          ),
+          .pipe(map((forms) => forms.map((form) => this.toSubscriptionFormContext(form, target)))),
       ),
     ).pipe(
       map((groups) => {
@@ -458,6 +454,7 @@ export class RankedSubscriptionStore {
       targetId: target.targetId,
       targetName: target.targetName,
       linkId: link?.id ?? null,
+      requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
       enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
     };
   }
@@ -473,15 +470,25 @@ export class RankedSubscriptionStore {
 
     return forkJoin(
       formAnswers.map((answer) =>
-        this.formsApi.submit({
-          formId: answer.formId,
-          linkId: answer.linkId,
-          targetType: answer.targetType,
-          eventId: answer.targetType === 'EVENT' ? answer.targetId : null,
-          majorEventId: answer.targetType === 'MAJOR_EVENT' ? answer.targetId : null,
-          answersJson: JSON.stringify(answer.answers),
-          source: 'SUBSCRIPTION_FLOW',
-        }),
+        this.formsApi.submit(
+          answer.targetType === 'EVENT'
+            ? {
+                formId: answer.formId,
+                linkId: answer.linkId,
+                targetType: answer.targetType,
+                eventId: answer.targetId,
+                majorEventId: null,
+                answersJson: JSON.stringify(answer.answers),
+              }
+            : {
+                formId: answer.formId,
+                linkId: answer.linkId,
+                targetType: answer.targetType,
+                eventId: null,
+                majorEventId: answer.targetId,
+                answersJson: JSON.stringify(answer.answers),
+              },
+        ),
       ),
     );
   }

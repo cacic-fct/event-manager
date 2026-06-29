@@ -5,6 +5,7 @@ export type EventFormAudience = 'SUBSCRIBERS' | 'ATTENDEES' | 'SUBSCRIBERS_OR_AT
 export type EventFormTargetType = 'EVENT' | 'MAJOR_EVENT';
 export type EventFormResponseSource = 'PUBLIC_FORM' | 'SUBSCRIPTION_FLOW' | 'LECTURER_PUBLISH';
 export type EventFormResponseMode = 'ONE_PER_TARGET' | 'MULTIPLE_PER_TARGET' | 'SINGLE_PER_FORM';
+export type PublicationState = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'UNPUBLISHED';
 
 export interface PublicEventFormTargetSummary {
   type: EventFormTargetType;
@@ -44,7 +45,7 @@ export interface PublicEventForm {
   responseMode: EventFormResponseMode;
   resultsPublic: boolean;
   resultsLive: boolean;
-  publicationState: string;
+  publicationState: PublicationState;
   links: PublicEventFormLink[];
   responseCount: number;
   createdAt: DateTimeString;
@@ -76,12 +77,20 @@ export interface PublicEventFormResults {
   responses: PublicEventFormResponse[];
 }
 
-export interface SubmitPublicEventFormResponseInput {
+interface SubmitPublicEventFormResponseBaseInput {
   formId: string;
   linkId?: string | null;
-  targetType: EventFormTargetType;
-  eventId?: string | null;
-  majorEventId?: string | null;
   answersJson: string;
-  source?: EventFormResponseSource | null;
 }
+
+export type SubmitPublicEventFormResponseInput =
+  | (SubmitPublicEventFormResponseBaseInput & {
+      targetType: 'EVENT';
+      eventId: string;
+      majorEventId?: null;
+    })
+  | (SubmitPublicEventFormResponseBaseInput & {
+      targetType: 'MAJOR_EVENT';
+      eventId?: null;
+      majorEventId: string;
+    });

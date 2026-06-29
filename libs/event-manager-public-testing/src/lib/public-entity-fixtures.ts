@@ -183,8 +183,10 @@ export function createPublicEventFormLink(overrides: Partial<PublicEventFormLink
 }
 
 export function createPublicEventForm(overrides: Partial<PublicEventForm> = {}): PublicEventForm {
+  const id = overrides.id ?? 'form-1';
+
   return {
-    id: 'form-1',
+    id,
     name: 'Pesquisa de camiseta',
     description: 'Dados usados pela organização durante a inscrição.',
     elementsJson: JSON.stringify([
@@ -207,7 +209,7 @@ export function createPublicEventForm(overrides: Partial<PublicEventForm> = {}):
     resultsPublic: false,
     resultsLive: false,
     publicationState: 'PUBLISHED',
-    links: [createPublicEventFormLink()],
+    links: overrides.links ?? [createPublicEventFormLink({ formId: id })],
     responseCount: 0,
     createdAt: publicFixtureDate,
     updatedAt: publicFixtureDate,

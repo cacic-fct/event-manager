@@ -633,7 +633,7 @@ export class EventFormBuilderComponent {
         ...element.settings,
         scheduling: {
           ...this.ensureScheduling(element),
-          [key]: Math.max(0, this.eventNumber(event, key === 'maxInvitees' ? 0 : 30)),
+          [key]: Math.max(key === 'maxInvitees' ? 0 : 1, this.eventNumber(event, key === 'maxInvitees' ? 0 : 30)),
         },
       },
     }));

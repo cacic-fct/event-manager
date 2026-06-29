@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import {
   Event,
   EventForm,
+  EventFormAudience,
   EventFormInput,
   EventFormLinkInput,
   EventFormResponseMode,
@@ -12,12 +13,10 @@ import {
   EventFormSigilo,
   EventFormTargetType,
   MajorEvent,
-} from '@cacic-fct/event-manager-admin-contracts';
-import { type FormElement } from '@cacic-fct/form-contracts';
-import {
   parseFormElementsJson,
   serializeFormElements,
-} from '@cacic-fct/shared-angular';
+} from '@cacic-fct/event-manager-admin-contracts';
+import { type FormElement } from '@cacic-fct/form-contracts';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventFormApiService } from '../../graphql/event-form-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
@@ -26,8 +25,21 @@ import { WorkspaceUiService } from './workspace-ui.service';
 
 type FormOwnerType = EventFormTargetType;
 
-export interface EventFormLinkDraft extends EventFormLinkInput {
+export interface EventFormLinkDraft {
   localId: string;
+  id?: string | null;
+  targetType: EventFormTargetType;
+  eventId?: string | null;
+  majorEventId?: string | null;
+  audience?: EventFormAudience | null;
+  insertInSubscriptionFlow?: boolean | null;
+  requiredInSubscriptionFlow?: boolean | null;
+  enforceRequiredAnswers?: boolean | null;
+  displayOrder?: number | null;
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  notifyOnPublish?: boolean | null;
+  allowLecturerManualPublish?: boolean | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -199,29 +211,14 @@ export class WorkspaceFormsService {
   }
 
   addLink(targetType: EventFormTargetType): void {
-    this.links.update((links) => [
-      ...links,
-      {
-        localId: crypto.randomUUID(),
-        targetType,
-        eventId: targetType === 'EVENT' ? this.selectableEvents()[0]?.id ?? '' : null,
-        majorEventId: targetType === 'MAJOR_EVENT' ? this.selectableMajorEvents()[0]?.id ?? '' : null,
-        audience: 'SUBSCRIBERS_OR_ATTENDEES',
-        insertInSubscriptionFlow: false,
-        requiredInSubscriptionFlow: false,
-        enforceRequiredAnswers: true,
-        displayOrder: links.length,
-        notifyOnPublish: true,
-        allowLecturerManualPublish: false,
-      },
-    ]);
+    this.links.update((links) => [...links, this.createLinkDraft(targetType, links.length)]);
   }
 
   removeLink(localId: string): void {
     this.links.update((links) => links.filter((link) => link.localId !== localId));
   }
 
-  updateLink(localId: string, patch: Partial<EventFormLinkInput>): void {
+  updateLink(localId: string, patch: Partial<EventFormLinkDraft>): void {
     this.links.update((links) =>
       links.map((link) => (link.localId === localId ? this.normalizeLinkDraft({ ...link, ...patch }, link) : link)),
     );
@@ -355,7 +352,7 @@ export class WorkspaceFormsService {
     return `${targets.slice(0, 2).join(' · ')} +${targets.length - 2}`;
   }
 
-  targetName(link: EventFormLinkInput): string {
+  targetName(link: Pick<EventFormLinkDraft, 'targetType' | 'eventId' | 'majorEventId'>): string {
     if (link.targetType === 'EVENT') {
       return this.events().find((event) => event.id === link.eventId)?.name ?? 'Evento';
     }
@@ -392,12 +389,7 @@ export class WorkspaceFormsService {
     this.selectedResults.set(null);
     this.elements.set(parseFormElementsJson(form.elementsJson));
     this.links.set(
-      form.links.map((link) => ({
-        ...link,
-        localId: link.id,
-        availableFrom: link.availableFrom ? this.toLocalInput(link.availableFrom) : null,
-        availableUntil: link.availableUntil ? this.toLocalInput(link.availableUntil) : null,
-      })),
+      form.links.map((link) => this.toLinkDraft(link)),
     );
     this.form.reset({
       id: form.id,
@@ -417,60 +409,141 @@ export class WorkspaceFormsService {
 
   private toInput(): EventFormInput {
     const value = this.form.getRawValue();
-    return {
+    const base = {
       id: value.id || null,
       name: value.name,
       description: value.description || null,
-      ownerEventId: value.ownerType === 'EVENT' ? value.ownerEventId || null : null,
-      ownerMajorEventId: value.ownerType === 'MAJOR_EVENT' ? value.ownerMajorEventId || null : null,
       elementsJson: serializeFormElements(this.elements()),
       sigilo: value.sigilo,
       responseMode: value.responseMode,
       resultsPublic: value.resultsPublic,
       resultsLive: value.resultsPublic ? value.resultsLive : false,
-      links: this.links().map((link, index) => ({
-        id: link.id ?? null,
-        targetType: link.targetType,
-        eventId: link.targetType === 'EVENT' ? link.eventId || null : null,
-        majorEventId: link.targetType === 'MAJOR_EVENT' ? link.majorEventId || null : null,
-        audience: link.audience ?? 'SUBSCRIBERS_OR_ATTENDEES',
-        insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
-        requiredInSubscriptionFlow: link.requiredInSubscriptionFlow ?? false,
-        enforceRequiredAnswers: link.enforceRequiredAnswers ?? true,
-        displayOrder: link.displayOrder ?? index,
-        availableFrom: this.localInputToIso(link.availableFrom),
-        availableUntil: this.localInputToIso(link.availableUntil),
-        notifyOnPublish: link.insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
-        allowLecturerManualPublish:
-          link.targetType === 'EVENT' && !link.insertInSubscriptionFlow
-            ? (link.allowLecturerManualPublish ?? false)
-            : false,
-      })),
+      links: this.links().map((link, index) => this.toLinkInput(link, index)),
+    };
+
+    if (value.ownerType === 'EVENT') {
+      return {
+        ...base,
+        ownerEventId: value.ownerEventId || '',
+        ownerMajorEventId: null,
+      };
+    }
+
+    return {
+      ...base,
+      ownerEventId: null,
+      ownerMajorEventId: value.ownerMajorEventId || '',
     };
   }
 
   private normalizeLinkDraft(link: EventFormLinkDraft, previous?: EventFormLinkDraft): EventFormLinkDraft {
     const targetType = link.targetType;
     const insertInSubscriptionFlow = link.requiredInSubscriptionFlow === true ? true : (link.insertInSubscriptionFlow ?? false);
-    const fallbackEventId =
-      previous?.eventId && this.selectableEvents().some((event) => event.id === previous.eventId)
-        ? previous.eventId
-        : this.selectableEvents()[0]?.id ?? '';
-    const fallbackMajorEventId =
-      previous?.majorEventId && this.selectableMajorEvents().some((majorEvent) => majorEvent.id === previous.majorEventId)
-        ? previous.majorEventId
-        : this.selectableMajorEvents()[0]?.id ?? '';
+    const fallbackEventId = link.eventId || previous?.eventId || (this.selectableEvents()[0]?.id ?? '');
+    const fallbackMajorEventId = link.majorEventId || previous?.majorEventId || (this.selectableMajorEvents()[0]?.id ?? '');
 
-    return {
+    const base = {
       ...link,
-      targetType,
-      eventId: targetType === 'EVENT' ? link.eventId || fallbackEventId : null,
-      majorEventId: targetType === 'MAJOR_EVENT' ? link.majorEventId || fallbackMajorEventId : null,
       insertInSubscriptionFlow,
       requiredInSubscriptionFlow: insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
       notifyOnPublish: insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
       allowLecturerManualPublish:
-        targetType === 'EVENT' && !insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
+          targetType === 'EVENT' && !insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
+    };
+    if (targetType === 'EVENT') {
+      return {
+        ...base,
+        targetType,
+        eventId: link.eventId || fallbackEventId,
+        majorEventId: null,
+      };
+    }
+
+    return {
+      ...base,
+      targetType,
+      eventId: null,
+      majorEventId: link.majorEventId || fallbackMajorEventId,
+    };
+  }
+
+  private createLinkDraft(targetType: EventFormTargetType, displayOrder: number): EventFormLinkDraft {
+    const base = {
+      localId: crypto.randomUUID(),
+      audience: 'SUBSCRIBERS_OR_ATTENDEES' as const,
+      insertInSubscriptionFlow: false,
+      requiredInSubscriptionFlow: false,
+      enforceRequiredAnswers: true,
+      displayOrder,
+      notifyOnPublish: true,
+      allowLecturerManualPublish: false,
+    };
+
+    if (targetType === 'EVENT') {
+      return {
+        ...base,
+        targetType,
+        eventId: this.selectableEvents()[0]?.id ?? '',
+        majorEventId: null,
+      };
+    }
+
+    return {
+      ...base,
+      targetType,
+      eventId: null,
+      majorEventId: this.selectableMajorEvents()[0]?.id ?? '',
+    };
+  }
+
+  private toLinkDraft(link: EventForm['links'][number]): EventFormLinkDraft {
+    return {
+      localId: link.id,
+      id: link.id,
+      targetType: link.targetType,
+      eventId: link.eventId,
+      majorEventId: link.majorEventId,
+      audience: link.audience,
+      insertInSubscriptionFlow: link.insertInSubscriptionFlow,
+      requiredInSubscriptionFlow: link.requiredInSubscriptionFlow,
+      enforceRequiredAnswers: link.enforceRequiredAnswers,
+      displayOrder: link.displayOrder,
+      availableFrom: link.availableFrom ? this.toLocalInput(link.availableFrom) : null,
+      availableUntil: link.availableUntil ? this.toLocalInput(link.availableUntil) : null,
+      notifyOnPublish: link.notifyOnPublish,
+      allowLecturerManualPublish: link.allowLecturerManualPublish,
+    };
+  }
+
+  private toLinkInput(link: EventFormLinkDraft, index: number): EventFormLinkInput {
+    const base = {
+      id: link.id ?? null,
+      audience: link.audience ?? 'SUBSCRIBERS_OR_ATTENDEES',
+      insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
+      requiredInSubscriptionFlow: link.requiredInSubscriptionFlow ?? false,
+      enforceRequiredAnswers: link.enforceRequiredAnswers ?? true,
+      displayOrder: link.displayOrder ?? index,
+      availableFrom: this.localInputToIso(link.availableFrom),
+      availableUntil: this.localInputToIso(link.availableUntil),
+      notifyOnPublish: link.insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
+      allowLecturerManualPublish:
+        link.targetType === 'EVENT' && !link.insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
+    };
+
+    if (link.targetType === 'EVENT') {
+      return {
+        ...base,
+        targetType: link.targetType,
+        eventId: link.eventId || '',
+        majorEventId: null,
+      };
+    }
+
+    return {
+      ...base,
+      targetType: link.targetType,
+      eventId: null,
+      majorEventId: link.majorEventId || '',
     };
   }
 
@@ -541,7 +614,7 @@ export class WorkspaceFormsService {
     this.resultsEventSource = source;
   }
 
-  private closeResultsStream(): void {
+  closeResultsStream(): void {
     this.resultsEventSource?.close();
     this.resultsEventSource = null;
   }

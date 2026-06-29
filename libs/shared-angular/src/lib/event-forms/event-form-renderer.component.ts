@@ -260,7 +260,12 @@ import {
                             />
                           </mat-form-field>
                         }
-                        <button mat-button type="button" (click)="addSchedulingInvitee(element.id)">
+                        <button
+                          mat-button
+                          type="button"
+                          [disabled]="isSchedulingInviteeLimitReached(element)"
+                          (click)="addSchedulingInvitee(element)"
+                        >
                           <mat-icon>person_add</mat-icon>
                           Convidado
                         </button>
@@ -524,9 +529,17 @@ export class EventFormRendererComponent {
     return this.schedulingAnswer(elementId)?.invitees ?? [];
   }
 
-  addSchedulingInvitee(elementId: string): void {
-    const current = this.schedulingAnswer(elementId) ?? { slotId: '', invitees: [] };
-    this.setAnswer(elementId, {
+  isSchedulingInviteeLimitReached(element: FormElement): boolean {
+    const maxInvitees = element.settings?.scheduling?.maxInvitees ?? 0;
+    return this.schedulingInvitees(element.id).length >= maxInvitees;
+  }
+
+  addSchedulingInvitee(element: FormElement): void {
+    if (this.isSchedulingInviteeLimitReached(element)) {
+      return;
+    }
+    const current = this.schedulingAnswer(element.id) ?? { slotId: '', invitees: [] };
+    this.setAnswer(element.id, {
       ...current,
       invitees: [...current.invitees, { name: '' }],
     });
@@ -588,8 +601,11 @@ export class EventFormRendererComponent {
     if (Array.isArray(value)) {
       return value.length === 0;
     }
+    if (this.isSchedulingAnswer(value)) {
+      return !value.slotId;
+    }
     if (this.isRecord(value)) {
-      return Object.keys(value).length === 0;
+      return Object.keys(value).length === 0 || Object.values(value).some((entry) => Array.isArray(entry) && entry.length === 0);
     }
     return false;
   }

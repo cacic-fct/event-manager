@@ -5,6 +5,7 @@ import { EventFormsService } from './event-forms.service';
 export class EventFormsScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventFormsScheduler.name);
   private timer: ReturnType<typeof setInterval> | null = null;
+  private publishing = false;
 
   constructor(private readonly forms: EventFormsService) {}
 
@@ -23,6 +24,10 @@ export class EventFormsScheduler implements OnModuleInit, OnModuleDestroy {
   }
 
   private async publishDueForms(): Promise<void> {
+    if (this.publishing) {
+      return;
+    }
+    this.publishing = true;
     try {
       const count = await this.forms.publishDueScheduledForms();
       if (count > 0) {
@@ -30,6 +35,8 @@ export class EventFormsScheduler implements OnModuleInit, OnModuleDestroy {
       }
     } catch (error) {
       this.logger.warn(`Scheduled event form publication failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      this.publishing = false;
     }
   }
 }

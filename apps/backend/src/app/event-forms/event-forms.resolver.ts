@@ -41,8 +41,11 @@ export class EventFormsResolver {
 
   @Query(() => EventFormResults, { name: 'eventFormResults' })
   @RequirePermissions(Permission.EventForm.Results)
-  eventFormResults(@Args('formId', { type: () => String }) formId: string): Promise<EventFormResults> {
-    return this.forms.getResults(formId, 'admin');
+  eventFormResults(
+    @Args('formId', { type: () => String }) formId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<EventFormResults> {
+    return this.forms.getAdminResults(this.getUser(context), formId);
   }
 
   @Query(() => [EventFormDraft], { name: 'eventFormDrafts' })

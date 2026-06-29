@@ -2,7 +2,7 @@
   <div class="tab-grid tab-grid-wide">
     <aside class="panel">
       <div class="panel-heading">
-        <form [formGroup]="workspace.filtersForm" class="filter-form">
+        <form [formGroup]="workspace.filtersForm" class="filter-form" (submit)="$event.preventDefault(); workspace.loadForms()">
           <mat-form-field>
             <mat-label>Buscar formulário</mat-label>
             <input matInput formControlName="query" />
@@ -71,15 +71,17 @@
         <div class="panel-actions editor-action-row">
           <div class="editor-action-group">
             @if (workspace.selectedForm(); as selectedForm) {
-              <a
-                mat-stroked-button
-                [href]="workspace.exportUrl(selectedForm)"
-                target="_blank"
-                rel="noopener"
-                [class.disabled-link]="!permissions.has(Permission.EventForm.Export)">
-                <mat-icon>download</mat-icon>
-                CSV
-              </a>
+              @if (permissions.has(Permission.EventForm.Export)) {
+                <a mat-stroked-button [href]="workspace.exportUrl(selectedForm)" target="_blank" rel="noopener">
+                  <mat-icon>download</mat-icon>
+                  CSV
+                </a>
+              } @else {
+                <button mat-stroked-button type="button" disabled>
+                  <mat-icon>download</mat-icon>
+                  CSV
+                </button>
+              }
               <button
                 mat-stroked-button
                 type="button"
@@ -140,7 +142,7 @@
         </div>
       </div>
 
-      <form [formGroup]="workspace.form" class="panel-stack">
+      <form [formGroup]="workspace.form" class="panel-stack" (submit)="$event.preventDefault()">
         <section class="surface field-group">
           <h4>Identidade e sigilo</h4>
           <div class="field-grid">

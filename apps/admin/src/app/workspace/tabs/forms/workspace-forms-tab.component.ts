@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -46,7 +46,7 @@ import { WorkspaceFormResultsComponent } from './workspace-form-results.componen
   templateUrl: './workspace-forms-tab.component.html',
   styleUrls: ['../workspace-tab.shared.scss', './workspace-forms-tab.component.scss'],
 })
-export class WorkspaceFormsTabComponent {
+export class WorkspaceFormsTabComponent implements OnDestroy {
   readonly workspace = inject(WorkspaceFormsService);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
@@ -62,6 +62,10 @@ export class WorkspaceFormsTabComponent {
       this.workspace.setTargetFilter(eventId ? { eventId } : majorEventId ? { majorEventId } : null);
       void this.workspace.initialize();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.workspace.closeResultsStream();
   }
 
   sigiloLabel(sigilo: EventFormSigilo): string {

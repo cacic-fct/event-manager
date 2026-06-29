@@ -150,12 +150,13 @@ export class EventFormsService {
     const where: Prisma.EventFormWhereInput = {
       deletedAt: null,
     };
+    const andFilters: Prisma.EventFormWhereInput[] = [];
     const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.EventForm.Read);
     if (accessibleTargets && this.isEmptyAccessibleTargets(accessibleTargets)) {
       return [];
     }
     if (accessibleTargets) {
-      where.AND = [this.buildAccessibleFormWhere(accessibleTargets)];
+      andFilters.push(this.buildAccessibleFormWhere(accessibleTargets));
     }
 
     const normalizedQuery = filters.query?.trim();
@@ -166,20 +167,13 @@ export class EventFormsService {
       };
     }
     if (filters.eventId) {
-      where.links = {
-        some: {
-          eventId: filters.eventId,
-          deletedAt: null,
-        },
-      };
+      andFilters.push({ links: { some: { eventId: filters.eventId, deletedAt: null } } });
     }
     if (filters.majorEventId) {
-      where.links = {
-        some: {
-          majorEventId: filters.majorEventId,
-          deletedAt: null,
-        },
-      };
+      andFilters.push({ links: { some: { majorEventId: filters.majorEventId, deletedAt: null } } });
+    }
+    if (andFilters.length > 0) {
+      where.AND = andFilters;
     }
 
     const forms = await this.prisma.eventForm.findMany({
@@ -259,6 +253,7 @@ export class EventFormsService {
       await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], {
         eventFormId: existing.id,
       });
+      await this.assertCanManageLinkedTargets(user, input.links ?? [], Permission.EventForm.Update);
 
       const updated = await this.prisma.$transaction(async (tx) => {
         await tx.eventForm.update({
@@ -292,6 +287,7 @@ export class EventFormsService {
       majorEventId: target.ownerMajorEventId ?? undefined,
       allowScopedCollection: true,
     });
+    await this.assertCanManageLinkedTargets(user, input.links ?? [], Permission.EventForm.Create);
 
     const created = await this.prisma.$transaction(async (tx) => {
       const form = await tx.eventForm.create({
@@ -340,16 +336,13 @@ export class EventFormsService {
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60_000);
 
     const draft = input.draftId
-      ? await this.prisma.eventFormDraft.update({
-          where: { id: input.draftId },
-          data: {
-            name: this.normalizeName(input.input.name, form.name),
-            payload,
-            updatedById: actor.id,
-            updatedByName: actor.name,
-            updatedByEmail: actor.email,
-            expiresAt,
-          },
+      ? await this.updateDraftForSourceForm(input.draftId, form.id, {
+          name: this.normalizeName(input.input.name, form.name),
+          payload,
+          updatedById: actor.id,
+          updatedByName: actor.name,
+          updatedByEmail: actor.email,
+          expiresAt,
         })
       : await this.prisma.eventFormDraft.create({
           data: {
@@ -426,6 +419,9 @@ export class EventFormsService {
     if (!link.allowLecturerManualPublish) {
       throw new ForbiddenException('Publicação por ministrantes não habilitada para este vínculo.');
     }
+    if (form.links.some((item) => item.id !== link.id)) {
+      throw new ForbiddenException('Publicação por ministrantes só está disponível para formulários exclusivos deste evento.');
+    }
 
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     return this.publishFormNow(form.id, authenticatedUser?.sub ?? person.id);
@@ -484,9 +480,10 @@ export class EventFormsService {
     const form = await this.requirePublishedForm(input.formId);
     const link = await this.requireActiveLinkForTarget(form.id, target, input.linkId ?? undefined);
     await this.assertPersonCanAnswerLink(person.id, link, {
-      allowFutureSubscriber: input.source === ContractResponseSource.SUBSCRIPTION_FLOW,
+      allowFutureSubscriber: link.insertInSubscriptionFlow,
     });
     const answers = this.normalizeAnswers(input.answersJson, form.elements as unknown as FormElement[], link.enforceRequiredAnswers);
+    const responseSource = link.insertInSubscriptionFlow ? ContractResponseSource.SUBSCRIPTION_FLOW : ContractResponseSource.PUBLIC_FORM;
 
     const response = await this.prisma.$transaction(async (tx) => {
       const existingWhere = this.responseLookupWhere(form, person.id, target);
@@ -513,7 +510,7 @@ export class EventFormsService {
             eventId: target.eventId,
             majorEventId: target.majorEventId,
             answers: answers as unknown as Prisma.InputJsonValue,
-            source: this.toDbResponseSource(input.source ?? ContractResponseSource.PUBLIC_FORM),
+            source: this.toDbResponseSource(responseSource),
           },
           include: responseInclude,
         });
@@ -528,7 +525,7 @@ export class EventFormsService {
           majorEventId: target.majorEventId,
           personId: person.id,
           answers: answers as unknown as Prisma.InputJsonValue,
-          source: this.toDbResponseSource(input.source ?? ContractResponseSource.PUBLIC_FORM),
+          source: this.toDbResponseSource(responseSource),
         },
         include: responseInclude,
       });
@@ -570,7 +567,7 @@ export class EventFormsService {
     const form = await this.requirePublishedForm(input.formId);
 
     if (await this.canAdminViewResults(authenticatedUser, form.id)) {
-      return this.getResults(form.id, 'admin');
+      return this.getResults(form.id, 'admin', { target });
     }
 
     if (!form.resultsPublic) {
@@ -585,30 +582,48 @@ export class EventFormsService {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     await this.assertPersonCanViewPublicResults(person.id, link);
 
-    return this.getResults(form.id, 'public');
+    return this.getResults(form.id, 'public', { target });
   }
 
-  async getResults(formId: string, viewer: ResultViewer = 'admin'): Promise<EventFormResults> {
+  async getAdminResults(user: AuthenticatedUser | undefined, formId: string): Promise<EventFormResults> {
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.EventForm.Results);
+    return this.getResults(formId, 'admin', {
+      accessibleTargets: accessibleTargets ?? undefined,
+    });
+  }
+
+  async getResults(
+    formId: string,
+    viewer: ResultViewer = 'admin',
+    options: {
+      target?: ReturnType<EventFormsService['normalizeTarget']>;
+      accessibleTargets?: {
+        eventIds: Set<string>;
+        majorEventIds: Set<string>;
+        eventGroupIds: Set<string>;
+      };
+    } = {},
+  ): Promise<EventFormResults> {
     const form = await this.requireForm(formId);
+    const responseWhere = this.resultResponseWhere(formId, options);
     const responses = await this.prisma.eventFormResponse.findMany({
-      where: {
-        formId,
-      },
+      where: responseWhere,
       include: responseInclude,
       orderBy: {
         submittedAt: 'desc',
       },
     });
     const elements = form.elements as unknown as FormElement[];
-    const summary = this.buildSummary(elements, responses);
+    const answersReleased = this.canShowIndividualAnswers(form.sigilo, viewer);
+    const summary = this.buildSummary(elements, responses, answersReleased);
 
     return {
       form: this.toEventFormModel(form),
       responseCount: responses.length,
       anonymous: form.sigilo === EventFormSigilo.ANONYMOUS,
-      answersReleased: this.canShowIndividualAnswers(form.sigilo, viewer),
+      answersReleased,
       summaryJson: JSON.stringify(summary),
-      responses: this.canShowIndividualAnswers(form.sigilo, viewer)
+      responses: answersReleased
         ? responses.map((response) => this.toResponseModel(response, form.sigilo, viewer))
         : [],
     };
@@ -622,11 +637,21 @@ export class EventFormsService {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     await this.assertPersonIsEventLecturer(person.id, eventId);
     const form = await this.requireForm(formId);
-    if (!this.findEventLinkRecord(form, eventId)) {
+    const link = this.findEventLinkRecord(form, eventId);
+    if (!link) {
       throw new NotFoundException('Formulário não vinculado a este evento.');
     }
+    if (!form.resultsPublic) {
+      throw new NotFoundException('Resultados do formulário não disponíveis.');
+    }
 
-    return this.getResults(formId, 'lecturer');
+    return this.getResults(formId, 'lecturer', {
+      target: {
+        targetType: EventFormTargetType.EVENT,
+        eventId,
+        majorEventId: null,
+      },
+    });
   }
 
   async listLecturerForms(
@@ -649,30 +674,12 @@ export class EventFormsService {
 
   async exportResultsCsv(formId: string, viewer: ResultViewer = 'admin'): Promise<string> {
     const results = await this.getResults(formId, viewer);
-    const elements = this.parseElementsJson(results.form.elementsJson).filter((element) => isFormAnswerElementType(element.type));
-    const rows = [
-      [
-        'Resposta',
-        'Pessoa',
-        'E-mail',
-        'Enviado em',
-        ...elements.map((element) => element.title),
-      ],
-    ];
+    return this.resultsToCsv(results);
+  }
 
-    for (const response of results.responses) {
-      const answers = this.parseAnswersJson(response.answersJson);
-      const answersByElementId = new Map(answers.map((answer) => [answer.elementId, answer.value]));
-      rows.push([
-        response.id,
-        response.respondentName ?? '',
-        response.respondentEmail ?? '',
-        response.submittedAt ? response.submittedAt.toISOString() : '',
-        ...elements.map((element) => this.answerToCsvCell(element, answersByElementId.get(element.id) ?? null)),
-      ]);
-    }
-
-    return rows.map((row) => row.map((cell) => this.csvCell(cell)).join(',')).join('\n');
+  async exportAdminResultsCsv(user: AuthenticatedUser | undefined, formId: string): Promise<string> {
+    const results = await this.getAdminResults(user, formId);
+    return this.resultsToCsv(results);
   }
 
   async publishDueScheduledForms(): Promise<number> {
@@ -717,6 +724,33 @@ export class EventFormsService {
     return this.toEventFormModel(published);
   }
 
+  private resultsToCsv(results: EventFormResults): string {
+    const elements = this.parseElementsJson(results.form.elementsJson).filter((element) => isFormAnswerElementType(element.type));
+    const rows = [
+      [
+        'Resposta',
+        'Pessoa',
+        'E-mail',
+        'Enviado em',
+        ...elements.map((element) => element.title),
+      ],
+    ];
+
+    for (const response of results.responses) {
+      const answers = this.parseAnswersJson(response.answersJson);
+      const answersByElementId = new Map(answers.map((answer) => [answer.elementId, answer.value]));
+      rows.push([
+        response.id,
+        response.respondentName ?? '',
+        response.respondentEmail ?? '',
+        response.submittedAt ? response.submittedAt.toISOString() : '',
+        ...elements.map((element) => this.answerToCsvCell(element, answersByElementId.get(element.id) ?? null)),
+      ]);
+    }
+
+    return rows.map((row) => row.map((cell) => this.csvCell(cell)).join(',')).join('\n');
+  }
+
   private async notifyEligiblePeople(form: EventFormRecord): Promise<void> {
     for (const link of form.links) {
       if (!link.notifyOnPublish || link.lastNotifiedAt) {
@@ -733,7 +767,7 @@ export class EventFormsService {
         continue;
       }
 
-      await this.notifications.notifyEventFormAvailable({
+      const notified = await this.notifications.notifyEventFormAvailable({
         formId: form.id,
         formName: form.name,
         targetType: link.targetType,
@@ -741,6 +775,9 @@ export class EventFormsService {
         targetName: link.event?.name ?? link.majorEvent?.name ?? form.name,
         recipients,
       });
+      if (!notified) {
+        continue;
+      }
 
       await this.prisma.eventFormLink.update({
         where: { id: link.id },
@@ -854,6 +891,27 @@ export class EventFormsService {
     return form;
   }
 
+  private async updateDraftForSourceForm(
+    draftId: string,
+    sourceFormId: string,
+    data: Prisma.EventFormDraftUpdateManyMutationInput,
+  ) {
+    const updated = await this.prisma.eventFormDraft.updateMany({
+      where: {
+        id: draftId,
+        sourceFormId,
+      },
+      data,
+    });
+    if (updated.count === 0) {
+      throw new NotFoundException('Rascunho não encontrado para este formulário.');
+    }
+
+    return this.prisma.eventFormDraft.findUniqueOrThrow({
+      where: { id: draftId },
+    });
+  }
+
   private async requirePublishedForm(formId: string): Promise<EventFormRecord> {
     const form = await this.requireForm(formId);
     if (form.publicationState !== PublicationState.PUBLISHED) {
@@ -877,6 +935,9 @@ export class EventFormsService {
     );
     if (!link) {
       throw new NotFoundException('Formulário não vinculado a este evento ou grande evento.');
+    }
+    if (!this.isLinkAvailable(link)) {
+      throw new NotFoundException('Formulário não disponível para este período.');
     }
     return link;
   }
@@ -922,10 +983,13 @@ export class EventFormsService {
       } satisfies Prisma.EventFormLinkUncheckedUpdateInput;
 
       if (link.id) {
-        await tx.eventFormLink.update({
-          where: { id: link.id },
+        const updated = await tx.eventFormLink.updateMany({
+          where: { id: link.id, formId, deletedAt: null },
           data,
         });
+        if (updated.count === 0) {
+          throw new BadRequestException('Vínculo de formulário inválido para este formulário.');
+        }
       } else {
         await tx.eventFormLink.create({
           data: {
@@ -936,6 +1000,25 @@ export class EventFormsService {
         });
       }
     }
+  }
+
+  private async assertCanManageLinkedTargets(
+    user: AuthenticatedUser | undefined,
+    links: readonly NonNullable<EventFormInput['links']>[number][],
+    permission: Permission,
+  ): Promise<void> {
+    for (const link of links) {
+      const target = this.normalizeTarget(link);
+      await this.authorizationPolicy.assertPermissions(user, [permission], {
+        eventId: target.eventId ?? undefined,
+        majorEventId: target.majorEventId ?? undefined,
+      });
+    }
+  }
+
+  private isLinkAvailable(link: Pick<EventFormLinkRecord, 'availableFrom' | 'availableUntil'>): boolean {
+    const now = Date.now();
+    return (!link.availableFrom || link.availableFrom.getTime() <= now) && (!link.availableUntil || link.availableUntil.getTime() > now);
   }
 
   private parseElementsJson(value: string): FormElement[] {
@@ -1134,7 +1217,11 @@ export class EventFormsService {
     return false;
   }
 
-  private buildSummary(elements: readonly FormElement[], responses: readonly EventFormResponseRecord[]): FormResultSummary {
+  private buildSummary(
+    elements: readonly FormElement[],
+    responses: readonly EventFormResponseRecord[],
+    includeTextAnswers: boolean,
+  ): FormResultSummary {
     const answerElements = elements.filter((element) => isFormAnswerElementType(element.type));
 
     return {
@@ -1149,10 +1236,54 @@ export class EventFormsService {
           type: element.type,
           answeredCount: values.length,
           buckets: this.buildBuckets(element, values),
-          textAnswers: this.buildTextAnswers(element, values),
+          textAnswers: includeTextAnswers ? this.buildTextAnswers(element, values) : [],
         };
       }),
     };
+  }
+
+  private resultResponseWhere(
+    formId: string,
+    options: {
+      target?: ReturnType<EventFormsService['normalizeTarget']>;
+      accessibleTargets?: {
+        eventIds: Set<string>;
+        majorEventIds: Set<string>;
+        eventGroupIds: Set<string>;
+      };
+    },
+  ): Prisma.EventFormResponseWhereInput {
+    const where: Prisma.EventFormResponseWhereInput = { formId };
+    if (options.target) {
+      return {
+        ...where,
+        targetType: options.target.targetType,
+        eventId: options.target.eventId,
+        majorEventId: options.target.majorEventId,
+      };
+    }
+
+    const targets = options.accessibleTargets;
+    if (!targets) {
+      return where;
+    }
+
+    const targetWhere: Prisma.EventFormResponseWhereInput[] = [];
+    const eventIds = [...targets.eventIds];
+    const majorEventIds = [...targets.majorEventIds];
+    const eventGroupIds = [...targets.eventGroupIds];
+    if (eventIds.length > 0) {
+      targetWhere.push({ eventId: { in: eventIds } });
+    }
+    if (majorEventIds.length > 0) {
+      targetWhere.push({ majorEventId: { in: majorEventIds } });
+      targetWhere.push({ event: { majorEventId: { in: majorEventIds } } });
+    }
+    if (eventGroupIds.length > 0) {
+      targetWhere.push({ event: { eventGroupId: { in: eventGroupIds } } });
+    }
+
+    return targetWhere.length > 0 ? { ...where, OR: targetWhere } : { ...where, id: { in: [] } };
   }
 
   private buildBuckets(element: FormElement, values: readonly FormAnswerValue[]): Array<{ label: string; value: number }> {

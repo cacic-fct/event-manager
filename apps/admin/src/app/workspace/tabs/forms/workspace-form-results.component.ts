@@ -185,12 +185,18 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
 
     const elements = this.chartElements.toArray();
     const questions = this.chartQuestions();
+    const activeQuestionIds = new Set(questions.map((question) => question.elementId));
     questions.forEach((question, index) => {
       const element = elements[index]?.nativeElement;
       if (!element) {
         return;
       }
 
+      const existingChart = this.charts.get(question.elementId);
+      if (existingChart && existingChart.getDom() !== element) {
+        existingChart.dispose();
+        this.charts.delete(question.elementId);
+      }
       const chart = this.charts.get(question.elementId) ?? echarts.init(element);
       this.charts.set(question.elementId, chart);
       chart.setOption({
@@ -225,6 +231,12 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
       });
       chart.resize();
     });
+    for (const [questionId, chart] of this.charts.entries()) {
+      if (!activeQuestionIds.has(questionId)) {
+        chart.dispose();
+        this.charts.delete(questionId);
+      }
+    }
   }
 
   private parseSummary(value: string | null | undefined): FormResultSummary {

@@ -27,8 +27,11 @@ type FormPageState =
       status: 'ready';
       form: PublicEventForm;
       response: PublicEventFormResponse | null;
+      linkId: string | null;
       targetType: EventFormTargetType;
       targetId: string;
+      elements: ReturnType<typeof parseFormElementsJson>;
+      answers: FormResponseAnswer[];
     }
   | { status: 'error'; message: string };
 
@@ -61,32 +64,27 @@ export class EventFormPage {
     { initialValue: { status: 'loading' } satisfies FormPageState },
   );
 
-  elements(form: PublicEventForm) {
-    return parseFormElementsJson(form.elementsJson);
-  }
-
-  answers(response: PublicEventFormResponse | null) {
-    return parseFormAnswersJson(response?.answersJson);
-  }
-
   async submit(state: Extract<FormPageState, { status: 'ready' }>, answers: FormResponseAnswer[]): Promise<void> {
-    const target = this.targetInput(state.targetType, state.targetId);
     this.api
-      .submit({
-        formId: state.form.id,
-        linkId:
-          state.form.links.find(
-            (link) =>
-              link.targetType === state.targetType &&
-              (link.eventId ?? null) === (state.targetType === 'EVENT' ? state.targetId : null) &&
-              (link.majorEventId ?? null) === (state.targetType === 'MAJOR_EVENT' ? state.targetId : null),
-          )?.id ?? null,
-        targetType: state.targetType,
-        eventId: target.eventId,
-        majorEventId: target.majorEventId,
-        answersJson: serializeFormAnswers(answers),
-        source: 'PUBLIC_FORM',
-      })
+      .submit(
+        state.targetType === 'EVENT'
+          ? {
+              formId: state.form.id,
+              linkId: state.linkId,
+              targetType: state.targetType,
+              eventId: state.targetId,
+              majorEventId: null,
+              answersJson: serializeFormAnswers(answers),
+            }
+          : {
+              formId: state.form.id,
+              linkId: state.linkId,
+              targetType: state.targetType,
+              eventId: null,
+              majorEventId: state.targetId,
+              answersJson: serializeFormAnswers(answers),
+            },
+      )
       .subscribe({
         next: () => {
           this.snackbar.open('Respostas salvas.', 'Fechar', { duration: 3000 });
@@ -104,6 +102,7 @@ export class EventFormPage {
     const formId = params.get('formId')?.trim();
     const targetType = this.parseTargetType(query.get('targetType'));
     const targetId = query.get('targetId')?.trim();
+    const requestedLinkId = query.get('linkId')?.trim() || null;
 
     if (!formId || !targetType || !targetId) {
       return of({ status: 'error', message: 'Link de formulário inválido.' } satisfies FormPageState);
@@ -116,6 +115,10 @@ export class EventFormPage {
         if (!form) {
           return of({ status: 'error', message: 'Formulário não encontrado para esta inscrição.' } satisfies FormPageState);
         }
+        const link = this.findLink(form, targetType, targetId, requestedLinkId);
+        if (!link) {
+          return of({ status: 'error', message: 'Vínculo de formulário inválido.' } satisfies FormPageState);
+        }
         return this.api.getCurrentUserResponse({ formId, targetType, ...target }).pipe(
           map(
             (response) =>
@@ -123,8 +126,11 @@ export class EventFormPage {
                 status: 'ready',
                 form,
                 response,
+                linkId: link.id,
                 targetType,
                 targetId,
+                elements: parseFormElementsJson(form.elementsJson),
+                answers: parseFormAnswersJson(response?.answersJson),
               }) satisfies FormPageState,
           ),
         );
@@ -136,6 +142,23 @@ export class EventFormPage {
           message: error instanceof Error ? error.message : 'Não foi possível carregar o formulário.',
         } satisfies FormPageState),
       ),
+    );
+  }
+
+  private findLink(
+    form: PublicEventForm,
+    targetType: EventFormTargetType,
+    targetId: string,
+    requestedLinkId: string | null,
+  ) {
+    return (
+      form.links.find(
+        (link) =>
+          (!requestedLinkId || link.id === requestedLinkId) &&
+          link.targetType === targetType &&
+          (link.eventId ?? null) === (targetType === 'EVENT' ? targetId : null) &&
+          (link.majorEventId ?? null) === (targetType === 'MAJOR_EVENT' ? targetId : null),
+      ) ?? null
     );
   }
 

@@ -203,14 +203,6 @@ CREATE INDEX "event_form_responses_majorEventId_idx" ON "event_form_responses"("
 CREATE INDEX "event_form_responses_personId_idx" ON "event_form_responses"("personId");
 CREATE INDEX "event_form_responses_submittedAt_idx" ON "event_form_responses"("submittedAt");
 
-CREATE UNIQUE INDEX "event_form_responses_formId_eventId_personId_key"
-ON "event_form_responses"("formId", "eventId", "personId")
-WHERE "targetType" = 'EVENT' AND "eventId" IS NOT NULL;
-
-CREATE UNIQUE INDEX "event_form_responses_formId_majorEventId_personId_key"
-ON "event_form_responses"("formId", "majorEventId", "personId")
-WHERE "targetType" = 'MAJOR_EVENT' AND "majorEventId" IS NOT NULL;
-
 CREATE INDEX "event_form_drafts_sourceFormId_updatedAt_createdAt_idx"
 ON "event_form_drafts"("sourceFormId", "updatedAt" DESC, "createdAt" DESC);
 

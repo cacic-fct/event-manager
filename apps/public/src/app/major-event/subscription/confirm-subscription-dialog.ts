@@ -25,6 +25,7 @@ export interface SubscriptionFormContext {
   targetId: string;
   targetName: string;
   linkId: string | null;
+  requiredInSubscriptionFlow: boolean;
   enforceRequiredAnswers: boolean;
 }
 
@@ -76,15 +77,23 @@ export class ConfirmSubscriptionDialog {
   readonly canConfirm = computed(() => this.data.forms.every((form) => !this.hasMissingRequired(form)));
 
   confirm(): void {
-    this.dialogRef.close({
-      confirmed: true,
-      answers: this.data.forms.map((form) => ({
+    const answers = this.data.forms
+      .map((form) => ({
+        form,
+        answers: this.answersByKey()[this.formKey(form)] ?? [],
+      }))
+      .filter(({ form, answers }) => form.requiredInSubscriptionFlow || answers.length > 0)
+      .map(({ form, answers }) => ({
         formId: form.form.id,
         linkId: form.linkId,
         targetType: form.targetType,
         targetId: form.targetId,
-        answers: this.answersByKey()[this.formKey(form)] ?? [],
-      })),
+        answers,
+      }));
+
+    this.dialogRef.close({
+      confirmed: true,
+      answers,
     } satisfies ConfirmSubscriptionDialogResult);
   }
 
@@ -104,7 +113,7 @@ export class ConfirmSubscriptionDialog {
   }
 
   hasMissingRequired(form: SubscriptionFormContext): boolean {
-    if (!form.enforceRequiredAnswers) {
+    if (!form.requiredInSubscriptionFlow || !form.enforceRequiredAnswers) {
       return false;
     }
 

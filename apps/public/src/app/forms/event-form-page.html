@@ -23,10 +23,10 @@
       }
     </header>
 
-    <lib-event-form-renderer
-      [elements]="elements(currentState.form)"
-      [initialAnswers]="answers(currentState.response)"
-      submitLabel="Salvar respostas"
-      (formSubmitted)="submit(currentState, $event)" />
+	    <lib-event-form-renderer
+	      [elements]="currentState.elements"
+	      [initialAnswers]="currentState.answers"
+	      submitLabel="Salvar respostas"
+	      (formSubmitted)="submit(currentState, $event)" />
   }
 </main>

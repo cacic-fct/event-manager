@@ -390,14 +390,14 @@ export class NovuNotificationsService {
     }
   }
 
-  async notifyEventFormAvailable(input: EventFormAvailableNotification): Promise<void> {
+  async notifyEventFormAvailable(input: EventFormAvailableNotification): Promise<boolean> {
     if (!this.isSecureModeEnabled()) {
-      return;
+      return false;
     }
 
     const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
     if (!secretKey || input.recipients.length === 0) {
-      return;
+      return false;
     }
 
     const searchParams = new URLSearchParams({
@@ -455,15 +455,18 @@ export class NovuNotificationsService {
 
       if (!response.ok) {
         this.logger.warn(`Novu trigger failed with HTTP ${response.status}: ${await response.text()}`);
-        return;
+        return false;
       }
 
       const result = (await response.json()) as NovuTriggerResponse;
       if (!result.acknowledged) {
         this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
+        return false;
       }
+      return true;
     } catch (error) {
       this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
     }
   }
 

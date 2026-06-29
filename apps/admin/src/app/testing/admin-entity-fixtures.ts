@@ -436,19 +436,28 @@ export function createAdminEventDraft(
 
 export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventForm {
   const event = createAdminEvent({ id: overrides.ownerEventId ?? 'event-1', name: 'Oficina de Angular' });
+  const majorEvent = createAdminMajorEvent({ id: overrides.ownerMajorEventId ?? 'major-event-1', name: 'Grande evento' });
+  const owner = overrides.ownerMajorEventId
+    ? {
+        type: 'MAJOR_EVENT' as const,
+        id: majorEvent.id,
+        name: majorEvent.name,
+        emoji: majorEvent.emoji,
+      }
+    : {
+        type: 'EVENT' as const,
+        id: event.id,
+        name: event.name,
+        emoji: event.emoji,
+      };
 
   return {
     id: 'form-1',
     name: 'Pesquisa de camiseta',
     description: 'Coleta o tamanho da camiseta dos inscritos.',
-    ownerEventId: event.id,
-    ownerMajorEventId: null,
-    owner: {
-      type: 'EVENT',
-      id: event.id,
-      name: event.name,
-      emoji: event.emoji,
-    },
+    ownerEventId: overrides.ownerMajorEventId ? null : event.id,
+    ownerMajorEventId: overrides.ownerMajorEventId ?? null,
+    owner,
     elementsJson: JSON.stringify([
       {
         id: 'shirt-size',
@@ -562,6 +571,8 @@ export function createAdminEventFormFromInput(input: EventFormInput): EventForm 
 
 export function createAdminEventFormResults(overrides: Partial<EventFormResults> = {}): EventFormResults {
   const form = overrides.form ?? createAdminEventForm();
+  const link = form.links[0];
+  const targetType = link?.targetType ?? 'EVENT';
 
   return {
     form,
@@ -584,10 +595,10 @@ export function createAdminEventFormResults(overrides: Partial<EventFormResults>
       {
         id: 'form-response-1',
         formId: form.id,
-        linkId: form.links[0]?.id ?? null,
-        targetType: 'EVENT',
-        eventId: form.links[0]?.eventId ?? 'event-1',
-        majorEventId: null,
+        linkId: link?.id ?? null,
+        targetType,
+        eventId: targetType === 'EVENT' ? (link?.eventId ?? 'event-1') : null,
+        majorEventId: targetType === 'MAJOR_EVENT' ? (link?.majorEventId ?? 'major-event-1') : null,
         personId: 'person-1',
         respondentName: 'Ada Lovelace',
         respondentEmail: 'ada@example.com',
