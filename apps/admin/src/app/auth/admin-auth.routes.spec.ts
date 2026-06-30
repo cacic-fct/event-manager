@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { CanActivateFn, provideRouter, Router, UrlTree } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { appRoutes } from '../app.routes';
 
 describe('admin auth route wiring', () => {

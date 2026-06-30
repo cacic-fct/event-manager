@@ -106,6 +106,7 @@ export class WorkspaceFormsService {
     return ids;
   });
   private resultsEventSource: EventSource | null = null;
+  private loadFormsRequestId = 0;
 
   readonly filtersForm = this.formBuilder.nonNullable.group({
     query: [''],
@@ -144,31 +145,39 @@ export class WorkspaceFormsService {
   }
 
   async loadForms(): Promise<void> {
+    const requestId = ++this.loadFormsRequestId;
+    const requestContext = this.formsRequestContext();
     this.ui.loading.set(true);
     try {
       const forms = await firstValueFrom(
         this.api.listForms({
-          query: this.filtersForm.controls.query.value || undefined,
-          eventId: this.targetFilter()?.eventId,
-          majorEventId: this.targetFilter()?.majorEventId,
+          query: requestContext.query,
+          eventId: requestContext.eventId,
+          majorEventId: requestContext.majorEventId,
         }),
       );
+      if (!this.isCurrentFormsRequest(requestId, requestContext)) {
+        return;
+      }
       this.forms.set(forms);
       const selected = this.selectedForm();
       if (selected) {
         const refreshed = forms.find((form) => form.id === selected.id) ?? null;
         if (refreshed) {
           this.patchSelectedForm(refreshed);
+          await this.loadResults();
         } else {
-          this.selectedForm.set(null);
-          this.selectedResults.set(null);
-          this.closeResultsStream();
+          this.clearSelectedForm();
         }
       }
     } catch (error) {
-      this.showError(error, 'Não foi possível carregar os formulários.');
+      if (this.isCurrentFormsRequest(requestId, requestContext)) {
+        this.showError(error, 'Não foi possível carregar os formulários.');
+      }
     } finally {
-      this.ui.loading.set(false);
+      if (this.isCurrentFormsRequest(requestId, requestContext)) {
+        this.ui.loading.set(false);
+      }
     }
   }
 
@@ -411,6 +420,50 @@ export class WorkspaceFormsService {
       scheduledPublishAt: form.scheduledPublishAt ? this.toLocalInput(form.scheduledPublishAt) : '',
     });
     this.openResultsStream(form);
+  }
+
+  private clearSelectedForm(): void {
+    this.selectedForm.set(null);
+    this.selectedResults.set(null);
+    this.closeResultsStream();
+    this.elements.set([]);
+    this.links.set([]);
+    const owner = this.defaultOwner();
+    this.form.reset({
+      id: '',
+      name: '',
+      description: '',
+      ownerType: owner.type,
+      ownerEventId: owner.type === 'EVENT' ? owner.id : '',
+      ownerMajorEventId: owner.type === 'MAJOR_EVENT' ? owner.id : '',
+      sigilo: 'SECRET',
+      responseMode: 'ONE_PER_TARGET',
+      resultsPublic: false,
+      resultsLive: false,
+      scheduledPublishAt: '',
+    });
+  }
+
+  private formsRequestContext(): { query?: string; eventId?: string; majorEventId?: string } {
+    const targetFilter = this.targetFilter();
+    return {
+      query: this.filtersForm.controls.query.value || undefined,
+      eventId: targetFilter?.eventId,
+      majorEventId: targetFilter?.majorEventId,
+    };
+  }
+
+  private isCurrentFormsRequest(
+    requestId: number,
+    requestContext: { query?: string; eventId?: string; majorEventId?: string },
+  ): boolean {
+    const currentContext = this.formsRequestContext();
+    return (
+      requestId === this.loadFormsRequestId &&
+      currentContext.query === requestContext.query &&
+      currentContext.eventId === requestContext.eventId &&
+      currentContext.majorEventId === requestContext.majorEventId
+    );
   }
 
   private toInput(): EventFormInput {

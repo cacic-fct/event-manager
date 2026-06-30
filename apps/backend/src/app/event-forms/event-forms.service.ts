@@ -2388,8 +2388,21 @@ export class EventFormsService {
   }
 
   private csvCell(value: string): string {
-    const neutralizedValue = /^[=+\-@]/.test(value) ? `'${value}` : value;
+    const neutralizedValue = this.startsWithCsvFormula(value) ? `'${value}` : value;
     return `"${neutralizedValue.replace(/"/g, '""')}"`;
+  }
+
+  private startsWithCsvFormula(value: string): boolean {
+    for (const character of value) {
+      const code = character.charCodeAt(0);
+      if (character.trim() === '' || code <= 0x1f || code === 0x7f) {
+        continue;
+      }
+
+      return character === '=' || character === '+' || character === '-' || character === '@';
+    }
+
+    return false;
   }
 
   private actorInfo(user: AuthenticatedUser | undefined): { id?: string; name?: string; email?: string } {

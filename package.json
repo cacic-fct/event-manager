@@ -14,7 +14,7 @@
       "lint": {
         "executor": "nx:run-commands",
         "options": {
-          "command": "node -e \"process.exit(0)\""
+          "command": "bunx nx run-many --target=lint --exclude=@cacic-fct/source"
         }
       }
     }

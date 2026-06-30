@@ -15,8 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular/auth';
-import { CacicLogoComponent } from '@cacic-fct/shared-angular/cacic-logo';
+import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-login-page',

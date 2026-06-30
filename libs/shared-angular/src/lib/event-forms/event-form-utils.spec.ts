@@ -64,6 +64,12 @@ describe('event form utilities', () => {
     expect(
       isRequiredFormAnswerMissing(element, {
         slotId: 'window-1:09:00-09:30',
+        invitees: [{} as never],
+      }),
+    ).toBe(true);
+    expect(
+      isRequiredFormAnswerMissing(element, {
+        slotId: 'window-1:09:00-09:30',
         invitees: [{ name: 'Ada Lovelace' }],
       }),
     ).toBe(false);
@@ -93,6 +99,24 @@ describe('event form utilities', () => {
 
     expect(isRequiredFormAnswerMissing(schedulingElement, { slotId: 'window-1:09:00-09:30' })).toBe(true);
     expect(isRequiredFormAnswerMissing(gridElement, 'yes')).toBe(true);
+    expect(
+      isRequiredFormAnswerMissing(
+        {
+          ...gridElement,
+          settings: { grid: { rows: [], columns: [{ id: 'yes', label: 'Sim' }] } },
+        },
+        {},
+      ),
+    ).toBe(true);
+    expect(
+      isRequiredFormAnswerMissing(
+        {
+          ...gridElement,
+          settings: { grid: { rows: [{ id: 'mon', label: 'Segunda' }], columns: [] } },
+        },
+        { mon: 'yes' },
+      ),
+    ).toBe(true);
     expect(isRequiredFormAnswerMissing(gridElement, { mon: 'yes' })).toBe(false);
   });
 });

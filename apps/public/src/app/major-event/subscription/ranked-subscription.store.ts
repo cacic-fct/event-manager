@@ -488,7 +488,6 @@ export class RankedSubscriptionStore {
           ...form,
           initialAnswers: parseFormAnswersJson(response?.answersJson),
         })),
-        catchError(() => of(form)),
       );
   }
 

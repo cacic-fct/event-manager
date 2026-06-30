@@ -245,6 +245,7 @@ describe('AccountMergeService', () => {
       },
     ]);
     tx.eventFormResponse.findFirst.mockResolvedValue(null);
+    tx.eventFormResponse.updateMany.mockResolvedValue({ count: 1 });
     tx.peopleMergeOperation.create.mockResolvedValue({ id: 'merge-operation-1' });
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
@@ -262,8 +263,8 @@ describe('AccountMergeService', () => {
       where: { id: { in: ['event-subscription-1'] } },
       data: { personId: 'target-person' },
     });
-    expect(tx.eventFormResponse.update).toHaveBeenCalledWith({
-      where: { id: 'form-response-1' },
+    expect(tx.eventFormResponse.updateMany).toHaveBeenCalledWith({
+      where: { id: 'form-response-1', personId: 'source-person' },
       data: { personId: 'target-person' },
     });
     expect(tx.peopleMergeOperation.create).toHaveBeenCalledWith(
@@ -306,20 +307,49 @@ describe('AccountMergeService', () => {
       },
     ]);
     tx.eventFormResponse.findFirst.mockResolvedValue({ id: 'target-response' });
+    tx.eventFormResponse.deleteMany.mockResolvedValue({ count: 1 });
 
     await expect(service['moveEventFormResponses'](tx as never, 'target-person', 'source-person')).resolves.toEqual({
       movedIds: [],
       coalescedIds: ['source-response'],
     });
 
-    expect(tx.eventFormResponse.delete).toHaveBeenCalledWith({
-      where: { id: 'source-response' },
+    expect(tx.eventFormResponse.deleteMany).toHaveBeenCalledWith({
+      where: { id: 'source-response', personId: 'source-person' },
     });
-    expect(tx.eventFormResponse.update).not.toHaveBeenCalledWith(
+    expect(tx.eventFormResponse.updateMany).not.toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'source-response' },
       }),
     );
+  });
+
+  it('does not record form responses that changed ownership during account merge', async () => {
+    const tx = createTransactionMock();
+    tx.eventFormResponse.findMany.mockResolvedValue([
+      {
+        id: 'source-response',
+        formId: 'form-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        majorEventId: null,
+        form: {
+          responseMode: EventFormResponseMode.ONE_PER_TARGET,
+        },
+      },
+    ]);
+    tx.eventFormResponse.findFirst.mockResolvedValue(null);
+    tx.eventFormResponse.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service['moveEventFormResponses'](tx as never, 'target-person', 'source-person')).resolves.toEqual({
+      movedIds: [],
+      coalescedIds: [],
+    });
+
+    expect(tx.eventFormResponse.updateMany).toHaveBeenCalledWith({
+      where: { id: 'source-response', personId: 'source-person' },
+      data: { personId: 'target-person' },
+    });
   });
 
   it('records conflicting account mappings as failed acknowledgements', async () => {
@@ -391,6 +421,7 @@ function createTransactionMock() {
     update: jest.fn(),
     updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     delete: jest.fn(),
+    deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
   });
 
   return {

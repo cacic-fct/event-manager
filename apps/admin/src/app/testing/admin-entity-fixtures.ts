@@ -21,7 +21,7 @@ import type {
   WorkspaceMajorEventSubscription,
   WorkspaceMajorEventSubscriptionEvent,
 } from '@cacic-fct/event-manager-admin-contracts';
-import type { AuthenticatedUser } from '@cacic-fct/shared-angular/auth/types';
+import type { AuthenticatedUser } from '@cacic-fct/shared-angular';
 import type {
   DashboardCalendarEvent,
   DashboardCertificatePendingItem,

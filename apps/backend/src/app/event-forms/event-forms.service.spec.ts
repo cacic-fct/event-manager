@@ -40,6 +40,14 @@ describe('EventFormsService', () => {
     );
   });
 
+  it('neutralizes CSV formulas after leading whitespace or control characters', () => {
+    expect(service['csvCell']('\t=IMPORTXML("https://example.com")')).toBe(
+      '"\'\t=IMPORTXML(""https://example.com"")"',
+    );
+    expect(service['csvCell']('\u0000+SUM(1,1)')).toBe('"\'\u0000+SUM(1,1)"');
+    expect(service['csvCell']('plain text')).toBe('"plain text"');
+  });
+
   it('requires the event link opt-in before lecturers can publish manually', async () => {
     prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1' });
     prisma.eventForm.findFirst.mockResolvedValue(formRecord({ allowLecturerManualPublish: false }));

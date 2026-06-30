@@ -39,14 +39,84 @@ export class WalletBarcodeComponent {
 
   readonly trustedSvg = computed<SafeHtml | ''>(() => {
     const value = this.svg().trim();
-    if (!this.isSvgDocument(value)) {
+    const safeSvg = this.toTrustedSvgMarkup(value);
+    if (!safeSvg) {
       return '';
     }
 
-    return this.sanitizer.bypassSecurityTrustHtml(value);
+    return this.sanitizer.bypassSecurityTrustHtml(safeSvg);
   });
 
+  private toTrustedSvgMarkup(value: string): string {
+    if (!this.isSvgDocument(value) || typeof DOMParser === 'undefined') {
+      return '';
+    }
+
+    const parsed = new DOMParser().parseFromString(value, 'image/svg+xml');
+    if (parsed.querySelector('parsererror')) {
+      return '';
+    }
+
+    const root = parsed.documentElement;
+    if (root.nodeName.toLowerCase() !== 'svg' || !this.hasOnlyAllowedSvgContent(root)) {
+      return '';
+    }
+
+    return root.outerHTML;
+  }
+
   private isSvgDocument(value: string): boolean {
-    return value.startsWith('<svg') && value.includes('</svg>');
+    return /^<svg(?:\s|>)/i.test(value) && /<\/svg>\s*$/i.test(value);
+  }
+
+  private hasOnlyAllowedSvgContent(root: Element): boolean {
+    const allowedElements = new Set(['svg', 'g', 'path', 'rect']);
+    const allowedAttributes = new Set([
+      'aria-hidden',
+      'd',
+      'fill',
+      'height',
+      'preserveaspectratio',
+      'role',
+      'stroke',
+      'stroke-linecap',
+      'stroke-linejoin',
+      'stroke-width',
+      'transform',
+      'viewbox',
+      'width',
+      'x',
+      'xmlns',
+      'y',
+    ]);
+    const blockedValue = /(?:javascript:|data:|url\s*\(|<|>)/i;
+    const visit = (element: Element): boolean => {
+      if (!allowedElements.has(element.nodeName.toLowerCase())) {
+        return false;
+      }
+
+      for (const attribute of Array.from(element.attributes)) {
+        const name = attribute.name.toLowerCase();
+        if (name.startsWith('on') || !allowedAttributes.has(name) || blockedValue.test(attribute.value)) {
+          return false;
+        }
+      }
+
+      for (const child of Array.from(element.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          if (child.textContent?.trim()) {
+            return false;
+          }
+          continue;
+        }
+        if (child.nodeType !== Node.ELEMENT_NODE || !visit(child as Element)) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    return visit(root);
   }
 }

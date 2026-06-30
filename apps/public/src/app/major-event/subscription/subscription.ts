@@ -551,7 +551,6 @@ export class MajorEventSubscription {
           ...form,
           initialAnswers: parseFormAnswersJson(response?.answersJson),
         })),
-        catchError(() => of(form)),
       );
   }
 

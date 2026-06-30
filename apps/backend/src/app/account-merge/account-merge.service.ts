@@ -529,18 +529,22 @@ export class AccountMergeService {
         : null;
 
       if (conflict) {
-        await tx.eventFormResponse.delete({
-          where: { id: response.id },
+        const result = await tx.eventFormResponse.deleteMany({
+          where: { id: response.id, personId: sourcePersonId },
         });
-        coalescedIds.push(response.id);
+        if (result.count === 1) {
+          coalescedIds.push(response.id);
+        }
         continue;
       }
 
-      await tx.eventFormResponse.update({
-        where: { id: response.id },
+      const result = await tx.eventFormResponse.updateMany({
+        where: { id: response.id, personId: sourcePersonId },
         data: { personId: targetPersonId },
       });
-      movedIds.push(response.id);
+      if (result.count === 1) {
+        movedIds.push(response.id);
+      }
     }
 
     return { movedIds, coalescedIds };

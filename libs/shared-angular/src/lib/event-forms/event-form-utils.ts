@@ -121,7 +121,8 @@ export function isRequiredFormAnswerMissing(element: FormElement, value: FormAns
       return true;
     }
     const rows = element.settings?.grid?.rows ?? [];
-    return rows.length > 0 && rows.some((row) => isEmptyAnswerValue(value[row.id] ?? null));
+    const columns = element.settings?.grid?.columns ?? [];
+    return rows.length === 0 || columns.length === 0 || rows.some((row) => isEmptyAnswerValue(value[row.id] ?? null));
   }
 
   if (element.type === 'scheduling') {
@@ -133,7 +134,7 @@ export function isRequiredFormAnswerMissing(element: FormElement, value: FormAns
     }
     return (
       element.settings?.scheduling?.inviteeMode === 'required' &&
-      !value.invitees.some((invitee) => invitee.name.trim().length > 0)
+      !value.invitees.some((invitee) => typeof invitee.name === 'string' && invitee.name.trim().length > 0)
     );
   }
 
