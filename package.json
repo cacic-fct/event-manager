@@ -10,9 +10,6 @@
     "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts"
   },
   "private": true,
-  "patchedDependencies": {
-    "@cacic-fct/form-contracts@0.1.0": "patches/@cacic-fct%2Fform-contracts@0.1.0.patch"
-  },
   "dependencies": {
     "@angular/animations": "22.0.2",
     "@angular/cdk": "22.0.2",
