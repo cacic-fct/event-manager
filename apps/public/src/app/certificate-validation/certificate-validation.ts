@@ -277,18 +277,21 @@ export class CertificateValidation {
 
   challengeMessage(source: ValidationSource): string {
     if (source === 'scan') {
-      return 'Código escaneado. Conclua a verificação anti-spam para validar o certificado.';
+      return 'Código escaneado. Conclua a verificação para validar.';
     }
 
     if (source === 'link') {
-      return 'Você abriu um certificado por QR Code ou link. Conclua a verificação anti-spam para validar.';
+      return 'Conclua a verificação para validar.';
     }
 
-    return 'Conclua a verificação anti-spam para validar o certificado.';
+    return 'Conclua a verificação para validar.';
   }
 
   protected hasCertificateIdError(kind: string): boolean {
-    return this.validationForm.certificateId().errors().some((error) => error.kind === kind);
+    return this.validationForm
+      .certificateId()
+      .errors()
+      .some((error) => error.kind === kind);
   }
 
   private queueValidation(certificateId: string, source: ValidationSource): void {

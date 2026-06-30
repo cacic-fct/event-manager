@@ -24,10 +24,8 @@ import {
   CalendarFeedReenableDialogComponent,
 } from '@cacic-fct/shared-angular';
 import { Observable, catchError, combineLatest, finalize, firstValueFrom, map, of, startWith, switchMap } from 'rxjs';
-import {
-  CalendarPreferencesApiService,
-  CurrentUserCalendarFeedSettings,
-} from './calendar-preferences-api.service';
+import { CalendarPreferencesApiService, CurrentUserCalendarFeedSettings } from './calendar-preferences-api.service';
+import { ExplanationCard } from '../../shared/components/explanation-card/explanation-card';
 
 type CalendarPreferencesState =
   | { status: 'loading' }
@@ -52,6 +50,7 @@ const STALE_LOGIN_DISABLED_REASON = 'STALE_LOGIN';
     MatSnackBarModule,
     MatToolbarModule,
     MatTooltipModule,
+    ExplanationCard,
   ],
   templateUrl: './calendar-preferences.html',
   styleUrl: './calendar-preferences.css',
@@ -82,7 +81,9 @@ export class CalendarPreferences {
   readonly settingsState = computed(() => {
     const state = this.loadedSettingsState();
     const settings = this.settingsOverride();
-    return state.status === 'ready' && settings ? ({ status: 'ready', settings } satisfies CalendarPreferencesState) : state;
+    return state.status === 'ready' && settings
+      ? ({ status: 'ready', settings } satisfies CalendarPreferencesState)
+      : state;
   });
   readonly feedUrl = computed(() => {
     const state = this.settingsState();
@@ -225,12 +226,13 @@ export class CalendarPreferences {
           width: '520px',
         })
         .afterClosed(),
-    ).then((choice: unknown) =>
-      choice === 'rotate' || choice === 'keep' ? choice : null,
-    );
+    ).then((choice: unknown) => (choice === 'rotate' || choice === 'keep' ? choice : null));
   }
 
-  private setEnabledRequest(enabled: boolean, reenableChoice: CalendarFeedReenableChoice): Observable<CurrentUserCalendarFeedSettings> {
+  private setEnabledRequest(
+    enabled: boolean,
+    reenableChoice: CalendarFeedReenableChoice,
+  ): Observable<CurrentUserCalendarFeedSettings> {
     if (!enabled) {
       return this.api.setEnabled(false);
     }

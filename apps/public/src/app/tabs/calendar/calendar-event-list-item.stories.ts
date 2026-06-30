@@ -2,15 +2,16 @@ import type { EventType, PublicEvent } from '@cacic-fct/event-manager-public-con
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import { createPublicEvent, createPublicEventGroup, createPublicMajorEvent } from '../../testing/public-entity-fixtures';
 import { CalendarEventListItem } from './calendar-event-list-item';
+import { CalendarStoryContext, createCalendarStoryEvent } from './calendar-story-fixtures';
 
 faker.seed(20260616);
 
 type CalendarEventListItemStoryArgs = {
   name: string;
   type: EventType;
-  context: 'major-event' | 'event-group' | 'short-description';
+  context: CalendarStoryContext;
+  dayOffset: number;
   slotsAvailable: number;
   queueCount: number;
   returnUrl: string;
@@ -24,6 +25,7 @@ const meta: Meta<CalendarEventListItemStoryArgs> = {
     name: 'Arquitetura Angular com Signals',
     type: 'MINICURSO',
     context: 'major-event',
+    dayOffset: 0,
     slotsAvailable: 12,
     queueCount: 3,
     returnUrl: '/calendar',
@@ -32,6 +34,7 @@ const meta: Meta<CalendarEventListItemStoryArgs> = {
     name: { control: 'text' },
     type: { control: 'select', options: ['MINICURSO', 'PALESTRA', 'OTHER'] },
     context: { control: 'select', options: ['major-event', 'event-group', 'short-description'] },
+    dayOffset: { control: { type: 'range', min: -30, max: 45, step: 1 } },
     slotsAvailable: { control: { type: 'range', min: 0, max: 80, step: 1 } },
     queueCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     returnUrl: { control: 'text' },
@@ -52,49 +55,23 @@ export default meta;
 
 type Story = StoryObj<CalendarEventListItemStoryArgs>;
 
-const demoMajorEvent = createPublicMajorEvent({ id: 'major-story', emoji: '💻' });
-const demoEventGroup = createPublicEventGroup({ id: 'group-story', emoji: '✨' });
-const demoEvent: PublicEvent = createPublicEvent({
-  id: 'event-story',
-  emoji: '🧠',
-  majorEvent: demoMajorEvent,
-  eventGroup: demoEventGroup,
-  startDate: '2026-05-21T17:00:00.000Z',
-  endDate: '2026-05-21T19:00:00.000Z',
-  onlineAttendanceStartDate: '2026-05-21T17:00:00.000Z',
-  onlineAttendanceEndDate: '2026-05-21T19:00:00.000Z',
-});
-
 function createDemoEvent(args: CalendarEventListItemStoryArgs): PublicEvent {
   faker.seed(20260616 + args.slotsAvailable + args.queueCount);
-  return {
-    ...demoEvent,
+  return createCalendarStoryEvent({
     name: args.name,
     type: args.type,
-    shortDescription:
-      args.context === 'short-description' ? faker.helpers.arrayElement(['Signals na prática', 'Sessão aberta']) : null,
-    majorEvent: args.context === 'major-event' ? demoMajorEvent : null,
-    eventGroup: args.context === 'event-group' ? demoEventGroup : null,
+    context: args.context,
+    dayOffset: args.dayOffset,
     slotsAvailable: args.slotsAvailable,
     queueCount: args.queueCount,
-  };
+  });
 }
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find(
-    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
-  );
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
+  const eventLink = await canvas.findByRole('link', { name: /Abrir evento Arquitetura Angular com Signals/ });
+  await userEvent.hover(eventLink);
+  await expect(eventLink).toBeVisible();
 };
 
 export const Online: Story = {
@@ -105,6 +82,7 @@ export const Online: Story = {
 export const OfflineFallback: Story = {
   args: {
     context: 'short-description',
+    dayOffset: 1,
     slotsAvailable: 0,
     queueCount: 8,
   },

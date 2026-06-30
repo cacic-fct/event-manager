@@ -162,9 +162,6 @@
           "apps/public/.storybook/compodoc"
         ],
         "styles": [
-          "@fontsource/material-symbols-outlined",
-          "@fontsource-variable/inter",
-          "@fontsource-variable/source-code-pro",
           "apps/public/src/styles.scss"
         ]
       },
@@ -186,9 +183,6 @@
         "browserTarget": "public:build-storybook",
         "compodoc": false,
         "styles": [
-          "@fontsource/material-symbols-outlined",
-          "@fontsource-variable/inter",
-          "@fontsource-variable/source-code-pro",
           "apps/public/src/styles.scss"
         ]
       },
