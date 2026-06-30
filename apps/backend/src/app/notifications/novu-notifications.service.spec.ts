@@ -471,7 +471,7 @@ describe('NovuNotificationsService', () => {
     expect(body).toEqual(
       expect.objectContaining({
         name: 'event-form-available',
-        transactionId: 'event-form-available:form-1:MAJOR_EVENT:major-event-1',
+        transactionId: 'event-form-available:form-1:MAJOR_EVENT:major-event-1:link-1',
         to: [
           {
             subscriberId: 'user-1',

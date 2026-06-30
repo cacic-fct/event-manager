@@ -72,7 +72,7 @@ test('forms workspace loads linked form preview and aggregated results', async (
 
   await page.getByRole('tab', { name: 'Prévia' }).click();
   await expect(page.getByRole('heading', { name: 'Tamanho da camiseta' })).toBeVisible();
-  await expect(page.getByLabel('M')).toBeVisible();
+  await expect(page.locator('lib-event-form-renderer').getByRole('radio', { name: 'M', exact: true })).toBeVisible();
 
   await page.getByRole('tab', { name: 'Resultados' }).click();
   await expect(page.getByRole('heading', { name: 'Resultados' })).toBeVisible();

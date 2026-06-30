@@ -356,11 +356,15 @@ export class NovuNotificationsService {
     const actionUrl = `/profile/forms/${input.formId}?${searchParams.toString()}`;
     const title = 'Formulário disponível';
     const body = `O formulário "${input.formName}" está disponível para ${input.targetName}.`;
+    const transactionIdParts = ['event-form-available', input.formId, input.targetType, input.targetId];
+    if (input.linkId) {
+      transactionIdParts.push(input.linkId);
+    }
 
     return this.triggerNovu(secretKey, {
           name: this.eventFormAvailableWorkflowIdentifier,
           to: input.recipients,
-          transactionId: `event-form-available:${input.formId}:${input.targetType}:${input.targetId}`,
+          transactionId: transactionIdParts.join(':'),
           payload: {
             title,
             subject: title,

@@ -203,11 +203,16 @@ export class PermissionGrantsService {
       throw new NotFoundException(`Permission grant ${id} was not found.`);
     }
 
+    const effectiveInput = {
+      ...input,
+      validFrom: input.validFrom === undefined ? existingGrant.validFrom : input.validFrom,
+      validUntil: input.validUntil === undefined ? existingGrant.validUntil : input.validUntil,
+    };
     const data = await this.buildGrantData(
       {
         userId: existingGrant.userId,
         personId: existingGrant.personId,
-        ...input,
+        ...effectiveInput,
       },
       actorId,
       { includeCreatedBy: false, preserveUndefinedValidity: true },

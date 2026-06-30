@@ -10,7 +10,6 @@ import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { applicationConfig, type Decorator } from '@storybook/angular';
-import { addDays, addHours, parseISO } from 'date-fns';
 import type { Event, EventDraft, EventGroup, EventSummary, MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import { createWorkspaceListPagination } from '../../shared/list-pagination';
 import { WorkspaceAuditLogService } from '../../shared/services/workspace-audit-log.service';
@@ -630,7 +629,10 @@ function selectedIndex(args: WorkspaceTabStoryArgs, length: number): number {
 }
 
 function offsetDate(days: number, hours = 0): string {
-  return addHours(addDays(parseISO(storyNow), days), hours).toISOString();
+  const date = new Date(storyNow);
+  date.setUTCDate(date.getUTCDate() + days);
+  date.setUTCHours(date.getUTCHours() + hours);
+  return date.toISOString();
 }
 
 function localDateTime(value: string | null | undefined): string {

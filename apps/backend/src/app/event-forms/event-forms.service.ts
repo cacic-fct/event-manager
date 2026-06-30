@@ -944,6 +944,21 @@ export class EventFormsService {
         continue;
       }
 
+      const claimedAt = new Date();
+      const claimed = await this.prisma.eventFormLink.updateMany({
+        where: {
+          id: link.id,
+          deletedAt: null,
+          lastNotifiedAt: null,
+        },
+        data: {
+          lastNotifiedAt: claimedAt,
+        },
+      });
+      if (claimed.count !== 1) {
+        continue;
+      }
+
       const notified = await this.notifications.notifyEventFormAvailable({
         formId: form.id,
         linkId: link.id,
@@ -954,15 +969,17 @@ export class EventFormsService {
         recipients,
       });
       if (!notified) {
+        await this.prisma.eventFormLink.updateMany({
+          where: {
+            id: link.id,
+            lastNotifiedAt: claimedAt,
+          },
+          data: {
+            lastNotifiedAt: null,
+          },
+        });
         continue;
       }
-
-      await this.prisma.eventFormLink.update({
-        where: { id: link.id },
-        data: {
-          lastNotifiedAt: new Date(),
-        },
-      });
       notifiedLinks += 1;
     }
     return notifiedLinks;
@@ -1740,12 +1757,17 @@ export class EventFormsService {
     const where: Prisma.EventFormResponseWhereInput = { formId: form.id };
     if (form.responseMode === EventFormResponseMode.SINGLE_PER_FORM) {
       if (options.target) {
-        return where;
+        return {
+          ...where,
+          targetType: options.target.targetType,
+          eventId: options.target.eventId,
+          majorEventId: options.target.majorEventId,
+        };
       }
       if (options.accessibleTargets && !this.formIntersectsAccessibleTargets(form, options.accessibleTargets)) {
         return { ...where, id: { in: [] } };
       }
-      return where;
+      return options.accessibleTargets ? this.withAccessibleResponseTargets(where, options.accessibleTargets) : where;
     }
 
     if (options.target) {
@@ -1762,6 +1784,17 @@ export class EventFormsService {
       return where;
     }
 
+    return this.withAccessibleResponseTargets(where, targets);
+  }
+
+  private withAccessibleResponseTargets(
+    where: Prisma.EventFormResponseWhereInput,
+    targets: {
+      eventIds: Set<string>;
+      majorEventIds: Set<string>;
+      eventGroupIds: Set<string>;
+    },
+  ): Prisma.EventFormResponseWhereInput {
     const targetWhere: Prisma.EventFormResponseWhereInput[] = [];
     const eventIds = [...targets.eventIds];
     const majorEventIds = [...targets.majorEventIds];
@@ -2447,7 +2480,8 @@ export class EventFormsService {
   }
 
   private csvCell(value: string): string {
-    return `"${value.replace(/"/g, '""')}"`;
+    const neutralizedValue = /^[=+\-@]/.test(value) ? `'${value}` : value;
+    return `"${neutralizedValue.replace(/"/g, '""')}"`;
   }
 
   private actorInfo(user: AuthenticatedUser | undefined): { id?: string; name?: string; email?: string } {

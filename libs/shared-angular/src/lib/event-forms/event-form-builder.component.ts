@@ -738,7 +738,7 @@ export class EventFormBuilderComponent {
             const [date, startTime, endTime] = option.label.split('|');
             return {
               id: option.id,
-              date: date || new Date().toISOString().slice(0, 10),
+              date: date || this.todayLocalDate(),
               startTime: startTime || '08:00',
               endTime: endTime || '12:00',
             };
@@ -752,7 +752,7 @@ export class EventFormBuilderComponent {
     if (collection === 'availability') {
       return {
         id: crypto.randomUUID(),
-        label: `${new Date().toISOString().slice(0, 10)}|08:00|12:00`,
+        label: `${this.todayLocalDate()}|08:00|12:00`,
       };
     }
 
@@ -761,6 +761,14 @@ export class EventFormBuilderComponent {
       id: crypto.randomUUID(),
       label: `${labelPrefix} ${index + 1}`,
     };
+  }
+
+  private todayLocalDate(): string {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private ensureScheduling(element: FormElement) {

@@ -369,7 +369,10 @@ export class MajorEventSubscription {
       return;
     }
 
-    this.loadSubscriptionForms(data)
+    const selectedEvents = this.selectedEvents();
+    const selectedEventIds = [...this.effectiveSelectedEventIds()];
+
+    this.loadSubscriptionForms(data, selectedEvents)
       .pipe(
         catchError(() => {
           this.snackBar.open('Não foi possível carregar os formulários da inscrição.', 'OK', {
@@ -387,7 +390,7 @@ export class MajorEventSubscription {
         >(ConfirmSubscriptionDialog, {
           data: {
             majorEvent: data.majorEvent,
-            events: this.selectedEvents(),
+            events: selectedEvents,
             forms,
           },
           width: 'min(760px, 96vw)',
@@ -398,7 +401,7 @@ export class MajorEventSubscription {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe((result) => {
             if (result?.confirmed) {
-              this.confirmSubscription(data, selectedPaymentTier ?? null, result.answers);
+              this.confirmSubscription(data, selectedEventIds, selectedEvents, selectedPaymentTier ?? null, result.answers);
             }
           });
       });
@@ -410,6 +413,8 @@ export class MajorEventSubscription {
 
   private confirmSubscription(
     data: PublicMajorEventSubscriptionPage,
+    selectedEventIds: string[],
+    selectedEvents: PublicEvent[],
     paymentTier: string | null,
     formAnswers: SubscriptionFormAnswer[],
   ): void {
@@ -424,7 +429,7 @@ export class MajorEventSubscription {
     this.api
       .upsertSubscription(
         data.majorEvent.id,
-        [...this.effectiveSelectedEventIds()],
+        selectedEventIds,
         paymentTier,
         this.toSubmitFormResponses(formAnswers),
       )
@@ -440,7 +445,7 @@ export class MajorEventSubscription {
             action,
             majorEvent: data.majorEvent,
             subscription,
-            selectedEventCount: this.selectedEvents().length,
+            selectedEventCount: selectedEvents.length,
             paymentTier,
             priceInCents: this.selectedPriceTier()?.value ?? null,
           });
@@ -460,14 +465,14 @@ export class MajorEventSubscription {
       });
   }
 
-  private loadSubscriptionForms(data: PublicMajorEventSubscriptionPage) {
+  private loadSubscriptionForms(data: PublicMajorEventSubscriptionPage, selectedEvents: PublicEvent[]) {
     const targets = [
       {
         targetType: 'MAJOR_EVENT' as const,
         targetId: data.majorEvent.id,
         targetName: data.majorEvent.name,
       },
-      ...this.selectedEvents().map((event) => ({
+      ...selectedEvents.map((event) => ({
         targetType: 'EVENT' as const,
         targetId: event.id,
         targetName: event.name,
@@ -541,14 +546,12 @@ export class MajorEventSubscription {
             linkId: answer.linkId,
             targetType: answer.targetType,
             eventId: answer.targetId,
-            majorEventId: null,
             answersJson: JSON.stringify(answer.answers),
           }
         : {
             formId: answer.formId,
             linkId: answer.linkId,
             targetType: answer.targetType,
-            eventId: null,
             majorEventId: answer.targetId,
             answersJson: JSON.stringify(answer.answers),
           },

@@ -480,14 +480,12 @@ export class RankedSubscriptionStore {
             linkId: answer.linkId,
             targetType: answer.targetType,
             eventId: answer.targetId,
-            majorEventId: null,
             answersJson: JSON.stringify(answer.answers),
           }
         : {
             formId: answer.formId,
             linkId: answer.linkId,
             targetType: answer.targetType,
-            eventId: null,
             majorEventId: answer.targetId,
             answersJson: JSON.stringify(answer.answers),
           },

@@ -472,7 +472,7 @@ describe('EventFormsService', () => {
     });
   });
 
-  it('includes single-form responses across linked targets in target results', async () => {
+  it('scopes single-form public results to the requested target', async () => {
     authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
     prisma.eventForm.findFirst.mockResolvedValue(
       formRecord({
@@ -496,9 +496,121 @@ describe('EventFormsService', () => {
       expect.objectContaining({
         where: {
           formId: 'form-1',
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+          majorEventId: null,
         },
       }),
     );
+  });
+
+  it('limits single-form admin results to accessible targets', async () => {
+    authorizationPolicy.accessibleEventTargets.mockResolvedValue({
+      eventIds: new Set(['event-1']),
+      majorEventIds: new Set(),
+      eventGroupIds: new Set(),
+    });
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        responseMode: EventFormResponseMode.SINGLE_PER_FORM,
+        links: [
+          linkRecord({ id: 'link-1', targetType: EventFormTargetType.EVENT, eventId: 'event-2', majorEventId: null }),
+        ],
+      }),
+    );
+    prisma.eventFormResponse.findMany.mockResolvedValue([]);
+
+    await service.getAdminResults(authenticatedUser, 'form-1');
+
+    expect(prisma.eventFormResponse.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          formId: 'form-1',
+          id: { in: [] },
+        },
+      }),
+    );
+  });
+
+  it('claims form notification links before sending', async () => {
+    const form = formRecord({
+      links: [
+        linkRecord({
+          id: 'link-1',
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+          majorEventId: null,
+          notifyOnPublish: true,
+        }),
+      ],
+    });
+    prisma.eventSubscription.findMany.mockResolvedValue([{ person: { id: 'person-2', name: 'Bia', email: 'bia@example.com' } }]);
+    prisma.eventAttendance.findMany.mockResolvedValue([]);
+    prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
+    notifications.notifyEventFormAvailable.mockResolvedValue(true);
+
+    const notifiedCount = await service['notifyEligiblePeople'](form);
+
+    expect(notifiedCount).toBe(1);
+    expect(prisma.eventFormLink.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'link-1',
+          deletedAt: null,
+          lastNotifiedAt: null,
+        },
+        data: {
+          lastNotifiedAt: expect.any(Date),
+        },
+      }),
+    );
+    expect(notifications.notifyEventFormAvailable).toHaveBeenCalled();
+  });
+
+  it('does not send form notifications when another worker already claimed the link', async () => {
+    const form = formRecord({
+      links: [
+        linkRecord({
+          id: 'link-1',
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+          majorEventId: null,
+          notifyOnPublish: true,
+        }),
+      ],
+    });
+    prisma.eventSubscription.findMany.mockResolvedValue([{ person: { id: 'person-2', name: 'Bia', email: 'bia@example.com' } }]);
+    prisma.eventAttendance.findMany.mockResolvedValue([]);
+    prisma.eventFormLink.updateMany.mockResolvedValue({ count: 0 });
+
+    const notifiedCount = await service['notifyEligiblePeople'](form);
+
+    expect(notifiedCount).toBe(0);
+    expect(notifications.notifyEventFormAvailable).not.toHaveBeenCalled();
+  });
+
+  it('neutralizes spreadsheet formulas in exported CSV cells', async () => {
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        sigilo: EventFormSigilo.PUBLIC,
+        elements: [
+          {
+            id: 'question-1',
+            type: 'shortText',
+            title: '=Pergunta',
+            required: false,
+            options: [],
+          },
+        ],
+      }),
+    );
+    prisma.eventFormResponse.findMany.mockResolvedValue([
+      responseRecord({
+        answers: [{ elementId: 'question-1', value: '=IMPORTXML("https://example.com")' }],
+      }),
+    ]);
+
+    await expect(service.exportResultsCsv('form-1')).resolves.toContain(`"'=IMPORTXML(""https://example.com"")"`);
   });
 });
 
@@ -548,6 +660,7 @@ function createPrisma() {
 function createAuthorizationPolicy() {
   return {
     assertPermissions: jest.fn(),
+    accessibleEventTargets: jest.fn(),
   };
 }
 
@@ -658,6 +771,7 @@ function linkRecord(
     audience?: EventFormAudience;
     insertInSubscriptionFlow?: boolean;
     requiredInSubscriptionFlow?: boolean;
+    notifyOnPublish?: boolean;
     allowLecturerManualPublish?: boolean;
     responseCount?: number;
   } = {},
@@ -697,7 +811,7 @@ function linkRecord(
     displayOrder: 0,
     availableFrom: null,
     availableUntil: null,
-    notifyOnPublish: false,
+    notifyOnPublish: options.notifyOnPublish ?? false,
     allowLecturerManualPublish: options.allowLecturerManualPublish ?? false,
     lastNotifiedAt: null,
     deletedAt: null,

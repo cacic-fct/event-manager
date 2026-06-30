@@ -277,11 +277,12 @@ export class WorkspaceFormsService {
 
   async schedulePublication(): Promise<void> {
     const value = this.form.controls.scheduledPublishAt.value;
-    if (!value) {
+    const scheduledPublishAt = this.localInputToIso(value);
+    if (!scheduledPublishAt) {
       this.snackbar.open('Informe data e hora para agendar.', 'Fechar', { duration: 3000 });
       return;
     }
-    await this.publish(new Date(value).toISOString());
+    await this.publish(scheduledPublishAt);
   }
 
   async unpublish(): Promise<void> {
