@@ -26,7 +26,7 @@
         "@cacic-fct/account-manager-cookie-banner": "^0.1.1",
         "@cacic-fct/account-manager-m2m-contracts": "^0.1.2",
         "@cacic-fct/account-manager-privacy": "^0.1.1",
-        "@cacic-fct/form-contracts": "^0.1.0",
+        "@cacic-fct/form-contracts": "^0.1.1",
         "@cacic-fct/ngx-umami": "^1.2.3",
         "@fontsource-variable/inter": "^5.2.8",
         "@fontsource-variable/source-code-pro": "^5.2.7",
@@ -601,7 +601,7 @@
 
     "@cacic-fct/account-manager-privacy": ["@cacic-fct/account-manager-privacy@0.1.1", "", { "dependencies": { "@cacic-fct/account-manager-m2m-contracts": "^0.1.1", "tslib": "^2.8.0" }, "peerDependencies": { "@angular/common": ">=19", "@angular/core": ">=19", "rxjs": "^7.8.0" }, "optionalPeers": ["@angular/common", "@angular/core", "rxjs"] }, "sha512-RutMod2JSCOF0sUK9U4eBQqfZJo7a5e8s67GqOifsIYiGRTidxZqS4frjftDBsC9n5f+N/mRFM7uVQpmje62uQ=="],
 
-    "@cacic-fct/form-contracts": ["@cacic-fct/form-contracts@0.1.0", "", {}, "sha512-sPHeoCKYBAhzcdHShR7MK0Eu9BzKqsRJLGnpVvWk+2EyFS7ol6BAWIdssrwMSu9SiAe0+jt5xEC+NwJS2rECAQ=="],
+    "@cacic-fct/form-contracts": ["@cacic-fct/form-contracts@0.1.1", "", {}, "sha512-hMAy/fE0YMZeKricfvChGQR1LHDEvNuyQVXDdAKtnlAwb8IKkLsA4M+MlAbnT6jGm8pZNpwH4HzPTEAsZKWUPg=="],
 
     "@cacic-fct/ngx-umami": ["@cacic-fct/ngx-umami@1.2.3", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/common": ">=17.0.0", "@angular/core": ">=17.0.0", "@angular/router": ">=17.0.0" }, "optionalPeers": ["@angular/router"] }, "sha512-F/cCZR+Dyheg95Qc5cB0LqCCa+AJNNr2owZ8hZXgOeTG+Cj78cHcTLjgGxFZ9vdQKEPO5W6CDVWjn01yzgzo0A=="],
 

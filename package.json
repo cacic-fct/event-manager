@@ -10,6 +10,9 @@
     "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts"
   },
   "private": true,
+  "patchedDependencies": {
+    "@cacic-fct/form-contracts@0.1.0": "patches/@cacic-fct%2Fform-contracts@0.1.0.patch"
+  },
   "dependencies": {
     "@angular/animations": "22.0.2",
     "@angular/cdk": "22.0.2",
@@ -32,7 +35,7 @@
     "@cacic-fct/account-manager-cookie-banner": "^0.1.1",
     "@cacic-fct/account-manager-m2m-contracts": "^0.1.2",
     "@cacic-fct/account-manager-privacy": "^0.1.1",
-    "@cacic-fct/form-contracts": "^0.1.0",
+    "@cacic-fct/form-contracts": "^0.1.1",
     "@cacic-fct/ngx-umami": "^1.2.3",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/source-code-pro": "^5.2.7",

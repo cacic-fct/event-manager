@@ -301,6 +301,13 @@ async function fulfillGraphql(
     return;
   }
 
+  if (query.includes('query CurrentUserEventForms')) {
+    await fulfillGraphqlData(route, {
+      currentUserEventForms: [],
+    });
+    return;
+  }
+
   if (query.includes('mutation UpsertCurrentUserRankedMajorEventSubscription')) {
     const selectedEventIds = stringArrayVariable(variables, 'selectedEventIds');
     state.rankedMajorEventUpserts.push({

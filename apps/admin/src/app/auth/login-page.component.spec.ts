@@ -19,6 +19,8 @@ describe('LoginPageComponent', () => {
       configurable: true,
       value: vi.fn().mockReturnValue({
         matches: false,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       }),
