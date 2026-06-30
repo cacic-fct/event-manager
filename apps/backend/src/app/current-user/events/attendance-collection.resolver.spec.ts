@@ -803,6 +803,20 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       ),
     ).rejects.toBeInstanceOf(ConflictException);
 
+    const staleDuplicateResolver = createCollectionResolver({
+      collector: collectorPerson(),
+      people: [
+        { id: 'old-person-1', mergedIntoId: 'person-1' },
+        { id: 'old-person-2', mergedIntoId: 'person-2' },
+      ],
+    }).resolver;
+    await expect(
+      staleDuplicateResolver.collectCurrentUserManualAttendance(
+        { eventId: 'event-1', value: 'ada@example.com', location: preciseLocation() },
+        context as never,
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
     const missingLocationResolver = createCollectionResolver({
       collector: collectorPerson(),
       people: [{ id: 'person-1' }],

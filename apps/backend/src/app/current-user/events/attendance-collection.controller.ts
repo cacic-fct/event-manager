@@ -16,23 +16,13 @@ import { Observable, interval, map, startWith, switchMap } from 'rxjs';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AttendanceCategoryService } from '../../events/attendance-category.service';
+import { EventAttendancesScannerFeedSupport } from '../../events/attendances/shared/scanner-feed-support';
 import { CurrentUserContextService } from '../context.service';
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUser;
 };
-
-interface EventAttendanceScannerFeedItem {
-  personId: string;
-  eventId: string;
-  fullName: string | null;
-  unespRole: string | null;
-  subscriptionStatus: SubscriptionStatus | null;
-  attendedAt: Date | null;
-  createdByMethod: AttendanceCreationMethod | null;
-  collectedByFirstName: string | null;
-  committedByFirstName: string | null;
-}
 
 class EventAttendanceScannerFeedItemDto {
   @ApiProperty({
@@ -128,12 +118,15 @@ class EventAttendanceScannerFeedMessageDto {
 
 @ApiTags('SSE', 'attendance-collection')
 @Controller('attendance-collection')
-export class CurrentUserAttendanceCollectionController {
+export class CurrentUserAttendanceCollectionController extends EventAttendancesScannerFeedSupport {
   constructor(
-    private readonly prisma: PrismaService,
+    prisma: PrismaService,
+    attendanceCategories: AttendanceCategoryService,
     private readonly currentUserContext: CurrentUserContextService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
-  ) {}
+  ) {
+    super(prisma, attendanceCategories);
+  }
 
   @Sse('events/:eventId/feed/events')
   @ApiOperation({
@@ -187,114 +180,4 @@ export class CurrentUserAttendanceCollectionController {
     };
   }
 
-  private async getScannerFeed(eventId: string): Promise<EventAttendanceScannerFeedItem[]> {
-    const attendances = await this.prisma.eventAttendance.findMany({
-      where: {
-        eventId,
-      },
-      select: {
-        personId: true,
-        eventId: true,
-        attendedAt: true,
-        createdById: true,
-        committedById: true,
-        createdByMethod: true,
-        person: {
-          select: {
-            name: true,
-            user: {
-              select: {
-                unespRole: true,
-              },
-            },
-          },
-        },
-        event: {
-          select: {
-            majorEventId: true,
-          },
-        },
-      },
-      orderBy: {
-        attendedAt: 'desc',
-      },
-      take: 80,
-    });
-
-    const majorEventId = attendances.find((attendance) => attendance.event.majorEventId)?.event.majorEventId;
-
-    const personIds = attendances.map((attendance) => attendance.personId);
-
-    const collectorIds = [
-      ...new Set(
-        attendances
-          .flatMap((attendance) => [attendance.createdById, attendance.committedById])
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
-
-    const [subscriptions, collectors] = await Promise.all([
-      majorEventId
-        ? this.prisma.majorEventSubscription.findMany({
-            where: {
-              majorEventId,
-              personId: {
-                in: personIds,
-              },
-              deletedAt: null,
-            },
-            select: {
-              personId: true,
-              subscriptionStatus: true,
-            },
-          })
-        : Promise.resolve([]),
-      collectorIds.length
-        ? this.prisma.user.findMany({
-            where: {
-              id: {
-                in: collectorIds,
-              },
-            },
-            select: {
-              id: true,
-              name: true,
-            },
-          })
-        : Promise.resolve([]),
-    ]);
-
-    const subscriptionStatusByPersonId = new Map(
-      subscriptions.map((subscription) => [subscription.personId, subscription.subscriptionStatus]),
-    );
-
-    const collectorFirstNameById = new Map(
-      collectors.map((collector) => [collector.id, this.getFirstName(collector.name)]),
-    );
-
-    return attendances.map((attendance) => ({
-      personId: attendance.personId,
-      eventId: attendance.eventId,
-      fullName: attendance.person?.name ?? null,
-      unespRole: this.formatUnespRole(attendance.person?.user?.unespRole),
-      subscriptionStatus: subscriptionStatusByPersonId.get(attendance.personId) ?? null,
-      attendedAt: attendance.attendedAt,
-      createdByMethod: attendance.createdByMethod,
-      collectedByFirstName: attendance.createdById
-        ? (collectorFirstNameById.get(attendance.createdById) ?? null)
-        : null,
-      committedByFirstName:
-        attendance.committedById && attendance.committedById !== attendance.createdById
-          ? (collectorFirstNameById.get(attendance.committedById) ?? null)
-          : null,
-    }));
-  }
-
-  private getFirstName(name: string): string {
-    return name.trim().split(/\s+/)[0] || name;
-  }
-
-  private formatUnespRole(role: readonly string[] | null | undefined): string | null {
-    return role?.length ? role.join(', ') : null;
-  }
 }

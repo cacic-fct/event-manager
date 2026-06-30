@@ -1,10 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, CookieBannerSyncService } from '@cacic-fct/shared-angular';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import { of } from 'rxjs';
 import { App } from './app';
-import { CookieBannerSyncService } from './privacy/cookie-banner-sync.service';
 
 describe('App', () => {
   const acceptCookieBanner = vi.fn(() => of(true));

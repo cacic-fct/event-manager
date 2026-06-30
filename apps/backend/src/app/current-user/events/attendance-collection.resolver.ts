@@ -1159,19 +1159,19 @@ export class CurrentUserAttendanceCollectionResolver {
       take: 3,
     });
 
-    const activePeople = people.filter((person) => !person.mergedIntoId);
-    if (activePeople.length > 1) {
+    const resolvedPersonIds = new Set(people.map((person) => person.mergedIntoId ?? person.id));
+    if (resolvedPersonIds.size > 1) {
       throw new ConflictException(
         `Pessoa tem registros duplicados no banco de dados com o dado ${value}. Tire uma captura dessa tela e envie para o administrador do sistema, para correção.`,
       );
     }
 
-    const person = activePeople[0] ?? people[0];
-    if (!person) {
+    const [personId] = resolvedPersonIds;
+    if (!personId) {
       throw new NotFoundException('Nenhuma pessoa encontrada para o dado informado.');
     }
 
-    return { id: person.mergedIntoId ?? person.id };
+    return { id: personId };
   }
 
   private getRequiredLocationData(

@@ -10,6 +10,7 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { GraphqlContext } from '../current-user/selects';
+import { EventFormNotificationService } from './event-form-notification.service';
 import { EventFormsService } from './event-forms.service';
 
 describe('EventFormsService', () => {
@@ -30,11 +31,12 @@ describe('EventFormsService', () => {
     authorizationPolicy = createAuthorizationPolicy();
     currentUserContext = createCurrentUserContext(authenticatedUser);
     notifications = createNotifications();
+    const formNotifications = new EventFormNotificationService(prisma as never, notifications as never);
     service = new EventFormsService(
       prisma as never,
       authorizationPolicy as never,
       currentUserContext as never,
-      notifications as never,
+      formNotifications as never,
     );
   });
 

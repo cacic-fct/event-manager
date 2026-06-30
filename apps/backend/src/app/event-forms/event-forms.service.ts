@@ -5,7 +5,7 @@ import {
   MessageEvent,
   NotFoundException,
 } from '@nestjs/common';
-import { addDays, isFuture, isPast } from 'date-fns';
+import { addDays, isFuture } from 'date-fns';
 import {
   EventForm as EventFormModel,
   EventFormAudience as ContractAudience,
@@ -47,7 +47,7 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
-import { NovuNotificationsService } from '../notifications/novu-notifications.service';
+import { EventFormNotificationService } from './event-form-notification.service';
 
 const eventFormInclude = {
   ownerEvent: {
@@ -148,7 +148,7 @@ export class EventFormsService {
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly currentUserContext: CurrentUserContextService,
-    private readonly notifications: NovuNotificationsService,
+    private readonly formNotifications: EventFormNotificationService,
   ) {}
 
   async listAdminForms(
@@ -949,152 +949,7 @@ export class EventFormsService {
   }
 
   private async notifyEligiblePeople(form: EventFormRecord): Promise<number> {
-    let notifiedLinks = 0;
-    for (const link of form.links) {
-      if (!link.notifyOnPublish || link.lastNotifiedAt) {
-        continue;
-      }
-
-      if (!this.isLinkAvailable(link)) {
-        continue;
-      }
-
-      const targetEndDate = link.event?.endDate ?? link.majorEvent?.endDate;
-      if (!targetEndDate || isPast(targetEndDate)) {
-        continue;
-      }
-
-      const recipients = await this.findNotificationRecipients(link);
-      if (recipients.length === 0) {
-        continue;
-      }
-
-      const claimedAt = new Date();
-      const claimed = await this.prisma.eventFormLink.updateMany({
-        where: {
-          id: link.id,
-          deletedAt: null,
-          lastNotifiedAt: null,
-        },
-        data: {
-          lastNotifiedAt: claimedAt,
-        },
-      });
-      if (claimed.count !== 1) {
-        continue;
-      }
-
-      const notified = await this.notifications.notifyEventFormAvailable({
-        formId: form.id,
-        linkId: link.id,
-        formName: form.name,
-        targetType: link.targetType,
-        targetId: link.eventId ?? link.majorEventId ?? '',
-        targetName: link.event?.name ?? link.majorEvent?.name ?? form.name,
-        recipients,
-      });
-      if (!notified) {
-        await this.prisma.eventFormLink.updateMany({
-          where: {
-            id: link.id,
-            lastNotifiedAt: claimedAt,
-          },
-          data: {
-            lastNotifiedAt: null,
-          },
-        });
-        continue;
-      }
-      notifiedLinks += 1;
-    }
-    return notifiedLinks;
-  }
-
-  private async findNotificationRecipients(link: EventFormLinkRecord) {
-    const people = new Map<string, Parameters<NovuNotificationsService['mapPersonToRecipient']>[0]>();
-
-    if (link.eventId) {
-      if (link.audience !== EventFormAudience.ATTENDEES) {
-        const subscriptions = await this.prisma.eventSubscription.findMany({
-          where: {
-            eventId: link.eventId,
-            deletedAt: null,
-          },
-          select: {
-            person: this.notificationPersonSelect(),
-          },
-        });
-        for (const subscription of subscriptions) {
-          people.set(subscription.person.id, subscription.person);
-        }
-      }
-      if (link.audience !== EventFormAudience.SUBSCRIBERS) {
-        const attendances = await this.prisma.eventAttendance.findMany({
-          where: {
-            eventId: link.eventId,
-          },
-          select: {
-            person: this.notificationPersonSelect(),
-          },
-        });
-        for (const attendance of attendances) {
-          people.set(attendance.person.id, attendance.person);
-        }
-      }
-    }
-
-    if (link.majorEventId) {
-      if (link.audience !== EventFormAudience.ATTENDEES) {
-        const subscriptions = await this.prisma.majorEventSubscription.findMany({
-          where: {
-            majorEventId: link.majorEventId,
-            deletedAt: null,
-          },
-          select: {
-            person: this.notificationPersonSelect(),
-          },
-        });
-        for (const subscription of subscriptions) {
-          people.set(subscription.person.id, subscription.person);
-        }
-      }
-      if (link.audience !== EventFormAudience.SUBSCRIBERS) {
-        const attendances = await this.prisma.eventAttendance.findMany({
-          where: {
-            event: {
-              majorEventId: link.majorEventId,
-            },
-          },
-          select: {
-            person: this.notificationPersonSelect(),
-          },
-        });
-        for (const attendance of attendances) {
-          people.set(attendance.person.id, attendance.person);
-        }
-      }
-    }
-
-    return [...people.values()].map((person) => this.notifications.mapPersonToRecipient(person));
-  }
-
-  private notificationPersonSelect() {
-    return {
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        userId: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        },
-      },
-    } satisfies Prisma.PeopleDefaultArgs;
+    return this.formNotifications.notifyEligiblePeople(form);
   }
 
   private async requireForm(formId: string): Promise<EventFormRecord> {

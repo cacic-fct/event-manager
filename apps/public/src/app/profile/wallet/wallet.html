@@ -40,18 +40,16 @@
       <h2>{{ formatRole() }}</h2>
     </mat-card-header>
 
-    <!-- eslint-disable-next-line @angular-eslint/template/alt-text -->
-    <object
-      alt="Código de barras"
+    <app-wallet-barcode
+      label="Código de barras"
       class="aztec-code margin-horizontal-auto barcode-screen"
-      [innerHTML]="profileBarcode() | safe: 'html'"></object>
+      [svg]="profileBarcode()" />
 
-    <!-- eslint-disable-next-line @angular-eslint/template/alt-text -->
-    <object
-      alt="Código de barras para impressão"
+    <app-wallet-barcode
+      label="Código de barras para impressão"
       class="aztec-code margin-horizontal-auto barcode-print"
-      aria-hidden="true"
-      [innerHTML]="printProfileBarcode() | safe: 'html'"></object>
+      [ariaHidden]="true"
+      [svg]="printProfileBarcode()" />
 
     <h3 class="margin-horizontal-auto identity-document">{{ formatDocument(user?.identityDocument || '') }}</h3>
   </mat-card>

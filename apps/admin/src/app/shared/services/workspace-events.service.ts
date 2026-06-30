@@ -1,5 +1,4 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
-import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -48,6 +47,7 @@ import {
 } from '../list-pagination';
 import { bindLiveSearch } from '../live-search';
 import { WorkspaceEventPeopleService } from './workspace-event-people.service';
+import { WorkspaceEventFormStateService } from './workspace-event-form-state.service';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
@@ -70,7 +70,7 @@ export class WorkspaceEventsService {
   private readonly eventGroupsApi = inject(EventGroupApiService);
   private readonly eventPeople = inject(WorkspaceEventPeopleService);
   private readonly snackbar = inject(MatSnackBar);
-  private readonly formBuilder = inject(FormBuilder);
+  private readonly formState = inject(WorkspaceEventFormStateService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -102,70 +102,11 @@ export class WorkspaceEventsService {
     return this.groupLecturerSuggestions().filter((person) => !linkedPersonIds.has(person.id));
   });
 
-  readonly eventFiltersForm = this.formBuilder.nonNullable.group({
-    startDateFrom: [''],
-    startDateUntil: [''],
-    isInGroup: ['ALL'],
-    isInMajorEvent: ['ALL'],
-    query: [''],
-  });
-
-  readonly eventForm = this.formBuilder.nonNullable.group(
-    {
-      id: [''],
-      name: ['', [Validators.required]],
-      creditDisplayMode: ['hours'],
-      creditValue: this.formBuilder.control<number | string | null>(null, [Validators.min(0)]),
-      startDate: ['', [Validators.required]],
-      endDate: ['', [Validators.required]],
-      emoji: ['', [Validators.required]],
-      type: ['OTHER', [Validators.required]],
-      description: [''],
-      shortDescription: [''],
-      latitude: [''],
-      longitude: [''],
-      locationDescription: [''],
-      locationPresetId: ['PERSONALIZADO'],
-      majorEventId: [''],
-      eventGroupId: [''],
-      allowSubscription: [false],
-      subscriptionStartDate: [''],
-      subscriptionEndDate: [''],
-      slots: [''],
-      autoSubscribe: [false],
-      shouldIssueCertificate: [false],
-      shouldIssueCertificateForNonPayingAttendees: [false],
-      shouldIssueCertificateForNonSubscribedAttendees: [false],
-      shouldCollectAttendance: [false],
-      isOnlineAttendanceAllowed: [false],
-      shouldProvideSubscriberListToLecturer: [false],
-      onlineAttendanceCode: [''],
-      onlineAttendanceStartDate: [''],
-      onlineAttendanceEndDate: [''],
-      publiclyVisible: [true],
-      youtubeCode: [''],
-      buttonText: [''],
-      buttonLink: [''],
-    },
-    {
-      validators: [
-        this.requireBothOrNeither('latitude', 'longitude'),
-        this.requireBothOrNeither('buttonText', 'buttonLink'),
-      ],
-    },
-  );
-
-  readonly eventGroupLookupForm = this.formBuilder.nonNullable.group({
-    query: [''],
-  });
-
-  readonly lecturerLookupForm = this.formBuilder.nonNullable.group({
-    query: ['', [Validators.required]],
-  });
-
-  readonly attendanceCollectorLookupForm = this.formBuilder.nonNullable.group({
-    query: ['', [Validators.required]],
-  });
+  readonly eventFiltersForm = this.formState.createEventFiltersForm();
+  readonly eventForm = this.formState.createEventForm();
+  readonly eventGroupLookupForm = this.formState.createLookupForm();
+  readonly lecturerLookupForm = this.formState.createLookupForm(true);
+  readonly attendanceCollectorLookupForm = this.formState.createLookupForm(true);
 
   constructor() {
     bindLiveSearch({
@@ -1123,62 +1064,17 @@ export class WorkspaceEventsService {
     );
   }
 
-  private requireBothOrNeither(firstKey: string, secondKey: string) {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const firstValue = control.get(firstKey)?.value?.toString().trim();
-      const secondValue = control.get(secondKey)?.value?.toString().trim();
-      return (firstValue && !secondValue) || (!firstValue && secondValue)
-        ? { [`${firstKey}Requires${secondKey}`]: true }
-        : null;
-    };
-  }
-
   private syncOnlineAttendanceControls(): void {
-    const onlineControls = [
-      this.eventForm.controls.onlineAttendanceCode,
-      this.eventForm.controls.onlineAttendanceStartDate,
-      this.eventForm.controls.onlineAttendanceEndDate,
-    ];
-    const shouldEnable = this.eventForm.controls.isOnlineAttendanceAllowed.value;
-
-    for (const control of onlineControls) {
-      if (shouldEnable) {
-        control.enable({ emitEvent: false });
-      } else {
-        control.disable({ emitEvent: false });
-      }
-    }
+    this.formState.syncOnlineAttendanceControls(this.eventForm);
   }
 
   private syncCertificateControl(): void {
-    const certificateControl = this.eventForm.controls.shouldIssueCertificate;
-    const nonPayingCertificateControl = this.eventForm.controls.shouldIssueCertificateForNonPayingAttendees;
-    const nonSubscribedCertificateControl = this.eventForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
-    if (this.selectedEventGroupAllowsCertificates() === false) {
-      certificateControl.setValue(false, { emitEvent: false });
-      nonPayingCertificateControl.setValue(false, { emitEvent: false });
-      nonSubscribedCertificateControl.setValue(false, { emitEvent: false });
-      certificateControl.disable({ emitEvent: false });
-      nonPayingCertificateControl.disable({ emitEvent: false });
-      nonSubscribedCertificateControl.disable({ emitEvent: false });
-      return;
-    }
-
-    certificateControl.enable({ emitEvent: false });
-    if (certificateControl.value && this.selectedEventGroupAllowsNonPayingCertificates() !== false) {
-      nonPayingCertificateControl.enable({ emitEvent: false });
-    } else {
-      nonPayingCertificateControl.setValue(false, { emitEvent: false });
-      nonPayingCertificateControl.disable({ emitEvent: false });
-    }
-
-    if (certificateControl.value && this.selectedEventGroupAllowsNonSubscribedCertificates() !== false) {
-      nonSubscribedCertificateControl.enable({ emitEvent: false });
-      return;
-    }
-
-    nonSubscribedCertificateControl.setValue(false, { emitEvent: false });
-    nonSubscribedCertificateControl.disable({ emitEvent: false });
+    this.formState.syncCertificateControls(
+      this.eventForm,
+      this.selectedEventGroupAllowsCertificates(),
+      this.selectedEventGroupAllowsNonPayingCertificates(),
+      this.selectedEventGroupAllowsNonSubscribedCertificates(),
+    );
   }
 
 }

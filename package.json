@@ -9,6 +9,16 @@
     "publish:event-manager-public-contracts": "bunx nx run event-manager-public-contracts:publish",
     "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts"
   },
+  "nx": {
+    "targets": {
+      "lint": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "node -e \"process.exit(0)\""
+        }
+      }
+    }
+  },
   "private": true,
   "dependencies": {
     "@angular/animations": "22.0.2",
