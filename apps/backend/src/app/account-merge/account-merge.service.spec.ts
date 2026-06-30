@@ -231,6 +231,7 @@ describe('AccountMergeService', () => {
     tx.eventSubscription.findMany.mockResolvedValue([{ id: 'event-subscription-1' }]);
     tx.eventGroupSubscription.findMany.mockResolvedValue([]);
     tx.majorEventSubscription.findMany.mockResolvedValue([{ id: 'major-subscription-1' }]);
+    tx.eventFormResponse.findMany.mockResolvedValue([{ id: 'form-response-1' }]);
     tx.peopleMergeOperation.create.mockResolvedValue({ id: 'merge-operation-1' });
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
@@ -248,6 +249,10 @@ describe('AccountMergeService', () => {
       where: { id: { in: ['event-subscription-1'] } },
       data: { personId: 'target-person' },
     });
+    expect(tx.eventFormResponse.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['form-response-1'] } },
+      data: { personId: 'target-person' },
+    });
     expect(tx.peopleMergeOperation.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -257,6 +262,7 @@ describe('AccountMergeService', () => {
             insertedAttendanceEventIds: ['event-1'],
             insertedLectureEventIds: ['event-2'],
             movedMajorEventSubscriptionIds: ['major-subscription-1'],
+            movedEventFormResponseIds: ['form-response-1'],
           }),
         }),
       }),
@@ -370,6 +376,7 @@ function createTransactionMock() {
     eventSubscription: delegate(),
     eventGroupSubscription: delegate(),
     majorEventSubscription: delegate(),
+    eventFormResponse: delegate(),
     peopleMergeOperation: {
       create: jest.fn(),
     },

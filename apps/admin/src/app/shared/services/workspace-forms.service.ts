@@ -159,6 +159,10 @@ export class WorkspaceFormsService {
         const refreshed = forms.find((form) => form.id === selected.id) ?? null;
         if (refreshed) {
           this.patchSelectedForm(refreshed);
+        } else {
+          this.selectedForm.set(null);
+          this.selectedResults.set(null);
+          this.closeResultsStream();
         }
       }
     } catch (error) {

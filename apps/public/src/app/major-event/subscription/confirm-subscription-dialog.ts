@@ -29,6 +29,7 @@ export interface SubscriptionFormContext {
   linkId: string | null;
   requiredInSubscriptionFlow: boolean;
   enforceRequiredAnswers: boolean;
+  initialAnswers: FormResponseAnswer[];
 }
 
 export interface SubscriptionFormAnswer {
@@ -73,7 +74,9 @@ export class ConfirmSubscriptionDialog {
   private readonly dialogRef = inject(MatDialogRef<ConfirmSubscriptionDialog>);
   readonly data = inject<ConfirmSubscriptionDialogData>(MAT_DIALOG_DATA);
   readonly emoji = inject(EmojiService);
-  readonly answersByKey = signal<Record<string, FormResponseAnswer[]>>({});
+  readonly answersByKey = signal<Record<string, FormResponseAnswer[]>>(
+    Object.fromEntries(this.data.forms.map((form) => [this.formKey(form), form.initialAnswers])),
+  );
 
   readonly groupedEvents = computed(() => this.groupByMonthAndDay(this.data.events));
   readonly canConfirm = computed(() => this.data.forms.every((form) => !this.hasMissingRequired(form)));

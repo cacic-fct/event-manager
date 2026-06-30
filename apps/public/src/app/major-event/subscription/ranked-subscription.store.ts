@@ -10,7 +10,7 @@ import type {
   PublicEvent,
   PublicEventForm,
 } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import {
   compareIsoDateAsc,
@@ -19,7 +19,7 @@ import {
   getSubscriptionStatusLabel,
 } from '@cacic-fct/shared-utils';
 import { isBefore, parseISO } from 'date-fns';
-import { EMPTY, catchError, finalize, forkJoin, map } from 'rxjs';
+import { EMPTY, catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
@@ -442,6 +442,11 @@ export class RankedSubscriptionStore {
           })
           .sort((left, right) => this.formDisplayOrder(left) - this.formDisplayOrder(right));
       }),
+      switchMap((forms) =>
+        forms.length > 0
+          ? forkJoin(forms.map((form) => this.loadExistingFormAnswer(form)))
+          : of([] satisfies SubscriptionFormContext[]),
+      ),
     );
   }
 
@@ -465,7 +470,26 @@ export class RankedSubscriptionStore {
       linkId: link?.id ?? null,
       requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
       enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
+      initialAnswers: [],
     }));
+  }
+
+  private loadExistingFormAnswer(form: SubscriptionFormContext) {
+    return this.formsApi
+      .getCurrentUserResponse({
+        formId: form.form.id,
+        linkId: form.linkId,
+        targetType: form.targetType,
+        eventId: form.targetType === 'EVENT' ? form.targetId : null,
+        majorEventId: form.targetType === 'MAJOR_EVENT' ? form.targetId : null,
+      })
+      .pipe(
+        map((response) => ({
+          ...form,
+          initialAnswers: parseFormAnswersJson(response?.answersJson),
+        })),
+        catchError(() => of(form)),
+      );
   }
 
   private formDisplayOrder(form: SubscriptionFormContext): number {

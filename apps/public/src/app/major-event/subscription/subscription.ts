@@ -19,11 +19,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import type { EventFormTargetType, PublicEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { areIntervalsOverlapping, isBefore, parseISO } from 'date-fns';
-import { EMPTY, catchError, filter, finalize, forkJoin, map } from 'rxjs';
+import { EMPTY, catchError, filter, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
@@ -505,6 +505,11 @@ export class MajorEventSubscription {
           })
           .sort((left, right) => this.formDisplayOrder(left) - this.formDisplayOrder(right));
       }),
+      switchMap((forms) =>
+        forms.length > 0
+          ? forkJoin(forms.map((form) => this.loadExistingFormAnswer(form)))
+          : of([] satisfies SubscriptionFormContext[]),
+      ),
     );
   }
 
@@ -528,7 +533,26 @@ export class MajorEventSubscription {
       linkId: link?.id ?? null,
       requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
       enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
+      initialAnswers: [],
     }));
+  }
+
+  private loadExistingFormAnswer(form: SubscriptionFormContext) {
+    return this.formsApi
+      .getCurrentUserResponse({
+        formId: form.form.id,
+        linkId: form.linkId,
+        targetType: form.targetType,
+        eventId: form.targetType === 'EVENT' ? form.targetId : null,
+        majorEventId: form.targetType === 'MAJOR_EVENT' ? form.targetId : null,
+      })
+      .pipe(
+        map((response) => ({
+          ...form,
+          initialAnswers: parseFormAnswersJson(response?.answersJson),
+        })),
+        catchError(() => of(form)),
+      );
   }
 
   private formDisplayOrder(form: SubscriptionFormContext): number {

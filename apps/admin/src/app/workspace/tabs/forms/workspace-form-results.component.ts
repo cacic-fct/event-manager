@@ -61,7 +61,7 @@ type FormResultSummary = {
                 <div class="chart" #chart></div>
               } @else if (question.textAnswers.length > 0) {
                 <ul class="text-answers">
-                  @for (answer of question.textAnswers; track answer) {
+                  @for (answer of question.textAnswers; track $index) {
                     <li>{{ answer }}</li>
                   }
                 </ul>

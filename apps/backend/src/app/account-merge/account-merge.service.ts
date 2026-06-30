@@ -59,6 +59,7 @@ type MovedRelationsSnapshot = {
   movedEventSubscriptionIds: string[];
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
+  movedEventFormResponseIds: string[];
 };
 
 @Injectable()
@@ -463,6 +464,7 @@ export class AccountMergeService {
       targetPersonId,
       sourcePersonId,
     );
+    const movedEventFormResponseIds = await this.moveById(tx.eventFormResponse, targetPersonId, sourcePersonId);
 
     return {
       sourceAttendances: sourceAttendances.map((attendance) => ({
@@ -482,6 +484,7 @@ export class AccountMergeService {
       movedEventSubscriptionIds,
       movedEventGroupSubscriptionIds,
       movedMajorEventSubscriptionIds,
+      movedEventFormResponseIds,
     };
   }
 

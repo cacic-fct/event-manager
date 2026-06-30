@@ -129,7 +129,29 @@ describe('EventFormsService', () => {
       [Permission.EventForm.Results],
       { eventFormId: 'form-1' },
     );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      authenticatedUser,
+      [Permission.EventForm.Results],
+      { eventId: 'event-1', majorEventId: undefined },
+    );
     expect(currentUserContext.requireCurrentPerson).not.toHaveBeenCalled();
+  });
+
+  it('does not expose admin-level results without permission on the requested target', async () => {
+    authorizationPolicy.assertPermissions
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new ForbiddenException());
+    prisma.eventForm.findFirst.mockResolvedValue(formRecord({ resultsPublic: false }));
+
+    await expect(
+      service.getCurrentUserResults(context, {
+        formId: 'form-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-2',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.eventFormResponse.findMany).not.toHaveBeenCalled();
   });
 
   it('creates a new response when the form allows multiple answers per target', async () => {
@@ -148,6 +170,7 @@ describe('EventFormsService', () => {
     expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
+    expect(prisma.$executeRaw).not.toHaveBeenCalled();
     expect(prisma.eventFormResponse.findFirst).not.toHaveBeenCalled();
     expect(prisma.eventFormResponse.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -235,6 +258,7 @@ describe('EventFormsService', () => {
         },
       }),
     );
+    expect(prisma.$executeRaw).toHaveBeenCalled();
     expect(prisma.eventFormResponse.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'response-1' },
@@ -242,6 +266,35 @@ describe('EventFormsService', () => {
           targetType: EventFormTargetType.EVENT,
           eventId: 'event-1',
           majorEventId: null,
+        }),
+      }),
+    );
+  });
+
+  it('includes owned forms when listing admin forms for a target filter', async () => {
+    prisma.eventForm.findMany.mockResolvedValue([]);
+
+    await service.listAdminForms(authenticatedUser, { eventId: 'event-1', majorEventId: 'major-1' });
+
+    expect(prisma.eventForm.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            {
+              OR: [
+                { ownerEventId: 'event-1' },
+                { links: { some: { eventId: 'event-1', deletedAt: null } } },
+              ],
+            },
+            {
+              OR: [
+                { ownerMajorEventId: 'major-1' },
+                { ownerEvent: { majorEventId: 'major-1' } },
+                { links: { some: { majorEventId: 'major-1', deletedAt: null } } },
+                { links: { some: { event: { majorEventId: 'major-1' }, deletedAt: null } } },
+              ],
+            },
+          ]),
         }),
       }),
     );
@@ -617,6 +670,7 @@ describe('EventFormsService', () => {
 function createPrisma() {
   const client = {
     $transaction: jest.fn(async (callback: (tx: unknown) => unknown) => callback(client)),
+    $executeRaw: jest.fn(),
     eventForm: {
       findFirst: jest.fn(),
       findMany: jest.fn(),

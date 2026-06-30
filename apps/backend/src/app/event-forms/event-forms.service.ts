@@ -175,10 +175,22 @@ export class EventFormsService {
       };
     }
     if (filters.eventId) {
-      andFilters.push({ links: { some: { eventId: filters.eventId, deletedAt: null } } });
+      andFilters.push({
+        OR: [
+          { ownerEventId: filters.eventId },
+          { links: { some: { eventId: filters.eventId, deletedAt: null } } },
+        ],
+      });
     }
     if (filters.majorEventId) {
-      andFilters.push({ links: { some: { majorEventId: filters.majorEventId, deletedAt: null } } });
+      andFilters.push({
+        OR: [
+          { ownerMajorEventId: filters.majorEventId },
+          { ownerEvent: { majorEventId: filters.majorEventId } },
+          { links: { some: { majorEventId: filters.majorEventId, deletedAt: null } } },
+          { links: { some: { event: { majorEventId: filters.majorEventId }, deletedAt: null } } },
+        ],
+      });
     }
     if (andFilters.length > 0) {
       where.AND = andFilters;
@@ -543,6 +555,9 @@ export class EventFormsService {
     const responseSource = link.insertInSubscriptionFlow ? ContractResponseSource.SUBSCRIPTION_FLOW : ContractResponseSource.PUBLIC_FORM;
 
     const existingWhere = this.responseLookupWhere(form, personId, target, link.id);
+    if (existingWhere) {
+      await this.lockSingleResponseSlot(tx, form, personId, target);
+    }
     const existing = existingWhere
       ? await tx.eventFormResponse.findFirst({
           where: existingWhere,
@@ -690,7 +705,17 @@ export class EventFormsService {
     const form = await this.requirePublishedForm(input.formId);
 
     if (await this.canAdminViewResults(authenticatedUser, form.id)) {
-      return this.getResults(form.id, 'admin', { target });
+      try {
+        await this.authorizationPolicy.assertPermissions(authenticatedUser, [Permission.EventForm.Results], {
+          eventId: target.eventId ?? undefined,
+          majorEventId: target.majorEventId ?? undefined,
+        });
+        return this.getResults(form.id, 'admin', { target });
+      } catch (error) {
+        if (!(error instanceof ForbiddenException)) {
+          throw error;
+        }
+      }
     }
 
     if (!form.resultsPublic) {
@@ -2278,6 +2303,7 @@ export class EventFormsService {
 
     if (majorEventIds.length > 0) {
       or.push({ ownerMajorEventId: { in: majorEventIds } });
+      or.push({ ownerEvent: { majorEventId: { in: majorEventIds } } });
       or.push({
         OR: [
           { links: { some: { majorEventId: { in: majorEventIds }, deletedAt: null } } },
@@ -2396,6 +2422,19 @@ export class EventFormsService {
       ...this.responseTargetWhere(form.id, personId, target),
       ...(linkId ? { linkId } : {}),
     };
+  }
+
+  private async lockSingleResponseSlot(
+    tx: Prisma.TransactionClient,
+    form: Pick<EventFormRecord, 'id' | 'responseMode'>,
+    personId: string,
+    target: ReturnType<EventFormsService['normalizeTarget']>,
+  ): Promise<void> {
+    const targetKey =
+      form.responseMode === EventFormResponseMode.SINGLE_PER_FORM
+        ? 'form'
+        : `${target.targetType}:${target.eventId ?? target.majorEventId ?? ''}`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`event-form-response:${form.id}:${personId}:${targetKey}`}, 0))`;
   }
 
   private async runSerializableFormTransaction<T>(
