@@ -1,13 +1,49 @@
-import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import { createPublicEvent, createPublicEventGroup, createPublicMajorEvent } from '../../testing/public-entity-fixtures';
+import {
+  PublicEventStoryControls,
+  createPublicStoryEvents,
+  publicEventStoryControlArgTypes,
+  publicEventStoryDefaultControls,
+} from '../../testing/public-event-story-fixtures';
 import { SubscriptionEventList } from './subscription-event-list';
 
-const meta: Meta<SubscriptionEventList> = {
+interface SubscriptionEventListStoryArgs extends PublicEventStoryControls {
+  selectedFirstEvent: boolean;
+  autoSelectSecondEvent: boolean;
+  disableSoldOutEvents: boolean;
+}
+
+const defaultArgs: SubscriptionEventListStoryArgs = {
+  ...publicEventStoryDefaultControls,
+  selectedFirstEvent: true,
+  autoSelectSecondEvent: false,
+  disableSoldOutEvents: false,
+};
+
+const meta: Meta<SubscriptionEventListStoryArgs> = {
   component: SubscriptionEventList,
   title: 'Public/Major Event/Subscription/Subscription Event List',
   tags: ['autodocs'],
+  args: defaultArgs,
+  argTypes: {
+    ...publicEventStoryControlArgTypes,
+    selectedFirstEvent: { control: 'boolean' },
+    autoSelectSecondEvent: { control: 'boolean' },
+    disableSoldOutEvents: { control: 'boolean' },
+  },
+  render: (args) => {
+    const events = createPublicStoryEvents(args);
+    return {
+      props: {
+        events,
+        summariesByEventId: buildSummaries(events),
+        selectedEventIds: args.selectedFirstEvent ? new Set([events[0]?.id].filter(Boolean)) : new Set(),
+        autoSelectedEventIds: args.autoSelectSecondEvent ? new Set([events[1]?.id].filter(Boolean)) : new Set(),
+        disabledReasons: args.disableSoldOutEvents ? buildDisabledReasons(events) : new Map(),
+      },
+    };
+  },
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -16,49 +52,7 @@ const meta: Meta<SubscriptionEventList> = {
 
 export default meta;
 
-type Story = StoryObj<SubscriptionEventList>;
-
-const demoMajorEvent = createPublicMajorEvent({ id: 'major-story', emoji: '💻' });
-const demoEventGroup = createPublicEventGroup({ id: 'group-story', emoji: '✨' });
-const demoEvent: PublicEvent = createPublicEvent({
-  id: 'event-story',
-  emoji: '🧠',
-  majorEvent: demoMajorEvent,
-  eventGroup: demoEventGroup,
-  startDate: '2026-05-21T17:00:00.000Z',
-  endDate: '2026-05-21T19:00:00.000Z',
-  onlineAttendanceStartDate: '2026-05-21T17:00:00.000Z',
-  onlineAttendanceEndDate: '2026-05-21T19:00:00.000Z',
-});
-
-const demoEvents: PublicEvent[] = [
-  demoEvent,
-  {
-    ...demoEvent,
-    id: 'event-story-2',
-    name: 'Acessibilidade em produtos digitais',
-    emoji: '♿',
-    type: 'PALESTRA' as const,
-    startDate: '2026-05-22T13:00:00.000Z',
-    endDate: '2026-05-22T14:00:00.000Z',
-    slotsAvailable: 0,
-  },
-  {
-    ...demoEvent,
-    id: 'event-story-3',
-    name: 'Observabilidade para APIs GraphQL',
-    emoji: '📡',
-    type: 'OTHER' as const,
-    startDate: '2026-06-02T18:00:00.000Z',
-    endDate: '2026-06-02T20:00:00.000Z',
-    eventGroup: null,
-    eventGroupId: null,
-  },
-];
-
-const summariesByEventId = new Map(
-  demoEvents.map((item) => [item.id, { eventId: item.id, hasAvailableSlots: item.slotsAvailable !== 0 }]),
-);
+type Story = StoryObj<SubscriptionEventListStoryArgs>;
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
@@ -78,25 +72,23 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Online: Story = {
-  args: {
-    events: demoEvents,
-    summariesByEventId,
-    selectedEventIds: new Set([demoEvents[0].id]),
-    autoSelectedEventIds: new Set(),
-    disabledReasons: new Map(),
-  },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const OfflineFallback: Story = {
   args: {
-    events: demoEvents.slice(0, 1),
-    summariesByEventId,
-    selectedEventIds: new Set(),
-    autoSelectedEventIds: new Set(),
-    disabledReasons: new Map(),
+    selectedFirstEvent: false,
+    autoSelectSecondEvent: false,
   },
   globals: { theme: 'light', network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
+
+function buildSummaries(events: ReturnType<typeof createPublicStoryEvents>) {
+  return new Map(events.map((item) => [item.id, { eventId: item.id, hasAvailableSlots: item.slotsAvailable !== 0 }]));
+}
+
+function buildDisabledReasons(events: ReturnType<typeof createPublicStoryEvents>) {
+  return new Map(events.filter((event) => event.slotsAvailable === 0).map((event) => [event.id, 'Sem vagas disponíveis']));
+}

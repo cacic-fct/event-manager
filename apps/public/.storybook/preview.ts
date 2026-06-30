@@ -1,5 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
-import { inject, provideAppInitializer } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localePt from '@angular/common/locales/pt';
+import { LOCALE_ID, inject, provideAppInitializer } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { ActivatedRoute, convertToParamMap, provideRouter, withDisabledInitialNavigation } from '@angular/router';
@@ -12,6 +14,8 @@ import { applicationConfig } from '@storybook/angular';
 import { NEVER, of } from 'rxjs';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { publicHandlers } from './storybook-mocks';
+
+registerLocaleData(localePt);
 
 initialize({
   onUnhandledRequest: 'bypass',
@@ -220,6 +224,7 @@ const preview: Preview = {
         provideCloudflareTurnstile({
           siteKey: TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS,
         }),
+        { provide: LOCALE_ID, useValue: 'pt-BR' },
         provideAppInitializer(() => {
           inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
         }),
