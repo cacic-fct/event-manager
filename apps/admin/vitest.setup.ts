@@ -30,6 +30,7 @@ Object.defineProperty(window, 'matchMedia', {
             listener.handleEvent(event);
           }
         }
+        mediaQueryList.onchange?.call(mediaQueryList, event as MediaQueryListEvent);
 
         return true;
       },

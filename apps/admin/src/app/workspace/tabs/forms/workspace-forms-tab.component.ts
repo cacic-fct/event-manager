@@ -13,7 +13,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { EventFormBuilderComponent, EventFormRendererComponent } from '@cacic-fct/shared-angular';
+import { EventFormBuilderComponent, EventFormRendererComponent } from '@cacic-fct/shared-angular/event-forms';
 import {
   EventForm,
   EventFormAudience,

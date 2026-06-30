@@ -131,7 +131,10 @@ export function isRequiredFormAnswerMissing(element: FormElement, value: FormAns
     if (!value.slotId) {
       return true;
     }
-    return element.settings?.scheduling?.inviteeMode === 'required' && value.invitees.length === 0;
+    return (
+      element.settings?.scheduling?.inviteeMode === 'required' &&
+      !value.invitees.some((invitee) => invitee.name.trim().length > 0)
+    );
   }
 
   return false;

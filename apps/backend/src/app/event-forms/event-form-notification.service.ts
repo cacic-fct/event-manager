@@ -69,15 +69,20 @@ export class EventFormNotificationService {
         continue;
       }
 
-      const notified = await this.notifications.notifyEventFormAvailable({
-        formId: form.id,
-        linkId: link.id,
-        formName: form.name,
-        targetType: link.targetType,
-        targetId: link.eventId ?? link.majorEventId ?? '',
-        targetName: link.event?.name ?? link.majorEvent?.name ?? form.name,
-        recipients,
-      });
+      let notified = false;
+      try {
+        notified = await this.notifications.notifyEventFormAvailable({
+          formId: form.id,
+          linkId: link.id,
+          formName: form.name,
+          targetType: link.targetType,
+          targetId: link.eventId ?? link.majorEventId ?? '',
+          targetName: link.event?.name ?? link.majorEvent?.name ?? form.name,
+          recipients,
+        });
+      } catch {
+        notified = false;
+      }
       if (!notified) {
         await this.prisma.eventFormLink.updateMany({
           where: {

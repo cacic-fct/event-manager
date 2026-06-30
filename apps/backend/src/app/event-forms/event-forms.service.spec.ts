@@ -204,6 +204,11 @@ describe('EventFormsService', () => {
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
       authenticatedUser,
       [Permission.EventForm.Update],
+      { eventId: 'event-1', majorEventId: undefined },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      authenticatedUser,
+      [Permission.EventForm.Update],
       { majorEventId: 'major-2' },
     );
   });
@@ -268,6 +273,47 @@ describe('EventFormsService', () => {
           targetType: EventFormTargetType.EVENT,
           eventId: 'event-1',
           majorEventId: null,
+        }),
+      }),
+    );
+  });
+
+  it('updates one-per-target responses even when the active link changed', async () => {
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        responseMode: EventFormResponseMode.ONE_PER_TARGET,
+        links: [linkRecord({ id: 'link-2' })],
+      }),
+    );
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+    prisma.eventFormResponse.findFirst.mockResolvedValue({ id: 'response-1' });
+    prisma.eventFormResponse.update.mockResolvedValue(responseRecord({ linkId: 'link-2' }));
+
+    await service.submitCurrentUserResponse(context, {
+      formId: 'form-1',
+      linkId: 'link-2',
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+      answersJson: '[]',
+    });
+
+    expect(prisma.eventFormResponse.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          formId: 'form-1',
+          personId: 'person-1',
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+          majorEventId: null,
+        },
+      }),
+    );
+    expect(prisma.eventFormResponse.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'response-1' },
+        data: expect.objectContaining({
+          linkId: 'link-2',
         }),
       }),
     );
@@ -644,6 +690,39 @@ describe('EventFormsService', () => {
     expect(notifications.notifyEventFormAvailable).not.toHaveBeenCalled();
   });
 
+  it('rolls back claimed form notifications when the provider throws', async () => {
+    const form = formRecord({
+      links: [
+        linkRecord({
+          id: 'link-1',
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+          majorEventId: null,
+          notifyOnPublish: true,
+        }),
+      ],
+    });
+    prisma.eventSubscription.findMany.mockResolvedValue([{ person: { id: 'person-2', name: 'Bia', email: 'bia@example.com' } }]);
+    prisma.eventAttendance.findMany.mockResolvedValue([]);
+    prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
+    notifications.notifyEventFormAvailable.mockRejectedValue(new Error('Novu unavailable'));
+
+    const notifiedCount = await service['notifyEligiblePeople'](form);
+
+    expect(notifiedCount).toBe(0);
+    expect(prisma.eventFormLink.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'link-1',
+          lastNotifiedAt: expect.any(Date),
+        },
+        data: {
+          lastNotifiedAt: null,
+        },
+      }),
+    );
+  });
+
   it('neutralizes spreadsheet formulas in exported CSV cells', async () => {
     prisma.eventForm.findFirst.mockResolvedValue(
       formRecord({
@@ -886,6 +965,7 @@ function responseRecord(
     targetType?: EventFormTargetType;
     eventId?: string | null;
     majorEventId?: string | null;
+    linkId?: string | null;
     answers?: unknown[];
   } = {},
 ) {
@@ -893,7 +973,7 @@ function responseRecord(
   return {
     id: 'response-1',
     formId: 'form-1',
-    linkId: 'link-1',
+    linkId: options.linkId === undefined ? 'link-1' : options.linkId,
     targetType: options.targetType ?? EventFormTargetType.EVENT,
     eventId: options.eventId === undefined ? 'event-1' : options.eventId,
     majorEventId: options.majorEventId === undefined ? null : options.majorEventId,

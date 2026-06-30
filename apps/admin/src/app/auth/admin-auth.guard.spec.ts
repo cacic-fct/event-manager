@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, UrlTree } from '@angular/router';
-import { AuthService, authGuardWithLocalLogin } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { authGuardWithLocalLogin } from '@cacic-fct/shared-angular/auth/guard';
 
 describe('admin authGuardWithLocalLogin', () => {
   let authService: {

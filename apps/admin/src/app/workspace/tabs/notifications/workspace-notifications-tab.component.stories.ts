@@ -8,7 +8,7 @@ import {
   NotificationPermissionState,
   NovuListNotificationsArgs,
   NovuNotificationsService,
-} from '@cacic-fct/shared-notifications-angular';
+} from '@cacic-fct/shared-notifications-angular/service';
 import { WorkspaceNotificationsTabComponent } from './workspace-notifications-tab.component';
 
 faker.seed(20260616);

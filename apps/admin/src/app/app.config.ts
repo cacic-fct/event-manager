@@ -68,7 +68,9 @@ export const appConfig: ApplicationConfig = {
       const registry = inject(MatIconRegistry);
       registry.setDefaultFontSetClass('material-symbols-outlined');
     }),
-    provideAppInitializer(() => inject(CookieBannerFeatureFlagService).initialize()),
+    provideAppInitializer(() => {
+      void inject(CookieBannerFeatureFlagService).initialize();
+    }),
     provideAppInitializer(() => {
       const authService = inject(AuthService);
       return authService.initialize();

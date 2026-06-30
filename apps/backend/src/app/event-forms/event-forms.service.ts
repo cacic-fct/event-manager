@@ -55,6 +55,8 @@ const eventFormInclude = {
       id: true,
       name: true,
       emoji: true,
+      majorEventId: true,
+      eventGroupId: true,
     },
   },
   ownerMajorEvent: {
@@ -273,6 +275,7 @@ export class EventFormsService {
       await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], {
         eventFormId: existing.id,
       });
+      await this.assertCanManageLinkedTargets(user, [this.formOwnerTargetInput(existing)], Permission.EventForm.Update);
       await this.assertCanManageLinkedTargets(user, [this.ownerTargetInput(target)], Permission.EventForm.Update);
       await this.assertCanManageLinkedTargets(user, this.manageableLinksForReplace(existing.links, input.links ?? []), Permission.EventForm.Update);
 
@@ -554,7 +557,7 @@ export class EventFormsService {
     const answers = this.normalizeAnswers(input.answersJson, form.elements as unknown as FormElement[], link.enforceRequiredAnswers);
     const responseSource = link.insertInSubscriptionFlow ? ContractResponseSource.SUBSCRIPTION_FLOW : ContractResponseSource.PUBLIC_FORM;
 
-    const existingWhere = this.responseLookupWhere(form, personId, target, link.id);
+    const existingWhere = this.responseLookupWhere(form, personId, target);
     if (existingWhere) {
       await this.lockSingleResponseSlot(tx, form, personId, target);
     }
@@ -659,7 +662,7 @@ export class EventFormsService {
           ? { targetType: EventFormTargetType.EVENT, eventId: link.eventId, majorEventId: null }
           : { targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: link.majorEventId };
       const responseWhere =
-        this.responseLookupWhere(link.form, personId, target, link.id) ??
+        this.responseLookupWhere(link.form, personId, target) ??
         this.responseTargetWhere(link.formId, personId, target);
       const response = await tx.eventFormResponse.findFirst({
         where: responseWhere,
@@ -682,7 +685,7 @@ export class EventFormsService {
     const target = this.normalizeTarget(input);
     const form = await this.requireForm(input.formId);
     const response = await this.prisma.eventFormResponse.findFirst({
-      where: this.responseLookupWhere(form, person.id, target, input.linkId ?? undefined) ?? this.responseTargetWhere(form.id, person.id, target),
+      where: this.responseLookupWhere(form, person.id, target) ?? this.responseTargetWhere(form.id, person.id, target),
       include: responseInclude,
       orderBy: {
         submittedAt: 'desc',
@@ -1149,6 +1152,12 @@ export class EventFormsService {
     return target.ownerEventId
       ? { targetType: EventFormTargetType.EVENT, eventId: target.ownerEventId }
       : { targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: target.ownerMajorEventId };
+  }
+
+  private formOwnerTargetInput(form: Pick<EventFormRecord, 'ownerEventId' | 'ownerMajorEventId'>): TargetInput {
+    return form.ownerEventId
+      ? { targetType: EventFormTargetType.EVENT, eventId: form.ownerEventId }
+      : { targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: form.ownerMajorEventId };
   }
 
   private formTargetInputs(form: EventFormRecord): TargetInput[] {
@@ -1707,6 +1716,12 @@ export class EventFormsService {
     if (form.ownerMajorEventId && targets.majorEventIds.has(form.ownerMajorEventId)) {
       return true;
     }
+    if (form.ownerEvent?.majorEventId && targets.majorEventIds.has(form.ownerEvent.majorEventId)) {
+      return true;
+    }
+    if (form.ownerEvent?.eventGroupId && targets.eventGroupIds.has(form.ownerEvent.eventGroupId)) {
+      return true;
+    }
     return form.links.some((link) => this.linkIntersectsAccessibleTargets(link, targets));
   }
 
@@ -2168,6 +2183,7 @@ export class EventFormsService {
     }
 
     if (eventGroupIds.length > 0) {
+      or.push({ ownerEvent: { eventGroupId: { in: eventGroupIds } } });
       or.push({ links: { some: { event: { eventGroupId: { in: eventGroupIds } }, deletedAt: null } } });
     }
 
@@ -2260,7 +2276,6 @@ export class EventFormsService {
     form: Pick<EventFormRecord, 'id' | 'responseMode'>,
     personId: string,
     target: ReturnType<EventFormsService['normalizeTarget']>,
-    linkId?: string,
   ): Prisma.EventFormResponseWhereInput | null {
     if (form.responseMode === EventFormResponseMode.MULTIPLE_PER_TARGET) {
       return null;
@@ -2275,7 +2290,6 @@ export class EventFormsService {
 
     return {
       ...this.responseTargetWhere(form.id, personId, target),
-      ...(linkId ? { linkId } : {}),
     };
   }
 
@@ -2392,17 +2406,10 @@ export class EventFormsService {
       return;
     }
 
-    const responseCount = await this.prisma.eventFormResponse.count({
-      where: {
-        formId,
-      },
-    });
-
     subject.next({
       type: 'message',
       data: {
         formId,
-        responseCount,
         updatedAt: new Date().toISOString(),
       },
     });

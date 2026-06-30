@@ -8,9 +8,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { CacicLogoComponent } from '@cacic-fct/shared-angular/cacic-logo';
 import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
-import { NovuNotificationBadgeComponent } from '@cacic-fct/shared-notifications-angular';
+import { NovuNotificationBadgeComponent } from '@cacic-fct/shared-notifications-angular/badge';
 import { filter, map, startWith } from 'rxjs';
 
 import { WorkspacePermissionsService } from '../shared/services/workspace-permissions.service';

@@ -14,15 +14,7 @@ import {
   runInInjectionContext,
 } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Router } from '@angular/router';
 import { provideUmami } from '@cacic-fct/ngx-umami';
-import {
-  browserTracingIntegration as SentryBrowserTracingIntegration,
-  createErrorHandler as SentryCreateErrorHandler,
-  init as SentryInit,
-  TraceService as SentryTraceService,
-} from '@sentry/angular';
-import { consoleLoggingIntegration as SentryConsoleLoggingIntegration } from '@sentry/browser';
 import type { ErrorEvent as SentryErrorEvent } from '@sentry/angular';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AuthService } from '../auth/auth.service';
@@ -58,6 +50,18 @@ const DEFAULT_UMAMI_REPLAY_SRC = 'https://a.cacic.dev.br/recorder.js';
 const DEFAULT_UMAMI_REPLAY_SAMPLE_RATE = 1;
 const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'moderate';
 const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 1_200_000;
+
+@Injectable()
+class CacicSentryErrorHandler implements ErrorHandler {
+  private readonly fallbackErrorHandler = new ErrorHandler();
+
+  handleError(error: unknown): void {
+    this.fallbackErrorHandler.handleError(error);
+    void import('@sentry/angular')
+      .then((sentry) => sentry.captureException(error))
+      .catch(() => undefined);
+  }
+}
 
 @Injectable()
 class CacicObservabilityConsentService {
@@ -171,34 +175,14 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
     providers.push(
       {
         provide: ErrorHandler,
-        useValue: SentryCreateErrorHandler(),
-      },
-      {
-        provide: SentryTraceService,
-        deps: [Router],
+        useClass: CacicSentryErrorHandler,
       },
       provideAppInitializer(() => {
         const authService = inject(AuthService);
         const consent = inject(CacicObservabilityConsentService);
+        const injector = inject(Injector);
 
-        SentryInit({
-          dsn: config.glitchtip.dsn,
-          environment: isDevMode() ? 'development' : 'production',
-          sendDefaultPii: true,
-          integrations: [
-            SentryBrowserTracingIntegration(),
-            SentryConsoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
-          ],
-          tracesSampler: () => (consent.isPerformanceEnabled(config, authService.user()) ? 1.0 : 0),
-          tracePropagationTargets: [/^https:\/\/eventos\.cacic\.dev\.br\/api/],
-          enableLogs: true,
-          tunnel: config.glitchtip.project === 'admin' ? '/api/a/glitchtip/admin' : '/api/a/glitchtip/public',
-          beforeSend: (event: SentryErrorEvent) => {
-            return !isDevMode() && consent.isGlitchtipEnabled(config, authService.user()) ? event : null;
-          },
-        });
-
-        inject(SentryTraceService);
+        void startCacicSentry(config, authService, consent, injector);
       }),
     );
   }
@@ -226,4 +210,36 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
 
 export function startCacicAnalytics(): void {
   inject(CacicAnalyticsService).start();
+}
+
+async function startCacicSentry(
+  config: CacicObservabilityConfig,
+  authService: AuthService,
+  consent: CacicObservabilityConsentService,
+  injector: Injector,
+): Promise<void> {
+  try {
+    const [sentryAngular, sentryBrowser] = await Promise.all([import('@sentry/angular'), import('@sentry/browser')]);
+
+    sentryAngular.init({
+      dsn: config.glitchtip.dsn,
+      environment: isDevMode() ? 'development' : 'production',
+      sendDefaultPii: true,
+      integrations: [
+        sentryAngular.browserTracingIntegration(),
+        sentryBrowser.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+      ],
+      tracesSampler: () => (consent.isPerformanceEnabled(config, authService.user()) ? 1.0 : 0),
+      tracePropagationTargets: [/^https:\/\/eventos\.cacic\.dev\.br\/api/],
+      enableLogs: true,
+      tunnel: config.glitchtip.project === 'admin' ? '/api/a/glitchtip/admin' : '/api/a/glitchtip/public',
+      beforeSend: (event: SentryErrorEvent) => {
+        return !isDevMode() && consent.isGlitchtipEnabled(config, authService.user()) ? event : null;
+      },
+    });
+
+    injector.get(sentryAngular.TraceService);
+  } catch {
+    return;
+  }
 }

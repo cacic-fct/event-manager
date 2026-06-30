@@ -41,6 +41,7 @@
       }
       <lib-event-form-renderer
         [elements]="formElements(formContext.form)"
+        [initialAnswers]="formContext.initialAnswers"
         [showSubmit]="false"
         (answersChange)="updateFormAnswers(formContext, $event)" />
       @if (hasMissingRequired(formContext)) {

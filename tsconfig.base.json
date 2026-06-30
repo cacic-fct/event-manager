@@ -23,8 +23,26 @@
       "@cacic-fct/shared-angular/auth/guard": ["./libs/shared-angular/src/lib/auth/auth.guard.ts"],
       "@cacic-fct/shared-angular/auth/interceptor": ["./libs/shared-angular/src/lib/auth/auth.interceptor.ts"],
       "@cacic-fct/shared-angular/auth/types": ["./libs/shared-angular/src/lib/auth/auth.types.ts"],
+      "@cacic-fct/shared-angular/aztec-scanner": [
+        "./libs/shared-angular/src/lib/aztec-scanner/index.ts"
+      ],
+      "@cacic-fct/shared-angular/cacic-logo": [
+        "./libs/shared-angular/src/lib/cacic-logo/cacic-logo.component.ts"
+      ],
+      "@cacic-fct/shared-angular/calendar-feed": [
+        "./libs/shared-angular/src/lib/calendar-feed-reenable-dialog.component.ts"
+      ],
+      "@cacic-fct/shared-angular/duplicate-person-warning-dialog": [
+        "./libs/shared-angular/src/lib/duplicate-person-warning-dialog.component.ts"
+      ],
+      "@cacic-fct/shared-angular/event-forms": [
+        "./libs/shared-angular/src/lib/event-forms/index.ts"
+      ],
       "@cacic-fct/shared-angular/observability": [
         "./libs/shared-angular/src/lib/observability/provide-observability.ts"
+      ],
+      "@cacic-fct/shared-angular/privacy/cookie-banner-sync": [
+        "./libs/shared-angular/src/lib/privacy/cookie-banner-sync.service.ts"
       ],
       "@cacic-fct/shared-angular/privacy/startup": [
         "./libs/shared-angular/src/lib/privacy/account-privacy-startup.ts"
@@ -34,6 +52,15 @@
       ],
       "@cacic-fct/shared-environment": ["./libs/shared-environment/src/index.ts"],
       "@cacic-fct/shared-notifications-angular": ["./libs/shared-notifications-angular/src/index.ts"],
+      "@cacic-fct/shared-notifications-angular/badge": [
+        "./libs/shared-notifications-angular/src/lib/novu-notification-badge.component.ts"
+      ],
+      "@cacic-fct/shared-notifications-angular/inbox": [
+        "./libs/shared-notifications-angular/src/lib/novu-inbox.component.ts"
+      ],
+      "@cacic-fct/shared-notifications-angular/service": [
+        "./libs/shared-notifications-angular/src/lib/novu-notifications.service.ts"
+      ],
       "@cacic-fct/offline-public-data-access": ["./libs/offline-public-data-access/src/index.ts"],
       "@cacic-fct/event-manager-public-testing": ["./libs/event-manager-public-testing/src/index.ts"],
       "@cacic-fct/event-manager-public-contracts": ["./libs/event-manager-public-contracts/src/index.ts"],

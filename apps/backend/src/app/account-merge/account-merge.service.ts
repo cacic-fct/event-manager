@@ -5,7 +5,13 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { ExternalAccountMergeResult, People, Prisma } from '@prisma/client';
+import {
+  EventFormResponseMode,
+  EventFormTargetType,
+  ExternalAccountMergeResult,
+  People,
+  Prisma,
+} from '@prisma/client';
 import { differenceInDays, isValid, parseISO } from 'date-fns';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -60,6 +66,7 @@ type MovedRelationsSnapshot = {
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
   movedEventFormResponseIds: string[];
+  coalescedEventFormResponseIds: string[];
 };
 
 @Injectable()
@@ -464,7 +471,7 @@ export class AccountMergeService {
       targetPersonId,
       sourcePersonId,
     );
-    const movedEventFormResponseIds = await this.moveById(tx.eventFormResponse, targetPersonId, sourcePersonId);
+    const movedEventFormResponses = await this.moveEventFormResponses(tx, targetPersonId, sourcePersonId);
 
     return {
       sourceAttendances: sourceAttendances.map((attendance) => ({
@@ -484,7 +491,88 @@ export class AccountMergeService {
       movedEventSubscriptionIds,
       movedEventGroupSubscriptionIds,
       movedMajorEventSubscriptionIds,
-      movedEventFormResponseIds,
+      movedEventFormResponseIds: movedEventFormResponses.movedIds,
+      coalescedEventFormResponseIds: movedEventFormResponses.coalescedIds,
+    };
+  }
+
+  private async moveEventFormResponses(
+    tx: Prisma.TransactionClient,
+    targetPersonId: string,
+    sourcePersonId: string,
+  ): Promise<{ movedIds: string[]; coalescedIds: string[] }> {
+    const sourceResponses = await tx.eventFormResponse.findMany({
+      where: { personId: sourcePersonId },
+      select: {
+        id: true,
+        formId: true,
+        targetType: true,
+        eventId: true,
+        majorEventId: true,
+        form: {
+          select: {
+            responseMode: true,
+          },
+        },
+      },
+    });
+    const movedIds: string[] = [];
+    const coalescedIds: string[] = [];
+
+    for (const response of sourceResponses) {
+      const conflictWhere = this.eventFormResponseConflictWhere(response, targetPersonId);
+      const conflict = conflictWhere
+        ? await tx.eventFormResponse.findFirst({
+            where: conflictWhere,
+            select: { id: true },
+          })
+        : null;
+
+      if (conflict) {
+        await tx.eventFormResponse.delete({
+          where: { id: response.id },
+        });
+        coalescedIds.push(response.id);
+        continue;
+      }
+
+      await tx.eventFormResponse.update({
+        where: { id: response.id },
+        data: { personId: targetPersonId },
+      });
+      movedIds.push(response.id);
+    }
+
+    return { movedIds, coalescedIds };
+  }
+
+  private eventFormResponseConflictWhere(
+    response: {
+      formId: string;
+      targetType: EventFormTargetType;
+      eventId: string | null;
+      majorEventId: string | null;
+      form: { responseMode: EventFormResponseMode };
+    },
+    targetPersonId: string,
+  ): Prisma.EventFormResponseWhereInput | null {
+    if (response.form.responseMode === EventFormResponseMode.MULTIPLE_PER_TARGET) {
+      return null;
+    }
+
+    if (response.form.responseMode === EventFormResponseMode.SINGLE_PER_FORM) {
+      return {
+        formId: response.formId,
+        personId: targetPersonId,
+      };
+    }
+
+    return {
+      formId: response.formId,
+      personId: targetPersonId,
+      targetType: response.targetType,
+      eventId: response.eventId,
+      majorEventId: response.majorEventId,
     };
   }
 

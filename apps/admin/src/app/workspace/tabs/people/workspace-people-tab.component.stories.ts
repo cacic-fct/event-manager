@@ -1,6 +1,6 @@
 import { EventManagerKeycloakRole, EventManagerPermissionGrantScope, Permission } from '@cacic-fct/shared-permissions';
 import { computed, signal } from '@angular/core';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, http } from 'msw';
 import { applicationConfig } from '@storybook/angular';

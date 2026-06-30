@@ -1,4 +1,4 @@
 <router-outlet></router-outlet>
-@if (cookieBannerEnabled()) {
+@defer (when cookieBannerEnabled()) {
   <app-cookie-banner [config]="cookieBannerConfig" />
 }
