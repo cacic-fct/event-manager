@@ -2,22 +2,47 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { CalendarWeekView } from './calendar-week-view';
 import {
+  CalendarStoryEventControls,
   calendarStoryDateObject,
   calendarStoryWeekDays,
+  calendarStoryEventControlArgTypes,
+  calendarStoryEventDefaultControls,
   createCalendarStoryEvents,
   startOfCalendarStoryWeek,
 } from './calendar-story-fixtures';
 
-const meta: Meta<CalendarWeekView> = {
+type CalendarWeekViewStoryArgs = CalendarStoryEventControls & {
+  canGoPrevious: boolean;
+  returnUrl: string;
+};
+
+const meta: Meta<CalendarWeekViewStoryArgs> = {
   component: CalendarWeekView,
   title: 'Public/Tabs/Calendar/Calendar Week View',
   tags: ['autodocs'],
+  args: {
+    ...calendarStoryEventDefaultControls,
+    canGoPrevious: true,
+    returnUrl: '/calendar',
+  },
   argTypes: {
-    weekDays: { control: false },
-    selectedDate: { control: false },
-    events: { control: false },
+    ...calendarStoryEventControlArgTypes,
     canGoPrevious: { control: 'boolean' },
     returnUrl: { control: 'text' },
+  },
+  render: (args) => {
+    const selectedDate = calendarStoryDateObject(args.dayOffset);
+    const weekDays = calendarStoryWeekDays(startOfCalendarStoryWeek(selectedDate));
+
+    return {
+      props: {
+        weekDays,
+        selectedDate,
+        events: createCalendarStoryEvents(args),
+        canGoPrevious: args.canGoPrevious,
+        returnUrl: args.returnUrl,
+      },
+    };
   },
   parameters: {
     layout: 'fullscreen',
@@ -27,10 +52,7 @@ const meta: Meta<CalendarWeekView> = {
 
 export default meta;
 
-type Story = StoryObj<CalendarWeekView>;
-
-const selectedDate = calendarStoryDateObject(0);
-const weekDays = calendarStoryWeekDays(startOfCalendarStoryWeek(selectedDate));
+type Story = StoryObj<CalendarWeekViewStoryArgs>;
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
@@ -40,13 +62,12 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Online: Story = {
-  args: { weekDays, selectedDate, events: createCalendarStoryEvents(), canGoPrevious: true, returnUrl: '/calendar' },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const PreviousWeekLocked: Story = {
-  args: { weekDays, selectedDate, events: createCalendarStoryEvents(), canGoPrevious: false, returnUrl: '/calendar' },
+  args: { canGoPrevious: false },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -55,7 +76,20 @@ export const PreviousWeekLocked: Story = {
 };
 
 export const OfflineFallback: Story = {
-  args: { weekDays, selectedDate, events: [], canGoPrevious: true, returnUrl: '/calendar' },
+  render: (args) => {
+    const selectedDate = calendarStoryDateObject(args.dayOffset);
+    const weekDays = calendarStoryWeekDays(startOfCalendarStoryWeek(selectedDate));
+
+    return {
+      props: {
+        weekDays,
+        selectedDate,
+        events: [],
+        canGoPrevious: args.canGoPrevious,
+        returnUrl: args.returnUrl,
+      },
+    };
+  },
   globals: { theme: 'light', network: 'offline' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

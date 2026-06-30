@@ -8,11 +8,17 @@ import { expect, userEvent, within } from 'storybook/test';
 import { MajorEvent } from './major-event';
 
 interface MajorEventStoryArgs {
+  name: string;
+  emoji: string;
+  description: string;
   requiresPayment: boolean;
   rankedSubscriptionEnabled: boolean;
 }
 
 const defaultArgs: MajorEventStoryArgs = {
+  name: 'CACiC Storybook',
+  emoji: '💻',
+  description: 'Grande evento de demonstração com atividades, inscrições e certificados.',
   requiresPayment: false,
   rankedSubscriptionEnabled: true,
 };
@@ -36,6 +42,9 @@ const meta: Meta<MajorEventStoryArgs> = {
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
+    name: { control: 'text' },
+    emoji: { control: 'text' },
+    description: { control: 'text' },
     requiresPayment: { control: 'boolean' },
     rankedSubscriptionEnabled: { control: 'boolean' },
   },
@@ -129,6 +138,9 @@ function previewParameters(context: MajorEventStoryContext) {
 
 function buildMajorEvent(args: MajorEventStoryArgs) {
   return createStoryPublicMajorEvent(0, {
+    name: args.name,
+    emoji: args.emoji,
+    description: args.description,
     rankedSubscriptionEnabled: args.rankedSubscriptionEnabled,
     requiresPayment: args.requiresPayment,
   });

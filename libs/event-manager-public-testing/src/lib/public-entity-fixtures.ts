@@ -240,7 +240,7 @@ export function createStoryPublicMajorEvent(
   return createPublicMajorEvent({
     id: `major-${index + 1}`,
     name: ['CACiC 2026', 'SECOMPP', 'Semana da Computacao', 'Mostra de Projetos'][index % 4],
-    emoji: ['computer', 'rocket_launch', 'school', 'science'][index % 4],
+    emoji: ['💻', '🚀', '🎓', '🧪'][index % 4],
     startDate: storyDate(index * 3),
     endDate: storyDate(index * 3 + 2, 18),
     description: 'Grande evento com inscricoes, certificados e atividades vinculadas.',
@@ -290,7 +290,7 @@ export function createStoryPublicEventGroup(index = 0, overrides: Partial<Public
   return createPublicEventGroup({
     id: `group-${index + 1}`,
     name: ['Trilha de Angular', 'Oficinas de dados', 'Palestras principais', 'Minicursos noturnos'][index % 4],
-    emoji: ['web', 'query_stats', 'record_voice_over', 'nightlight'][index % 4],
+    emoji: ['🌐', '📊', '🎙️', '🌙'][index % 4],
     shouldIssueCertificate: index !== 1,
     shouldIssueCertificateForEachEvent: index % 3 === 0,
     shouldIssuePartialCertificate: index % 3 === 1,
@@ -353,7 +353,7 @@ export function createStoryPublicEvent(
     creditMinutes: index % 2 === 0 ? 120 : 90,
     startDate: storyDate(index + 1, 13),
     endDate: storyDate(index + 1, 15),
-    emoji: ['psychology', 'security', 'accessibility_new', 'monitoring'][index % 4],
+    emoji: ['🧠', '🔐', '♿', '📡'][index % 4],
     type: (['MINICURSO', 'PALESTRA', 'OTHER'] as const)[index % 3],
     description: 'Atividade de demonstracao com dados realistas para validar formularios, listas e estados.',
     shortDescription: 'Atividade pratica para Storybook.',
