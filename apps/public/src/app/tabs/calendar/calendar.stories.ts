@@ -18,17 +18,21 @@ type Story = StoryObj<Calendar>;
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
+  await expect(await canvas.findByRole('link', { name: /Abrir evento Arquitetura Angular com Signals/ })).toBeVisible();
+
+  await userEvent.click(await canvas.findByRole('combobox', { name: 'Tipo' }));
+  await userEvent.click(await within(document.body).findByRole('option', { name: 'Palestra' }));
+  await expect(await canvas.findByText('Acessibilidade em produtos digitais')).toBeVisible();
+
+  const searchInput = canvas.getByRole('searchbox', { name: 'Buscar eventos' });
+  await userEvent.clear(searchInput);
+  await userEvent.type(searchInput, 'GraphQL');
+  await userEvent.click(canvas.getByRole('button', { name: /Buscar/ }));
+  await expect(await canvas.findByText('Nenhum evento encontrado.')).toBeVisible();
+
+  await userEvent.click(await canvas.findByRole('button', { name: 'Visualização semanal' }));
+  await expect(await canvas.findByRole('button', { name: 'Próxima semana' })).toBeVisible();
+  await userEvent.click(await canvas.findByRole('button', { name: 'Ir para hoje' }));
 };
 
 export const Online: Story = {

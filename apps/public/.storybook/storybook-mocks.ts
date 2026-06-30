@@ -4,14 +4,19 @@ import {
   createStoryPublicEventGroup,
   createStoryPublicMajorEvent,
 } from '@cacic-fct/event-manager-public-testing';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { http, HttpResponse } from 'msw';
 
 faker.seed(20260516);
 
-const now = new Date('2026-05-16T12:00:00-03:00');
+function storyNow(): Date {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  return date;
+}
 
 function isoDaysFromNow(days: number, hour = 14): string {
-  const date = new Date(now);
+  const date = storyNow();
   date.setDate(date.getDate() + days);
   date.setHours(hour, 0, 0, 0);
   return date.toISOString();
@@ -21,6 +26,10 @@ function publicMajorEvent(index = 0) {
   return createStoryPublicMajorEvent(index, {
     requiresPayment: index % 2 === 0,
     rankedSubscriptionEnabled: true,
+    startDate: isoDaysFromNow(index * 3 - 1, 9),
+    endDate: isoDaysFromNow(index * 3 + 2, 20),
+    subscriptionStartDate: isoDaysFromNow(-20, 8),
+    subscriptionEndDate: isoDaysFromNow(index + 2, 23),
   });
 }
 
@@ -29,6 +38,12 @@ function publicEvent(index = 0) {
     majorEvent: publicMajorEvent(0),
     eventGroup: createStoryPublicEventGroup(index % 2),
     autoSubscribe: index === 0,
+    startDate: isoDaysFromNow(index, [14, 10, 18, 16][index % 4]),
+    endDate: isoDaysFromNow(index, [16, 12, 20, 18][index % 4]),
+    onlineAttendanceStartDate: isoDaysFromNow(index, [13, 9, 17, 15][index % 4]),
+    onlineAttendanceEndDate: isoDaysFromNow(index, [17, 13, 21, 19][index % 4]),
+    subscriptionStartDate: isoDaysFromNow(-10, 8),
+    subscriptionEndDate: isoDaysFromNow(index, 23),
   });
 }
 
@@ -95,7 +110,7 @@ function publicMajorEventById(variables: Record<string, unknown>) {
   return majorEvents.find((item) => item.id === variables['majorEventId']) ?? majorEvents[0];
 }
 
-function publicEventWeather(event: ReturnType<typeof publicEvent>) {
+function publicEventWeather(event: PublicEvent) {
   return {
     eventId: event.id,
     temperature: 24,
@@ -103,7 +118,7 @@ function publicEventWeather(event: ReturnType<typeof publicEvent>) {
     summary: 'Ensolarado',
     materialIcon: 'wb_sunny',
     forecastTime: event.startDate,
-    fetchedAt: now.toISOString(),
+    fetchedAt: storyNow().toISOString(),
     attribution: 'Open-Meteo',
   };
 }
@@ -118,7 +133,7 @@ function certificateDownload(fileName = 'certificado-cacic.pdf') {
 
 function graphqlData(query: string, variables: Record<string, unknown>) {
   if (query.includes('publicCalendarEvents')) {
-    return { publicCalendarEvents: events };
+    return { publicCalendarEvents: publicCalendarEvents(variables) };
   }
 
   if (query.includes('CurrentUserPendingOnlineAttendanceEvents')) {
@@ -134,8 +149,8 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     return {
       confirmCurrentUserOnlineAttendance: {
         eventId: String(variables['eventId'] ?? events[0].id),
-        attendedAt: now.toISOString(),
-        createdAt: now.toISOString(),
+        attendedAt: storyNow().toISOString(),
+        createdAt: storyNow().toISOString(),
       },
     };
   }
@@ -341,7 +356,7 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
         id: 'certificate-demo',
         personName: faker.person.fullName(),
         targetName: events[0].name,
-        issuedAt: now.toISOString(),
+        issuedAt: storyNow().toISOString(),
         creditMinutes: 120,
         issuerName: 'CACiC FCT',
         certificateText: faker.lorem.sentence(),
@@ -350,6 +365,37 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
   }
 
   return {};
+}
+
+function publicCalendarEvents(variables: Record<string, unknown>): PublicEvent[] {
+  const query = String(variables['query'] ?? '').trim().toLocaleLowerCase('pt-BR');
+  const eventType = variables['eventType'];
+  const startDateFrom = parseOptionalDate(variables['startDateFrom']);
+  const startDateUntil = parseOptionalDate(variables['startDateUntil']);
+
+  return events.filter((event) => {
+    const startDate = Date.parse(event.startDate);
+    const matchesStart = startDateFrom === null || startDate >= startDateFrom;
+    const matchesEnd = startDateUntil === null || startDate <= startDateUntil;
+    const matchesType = typeof eventType !== 'string' || event.type === eventType;
+    const matchesQuery =
+      !query ||
+      event.name.toLocaleLowerCase('pt-BR').includes(query) ||
+      (event.shortDescription ?? '').toLocaleLowerCase('pt-BR').includes(query) ||
+      (event.majorEvent?.name ?? '').toLocaleLowerCase('pt-BR').includes(query) ||
+      (event.eventGroup?.name ?? '').toLocaleLowerCase('pt-BR').includes(query);
+
+    return matchesStart && matchesEnd && matchesType && matchesQuery;
+  });
+}
+
+function parseOptionalDate(value: unknown): number | null {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return null;
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 export const publicHandlers = [
@@ -361,13 +407,13 @@ export const publicHandlers = [
     HttpResponse.text(`NGSW Debug Info:
 Driver state: NORMAL
 Latest manifest hash: storybook
-Last update check: ${now.toISOString()}`),
+Last update check: ${storyNow().toISOString()}`),
   ),
   http.get('/app/ngsw/state', () =>
     HttpResponse.text(`NGSW Debug Info:
 Driver state: NORMAL
 Latest manifest hash: storybook
-Last update check: ${now.toISOString()}`),
+Last update check: ${storyNow().toISOString()}`),
   ),
   http.get('/app/3rdpartylicenses.txt', () => HttpResponse.text(thirdPartyLicensesText)),
   http.get('/api/major-event-receipts/major-events/:majorEventId/current', () =>
@@ -378,7 +424,7 @@ Last update check: ${now.toISOString()}`),
       originalFileName: 'comprovante.png',
       mimeType: 'image/png',
       sizeBytes: 358400,
-      uploadedAt: now.toISOString(),
+      uploadedAt: storyNow().toISOString(),
       reviewedAt: null,
       rejectionReason: null,
     }),
@@ -391,7 +437,7 @@ Last update check: ${now.toISOString()}`),
       originalFileName: 'novo-comprovante.png',
       mimeType: 'image/png',
       sizeBytes: 420000,
-      uploadedAt: now.toISOString(),
+      uploadedAt: storyNow().toISOString(),
       reviewedAt: null,
       rejectionReason: null,
     }),
