@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { Observable, catchError, map, of, tap, timeout } from 'rxjs';
 
 const COOKIE_BANNER_ACCEPTED_STORAGE_KEY = 'cacic.cookieBanner.accepted';

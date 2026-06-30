@@ -1,7 +1,6 @@
 import { Route } from '@angular/router';
 import { canValidateReceiptsGuard, workspaceCanReadTabGuard, workspaceSuperAdminGuard } from './workspace.guard';
 import { WorkspaceNavLinkId, WorkspaceNavLinkItem, workspaceNavLinkItems } from './workspace-nav';
-import { WorkspaceNotificationsTabComponent } from './tabs/notifications/workspace-notifications-tab.component';
 
 const eventsData = getWorkspaceRouteData('events');
 const placesData = getWorkspaceRouteData('places');
@@ -216,7 +215,9 @@ export const workspaceRoutes: Route[] = [
           import('./workspace-permission-denied.component').then((m) => m.WorkspacePermissionDeniedComponent),
       },
       ...guardedWorkspaceTabRoute(notificationsData.path, notificationsData, () =>
-        Promise.resolve(WorkspaceNotificationsTabComponent),
+        import('./tabs/notifications/workspace-notifications-tab.component').then(
+          (m) => m.WorkspaceNotificationsTabComponent,
+        ),
       ),
       ...guardedWorkspaceTabRoute(preferencesData.path, preferencesData, () =>
         import('./tabs/preferences/workspace-preferences-tab.component').then(

@@ -12,14 +12,11 @@ import { provideRouter } from '@angular/router';
 import { appRoutes } from './app.routes';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import {
-  AuthService,
-  type AuthenticatedUser,
-  authInterceptor,
-  initializeCacicAccountPrivacyBestEffort,
-  provideCacicObservability,
-  startCacicAnalytics,
-} from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { type AuthenticatedUser } from '@cacic-fct/shared-angular/auth/types';
+import { authInterceptor } from '@cacic-fct/shared-angular/auth/interceptor';
+import { provideCacicObservability, startCacicAnalytics } from '@cacic-fct/shared-angular/observability';
+import { initializeCacicAccountPrivacyBestEffort } from '@cacic-fct/shared-angular/privacy/startup';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
 import { CookieBannerFeatureFlagService } from './feature-flags/cookie-banner-feature-flag.service';

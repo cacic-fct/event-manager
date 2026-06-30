@@ -19,6 +19,19 @@
       "@cacic-fct/shared-permissions": ["./libs/shared-permissions/src/index.ts"],
       "@cacic-fct/shared-frontend-types": ["./libs/shared-data-types/src/lib/frontend-types.ts"],
       "@cacic-fct/shared-angular": ["./libs/shared-angular/src/index.ts"],
+      "@cacic-fct/shared-angular/auth": ["./libs/shared-angular/src/lib/auth/auth.service.ts"],
+      "@cacic-fct/shared-angular/auth/guard": ["./libs/shared-angular/src/lib/auth/auth.guard.ts"],
+      "@cacic-fct/shared-angular/auth/interceptor": ["./libs/shared-angular/src/lib/auth/auth.interceptor.ts"],
+      "@cacic-fct/shared-angular/auth/types": ["./libs/shared-angular/src/lib/auth/auth.types.ts"],
+      "@cacic-fct/shared-angular/observability": [
+        "./libs/shared-angular/src/lib/observability/provide-observability.ts"
+      ],
+      "@cacic-fct/shared-angular/privacy/startup": [
+        "./libs/shared-angular/src/lib/privacy/account-privacy-startup.ts"
+      ],
+      "@cacic-fct/shared-angular/redirect-authenticated": [
+        "./libs/shared-angular/src/lib/guards/redirect-authenticated.ts"
+      ],
       "@cacic-fct/shared-environment": ["./libs/shared-environment/src/index.ts"],
       "@cacic-fct/shared-notifications-angular": ["./libs/shared-notifications-angular/src/index.ts"],
       "@cacic-fct/offline-public-data-access": ["./libs/offline-public-data-access/src/index.ts"],
