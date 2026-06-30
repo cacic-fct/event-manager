@@ -28,8 +28,9 @@ describe('CurrentUserAttendanceCollectionResolver scanner feed', () => {
     });
     const resolver = new CurrentUserAttendanceCollectionResolver(prisma as never, {} as never, {} as never);
 
-    const feed = await (resolver as unknown as { getScannerFeed: (eventId: string) => Promise<ScannerFeedItem[]> })
-      .getScannerFeed('standalone-event');
+    const feed = await (
+      resolver as unknown as { getScannerFeed: (eventId: string) => Promise<ScannerFeedItem[]> }
+    ).getScannerFeed('standalone-event');
 
     expect(feed).toEqual(
       expect.arrayContaining([
@@ -64,8 +65,9 @@ describe('CurrentUserAttendanceCollectionResolver scanner feed', () => {
     });
     const resolver = new CurrentUserAttendanceCollectionResolver(prisma as never, {} as never, {} as never);
 
-    const feed = await (resolver as unknown as { getScannerFeed: (eventId: string) => Promise<ScannerFeedItem[]> })
-      .getScannerFeed('major-session');
+    const feed = await (
+      resolver as unknown as { getScannerFeed: (eventId: string) => Promise<ScannerFeedItem[]> }
+    ).getScannerFeed('major-session');
 
     expect(feed).toEqual([
       expect.objectContaining({
@@ -344,7 +346,12 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
   });
 
   it('commits offline attendances with claimed author and current sender separated', async () => {
-    const attendance = { personId: 'person-1', eventId: 'event-1', createdById: 'offline-user', committedById: 'collector-user' };
+    const attendance = {
+      personId: 'person-1',
+      eventId: 'event-1',
+      createdById: 'offline-user',
+      committedById: 'collector-user',
+    };
     const { resolver, prisma } = createCollectionResolver({
       collector: collectorPerson(),
       people: [{ id: 'person-1' }],
@@ -562,24 +569,27 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       }),
       people: [{ id: 'person-1' }],
       offlineSubmissions: [
-        buildOfflineSubmissionRecord({
-          clientId: 'queue-1',
-          eventId: 'event-1',
-          personId: 'person-1',
-          createdByMethod: AttendanceCreationMethod.SCANNER,
-          scannerCode: 'user:user-1',
-          manualValue: null,
-          collectedAt: new Date('2026-05-20T12:30:00.000Z'),
-          authorUserId: 'offline-user',
-          authorName: 'Offline Collector',
-          authorEmail: 'offline@example.com',
-          submittedById: 'collector-user',
-          stagedReason: 'A coleta de presença não está aberta para este evento.',
-          resolutionError: null,
-          collectedLatitude: -22.12,
-          collectedLongitude: -51.4,
-          collectedAccuracyMeters: 15,
-        }, { status: 'COMMITTED', committedById: 'admin-user' }),
+        buildOfflineSubmissionRecord(
+          {
+            clientId: 'queue-1',
+            eventId: 'event-1',
+            personId: 'person-1',
+            createdByMethod: AttendanceCreationMethod.SCANNER,
+            scannerCode: 'user:user-1',
+            manualValue: null,
+            collectedAt: new Date('2026-05-20T12:30:00.000Z'),
+            authorUserId: 'offline-user',
+            authorName: 'Offline Collector',
+            authorEmail: 'offline@example.com',
+            submittedById: 'collector-user',
+            stagedReason: 'A coleta de presença não está aberta para este evento.',
+            resolutionError: null,
+            collectedLatitude: -22.12,
+            collectedLongitude: -51.4,
+            collectedAccuracyMeters: 15,
+          },
+          { status: 'COMMITTED', committedById: 'admin-user' },
+        ),
       ],
     });
 
@@ -659,7 +669,12 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
 
   it('commits expired offline attendances directly for users with attendance collection permission', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
-    const attendance = { personId: 'person-1', eventId: 'event-1', createdById: 'offline-user', committedById: 'collector-user' };
+    const attendance = {
+      personId: 'person-1',
+      eventId: 'event-1',
+      createdById: 'offline-user',
+      committedById: 'collector-user',
+    };
     const { resolver, prisma, authorizationPolicy } = createCollectionResolver({
       collector: collectorPerson({
         event: {
@@ -701,11 +716,9 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       },
     ]);
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      context.req.user,
-      ['event-attendance#collect'],
-      { eventId: 'event-1' },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(context.req.user, ['event-attendance#collect'], {
+      eventId: 'event-1',
+    });
     expect(authorizationPolicy.assertAttendanceCollectorForEvent).not.toHaveBeenCalled();
     expect(prisma.offlineEventAttendanceSubmission.create).not.toHaveBeenCalled();
     jest.useRealTimers();
@@ -807,9 +820,9 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       collector: null,
     }).resolver;
 
-    await expect(forbiddenResolver.currentUserAttendanceCollectionFeed('event-1', context as never)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      forbiddenResolver.currentUserAttendanceCollectionFeed('event-1', context as never),
+    ).rejects.toBeInstanceOf(ForbiddenException);
 
     jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
     const closedResolver = createCollectionResolver({
@@ -824,9 +837,9 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       }),
     }).resolver;
 
-    await expect(closedResolver.currentUserAttendanceCollectionFeed('event-1', context as never)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      closedResolver.currentUserAttendanceCollectionFeed('event-1', context as never),
+    ).rejects.toBeInstanceOf(ForbiddenException);
     jest.useRealTimers();
   });
 });
@@ -1005,8 +1018,9 @@ function createPrisma(input: {
       findMany: jest.fn().mockResolvedValue(input.events ?? []),
     },
     offlineEventAttendanceSubmission: {
-      findUnique: jest.fn(async (args: OfflineSubmissionFindUniqueArgs) =>
-        offlineSubmissions.get(offlineSubmissionKeyFromWhere(args.where)) ?? null,
+      findUnique: jest.fn(
+        async (args: OfflineSubmissionFindUniqueArgs) =>
+          offlineSubmissions.get(offlineSubmissionKeyFromWhere(args.where)) ?? null,
       ),
       findUniqueOrThrow: jest.fn(async (args: OfflineSubmissionFindUniqueArgs) => {
         const submission = offlineSubmissions.get(offlineSubmissionKeyFromWhere(args.where));
@@ -1110,31 +1124,37 @@ function createCollectionResolver(input: {
         throw new ForbiddenException('Missing Event Manager permission grants: event-attendance#collect.');
       }
     }),
-    assertAttendanceCollectorForEvent: jest.fn(async (eventId: string, personId: string, options: {
-      enforceCollectionWindow?: boolean;
-    }) => {
-      const collector = await prisma.eventAttendanceCollector.findUnique({
-        where: {
-          eventId_personId: {
-            eventId,
-            personId,
-          },
+    assertAttendanceCollectorForEvent: jest.fn(
+      async (
+        eventId: string,
+        personId: string,
+        options: {
+          enforceCollectionWindow?: boolean;
         },
-      });
+      ) => {
+        const collector = await prisma.eventAttendanceCollector.findUnique({
+          where: {
+            eventId_personId: {
+              eventId,
+              personId,
+            },
+          },
+        });
 
-      if (
-        !collector ||
-        collector.event.deletedAt ||
-        !collector.event.publiclyVisible ||
-        !collector.event.shouldCollectAttendance
-      ) {
-        throw new ForbiddenException('Você não pode coletar presença para este evento.');
-      }
+        if (
+          !collector ||
+          collector.event.deletedAt ||
+          !collector.event.publiclyVisible ||
+          !collector.event.shouldCollectAttendance
+        ) {
+          throw new ForbiddenException('Você não pode coletar presença para este evento.');
+        }
 
-      if (options.enforceCollectionWindow && !isCollectionOpen(collector.event.startDate, collector.event.endDate)) {
-        throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
-      }
-    }),
+        if (options.enforceCollectionWindow && !isCollectionOpen(collector.event.startDate, collector.event.endDate)) {
+          throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
+        }
+      },
+    ),
   };
 
   return {
