@@ -34,12 +34,23 @@ const meta: Meta<SubscriptionEventListStoryArgs> = {
   },
   render: (args) => {
     const events = createPublicStoryEvents(args);
+    const selectedEventIds = new Set<string>();
+    const autoSelectedEventIds = new Set<string>();
+    const firstEventId = events[0]?.id;
+    const secondEventId = events[1]?.id;
+    if (args.selectedFirstEvent && firstEventId !== undefined && firstEventId !== null) {
+      selectedEventIds.add(firstEventId);
+    }
+    if (args.autoSelectSecondEvent && secondEventId !== undefined && secondEventId !== null) {
+      autoSelectedEventIds.add(secondEventId);
+    }
+
     return {
       props: {
         events,
         summariesByEventId: buildSummaries(events),
-        selectedEventIds: args.selectedFirstEvent ? new Set([events[0]?.id].filter(Boolean)) : new Set(),
-        autoSelectedEventIds: args.autoSelectSecondEvent ? new Set([events[1]?.id].filter(Boolean)) : new Set(),
+        selectedEventIds,
+        autoSelectedEventIds,
         disabledReasons: args.disableSoldOutEvents ? buildDisabledReasons(events) : new Map(),
       },
     };

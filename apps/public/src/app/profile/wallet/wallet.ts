@@ -12,19 +12,20 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 
 import { toSVG } from '@bwip-js/browser';
 
-import { AuthService, SafePipe, ServiceWorkerService } from '@cacic-fct/shared-angular';
+import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
 import { OfflineUserSnapshot } from '@cacic-fct/offline-public-data-access';
 import { formatCPF, formatUnespRole, isValidCPF } from '@cacic-fct/shared-utils';
 
 import { PrintDialog } from './print-dialog';
 import { WalletTotpDialog } from './totp-dialog';
+import { WalletBarcodeComponent } from './wallet-barcode.component';
 import { NetworkStatusService } from '../../shared/network-status.service';
 import { OfflineUserDataService } from '../../shared/offline-user-data.service';
 
 @Component({
   selector: 'app-wallet',
   imports: [
-    SafePipe,
+    WalletBarcodeComponent,
     MatToolbarModule,
     MatIconModule,
     RouterLink,

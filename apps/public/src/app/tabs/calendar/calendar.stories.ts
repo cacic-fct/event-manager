@@ -99,7 +99,7 @@ function storyParameters(context: CalendarStoryContext) {
         http.post('/api/graphql', async ({ request }) => {
           const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
           if (!body.query?.includes('publicCalendarEvents')) {
-            return undefined;
+            return HttpResponse.json({ data: {} });
           }
 
           return HttpResponse.json({

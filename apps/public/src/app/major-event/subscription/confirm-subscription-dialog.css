@@ -47,3 +47,37 @@
   font: var(--mat-sys-label-large);
   padding: 8px 16px;
 }
+
+.forms-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.forms-section h3,
+.form-card h4,
+.form-card p {
+  margin: 0;
+}
+
+.form-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.form-card header p,
+.form-description {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.form-card header p {
+  font: var(--mat-sys-label-medium);
+}
+
+.validation {
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-small);
+}

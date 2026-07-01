@@ -382,15 +382,17 @@ describe('NovuNotificationsService', () => {
 
   it('logs and returns when Novu responds with an HTTP error', async () => {
     const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
+    const text = jest.fn().mockResolvedValue('server exploded');
     fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 500,
-      text: jest.fn().mockResolvedValue('server exploded'),
+      text,
     });
 
     await expect(service.notifyMajorEventSubscriptionStatusChanged(notificationFixture())).resolves.toBeUndefined();
 
-    expect(warnSpy).toHaveBeenCalledWith('Novu trigger failed with HTTP 500: server exploded');
+    expect(text).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith('Novu trigger failed with HTTP 500.');
   });
 
   it('logs unacknowledged Novu responses and thrown fetch errors', async () => {
@@ -434,6 +436,67 @@ describe('NovuNotificationsService', () => {
         previousStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
         nextStatus: SubscriptionStatus.CONFIRMED,
         recipient: expect.objectContaining({ subscriberId: 'user-1' }),
+      }),
+    );
+  });
+
+  it('notifies recipients when an event form becomes available', async () => {
+    await service.notifyEventFormAvailable({
+      formId: 'form-1',
+      linkId: 'link-1',
+      formName: 'Camiseta',
+      targetType: 'MAJOR_EVENT',
+      targetId: 'major-event-1',
+      targetName: 'Semana da Computacao',
+      recipients: [
+        {
+          subscriberId: 'user-1',
+          email: 'ada@example.com',
+        },
+      ],
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://novu.example.com/v1/events/trigger',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'ApiKey secret',
+          'Content-Type': 'application/json',
+        },
+      }),
+    );
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toEqual(
+      expect.objectContaining({
+        name: 'event-form-available',
+        transactionId: 'event-form-available:form-1:MAJOR_EVENT:major-event-1:link-1',
+        to: [
+          {
+            subscriberId: 'user-1',
+            email: 'ada@example.com',
+          },
+        ],
+        payload: expect.objectContaining({
+          title: 'Formulário disponível',
+          body: 'O formulário "Camiseta" está disponível para Semana da Computacao.',
+          formId: 'form-1',
+          formName: 'Camiseta',
+          targetType: 'MAJOR_EVENT',
+          targetId: 'major-event-1',
+          targetName: 'Semana da Computacao',
+          actionLabel: 'Responder formulário',
+          actionUrl: '/profile/forms/form-1?targetType=MAJOR_EVENT&targetId=major-event-1&linkId=link-1',
+        }),
+      }),
+    );
+    expect(body.overrides.webPush.data).toEqual(
+      expect.objectContaining({
+        url: '/profile/forms/form-1?targetType=MAJOR_EVENT&targetId=major-event-1&linkId=link-1',
+        formId: 'form-1',
+        targetType: 'MAJOR_EVENT',
+        targetId: 'major-event-1',
       }),
     );
   });

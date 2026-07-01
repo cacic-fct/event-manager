@@ -1,4 +1,5 @@
 import { Event, EventGroup, EventSummary, MajorEvent } from '@cacic-fct/event-manager-admin-contracts';
+import { isBefore, isValid, max, parseISO, subMonths } from 'date-fns';
 
 export type FreezeDates = {
   createdAt?: string | Date | null;
@@ -6,18 +7,15 @@ export type FreezeDates = {
 };
 
 export function getFrozenCutoffDate(now = new Date()): Date {
-  const cutoff = new Date(now);
-  cutoff.setMonth(cutoff.getMonth() - 2);
-  return cutoff;
+  return subMonths(now, 2);
 }
 
 export function isFrozenFromDates(dates: Array<string | Date | null | undefined>, now = new Date()): boolean {
-  const latestTimestamp = dates
-    .map((date) => toTimestamp(date))
-    .filter((timestamp): timestamp is number => timestamp !== null)
-    .reduce<number | null>((latest, timestamp) => (latest === null ? timestamp : Math.max(latest, timestamp)), null);
+  const validDates = dates
+    .map((date) => toDate(date))
+    .filter((date): date is Date => date !== null);
 
-  return latestTimestamp !== null && latestTimestamp < getFrozenCutoffDate(now).getTime();
+  return validDates.length > 0 && isBefore(max(validDates), getFrozenCutoffDate(now));
 }
 
 export function isFrozenEvent(event: Pick<Event, 'createdAt' | 'endDate'> | null | undefined): boolean {
@@ -44,16 +42,11 @@ export function isFrozenEventGroup(
   ]);
 }
 
-function toTimestamp(date: string | Date | null | undefined): number | null {
-  if (date instanceof Date) {
-    const timestamp = date.getTime();
-    return Number.isFinite(timestamp) ? timestamp : null;
-  }
-
+function toDate(date: string | Date | null | undefined): Date | null {
   if (typeof date !== 'string') {
-    return null;
+    return date instanceof Date && isValid(date) ? date : null;
   }
 
-  const timestamp = new Date(date).getTime();
-  return Number.isFinite(timestamp) ? timestamp : null;
+  const parsedDate = parseISO(date);
+  return isValid(parsedDate) ? parsedDate : null;
 }

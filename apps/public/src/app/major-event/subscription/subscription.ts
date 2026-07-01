@@ -18,21 +18,34 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService } from '@cacic-fct/shared-angular';
+import type {
+  EventFormTargetType,
+  PublicEvent,
+  PublicEventForm,
+  PublicEventFormLink,
+} from '@cacic-fct/event-manager-public-contracts';
+import { AuthService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
-import { formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
-import { filter, finalize, map } from 'rxjs';
+import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import { areIntervalsOverlapping, isBefore, parseISO } from 'date-fns';
+import { EMPTY, catchError, filter, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
-import { ConfirmSubscriptionDialog, type ConfirmSubscriptionDialogData } from './confirm-subscription-dialog';
+import {
+  ConfirmSubscriptionDialog,
+  type ConfirmSubscriptionDialogData,
+  type ConfirmSubscriptionDialogResult,
+  type SubscriptionFormAnswer,
+  type SubscriptionFormContext,
+} from './confirm-subscription-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from './subscription-api.service';
 import { SubscriptionEventList } from './subscription-event-list';
 import {
   MajorEventSubscriptionRealtimeDelta,
   MajorEventSubscriptionRealtimeService,
 } from './subscription-realtime.service';
+import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 
 type SubscriptionPageState =
   | { status: 'loading' }
@@ -66,6 +79,7 @@ export class MajorEventSubscription {
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly realtime = inject(MajorEventSubscriptionRealtimeService);
+  private readonly formsApi = inject(PublicEventFormApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -115,7 +129,7 @@ export class MajorEventSubscription {
       return [];
     }
 
-    return [...data.events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
+    return [...data.events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
   });
 
   readonly summariesByEventId = computed(
@@ -360,24 +374,41 @@ export class MajorEventSubscription {
       return;
     }
 
-    const dialogRef = this.dialog.open<ConfirmSubscriptionDialog, ConfirmSubscriptionDialogData, boolean>(
-      ConfirmSubscriptionDialog,
-      {
-        data: {
-          majorEvent: data.majorEvent,
-          events: this.selectedEvents(),
-        },
-        width: 'min(720px, 96vw)',
-      },
-    );
+    const selectedEvents = this.selectedEvents();
+    const selectedEventIds = [...this.effectiveSelectedEventIds()];
 
-    dialogRef
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((confirmed) => {
-        if (confirmed) {
-          this.confirmSubscription(data, selectedPaymentTier ?? null);
-        }
+    this.loadSubscriptionForms(data, selectedEvents)
+      .pipe(
+        catchError(() => {
+          this.snackBar.open('Não foi possível carregar os formulários da inscrição.', 'OK', {
+            duration: 5000,
+          });
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((forms) => {
+        const dialogRef = this.dialog.open<
+          ConfirmSubscriptionDialog,
+          ConfirmSubscriptionDialogData,
+          ConfirmSubscriptionDialogResult
+        >(ConfirmSubscriptionDialog, {
+          data: {
+            majorEvent: data.majorEvent,
+            events: selectedEvents,
+            forms,
+          },
+          width: 'min(760px, 96vw)',
+        });
+
+        dialogRef
+          .afterClosed()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe((result) => {
+            if (result?.confirmed) {
+              this.confirmSubscription(data, selectedEventIds, selectedEvents, selectedPaymentTier ?? null, result.answers);
+            }
+          });
       });
   }
 
@@ -385,7 +416,13 @@ export class MajorEventSubscription {
     this.selectedPriceTierName.set(tierName);
   }
 
-  private confirmSubscription(data: PublicMajorEventSubscriptionPage, paymentTier: string | null): void {
+  private confirmSubscription(
+    data: PublicMajorEventSubscriptionPage,
+    selectedEventIds: string[],
+    selectedEvents: PublicEvent[],
+    paymentTier: string | null,
+    formAnswers: SubscriptionFormAnswer[],
+  ): void {
     if (this.subscriptionCooldownSeconds() > 0) {
       this.snackBar.open(`Aguarde ${this.subscriptionCooldownSeconds()}s para alterar a inscrição.`, 'OK', {
         duration: 3000,
@@ -395,7 +432,12 @@ export class MajorEventSubscription {
 
     this.isSubmitting.set(true);
     this.api
-      .upsertSubscription(data.majorEvent.id, [...this.effectiveSelectedEventIds()], paymentTier)
+      .upsertSubscription(
+        data.majorEvent.id,
+        selectedEventIds,
+        paymentTier,
+        this.toSubmitFormResponses(formAnswers),
+      )
       .pipe(
         finalize(() => this.isSubmitting.set(false)),
         takeUntilDestroyed(this.destroyRef),
@@ -408,7 +450,7 @@ export class MajorEventSubscription {
             action,
             majorEvent: data.majorEvent,
             subscription,
-            selectedEventCount: this.selectedEvents().length,
+            selectedEventCount: selectedEvents.length,
             paymentTier,
             priceInCents: this.selectedPriceTier()?.value ?? null,
           });
@@ -428,6 +470,138 @@ export class MajorEventSubscription {
       });
   }
 
+  private loadSubscriptionForms(data: PublicMajorEventSubscriptionPage, selectedEvents: PublicEvent[]) {
+    const targets = [
+      {
+        targetType: 'MAJOR_EVENT' as const,
+        targetId: data.majorEvent.id,
+        targetName: data.majorEvent.name,
+      },
+      ...selectedEvents.map((event) => ({
+        targetType: 'EVENT' as const,
+        targetId: event.id,
+        targetName: event.name,
+      })),
+    ];
+
+    return forkJoin(
+      targets.map((target) =>
+        this.formsApi
+          .listCurrentUserForms({
+            targetType: target.targetType,
+            eventId: target.targetType === 'EVENT' ? target.targetId : null,
+            majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
+            subscriptionFlowOnly: true,
+          })
+          .pipe(map((forms) => forms.flatMap((form) => this.toSubscriptionFormContexts(form, target)))),
+      ),
+    ).pipe(
+      map((groups) => {
+        const seen = new Set<string>();
+        return groups
+          .flat()
+          .filter((form) => {
+            const key = `${form.form.id}:${form.linkId ?? 'sem-vinculo'}:${form.targetType}:${form.targetId}`;
+            if (seen.has(key)) {
+              return false;
+            }
+            seen.add(key);
+            return true;
+          })
+          .sort((left, right) => this.formDisplayOrder(left) - this.formDisplayOrder(right));
+      }),
+      switchMap((forms) =>
+        forms.length > 0
+          ? forkJoin(forms.map((form) => this.loadExistingFormAnswer(form)))
+          : of([] satisfies SubscriptionFormContext[]),
+      ),
+    );
+  }
+
+  private toSubscriptionFormContexts(
+    form: PublicEventForm,
+    target: { targetType: EventFormTargetType; targetId: string; targetName: string },
+  ): SubscriptionFormContext[] {
+    const links = form.links.filter((item) => this.isEligibleSubscriptionFlowLink(item, target));
+    const matchingLinks = links.length > 0 ? links : [null];
+
+    return matchingLinks.map((link) => ({
+      form,
+      targetType: target.targetType,
+      targetId: target.targetId,
+      targetName: target.targetName,
+      linkId: link?.id ?? null,
+      requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
+      enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
+      initialAnswers: [],
+    }));
+  }
+
+  private loadExistingFormAnswer(form: SubscriptionFormContext) {
+    return this.formsApi
+      .getCurrentUserResponse({
+        formId: form.form.id,
+        linkId: form.linkId,
+        targetType: form.targetType,
+        eventId: form.targetType === 'EVENT' ? form.targetId : null,
+        majorEventId: form.targetType === 'MAJOR_EVENT' ? form.targetId : null,
+      })
+      .pipe(
+        map((response) => ({
+          ...form,
+          initialAnswers: parseFormAnswersJson(response?.answersJson),
+        })),
+      );
+  }
+
+  private formDisplayOrder(form: SubscriptionFormContext): number {
+    return (
+      form.form.links.find((link) => link.id === form.linkId)?.displayOrder ??
+      Number.MAX_SAFE_INTEGER
+    );
+  }
+
+  private isEligibleSubscriptionFlowLink(
+    link: PublicEventFormLink,
+    target: { targetType: EventFormTargetType; targetId: string },
+  ): boolean {
+    if (
+      !link.insertInSubscriptionFlow ||
+      link.targetType !== target.targetType ||
+      (link.eventId ?? null) !== (target.targetType === 'EVENT' ? target.targetId : null) ||
+      (link.majorEventId ?? null) !== (target.targetType === 'MAJOR_EVENT' ? target.targetId : null)
+    ) {
+      return false;
+    }
+    const now = Date.now();
+    const availableFrom = link.availableFrom ? Date.parse(link.availableFrom) : null;
+    const availableUntil = link.availableUntil ? Date.parse(link.availableUntil) : null;
+    return (
+      (availableFrom === null || Number.isNaN(availableFrom) || availableFrom <= now) &&
+      (availableUntil === null || Number.isNaN(availableUntil) || availableUntil > now)
+    );
+  }
+
+  private toSubmitFormResponses(formAnswers: SubscriptionFormAnswer[]) {
+    return formAnswers.map((answer) =>
+      answer.targetType === 'EVENT'
+        ? {
+            formId: answer.formId,
+            linkId: answer.linkId,
+            targetType: answer.targetType,
+            eventId: answer.targetId,
+            answersJson: JSON.stringify(answer.answers),
+          }
+        : {
+            formId: answer.formId,
+            linkId: answer.linkId,
+            targetType: answer.targetType,
+            majorEventId: answer.targetId,
+            answersJson: JSON.stringify(answer.answers),
+          },
+    );
+  }
+
   private computeDisabledReasons(): ReadonlyMap<string, string> {
     const reasons = new Map<string, string>();
     const data = this.data();
@@ -435,7 +609,7 @@ export class MajorEventSubscription {
       return reasons;
     }
 
-    const now = Date.now();
+    const now = new Date();
     const selectedEventIds = this.selectedEventIds();
     const autoSelectedEventIds = this.autoSelectedEventIds();
 
@@ -450,7 +624,7 @@ export class MajorEventSubscription {
         continue;
       }
 
-      if (Date.parse(event.startDate) <= now) {
+      if (!isBefore(now, parseISO(event.startDate))) {
         reasons.set(event.id, 'Evento já iniciado.');
         continue;
       }
@@ -525,8 +699,10 @@ export class MajorEventSubscription {
   private eventsConflict(left: PublicEvent, right: PublicEvent): boolean {
     return (
       left.id !== right.id &&
-      Date.parse(left.startDate) < Date.parse(right.endDate) &&
-      Date.parse(left.endDate) > Date.parse(right.startDate)
+      areIntervalsOverlapping(
+        { start: parseISO(left.startDate), end: parseISO(left.endDate) },
+        { start: parseISO(right.startDate), end: parseISO(right.endDate) },
+      )
     );
   }
 

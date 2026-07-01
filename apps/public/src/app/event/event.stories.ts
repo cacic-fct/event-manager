@@ -8,9 +8,12 @@ import { of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import {
   PublicEventStoryControls,
+  MutableStoryContext,
   createPublicStoryEventFromControls,
+  createMutableStoryContext,
   publicEventStoryControlArgTypes,
   publicEventStoryDefaultControls,
+  renderMutableStory,
 } from '../testing/public-event-story-fixtures';
 import { Event } from './event';
 
@@ -29,9 +32,7 @@ const defaultArgs: EventStoryArgs = {
   hasAttendance: false,
 };
 
-interface EventStoryContext {
-  args: EventStoryArgs;
-}
+type EventStoryContext = MutableStoryContext<EventStoryArgs>;
 
 const previewRoute = {
   paramMap: of(convertToParamMap({ previewToken: 'storybook-event-preview' })),
@@ -113,14 +114,11 @@ export const PreviewLink: Story = {
 };
 
 function createStoryContext(args: Partial<EventStoryArgs> = {}): EventStoryContext {
-  return {
-    args: { ...defaultArgs, ...args },
-  };
+  return createMutableStoryContext(defaultArgs, args);
 }
 
 function renderStory(args: EventStoryArgs, context: EventStoryContext) {
-  context.args = { ...defaultArgs, ...args };
-  return { props: {} };
+  return renderMutableStory(defaultArgs, args, context);
 }
 
 function eventParameters(context: EventStoryContext) {

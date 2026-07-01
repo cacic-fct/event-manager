@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { DeletionResult, EventDraft, EventDraftSaveInput, EventUpdateInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogEntityType, AuditLogOperation, Prisma, PublicationState as PrismaPublicationState } from '@prisma/client';
+import { addDays, isValid, parseISO, subDays } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -419,7 +420,7 @@ export class EventDraftsService {
   }
 
   async cleanupStaleDrafts(now = new Date()): Promise<number> {
-    const cutoff = new Date(now.getTime() - EVENT_DRAFT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const cutoff = subDays(now, EVENT_DRAFT_RETENTION_DAYS);
     let deletedCount = 0;
 
     while (true) {
@@ -580,12 +581,12 @@ export class EventDraftsService {
     const payloadBaseDate = typeof payloadEndDate === 'string' ? this.validDateOrNull(payloadEndDate) : null;
     const baseDate = payloadBaseDate ?? (sourceEventEndDate instanceof Date ? sourceEventEndDate : fallbackDate);
 
-    return new Date(baseDate.getTime() + EVENT_DRAFT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    return addDays(baseDate, EVENT_DRAFT_RETENTION_DAYS);
   }
 
   private validDateOrNull(value: string): Date | null {
-    const date = new Date(value);
-    return Number.isFinite(date.getTime()) ? date : null;
+    const date = parseISO(value);
+    return isValid(date) ? date : null;
   }
 
   private async normalizeEventCertificateInput(input: EventUpdateInput, eventId: string): Promise<EventUpdateInput> {

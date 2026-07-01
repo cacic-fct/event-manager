@@ -5,6 +5,9 @@ import type {
   Event,
   EventAttendance,
   EventDraft,
+  EventForm,
+  EventFormInput,
+  EventFormResults,
   EventGroup,
   EventInput,
   EventSummary,
@@ -18,7 +21,7 @@ import type {
   WorkspaceMajorEventSubscription,
   WorkspaceMajorEventSubscriptionEvent,
 } from '@cacic-fct/event-manager-admin-contracts';
-import type { AuthenticatedUser } from '@cacic-fct/shared-angular';
+import type { AuthenticatedUser } from '@cacic-fct/shared-angular/auth/types';
 import type {
   DashboardCalendarEvent,
   DashboardCertificatePendingItem,
@@ -427,6 +430,185 @@ export function createAdminEventDraft(
     createdAt: adminFixtureDate,
     updatedAt: adminFixtureDate,
     expiresAt: '2026-06-21T12:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventForm {
+  const event = createAdminEvent({ id: overrides.ownerEventId ?? 'event-1', name: 'Oficina de Angular' });
+  const majorEvent = createAdminMajorEvent({ id: overrides.ownerMajorEventId ?? 'major-event-1', name: 'Grande evento' });
+  const owner = overrides.ownerMajorEventId
+    ? {
+        type: 'MAJOR_EVENT' as const,
+        id: majorEvent.id,
+        name: majorEvent.name,
+        emoji: majorEvent.emoji,
+      }
+    : {
+        type: 'EVENT' as const,
+        id: event.id,
+        name: event.name,
+        emoji: event.emoji,
+      };
+
+  return {
+    id: 'form-1',
+    name: 'Pesquisa de camiseta',
+    description: 'Coleta o tamanho da camiseta dos inscritos.',
+    ownerEventId: overrides.ownerMajorEventId ? null : event.id,
+    ownerMajorEventId: overrides.ownerMajorEventId ?? null,
+    owner,
+    elementsJson: JSON.stringify([
+      {
+        id: 'shirt-size',
+        type: 'shortText',
+        title: 'Tamanho da camiseta',
+        description: 'Exemplo: P, M, G ou GG.',
+        required: true,
+        options: [],
+      },
+    ]),
+    sigilo: 'PARTIALLY_SECRET',
+    responseMode: 'ONE_PER_TARGET',
+    resultsPublic: false,
+    resultsLive: false,
+    publicationState: 'PUBLISHED',
+    scheduledPublishAt: null,
+    publishedAt: adminFixtureDate,
+    unpublishedAt: null,
+    links: [
+      {
+        id: 'form-link-1',
+        formId: 'form-1',
+        targetType: 'EVENT',
+        eventId: event.id,
+        majorEventId: null,
+        target: {
+          type: 'EVENT',
+          id: event.id,
+          name: event.name,
+          emoji: event.emoji,
+        },
+        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        insertInSubscriptionFlow: true,
+        requiredInSubscriptionFlow: true,
+        enforceRequiredAnswers: true,
+        displayOrder: 0,
+        availableFrom: null,
+        availableUntil: null,
+        notifyOnPublish: false,
+        allowLecturerManualPublish: false,
+        lastNotifiedAt: null,
+        responseCount: 1,
+        createdAt: adminFixtureDate,
+        updatedAt: adminFixtureDate,
+      },
+    ],
+    responseCount: 1,
+    deletedAt: null,
+    createdAt: adminFixtureDate,
+    createdById: 'fixture-admin',
+    updatedAt: adminFixtureDate,
+    updatedById: 'fixture-admin',
+    ...overrides,
+  };
+}
+
+export function createAdminEventFormFromInput(input: EventFormInput): EventForm {
+  return createAdminEventForm({
+    id: input.id ?? 'form-1',
+    name: input.name ?? 'Pesquisa de camiseta',
+    description: input.description,
+    ownerEventId: input.ownerEventId,
+    ownerMajorEventId: input.ownerMajorEventId,
+    owner: input.ownerEventId
+      ? {
+          type: 'EVENT',
+          id: input.ownerEventId,
+          name: 'Oficina de Angular',
+          emoji: 'event',
+        }
+      : input.ownerMajorEventId
+        ? {
+            type: 'MAJOR_EVENT',
+            id: input.ownerMajorEventId,
+            name: 'Grande evento',
+            emoji: 'event',
+          }
+        : null,
+    elementsJson: input.elementsJson ?? '[]',
+    sigilo: input.sigilo ?? 'SECRET',
+    responseMode: input.responseMode ?? 'ONE_PER_TARGET',
+    resultsPublic: input.resultsPublic ?? false,
+    resultsLive: input.resultsLive ?? false,
+    links:
+      input.links?.map((link, index) => ({
+        id: link.id ?? `form-link-${index + 1}`,
+        formId: input.id ?? 'form-1',
+        targetType: link.targetType,
+        eventId: link.targetType === 'EVENT' ? link.eventId ?? null : null,
+        majorEventId: link.targetType === 'MAJOR_EVENT' ? link.majorEventId ?? null : null,
+        target: null,
+        audience: link.audience ?? 'SUBSCRIBERS_OR_ATTENDEES',
+        insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
+        requiredInSubscriptionFlow: link.requiredInSubscriptionFlow ?? false,
+        enforceRequiredAnswers: link.enforceRequiredAnswers ?? true,
+        displayOrder: link.displayOrder ?? index,
+        availableFrom: link.availableFrom ?? null,
+        availableUntil: link.availableUntil ?? null,
+        notifyOnPublish: link.insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
+        allowLecturerManualPublish:
+          link.targetType === 'EVENT' && !link.insertInSubscriptionFlow
+            ? (link.allowLecturerManualPublish ?? false)
+            : false,
+        lastNotifiedAt: null,
+        responseCount: 0,
+        createdAt: adminFixtureDate,
+        updatedAt: adminFixtureDate,
+      })) ?? [],
+  });
+}
+
+export function createAdminEventFormResults(overrides: Partial<EventFormResults> = {}): EventFormResults {
+  const form = overrides.form ?? createAdminEventForm();
+  const link = form.links[0];
+  const targetType = link?.targetType ?? 'EVENT';
+  const responses = overrides.responses ?? [
+    {
+      id: 'form-response-1',
+      formId: form.id,
+      linkId: link?.id ?? null,
+      targetType,
+      eventId: targetType === 'EVENT' ? (link?.eventId ?? 'event-1') : null,
+      majorEventId: targetType === 'MAJOR_EVENT' ? (link?.majorEventId ?? 'major-event-1') : null,
+      personId: 'person-1',
+      respondentName: 'Ada Lovelace',
+      respondentEmail: 'ada@example.com',
+      answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'M' }]),
+      source: 'PUBLIC_FORM',
+      submittedAt: adminFixtureDate,
+      updatedAt: adminFixtureDate,
+    },
+  ];
+
+  return {
+    form,
+    responseCount: overrides.responseCount ?? responses.length,
+    anonymous: false,
+    answersReleased: true,
+    summaryJson: JSON.stringify({
+      questions: [
+        {
+          elementId: 'shirt-size',
+          title: 'Tamanho da camiseta',
+          type: 'shortText',
+          answeredCount: 1,
+          buckets: [],
+          textAnswers: ['M'],
+        },
+      ],
+    }),
+    responses,
     ...overrides,
   };
 }

@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
-import { UnleashClient, type IToggle } from 'unleash-proxy-client';
+import type { IToggle, UnleashClient as UnleashClientType } from 'unleash-proxy-client';
 
 const COOKIE_BANNER_FEATURE_FLAG = 'cookie-banner-enabled';
 const DEVELOPMENT_STORAGE_KEY = 'cacic.cookieBanner.enabled';
@@ -12,7 +12,7 @@ const PRODUCTION_CLIENT_KEY =
 export class CookieBannerFeatureFlagService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly enabledSignal = signal(true);
-  private client: UnleashClient | null = null;
+  private client: UnleashClientType | null = null;
 
   readonly enabled = computed(() => this.enabledSignal());
 
@@ -27,6 +27,7 @@ export class CookieBannerFeatureFlagService {
       return;
     }
 
+    const { UnleashClient } = await import('unleash-proxy-client');
     const client = new UnleashClient({
       url: UNLEASH_URL,
       clientKey: this.readRuntimeConfigValue('cacic-unleash-client-key') || PRODUCTION_CLIENT_KEY,
@@ -57,7 +58,7 @@ export class CookieBannerFeatureFlagService {
     this.enabledSignal.set(client.isEnabled(COOKIE_BANNER_FEATURE_FLAG));
   }
 
-  private startClient(client: UnleashClient): void {
+  private startClient(client: UnleashClientType): void {
     void client
       .start()
       .then(() => this.syncFromClient())

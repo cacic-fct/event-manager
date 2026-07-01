@@ -13,10 +13,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AztecScannerComponent,
-  DuplicatePersonWarningDialogComponent,
   ScannerFeedbackKind,
   ScannerFeedbackService,
-} from '@cacic-fct/shared-angular';
+} from '@cacic-fct/shared-angular/aztec-scanner';
+import { DuplicatePersonWarningDialogComponent } from '@cacic-fct/shared-angular/duplicate-person-warning-dialog';
 import { formatUnespRole, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';

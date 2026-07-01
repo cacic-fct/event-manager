@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { LoginPageComponent } from './login-page.component';
 
 describe('LoginPageComponent', () => {
@@ -19,6 +19,8 @@ describe('LoginPageComponent', () => {
       configurable: true,
       value: vi.fn().mockReturnValue({
         matches: false,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       }),

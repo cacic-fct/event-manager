@@ -42,6 +42,56 @@ registerEnumType(PublicationTargetType, {
   name: 'PublicationTargetType',
 });
 
+export const EventFormSigilo = {
+  PUBLIC: 'PUBLIC',
+  PARTIALLY_SECRET: 'PARTIALLY_SECRET',
+  SECRET: 'SECRET',
+  ANONYMOUS: 'ANONYMOUS',
+} as const;
+export type EventFormSigilo = (typeof EventFormSigilo)[keyof typeof EventFormSigilo];
+registerEnumType(EventFormSigilo, {
+  name: 'EventFormSigilo',
+});
+
+export const EventFormAudience = {
+  SUBSCRIBERS: 'SUBSCRIBERS',
+  ATTENDEES: 'ATTENDEES',
+  SUBSCRIBERS_OR_ATTENDEES: 'SUBSCRIBERS_OR_ATTENDEES',
+} as const;
+export type EventFormAudience = (typeof EventFormAudience)[keyof typeof EventFormAudience];
+registerEnumType(EventFormAudience, {
+  name: 'EventFormAudience',
+});
+
+export const EventFormTargetType = {
+  EVENT: 'EVENT',
+  MAJOR_EVENT: 'MAJOR_EVENT',
+} as const;
+export type EventFormTargetType = (typeof EventFormTargetType)[keyof typeof EventFormTargetType];
+registerEnumType(EventFormTargetType, {
+  name: 'EventFormTargetType',
+});
+
+export const EventFormResponseSource = {
+  PUBLIC_FORM: 'PUBLIC_FORM',
+  SUBSCRIPTION_FLOW: 'SUBSCRIPTION_FLOW',
+  LECTURER_PUBLISH: 'LECTURER_PUBLISH',
+} as const;
+export type EventFormResponseSource = (typeof EventFormResponseSource)[keyof typeof EventFormResponseSource];
+registerEnumType(EventFormResponseSource, {
+  name: 'EventFormResponseSource',
+});
+
+export const EventFormResponseMode = {
+  ONE_PER_TARGET: 'ONE_PER_TARGET',
+  MULTIPLE_PER_TARGET: 'MULTIPLE_PER_TARGET',
+  SINGLE_PER_FORM: 'SINGLE_PER_FORM',
+} as const;
+export type EventFormResponseMode = (typeof EventFormResponseMode)[keyof typeof EventFormResponseMode];
+registerEnumType(EventFormResponseMode, {
+  name: 'EventFormResponseMode',
+});
+
 export const ContactType = {
   EMAIL: 'EMAIL',
   PHONE: 'PHONE',

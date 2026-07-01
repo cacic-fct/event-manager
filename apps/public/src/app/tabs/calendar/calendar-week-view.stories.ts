@@ -30,20 +30,7 @@ const meta: Meta<CalendarWeekViewStoryArgs> = {
     canGoPrevious: { control: 'boolean' },
     returnUrl: { control: 'text' },
   },
-  render: (args) => {
-    const selectedDate = calendarStoryDateObject(args.dayOffset);
-    const weekDays = calendarStoryWeekDays(startOfCalendarStoryWeek(selectedDate));
-
-    return {
-      props: {
-        weekDays,
-        selectedDate,
-        events: createCalendarStoryEvents(args),
-        canGoPrevious: args.canGoPrevious,
-        returnUrl: args.returnUrl,
-      },
-    };
-  },
+  render: (args) => renderCalendarWeekView(args),
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -76,23 +63,25 @@ export const PreviousWeekLocked: Story = {
 };
 
 export const OfflineFallback: Story = {
-  render: (args) => {
-    const selectedDate = calendarStoryDateObject(args.dayOffset);
-    const weekDays = calendarStoryWeekDays(startOfCalendarStoryWeek(selectedDate));
-
-    return {
-      props: {
-        weekDays,
-        selectedDate,
-        events: [],
-        canGoPrevious: args.canGoPrevious,
-        returnUrl: args.returnUrl,
-      },
-    };
-  },
+  render: (args) => renderCalendarWeekView(args, []),
   globals: { theme: 'light', network: 'offline' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Nenhum evento nesta data.')).toBeVisible();
   },
 };
+
+function renderCalendarWeekView(args: CalendarWeekViewStoryArgs, events = createCalendarStoryEvents(args)) {
+  const selectedDate = calendarStoryDateObject(args.dayOffset);
+  const weekDays = calendarStoryWeekDays(startOfCalendarStoryWeek(selectedDate));
+
+  return {
+    props: {
+      weekDays,
+      selectedDate,
+      events,
+      canGoPrevious: args.canGoPrevious,
+      returnUrl: args.returnUrl,
+    },
+  };
+}

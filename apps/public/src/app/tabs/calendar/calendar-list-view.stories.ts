@@ -30,14 +30,7 @@ const meta: Meta<CalendarListViewStoryArgs> = {
     isLoadingOlder: { control: 'boolean' },
     returnUrl: { control: 'text' },
   },
-  render: (args) => ({
-    props: {
-      events: createCalendarStoryEvents(args),
-      canLoadOlder: args.canLoadOlder,
-      isLoadingOlder: args.isLoadingOlder,
-      returnUrl: args.returnUrl,
-    },
-  }),
+  render: (args) => renderCalendarListView(args),
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -78,17 +71,21 @@ export const LoadingOlder: Story = {
 
 export const OfflineFallback: Story = {
   args: { canLoadOlder: false },
-  render: (args) => ({
-    props: {
-      events: [],
-      canLoadOlder: args.canLoadOlder,
-      isLoadingOlder: args.isLoadingOlder,
-      returnUrl: args.returnUrl,
-    },
-  }),
+  render: (args) => renderCalendarListView(args, []),
   globals: { theme: 'light', network: 'offline' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Nenhum evento encontrado.')).toBeVisible();
   },
 };
+
+function renderCalendarListView(args: CalendarListViewStoryArgs, events = createCalendarStoryEvents(args)) {
+  return {
+    props: {
+      events,
+      canLoadOlder: args.canLoadOlder,
+      isLoadingOlder: args.isLoadingOlder,
+      returnUrl: args.returnUrl,
+    },
+  };
+}

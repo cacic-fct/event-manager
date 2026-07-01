@@ -2,10 +2,10 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { type CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { CookieBannerSyncService } from '@cacic-fct/shared-angular/privacy/cookie-banner-sync';
 import { firstValueFrom } from 'rxjs';
 import { CookieBannerFeatureFlagService } from './feature-flags/cookie-banner-feature-flag.service';
-import { CookieBannerSyncService } from './privacy/cookie-banner-sync.service';
 import { PackageCookieBannerComponent } from './privacy/package-cookie-banner.component';
 
 @Component({

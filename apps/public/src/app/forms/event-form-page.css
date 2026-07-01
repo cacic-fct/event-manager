@@ -1,0 +1,44 @@
+mat-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.form-page {
+  box-sizing: border-box;
+  display: grid;
+  gap: 20px;
+  margin: 0 auto;
+  max-width: 880px;
+  padding: 20px 16px 44px;
+}
+
+header {
+  display: grid;
+  gap: 6px;
+}
+
+header p,
+header span {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}
+
+header p {
+  font: var(--mat-sys-label-large);
+}
+
+h1 {
+  font: var(--mat-sys-headline-small);
+  margin: 0;
+}
+
+.empty-section {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 180px;
+  text-align: center;
+}

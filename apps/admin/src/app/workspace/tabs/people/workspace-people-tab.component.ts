@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';

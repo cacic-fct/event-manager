@@ -22,6 +22,10 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'profile/forms/:formId',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'attendance/register',
     renderMode: RenderMode.Client,
   },

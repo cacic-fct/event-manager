@@ -368,6 +368,24 @@ describe('PermissionGrantsService', () => {
     );
   });
 
+  it('validates partial update validity against the persisted window', async () => {
+    prisma.eventManagerPermissionGrant.findFirst.mockResolvedValueOnce(grantRecord({
+      permission: Permission.Event.Read,
+      scope: EventManagerPermissionGrantScope.GLOBAL,
+      validUntil: new Date('2099-01-10T12:00:00.000Z'),
+    }));
+
+    await expect(
+      service.updateGrant('grant-1', {
+        permission: Permission.Event.Read,
+        scope: EventManagerPermissionGrantScope.GLOBAL,
+        validFrom: new Date('2099-01-11T12:00:00.000Z'),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.eventManagerPermissionGrant.update).not.toHaveBeenCalled();
+  });
+
   it('rejects updates that would duplicate another active grant', async () => {
     prisma.eventManagerPermissionGrant.findFirst
       .mockResolvedValueOnce({ userId: 'user-1', personId: 'person-1' })

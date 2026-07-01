@@ -18,6 +18,7 @@ model People {
   eventSubscriptions      EventSubscription[]
   eventGroupSubscriptions EventGroupSubscription[]
   majorEventSubscriptions MajorEventSubscription[]
+  eventFormResponses       EventFormResponse[]
   lecturerProfile         LecturerProfile?
   eventManagerPermissionGrants EventManagerPermissionGrant[]
 

@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
