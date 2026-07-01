@@ -997,6 +997,7 @@ function linkRecord(
   } = {},
 ) {
   const now = new Date('2026-06-28T12:00:00.000Z');
+  const futureTargetEndDate = new Date('2100-07-01T12:00:00.000Z');
   const targetType = options.targetType ?? EventFormTargetType.EVENT;
   const eventId = options.eventId === undefined ? (targetType === EventFormTargetType.EVENT ? 'event-1' : null) : options.eventId;
   const majorEventId = options.majorEventId === undefined ? (targetType === EventFormTargetType.MAJOR_EVENT ? 'major-1' : null) : options.majorEventId;
@@ -1013,7 +1014,7 @@ function linkRecord(
           emoji: 'computer',
           majorEventId: 'major-1',
           eventGroupId: 'group-1',
-          endDate: new Date('2026-07-01T12:00:00.000Z'),
+          endDate: futureTargetEndDate,
         }
       : null,
     majorEvent: majorEventId
@@ -1021,7 +1022,7 @@ function linkRecord(
           id: majorEventId,
           name: 'Semana da Computação',
           emoji: 'calendar',
-          endDate: new Date('2026-07-01T12:00:00.000Z'),
+          endDate: futureTargetEndDate,
         }
       : null,
     audience: options.audience ?? EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,

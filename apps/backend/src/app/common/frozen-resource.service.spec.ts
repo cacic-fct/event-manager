@@ -7,6 +7,14 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 describe('FrozenResourceService', () => {
   const now = new Date('2026-06-01T12:00:00.000Z');
 
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(now);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('freezes when the latest date is older than two months', () => {
     expect(
       isFrozenFromDates(
