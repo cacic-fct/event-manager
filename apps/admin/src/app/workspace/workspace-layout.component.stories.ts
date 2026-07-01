@@ -144,18 +144,26 @@ export const AutoMode: Story = {
 export const AutoModeCollapsedRail: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const eventsLink = await canvas.findByLabelText('Eventos');
-    const icon = eventsLink.querySelector('mat-icon');
+    const subscriptionsLink = await canvas.findByLabelText('Inscrições');
+    const icon = subscriptionsLink.querySelector('mat-icon');
 
     expect(icon).toBeTruthy();
 
-    const linkRect = eventsLink.getBoundingClientRect();
+    const linkRect = subscriptionsLink.getBoundingClientRect();
     const iconRect = icon?.getBoundingClientRect();
+    const iconCenterX = (iconRect?.left ?? 0) + (iconRect?.width ?? 0) / 2;
+    const iconCenterY = (iconRect?.top ?? 0) + (iconRect?.height ?? 0) / 2;
 
     expect(linkRect.width).toBeGreaterThanOrEqual(44);
     expect(linkRect.height).toBeGreaterThanOrEqual(44);
     expect(iconRect?.left ?? 0).toBeGreaterThanOrEqual(linkRect.left);
     expect(iconRect?.right ?? 0).toBeLessThanOrEqual(linkRect.right);
+
+    await userEvent.hover(icon as Element);
+
+    const hoveredElement = canvasElement.ownerDocument.elementFromPoint(iconCenterX, iconCenterY);
+
+    expect(hoveredElement?.closest('.nav-item')).toBe(subscriptionsLink);
   },
 };
 

@@ -105,6 +105,7 @@
   font: var(--mat-sys-label-small);
   opacity: 0;
   text-overflow: ellipsis;
+  visibility: hidden;
   white-space: nowrap;
   transition:
     max-width var(--workspace-nav-transition),
@@ -112,13 +113,18 @@
 }
 
 .sidenav.nav-mode-full .nav-group-label,
-.sidenav.nav-mode-auto:hover .nav-group-label,
-.sidenav.nav-mode-auto:has(:focus-visible) .nav-group-label {
+.sidenav.nav-mode-auto .nav-group-label {
   display: block;
   max-height: 1rem;
   max-width: 12rem;
   margin: 0.5rem 0.75rem 0.125rem;
+}
+
+.sidenav.nav-mode-full .nav-group-label,
+.sidenav.nav-mode-auto:hover .nav-group-label,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-group-label {
   opacity: 1;
+  visibility: visible;
 }
 
 .nav-item {
@@ -183,7 +189,7 @@
 }
 
 .nav-label {
-  display: none;
+  display: block;
   flex: 1 1 auto;
   min-width: 0;
   max-width: 0;
@@ -201,7 +207,6 @@
 .sidenav.nav-mode-full .nav-label,
 .sidenav.nav-mode-auto:hover .nav-label,
 .sidenav.nav-mode-auto:has(:focus-visible) .nav-label {
-  display: block;
   max-width: 12rem;
   opacity: 1;
   visibility: visible;
