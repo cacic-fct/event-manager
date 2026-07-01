@@ -8,6 +8,7 @@ import {
 } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { CertificateScope, EventManagerPermissionGrantScope } from '@prisma/client';
+import { addHours, isFuture, isWithinInterval, subHours } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -20,6 +21,9 @@ export type AuthorizationResourceContext = {
   receiptValidationActionId?: string;
   certificateConfigId?: string;
   certificateId?: string;
+  eventFormId?: string;
+  eventFormLinkId?: string;
+  eventFormResponseId?: string;
   scope?: string;
   targetId?: string;
   genericId?: string;
@@ -310,7 +314,7 @@ export class AuthorizationPolicyService {
     endDate: Date;
     shouldProvideSubscriberListToLecturer: boolean;
   }): boolean {
-    return event.shouldProvideSubscriberListToLecturer && event.endDate.getTime() > Date.now();
+    return event.shouldProvideSubscriberListToLecturer && isFuture(event.endDate);
   }
 
   assertLecturerCanViewSubscriberList(
@@ -479,6 +483,18 @@ export class AuthorizationPolicyService {
       await this.addCertificateTarget(target, context.certificateId);
     }
 
+    if (context.eventFormId) {
+      await this.addEventFormTarget(target, context.eventFormId);
+    }
+
+    if (context.eventFormLinkId) {
+      await this.addEventFormLinkTarget(target, context.eventFormLinkId);
+    }
+
+    if (context.eventFormResponseId) {
+      await this.addEventFormResponseTarget(target, context.eventFormResponseId);
+    }
+
     if (context.scope && context.targetId) {
       await this.addCertificateScopeTarget(target, context.scope, context.targetId);
     }
@@ -525,6 +541,9 @@ export class AuthorizationPolicyService {
         return true;
       case 'certificate':
         await this.addCertificateTarget(target, id);
+        return true;
+      case 'event-form':
+        await this.addEventFormTarget(target, id);
         return true;
       default:
         return false;
@@ -702,6 +721,98 @@ export class AuthorizationPolicyService {
     }
   }
 
+  private async addEventFormTarget(target: ResolvedGrantTarget, formId: string): Promise<void> {
+    const form = await this.prisma.eventForm.findFirst({
+      where: {
+        id: formId,
+        deletedAt: null,
+      },
+      select: {
+        ownerEventId: true,
+        ownerMajorEventId: true,
+        links: {
+          where: {
+            deletedAt: null,
+          },
+          select: {
+            eventId: true,
+            majorEventId: true,
+          },
+        },
+      },
+    });
+
+    if (!form) {
+      return;
+    }
+
+    if (form.ownerEventId) {
+      await this.addEventTarget(target, form.ownerEventId);
+    }
+    if (form.ownerMajorEventId) {
+      target.majorEventIds.add(form.ownerMajorEventId);
+    }
+    for (const link of form.links) {
+      if (link.eventId) {
+        await this.addEventTarget(target, link.eventId);
+      }
+      if (link.majorEventId) {
+        target.majorEventIds.add(link.majorEventId);
+      }
+    }
+  }
+
+  private async addEventFormLinkTarget(target: ResolvedGrantTarget, linkId: string): Promise<void> {
+    const link = await this.prisma.eventFormLink.findFirst({
+      where: {
+        id: linkId,
+        deletedAt: null,
+      },
+      select: {
+        eventId: true,
+        majorEventId: true,
+        formId: true,
+      },
+    });
+
+    if (!link) {
+      return;
+    }
+
+    if (link.eventId) {
+      await this.addEventTarget(target, link.eventId);
+    }
+    if (link.majorEventId) {
+      target.majorEventIds.add(link.majorEventId);
+    }
+    await this.addEventFormTarget(target, link.formId);
+  }
+
+  private async addEventFormResponseTarget(target: ResolvedGrantTarget, responseId: string): Promise<void> {
+    const response = await this.prisma.eventFormResponse.findUnique({
+      where: {
+        id: responseId,
+      },
+      select: {
+        formId: true,
+        eventId: true,
+        majorEventId: true,
+      },
+    });
+
+    if (!response) {
+      return;
+    }
+
+    if (response.eventId) {
+      await this.addEventTarget(target, response.eventId);
+    }
+    if (response.majorEventId) {
+      target.majorEventIds.add(response.majorEventId);
+    }
+    await this.addEventFormTarget(target, response.formId);
+  }
+
   private matchesScopedGrant(grant: ActiveGrant, target: ResolvedGrantTarget): boolean {
     switch (grant.scope) {
       case EventManagerPermissionGrantScope.EVENT:
@@ -720,8 +831,10 @@ export class AuthorizationPolicyService {
   }
 
   private isAttendanceCollectionOpen(startDate: Date, endDate: Date): boolean {
-    const now = Date.now();
-    return now >= startDate.getTime() - 3 * 60 * 60_000 && now <= endDate.getTime() + 6 * 60 * 60_000;
+    return isWithinInterval(new Date(), {
+      start: subHours(startDate, 3),
+      end: addHours(endDate, 6),
+    });
   }
 
   private collectResourceIds(value: unknown, context: AuthorizationResourceContext): void {
@@ -758,6 +871,19 @@ export class AuthorizationPolicyService {
             break;
           case 'certificateId':
             context.certificateId ??= id;
+            break;
+          case 'formId':
+          case 'eventFormId':
+          case 'sourceFormId':
+            context.eventFormId ??= id;
+            break;
+          case 'formLinkId':
+          case 'eventFormLinkId':
+            context.eventFormLinkId ??= id;
+            break;
+          case 'responseId':
+          case 'eventFormResponseId':
+            context.eventFormResponseId ??= id;
             break;
           case 'targetId':
             context.targetId ??= id;

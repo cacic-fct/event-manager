@@ -1,4 +1,5 @@
 import type { Event, EventDraft, EventInput } from '@cacic-fct/event-manager-admin-contracts';
+import { addHours, differenceInMinutes, format, isAfter, isValid, parseISO, subHours } from 'date-fns';
 
 const NON_AMBIGUOUS_ALPHABET_CAPITALIZED_NUMBERS = '2345689ABCDEFGHKMNPQRSTWXYZ';
 const BANNED_ATTENDANCE_CODES = new Set([
@@ -34,7 +35,7 @@ const BANNED_ATTENDANCE_CODES = new Set([
   'ANWS',
 ]);
 
-const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
+const DEFAULT_EVENT_DURATION_HOURS = 1;
 
 export const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
 export const DEFAULT_DRAFT_EVENT_EMOJI = '❔';
@@ -126,17 +127,17 @@ export function resolveEventDates(
   }
 
   if (rawStartDate) {
-    const startDate = new Date(rawStartDate);
+    const startDate = parseISO(rawStartDate);
     return {
       startDate: startDate.toISOString(),
-      endDate: new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MS).toISOString(),
+      endDate: addHours(startDate, DEFAULT_EVENT_DURATION_HOURS).toISOString(),
     };
   }
 
   if (rawEndDate) {
-    const endDate = new Date(rawEndDate);
+    const endDate = parseISO(rawEndDate);
     return {
-      startDate: new Date(endDate.getTime() - DEFAULT_EVENT_DURATION_MS).toISOString(),
+      startDate: subHours(endDate, DEFAULT_EVENT_DURATION_HOURS).toISOString(),
       endDate: endDate.toISOString(),
     };
   }
@@ -144,7 +145,7 @@ export function resolveEventDates(
   const startDate = new Date();
   return {
     startDate: startDate.toISOString(),
-    endDate: new Date(startDate.getTime() + DEFAULT_EVENT_DURATION_MS).toISOString(),
+    endDate: addHours(startDate, DEFAULT_EVENT_DURATION_HOURS).toISOString(),
   };
 }
 
@@ -161,23 +162,21 @@ export function toOptionalNumber(rawValue: number | string | null): number | nul
 }
 
 export function fromIsoToLocalInput(rawValue: string): string {
-  const date = new Date(rawValue);
-  const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+  return format(parseISO(rawValue), "yyyy-MM-dd'T'HH:mm");
 }
 
 export function calculateDurationMinutes(startDate: string, endDate: string): number | null {
-  const start = new Date(startDate).getTime();
-  const end = new Date(endDate).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
+  if (!isValid(start) || !isValid(end) || !isAfter(end, start)) {
     return null;
   }
 
-  return Math.round((end - start) / 60_000);
+  return differenceInMinutes(end, start);
 }
 
 function toIsoDateTime(rawValue: string): string {
-  return new Date(rawValue).toISOString();
+  return parseISO(rawValue).toISOString();
 }
 
 function stringValue(value: unknown, fallback: string): string {

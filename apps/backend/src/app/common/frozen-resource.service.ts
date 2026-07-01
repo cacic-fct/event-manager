@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { CertificateScope } from '@prisma/client';
+import { isBefore, isValid, max, subMonths } from 'date-fns';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,27 +12,20 @@ export const FROZEN_EDIT_PERMISSION = Permission.Frozen.Update;
 export const FROZEN_DELETE_PERMISSION = Permission.Frozen.Delete;
 
 export function getFrozenCutoffDate(now = new Date()): Date {
-  const cutoff = new Date(now);
-  cutoff.setMonth(cutoff.getMonth() - 2);
-  return cutoff;
+  return subMonths(now, 2);
 }
 
 export function getLatestDate(dates: Array<Date | null | undefined>): Date | null {
-  const timestamps = dates
+  const validDates = dates
     .filter((date): date is Date => date instanceof Date)
-    .map((date) => date.getTime())
-    .filter((timestamp) => Number.isFinite(timestamp));
+    .filter((date) => isValid(date));
 
-  if (timestamps.length === 0) {
-    return null;
-  }
-
-  return new Date(Math.max(...timestamps));
+  return validDates.length > 0 ? max(validDates) : null;
 }
 
 export function isFrozenFromDates(dates: Array<Date | null | undefined>, now = new Date()): boolean {
   const latestDate = getLatestDate(dates);
-  return latestDate ? latestDate < getFrozenCutoffDate(now) : false;
+  return latestDate ? isBefore(latestDate, getFrozenCutoffDate(now)) : false;
 }
 
 @Injectable()

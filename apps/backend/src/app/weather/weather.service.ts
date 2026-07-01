@@ -6,6 +6,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE } from '../public-events/models';
 import { PublicEventWeather } from './models';
+import { addDays, differenceInCalendarDays, isFuture } from 'date-fns';
 
 type WeatherEvent = Prisma.EventGetPayload<{
   select: typeof PUBLIC_EVENT_SELECT;
@@ -61,8 +62,7 @@ export class WeatherService {
 
   async scheduleUpcomingEventRefreshes(): Promise<void> {
     const now = new Date();
-    const horizon = new Date(now);
-    horizon.setDate(horizon.getDate() + 14);
+    const horizon = addDays(now, 14);
 
     const events = await this.prisma.event.findMany({
       where: {
@@ -244,7 +244,7 @@ export class WeatherService {
   }
 
   private canFetchWeather(event: WeatherEvent): boolean {
-    return event.latitude != null && event.longitude != null && event.startDate.getTime() > Date.now();
+    return event.latitude != null && event.longitude != null && isFuture(event.startDate);
   }
 
   private getEventWeatherCategory(eventDate: Date): 'today' | 'tomorrow' | 'upcoming' | null {
@@ -332,7 +332,7 @@ export class WeatherService {
   private daysBetweenZonedDates(left: Date, right: Date): number {
     const leftNoon = new Date(`${this.formatZonedDate(left)}T12:00:00Z`);
     const rightNoon = new Date(`${this.formatZonedDate(right)}T12:00:00Z`);
-    return Math.round((rightNoon.getTime() - leftNoon.getTime()) / (24 * 60 * 60 * 1000));
+    return differenceInCalendarDays(rightNoon, leftNoon);
   }
 
   private formatZonedDate(date: Date): string {

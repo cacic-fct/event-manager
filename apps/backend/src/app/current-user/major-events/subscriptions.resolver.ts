@@ -26,6 +26,7 @@ import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-events/models';
+import { EventFormsService } from '../../event-forms/event-forms.service';
 
 @Resolver()
 export class CurrentUserMajorEventSubscriptionsResolver {
@@ -38,6 +39,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     private readonly attendanceCategories: AttendanceCategoryService,
     private readonly frozenResources: FrozenResourceService,
     private readonly auditLog: AuditLogService,
+    private readonly eventForms: EventFormsService,
   ) {}
 
   @Query(() => [CurrentUserMajorEventSubscription], {
@@ -258,6 +260,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
     const now = new Date();
     const upsertResult = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const submittedFormIds: string[] = [];
       const existingSubscription = await tx.majorEventSubscription.findFirst({
         where: {
           majorEventId: input.majorEventId,
@@ -505,6 +508,12 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         ...selectedEventIds,
         ...confirmationEventIds,
       ]);
+      submittedFormIds.push(
+        ...(await this.eventForms.submitSubscriptionFlowResponses(tx, person.id, input.formResponses, {
+          majorEventId: input.majorEventId,
+          selectedEventIds: selectedEventIdSet,
+        })),
+      );
 
       const updatedSubscription = await tx.majorEventSubscription.findFirst({
         where: {
@@ -559,8 +568,10 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       return {
         subscription: updatedSubscription,
         createdSubscription: !existingSubscription,
+        submittedFormIds,
       };
     });
+    await this.eventForms.emitResultsDeltas(upsertResult.submittedFormIds);
     const subscription = upsertResult.subscription;
 
     const orderedEvents = selectedEventIds.map((eventId) =>

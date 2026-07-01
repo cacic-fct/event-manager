@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 
-import { CacicLogoComponent } from './cacic-logo.component';
+import { CacicMiniatureComponent } from './cacic-miniature.component';
 
-const meta: Meta<CacicLogoComponent> = {
-  title: 'Shared/Assets/CacicLogo',
-  component: CacicLogoComponent,
+const meta: Meta<CacicMiniatureComponent> = {
+  title: 'Shared/Assets/CacicMiniature',
+  component: CacicMiniatureComponent,
   tags: ['autodocs'],
   argTypes: {
     fillColor: { control: 'color' },
@@ -19,7 +19,7 @@ const meta: Meta<CacicLogoComponent> = {
 };
 
 export default meta;
-type Story = StoryObj<CacicLogoComponent>;
+type Story = StoryObj<CacicMiniatureComponent>;
 
 export const Default: Story = {};
 

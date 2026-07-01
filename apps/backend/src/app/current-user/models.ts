@@ -1,4 +1,9 @@
-import { AuthenticatedUser as AuthenticatedUserObject, Person, User } from '@cacic-fct/shared-data-types';
+import {
+  AuthenticatedUser as AuthenticatedUserObject,
+  Person,
+  SubmitEventFormResponseInput,
+  User,
+} from '@cacic-fct/shared-data-types';
 import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
 import { PublicEvent, PublicEventGroup, PublicMajorEvent } from '../public-events/models';
 
@@ -338,6 +343,9 @@ export class UpsertCurrentUserMajorEventSubscriptionInput {
 
   @Field(() => Int, { nullable: true })
   desiredUncategorized?: number | null;
+
+  @Field(() => [SubmitEventFormResponseInput], { nullable: true })
+  formResponses?: SubmitEventFormResponseInput[] | null;
 
 }
 

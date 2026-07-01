@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { NovuInboxComponent } from '@cacic-fct/shared-notifications-angular';
+import { NovuInboxComponent } from '@cacic-fct/shared-notifications-angular/inbox';
 
 @Component({
   selector: 'app-workspace-notifications-tab',

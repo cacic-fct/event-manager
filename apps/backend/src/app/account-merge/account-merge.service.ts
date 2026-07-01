@@ -5,7 +5,14 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { ExternalAccountMergeResult, People, Prisma } from '@prisma/client';
+import {
+  EventFormResponseMode,
+  EventFormTargetType,
+  ExternalAccountMergeResult,
+  People,
+  Prisma,
+} from '@prisma/client';
+import { differenceInDays, isValid, parseISO } from 'date-fns';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -58,12 +65,14 @@ type MovedRelationsSnapshot = {
   movedEventSubscriptionIds: string[];
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
+  movedEventFormResponseIds: string[];
+  coalescedEventFormResponseIds: string[];
 };
 
 @Injectable()
 export class AccountMergeService {
   private readonly logger = new Logger(AccountMergeService.name);
-  private readonly establishedAccountAgeMs = 180 * 24 * 60 * 60 * 1000;
+  private readonly establishedAccountAgeDays = 180;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -284,7 +293,7 @@ export class AccountMergeService {
   }
 
   private scoreEstablishedDate(createdAt: Date): number {
-    return Date.now() - createdAt.getTime() >= this.establishedAccountAgeMs ? 3 : 0;
+    return differenceInDays(new Date(), createdAt) >= this.establishedAccountAgeDays ? 3 : 0;
   }
 
   private async applyLocalMerge(
@@ -462,6 +471,7 @@ export class AccountMergeService {
       targetPersonId,
       sourcePersonId,
     );
+    const movedEventFormResponses = await this.moveEventFormResponses(tx, targetPersonId, sourcePersonId);
 
     return {
       sourceAttendances: sourceAttendances.map((attendance) => ({
@@ -481,6 +491,92 @@ export class AccountMergeService {
       movedEventSubscriptionIds,
       movedEventGroupSubscriptionIds,
       movedMajorEventSubscriptionIds,
+      movedEventFormResponseIds: movedEventFormResponses.movedIds,
+      coalescedEventFormResponseIds: movedEventFormResponses.coalescedIds,
+    };
+  }
+
+  private async moveEventFormResponses(
+    tx: Prisma.TransactionClient,
+    targetPersonId: string,
+    sourcePersonId: string,
+  ): Promise<{ movedIds: string[]; coalescedIds: string[] }> {
+    const sourceResponses = await tx.eventFormResponse.findMany({
+      where: { personId: sourcePersonId },
+      select: {
+        id: true,
+        formId: true,
+        targetType: true,
+        eventId: true,
+        majorEventId: true,
+        form: {
+          select: {
+            responseMode: true,
+          },
+        },
+      },
+    });
+    const movedIds: string[] = [];
+    const coalescedIds: string[] = [];
+
+    for (const response of sourceResponses) {
+      const conflictWhere = this.eventFormResponseConflictWhere(response, targetPersonId);
+      const conflict = conflictWhere
+        ? await tx.eventFormResponse.findFirst({
+            where: conflictWhere,
+            select: { id: true },
+          })
+        : null;
+
+      if (conflict) {
+        const result = await tx.eventFormResponse.deleteMany({
+          where: { id: response.id, personId: sourcePersonId },
+        });
+        if (result.count === 1) {
+          coalescedIds.push(response.id);
+        }
+        continue;
+      }
+
+      const result = await tx.eventFormResponse.updateMany({
+        where: { id: response.id, personId: sourcePersonId },
+        data: { personId: targetPersonId },
+      });
+      if (result.count === 1) {
+        movedIds.push(response.id);
+      }
+    }
+
+    return { movedIds, coalescedIds };
+  }
+
+  private eventFormResponseConflictWhere(
+    response: {
+      formId: string;
+      targetType: EventFormTargetType;
+      eventId: string | null;
+      majorEventId: string | null;
+      form: { responseMode: EventFormResponseMode };
+    },
+    targetPersonId: string,
+  ): Prisma.EventFormResponseWhereInput | null {
+    if (response.form.responseMode === EventFormResponseMode.MULTIPLE_PER_TARGET) {
+      return null;
+    }
+
+    if (response.form.responseMode === EventFormResponseMode.SINGLE_PER_FORM) {
+      return {
+        formId: response.formId,
+        personId: targetPersonId,
+      };
+    }
+
+    return {
+      formId: response.formId,
+      personId: targetPersonId,
+      targetType: response.targetType,
+      eventId: response.eventId,
+      majorEventId: response.majorEventId,
     };
   }
 
@@ -640,8 +736,8 @@ export class AccountMergeService {
     }
 
     const occurredAtValue = this.readRequiredString(body.occurredAt, 'occurredAt');
-    const occurredAt = new Date(occurredAtValue);
-    if (Number.isNaN(occurredAt.getTime())) {
+    const occurredAt = parseISO(occurredAtValue);
+    if (!isValid(occurredAt)) {
       throw new BadRequestException('occurredAt must be a valid ISO date.');
     }
 

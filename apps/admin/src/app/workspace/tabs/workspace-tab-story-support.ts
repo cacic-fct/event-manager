@@ -8,6 +8,7 @@ import {
 } from '@cacic-fct/event-manager-public-testing';
 import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
+import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { applicationConfig, type Decorator } from '@storybook/angular';
 import type { Event, EventDraft, EventGroup, EventSummary, MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import { createWorkspaceListPagination } from '../../shared/list-pagination';
@@ -246,7 +247,7 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: Workspace
         group.id,
         eventSummariesSignal()
           .filter((eventItem) => eventItem.eventGroupId === group.id)
-          .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0],
+          .sort((a, b) => compareIsoDateAsc(a.startDate, b.startDate))[0],
       );
     }
     return result;

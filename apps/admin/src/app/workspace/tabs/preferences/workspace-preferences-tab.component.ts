@@ -11,7 +11,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AuthService, CalendarFeedReenableChoice, CalendarFeedReenableDialogComponent } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import {
+  CalendarFeedReenableChoice,
+  CalendarFeedReenableDialogComponent,
+} from '@cacic-fct/shared-angular/calendar-feed';
 import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import { Observable, catchError, combineLatest, finalize, firstValueFrom, map, of, startWith, switchMap } from 'rxjs';
 import {

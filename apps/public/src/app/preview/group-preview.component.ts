@@ -7,7 +7,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { formatDateRange, getEventTypeLabel } from '@cacic-fct/shared-utils';
+import { compareIsoDateAsc, formatDateRange, getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { EmojiService } from '../shared/emoji.service';
 import {
   MajorEventSubscriptionApiService,
@@ -39,7 +39,7 @@ export class GroupPreviewComponent {
       return [];
     }
 
-    return [...state.preview.events].sort((left, right) => Date.parse(left.startDate) - Date.parse(right.startDate));
+    return [...state.preview.events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
   });
 
   constructor() {

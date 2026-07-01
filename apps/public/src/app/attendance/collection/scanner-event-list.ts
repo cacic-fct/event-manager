@@ -11,6 +11,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AttendanceCollectionAccessService } from './attendance-collection-access.service';
 import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { addHours, isValid, parseISO, subHours } from 'date-fns';
 
 @Component({
   selector: 'app-scanner-event-list',
@@ -55,15 +56,15 @@ export class ScannerEventList implements OnInit {
   }
 
   protected collectionWindowLabel(item: AttendanceCollectionEvent): string {
-    const start = new Date(item.event.startDate).getTime();
-    const end = new Date(item.event.endDate).getTime();
+    const start = parseISO(item.event.startDate);
+    const end = parseISO(item.event.endDate);
 
-    if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    if (!isValid(start) || !isValid(end)) {
       return 'Coleta de presença';
     }
 
-    const allowedStart = new Date(start - 3 * 60 * 60_000);
-    const allowedEnd = new Date(end + 6 * 60 * 60_000);
+    const allowedStart = subHours(start, 3);
+    const allowedEnd = addHours(end, 6);
     return `Coleta de presença: ${this.formatHour(allowedStart)}-${this.formatHour(allowedEnd)}`;
   }
 

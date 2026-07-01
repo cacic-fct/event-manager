@@ -1,5 +1,6 @@
 import { PublicContentNode } from '../../../graphql/publishing-api.service';
 import { PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
+import { addDays, format, parseISO, set } from 'date-fns';
 
 export interface PublicationListItem {
   key: string;
@@ -48,19 +49,15 @@ export function publicationChildCountLabel(count: number): string {
 }
 
 export function localDateTimeInputToIso(value: string): string {
-  return new Date(value).toISOString();
+  return parseISO(value).toISOString();
 }
 
 export function defaultScheduledPublicationDate(): Date {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  date.setMinutes(0, 0, 0);
-  return date;
+  return set(addDays(new Date(), 1), { minutes: 0, seconds: 0, milliseconds: 0 });
 }
 
 export function toDateTimeInputValue(date: Date): string {
-  const pad = (value: number) => value.toString().padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return format(date, "yyyy-MM-dd'T'HH:mm");
 }
 
 export function publicationErrorMessage(error: unknown): string {

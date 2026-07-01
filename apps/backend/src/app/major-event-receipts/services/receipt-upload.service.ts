@@ -10,6 +10,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { MajorEventReceipt, SubscriptionStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
+import { addYears } from 'date-fns';
 import { Readable } from 'stream';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -118,7 +119,7 @@ export class ReceiptUploadService {
 
     const receiptId = randomUUID();
     const uploadedAt = new Date();
-    const expiresAt = new Date(uploadedAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+    const expiresAt = addYears(uploadedAt, 1);
     const objectKey = buildReceiptObjectKey(majorEventId, subscription.id, receiptId, file.originalname, file.mimetype);
 
     const uploadResult = await this.s3.uploadFile(

@@ -41,6 +41,15 @@ export const Permission = {
     Update: 'event-lecturer#update',
     Delete: 'event-lecturer#delete',
   },
+  EventForm: {
+    Read: 'event-form#read',
+    Create: 'event-form#create',
+    Update: 'event-form#update',
+    Delete: 'event-form#delete',
+    Publish: 'event-form#publish',
+    Results: 'event-form#results',
+    Export: 'event-form#export',
+  },
   Frozen: {
     Update: 'frozen#update',
     Delete: 'frozen#delete',
@@ -154,6 +163,13 @@ export const EVENT_MANAGER_PERMISSION_CATALOG = [
   Permission.EventLecturer.Create,
   Permission.EventLecturer.Update,
   Permission.EventLecturer.Delete,
+  Permission.EventForm.Read,
+  Permission.EventForm.Create,
+  Permission.EventForm.Update,
+  Permission.EventForm.Delete,
+  Permission.EventForm.Publish,
+  Permission.EventForm.Results,
+  Permission.EventForm.Export,
   Permission.Frozen.Update,
   Permission.Frozen.Delete,
   Permission.MajorEvent.Read,
@@ -209,6 +225,7 @@ export const WorkspacePermissionTab = {
   Events: 'events',
   MajorEvents: 'major-events',
   Groups: 'groups',
+  Forms: 'forms',
   Publication: 'publication',
   People: 'people',
   MergeCandidates: 'merge-candidates',
@@ -246,6 +263,7 @@ export const WORKSPACE_ENTRY_PERMISSIONS = [
   Permission.EventAttendanceCollector.Read,
   Permission.EventGroup.Read,
   Permission.EventLecturer.Read,
+  Permission.EventForm.Read,
   Permission.MajorEvent.Read,
   Permission.MergeCandidate.Read,
   Permission.Person.Read,
@@ -290,6 +308,19 @@ export const WORKSPACE_TAB_PERMISSIONS = [
     read: [Permission.Event.Read, Permission.EventGroup.Read, Permission.MajorEvent.Read],
     edit: [Permission.Event.Update, Permission.EventGroup.Update, Permission.MajorEvent.Update],
     delete: [],
+  },
+  {
+    id: WorkspacePermissionTab.Forms,
+    label: 'Formulários',
+    read: [Permission.EventForm.Read, Permission.Event.Read, Permission.MajorEvent.Read],
+    edit: [
+      Permission.EventForm.Create,
+      Permission.EventForm.Update,
+      Permission.EventForm.Publish,
+      Permission.Event.Update,
+      Permission.MajorEvent.Update,
+    ],
+    delete: [Permission.EventForm.Delete],
   },
   {
     id: WorkspacePermissionTab.People,
@@ -498,6 +529,46 @@ export const EVENT_MANAGER_PERMISSION_INCLUDED_DATA: Readonly<
     {
       label: 'Identificação da pessoa ministrante',
       fields: ['ID da pessoa', 'nome'],
+    },
+  ],
+  [Permission.EventForm.Read]: [
+    {
+      label: 'Conteúdo do formulário',
+      fields: ['nome', 'descrição', 'perguntas', 'vínculo com evento ou grande evento'],
+    },
+    {
+      label: 'Respostas conforme sigilo',
+      fields: ['resumo agregado', 'identificação e respostas quando permitido pelo sigilo'],
+    },
+  ],
+  [Permission.EventForm.Create]: [
+    {
+      label: 'Configuração do formulário',
+      fields: ['nome', 'descrição', 'perguntas', 'sigilo', 'público habilitado'],
+    },
+  ],
+  [Permission.EventForm.Update]: [
+    {
+      label: 'Configuração do formulário',
+      fields: ['nome', 'descrição', 'perguntas', 'vínculos', 'exigência de respostas'],
+    },
+  ],
+  [Permission.EventForm.Publish]: [
+    {
+      label: 'Publicação do formulário',
+      fields: ['estado de publicação', 'agendamento', 'notificações'],
+    },
+  ],
+  [Permission.EventForm.Results]: [
+    {
+      label: 'Resultados do formulário',
+      fields: ['resumo agregado', 'respostas individuais conforme sigilo'],
+    },
+  ],
+  [Permission.EventForm.Export]: [
+    {
+      label: 'Exportação de respostas',
+      fields: ['CSV de respostas conforme sigilo e escopo autorizado'],
     },
   ],
   [Permission.EventAttendance.Read]: [
@@ -709,6 +780,13 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
       Permission.Event.Create,
       Permission.Event.Update,
       Permission.Event.Delete,
+      Permission.EventForm.Read,
+      Permission.EventForm.Create,
+      Permission.EventForm.Update,
+      Permission.EventForm.Delete,
+      Permission.EventForm.Publish,
+      Permission.EventForm.Results,
+      Permission.EventForm.Export,
       Permission.Subscription.Read,
       Permission.Subscription.Create,
       Permission.Subscription.Update,
@@ -726,6 +804,24 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
       Permission.Certificate.Read,
       Permission.Certificate.Issue,
       Permission.Certificate.Reissue,
+    ],
+  },
+  {
+    id: 'form-manager',
+    label: 'Gestor de formulários',
+    description: 'Cria, vincula, publica, acompanha respostas e exporta formulários no escopo escolhido.',
+    icon: 'dynamic_form',
+    preferredScope: EventManagerPermissionGrantScope.MajorEvent,
+    permissions: [
+      Permission.EventForm.Read,
+      Permission.EventForm.Create,
+      Permission.EventForm.Update,
+      Permission.EventForm.Delete,
+      Permission.EventForm.Publish,
+      Permission.EventForm.Results,
+      Permission.EventForm.Export,
+      Permission.Event.Read,
+      Permission.MajorEvent.Read,
     ],
   },
   {
@@ -885,6 +981,12 @@ export function getPermissionScopeLabel(scope: string): string {
       return 'Mesclar';
     case 'scan':
       return 'Buscar';
+    case 'publish':
+      return 'Publicar';
+    case 'results':
+      return 'Resultados';
+    case 'export':
+      return 'Exportar';
     default:
       return scope;
   }
@@ -906,6 +1008,8 @@ export function getPermissionResourceLabel(resource: string): string {
       return 'Grupo de eventos';
     case 'event-lecturer':
       return 'Palestrante';
+    case 'event-form':
+      return 'Formulário';
     case 'frozen':
       return 'Dados congelados';
     case 'major-event':
@@ -943,6 +1047,8 @@ export function getPermissionResourceIcon(resource: string): string {
       return 'folder';
     case 'event-lecturer':
       return 'record_voice_over';
+    case 'event-form':
+      return 'dynamic_form';
     case 'frozen':
       return 'lock';
     case 'major-event':
@@ -994,6 +1100,12 @@ export function getPermissionScopeIcon(scope: string): string {
       return 'merge_type';
     case 'scan':
       return 'search';
+    case 'publish':
+      return 'campaign';
+    case 'results':
+      return 'bar_chart';
+    case 'export':
+      return 'download';
     default:
       return 'help';
   }

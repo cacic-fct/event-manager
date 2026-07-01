@@ -1,7 +1,6 @@
 import { Route } from '@angular/router';
 import { canValidateReceiptsGuard, workspaceCanReadTabGuard, workspaceSuperAdminGuard } from './workspace.guard';
 import { WorkspaceNavLinkId, WorkspaceNavLinkItem, workspaceNavLinkItems } from './workspace-nav';
-import { WorkspaceNotificationsTabComponent } from './tabs/notifications/workspace-notifications-tab.component';
 
 const eventsData = getWorkspaceRouteData('events');
 const placesData = getWorkspaceRouteData('places');
@@ -11,6 +10,7 @@ const publicationData = getWorkspaceRouteData('publication');
 const peopleData = getWorkspaceRouteData('people');
 const mergeCandidatesData = getWorkspaceRouteData('merge-candidates');
 const certificatesData = getWorkspaceRouteData('certificates');
+const formsData = getWorkspaceRouteData('forms');
 const attendancesData = getWorkspaceRouteData('attendances');
 const subscriptionsData = getWorkspaceRouteData('subscriptions');
 const notificationsData = getWorkspaceRouteData('notifications');
@@ -133,6 +133,15 @@ export const workspaceRoutes: Route[] = [
           (m) => m.WorkspaceCertificatesTabComponent,
         ),
       ),
+      ...guardedWorkspaceTabRoute(formsData.path, formsData, () =>
+        import('./tabs/forms/workspace-forms-tab.component').then((m) => m.WorkspaceFormsTabComponent),
+      ),
+      ...guardedWorkspaceTabRoute(`${formsData.path}/event/:eventId`, formsData, () =>
+        import('./tabs/forms/workspace-forms-tab.component').then((m) => m.WorkspaceFormsTabComponent),
+      ),
+      ...guardedWorkspaceTabRoute(`${formsData.path}/major-event/:majorEventId`, formsData, () =>
+        import('./tabs/forms/workspace-forms-tab.component').then((m) => m.WorkspaceFormsTabComponent),
+      ),
 
       ...guardedWorkspaceTabRoute(attendancesData.path, attendancesData, () =>
         import('./tabs/attendances/workspace-attendances-tab.component').then(
@@ -206,7 +215,9 @@ export const workspaceRoutes: Route[] = [
           import('./workspace-permission-denied.component').then((m) => m.WorkspacePermissionDeniedComponent),
       },
       ...guardedWorkspaceTabRoute(notificationsData.path, notificationsData, () =>
-        Promise.resolve(WorkspaceNotificationsTabComponent),
+        import('./tabs/notifications/workspace-notifications-tab.component').then(
+          (m) => m.WorkspaceNotificationsTabComponent,
+        ),
       ),
       ...guardedWorkspaceTabRoute(preferencesData.path, preferencesData, () =>
         import('./tabs/preferences/workspace-preferences-tab.component').then(

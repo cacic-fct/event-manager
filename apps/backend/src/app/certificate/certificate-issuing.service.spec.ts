@@ -1,4 +1,5 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
+import { addMinutes } from 'date-fns';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
 describe('CertificateIssuingService', () => {
@@ -1215,7 +1216,7 @@ function eventRecord(id: string, name: string, type: EventType, creditMinutes: n
     name,
     creditMinutes,
     startDate: new Date(startDate),
-    endDate: new Date(new Date(startDate).getTime() + creditMinutes * 60_000),
+    endDate: addMinutes(new Date(startDate), creditMinutes),
     type,
     eventGroupId: null,
     eventGroup: null,

@@ -11,7 +11,7 @@ import type {
   Preference,
   TopicSubscription,
 } from '@novu/js';
-import { AuthenticatedUser, AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, type AuthenticatedUser } from '@cacic-fct/shared-angular';
 import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
 import { firstValueFrom, retry, throwError, timer } from 'rxjs';
 

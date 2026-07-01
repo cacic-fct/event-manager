@@ -12,6 +12,11 @@ export const routes: Route[] = [
     loadComponent: () => import('./wallet/wallet').then((m) => m.Wallet),
   },
   {
+    path: 'forms/:formId',
+    title: 'Formulário',
+    loadComponent: () => import('../forms/event-form-page').then((m) => m.EventFormPage),
+  },
+  {
     path: 'lecturer-profile',
     title: 'Perfil de palestrante',
     loadComponent: () => import('./lecturer-profile/lecturer-profile').then((m) => m.LecturerProfileComponent),
