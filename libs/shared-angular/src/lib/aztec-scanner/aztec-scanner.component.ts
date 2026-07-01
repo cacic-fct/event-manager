@@ -181,7 +181,7 @@ export class AztecScannerComponent {
 
   private readonly handleVisibilityChange = (): void => {
     if (this.document.visibilityState === 'visible' && this.hasActiveStream()) {
-      void this.requestWakeLock();
+      void this.requestWakeLock(this.startAttemptId);
       return;
     }
 
@@ -302,7 +302,13 @@ export class AztecScannerComponent {
 
         this.selectedDevice.set(device);
         this.state.set('scanning');
-        await this.requestWakeLock();
+        await this.requestWakeLock(attemptId);
+
+        if (attemptId !== this.startAttemptId || !this.hasActiveStream()) {
+          this.stopStream();
+          return;
+        }
+
         this.scheduleFrame();
         return;
       } catch (error) {
@@ -470,8 +476,8 @@ export class AztecScannerComponent {
     stream?.getTracks().forEach((track) => track.stop());
   }
 
-  private async requestWakeLock(): Promise<void> {
-    if (!isPlatformBrowser(this.platformId) || this.document.visibilityState !== 'visible' || this.wakeLock) {
+  private async requestWakeLock(attemptId: number): Promise<void> {
+    if (!this.canHoldWakeLock(attemptId)) {
       return;
     }
 
@@ -482,11 +488,30 @@ export class AztecScannerComponent {
     }
 
     try {
-      this.wakeLock = await wakeLock.request('screen');
-      this.wakeLock?.addEventListener('release', this.handleWakeLockRelease);
+      const wakeLockSentinel = await wakeLock.request('screen');
+
+      if (!this.canHoldWakeLock(attemptId)) {
+        await this.releaseWakeLockSentinel(wakeLockSentinel);
+        return;
+      }
+
+      this.wakeLock = wakeLockSentinel;
+      this.wakeLock.addEventListener('release', this.handleWakeLockRelease);
     } catch {
-      this.wakeLock = null;
+      if (attemptId === this.startAttemptId) {
+        this.wakeLock = null;
+      }
     }
+  }
+
+  private canHoldWakeLock(attemptId: number): boolean {
+    return (
+      isPlatformBrowser(this.platformId) &&
+      this.document.visibilityState === 'visible' &&
+      this.wakeLock === null &&
+      attemptId === this.startAttemptId &&
+      this.hasActiveStream()
+    );
   }
 
   private async releaseWakeLock(): Promise<void> {
@@ -499,6 +524,10 @@ export class AztecScannerComponent {
     this.wakeLock = null;
     wakeLock.removeEventListener('release', this.handleWakeLockRelease);
 
+    await this.releaseWakeLockSentinel(wakeLock);
+  }
+
+  private async releaseWakeLockSentinel(wakeLock: ScreenWakeLockSentinel): Promise<void> {
     try {
       await wakeLock.release();
     } catch {

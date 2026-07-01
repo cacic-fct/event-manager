@@ -580,10 +580,11 @@ export class RankedSubscriptionStore {
         existing.events.push(event);
         existing.eventIds.push(event.id);
       } else {
+        const eventGroup = event.eventGroup;
         itemsByKey.set(key, {
           key,
-          label: event.name,
-          emoji: event.emoji,
+          label: eventGroup?.name ?? event.name,
+          emoji: eventGroup?.emoji ?? event.emoji,
           type: event.type,
           eventIds: [event.id],
           events: [event],

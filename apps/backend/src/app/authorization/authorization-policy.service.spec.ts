@@ -422,6 +422,95 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('resolves event-form ownership and linked targets for scoped form grants', async () => {
+    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+      grant({
+        permission: Permission.EventForm.Results,
+        scope: EventManagerPermissionGrantScope.EVENT,
+        eventId: 'owner-event',
+      }),
+      grant({
+        permission: Permission.EventForm.Results,
+        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        majorEventId: 'linked-major',
+      }),
+    ]);
+    prisma.eventForm.findFirst.mockResolvedValue({
+      ownerEventId: 'owner-event',
+      ownerMajorEventId: null,
+      links: [
+        {
+          eventId: 'linked-event',
+          majorEventId: 'linked-major',
+        },
+      ],
+    });
+    prisma.event.findUnique
+      .mockResolvedValueOnce({
+        majorEventId: 'owner-major',
+        eventGroupId: null,
+      })
+      .mockResolvedValueOnce({
+        majorEventId: null,
+        eventGroupId: 'linked-group',
+      });
+
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.EventForm.Results], {
+        eventFormId: 'form-1',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(prisma.eventForm.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'form-1',
+          deletedAt: null,
+        },
+      }),
+    );
+  });
+
+  it('resolves form-link and form-response targets before matching scoped form grants', async () => {
+    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+      grant({
+        permission: Permission.EventForm.Update,
+        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        eventGroupId: 'group-1',
+      }),
+    ]);
+    prisma.eventFormLink.findFirst.mockResolvedValue({
+      eventId: 'event-1',
+      majorEventId: null,
+      formId: 'form-1',
+    });
+    prisma.eventFormResponse.findUnique.mockResolvedValue({
+      formId: 'form-1',
+      eventId: 'event-1',
+      majorEventId: null,
+    });
+    prisma.eventForm.findFirst.mockResolvedValue({
+      ownerEventId: null,
+      ownerMajorEventId: null,
+      links: [],
+    });
+    prisma.event.findUnique.mockResolvedValue({
+      majorEventId: null,
+      eventGroupId: 'group-1',
+    });
+
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.EventForm.Update], {
+        eventFormLinkId: 'link-1',
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.EventForm.Update], {
+        eventFormResponseId: 'response-1',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it('keeps attendance collector access domain-derived', async () => {
     prisma.eventAttendanceCollector.findUnique.mockResolvedValue({
       eventId: 'event-1',
@@ -437,6 +526,39 @@ describe('AuthorizationPolicyService', () => {
     await expect(service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
       enforceCollectionWindow: true,
     })).resolves.toBeUndefined();
+  });
+
+  it('rejects attendance collection for unpublished or closed collection windows', async () => {
+    prisma.event.findUnique.mockResolvedValueOnce({
+      startDate: new Date(Date.now() - 60_000),
+      endDate: new Date(Date.now() + 60_000),
+      deletedAt: null,
+      publiclyVisible: false,
+      shouldCollectAttendance: true,
+    });
+
+    await expect(
+      service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
+        enforceCollectionWindow: false,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    prisma.eventAttendanceCollector.findUnique.mockResolvedValue({
+      eventId: 'event-1',
+    });
+    prisma.event.findUnique.mockResolvedValueOnce({
+      startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() - 12 * 60 * 60 * 1000),
+      deletedAt: null,
+      publiclyVisible: true,
+      shouldCollectAttendance: true,
+    });
+
+    await expect(
+      service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
+        enforceCollectionWindow: true,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('allows attendance managers to collect without an explicit collector row', async () => {
@@ -535,6 +657,15 @@ function createPrisma() {
     },
     certificate: {
       findFirst: jest.fn().mockResolvedValue(null),
+    },
+    eventForm: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    eventFormLink: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    eventFormResponse: {
+      findUnique: jest.fn().mockResolvedValue(null),
     },
   };
 }

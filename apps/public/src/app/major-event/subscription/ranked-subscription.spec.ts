@@ -78,8 +78,8 @@ describe('RankedMajorEventSubscription', () => {
     store.toggleEvent(eventFixtures[1] as PublicEvent);
 
     expect(component).toBeTruthy();
-    expect(store.rankingItems().some((item) => item.label === 'Angular')).toBe(true);
-    expect(store.rankingItems().some((item) => item.label === 'Trilha Web')).toBe(false);
+    expect(store.rankingItems().some((item) => item.label === 'Trilha Web')).toBe(true);
+    expect(store.rankingItems().some((item) => item.label === 'Angular')).toBe(false);
     expect(store.autoSelectedEvents().map((event) => event.id)).toEqual(['event-1']);
   });
 });

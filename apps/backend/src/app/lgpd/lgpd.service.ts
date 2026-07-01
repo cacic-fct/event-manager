@@ -102,6 +102,22 @@ const LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT = {
     },
   },
 } satisfies Prisma.MajorEventSubscriptionSelect;
+
+const LGPD_EVENT_DRAFT_SELECT = {
+  id: true,
+  sourceEventId: true,
+  name: true,
+  createdById: true,
+  createdByName: true,
+  createdByEmail: true,
+  updatedById: true,
+  updatedByName: true,
+  updatedByEmail: true,
+  createdAt: true,
+  updatedAt: true,
+  expiresAt: true,
+} satisfies Prisma.EventDraftSelect;
+
 const LGPD_EVENT_ATTENDANCE_SELECT = {
   personId: true,
   eventId: true,
@@ -276,6 +292,7 @@ export class LgpdService {
     const dataSubject = await this.resolveDataSubject(input);
     const { people, personIds, userIds } = dataSubject;
     const offlineSubmissionWhere = this.buildOfflineSubmissionSubjectWhere(dataSubject);
+    const eventDraftWhere = this.buildEventDraftSubjectWhere(dataSubject);
 
     const userWhere = { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] };
     const [
@@ -293,6 +310,7 @@ export class LgpdService {
       receiptValidationActions,
       mergeOperations,
       mergeCandidates,
+      eventDrafts,
       auditLogEntries,
     ] = await Promise.all([
       this.prisma.user.findMany({
@@ -373,6 +391,13 @@ export class LgpdService {
         select: LGPD_MERGE_CANDIDATE_SELECT,
         orderBy: { createdAt: 'desc' },
       }) : Promise.resolve([]),
+      eventDraftWhere
+        ? this.prisma.eventDraft.findMany({
+            where: eventDraftWhere,
+            select: LGPD_EVENT_DRAFT_SELECT,
+            orderBy: { updatedAt: 'desc' },
+          })
+        : Promise.resolve([]),
       this.prisma.auditLogEntry.findMany({
         where: this.buildAuditLogSubjectWhere(dataSubject),
         select: LGPD_AUDIT_LOG_SELECT,
@@ -401,6 +426,7 @@ export class LgpdService {
           this.mapOfflineSubmissionForExport(submission, dataSubject),
         ),
       },
+      eventDrafts: { records: this.selectManyForExport(eventDrafts, LGPD_EVENT_DRAFT_SELECT) },
       lecturerActivities: { records: this.selectManyForExport(lectures, LGPD_EVENT_LECTURER_SELECT) },
       certificates: { records: this.selectManyForExport(certificates, LGPD_CERTIFICATE_SELECT) },
       receipts: {
@@ -467,11 +493,13 @@ export class LgpdService {
         where: { personId: { in: personIds }, deletedAt: null },
         data: { deletedAt: now },
       });
+      const anonymizedSubjectId = this.buildAnonymizedAuditSubjectId(input.requestId);
       const offlineAttendanceSubmissions = await this.anonymizeOfflineAttendanceSubmissions(
         tx,
         dataSubject,
-        this.buildAnonymizedAuditSubjectId(input.requestId),
+        anonymizedSubjectId,
       );
+      const eventDrafts = await this.anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
 
       return {
         people,
@@ -483,7 +511,8 @@ export class LgpdService {
           majorEventSubscriptions.count +
           selections.count +
           certificates.count +
-          offlineAttendanceSubmissions,
+          offlineAttendanceSubmissions +
+          eventDrafts,
       };
     });
 
@@ -506,6 +535,7 @@ export class LgpdService {
     const receiptObjectKeys = await this.findReceiptObjectKeys(personIds);
 
     const { anonymizedAuditEntryIds, ...result } = await this.prisma.$transaction(async (tx) => {
+      const anonymizedSubjectId = this.buildAnonymizedAuditSubjectId(input.requestId);
       const anonymizedAuditEntryIds = await this.anonymizeAuditEntries(
         tx,
         {
@@ -514,13 +544,14 @@ export class LgpdService {
           userIds,
           emails: dataSubject.emails,
         },
-        this.buildAnonymizedAuditSubjectId(input.requestId),
+        anonymizedSubjectId,
       );
       const offlineAttendanceSubmissions = await this.anonymizeOfflineAttendanceSubmissions(
         tx,
         dataSubject,
-        this.buildAnonymizedAuditSubjectId(input.requestId),
+        anonymizedSubjectId,
       );
+      const eventDrafts = await this.anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
       const certificates = await tx.certificate.deleteMany({ where: { personId: { in: personIds } } });
       const selections = await tx.majorEventSubscriptionEventSelection.deleteMany({
         where: { subscription: { personId: { in: personIds } } },
@@ -567,7 +598,8 @@ export class LgpdService {
           attendances.count +
           lecturers.count +
           permissionGrants.count +
-          offlineAttendanceSubmissions,
+          offlineAttendanceSubmissions +
+          eventDrafts,
       };
     });
 
@@ -1116,6 +1148,78 @@ export class LgpdService {
     }
 
     return conditions.length > 0 ? { OR: conditions } : null;
+  }
+
+
+  private buildEventDraftSubjectWhere(dataSubject: DataSubjectResolution): Prisma.EventDraftWhereInput | null {
+    const conditions: Prisma.EventDraftWhereInput[] = [];
+    if (dataSubject.userIds.length > 0) {
+      conditions.push({ createdById: { in: dataSubject.userIds } });
+      conditions.push({ updatedById: { in: dataSubject.userIds } });
+    }
+    for (const email of dataSubject.emails) {
+      conditions.push({ createdByEmail: { equals: email, mode: 'insensitive' } });
+      conditions.push({ updatedByEmail: { equals: email, mode: 'insensitive' } });
+    }
+
+    return conditions.length > 0 ? { OR: conditions } : null;
+  }
+
+  private async anonymizeEventDrafts(
+    tx: Prisma.TransactionClient,
+    dataSubject: DataSubjectResolution,
+    anonymizedSubjectId: string,
+  ): Promise<number> {
+    const where = this.buildEventDraftSubjectWhere(dataSubject);
+    if (!where) {
+      return 0;
+    }
+
+    const drafts = await tx.eventDraft.findMany({
+      where,
+      select: {
+        id: true,
+        createdById: true,
+        createdByEmail: true,
+        updatedById: true,
+        updatedByEmail: true,
+      },
+    });
+    const userIds = new Set(dataSubject.userIds);
+    const emails = new Set(dataSubject.emails.map((email) => email.toLowerCase()));
+    let updated = 0;
+
+    for (const draft of drafts) {
+      const data: Prisma.EventDraftUncheckedUpdateInput = {};
+      const creatorMatches =
+        (draft.createdById != null && userIds.has(draft.createdById)) ||
+        (draft.createdByEmail != null && emails.has(draft.createdByEmail.toLowerCase()));
+      const updaterMatches =
+        (draft.updatedById != null && userIds.has(draft.updatedById)) ||
+        (draft.updatedByEmail != null && emails.has(draft.updatedByEmail.toLowerCase()));
+
+      if (creatorMatches) {
+        data.createdById = anonymizedSubjectId;
+        data.createdByName = 'Usuário anonimizado';
+        data.createdByEmail = null;
+      }
+      if (updaterMatches) {
+        data.updatedById = anonymizedSubjectId;
+        data.updatedByName = 'Usuário anonimizado';
+        data.updatedByEmail = null;
+      }
+      if (Object.keys(data).length === 0) {
+        continue;
+      }
+
+      await tx.eventDraft.update({
+        where: { id: draft.id },
+        data,
+      });
+      updated += 1;
+    }
+
+    return updated;
   }
 
   private async anonymizeOfflineAttendanceSubmissions(

@@ -1,10 +1,16 @@
 import type { PublicEvent, PublicEventGroup } from '@cacic-fct/event-manager-public-contracts';
 import {
+  formatCurrency,
   formatCreditMinutes,
   formatDateRange,
   formatEventsDateRange,
   formatStatusLine,
+  getAttendanceByEventId,
+  getContactLabel,
+  getEventAttendanceStatusLabel,
   getEventGroupCertificateLabel,
+  getEventTypeLabel,
+  getSubscriptionStatusLabel,
   isOnlineAttendanceRegistrationOpen,
   joinUnique,
 } from './attendance-formatters';
@@ -53,6 +59,7 @@ describe('attendance formatters', () => {
   });
 
   it('formats certificates, credit hours, CPF, and UNESP roles', () => {
+    expect(formatCurrency(12345)).toContain('123,45');
     expect(formatCreditMinutes(45)).toBe('45 min');
     expect(formatCreditMinutes(90)).toBe('1,5 h');
     expect(getEventGroupCertificateLabel(group({ shouldIssueCertificate: false }))).toBe('Não emite certificados');
@@ -63,6 +70,34 @@ describe('attendance formatters', () => {
     expect(unformatCPF('529.982.247-25')).toBe('52998224725');
     expect(formatUnespRole('aluno-graduacao', '001234')).toBe('Aluno de Ciência da Computação');
     expect(formatUnespRole(['professor'])).toBe('Professor');
+  });
+
+  it('formats public labels and attendance maps from API records', () => {
+    expect(getEventTypeLabel('MINICURSO')).toBe('Minicurso');
+    expect(getEventTypeLabel('PALESTRA')).toBe('Palestra');
+    expect(getEventTypeLabel('OTHER')).toBe('Evento');
+    expect(getContactLabel('EMAIL')).toBe('E-mail');
+    expect(getContactLabel('PHONE')).toBe('Telefone');
+    expect(getContactLabel('WHATSAPP')).toBe('WhatsApp');
+    expect(getContactLabel('SMS' as never)).toBe('Contato');
+    expect(getSubscriptionStatusLabel('WAITING_RECEIPT_UPLOAD')).toBe('Aguardando envio de comprovante');
+    expect(getSubscriptionStatusLabel('RECEIPT_UNDER_REVIEW')).toBe('Comprovante em análise');
+    expect(getSubscriptionStatusLabel('REJECTED_INVALID_RECEIPT')).toBe('Comprovante inválido');
+    expect(getSubscriptionStatusLabel('REJECTED_NO_SLOTS')).toBe('Sem vagas');
+    expect(getSubscriptionStatusLabel('REJECTED_SCHEDULE_CONFLICT')).toBe('Conflito de horário');
+    expect(getSubscriptionStatusLabel('REJECTED_GENERIC')).toBe('Inscrição rejeitada');
+    expect(getSubscriptionStatusLabel('CONFIRMED')).toBe('Inscrição confirmada');
+    expect(getSubscriptionStatusLabel('CANCELED')).toBe('Inscrição cancelada');
+    expect(getSubscriptionStatusLabel('CUSTOM')).toBe('CUSTOM');
+
+    const attendances = [
+      { eventId: 'event-1', attendedAt: '2026-06-26T09:15:00' },
+      { eventId: 'event-2', attendedAt: '2026-06-26T10:15:00' },
+    ] as never;
+
+    expect(getAttendanceByEventId(attendances).get('event-1')).toEqual(attendances[0]);
+    expect(getEventAttendanceStatusLabel(attendances[0])).toBe('Presença registrada às 26/06/2026, 09:15');
+    expect(getEventAttendanceStatusLabel(null)).toBe('Sem presença registrada');
   });
 });
 

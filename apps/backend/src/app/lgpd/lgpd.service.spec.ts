@@ -26,6 +26,7 @@ describe('LgpdService', () => {
     prisma.user.findMany.mockImplementation(async (args: UserFindManyArgs) => findUsers(args));
     prisma.accountUserMerge.findMany.mockResolvedValue([{ oldUserId: 'old-user', newUserId: 'new-user' }]);
     prisma.externalAccountMergeOperation.findMany.mockResolvedValue([]);
+    prisma.eventDraft.findMany.mockResolvedValue([]);
     prisma.people.findMany.mockImplementation(async (args: PeopleFindManyArgs) => findPeople(args));
     prisma.$queryRaw.mockResolvedValue([]);
     prisma.majorEventReceipt.findMany.mockResolvedValue([{ objectKey: 'receipts/old.png' }]);
@@ -120,6 +121,22 @@ describe('LgpdService', () => {
         entityId: 'anonymized%3Aerase-1:event-1',
       },
     ]);
+    tx.eventDraft.findMany.mockResolvedValue([
+      {
+        id: 'draft-created-by-subject',
+        createdById: 'old-user',
+        createdByEmail: 'old@example.com',
+        updatedById: 'admin-user',
+        updatedByEmail: 'admin@example.com',
+      },
+      {
+        id: 'draft-updated-by-subject',
+        createdById: 'admin-user',
+        createdByEmail: 'admin@example.com',
+        updatedById: 'new-user',
+        updatedByEmail: 'new@example.com',
+      },
+    ]);
     tx.offlineEventAttendanceSubmission.findMany.mockResolvedValue([
       {
         id: 'offline-submission-1',
@@ -145,9 +162,25 @@ describe('LgpdService', () => {
       success: true,
       peopleDeleted: 2,
       usersDeleted: 2,
-      recordsDeleted: 5,
+      recordsDeleted: 7,
     });
 
+    expect(tx.eventDraft.update).toHaveBeenCalledWith({
+      where: { id: 'draft-created-by-subject' },
+      data: {
+        createdById: anonymizedAuditSubjectId,
+        createdByName: 'Usuário anonimizado',
+        createdByEmail: null,
+      },
+    });
+    expect(tx.eventDraft.update).toHaveBeenCalledWith({
+      where: { id: 'draft-updated-by-subject' },
+      data: {
+        updatedById: anonymizedAuditSubjectId,
+        updatedByName: 'Usuário anonimizado',
+        updatedByEmail: null,
+      },
+    });
     expect(tx.eventSubscription.deleteMany).toHaveBeenCalledWith({
       where: { personId: { in: ['source-person', 'target-person'] } },
     });
@@ -397,6 +430,22 @@ describe('LgpdService', () => {
       { id: 'offline-submission-1', personId: 'source-person', authorUserId: 'old-user' },
     ]);
     prisma.auditLogEntry.findMany.mockResolvedValue(auditLogEntries);
+    prisma.eventDraft.findMany.mockResolvedValue([
+      {
+        id: 'draft-1',
+        sourceEventId: 'event-1',
+        name: 'Draft',
+        createdById: 'old-user',
+        createdByName: 'Old User',
+        createdByEmail: 'old@example.com',
+        updatedById: 'new-user',
+        updatedByName: 'New User',
+        updatedByEmail: 'new@example.com',
+        createdAt: new Date('2026-05-20T12:00:00.000Z'),
+        updatedAt: new Date('2026-05-20T13:00:00.000Z'),
+        expiresAt: new Date('2026-05-27T12:00:00.000Z'),
+      },
+    ]);
     prisma.majorEventReceipt.findMany.mockResolvedValueOnce([
       {
         id: 'receipt-1',
@@ -473,6 +522,17 @@ describe('LgpdService', () => {
     );
     const exportedReceipts = (result.receipts as { majorEventReceipts: Record<string, unknown>[] }).majorEventReceipts;
     expect(exportedReceipts[0]).not.toHaveProperty('objectKey');
+    expect(result.eventDrafts).toEqual({
+      records: [
+        expect.objectContaining({
+          id: 'draft-1',
+          createdById: 'old-user',
+          createdByEmail: 'old@example.com',
+          updatedById: 'new-user',
+          updatedByEmail: 'new@example.com',
+        }),
+      ],
+    });
     expect(result.attendances).toEqual(
       expect.objectContaining({
         records: expect.any(Array),
@@ -513,6 +573,26 @@ describe('LgpdService', () => {
     expect(exportedAuditRecords[0]).not.toHaveProperty('metadata');
     expect(exportedAuditRecords[0]).not.toHaveProperty('actorName');
     expect(exportedAuditRecords[0]).not.toHaveProperty('actorEmail');
+    expect(prisma.eventDraft.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: expect.arrayContaining([
+            { createdById: { in: expect.arrayContaining(['old-user', 'new-user']) } },
+            { updatedById: { in: expect.arrayContaining(['old-user', 'new-user']) } },
+            { createdByEmail: { equals: 'old@example.com', mode: 'insensitive' } },
+            { updatedByEmail: { equals: 'new@example.com', mode: 'insensitive' } },
+          ]),
+        },
+        select: expect.objectContaining({
+          createdById: true,
+          createdByName: true,
+          createdByEmail: true,
+          updatedById: true,
+          updatedByName: true,
+          updatedByEmail: true,
+        }),
+      }),
+    );
     expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { personId: { in: ['source-person', 'target-person'] } },
@@ -614,6 +694,15 @@ describe('LgpdService', () => {
   });
 
   it('removes receipt storage and database rows when scheduling deletion', async () => {
+    tx.eventDraft.findMany.mockResolvedValueOnce([
+      {
+        id: 'draft-1',
+        createdById: 'old-user',
+        createdByEmail: 'old@example.com',
+        updatedById: 'admin-user',
+        updatedByEmail: 'admin@example.com',
+      },
+    ]);
     tx.offlineEventAttendanceSubmission.findMany.mockResolvedValueOnce([
       {
         id: 'offline-submission-1',
@@ -638,9 +727,17 @@ describe('LgpdService', () => {
     ).resolves.toEqual({
       success: true,
       peopleUpdated: 2,
-      recordsUpdated: 3,
+      recordsUpdated: 4,
     });
 
+    expect(tx.eventDraft.update).toHaveBeenCalledWith({
+      where: { id: 'draft-1' },
+      data: {
+        createdById: 'anonymized:schedule-1',
+        createdByName: 'Usuário anonimizado',
+        createdByEmail: null,
+      },
+    });
     expect(s3.deleteFile).toHaveBeenCalledWith('receipts/old.png');
     expect(tx.majorEventReceiptValidationAction.deleteMany).toHaveBeenCalledWith({
       where: { subscription: { personId: { in: ['source-person', 'target-person'] } } },
@@ -910,6 +1007,7 @@ function createPrismaMock() {
     externalAccountMergeOperation: {
       findMany: jest.fn(),
     },
+    eventDraft: findManyDelegate(),
     eventSubscription: softDeleteDelegate(),
     eventGroupSubscription: softDeleteDelegate(),
     majorEventSubscription: softDeleteDelegate(),
@@ -947,6 +1045,10 @@ function createTransactionMock() {
 
   return {
     auditLogEntry: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn().mockResolvedValue({}),
+    },
+    eventDraft: {
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue({}),
     },
