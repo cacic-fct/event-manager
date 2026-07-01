@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { AuthService, CookieBannerSyncService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { CookieBannerSyncService } from '@cacic-fct/shared-angular/privacy/cookie-banner-sync';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import { of } from 'rxjs';
 import { App } from './app';

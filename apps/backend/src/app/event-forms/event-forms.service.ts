@@ -258,7 +258,7 @@ export class EventFormsService {
           allowFutureSubscriber: Boolean(options.subscriptionFlowOnly),
         }))
       ) {
-        eligible.push(this.toPublicEventFormModel(form));
+        eligible.push(this.toPublicEventFormModel(form, input));
       }
     }
 
@@ -788,7 +788,10 @@ export class EventFormsService {
     const summary = this.buildSummary(elements, responses, answersReleased);
 
     return {
-      form: this.toEventFormModel(form),
+      form:
+        viewer === 'public' && options.target
+          ? this.toPublicEventFormModel(this.toEventFormModel(form), options.target)
+          : this.toEventFormModel(form),
       responseCount: responses.length,
       anonymous: form.sigilo === EventFormSigilo.ANONYMOUS,
       answersReleased,
@@ -2045,15 +2048,19 @@ export class EventFormsService {
     };
   }
 
-  private toPublicEventFormModel(form: EventFormModel): EventFormModel {
+  private toPublicEventFormModel(form: EventFormModel, target?: TargetInput): EventFormModel {
+    const links = target ? form.links.filter((link) => this.isSameTarget(link, target)) : form.links;
     if (form.resultsPublic) {
-      return form;
+      return {
+        ...form,
+        links,
+      };
     }
 
     return {
       ...form,
       responseCount: 0,
-      links: form.links.map((link) => ({
+      links: links.map((link) => ({
         ...link,
         responseCount: 0,
       })),

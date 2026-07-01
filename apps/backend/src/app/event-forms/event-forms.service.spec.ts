@@ -105,7 +105,16 @@ describe('EventFormsService', () => {
 
   it('shows public results to eligible subscribers', async () => {
     authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
-    prisma.eventForm.findFirst.mockResolvedValue(formRecord({ resultsPublic: true, sigilo: EventFormSigilo.PUBLIC }));
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        resultsPublic: true,
+        sigilo: EventFormSigilo.PUBLIC,
+        links: [
+          linkRecord({ id: 'link-1', eventId: 'event-1' }),
+          linkRecord({ id: 'link-2', eventId: 'event-2' }),
+        ],
+      }),
+    );
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
     prisma.eventAttendance.findFirst.mockResolvedValue(null);
     prisma.eventLecturer.findUnique.mockResolvedValue(null);
@@ -119,6 +128,11 @@ describe('EventFormsService', () => {
 
     expect(results.responseCount).toBe(0);
     expect(results.answersReleased).toBe(true);
+    expect(results.form.links).toHaveLength(1);
+    expect(results.form.links[0]).toMatchObject({
+      id: 'link-1',
+      eventId: 'event-1',
+    });
     expect(currentUserContext.requireCurrentPerson).toHaveBeenCalledWith(context);
   });
 
@@ -369,6 +383,32 @@ describe('EventFormsService', () => {
     expect(forms).toHaveLength(1);
     expect(forms[0].responseCount).toBe(0);
     expect(forms[0].links[0].responseCount).toBe(0);
+  });
+
+  it('only exposes the matching target link in current-user form listings', async () => {
+    prisma.eventForm.findMany.mockResolvedValue([
+      formRecord({
+        resultsPublic: true,
+        links: [
+          linkRecord({ id: 'link-1', eventId: 'event-1' }),
+          linkRecord({ id: 'link-2', eventId: 'event-2' }),
+        ],
+      }),
+    ]);
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+
+    const forms = await service.listCurrentUserForms(context, {
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+    });
+
+    expect(forms).toHaveLength(1);
+    expect(forms[0].links).toHaveLength(1);
+    expect(forms[0].links[0]).toMatchObject({
+      id: 'link-1',
+      eventId: 'event-1',
+    });
   });
 
   it('rejects submitted choice values that are not present in the form options', async () => {
