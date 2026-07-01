@@ -9,6 +9,7 @@ import type {
   EventType,
   PublicEvent,
   PublicEventForm,
+  PublicEventFormLink,
 } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
@@ -454,12 +455,7 @@ export class RankedSubscriptionStore {
     form: PublicEventForm,
     target: { targetType: EventFormTargetType; targetId: string; targetName: string },
   ): SubscriptionFormContext[] {
-    const links = form.links.filter(
-      (item) =>
-        item.targetType === target.targetType &&
-        (item.eventId ?? null) === (target.targetType === 'EVENT' ? target.targetId : null) &&
-        (item.majorEventId ?? null) === (target.targetType === 'MAJOR_EVENT' ? target.targetId : null),
-    );
+    const links = form.links.filter((item) => this.isEligibleSubscriptionFlowLink(item, target));
     const matchingLinks = links.length > 0 ? links : [null];
 
     return matchingLinks.map((link) => ({
@@ -493,6 +489,27 @@ export class RankedSubscriptionStore {
 
   private formDisplayOrder(form: SubscriptionFormContext): number {
     return form.form.links.find((link) => link.id === form.linkId)?.displayOrder ?? Number.MAX_SAFE_INTEGER;
+  }
+
+  private isEligibleSubscriptionFlowLink(
+    link: PublicEventFormLink,
+    target: { targetType: EventFormTargetType; targetId: string },
+  ): boolean {
+    if (
+      !link.insertInSubscriptionFlow ||
+      link.targetType !== target.targetType ||
+      (link.eventId ?? null) !== (target.targetType === 'EVENT' ? target.targetId : null) ||
+      (link.majorEventId ?? null) !== (target.targetType === 'MAJOR_EVENT' ? target.targetId : null)
+    ) {
+      return false;
+    }
+    const now = Date.now();
+    const availableFrom = link.availableFrom ? Date.parse(link.availableFrom) : null;
+    const availableUntil = link.availableUntil ? Date.parse(link.availableUntil) : null;
+    return (
+      (availableFrom === null || Number.isNaN(availableFrom) || availableFrom <= now) &&
+      (availableUntil === null || Number.isNaN(availableUntil) || availableUntil > now)
+    );
   }
 
   private toSubmitFormResponses(formAnswers: SubscriptionFormAnswer[]) {

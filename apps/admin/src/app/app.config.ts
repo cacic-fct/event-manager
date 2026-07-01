@@ -72,7 +72,7 @@ export const appConfig: ApplicationConfig = {
       registry.setDefaultFontSetClass('material-symbols-outlined');
     }),
     provideAppInitializer(() => {
-      void inject(CookieBannerFeatureFlagService).initialize();
+      return inject(CookieBannerFeatureFlagService).initialize();
     }),
     provideAppInitializer(() => {
       const authService = inject(AuthService);

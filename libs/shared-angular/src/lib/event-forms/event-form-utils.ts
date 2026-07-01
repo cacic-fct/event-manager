@@ -134,7 +134,7 @@ export function isRequiredFormAnswerMissing(element: FormElement, value: FormAns
     }
     return (
       element.settings?.scheduling?.inviteeMode === 'required' &&
-      !value.invitees.some((invitee) => typeof invitee.name === 'string' && invitee.name.trim().length > 0)
+      !value.invitees.some((invitee) => isRecord(invitee) && typeof invitee.name === 'string' && invitee.name.trim().length > 0)
     );
   }
 

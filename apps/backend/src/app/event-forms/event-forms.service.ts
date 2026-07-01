@@ -651,6 +651,7 @@ export class EventFormsService {
             id: true,
             name: true,
             responseMode: true,
+            elements: true,
           },
         },
       },
@@ -668,11 +669,15 @@ export class EventFormsService {
         where: responseWhere,
         select: {
           id: true,
+          answers: true,
         },
       });
 
       if (!response) {
         throw new BadRequestException(`Responda o formulário obrigatório "${link.form.name}" para concluir a inscrição.`);
+      }
+      if (link.enforceRequiredAnswers) {
+        this.assertStoredResponseHasCurrentRequiredAnswers(link.form, response.answers);
       }
     }
   }
@@ -1538,6 +1543,24 @@ export class EventFormsService {
       return element.settings?.scheduling?.inviteeMode === 'required' && value.invitees.length === 0;
     }
     return false;
+  }
+
+  private assertStoredResponseHasCurrentRequiredAnswers(
+    form: { name: string; elements: Prisma.JsonValue },
+    answersValue: Prisma.JsonValue,
+  ): void {
+    const elements = Array.isArray(form.elements) ? (form.elements as unknown as FormElement[]) : [];
+    const answerElements = elements.filter((element) => isFormAnswerElementType(element.type));
+    const answers = Array.isArray(answersValue)
+      ? normalizeFormResponseAnswers(answersValue as unknown as FormResponseAnswer[])
+      : [];
+    const answersById = new Map(answers.map((answer) => [answer.elementId, answer.value]));
+
+    for (const element of answerElements) {
+      if (element.required && this.isMissingRequiredAnswer(element, answersById.get(element.id) ?? null)) {
+        throw new BadRequestException(`Responda o formulário obrigatório "${form.name}" para concluir a inscrição.`);
+      }
+    }
   }
 
   private isSchedulingAnswer(value: FormAnswerValue): value is FormSchedulingAnswer {

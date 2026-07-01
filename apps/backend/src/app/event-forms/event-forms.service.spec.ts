@@ -519,14 +519,51 @@ describe('EventFormsService', () => {
         targetType: EventFormTargetType.EVENT,
         eventId: 'event-1',
         majorEventId: null,
+        enforceRequiredAnswers: true,
         form: {
           id: 'form-1',
           name: 'Pesquisa de camiseta',
           responseMode: EventFormResponseMode.ONE_PER_TARGET,
+          elements: [],
         },
       },
     ]);
     prisma.eventFormResponse.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.submitSubscriptionFlowResponses(prisma as never, 'person-1', [], {
+        majorEventId: 'major-1',
+        selectedEventIds: new Set(['event-1']),
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects subscription completion when an existing required form response is incomplete', async () => {
+    prisma.eventFormLink.findMany.mockResolvedValue([
+      {
+        id: 'link-1',
+        formId: 'form-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        majorEventId: null,
+        enforceRequiredAnswers: true,
+        form: {
+          id: 'form-1',
+          name: 'Pesquisa de camiseta',
+          responseMode: EventFormResponseMode.ONE_PER_TARGET,
+          elements: [
+            {
+              id: 'shirt-size',
+              type: 'singleChoice',
+              title: 'Tamanho da camiseta',
+              required: true,
+              options: [{ id: 'm', label: 'M' }],
+            },
+          ],
+        },
+      },
+    ]);
+    prisma.eventFormResponse.findFirst.mockResolvedValue({ id: 'response-1', answers: [] });
 
     await expect(
       service.submitSubscriptionFlowResponses(prisma as never, 'person-1', [], {

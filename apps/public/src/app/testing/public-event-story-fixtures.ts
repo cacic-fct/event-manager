@@ -37,6 +37,21 @@ export interface PublicEventStoryControls {
   queueCount: number;
 }
 
+export interface MutableStoryContext<TArgs> {
+  args: TArgs;
+}
+
+export function createMutableStoryContext<TArgs>(defaults: TArgs, args: Partial<TArgs> = {}): MutableStoryContext<TArgs> {
+  return {
+    args: { ...defaults, ...args },
+  };
+}
+
+export function renderMutableStory<TArgs>(defaults: TArgs, args: TArgs, context: MutableStoryContext<TArgs>) {
+  context.args = { ...defaults, ...args };
+  return { props: {} };
+}
+
 export const publicEventStoryDefaultControls: PublicEventStoryControls = {
   name: 'Arquitetura Angular com Signals',
   emoji: '🧠',
@@ -149,7 +164,7 @@ export function createPublicStoryEvent(options: PublicEventStoryOptions = {}): P
     onlineAttendanceEndDate: publicStoryDate(dayOffset, startHour + durationHours + 1),
     subscriptionStartDate: publicStoryDate(-10, 8),
     subscriptionEndDate: publicStoryDate(dayOffset, 23),
-    slotsAvailable: options.slotsAvailable ?? 12,
+    slotsAvailable: options.slotsAvailable === undefined ? 12 : options.slotsAvailable,
     queueCount: options.queueCount ?? 3,
   });
 }

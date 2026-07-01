@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
@@ -31,7 +32,10 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WalletBarcodeComponent {
+  private static readonly maxSvgDepth = 32;
+
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly svg = input('');
   readonly label = input('Código de barras');
@@ -48,7 +52,7 @@ export class WalletBarcodeComponent {
   });
 
   private toTrustedSvgMarkup(value: string): string {
-    if (!this.isSvgDocument(value) || typeof DOMParser === 'undefined') {
+    if (!this.isBrowser || !this.isSvgDocument(value) || typeof DOMParser === 'undefined') {
       return '';
     }
 
@@ -90,7 +94,10 @@ export class WalletBarcodeComponent {
       'y',
     ]);
     const blockedValue = /(?:javascript:|data:|url\s*\(|<|>)/i;
-    const visit = (element: Element): boolean => {
+    const visit = (element: Element, depth = 0): boolean => {
+      if (depth > WalletBarcodeComponent.maxSvgDepth) {
+        return false;
+      }
       if (!allowedElements.has(element.nodeName.toLowerCase())) {
         return false;
       }
@@ -109,7 +116,7 @@ export class WalletBarcodeComponent {
           }
           continue;
         }
-        if (child.nodeType !== Node.ELEMENT_NODE || !visit(child as Element)) {
+        if (child.nodeType !== Node.ELEMENT_NODE || !visit(child as Element, depth + 1)) {
           return false;
         }
       }

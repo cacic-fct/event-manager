@@ -175,7 +175,7 @@ export class WorkspaceFormsService {
         this.showError(error, 'Não foi possível carregar os formulários.');
       }
     } finally {
-      if (this.isCurrentFormsRequest(requestId, requestContext)) {
+      if (this.isCurrentFormsRequestId(requestId)) {
         this.ui.loading.set(false);
       }
     }
@@ -464,6 +464,10 @@ export class WorkspaceFormsService {
       currentContext.eventId === requestContext.eventId &&
       currentContext.majorEventId === requestContext.majorEventId
     );
+  }
+
+  private isCurrentFormsRequestId(requestId: number): boolean {
+    return requestId === this.loadFormsRequestId;
   }
 
   private toInput(): EventFormInput {

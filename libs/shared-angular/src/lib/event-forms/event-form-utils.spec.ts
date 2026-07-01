@@ -105,7 +105,7 @@ describe('event form utilities', () => {
           ...gridElement,
           settings: { grid: { rows: [], columns: [{ id: 'yes', label: 'Sim' }] } },
         },
-        {},
+        { mon: 'yes' },
       ),
     ).toBe(true);
     expect(
