@@ -30,8 +30,8 @@
       </button>
       <button
         mat-list-item
-        (click)="serviceWorkerService.unregisterServiceWorker()"
-        (keypress)="serviceWorkerService.unregisterServiceWorker()"
+        (click)="confirmUnregisterServiceWorker()"
+        (keypress)="confirmUnregisterServiceWorker()"
         tabindex="0"
         [disabled]="!isBrowser || !serviceWorkerService.hasServiceWorker()">
         <mat-icon matListItemIcon>delete</mat-icon>
