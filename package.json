@@ -14,7 +14,7 @@
       "lint": {
         "executor": "nx:run-commands",
         "options": {
-          "command": "bunx nx run-many --target=lint --exclude=@cacic-fct/source"
+          "command": "bun eslint eslint.config.mjs jest.config.ts vitest.config.ts"
         }
       }
     }
