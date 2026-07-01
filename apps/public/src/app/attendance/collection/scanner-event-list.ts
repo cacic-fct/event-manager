@@ -11,7 +11,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AttendanceCollectionAccessService } from './attendance-collection-access.service';
 import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { addHours, isValid, parseISO, subHours } from 'date-fns';
+import { parseISO, isValid, subHours, addHours } from 'date-fns';
 
 @Component({
   selector: 'app-scanner-event-list',
@@ -55,17 +55,8 @@ export class ScannerEventList implements OnInit {
     return this.access.isCollectionOpen(item);
   }
 
-  protected collectionWindowLabel(item: AttendanceCollectionEvent): string {
-    const start = parseISO(item.event.startDate);
-    const end = parseISO(item.event.endDate);
-
-    if (!isValid(start) || !isValid(end)) {
-      return 'Coleta de presença';
-    }
-
-    const allowedStart = subHours(start, 3);
-    const allowedEnd = addHours(end, 6);
-    return `Coleta de presença: ${this.formatHour(allowedStart)}-${this.formatHour(allowedEnd)}`;
+  protected eventContextLabel(item: AttendanceCollectionEvent): string | null {
+    return item.event.majorEvent?.name || item.event.eventGroup?.name || null;
   }
 
   protected canOpen(item: AttendanceCollectionEvent): boolean {
@@ -108,6 +99,19 @@ export class ScannerEventList implements OnInit {
     const events = userId ? await this.offlineQueue.getCollectionEvents(userId) : [];
     this.events.set(events);
     this.loading.set(false);
+  }
+
+  protected collectionWindowLabel(item: AttendanceCollectionEvent): string {
+    const start = parseISO(item.event.startDate);
+    const end = parseISO(item.event.endDate);
+
+    if (!isValid(start) || !isValid(end)) {
+      return 'Coleta de presença sem prazos com data válida';
+    }
+
+    const allowedStart = subHours(start, 3);
+    const allowedEnd = addHours(end, 6);
+    return `Limites para coleta: ${this.formatHour(allowedStart)}-${this.formatHour(allowedEnd)}`;
   }
 
   private formatHour(date: Date): string {

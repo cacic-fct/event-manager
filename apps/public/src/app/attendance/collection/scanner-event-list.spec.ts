@@ -63,13 +63,15 @@ describe('ScannerEventList', () => {
     expect(component).toBeTruthy();
   });
 
-  it('shows event hours, location, and attendance collection window', () => {
+  it('shows event hours, location, and collection limits without repeating the page title in the row', () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Oficina de testes');
     expect(text).toContain('Laboratório 3');
-    expect(text).toContain('Coleta de presença: 10:00-21:00');
+    expect(text).toContain('Coleta de presença');
+    expect(text).toContain('Limites para coleta: 10:00-21:00');
+    expect(text).not.toContain('Coleta de presença:');
     expect(text).toContain('13:00');
     expect(text).toContain('15:00');
   });

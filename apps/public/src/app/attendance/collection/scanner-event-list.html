@@ -2,11 +2,12 @@
   <a matIconButton routerLink="/menu" aria-label="Voltar ao menu">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <span>Coletar presenças</span>
+  <span>Coleta de presença</span>
 </mat-toolbar>
 
 <main class="collection-page">
   <section class="location-state" [class.ready]="hasPreciseLocation()">
+    <mat-icon aria-hidden="true">{{ hasPreciseLocation() ? 'my_location' : 'location_searching' }}</mat-icon>
     <p>{{ locationStatus() }}</p>
     @if (!hasPreciseLocation()) {
     <button mat-stroked-button type="button" (click)="requestPreciseLocation()">Permitir localização</button>
@@ -16,18 +17,18 @@
   <mat-list>
     @for (item of events(); track item.eventId) {
     <mat-list-item
-      type="button"
+      class="event-row"
       (click)="openEvent(item)"
-      [disabled]="!canOpen(item)"
-      [class.disabled-item]="!canOpen(item)"
+      [class.event-row-disabled]="!canOpen(item)"
+      [attr.aria-disabled]="!canOpen(item)"
       [attr.aria-label]="'Coletar presença em ' + item.event.name">
-      <div matListItemIcon class="emoji-frame" [class.disabled-emoji]="!canOpen(item)">
+      <div matListItemIcon class="emoji-frame">
         <img class="twemoji" [src]="emoji.getTwemojiUrl(item.event.emoji)" [alt]="item.event.emoji" />
       </div>
       <div matListItemTitle>{{ item.event.name }}</div>
-      <div matListItemLine>
-        {{ item.event.majorEvent?.name || item.event.eventGroup?.name || 'Coleta de presença' }}
-      </div>
+      @if (eventContextLabel(item); as contextLabel) {
+      <div matListItemLine>{{ contextLabel }}</div>
+      }
       <div matListItemLine>{{ item.event.locationDescription || 'Local não informado' }}</div>
       <div matListItemLine>{{ collectionWindowLabel(item) }}</div>
       <div matListItemMeta class="time-range">
@@ -41,7 +42,7 @@
       </div>
     </mat-list-item>
     } @empty {
-    <mat-list-item>
+    <mat-list-item class="empty-row">
       <mat-icon matListItemIcon>event_busy</mat-icon>
       <span matListItemTitle>Nenhum evento disponível</span>
       <span matListItemLine>Eventos autorizados para hoje aparecerão aqui.</span>
