@@ -582,8 +582,8 @@ export class RankedSubscriptionStore {
       } else {
         itemsByKey.set(key, {
           key,
-          label: event.eventGroup?.name ?? event.name,
-          emoji: event.eventGroup?.emoji ?? event.emoji,
+          label: event.name,
+          emoji: event.emoji,
           type: event.type,
           eventIds: [event.id],
           events: [event],

@@ -308,7 +308,7 @@
               @if (canEditEvent(workspace.selectedEvent())) {
                 <button mat-stroked-button type="button" (click)="workspace.assignEventGroupToEvent(eventGroup)">
                   <mat-icon>add_link</mat-icon>
-                  Usar {{ eventGroup.name }} {{ eventGroup.createdAt }}
+                  Usar {{ eventGroup.name }} {{ eventGroup.createdAt | date: 'dd/MM/yyyy HH:mm' }}
                 </button>
               }
             } @empty {

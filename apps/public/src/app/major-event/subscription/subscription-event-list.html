@@ -9,12 +9,7 @@
   <div class="month-header">{{ month.label }}</div>
   @for (day of month.days; track day.key) {
   <div class="date-sticky-bar">{{ day.label }}</div>
-  @for (group of day.groups; track group.key) { @if (group.label) {
-  <div class="group-header">
-    <mat-icon aria-hidden="true">folder</mat-icon>
-    <span>{{ group.label }}</span>
-  </div>
-  } @for (event of group.events; track event.id) {
+  @for (group of day.groups; track group.key) { @for (event of group.events; track event.id) {
   <mat-list-item
     class="event-row"
     [class.event-row-disabled]="isDisabled(event)"

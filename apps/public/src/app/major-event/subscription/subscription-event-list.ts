@@ -25,7 +25,6 @@ interface SubscriptionListDay {
 
 interface SubscriptionListGroup {
   key: string;
-  label?: string;
   events: PublicEvent[];
 }
 
@@ -117,7 +116,6 @@ export class SubscriptionEventList {
       if (!group) {
         group = {
           key: groupKey,
-          label: event.eventGroup?.name,
           events: [],
         };
         day.groups.push(group);
