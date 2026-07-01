@@ -103,6 +103,12 @@
                   <mat-icon>download</mat-icon>
                   Baixar feed
                 </a>
+                @if (personalGoogleCalendarUrl(); as googleUrl) {
+                  <a mat-stroked-button [href]="googleUrl" target="_blank" rel="noopener noreferrer">
+                    <mat-icon>event</mat-icon>
+                    Adicionar ao Google Agenda
+                  </a>
+                }
                 <button mat-stroked-button type="button" [disabled]="isRotatingPersonal()" (click)="rotatePersonalKey()">
                   <mat-icon>sync</mat-icon>
                   Rotacionar chave
@@ -158,6 +164,12 @@
                   <mat-icon>download</mat-icon>
                   Baixar feed
                 </a>
+                @if (superAdminGoogleCalendarUrl(); as googleUrl) {
+                  <a mat-stroked-button [href]="googleUrl" target="_blank" rel="noopener noreferrer">
+                    <mat-icon>event</mat-icon>
+                    Adicionar ao Google Agenda
+                  </a>
+                }
               }
               <button mat-flat-button type="button" [disabled]="isRotatingSuperAdmin()" (click)="rotateSuperAdminKey()">
                 <mat-icon>sync_problem</mat-icon>

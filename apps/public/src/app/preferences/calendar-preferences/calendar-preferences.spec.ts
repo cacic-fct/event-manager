@@ -12,6 +12,7 @@ import { CalendarPreferences } from './calendar-preferences';
 
 type TestComponent = {
   feedUrl: () => string | null;
+  googleCalendarUrl: () => string | null;
   setDefaultItemView: (change: { value: unknown }) => void;
   setEnabled: (change: { checked: boolean; source: { checked: boolean } }) => Promise<void>;
 };
@@ -77,6 +78,11 @@ describe('CalendarPreferences', () => {
 
     expect(api.getSettings).toHaveBeenCalledTimes(1);
     expect(component.feedUrl()).toBe(new URL('/api/calendar/feeds/user-key.ics', document.baseURI).toString());
+    expect(component.googleCalendarUrl()).toBe(
+      `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(
+        new URL('/api/calendar/feeds/user-key.ics', document.baseURI).toString(),
+      )}`,
+    );
   });
 
   it('persists an explicit default item view preference', async () => {

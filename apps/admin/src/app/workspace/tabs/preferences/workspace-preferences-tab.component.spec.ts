@@ -17,9 +17,11 @@ type TestComponent = {
   disabledReasonMessage: (settings: CurrentUserAdminCalendarFeedSettings) => string | null;
   isRotatingSuperAdmin: () => boolean;
   isSuperAdmin: () => boolean;
+  personalGoogleCalendarUrl: () => string | null;
   personalFeedUrl: () => string | null;
   rotateSuperAdminKey: () => Promise<void>;
   setPersonalEnabled: (change: { checked: boolean; source: { checked: boolean } }) => Promise<void>;
+  superAdminGoogleCalendarUrl: () => string | null;
   superAdminFeedUrl: () => string | null;
 };
 
@@ -80,6 +82,11 @@ describe('WorkspacePreferencesTabComponent', () => {
     expect(component.personalFeedUrl()).toBe(
       new URL('/api/calendar/admin/feeds/admin-key.ics', document.baseURI).toString(),
     );
+    expect(component.personalGoogleCalendarUrl()).toBe(
+      `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(
+        new URL('/api/calendar/admin/feeds/admin-key.ics', document.baseURI).toString(),
+      )}`,
+    );
     expect(
       component.disabledReasonMessage({
         ...adminSettingsFixture(),
@@ -118,6 +125,11 @@ describe('WorkspacePreferencesTabComponent', () => {
     expect(component.isSuperAdmin()).toBe(true);
     expect(component.superAdminFeedUrl()).toBe(
       new URL('/api/calendar/admin/super-admin/super-key.ics', document.baseURI).toString(),
+    );
+    expect(component.superAdminGoogleCalendarUrl()).toBe(
+      `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(
+        new URL('/api/calendar/admin/super-admin/super-key.ics', document.baseURI).toString(),
+      )}`,
     );
   });
 

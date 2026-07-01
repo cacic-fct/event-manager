@@ -101,6 +101,8 @@ export class WorkspacePreferencesTabComponent {
     const state = this.superAdminFeedState();
     return state.status === 'ready' && state.settings.enabled ? this.absoluteFeedUrl(state.settings.feedPath) : null;
   });
+  protected readonly personalGoogleCalendarUrl = computed(() => this.googleCalendarFeedUrl(this.personalFeedUrl()));
+  protected readonly superAdminGoogleCalendarUrl = computed(() => this.googleCalendarFeedUrl(this.superAdminFeedUrl()));
 
   protected reload(): void {
     this.personalFeedSettingsOverride.set(null);
@@ -317,6 +319,16 @@ export class WorkspacePreferencesTabComponent {
     }
 
     return new URL(feedPath, this.baseOrigin()).toString();
+  }
+
+  private googleCalendarFeedUrl(feedUrl: string | null): string | null {
+    if (!feedUrl) {
+      return null;
+    }
+
+    const url = new URL('https://calendar.google.com/calendar/render');
+    url.searchParams.set('cid', feedUrl);
+    return url.toString();
   }
 
   private baseOrigin(): string {

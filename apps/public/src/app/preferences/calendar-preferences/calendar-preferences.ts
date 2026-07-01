@@ -93,6 +93,7 @@ export class CalendarPreferences {
 
     return new URL(state.settings.feedPath, this.baseOrigin()).toString();
   });
+  readonly googleCalendarUrl = computed(() => this.googleCalendarFeedUrl(this.feedUrl()));
 
   setDefaultItemView(change: MatButtonToggleChange): void {
     const defaultItemView = this.parseDefaultItemView(change.value);
@@ -255,6 +256,16 @@ export class CalendarPreferences {
     }
 
     return this.document.baseURI || 'https://eventos.cacic.dev.br';
+  }
+
+  private googleCalendarFeedUrl(feedUrl: string | null): string | null {
+    if (!feedUrl) {
+      return null;
+    }
+
+    const url = new URL('https://calendar.google.com/calendar/render');
+    url.searchParams.set('cid', feedUrl);
+    return url.toString();
   }
 
   private showError(error: unknown): void {

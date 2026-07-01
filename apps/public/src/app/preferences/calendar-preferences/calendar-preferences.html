@@ -101,6 +101,12 @@
         <mat-icon>download</mat-icon>
         Baixar feed
       </a>
+      @if (googleCalendarUrl(); as googleUrl) {
+      <a mat-stroked-button [href]="googleUrl" target="_blank" rel="noopener noreferrer">
+        <mat-icon>event</mat-icon>
+        Adicionar ao Google Agenda
+      </a>
+      }
       <button mat-stroked-button type="button" [disabled]="isRotating()" (click)="rotateKey()">
         <mat-icon>sync</mat-icon>
         Rotacionar chave
