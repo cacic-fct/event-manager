@@ -4,7 +4,7 @@ import {
   OfflineEventAttendanceSubmission,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
@@ -65,7 +65,7 @@ export class OfflineAttendanceSubmissions {
       entityId: submission.personId
         ? this.auditLog.buildCompositeEntityId([submission.personId, submission.eventId])
         : `offline:${submission.id}`,
-      entityLabel: submission.manualValue ?? submission.scannerCode ?? submission.id,
+      entityLabel: submission.scannerCode ?? submission.id,
       operation: AuditLogOperation.CREATE,
       actor: getAuthenticatedUser(this.currentUserContext, context),
       after: {
@@ -132,6 +132,13 @@ export class OfflineAttendanceSubmissions {
       const person = await this.resolvePerson(item);
       return { personId: person.id };
     } catch (error: unknown) {
+      if (
+        !(error instanceof BadRequestException) &&
+        !(error instanceof NotFoundException) &&
+        !(error instanceof ConflictException)
+      ) {
+        throw error;
+      }
       return { personId: null, errorMessage: errorMessage(error) };
     }
   }
@@ -207,10 +214,10 @@ export class OfflineAttendanceSubmissions {
       },
       data: {
         stagedReason: metadata.stagedReason,
-        resolutionError: resolvedPerson.errorMessage,
+        resolutionError: resolvedPerson.errorMessage ?? null,
         personId: resolvedPerson.personId,
-        scannerCode: normalizeOptionalString(item.code),
-        manualValue: normalizeOptionalString(item.value),
+        scannerCode: normalizeOptionalString(item.code) ?? null,
+        manualValue: normalizeOptionalString(item.value) ?? null,
         collectedLatitude: locationData.collectedLatitude,
         collectedLongitude: locationData.collectedLongitude,
         collectedAccuracyMeters: locationData.collectedAccuracyMeters,

@@ -193,8 +193,11 @@ describe('LgpdService hard delete', () => {
       },
     });
     const hardDeleteAuditWhere = tx.auditLogEntry.findMany.mock.calls[0]?.[0]?.where;
-    expect(hardDeleteAuditWhere.OR).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ actorEmail: expect.anything() })]),
+    expect(hardDeleteAuditWhere.OR).toEqual(
+      expect.arrayContaining([
+        { actorEmail: { equals: 'old@example.com', mode: 'insensitive' } },
+        { changes: { path: ['email'], equals: 'old@example.com' } },
+      ]),
     );
     expect(hardDeleteAuditWhere.OR).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ actorName: expect.anything() })]),

@@ -29,7 +29,7 @@ export function buildFormResultSummary(
   return {
     questions: answerElements.map((element) => {
       const values = responses
-        .map((response) => valueForElement(response.answers as unknown as FormResponseAnswer[], element.id))
+        .map((response) => valueForElement(parseAnswersValue(response.answers), element.id))
         .filter((value) => !isEmptyAnswer(value));
 
       return {
@@ -72,6 +72,10 @@ export function eventFormResultsToCsv(results: EventFormResults): string {
 }
 
 function buildBuckets(element: FormElement, values: readonly FormAnswerValue[]): Array<{ label: string; value: number }> {
+  if (['shortText', 'longText', 'date', 'time', 'scheduling'].includes(element.type)) {
+    return [];
+  }
+
   const buckets = new Map<string, number>();
   const optionLabels = new Map(element.options.map((option) => [option.id, option.label]));
   const add = (key: string | number) => {
@@ -95,10 +99,6 @@ function buildBuckets(element: FormElement, values: readonly FormAnswerValue[]):
     }
   }
 
-  if (['shortText', 'longText', 'date', 'time', 'scheduling'].includes(element.type)) {
-    return [];
-  }
-
   return [...buckets.entries()].map(([label, value]) => ({ label, value }));
 }
 
@@ -112,6 +112,18 @@ function buildTextAnswers(element: FormElement, values: readonly FormAnswerValue
 
 function valueForElement(answers: readonly FormResponseAnswer[], elementId: string): FormAnswerValue {
   return answers.find((answer) => answer.elementId === elementId)?.value ?? null;
+}
+
+function parseAnswersValue(value: unknown): FormResponseAnswer[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  try {
+    return parseAnswersJson(JSON.stringify(value));
+  } catch {
+    return [];
+  }
 }
 
 function answerToCsvCell(element: FormElement, value: FormAnswerValue): string {

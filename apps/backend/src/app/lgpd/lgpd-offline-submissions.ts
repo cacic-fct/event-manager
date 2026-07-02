@@ -209,6 +209,7 @@ function addBrazilianPhoneDisplayCandidates(candidates: Set<string>, withoutCoun
   const localDisplay = `${prefix}-${suffix}`;
   for (const candidate of [
     `(${areaCode}) ${localDisplay}`,
+    `(${areaCode})${localDisplay}`,
     `${areaCode} ${localDisplay}`,
     `${areaCode}${localDisplay}`,
     `55 ${areaCode} ${localDisplay}`,

@@ -22,12 +22,17 @@ export function normalizeOwner(input: EventFormInput): { ownerEventId: string | 
 }
 
 export function normalizeTarget(input: TargetInput): NormalizedTarget {
-  if (String(input.targetType) === EventFormTargetType.EVENT) {
+  const targetType = String(input.targetType);
+  if (targetType === EventFormTargetType.EVENT) {
     const eventId = input.eventId?.trim();
     if (!eventId) {
       throw new BadRequestException('Evento do formulário não informado.');
     }
     return { targetType: EventFormTargetType.EVENT, eventId, majorEventId: null };
+  }
+
+  if (targetType !== EventFormTargetType.MAJOR_EVENT) {
+    throw new BadRequestException('Tipo de alvo do formulário inválido.');
   }
 
   const majorEventId = input.majorEventId?.trim();

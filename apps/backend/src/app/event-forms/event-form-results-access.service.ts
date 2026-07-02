@@ -72,17 +72,19 @@ export class EventFormResultsAccessService {
   }
 
   async getAdminResults(user: AuthenticatedUser | undefined, formId: string): Promise<EventFormResults> {
-    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.EventForm.Results);
-    if (accessibleTargets && isEmptyAccessibleTargets(accessibleTargets)) {
-      throw new NotFoundException('Resultados do formulário não disponíveis.');
-    }
-    return this.getResults(formId, 'admin', {
-      accessibleTargets: accessibleTargets ?? undefined,
-    });
+    return this.getAdminResultsForPermission(user, formId, Permission.EventForm.Results);
   }
 
   async getAdminExportResults(user: AuthenticatedUser | undefined, formId: string): Promise<EventFormResults> {
-    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.EventForm.Export);
+    return this.getAdminResultsForPermission(user, formId, Permission.EventForm.Export);
+  }
+
+  private async getAdminResultsForPermission(
+    user: AuthenticatedUser | undefined,
+    formId: string,
+    permission: Permission,
+  ): Promise<EventFormResults> {
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, permission);
     if (accessibleTargets && isEmptyAccessibleTargets(accessibleTargets)) {
       throw new NotFoundException('Resultados do formulário não disponíveis.');
     }

@@ -138,7 +138,12 @@ export function getRequiredAttendanceLocationData(location: AttendanceLocationIn
     location.accuracyMeters == null ||
     !Number.isFinite(location.latitude) ||
     !Number.isFinite(location.longitude) ||
-    !Number.isFinite(location.accuracyMeters)
+    !Number.isFinite(location.accuracyMeters) ||
+    location.latitude < -90 ||
+    location.latitude > 90 ||
+    location.longitude < -180 ||
+    location.longitude > 180 ||
+    location.accuracyMeters < 0
   ) {
     throw new BadRequestException('Localização precisa é obrigatória para registrar presença.');
   }

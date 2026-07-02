@@ -73,7 +73,8 @@ export class EventFormPublicationWorkflowService {
     if (!link.allowLecturerManualPublish) {
       throw new ForbiddenException('Publicação por ministrantes não habilitada para este vínculo.');
     }
-    if (form.links.some((item) => item.id !== link.id)) {
+    const ownedExclusivelyByEvent = form.ownerEventId === eventId && !form.ownerMajorEventId;
+    if (!ownedExclusivelyByEvent || form.links.some((item) => item.id !== link.id)) {
       throw new ForbiddenException('Publicação por ministrantes só está disponível para formulários exclusivos deste evento.');
     }
 

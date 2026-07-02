@@ -7,7 +7,7 @@ import { GraphqlContext } from '../selects';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
+import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { getAuthenticatedUser } from './attendance-collection-context';
 
 export const ATTENDANCE_COLLECTION_PERMISSIONS = [
@@ -50,7 +50,7 @@ export async function findCurrentUserAttendanceCollectionEvents(
     where: {
       personId: person.id,
       event: {
-        deletedAt: null,
+        ...PUBLIC_EVENT_WHERE,
         shouldCollectAttendance: true,
         startDate: {
           gte: visibleFrom,
@@ -123,13 +123,15 @@ async function findManagerCollectionEvents(
 
   const events = await deps.prisma.event.findMany({
     where: {
-      deletedAt: null,
       shouldCollectAttendance: true,
       startDate: {
         gte: visibleFrom,
         lte: endOfToday,
       },
-      ...(hasGlobalAccess ? {} : { OR: scopeFilters }),
+      AND: [
+        PUBLIC_EVENT_WHERE,
+        ...(hasGlobalAccess ? [] : [{ OR: scopeFilters }]),
+      ],
     },
     select: PUBLIC_EVENT_SELECT,
     orderBy: {

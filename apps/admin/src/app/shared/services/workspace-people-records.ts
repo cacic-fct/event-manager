@@ -9,14 +9,14 @@ import { WORKSPACE_LIST_PAGE_SIZE, applyPagedResult, resetPagination } from '../
 import { WorkspacePeopleState } from './workspace-people-state';
 
 export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
-  async searchPeople(query: string): Promise<void> {
+  async searchPeople(query: string, options?: { preserveSelection?: boolean }): Promise<void> {
     const normalizedQuery = query.trim();
     if (this.peopleSearchForm.controls.query.value !== query) {
       this.peopleSearchForm.controls.query.setValue(query, { emitEvent: false });
     }
     this.peopleSearchQuery.set(normalizedQuery);
     resetPagination(this.peoplePagination);
-    await this.loadPeoplePage(normalizedQuery);
+    await this.loadPeoplePage(normalizedQuery, options);
   }
 
   async previousPeoplePage(): Promise<void> {
@@ -125,7 +125,7 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
       );
       this.snackbar.open(selectedPerson ? 'Pessoa atualizada.' : 'Pessoa criada.', 'Fechar', { duration: 2500 });
       await this.selectPerson(savedPerson);
-      await this.searchPeople(this.peopleSearchQuery());
+      await this.searchPeople(this.peopleSearchQuery(), { preserveSelection: true });
     } catch (error) {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a pessoa.'), 'Fechar', { duration: 5000 });
     }
@@ -165,7 +165,7 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
           duration: 2500,
         },
       );
-      await this.searchPeople(this.peopleSearchQuery());
+      await this.searchPeople(this.peopleSearchQuery(), { preserveSelection: true });
     } catch (error) {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o perfil de ministrante.'), 'Fechar', {
         duration: 5000,
@@ -224,7 +224,7 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
     return this.getPersonUserId(this.selectedPerson());
   }
 
-  private async loadPeoplePage(normalizedQuery: string): Promise<void> {
+  private async loadPeoplePage(normalizedQuery: string, options?: { preserveSelection?: boolean }): Promise<void> {
     const people = await firstValueFrom(
       this.api.listPeopleSummaries({
         query: normalizedQuery || undefined,
@@ -235,7 +235,7 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
     this.people.set(applyPagedResult(people, this.peoplePagination));
 
     const selectedPerson = this.selectedPerson();
-    if (!selectedPerson) {
+    if (!selectedPerson || options?.preserveSelection) {
       return;
     }
 
@@ -262,6 +262,7 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
       externalRef: person.externalRef ?? '',
     });
     this.populateLecturerProfileForm(person);
+    this.permissionGrants.set([]);
     this.resetPermissionGrantForm();
     void this.loadPermissionGrantsForPerson(person);
     void this.ensurePermissionGrantTargetsLoaded();

@@ -133,7 +133,7 @@ export function toResponseModel(
 ): EventFormResponseModel {
   const canShowIdentityValue = canShowIdentity(sigilo, viewer);
   const canShowSubmittedAt = sigilo !== EventFormSigilo.ANONYMOUS || viewer === 'self';
-  const includeAnswers = options.includeAnswers ?? true;
+  const includeAnswers = options.includeAnswers ?? canShowIndividualAnswers(sigilo, viewer);
 
   return {
     id: response.id,

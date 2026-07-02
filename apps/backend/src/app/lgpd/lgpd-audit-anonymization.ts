@@ -34,10 +34,19 @@ export function buildAuditLogSubjectWhere(dataSubject: DataSubjectResolution): P
     [...AUDIT_IDENTITY_FIELDS].flatMap((field) => [
       { before: { path: [field], equals: identifier } },
       { after: { path: [field], equals: identifier } },
+      { changes: { path: [field], equals: identifier } },
       { metadata: { path: [field], equals: identifier } },
       { metadata: { path: ['offlineAttendanceAuthor', field], equals: identifier } },
     ]),
   );
+  const emailConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.emails.flatMap((email) => [
+    { actorEmail: { equals: email, mode: 'insensitive' } },
+    { before: { path: ['email'], equals: email } },
+    { after: { path: ['email'], equals: email } },
+    { changes: { path: ['email'], equals: email } },
+    { metadata: { path: ['email'], equals: email } },
+    { metadata: { path: ['offlineAttendanceAuthor', 'email'], equals: email } },
+  ]);
   const eventAttendanceEntityConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap(
     (personId) => [
       {
@@ -64,6 +73,7 @@ export function buildAuditLogSubjectWhere(dataSubject: DataSubjectResolution): P
         : []),
       ...eventAttendanceEntityConditions,
       ...jsonIdentityConditions,
+      ...emailConditions,
     ],
   };
 }

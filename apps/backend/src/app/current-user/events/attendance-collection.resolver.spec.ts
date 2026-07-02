@@ -188,7 +188,11 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          OR: [{ id: { in: ['event-2'] } }],
+          AND: expect.arrayContaining([
+            expect.objectContaining({
+              OR: [{ id: { in: ['event-2'] } }],
+            }),
+          ]),
         }),
       }),
     );
@@ -386,7 +390,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       data: expect.objectContaining({
         eventId: 'event-1',
         personId: 'person-1',
-        createdById: 'offline-user',
+        createdById: 'collector-user',
         committedById: 'collector-user',
         attendedAt: new Date('2026-05-23T14:00:00.000Z'),
       }),
@@ -439,7 +443,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
           clientId: 'queue-1',
           eventId: 'event-1',
           personId: 'person-1',
-          authorUserId: 'offline-user',
+          authorUserId: 'collector-user',
           submittedById: 'collector-user',
           collectedLatitude: -22.12,
           collectedLongitude: -51.4,
@@ -454,7 +458,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
           clientId: 'queue-1',
           eventId: 'event-1',
           personId: 'person-1',
-          authorUserId: 'offline-user',
+          authorUserId: 'collector-user',
           submittedById: 'collector-user',
           collectedAt: new Date('2026-05-20T12:30:00.000Z'),
           collectedLatitude: -22.12,

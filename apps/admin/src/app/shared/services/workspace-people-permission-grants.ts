@@ -146,19 +146,25 @@ export function getPermissionGrantScopeLabel(scope: EventManagerPermissionGrantS
 }
 
 export function getPermissionGrantTargetLabel(grant: EventManagerPermissionGrant): string {
-  if (grant.scope === EventManagerPermissionGrantScope.Global) {
-    return 'Todos os eventos';
-  }
-
-  return grant.targetLabel ?? grant.eventId ?? grant.majorEventId ?? grant.eventGroupId ?? 'Alvo removido';
+  return getPermissionGrantTargetFieldsLabel(grant);
 }
 
 export function getPermissionGrantDraftTargetLabel(draft: PermissionGrantDraft): string {
-  if (draft.scope === EventManagerPermissionGrantScope.Global) {
+  return getPermissionGrantTargetFieldsLabel(draft);
+}
+
+function getPermissionGrantTargetFieldsLabel(target: {
+  scope: EventManagerPermissionGrantScope;
+  targetLabel?: string | null;
+  eventId?: string | null;
+  majorEventId?: string | null;
+  eventGroupId?: string | null;
+}): string {
+  if (target.scope === EventManagerPermissionGrantScope.Global) {
     return 'Todos os eventos';
   }
 
-  return draft.targetLabel ?? draft.eventId ?? draft.majorEventId ?? draft.eventGroupId ?? 'Alvo removido';
+  return target.targetLabel ?? target.eventId ?? target.majorEventId ?? target.eventGroupId ?? 'Alvo removido';
 }
 
 export function getPermissionGrantPresetDescription(presetId: string): string {

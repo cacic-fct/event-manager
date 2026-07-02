@@ -60,7 +60,7 @@ describe('people linked resources', () => {
     );
   });
 
-  it('paginates linked resource pages after building the full group list', async () => {
+  it('paginates linked resource pages with a direct type query', async () => {
     const prisma = createPrisma();
     prisma.people.findFirst.mockResolvedValueOnce({
       id: 'person-1',
@@ -70,10 +70,9 @@ describe('people linked resources', () => {
       user: null,
       mergedInto: null,
     });
+    prisma.eventAttendance.count.mockResolvedValueOnce(3);
     prisma.eventAttendance.findMany.mockResolvedValueOnce([
-      attendance('event-1', 'Primeira aula'),
       attendance('event-2', 'Segunda aula'),
-      attendance('event-3', 'Terceira aula'),
     ]);
 
     const page = await buildPersonLinkedResourcePage(prisma as never, 'person-1', 'ATTENDANCE', 1, 1);
@@ -94,6 +93,7 @@ describe('people linked resources', () => {
         ],
       }),
     );
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 1, take: 1 }));
   });
 
   it('detects linked data without querying every table when direct person links exist', async () => {

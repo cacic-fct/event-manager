@@ -48,12 +48,17 @@ export class EventFormEditorService {
 
     if (input.id) {
       const existing = await requireEventForm(this.prisma, input.id);
+      const nextLinks = input.links ?? [];
+      const shouldReplaceLinks = input.links !== undefined && input.links !== null;
+      const resultsPublic = input.resultsPublic ?? existing.resultsPublic;
       await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], {
         eventFormId: existing.id,
       });
       await assertCanManageLinkedTargets(this.authorizationPolicy, user, [formOwnerTargetInput(existing)], Permission.EventForm.Update);
       await assertCanManageLinkedTargets(this.authorizationPolicy, user, [ownerTargetInput(target)], Permission.EventForm.Update);
-      await assertCanManageLinkedTargets(this.authorizationPolicy, user, manageableLinksForReplace(existing.links, input.links ?? []), Permission.EventForm.Update);
+      if (shouldReplaceLinks) {
+        await assertCanManageLinkedTargets(this.authorizationPolicy, user, manageableLinksForReplace(existing.links, nextLinks), Permission.EventForm.Update);
+      }
 
       const updated = await this.prisma.$transaction(async (tx) => {
         await tx.eventForm.update({
@@ -66,12 +71,14 @@ export class EventFormEditorService {
             elements: elements as unknown as Prisma.InputJsonValue,
             sigilo: toDbSigilo(input.sigilo ?? existing.sigilo),
             responseMode: toDbResponseMode(input.responseMode ?? existing.responseMode),
-            resultsPublic: input.resultsPublic ?? existing.resultsPublic,
-            resultsLive: input.resultsPublic === false ? false : (input.resultsLive ?? existing.resultsLive),
+            resultsPublic,
+            resultsLive: resultsPublic ? (input.resultsLive ?? existing.resultsLive) : false,
             updatedById: actorId,
           },
         });
-        await replaceEventFormLinks(tx, existing.id, input.links ?? [], actorId);
+        if (shouldReplaceLinks) {
+          await replaceEventFormLinks(tx, existing.id, nextLinks, actorId);
+        }
 
         return tx.eventForm.findUniqueOrThrow({
           where: { id: existing.id },
@@ -162,7 +169,12 @@ export class EventFormEditorService {
     return toDraftModel(draft);
   }
 
-  async listDrafts(sourceFormId: string): Promise<EventFormDraftModel[]> {
+  async listDrafts(sourceFormId: string, user: AuthenticatedUser | undefined): Promise<EventFormDraftModel[]> {
+    const form = await requireEventForm(this.prisma, sourceFormId);
+    await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], {
+      eventFormId: form.id,
+    });
+
     const drafts = await this.prisma.eventFormDraft.findMany({
       where: {
         sourceFormId,

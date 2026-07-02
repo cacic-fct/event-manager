@@ -80,7 +80,7 @@ export class OfflineAttendanceCommitter {
     if (!submittedById) {
       throw new BadRequestException('Usuário autenticado sem identificador de conta.');
     }
-    const createdById = normalizeOptionalString(item.authorUserId) ?? submittedById;
+    const createdById = submittedById;
     const canCommitWithPermission = await this.canCommitWithPermission(item.eventId, context);
 
     try {
@@ -117,7 +117,7 @@ export class OfflineAttendanceCommitter {
             metadata: {
               offlineClientId: item.clientId,
               offlineAttendanceAuthor: {
-                userId: createdById ?? null,
+                userId: submittedById,
                 name: normalizeOptionalString(item.authorName) ?? null,
                 email: normalizeOptionalString(item.authorEmail) ?? null,
               },

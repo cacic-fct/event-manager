@@ -9,7 +9,11 @@ import {
 } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { GraphqlContext } from '../current-user/selects';
+import { CurrentUserContextService } from '../current-user/context.service';
+import { NovuNotificationsService } from '../notifications/novu-notifications.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { EventFormEditorService } from './event-form-editor.service';
 import { EventFormListingsService } from './event-form-listings.service';
 import { EventFormNotificationService } from './event-form-notification.service';
@@ -39,32 +43,35 @@ describe('EventFormsService', () => {
     authorizationPolicy = createAuthorizationPolicy();
     currentUserContext = createCurrentUserContext(authenticatedUser);
     notifications = createNotifications();
-    formNotifications = new EventFormNotificationService(prisma as never, notifications as never);
+    formNotifications = new EventFormNotificationService(
+      prisma as unknown as jest.Mocked<PrismaService>,
+      notifications as unknown as jest.Mocked<NovuNotificationsService>,
+    );
     const resultEvents = new EventFormResultEventsService();
     const listings = new EventFormListingsService(
-      prisma as never,
-      authorizationPolicy as never,
-      currentUserContext as never,
+      prisma as unknown as jest.Mocked<PrismaService>,
+      authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
+      currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
     );
     const editor = new EventFormEditorService(
-      prisma as never,
-      authorizationPolicy as never,
+      prisma as unknown as jest.Mocked<PrismaService>,
+      authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
     );
     const publication = new EventFormPublicationWorkflowService(
-      prisma as never,
-      authorizationPolicy as never,
-      currentUserContext as never,
-      formNotifications as never,
+      prisma as unknown as jest.Mocked<PrismaService>,
+      authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
+      currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
+      formNotifications,
     );
     const responses = new EventFormResponsesService(
-      prisma as never,
-      currentUserContext as never,
+      prisma as unknown as jest.Mocked<PrismaService>,
+      currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
       resultEvents,
     );
     const results = new EventFormResultsAccessService(
-      prisma as never,
-      authorizationPolicy as never,
-      currentUserContext as never,
+      prisma as unknown as jest.Mocked<PrismaService>,
+      authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
+      currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
     );
     service = new EventFormsService(
       listings,
@@ -101,21 +108,23 @@ describe('EventFormsService', () => {
   });
 
   it('lets linked lecturers publish when the event link opted in', async () => {
-    const form = formRecord({ allowLecturerManualPublish: true });
+    const form = formRecord({ allowLecturerManualPublish: true, ownerEventId: 'event-1' });
     prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1' });
     prisma.eventForm.findFirst.mockResolvedValue(form);
-    prisma.eventForm.update.mockResolvedValue({
+    const published = {
       ...form,
       publicationState: PublicationState.PUBLISHED,
       publishedAt: new Date('2026-06-28T12:00:00.000Z'),
-    });
+    };
+    prisma.eventForm.updateMany.mockResolvedValue({ count: 1 });
+    prisma.eventForm.findUniqueOrThrow.mockResolvedValue(published);
 
     const result = await service.publishLecturerForm(context, 'form-1', 'event-1');
 
     expect(result.publicationState).toBe(PublicationState.PUBLISHED);
-    expect(prisma.eventForm.update).toHaveBeenCalledWith(
+    expect(prisma.eventForm.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'form-1' },
+        where: expect.objectContaining({ id: 'form-1', deletedAt: null }),
         data: expect.objectContaining({
           publicationState: PublicationState.PUBLISHED,
           publicationUpdatedBy: authenticatedUser.sub,
@@ -280,7 +289,8 @@ describe('EventFormsService', () => {
       ],
     });
     prisma.eventForm.findFirst.mockResolvedValue(form);
-    prisma.eventForm.update.mockResolvedValue({ ...form, publicationState: PublicationState.PUBLISHED });
+    prisma.eventForm.updateMany.mockResolvedValue({ count: 1 });
+    prisma.eventForm.findUniqueOrThrow.mockResolvedValue({ ...form, publicationState: PublicationState.PUBLISHED });
 
     await service.publishForm('form-1', null, authenticatedUser);
 
@@ -879,6 +889,7 @@ function createPrisma() {
       findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     eventFormResponse: {
       findFirst: jest.fn(),

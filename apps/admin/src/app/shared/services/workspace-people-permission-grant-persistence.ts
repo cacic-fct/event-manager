@@ -88,16 +88,21 @@ export abstract class WorkspacePeoplePermissionGrantPersistence extends Workspac
   protected async loadPermissionGrantsForPerson(person: Person): Promise<void> {
     const userId = this.getPersonUserId(person);
     if (!userId) {
-      this.permissionGrants.set([]);
+      if (this.selectedPerson()?.id === person.id) {
+        this.permissionGrants.set([]);
+      }
       return;
     }
 
     try {
       const grants = await firstValueFrom(this.permissionGrantsApi.listUserGrants(userId));
-      if (this.getSelectedPersonUserId() === userId) {
+      if (this.selectedPerson()?.id === person.id && this.getSelectedPersonUserId() === userId) {
         this.permissionGrants.set(sortPermissionGrants(grants));
       }
     } catch (error) {
+      if (this.selectedPerson()?.id !== person.id) {
+        return;
+      }
       this.permissionGrants.set([]);
       this.snackbar.open(getErrorMessage(error, 'Não foi possível carregar as permissões.'), 'Fechar', {
         duration: 5000,
@@ -141,22 +146,35 @@ export abstract class WorkspacePeoplePermissionGrantPersistence extends Workspac
       return;
     }
 
-    try {
-      const createdGrants = await Promise.all(
-        inputs.map((input) => firstValueFrom(this.permissionGrantsApi.createGrant(input))),
-      );
-      this.permissionGrants.update((grants) =>
-        sortPermissionGrants([
-          ...grants.filter((item) => !createdGrants.some((grant) => grant.id === item.id)),
-          ...createdGrants,
-        ]),
-      );
+    const settledGrants = await Promise.allSettled(
+      inputs.map((input) => firstValueFrom(this.permissionGrantsApi.createGrant(input))),
+    );
+    const createdGrants = settledGrants.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+    this.permissionGrants.update((grants) =>
+      sortPermissionGrants([
+        ...grants.filter((item) => !createdGrants.some((grant) => grant.id === item.id)),
+        ...createdGrants,
+      ]),
+    );
+    const failedGrant = settledGrants.find((result) => result.status === 'rejected');
+    if (!failedGrant) {
       this.resetPermissionGrantForm();
       this.snackbar.open(messages.success, 'Fechar', { duration: 2500 });
-    } catch (error) {
-      await this.loadPermissionGrantsForPerson(selectedPerson);
-      this.snackbar.open(getErrorMessage(error, messages.failure), 'Fechar', { duration: 5000 });
+      return;
     }
+
+    await this.loadPermissionGrantsForPerson(selectedPerson);
+    if (createdGrants.length > 0) {
+      this.resetPermissionGrantForm();
+      this.snackbar.open(
+        `${createdGrants.length} de ${inputs.length} permissões concedidas. ${getErrorMessage(failedGrant.reason, 'Algumas permissões não puderam ser concedidas.')}`,
+        'Fechar',
+        { duration: 6000 },
+      );
+      return;
+    }
+
+    this.snackbar.open(getErrorMessage(failedGrant.reason, messages.failure), 'Fechar', { duration: 5000 });
   }
 
   private async loadPermissionGrantTargets(): Promise<boolean> {

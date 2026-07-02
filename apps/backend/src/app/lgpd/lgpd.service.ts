@@ -212,7 +212,7 @@ export class LgpdService {
     };
   }
 
-  async scheduleDeletion(input: { userId: string; email?: string; requestId: string; scheduledHardDeleteAt?: string }) {
+  async scheduleDeletion(input: { userId: string; email?: string; requestId: string }) {
     const dataSubject = await resolveDataSubject(this.prisma, input);
     const { personIds, userIds } = dataSubject;
     if (personIds.length === 0 && userIds.length === 0) {

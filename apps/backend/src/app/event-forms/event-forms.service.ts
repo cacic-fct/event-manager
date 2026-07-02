@@ -38,8 +38,8 @@ export class EventFormsService {
     return this.listings.listAdminForms(user, filters);
   }
 
-  async getAdminForm(formId: string): Promise<EventFormModel> {
-    return this.listings.getAdminForm(formId);
+  async getAdminForm(user: AuthenticatedUser | undefined, formId: string): Promise<EventFormModel> {
+    return this.listings.getAdminForm(user, formId);
   }
 
   async listFormsForTarget(input: TargetInput, options: { subscriptionFlowOnly?: boolean } = {}): Promise<EventFormModel[]> {
@@ -65,8 +65,8 @@ export class EventFormsService {
     return this.editor.saveDraft(input, user);
   }
 
-  async listDrafts(sourceFormId: string): Promise<EventFormDraftModel[]> {
-    return this.editor.listDrafts(sourceFormId);
+  async listDrafts(sourceFormId: string, user: AuthenticatedUser | undefined): Promise<EventFormDraftModel[]> {
+    return this.editor.listDrafts(sourceFormId, user);
   }
 
   async publishForm(

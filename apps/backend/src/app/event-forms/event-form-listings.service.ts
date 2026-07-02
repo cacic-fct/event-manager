@@ -76,7 +76,10 @@ export class EventFormListingsService {
     return forms.map((form) => toEventFormModel(form));
   }
 
-  async getAdminForm(formId: string): Promise<EventFormModel> {
+  async getAdminForm(user: AuthenticatedUser | undefined, formId: string): Promise<EventFormModel> {
+    await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Read], {
+      eventFormId: formId,
+    });
     return toEventFormModel(await requireEventForm(this.prisma, formId));
   }
 

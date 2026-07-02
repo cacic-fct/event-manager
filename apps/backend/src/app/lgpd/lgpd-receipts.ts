@@ -20,18 +20,18 @@ export async function deleteReceiptObjects(
   objectKeys: readonly string[],
 ): Promise<void> {
   const uniqueObjectKeys = Array.from(new Set(objectKeys));
-  const failedObjectKeys: string[] = [];
+  const settledDeletions = await Promise.allSettled(uniqueObjectKeys.map((objectKey) => s3.deleteFile(objectKey)));
 
-  for (const objectKey of uniqueObjectKeys) {
-    try {
-      await s3.deleteFile(objectKey);
-    } catch (error: unknown) {
+  const failedObjectKeys: string[] = [];
+  settledDeletions.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      const objectKey = uniqueObjectKeys[index];
       failedObjectKeys.push(objectKey);
       logger.warn(
-        `Failed to delete LGPD receipt object ${objectKey}: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to delete LGPD receipt object ${objectKey}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
       );
     }
-  }
+  });
 
   if (failedObjectKeys.length > 0) {
     logger.warn(
