@@ -1,0 +1,59 @@
+.permission-summary {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface);
+}
+
+.permission-summary span {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.permission-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.permission-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 1.75rem;
+  padding: 0 0.625rem;
+  border-radius: 999px;
+
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.permission-denied {
+  display: grid;
+  place-items: center;
+  gap: 0.5rem;
+
+  min-height: 18rem;
+  padding: 2rem;
+  text-align: center;
+
+  mat-icon {
+    width: 3rem;
+    height: 3rem;
+    font-size: 3rem;
+    color: var(--mat-sys-error);
+  }
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  p {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
