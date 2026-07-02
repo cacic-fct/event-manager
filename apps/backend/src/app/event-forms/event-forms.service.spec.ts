@@ -10,7 +10,14 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { GraphqlContext } from '../current-user/selects';
+import { EventFormEditorService } from './event-form-editor.service';
+import { EventFormListingsService } from './event-form-listings.service';
 import { EventFormNotificationService } from './event-form-notification.service';
+import { EventFormPublicationWorkflowService } from './event-form-publication-workflow.service';
+import { EventFormResponsesService } from './event-form-responses.service';
+import { EventFormResultEventsService } from './event-form-result-events.service';
+import { EventFormResultsAccessService } from './event-form-results-access.service';
+import { csvCell } from './event-form-results';
 import { EventFormsService } from './event-forms.service';
 
 describe('EventFormsService', () => {
@@ -19,6 +26,7 @@ describe('EventFormsService', () => {
   let authorizationPolicy: ReturnType<typeof createAuthorizationPolicy>;
   let currentUserContext: ReturnType<typeof createCurrentUserContext>;
   let notifications: ReturnType<typeof createNotifications>;
+  let formNotifications: EventFormNotificationService;
 
   const authenticatedUser = {
     sub: 'user-1',
@@ -31,21 +39,49 @@ describe('EventFormsService', () => {
     authorizationPolicy = createAuthorizationPolicy();
     currentUserContext = createCurrentUserContext(authenticatedUser);
     notifications = createNotifications();
-    const formNotifications = new EventFormNotificationService(prisma as never, notifications as never);
-    service = new EventFormsService(
+    formNotifications = new EventFormNotificationService(prisma as never, notifications as never);
+    const resultEvents = new EventFormResultEventsService();
+    const listings = new EventFormListingsService(
+      prisma as never,
+      authorizationPolicy as never,
+      currentUserContext as never,
+    );
+    const editor = new EventFormEditorService(
+      prisma as never,
+      authorizationPolicy as never,
+    );
+    const publication = new EventFormPublicationWorkflowService(
       prisma as never,
       authorizationPolicy as never,
       currentUserContext as never,
       formNotifications as never,
     );
+    const responses = new EventFormResponsesService(
+      prisma as never,
+      currentUserContext as never,
+      resultEvents,
+    );
+    const results = new EventFormResultsAccessService(
+      prisma as never,
+      authorizationPolicy as never,
+      currentUserContext as never,
+    );
+    service = new EventFormsService(
+      listings,
+      editor,
+      publication,
+      responses,
+      results,
+      resultEvents,
+    );
   });
 
   it('neutralizes CSV formulas after leading whitespace or control characters', () => {
-    expect(service['csvCell']('\t=IMPORTXML("https://example.com")')).toBe(
+    expect(csvCell('\t=IMPORTXML("https://example.com")')).toBe(
       '"\'\t=IMPORTXML(""https://example.com"")"',
     );
-    expect(service['csvCell']('\u0000+SUM(1,1)')).toBe('"\'\u0000+SUM(1,1)"');
-    expect(service['csvCell']('plain text')).toBe('"plain text"');
+    expect(csvCell('\u0000+SUM(1,1)')).toBe('"\'\u0000+SUM(1,1)"');
+    expect(csvCell('plain text')).toBe('"plain text"');
   });
 
   it('requires the event link opt-in before lecturers can publish manually', async () => {
@@ -735,7 +771,7 @@ describe('EventFormsService', () => {
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
     notifications.notifyEventFormAvailable.mockResolvedValue(true);
 
-    const notifiedCount = await service['notifyEligiblePeople'](form);
+    const notifiedCount = await formNotifications.notifyEligiblePeople(form);
 
     expect(notifiedCount).toBe(1);
     expect(prisma.eventFormLink.updateMany).toHaveBeenCalledWith(
@@ -769,7 +805,7 @@ describe('EventFormsService', () => {
     prisma.eventAttendance.findMany.mockResolvedValue([]);
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 0 });
 
-    const notifiedCount = await service['notifyEligiblePeople'](form);
+    const notifiedCount = await formNotifications.notifyEligiblePeople(form);
 
     expect(notifiedCount).toBe(0);
     expect(notifications.notifyEventFormAvailable).not.toHaveBeenCalled();
@@ -792,7 +828,7 @@ describe('EventFormsService', () => {
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
     notifications.notifyEventFormAvailable.mockRejectedValue(new Error('Novu unavailable'));
 
-    const notifiedCount = await service['notifyEligiblePeople'](form);
+    const notifiedCount = await formNotifications.notifyEligiblePeople(form);
 
     expect(notifiedCount).toBe(0);
     expect(prisma.eventFormLink.updateMany).toHaveBeenCalledWith(

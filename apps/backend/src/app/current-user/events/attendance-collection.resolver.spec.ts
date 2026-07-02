@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { addHours, isWithinInterval, subHours } from 'date-fns';
+import { getAttendanceScannerFeed } from './attendance-collection-feed';
 import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
 
 describe('CurrentUserAttendanceCollectionResolver scanner feed', () => {
@@ -26,11 +27,7 @@ describe('CurrentUserAttendanceCollectionResolver scanner feed', () => {
       people: [],
       collectorUsers: [],
     });
-    const resolver = new CurrentUserAttendanceCollectionResolver(prisma as never, {} as never, {} as never);
-
-    const feed = await (
-      resolver as unknown as { getScannerFeed: (eventId: string) => Promise<ScannerFeedItem[]> }
-    ).getScannerFeed('standalone-event');
+    const feed = await getAttendanceScannerFeed(prisma as never, 'standalone-event');
 
     expect(feed).toEqual(
       expect.arrayContaining([
@@ -63,11 +60,7 @@ describe('CurrentUserAttendanceCollectionResolver scanner feed', () => {
       people: [],
       collectorUsers: [{ id: 'collector-user', name: ' Grace Hopper ' }],
     });
-    const resolver = new CurrentUserAttendanceCollectionResolver(prisma as never, {} as never, {} as never);
-
-    const feed = await (
-      resolver as unknown as { getScannerFeed: (eventId: string) => Promise<ScannerFeedItem[]> }
-    ).getScannerFeed('major-session');
+    const feed = await getAttendanceScannerFeed(prisma as never, 'major-session');
 
     expect(feed).toEqual([
       expect.objectContaining({
@@ -724,6 +717,31 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     jest.useRealTimers();
   });
 
+  it('rejects offline synchronization batches above the configured limit before touching persistence', async () => {
+    const { resolver, prisma, currentUserContext } = createCollectionResolver({
+      collector: collectorPerson(),
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: Array.from({ length: 151 }, (_, index) => ({
+            clientId: `queue-${index}`,
+            eventId: 'event-1',
+            createdByMethod: AttendanceCreationMethod.SCANNER,
+            code: 'user:user-1',
+            location: preciseLocation(),
+            collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+          })),
+        },
+        context as never,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(currentUserContext.requireCurrentPerson).not.toHaveBeenCalled();
+    expect(prisma.offlineEventAttendanceSubmission.create).not.toHaveBeenCalled();
+  });
+
   it('skips duplicate offline attendances without staging them', async () => {
     const duplicateError = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
       code: 'P2002',
@@ -857,12 +875,6 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     jest.useRealTimers();
   });
 });
-
-type ScannerFeedItem = {
-  personId: string;
-  subscriptionStatus?: string;
-  collectedByFirstName?: string;
-};
 
 type OfflineSubmissionCreateInput = {
   clientId: string;
@@ -1183,6 +1195,7 @@ function createCollectionResolver(input: {
       input.notifications as never,
     ),
     prisma,
+    currentUserContext,
     frozenResources,
     authorizationPolicy,
   };
