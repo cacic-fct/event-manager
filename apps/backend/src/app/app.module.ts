@@ -174,7 +174,13 @@ import { validateBackendEnvironment } from './config/environment.validation';
         introspection: true,
         plugins: [
           ApolloServerPluginLandingPageLocalDefault({
-            embed: false,
+            embed: {
+              endpointIsEditable: false,
+              runTelemetry: false,
+              initialState: {
+                pollForSchemaUpdates: true,
+              },
+            },
             includeCookies: true,
           }),
           createIntrospectionAuthPlugin({
