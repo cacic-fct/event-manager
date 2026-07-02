@@ -147,7 +147,7 @@ describe('event form helper modules', () => {
         respondentName: null,
         respondentEmail: null,
         submittedAt: null,
-        answersJson: JSON.stringify([{ elementId: 'feedback', value: 'Ótimo' }]),
+        answersJson: '[]',
       }),
     );
   });
@@ -252,16 +252,15 @@ describe('event form helper modules', () => {
         findMany: jest.fn()
           .mockResolvedValueOnce([{ id: 'form-1' }, { id: 'form-2' }])
           .mockResolvedValueOnce([formRecord({ id: 'form-3' })]),
-        update: jest.fn((args: { where: { id: string }; data: Record<string, unknown> }) =>
-          Promise.resolve(formRecord({
-            id: args.where.id,
-            publicationState: PublicationState.PUBLISHED,
-            scheduledPublishAt: args.data['scheduledPublishAt'] as Date | null,
-            publishedAt: args.data['publishedAt'] as Date,
-            unpublishedAt: args.data['unpublishedAt'] as Date | null,
-            publicationUpdatedBy: args.data['publicationUpdatedBy'] as string | null,
-          })),
-        ),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn((args: { where: { id: string } }) => Promise.resolve(formRecord({
+          id: args.where.id,
+          publicationState: PublicationState.PUBLISHED,
+          scheduledPublishAt: null,
+          publishedAt: new Date('2026-07-01T12:00:00.000Z'),
+          unpublishedAt: null,
+          publicationUpdatedBy: null,
+        }))),
       },
     };
     const notifications = {
@@ -269,17 +268,24 @@ describe('event form helper modules', () => {
     };
 
     await expect(publishDueScheduledEventForms(prisma as never, notifications as never)).resolves.toBe(2);
-    expect(prisma.eventForm.update).toHaveBeenCalledWith(
+    expect(prisma.eventForm.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'form-1' },
+        where: expect.objectContaining({
+          id: 'form-1',
+          publicationState: PublicationState.SCHEDULED,
+          deletedAt: null,
+        }),
         data: expect.objectContaining({
           publicationState: PublicationState.PUBLISHED,
           scheduledPublishAt: null,
           unpublishedAt: null,
         }),
-        include: expect.any(Object),
       }),
     );
+    expect(prisma.eventForm.findUniqueOrThrow).toHaveBeenCalledWith({
+      where: { id: 'form-1' },
+      include: expect.any(Object),
+    });
 
     await expect(notifyDueAvailableEventFormLinks(prisma as never, notifications as never)).resolves.toBe(3);
     expect(prisma.eventForm.findMany).toHaveBeenLastCalledWith(
@@ -302,7 +308,8 @@ describe('event form helper modules', () => {
     const formNotifications = { notifyEligiblePeople: jest.fn().mockResolvedValue(1) };
     const prisma = {
       eventForm: {
-        update: jest.fn().mockResolvedValue(formRecord({ id: 'form-1' })),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(formRecord({ id: 'form-1' })),
       },
     };
     const tx = {

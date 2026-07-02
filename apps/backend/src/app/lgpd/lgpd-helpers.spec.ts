@@ -237,6 +237,7 @@ describe('LGPD helper modules', () => {
     expect(buildAuditLogSubjectWhere(dataSubject)).toEqual({
       OR: expect.arrayContaining([
         { actorId: { in: ['subject-user'] } },
+        { actorEmail: { equals: 'subject@example.com', mode: 'insensitive' } },
         { entityType: AuditLogEntityType.PERSON, entityId: { in: ['person-1'] } },
         {
           entityType: AuditLogEntityType.EVENT_ATTENDANCE,
@@ -245,6 +246,9 @@ describe('LGPD helper modules', () => {
         { after: { path: ['personId'], equals: 'person-1' } },
       ]),
     });
+    expect(buildAuditLogSubjectWhere(dataSubject, { includeActorEmail: false }).OR).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ actorEmail: expect.anything() })]),
+    );
 
     await expect(anonymizeAuditEntries(tx as never, dataSubject, anonymizedSubjectId)).resolves.toEqual(['audit-1']);
     expect(tx.auditLogEntry.update).toHaveBeenCalledWith({

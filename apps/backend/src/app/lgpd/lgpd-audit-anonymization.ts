@@ -28,7 +28,11 @@ const PERSONAL_AUDIT_FIELDS = new Set([
   'externalRef',
 ]);
 
-export function buildAuditLogSubjectWhere(dataSubject: DataSubjectResolution): Prisma.AuditLogEntryWhereInput {
+export function buildAuditLogSubjectWhere(
+  dataSubject: DataSubjectResolution,
+  options: { includeActorEmail?: boolean } = {},
+): Prisma.AuditLogEntryWhereInput {
+  const includeActorEmail = options.includeActorEmail ?? true;
   const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
   const jsonIdentityConditions: Prisma.AuditLogEntryWhereInput[] = identifiers.flatMap((identifier) =>
     [...AUDIT_IDENTITY_FIELDS].flatMap((field) => [
@@ -40,7 +44,7 @@ export function buildAuditLogSubjectWhere(dataSubject: DataSubjectResolution): P
     ]),
   );
   const emailConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.emails.flatMap((email) => [
-    { actorEmail: { equals: email, mode: 'insensitive' } },
+    ...(includeActorEmail ? [{ actorEmail: { equals: email, mode: 'insensitive' } }] : []),
     { before: { path: ['email'], equals: email } },
     { after: { path: ['email'], equals: email } },
     { changes: { path: ['email'], equals: email } },

@@ -162,7 +162,7 @@ export class LgpdService {
           })
         : Promise.resolve([]),
       this.prisma.auditLogEntry.findMany({
-        where: buildAuditLogSubjectWhere(dataSubject),
+        where: buildAuditLogSubjectWhere(dataSubject, { includeActorEmail: false }),
         select: LGPD_AUDIT_LOG_SELECT,
         orderBy: { lastRecordedAt: 'desc' },
       }),
