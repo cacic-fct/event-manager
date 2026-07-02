@@ -51,6 +51,16 @@ export class EventFormNotificationService {
 
       const recipients = await this.findNotificationRecipients(link);
       if (recipients.length === 0) {
+        await this.prisma.eventFormLink.updateMany({
+          where: {
+            id: link.id,
+            deletedAt: null,
+            lastNotifiedAt: null,
+          },
+          data: {
+            lastNotifiedAt: new Date(),
+          },
+        });
         continue;
       }
 

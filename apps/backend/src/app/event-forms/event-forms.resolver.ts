@@ -35,8 +35,11 @@ export class EventFormsResolver {
 
   @Query(() => EventForm, { name: 'eventForm' })
   @RequirePermissions(Permission.EventForm.Read)
-  eventForm(@Args('formId', { type: () => String }) formId: string): Promise<EventForm> {
-    return this.forms.getAdminForm(formId);
+  eventForm(
+    @Args('formId', { type: () => String }) formId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<EventForm> {
+    return this.forms.getAdminForm(this.getUser(context), formId);
   }
 
   @Query(() => EventFormResults, { name: 'eventFormResults' })
@@ -50,8 +53,11 @@ export class EventFormsResolver {
 
   @Query(() => [EventFormDraft], { name: 'eventFormDrafts' })
   @RequirePermissions(Permission.EventForm.Update)
-  eventFormDrafts(@Args('sourceFormId', { type: () => String }) sourceFormId: string): Promise<EventFormDraft[]> {
-    return this.forms.listDrafts(sourceFormId);
+  eventFormDrafts(
+    @Args('sourceFormId', { type: () => String }) sourceFormId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<EventFormDraft[]> {
+    return this.forms.listDrafts(sourceFormId, this.getUser(context));
   }
 
   @Query(() => [EventForm], { name: 'currentUserEventForms' })

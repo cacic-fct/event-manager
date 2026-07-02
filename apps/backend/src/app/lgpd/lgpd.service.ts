@@ -1,282 +1,45 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AuditLogEntityType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { S3Service } from '../s3/s3.service';
-
-type LgpdCategoryData = Record<string, unknown>;
-type LgpdUserLookup = { userId: string; email?: string };
-type LgpdResolvedPerson = Prisma.PeopleGetPayload<{
-  include: { user: true; mergedFrom: true; mergedInto: true };
-}>;
-type DataSubjectResolution = {
-  userIds: string[];
-  personIds: string[];
-  emails: string[];
-  people: LgpdResolvedPerson[];
-};
-
-const ANONYMIZED_AUDIT_VALUE = '[ANONIMIZADO]';
-const AUDIT_IDENTITY_FIELDS = new Set([
-  'personId',
-  'userId',
-  'authorUserId',
-  'submittedById',
-  'createdById',
-  'committedById',
-  'updatedById',
-  'revertedById',
-  'receiptValidatedBy',
-  'undoneById',
-]);
-const PERSONAL_AUDIT_FIELDS = new Set([
-  'name',
-  'email',
-  'secondaryEmails',
-  'phone',
-  'identityDocument',
-  'academicId',
-  'externalRef',
-]);
-const LGPD_ACCOUNT_USER_SELECT = {
-  id: true,
-  email: true,
-  name: true,
-  identityDocument: true,
-  academicId: true,
-  unespRole: true,
-  role: true,
-  lastLoginAt: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.UserSelect;
-const LGPD_EVENT_SUBSCRIPTION_SELECT = {
-  id: true,
-  eventId: true,
-  personId: true,
-  eventGroupSubscriptionId: true,
-  createdAt: true,
-  createdByMethod: true,
-  deletedAt: true,
-} satisfies Prisma.EventSubscriptionSelect;
-const LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT = {
-  id: true,
-  eventGroupId: true,
-  personId: true,
-  createdAt: true,
-  createdByMethod: true,
-  deletedAt: true,
-  eventSubscriptions: {
-    select: {
-      id: true,
-      eventId: true,
-      deletedAt: true,
-    },
-  },
-} satisfies Prisma.EventGroupSubscriptionSelect;
-const LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT = {
-  id: true,
-  majorEventId: true,
-  personId: true,
-  amountPaid: true,
-  paymentDate: true,
-  paymentTier: true,
-  subscriptionStatus: true,
-  subscriptionFlow: true,
-  desiredCourses: true,
-  desiredLectures: true,
-  desiredUncategorized: true,
-  receiptRejectionReason: true,
-  receiptValidatedAt: true,
-  createdAt: true,
-  createdByMethod: true,
-  updatedAt: true,
-  deletedAt: true,
-  selectedEvents: {
-    select: {
-      id: true,
-      eventId: true,
-      preferenceOrder: true,
-      createdAt: true,
-      deletedAt: true,
-    },
-  },
-} satisfies Prisma.MajorEventSubscriptionSelect;
-
-const LGPD_EVENT_DRAFT_SELECT = {
-  id: true,
-  sourceEventId: true,
-  name: true,
-  createdById: true,
-  createdByName: true,
-  createdByEmail: true,
-  updatedById: true,
-  updatedByName: true,
-  updatedByEmail: true,
-  createdAt: true,
-  updatedAt: true,
-  expiresAt: true,
-} satisfies Prisma.EventDraftSelect;
-
-const LGPD_EVENT_ATTENDANCE_SELECT = {
-  personId: true,
-  eventId: true,
-  category: true,
-  attendedAt: true,
-  createdAt: true,
-  createdByMethod: true,
-  collectedLatitude: true,
-  collectedLongitude: true,
-  collectedAccuracyMeters: true,
-} satisfies Prisma.EventAttendanceSelect;
-const LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT = {
-  id: true,
-  clientId: true,
-  eventId: true,
-  personId: true,
-  status: true,
-  createdByMethod: true,
-  scannerCode: true,
-  manualValue: true,
-  collectedAt: true,
-  authorUserId: true,
-  authorName: true,
-  authorEmail: true,
-  submittedById: true,
-  submittedAt: true,
-  stagedReason: true,
-  resolutionError: true,
-  collectedLatitude: true,
-  collectedLongitude: true,
-  collectedAccuracyMeters: true,
-  committedAt: true,
-  committedById: true,
-  rejectedAt: true,
-  rejectedById: true,
-  rejectionReason: true,
-} satisfies Prisma.OfflineEventAttendanceSubmissionSelect;
-const LGPD_EVENT_LECTURER_SELECT = {
-  eventId: true,
-  personId: true,
-  createdAt: true,
-} satisfies Prisma.EventLecturerSelect;
-const LGPD_CERTIFICATE_SELECT = {
-  id: true,
-  personId: true,
-  configId: true,
-  renderedData: true,
-  issuedAt: true,
-  certificateTemplateId: true,
-  createdAt: true,
-  updatedAt: true,
-  deletedAt: true,
-} satisfies Prisma.CertificateSelect;
-const LGPD_MAJOR_EVENT_RECEIPT_SELECT = {
-  id: true,
-  subscriptionId: true,
-  majorEventId: true,
-  personId: true,
-  fileName: true,
-  mimeType: true,
-  sizeBytes: true,
-  expiresAt: true,
-  uploadedAt: true,
-  processingStatus: true,
-  processedAt: true,
-  processingError: true,
-  ocrText: true,
-  expectedAmountCents: true,
-  matchedAmountCents: true,
-  amountMatched: true,
-  matchedAmountText: true,
-  nameMatched: true,
-  matchedNameText: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.MajorEventReceiptSelect;
-const LGPD_RECEIPT_VALIDATION_ACTION_SELECT = {
-  id: true,
-  subscriptionId: true,
-  receiptId: true,
-  action: true,
-  previousStatus: true,
-  nextStatus: true,
-  previousRejectionReason: true,
-  nextRejectionReason: true,
-  createdAt: true,
-  undoneAt: true,
-} satisfies Prisma.MajorEventReceiptValidationActionSelect;
-const LGPD_PEOPLE_MERGE_OPERATION_SELECT = {
-  id: true,
-  targetPersonId: true,
-  sourcePersonId: true,
-  mergeCandidateId: true,
-  status: true,
-  rolledBackAt: true,
-  createdAt: true,
-} satisfies Prisma.PeopleMergeOperationSelect;
-const LGPD_MERGE_CANDIDATE_SELECT = {
-  id: true,
-  personAId: true,
-  personBId: true,
-  score: true,
-  matchMethod: true,
-  matchValue: true,
-  status: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.MergeCandidateSelect;
-const LGPD_ACCOUNT_USER_MERGE_SELECT = {
-  oldUserId: true,
-  newUserId: true,
-  createdAt: true,
-} satisfies Prisma.AccountUserMergeSelect;
-const LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT = {
-  id: true,
-  eventId: true,
-  type: true,
-  oldUserId: true,
-  newUserId: true,
-  occurredAt: true,
-  status: true,
-  result: true,
-  peopleMergeOperationId: true,
-  errorMessage: true,
-  attemptCount: true,
-  rolledBackAt: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.ExternalAccountMergeOperationSelect;
-const LGPD_AUDIT_LOG_SELECT = {
-  id: true,
-  entityType: true,
-  entityId: true,
-  operation: true,
-  actorId: true,
-  actorType: true,
-  permission: true,
-  eventId: true,
-  majorEventId: true,
-  eventGroupId: true,
-  changedFields: true,
-  groupedCount: true,
-  firstRecordedAt: true,
-  lastRecordedAt: true,
-  createdAt: true,
-  revertedAt: true,
-  revertedById: true,
-  revertedByEntryId: true,
-  revertTargetId: true,
-  revertMode: true,
-  before: true,
-  after: true,
-  changes: true,
-  metadata: true,
-} satisfies Prisma.AuditLogEntrySelect;
-type LgpdOfflineSubmission = Prisma.OfflineEventAttendanceSubmissionGetPayload<{
-  select: typeof LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT;
-}>;
-type LgpdAuditLogEntry = Prisma.AuditLogEntryGetPayload<{ select: typeof LGPD_AUDIT_LOG_SELECT }>;
+import {
+  anonymizeAuditEntries,
+  buildAnonymizedAuditSubjectId,
+  buildAuditLogSubjectWhere,
+  synchronizeAnonymizedAuditEntries,
+} from './lgpd-audit-anonymization';
+import { resolveDataSubject } from './lgpd-data-subject';
+import { anonymizeEventDrafts, buildEventDraftSubjectWhere } from './lgpd-event-drafts';
+import {
+  mapAuditLogEntryForExport,
+  mapOfflineSubmissionForExport,
+  mapPersonForExport,
+  selectManyForExport,
+} from './lgpd-export-mappers';
+import {
+  anonymizeOfflineAttendanceSubmissions,
+  buildOfflineSubmissionSubjectWhere,
+} from './lgpd-offline-submissions';
+import { deleteReceiptObjects, findReceiptObjectKeys } from './lgpd-receipts';
+import {
+  LGPD_ACCOUNT_USER_MERGE_SELECT,
+  LGPD_ACCOUNT_USER_SELECT,
+  LGPD_AUDIT_LOG_SELECT,
+  LGPD_CERTIFICATE_SELECT,
+  LGPD_EVENT_ATTENDANCE_SELECT,
+  LGPD_EVENT_DRAFT_SELECT,
+  LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT,
+  LGPD_EVENT_LECTURER_SELECT,
+  LGPD_EVENT_SUBSCRIPTION_SELECT,
+  LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT,
+  LGPD_MAJOR_EVENT_RECEIPT_SELECT,
+  LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT,
+  LGPD_MERGE_CANDIDATE_SELECT,
+  LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT,
+  LGPD_PEOPLE_MERGE_OPERATION_SELECT,
+  LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
+  LgpdCategoryData,
+} from './lgpd-records';
 
 @Injectable()
 export class LgpdService {
@@ -289,10 +52,10 @@ export class LgpdService {
   ) {}
 
   async collectUserData(input: { userId: string; email?: string }): Promise<Record<string, LgpdCategoryData>> {
-    const dataSubject = await this.resolveDataSubject(input);
+    const dataSubject = await resolveDataSubject(this.prisma, input);
     const { people, personIds, userIds } = dataSubject;
-    const offlineSubmissionWhere = this.buildOfflineSubmissionSubjectWhere(dataSubject);
-    const eventDraftWhere = this.buildEventDraftSubjectWhere(dataSubject);
+    const offlineSubmissionWhere = buildOfflineSubmissionSubjectWhere(dataSubject);
+    const eventDraftWhere = buildEventDraftSubjectWhere(dataSubject);
 
     const userWhere = { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] };
     const [
@@ -399,7 +162,7 @@ export class LgpdService {
           })
         : Promise.resolve([]),
       this.prisma.auditLogEntry.findMany({
-        where: this.buildAuditLogSubjectWhere(dataSubject),
+        where: buildAuditLogSubjectWhere(dataSubject, { includeActorEmail: false }),
         select: LGPD_AUDIT_LOG_SELECT,
         orderBy: { lastRecordedAt: 'desc' },
       }),
@@ -407,56 +170,56 @@ export class LgpdService {
 
     return {
       metadata: this.metadata(input, dataSubject),
-      accountUsers: { records: this.selectManyForExport(accountUsers, LGPD_ACCOUNT_USER_SELECT) },
-      people: { records: people.map((person) => this.mapPersonForExport(person)) },
+      accountUsers: { records: selectManyForExport(accountUsers, LGPD_ACCOUNT_USER_SELECT) },
+      people: { records: people.map((person) => mapPersonForExport(person)) },
       subscriptions: {
-        eventSubscriptions: this.selectManyForExport(eventSubscriptions, LGPD_EVENT_SUBSCRIPTION_SELECT),
-        eventGroupSubscriptions: this.selectManyForExport(
+        eventSubscriptions: selectManyForExport(eventSubscriptions, LGPD_EVENT_SUBSCRIPTION_SELECT),
+        eventGroupSubscriptions: selectManyForExport(
           eventGroupSubscriptions,
           LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT,
         ),
-        majorEventSubscriptions: this.selectManyForExport(
+        majorEventSubscriptions: selectManyForExport(
           majorEventSubscriptions,
           LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT,
         ),
       },
       attendances: {
-        records: this.selectManyForExport(attendances, LGPD_EVENT_ATTENDANCE_SELECT),
+        records: selectManyForExport(attendances, LGPD_EVENT_ATTENDANCE_SELECT),
         offlineSubmissions: offlineAttendanceSubmissions.map((submission) =>
-          this.mapOfflineSubmissionForExport(submission, dataSubject),
+          mapOfflineSubmissionForExport(submission, dataSubject),
         ),
       },
-      eventDrafts: { records: this.selectManyForExport(eventDrafts, LGPD_EVENT_DRAFT_SELECT) },
-      lecturerActivities: { records: this.selectManyForExport(lectures, LGPD_EVENT_LECTURER_SELECT) },
-      certificates: { records: this.selectManyForExport(certificates, LGPD_CERTIFICATE_SELECT) },
+      eventDrafts: { records: selectManyForExport(eventDrafts, LGPD_EVENT_DRAFT_SELECT) },
+      lecturerActivities: { records: selectManyForExport(lectures, LGPD_EVENT_LECTURER_SELECT) },
+      certificates: { records: selectManyForExport(certificates, LGPD_CERTIFICATE_SELECT) },
       receipts: {
-        majorEventReceipts: this.selectManyForExport(majorEventReceipts, LGPD_MAJOR_EVENT_RECEIPT_SELECT),
-        receiptValidationActions: this.selectManyForExport(
+        majorEventReceipts: selectManyForExport(majorEventReceipts, LGPD_MAJOR_EVENT_RECEIPT_SELECT),
+        receiptValidationActions: selectManyForExport(
           receiptValidationActions,
           LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
         ),
       },
       mergeHistory: {
-        mergeOperations: this.selectManyForExport(mergeOperations, LGPD_PEOPLE_MERGE_OPERATION_SELECT),
-        mergeCandidates: this.selectManyForExport(mergeCandidates, LGPD_MERGE_CANDIDATE_SELECT),
-        accountUserMerges: this.selectManyForExport(accountUserMerges, LGPD_ACCOUNT_USER_MERGE_SELECT),
-        externalAccountMergeOperations: this.selectManyForExport(
+        mergeOperations: selectManyForExport(mergeOperations, LGPD_PEOPLE_MERGE_OPERATION_SELECT),
+        mergeCandidates: selectManyForExport(mergeCandidates, LGPD_MERGE_CANDIDATE_SELECT),
+        accountUserMerges: selectManyForExport(accountUserMerges, LGPD_ACCOUNT_USER_MERGE_SELECT),
+        externalAccountMergeOperations: selectManyForExport(
           externalAccountMergeOperations,
           LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT,
         ),
       },
-      auditHistory: { records: auditLogEntries.map((entry) => this.mapAuditLogEntryForExport(entry, dataSubject)) },
+      auditHistory: { records: auditLogEntries.map((entry) => mapAuditLogEntryForExport(entry, dataSubject)) },
     };
   }
 
-  async scheduleDeletion(input: { userId: string; email?: string; requestId: string; scheduledHardDeleteAt?: string }) {
-    const dataSubject = await this.resolveDataSubject(input);
+  async scheduleDeletion(input: { userId: string; email?: string; requestId: string }) {
+    const dataSubject = await resolveDataSubject(this.prisma, input);
     const { personIds, userIds } = dataSubject;
     if (personIds.length === 0 && userIds.length === 0) {
       return { success: true, peopleUpdated: 0, recordsUpdated: 0 };
     }
 
-    const receiptObjectKeys = await this.findReceiptObjectKeys(personIds);
+    const receiptObjectKeys = await findReceiptObjectKeys(this.prisma, personIds);
 
     const now = new Date();
     const result = await this.prisma.$transaction(async (tx) => {
@@ -493,13 +256,13 @@ export class LgpdService {
         where: { personId: { in: personIds }, deletedAt: null },
         data: { deletedAt: now },
       });
-      const anonymizedSubjectId = this.buildAnonymizedAuditSubjectId(input.requestId);
-      const offlineAttendanceSubmissions = await this.anonymizeOfflineAttendanceSubmissions(
+      const anonymizedSubjectId = buildAnonymizedAuditSubjectId(input.requestId);
+      const offlineAttendanceSubmissions = await anonymizeOfflineAttendanceSubmissions(
         tx,
         dataSubject,
         anonymizedSubjectId,
       );
-      const eventDrafts = await this.anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
+      const eventDrafts = await anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
 
       return {
         people,
@@ -516,7 +279,7 @@ export class LgpdService {
       };
     });
 
-    await this.deleteReceiptObjects(receiptObjectKeys);
+    await deleteReceiptObjects(this.s3, this.logger, receiptObjectKeys);
 
     this.logger.log(
       `Scheduled LGPD deletion request=${input.requestId}, user=${input.userId}, people=${result.people.count}, related=${result.recordsUpdated}.`,
@@ -526,17 +289,17 @@ export class LgpdService {
   }
 
   async hardDelete(input: { userId: string; email?: string; requestId: string }) {
-    const dataSubject = await this.resolveDataSubject(input);
+    const dataSubject = await resolveDataSubject(this.prisma, input);
     const { people: dataSubjectPeople, personIds, userIds } = dataSubject;
     if (personIds.length === 0 && userIds.length === 0) {
       return { success: true, peopleDeleted: 0, usersDeleted: 0, recordsDeleted: 0 };
     }
 
-    const receiptObjectKeys = await this.findReceiptObjectKeys(personIds);
+    const receiptObjectKeys = await findReceiptObjectKeys(this.prisma, personIds);
 
     const { anonymizedAuditEntryIds, ...result } = await this.prisma.$transaction(async (tx) => {
-      const anonymizedSubjectId = this.buildAnonymizedAuditSubjectId(input.requestId);
-      const anonymizedAuditEntryIds = await this.anonymizeAuditEntries(
+      const anonymizedSubjectId = buildAnonymizedAuditSubjectId(input.requestId);
+      const anonymizedAuditEntryIds = await anonymizeAuditEntries(
         tx,
         {
           people: dataSubjectPeople,
@@ -546,12 +309,12 @@ export class LgpdService {
         },
         anonymizedSubjectId,
       );
-      const offlineAttendanceSubmissions = await this.anonymizeOfflineAttendanceSubmissions(
+      const offlineAttendanceSubmissions = await anonymizeOfflineAttendanceSubmissions(
         tx,
         dataSubject,
         anonymizedSubjectId,
       );
-      const eventDrafts = await this.anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
+      const eventDrafts = await anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
       const certificates = await tx.certificate.deleteMany({ where: { personId: { in: personIds } } });
       const selections = await tx.majorEventSubscriptionEventSelection.deleteMany({
         where: { subscription: { personId: { in: personIds } } },
@@ -603,1006 +366,14 @@ export class LgpdService {
       };
     });
 
-    await this.synchronizeAnonymizedAuditEntries(anonymizedAuditEntryIds);
-    await this.deleteReceiptObjects(receiptObjectKeys);
+    await synchronizeAnonymizedAuditEntries(this.prisma, this.typesenseSearch, this.logger, anonymizedAuditEntryIds);
+    await deleteReceiptObjects(this.s3, this.logger, receiptObjectKeys);
 
     this.logger.log(
       `Hard-deleted LGPD data request=${input.requestId}, user=${input.userId}, people=${result.peopleDeleted}, users=${result.usersDeleted}, related=${result.recordsDeleted}.`,
     );
 
     return { success: true, ...result };
-  }
-
-  private mapPersonForExport(person: LgpdResolvedPerson) {
-    return {
-      id: person.id,
-      name: person.name,
-      email: person.email,
-      secondaryEmails: person.secondaryEmails,
-      phone: person.phone,
-      identityDocument: person.identityDocument,
-      isCPF: person.isCPF,
-      academicId: person.academicId,
-      userId: person.userId,
-      externalRef: person.externalRef,
-      mergedIntoId: person.mergedIntoId,
-      mergedFromIds: person.mergedFrom.map((mergedPerson) => mergedPerson.id),
-      deletedAt: person.deletedAt,
-      createdAt: person.createdAt,
-      updatedAt: person.updatedAt,
-    };
-  }
-
-  private selectManyForExport(records: readonly object[], select: object): Record<string, unknown>[] {
-    return records.map((record) => this.selectForExport(record, select));
-  }
-
-  private selectForExport(record: object, select: object): Record<string, unknown> {
-    const source = record as Record<string, unknown>;
-    const result: Record<string, unknown> = {};
-
-    for (const [key, selector] of Object.entries(select)) {
-      if (selector === true) {
-        result[key] = source[key];
-        continue;
-      }
-
-      if (!this.hasNestedSelect(selector)) {
-        continue;
-      }
-
-      const nestedValue = source[key];
-      if (Array.isArray(nestedValue)) {
-        result[key] = nestedValue
-          .filter((value): value is Record<string, unknown> => this.isPlainRecord(value))
-          .map((value) => this.selectForExport(value, selector.select));
-        continue;
-      }
-
-      result[key] = this.isPlainRecord(nestedValue) ? this.selectForExport(nestedValue, selector.select) : nestedValue;
-    }
-
-    return result;
-  }
-
-  private hasNestedSelect(value: unknown): value is { select: object } {
-    return this.isPlainRecord(value) && this.isPlainRecord(value['select']);
-  }
-
-  private isPlainRecord(value: unknown): value is Record<string, unknown> {
-    return value != null && typeof value === 'object' && !Array.isArray(value);
-  }
-
-  private mapOfflineSubmissionForExport(
-    submission: LgpdOfflineSubmission,
-    dataSubject: DataSubjectResolution,
-  ): Record<string, unknown> {
-    const userIds = new Set(dataSubject.userIds);
-    const emails = new Set(dataSubject.emails.map((email) => email.toLowerCase()));
-    const scannerUserId = submission.scannerCode ? this.parseScannerUserId(submission.scannerCode) : null;
-    const scannerMatchesSubject = scannerUserId == null || userIds.has(scannerUserId);
-    const authorMatchesSubject =
-      (submission.authorUserId != null && userIds.has(submission.authorUserId)) ||
-      (submission.authorEmail != null && emails.has(submission.authorEmail.toLowerCase()));
-
-    return {
-      id: submission.id,
-      clientId: submission.clientId,
-      eventId: submission.eventId,
-      personId: submission.personId,
-      status: submission.status,
-      createdByMethod: submission.createdByMethod,
-      scannerCode: scannerMatchesSubject ? submission.scannerCode : null,
-      manualValue: submission.manualValue,
-      collectedAt: submission.collectedAt,
-      authorUserId: authorMatchesSubject ? submission.authorUserId : null,
-      authorName: authorMatchesSubject ? submission.authorName : null,
-      authorEmail: authorMatchesSubject ? submission.authorEmail : null,
-      submittedById: userIds.has(submission.submittedById) ? submission.submittedById : null,
-      submittedBySubject: userIds.has(submission.submittedById),
-      submittedAt: submission.submittedAt,
-      stagedReason: submission.stagedReason,
-      resolutionError: submission.resolutionError,
-      collectedLatitude: submission.collectedLatitude,
-      collectedLongitude: submission.collectedLongitude,
-      collectedAccuracyMeters: submission.collectedAccuracyMeters,
-      committedAt: submission.committedAt,
-      committedById:
-        submission.committedById != null && userIds.has(submission.committedById) ? submission.committedById : null,
-      committedBySubject: submission.committedById != null && userIds.has(submission.committedById),
-      rejectedAt: submission.rejectedAt,
-      rejectedById:
-        submission.rejectedById != null && userIds.has(submission.rejectedById) ? submission.rejectedById : null,
-      rejectedBySubject: submission.rejectedById != null && userIds.has(submission.rejectedById),
-      rejectionReason: submission.rejectionReason,
-    };
-  }
-
-  private mapAuditLogEntryForExport(
-    entry: LgpdAuditLogEntry,
-    dataSubject: DataSubjectResolution,
-  ): Record<string, unknown> {
-    const identityValues = new Set([...dataSubject.userIds, ...dataSubject.personIds]);
-    const actorMatchesSubject = entry.actorId != null && dataSubject.userIds.includes(entry.actorId);
-    const entityMatchesSubject =
-      (entry.entityType === AuditLogEntityType.PERSON && dataSubject.personIds.includes(entry.entityId)) ||
-      this.isEventAttendanceAuditEntityForPerson(entry.entityType, entry.entityId, dataSubject.personIds);
-    const payloadMatchesSubject =
-      this.containsAuditIdentity(entry.before, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
-      this.containsAuditIdentity(entry.after, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
-      this.containsAuditIdentity(entry.changes, identityValues, false) ||
-      this.containsAuditIdentity(entry.metadata, identityValues, false);
-    const revertedBySubject = entry.revertedById != null && dataSubject.userIds.includes(entry.revertedById);
-
-    return {
-      id: entry.id,
-      entityType: entry.entityType,
-      entityId: entityMatchesSubject ? entry.entityId : null,
-      operation: entry.operation,
-      actorId: actorMatchesSubject ? entry.actorId : null,
-      actorType: actorMatchesSubject ? entry.actorType : null,
-      actorMatchesSubject,
-      entityMatchesSubject,
-      payloadMatchesSubject,
-      permission: entry.permission,
-      changedFields: entityMatchesSubject || payloadMatchesSubject ? entry.changedFields : [],
-      groupedCount: entry.groupedCount,
-      firstRecordedAt: entry.firstRecordedAt,
-      lastRecordedAt: entry.lastRecordedAt,
-      createdAt: entry.createdAt,
-      revertedAt: entry.revertedAt,
-      revertedById: revertedBySubject ? entry.revertedById : null,
-      revertedBySubject,
-      revertedByEntryId: entry.revertedByEntryId,
-      revertTargetId: entry.revertTargetId,
-      revertMode: entry.revertMode,
-    };
-  }
-
-  private async anonymizeAuditEntries(
-    tx: Prisma.TransactionClient,
-    dataSubject: DataSubjectResolution,
-    anonymizedSubjectId: string,
-  ): Promise<string[]> {
-    const entries = await tx.auditLogEntry.findMany({
-      where: this.buildAuditLogSubjectWhere(dataSubject),
-    });
-    const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
-    const sensitiveValues = this.getSensitiveAuditValues(dataSubject);
-    const identityValues = new Set(identifiers);
-
-    const auditEntryUpdates = entries.map((entry) => {
-      const actorMatches = entry.actorId != null && dataSubject.userIds.includes(entry.actorId);
-      const entitySubjectMatches =
-        (entry.entityType === AuditLogEntityType.PERSON && dataSubject.personIds.includes(entry.entityId)) ||
-        this.isEventAttendanceAuditEntityForPerson(entry.entityType, entry.entityId, dataSubject.personIds);
-      const payloadMatches =
-        this.containsAuditIdentity(entry.before, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
-        this.containsAuditIdentity(entry.after, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
-        this.containsAuditIdentity(entry.changes, identityValues, false) ||
-        this.containsAuditIdentity(entry.metadata, identityValues, false);
-      const shouldScrubPayload = actorMatches || entitySubjectMatches || payloadMatches;
-
-      return tx.auditLogEntry.update({
-        where: { id: entry.id },
-        data: {
-          actorId: actorMatches ? null : entry.actorId,
-          actorName: actorMatches ? 'Usuário anonimizado' : entry.actorName,
-          actorEmail: actorMatches ? null : entry.actorEmail,
-          entityId: entitySubjectMatches
-            ? this.anonymizeAuditEntityId(entry.entityType, entry.entityId, dataSubject.personIds, anonymizedSubjectId)
-            : entry.entityId,
-          entityLabel: actorMatches || entitySubjectMatches || payloadMatches ? 'Dados anonimizados' : entry.entityLabel,
-          before: shouldScrubPayload
-            ? this.anonymizeNullableAuditJson(
-                entry.before,
-                sensitiveValues,
-                identityValues,
-                anonymizedSubjectId,
-                entry.entityType === AuditLogEntityType.PERSON,
-              )
-            : undefined,
-          after: shouldScrubPayload
-            ? this.anonymizeNullableAuditJson(
-                entry.after,
-                sensitiveValues,
-                identityValues,
-                anonymizedSubjectId,
-                entry.entityType === AuditLogEntityType.PERSON,
-              )
-            : undefined,
-          changes: shouldScrubPayload
-            ? this.anonymizeAuditJson(
-                entry.changes,
-                sensitiveValues,
-                identityValues,
-                anonymizedSubjectId,
-                [],
-                entry.entityType === AuditLogEntityType.PERSON,
-              )
-            : undefined,
-          metadata:
-            shouldScrubPayload && entry.metadata != null
-              ? this.anonymizeAuditJson(entry.metadata, sensitiveValues, identityValues, anonymizedSubjectId, [], false)
-              : undefined,
-        },
-      });
-    });
-
-    await Promise.all(auditEntryUpdates);
-    return entries.map((entry) => entry.id);
-  }
-
-  private async synchronizeAnonymizedAuditEntries(ids: readonly string[]): Promise<void> {
-    if (ids.length === 0) {
-      return;
-    }
-
-    const entries = await this.prisma.auditLogEntry.findMany({
-      where: {
-        id: {
-          in: [...ids],
-        },
-      },
-    });
-    await Promise.all(
-      entries.map((entry) =>
-        this.typesenseSearch.upsertAuditLogEntry(entry).catch((error: unknown) => {
-          this.logger.warn(
-            `Falha ao reindexar audit log anonimizado ${entry.id}: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }),
-      ),
-    );
-  }
-
-  private buildAuditLogSubjectWhere(dataSubject: DataSubjectResolution): Prisma.AuditLogEntryWhereInput {
-    const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
-    const jsonIdentityConditions: Prisma.AuditLogEntryWhereInput[] = identifiers.flatMap((identifier) =>
-      [...AUDIT_IDENTITY_FIELDS].flatMap((field) => [
-        { before: { path: [field], equals: identifier } },
-        { after: { path: [field], equals: identifier } },
-        { metadata: { path: [field], equals: identifier } },
-        { metadata: { path: ['offlineAttendanceAuthor', field], equals: identifier } },
-      ]),
-    );
-    const eventAttendanceEntityConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap(
-      (personId) => [
-        {
-          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-          entityId: { startsWith: `${personId}:` },
-        },
-        {
-          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-          entityId: { startsWith: `${encodeURIComponent(personId)}:` },
-        },
-      ],
-    );
-
-    return {
-      OR: [
-        ...(dataSubject.userIds.length > 0 ? [{ actorId: { in: dataSubject.userIds } }] : []),
-        ...(dataSubject.personIds.length > 0
-          ? [
-              {
-                entityType: AuditLogEntityType.PERSON,
-                entityId: { in: dataSubject.personIds },
-              },
-            ]
-          : []),
-        ...eventAttendanceEntityConditions,
-        ...jsonIdentityConditions,
-      ],
-    };
-  }
-
-  private anonymizeAuditEntityId(
-    entityType: AuditLogEntityType,
-    entityId: string,
-    personIds: readonly string[],
-    anonymizedSubjectId: string,
-  ): string {
-    if (entityType === AuditLogEntityType.PERSON && personIds.includes(entityId)) {
-      return anonymizedSubjectId;
-    }
-
-    if (entityType !== AuditLogEntityType.EVENT_ATTENDANCE) {
-      return entityId;
-    }
-
-    const [personSegment, ...remainingSegments] = entityId.split(':');
-    if (!personSegment || remainingSegments.length === 0) {
-      return entityId;
-    }
-
-    const personId = this.decodeAuditEntityIdSegment(personSegment);
-    if (!personIds.includes(personId)) {
-      return entityId;
-    }
-
-    return [encodeURIComponent(anonymizedSubjectId), ...remainingSegments].join(':');
-  }
-
-  private buildAnonymizedAuditSubjectId(requestId: string): string {
-    const normalizedRequestId = requestId.trim() || 'request';
-    return `anonymized:${encodeURIComponent(normalizedRequestId)}`;
-  }
-
-  private isEventAttendanceAuditEntityForPerson(
-    entityType: AuditLogEntityType,
-    entityId: string,
-    personIds: readonly string[],
-  ): boolean {
-    if (entityType !== AuditLogEntityType.EVENT_ATTENDANCE) {
-      return false;
-    }
-
-    const [personSegment, ...remainingSegments] = entityId.split(':');
-    if (!personSegment || remainingSegments.length === 0) {
-      return false;
-    }
-
-    return personIds.includes(this.decodeAuditEntityIdSegment(personSegment));
-  }
-
-  private decodeAuditEntityIdSegment(segment: string): string {
-    try {
-      return decodeURIComponent(segment);
-    } catch {
-      return segment;
-    }
-  }
-
-  private getSensitiveAuditValues(dataSubject: DataSubjectResolution): Set<string> {
-    const values = new Set<string>([...dataSubject.userIds, ...dataSubject.personIds]);
-    for (const person of dataSubject.people) {
-      for (const value of [
-        person.name,
-        person.email,
-        ...person.secondaryEmails,
-        person.phone,
-        person.identityDocument,
-        person.academicId,
-        person.externalRef,
-        person.user?.name,
-        person.user?.email,
-      ]) {
-        if (typeof value === 'string' && value.length > 0) {
-          values.add(value);
-          values.add(value.toLowerCase());
-        }
-      }
-    }
-    return values;
-  }
-
-  private containsAuditIdentity(
-    value: Prisma.JsonValue | null,
-    identities: ReadonlySet<string>,
-    personRoot: boolean,
-    path: readonly string[] = [],
-  ): boolean {
-    if (typeof value === 'string') {
-      return this.isAuditIdentityPath(path, personRoot) && identities.has(value);
-    }
-    if (Array.isArray(value)) {
-      return value.some((child) => this.containsAuditIdentity(child, identities, personRoot, path));
-    }
-    if (value && typeof value === 'object') {
-      const changedField = typeof value['field'] === 'string' ? value['field'] : null;
-      return Object.entries(value as Record<string, Prisma.JsonValue>).some(([key, child]) => {
-        const nextPath = [...path, key];
-        if (
-          (key === 'before' || key === 'after') &&
-          changedField &&
-          this.isAuditIdentityField(changedField, personRoot)
-        ) {
-          return this.containsAuditIdentity(child, identities, personRoot, [...path, changedField]);
-        }
-        return this.containsAuditIdentity(child, identities, personRoot, nextPath);
-      });
-    }
-    return false;
-  }
-
-  private anonymizeNullableAuditJson(
-    value: Prisma.JsonValue | null,
-    sensitiveValues: ReadonlySet<string>,
-    identityValues: ReadonlySet<string>,
-    anonymizedSubjectId: string,
-    personRoot: boolean,
-  ): Prisma.InputJsonValue | typeof Prisma.JsonNull {
-    return value === null
-      ? Prisma.JsonNull
-      : this.anonymizeAuditJson(value, sensitiveValues, identityValues, anonymizedSubjectId, [], personRoot);
-  }
-
-  private anonymizeAuditJson(
-    value: Prisma.JsonValue,
-    sensitiveValues: ReadonlySet<string>,
-    identityValues: ReadonlySet<string>,
-    anonymizedSubjectId: string,
-    path: readonly string[],
-    personRoot: boolean,
-    identityContext = false,
-  ): Prisma.InputJsonValue {
-    if (typeof value === 'string') {
-      if ((identityContext || this.isAuditIdentityPath(path, personRoot)) && identityValues.has(value)) {
-        return anonymizedSubjectId;
-      }
-      return sensitiveValues.has(value) || sensitiveValues.has(value.toLowerCase()) ? ANONYMIZED_AUDIT_VALUE : value;
-    }
-    if (Array.isArray(value)) {
-      return value.map((child) =>
-        this.anonymizeAuditJson(
-          child,
-          sensitiveValues,
-          identityValues,
-          anonymizedSubjectId,
-          path,
-          personRoot,
-          identityContext,
-        ),
-      );
-    }
-    if (value && typeof value === 'object') {
-      const changedField = typeof value['field'] === 'string' ? value['field'].split('.')[0] : null;
-      const redactChangeValues = personRoot && changedField != null && PERSONAL_AUDIT_FIELDS.has(changedField);
-      const anonymizeChangeValues = changedField != null && this.isAuditIdentityField(changedField, personRoot);
-      return Object.fromEntries(
-        Object.entries(value as Record<string, Prisma.JsonValue>).map(([key, child]) => {
-          const nextPath = [...path, key];
-          const isNestedPerson = path.includes('person') || path.includes('user');
-          const redactPersonalField = PERSONAL_AUDIT_FIELDS.has(key) && (personRoot || isNestedPerson);
-          if (redactPersonalField || (redactChangeValues && (key === 'before' || key === 'after'))) {
-            return [key, ANONYMIZED_AUDIT_VALUE];
-          }
-          return [
-            key,
-            this.anonymizeAuditJson(
-              child,
-              sensitiveValues,
-              identityValues,
-              anonymizedSubjectId,
-              nextPath,
-              personRoot,
-              identityContext ||
-                this.isAuditIdentityPath(nextPath, personRoot) ||
-                (anonymizeChangeValues && (key === 'before' || key === 'after')),
-            ),
-          ];
-        }),
-      );
-    }
-    return value as Prisma.InputJsonValue;
-  }
-
-  private isAuditIdentityPath(path: readonly string[], personRoot: boolean): boolean {
-    const key = path.at(-1);
-    if (!key) {
-      return false;
-    }
-
-    return this.isAuditIdentityField(key, personRoot || path.includes('person') || path.includes('user'));
-  }
-
-  private isAuditIdentityField(field: string, personRoot: boolean): boolean {
-    const rootField = field.split('.')[0];
-    return AUDIT_IDENTITY_FIELDS.has(rootField) || (rootField === 'id' && personRoot);
-  }
-
-  private async resolveDataSubject(input: LgpdUserLookup): Promise<DataSubjectResolution> {
-    const userIds = new Set<string>();
-    const personIds = new Set<string>();
-    const emails = new Set<string>();
-    const queriedEmails = new Set<string>();
-    const initialUserId = input.userId.trim();
-    const initialEmail = this.normalizeEmail(input.email);
-
-    if (initialUserId) {
-      userIds.add(initialUserId);
-    }
-    if (initialEmail) {
-      emails.add(initialEmail);
-    }
-
-    let changed = true;
-    while (changed) {
-      changed = false;
-      changed = (await this.expandUsers(userIds, emails)) || changed;
-      changed = (await this.expandAccountMerges(userIds)) || changed;
-      changed = (await this.expandPeopleByEmail(personIds, emails, queriedEmails)) || changed;
-      changed = (await this.expandPeople(userIds, personIds, emails)) || changed;
-    }
-
-    const people = await this.findPeopleByIds([...personIds]);
-
-    return {
-      userIds: [...userIds],
-      personIds: people.map((person) => person.id),
-      emails: [...emails],
-      people,
-    };
-  }
-
-  private buildOfflineSubmissionSubjectWhere(
-    dataSubject: DataSubjectResolution,
-  ): Prisma.OfflineEventAttendanceSubmissionWhereInput | null {
-    const conditions: Prisma.OfflineEventAttendanceSubmissionWhereInput[] = [];
-    if (dataSubject.personIds.length > 0) {
-      conditions.push({ personId: { in: dataSubject.personIds } });
-    }
-    if (dataSubject.userIds.length > 0) {
-      conditions.push({ authorUserId: { in: dataSubject.userIds } });
-      conditions.push({ submittedById: { in: dataSubject.userIds } });
-      conditions.push({ committedById: { in: dataSubject.userIds } });
-      conditions.push({ rejectedById: { in: dataSubject.userIds } });
-      conditions.push({ scannerCode: { in: dataSubject.userIds.map((userId) => `user:${userId}`) } });
-    }
-    for (const email of dataSubject.emails) {
-      conditions.push({ authorEmail: { equals: email, mode: 'insensitive' } });
-    }
-    const manualValues = this.getOfflineManualSubjectValueCandidates(dataSubject);
-    if (manualValues.length > 0) {
-      conditions.push({ manualValue: { in: manualValues, mode: 'insensitive' } });
-    }
-
-    return conditions.length > 0 ? { OR: conditions } : null;
-  }
-
-
-  private buildEventDraftSubjectWhere(dataSubject: DataSubjectResolution): Prisma.EventDraftWhereInput | null {
-    const conditions: Prisma.EventDraftWhereInput[] = [];
-    if (dataSubject.userIds.length > 0) {
-      conditions.push({ createdById: { in: dataSubject.userIds } });
-      conditions.push({ updatedById: { in: dataSubject.userIds } });
-    }
-    for (const email of dataSubject.emails) {
-      conditions.push({ createdByEmail: { equals: email, mode: 'insensitive' } });
-      conditions.push({ updatedByEmail: { equals: email, mode: 'insensitive' } });
-    }
-
-    return conditions.length > 0 ? { OR: conditions } : null;
-  }
-
-  private async anonymizeEventDrafts(
-    tx: Prisma.TransactionClient,
-    dataSubject: DataSubjectResolution,
-    anonymizedSubjectId: string,
-  ): Promise<number> {
-    const where = this.buildEventDraftSubjectWhere(dataSubject);
-    if (!where) {
-      return 0;
-    }
-
-    const drafts = await tx.eventDraft.findMany({
-      where,
-      select: {
-        id: true,
-        createdById: true,
-        createdByEmail: true,
-        updatedById: true,
-        updatedByEmail: true,
-      },
-    });
-    const userIds = new Set(dataSubject.userIds);
-    const emails = new Set(dataSubject.emails.map((email) => email.toLowerCase()));
-    let updated = 0;
-
-    for (const draft of drafts) {
-      const data: Prisma.EventDraftUncheckedUpdateInput = {};
-      const creatorMatches =
-        (draft.createdById != null && userIds.has(draft.createdById)) ||
-        (draft.createdByEmail != null && emails.has(draft.createdByEmail.toLowerCase()));
-      const updaterMatches =
-        (draft.updatedById != null && userIds.has(draft.updatedById)) ||
-        (draft.updatedByEmail != null && emails.has(draft.updatedByEmail.toLowerCase()));
-
-      if (creatorMatches) {
-        data.createdById = anonymizedSubjectId;
-        data.createdByName = 'Usuário anonimizado';
-        data.createdByEmail = null;
-      }
-      if (updaterMatches) {
-        data.updatedById = anonymizedSubjectId;
-        data.updatedByName = 'Usuário anonimizado';
-        data.updatedByEmail = null;
-      }
-      if (Object.keys(data).length === 0) {
-        continue;
-      }
-
-      await tx.eventDraft.update({
-        where: { id: draft.id },
-        data,
-      });
-      updated += 1;
-    }
-
-    return updated;
-  }
-
-  private async anonymizeOfflineAttendanceSubmissions(
-    tx: Prisma.TransactionClient,
-    dataSubject: DataSubjectResolution,
-    anonymizedSubjectId: string,
-  ): Promise<number> {
-    const where = this.buildOfflineSubmissionSubjectWhere(dataSubject);
-    if (!where) {
-      return 0;
-    }
-
-    const submissions = await tx.offlineEventAttendanceSubmission.findMany({
-      where,
-      select: {
-        id: true,
-        personId: true,
-        scannerCode: true,
-        manualValue: true,
-        authorUserId: true,
-        authorName: true,
-        authorEmail: true,
-        submittedById: true,
-        committedById: true,
-        rejectedById: true,
-      },
-    });
-    const userIds = new Set(dataSubject.userIds);
-    const personIds = new Set(dataSubject.personIds);
-    const emails = new Set(dataSubject.emails.map((email) => email.toLowerCase()));
-    const manualValues = new Set(
-      this.getOfflineManualSubjectValueCandidates(dataSubject).map((value) => this.caseInsensitiveKey(value)),
-    );
-    let updated = 0;
-
-    for (const submission of submissions) {
-      const data: Prisma.OfflineEventAttendanceSubmissionUncheckedUpdateInput = {};
-      const personMatches = submission.personId != null && personIds.has(submission.personId);
-      if (personMatches) {
-        data.personId = null;
-        data.scannerCode = ANONYMIZED_AUDIT_VALUE;
-        data.manualValue = ANONYMIZED_AUDIT_VALUE;
-      }
-      if (submission.scannerCode && userIds.has(this.parseScannerUserId(submission.scannerCode) ?? '')) {
-        data.scannerCode = anonymizedSubjectId;
-      }
-      if (submission.manualValue && manualValues.has(this.caseInsensitiveKey(submission.manualValue))) {
-        data.manualValue = ANONYMIZED_AUDIT_VALUE;
-      }
-      if (submission.authorUserId && userIds.has(submission.authorUserId)) {
-        data.authorUserId = anonymizedSubjectId;
-      }
-      if (submission.authorEmail && emails.has(submission.authorEmail.toLowerCase())) {
-        data.authorEmail = null;
-      }
-      if (
-        (submission.authorUserId && userIds.has(submission.authorUserId)) ||
-        (submission.authorEmail && emails.has(submission.authorEmail.toLowerCase()))
-      ) {
-        data.authorName = ANONYMIZED_AUDIT_VALUE;
-      }
-      if (userIds.has(submission.submittedById)) {
-        data.submittedById = anonymizedSubjectId;
-      }
-      if (submission.committedById && userIds.has(submission.committedById)) {
-        data.committedById = anonymizedSubjectId;
-      }
-      if (submission.rejectedById && userIds.has(submission.rejectedById)) {
-        data.rejectedById = anonymizedSubjectId;
-      }
-      if (Object.keys(data).length === 0) {
-        continue;
-      }
-
-      await tx.offlineEventAttendanceSubmission.update({
-        where: { id: submission.id },
-        data,
-      });
-      updated += 1;
-    }
-
-    return updated;
-  }
-
-  private parseScannerUserId(scannerCode: string): string | null {
-    const [kind, userId, ...extraParts] = scannerCode.split(':');
-    return kind === 'user' && userId && extraParts.length === 0 ? userId : null;
-  }
-
-  private getOfflineManualSubjectValueCandidates(dataSubject: DataSubjectResolution): string[] {
-    const values = new Map<string, string>();
-    const addValue = (value?: string | null) => {
-      const normalizedValue = value?.trim();
-      if (!normalizedValue) {
-        return;
-      }
-      values.set(this.caseInsensitiveKey(normalizedValue), normalizedValue);
-    };
-
-    for (const email of dataSubject.emails) {
-      addValue(email);
-    }
-
-    for (const person of dataSubject.people) {
-      addValue(person.email);
-      for (const email of person.secondaryEmails ?? []) {
-        addValue(email);
-      }
-      this.addPhoneManualValueCandidates(values, person.phone);
-      this.addIdentityDocumentManualValueCandidates(values, person.identityDocument, person.isCPF !== false);
-    }
-
-    return [...values.values()];
-  }
-
-  private addPhoneManualValueCandidates(values: Map<string, string>, phone?: string | null): void {
-    const normalizedPhone = phone?.trim();
-    if (!normalizedPhone) {
-      return;
-    }
-
-    this.addManualValueCandidate(values, normalizedPhone);
-    for (const candidate of this.getBrazilianPhoneCandidates(normalizedPhone.replace(/\D/g, ''))) {
-      this.addManualValueCandidate(values, candidate);
-    }
-  }
-
-  private addIdentityDocumentManualValueCandidates(
-    values: Map<string, string>,
-    identityDocument?: string | null,
-    isCpf = true,
-  ): void {
-    const normalizedDocument = identityDocument?.trim();
-    if (!normalizedDocument) {
-      return;
-    }
-
-    this.addManualValueCandidate(values, normalizedDocument);
-    const digits = normalizedDocument.replace(/\D/g, '');
-    if (!digits) {
-      return;
-    }
-
-    this.addManualValueCandidate(values, digits);
-    if (isCpf && digits.length === 11) {
-      this.addManualValueCandidate(
-        values,
-        `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`,
-      );
-    }
-  }
-
-  private getBrazilianPhoneCandidates(digits: string): string[] {
-    if (!digits) {
-      return [];
-    }
-
-    const candidates = new Set<string>();
-    const withoutCountry = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
-    const withCountry = withoutCountry.length >= 10 ? `55${withoutCountry}` : digits;
-    for (const candidate of [digits, withoutCountry, withCountry, `+${withCountry}`]) {
-      candidates.add(candidate);
-    }
-    this.addBrazilianPhoneDisplayCandidates(candidates, withoutCountry);
-    return [...candidates];
-  }
-
-  private addBrazilianPhoneDisplayCandidates(candidates: Set<string>, withoutCountry: string): void {
-    if (withoutCountry.length !== 10 && withoutCountry.length !== 11) {
-      return;
-    }
-
-    const areaCode = withoutCountry.slice(0, 2);
-    const localNumber = withoutCountry.slice(2);
-    const prefixLength = localNumber.length === 9 ? 5 : 4;
-    const prefix = localNumber.slice(0, prefixLength);
-    const suffix = localNumber.slice(prefixLength);
-    const localDisplay = `${prefix}-${suffix}`;
-    for (const candidate of [
-      `(${areaCode}) ${localDisplay}`,
-      `${areaCode} ${localDisplay}`,
-      `${areaCode}${localDisplay}`,
-      `55 ${areaCode} ${localDisplay}`,
-      `+55 ${areaCode} ${localDisplay}`,
-      `+55 (${areaCode}) ${localDisplay}`,
-    ]) {
-      candidates.add(candidate);
-    }
-  }
-
-  private addManualValueCandidate(values: Map<string, string>, value: string): void {
-    const normalizedValue = value.trim();
-    if (normalizedValue) {
-      values.set(this.caseInsensitiveKey(normalizedValue), normalizedValue);
-    }
-  }
-
-  private caseInsensitiveKey(value: string): string {
-    return value.trim().toLowerCase();
-  }
-
-  private async expandUsers(userIds: Set<string>, emails: Set<string>): Promise<boolean> {
-    let changed = false;
-
-    if (userIds.size > 0) {
-      const users = await this.prisma.user.findMany({
-        where: { id: { in: [...userIds] } },
-        select: { id: true, email: true },
-      });
-
-      for (const user of users) {
-        changed = this.add(userIds, user.id) || changed;
-        const email = this.normalizeEmail(user.email);
-        if (email) {
-          changed = this.add(emails, email) || changed;
-        }
-      }
-    }
-
-    if (emails.size > 0) {
-      const users = await this.prisma.user.findMany({
-        where: {
-          OR: [...emails].map((email) => ({
-            email: {
-              equals: email,
-              mode: 'insensitive' as const,
-            },
-          })),
-        },
-        select: { id: true, email: true },
-      });
-
-      for (const user of users) {
-        changed = this.add(userIds, user.id) || changed;
-        const email = this.normalizeEmail(user.email);
-        if (email) {
-          changed = this.add(emails, email) || changed;
-        }
-      }
-    }
-
-    return changed;
-  }
-
-  private async expandAccountMerges(userIds: Set<string>): Promise<boolean> {
-    if (userIds.size === 0) {
-      return false;
-    }
-
-    let changed = false;
-    const ids = [...userIds];
-    const [accountUserMerges, externalAccountMergeOperations] = await Promise.all([
-      this.prisma.accountUserMerge.findMany({
-        where: { OR: [{ oldUserId: { in: ids } }, { newUserId: { in: ids } }] },
-        select: { oldUserId: true, newUserId: true },
-      }),
-      this.prisma.externalAccountMergeOperation.findMany({
-        where: {
-          status: 'APPLIED',
-          OR: [{ oldUserId: { in: ids } }, { newUserId: { in: ids } }],
-        },
-        select: { oldUserId: true, newUserId: true },
-      }),
-    ]);
-
-    for (const merge of [...accountUserMerges, ...externalAccountMergeOperations]) {
-      changed = this.add(userIds, merge.oldUserId) || changed;
-      changed = this.add(userIds, merge.newUserId) || changed;
-    }
-
-    return changed;
-  }
-
-  private async expandPeopleByEmail(
-    personIds: Set<string>,
-    emails: Set<string>,
-    queriedEmails: Set<string>,
-  ): Promise<boolean> {
-    let changed = false;
-
-    for (const email of emails) {
-      if (queriedEmails.has(email)) {
-        continue;
-      }
-
-      queriedEmails.add(email);
-      const people = await this.prisma.$queryRaw<Array<{ id: string }>>`
-        SELECT id
-        FROM people
-        WHERE lower(email) = ${email}
-          OR EXISTS (
-            SELECT 1
-            FROM unnest("secondaryEmails") AS secondary_email(email)
-            WHERE lower(secondary_email.email) = ${email}
-          )
-      `;
-
-      for (const person of people) {
-        changed = this.add(personIds, person.id) || changed;
-      }
-    }
-
-    return changed;
-  }
-
-  private async expandPeople(
-    userIds: Set<string>,
-    personIds: Set<string>,
-    emails: Set<string>,
-  ): Promise<boolean> {
-    const where = this.peopleResolutionWhere(userIds, personIds);
-    if (!where) {
-      return false;
-    }
-
-    let changed = false;
-    const people = await this.prisma.people.findMany({
-      where,
-      select: {
-        id: true,
-        userId: true,
-        externalRef: true,
-        mergedIntoId: true,
-        email: true,
-        secondaryEmails: true,
-      },
-    });
-
-    for (const person of people) {
-      changed = this.add(personIds, person.id) || changed;
-      if (person.mergedIntoId) {
-        changed = this.add(personIds, person.mergedIntoId) || changed;
-      }
-      if (person.userId) {
-        changed = this.add(userIds, person.userId) || changed;
-      }
-
-      const externalUserId = this.fromKeycloakExternalRef(person.externalRef);
-      if (externalUserId) {
-        changed = this.add(userIds, externalUserId) || changed;
-      }
-
-      for (const email of [person.email, ...person.secondaryEmails]) {
-        const normalizedEmail = this.normalizeEmail(email);
-        if (normalizedEmail) {
-          changed = this.add(emails, normalizedEmail) || changed;
-        }
-      }
-    }
-
-    return changed;
-  }
-
-  private peopleResolutionWhere(userIds: Set<string>, personIds: Set<string>): Prisma.PeopleWhereInput | null {
-    const conditions: Prisma.PeopleWhereInput[] = [];
-    const ids = [...userIds];
-    const people = [...personIds];
-
-    if (ids.length > 0) {
-      conditions.push({ userId: { in: ids } });
-      conditions.push({ externalRef: { in: ids.map((userId) => this.toKeycloakExternalRef(userId)) } });
-    }
-
-    if (people.length > 0) {
-      conditions.push({ id: { in: people } });
-      conditions.push({ mergedIntoId: { in: people } });
-    }
-
-    return conditions.length > 0 ? { OR: conditions } : null;
-  }
-
-  private async findPeopleByIds(personIds: string[]) {
-    if (personIds.length === 0) {
-      return [];
-    }
-
-    return this.prisma.people.findMany({
-      where: {
-        id: { in: personIds },
-      },
-      include: { user: true, mergedFrom: true, mergedInto: true },
-      orderBy: { createdAt: 'asc' },
-    });
   }
 
   private metadata(input: { userId: string; email?: string }, dataSubject: { userIds: string[]; personIds: string[] }) {
@@ -1617,66 +388,5 @@ export class LgpdService {
     };
   }
 
-  private async findReceiptObjectKeys(personIds: string[]): Promise<string[]> {
-    if (personIds.length === 0) {
-      return [];
-    }
-
-    const receipts = await this.prisma.majorEventReceipt.findMany({
-      where: { personId: { in: personIds } },
-      select: { objectKey: true },
-    });
-
-    return receipts.map((receipt) => receipt.objectKey);
-  }
-
-  private async deleteReceiptObjects(objectKeys: string[]): Promise<void> {
-    const uniqueObjectKeys = Array.from(new Set(objectKeys));
-    const failedObjectKeys: string[] = [];
-
-    for (const objectKey of uniqueObjectKeys) {
-      try {
-        await this.s3.deleteFile(objectKey);
-      } catch (error: unknown) {
-        failedObjectKeys.push(objectKey);
-        this.logger.warn(
-          `Failed to delete LGPD receipt object ${objectKey}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-
-    if (failedObjectKeys.length > 0) {
-      this.logger.warn(
-        `LGPD receipt cleanup completed with ${failedObjectKeys.length} failed object deletion(s): ${failedObjectKeys.join(', ')}`,
-      );
-    }
-  }
-
-  private normalizeEmail(email?: string | null): string | null {
-    const normalized = email?.trim().toLowerCase();
-    return normalized || null;
-  }
-
-  private toKeycloakExternalRef(userId: string): string {
-    return `kc:${userId}`;
-  }
-
-  private fromKeycloakExternalRef(externalRef?: string | null): string | null {
-    const prefix = 'kc:';
-    if (!externalRef?.startsWith(prefix)) {
-      return null;
-    }
-
-    return externalRef.slice(prefix.length).trim() || null;
-  }
-
-  private add(values: Set<string>, value: string): boolean {
-    if (values.has(value)) {
-      return false;
-    }
-
-    values.add(value);
-    return true;
-  }
 
 }

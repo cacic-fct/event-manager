@@ -50,7 +50,13 @@ import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
 import { EventDraftsResolver } from './events/event-drafts.resolver';
 import { EventDraftsService } from './events/event-drafts.service';
 import { EventFormsController } from './event-forms/event-forms.controller';
+import { EventFormEditorService } from './event-forms/event-form-editor.service';
+import { EventFormListingsService } from './event-forms/event-form-listings.service';
 import { EventFormNotificationService } from './event-forms/event-form-notification.service';
+import { EventFormPublicationWorkflowService } from './event-forms/event-form-publication-workflow.service';
+import { EventFormResponsesService } from './event-forms/event-form-responses.service';
+import { EventFormResultEventsService } from './event-forms/event-form-result-events.service';
+import { EventFormResultsAccessService } from './event-forms/event-form-results-access.service';
 import { EventFormsResolver } from './event-forms/event-forms.resolver';
 import { EventFormsScheduler } from './event-forms/event-forms.scheduler';
 import { EventFormsService } from './event-forms/event-forms.service';
@@ -272,8 +278,14 @@ import { validateBackendEnvironment } from './config/environment.validation';
     MajorEventSubscriptionCsvImportResolver,
     EventSubscriptionsResolver,
     EventFormsResolver,
+    EventFormEditorService,
+    EventFormListingsService,
     EventFormsService,
     EventFormNotificationService,
+    EventFormPublicationWorkflowService,
+    EventFormResponsesService,
+    EventFormResultEventsService,
+    EventFormResultsAccessService,
     EventFormsScheduler,
     EventLecturersResolver,
     MergeCandidatesResolver,

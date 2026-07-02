@@ -9,8 +9,19 @@ import {
 } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { GraphqlContext } from '../current-user/selects';
+import { CurrentUserContextService } from '../current-user/context.service';
+import { NovuNotificationsService } from '../notifications/novu-notifications.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { EventFormEditorService } from './event-form-editor.service';
+import { EventFormListingsService } from './event-form-listings.service';
 import { EventFormNotificationService } from './event-form-notification.service';
+import { EventFormPublicationWorkflowService } from './event-form-publication-workflow.service';
+import { EventFormResponsesService } from './event-form-responses.service';
+import { EventFormResultEventsService } from './event-form-result-events.service';
+import { EventFormResultsAccessService } from './event-form-results-access.service';
+import { csvCell } from './event-form-results';
 import { EventFormsService } from './event-forms.service';
 
 describe('EventFormsService', () => {
@@ -19,6 +30,7 @@ describe('EventFormsService', () => {
   let authorizationPolicy: ReturnType<typeof createAuthorizationPolicy>;
   let currentUserContext: ReturnType<typeof createCurrentUserContext>;
   let notifications: ReturnType<typeof createNotifications>;
+  let formNotifications: EventFormNotificationService;
 
   const authenticatedUser = {
     sub: 'user-1',
@@ -31,21 +43,52 @@ describe('EventFormsService', () => {
     authorizationPolicy = createAuthorizationPolicy();
     currentUserContext = createCurrentUserContext(authenticatedUser);
     notifications = createNotifications();
-    const formNotifications = new EventFormNotificationService(prisma as never, notifications as never);
+    formNotifications = new EventFormNotificationService(
+      prisma as unknown as jest.Mocked<PrismaService>,
+      notifications as unknown as jest.Mocked<NovuNotificationsService>,
+    );
+    const resultEvents = new EventFormResultEventsService();
+    const listings = new EventFormListingsService(
+      prisma as unknown as jest.Mocked<PrismaService>,
+      authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
+      currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
+    );
+    const editor = new EventFormEditorService(
+      prisma as unknown as jest.Mocked<PrismaService>,
+      authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
+    );
+    const publication = new EventFormPublicationWorkflowService(
+      prisma as unknown as jest.Mocked<PrismaService>,
+      authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
+      currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
+      formNotifications,
+    );
+    const responses = new EventFormResponsesService(
+      prisma as unknown as jest.Mocked<PrismaService>,
+      currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
+      resultEvents,
+    );
+    const results = new EventFormResultsAccessService(
+      prisma as unknown as jest.Mocked<PrismaService>,
+      authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
+      currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
+    );
     service = new EventFormsService(
-      prisma as never,
-      authorizationPolicy as never,
-      currentUserContext as never,
-      formNotifications as never,
+      listings,
+      editor,
+      publication,
+      responses,
+      results,
+      resultEvents,
     );
   });
 
   it('neutralizes CSV formulas after leading whitespace or control characters', () => {
-    expect(service['csvCell']('\t=IMPORTXML("https://example.com")')).toBe(
+    expect(csvCell('\t=IMPORTXML("https://example.com")')).toBe(
       '"\'\t=IMPORTXML(""https://example.com"")"',
     );
-    expect(service['csvCell']('\u0000+SUM(1,1)')).toBe('"\'\u0000+SUM(1,1)"');
-    expect(service['csvCell']('plain text')).toBe('"plain text"');
+    expect(csvCell('\u0000+SUM(1,1)')).toBe('"\'\u0000+SUM(1,1)"');
+    expect(csvCell('plain text')).toBe('"plain text"');
   });
 
   it('requires the event link opt-in before lecturers can publish manually', async () => {
@@ -65,21 +108,23 @@ describe('EventFormsService', () => {
   });
 
   it('lets linked lecturers publish when the event link opted in', async () => {
-    const form = formRecord({ allowLecturerManualPublish: true });
+    const form = formRecord({ allowLecturerManualPublish: true, ownerEventId: 'event-1' });
     prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1' });
     prisma.eventForm.findFirst.mockResolvedValue(form);
-    prisma.eventForm.update.mockResolvedValue({
+    const published = {
       ...form,
       publicationState: PublicationState.PUBLISHED,
       publishedAt: new Date('2026-06-28T12:00:00.000Z'),
-    });
+    };
+    prisma.eventForm.updateMany.mockResolvedValue({ count: 1 });
+    prisma.eventForm.findUniqueOrThrow.mockResolvedValue(published);
 
     const result = await service.publishLecturerForm(context, 'form-1', 'event-1');
 
     expect(result.publicationState).toBe(PublicationState.PUBLISHED);
-    expect(prisma.eventForm.update).toHaveBeenCalledWith(
+    expect(prisma.eventForm.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'form-1' },
+        where: expect.objectContaining({ id: 'form-1', deletedAt: null }),
         data: expect.objectContaining({
           publicationState: PublicationState.PUBLISHED,
           publicationUpdatedBy: authenticatedUser.sub,
@@ -244,7 +289,8 @@ describe('EventFormsService', () => {
       ],
     });
     prisma.eventForm.findFirst.mockResolvedValue(form);
-    prisma.eventForm.update.mockResolvedValue({ ...form, publicationState: PublicationState.PUBLISHED });
+    prisma.eventForm.updateMany.mockResolvedValue({ count: 1 });
+    prisma.eventForm.findUniqueOrThrow.mockResolvedValue({ ...form, publicationState: PublicationState.PUBLISHED });
 
     await service.publishForm('form-1', null, authenticatedUser);
 
@@ -735,7 +781,7 @@ describe('EventFormsService', () => {
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
     notifications.notifyEventFormAvailable.mockResolvedValue(true);
 
-    const notifiedCount = await service['notifyEligiblePeople'](form);
+    const notifiedCount = await formNotifications.notifyEligiblePeople(form);
 
     expect(notifiedCount).toBe(1);
     expect(prisma.eventFormLink.updateMany).toHaveBeenCalledWith(
@@ -769,7 +815,7 @@ describe('EventFormsService', () => {
     prisma.eventAttendance.findMany.mockResolvedValue([]);
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 0 });
 
-    const notifiedCount = await service['notifyEligiblePeople'](form);
+    const notifiedCount = await formNotifications.notifyEligiblePeople(form);
 
     expect(notifiedCount).toBe(0);
     expect(notifications.notifyEventFormAvailable).not.toHaveBeenCalled();
@@ -792,7 +838,7 @@ describe('EventFormsService', () => {
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
     notifications.notifyEventFormAvailable.mockRejectedValue(new Error('Novu unavailable'));
 
-    const notifiedCount = await service['notifyEligiblePeople'](form);
+    const notifiedCount = await formNotifications.notifyEligiblePeople(form);
 
     expect(notifiedCount).toBe(0);
     expect(prisma.eventFormLink.updateMany).toHaveBeenCalledWith(
@@ -843,6 +889,7 @@ function createPrisma() {
       findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     eventFormResponse: {
       findFirst: jest.fn(),

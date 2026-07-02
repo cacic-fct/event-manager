@@ -10,5 +10,12 @@
     "moduleResolution": "node16"
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["jest.config.ts", "jest.config.cts", "src/**/*.spec.ts", "src/**/*.test.ts", "src/**/*.fixtures.ts"]
+  "exclude": [
+    "jest.config.ts",
+    "jest.config.cts",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    "src/**/*.fixtures.ts",
+    "src/**/*.spec-support.ts"
+  ]
 }
