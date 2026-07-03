@@ -76,8 +76,8 @@ describe('LgpdService receipt cleanup', () => {
     expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       tx.majorEventSubscription.updateMany.mock.invocationCallOrder[0],
     );
-    expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
-      s3.deleteFile.mock.invocationCallOrder[0],
+    expect(s3.deleteFile.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.majorEventReceiptValidationAction.deleteMany.mock.invocationCallOrder[0],
     );
     expect(tx.offlineEventAttendanceSubmission.update).toHaveBeenCalledWith({
       where: { id: 'offline-submission-1' },
@@ -91,7 +91,7 @@ describe('LgpdService receipt cleanup', () => {
     });
   });
 
-  it('continues deleting receipt objects after an S3 cleanup failure', async () => {
+  it('fails before deleting receipt metadata when an S3 cleanup fails', async () => {
     const { prisma, s3, service } = context;
     const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 
@@ -111,15 +111,12 @@ describe('LgpdService receipt cleanup', () => {
         email: 'old@example.com',
         requestId: 'schedule-1',
       }),
-    ).resolves.toEqual({
-      success: true,
-      peopleUpdated: 2,
-      recordsUpdated: 2,
-    });
+    ).rejects.toThrow('Failed to delete LGPD receipt object(s): receipts/broken.png');
 
     expect(s3.deleteFile).toHaveBeenNthCalledWith(1, 'receipts/old.png');
     expect(s3.deleteFile).toHaveBeenNthCalledWith(2, 'receipts/broken.png');
     expect(s3.deleteFile).toHaveBeenNthCalledWith(3, 'receipts/new.png');
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('receipts/broken.png'));
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

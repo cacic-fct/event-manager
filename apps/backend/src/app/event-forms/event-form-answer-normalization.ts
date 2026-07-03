@@ -66,7 +66,16 @@ export function parseAnswersJson(value: string): FormResponseAnswer[] {
   if (!Array.isArray(parsed)) {
     throw new BadRequestException('Respostas devem ser uma lista.');
   }
-  return parsed
+
+  return parseAnswersValue(parsed);
+}
+
+export function parseAnswersValue(value: unknown): FormResponseAnswer[] {
+  if (!Array.isArray(value)) {
+    throw new BadRequestException('Respostas devem ser uma lista.');
+  }
+
+  return value
     .filter((item): item is Record<string, unknown> => isRecord(item))
     .map((item) => ({
       elementId: stringValue(item['elementId']),

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   createLgpdServiceTestContext,
   LgpdServiceTestContext,
@@ -369,8 +370,40 @@ describe('LgpdService hard delete', () => {
         submittedById: anonymizedAuditSubjectId,
       }),
     });
-    expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
-      s3.deleteFile.mock.invocationCallOrder[0],
+    expect(s3.deleteFile.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.majorEventReceiptValidationAction.deleteMany.mock.invocationCallOrder[0],
     );
+  });
+
+  it('fails before deleting database rows when hard-delete receipt storage cleanup fails', async () => {
+    const { prisma, s3, tx, typesenseSearch, service } = context;
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    prisma.majorEventReceipt.findMany.mockResolvedValueOnce([
+      { objectKey: 'receipts/old.png' },
+      { objectKey: 'receipts/broken.png' },
+      { objectKey: 'receipts/new.png' },
+    ]);
+    s3.deleteFile
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('s3 unavailable'))
+      .mockResolvedValueOnce(undefined);
+
+    await expect(
+      service.hardDelete({
+        userId: 'old-user',
+        email: 'old@example.com',
+        requestId: 'erase-1',
+      }),
+    ).rejects.toThrow('Failed to delete LGPD receipt object(s): receipts/broken.png');
+
+    expect(s3.deleteFile).toHaveBeenNthCalledWith(1, 'receipts/old.png');
+    expect(s3.deleteFile).toHaveBeenNthCalledWith(2, 'receipts/broken.png');
+    expect(s3.deleteFile).toHaveBeenNthCalledWith(3, 'receipts/new.png');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('receipts/broken.png'));
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(tx.people.deleteMany).not.toHaveBeenCalled();
+    expect(tx.user.deleteMany).not.toHaveBeenCalled();
+    expect(typesenseSearch.upsertAuditLogEntry).not.toHaveBeenCalled();
   });
 });

@@ -6,7 +6,7 @@ import {
   type FormResponseAnswer,
 } from '@cacic-fct/form-contracts';
 import { EventFormResponseRecord } from './event-form-records';
-import { isEmptyAnswer, isRecord, parseAnswersJson, parseElementsJson } from './event-form-answer-normalization';
+import { isEmptyAnswer, isRecord, parseAnswersJson, parseAnswersValue, parseElementsJson } from './event-form-answer-normalization';
 
 type FormResultSummary = {
   questions: Array<{
@@ -25,11 +25,18 @@ export function buildFormResultSummary(
   includeTextAnswers: boolean,
 ): FormResultSummary {
   const answerElements = elements.filter((element) => isFormAnswerElementType(element.type));
+  const responseAnswers = responses.map((response) => {
+    try {
+      return parseAnswersValue(response.answers);
+    } catch {
+      return [];
+    }
+  });
 
   return {
     questions: answerElements.map((element) => {
       const values = responses
-        .map((response) => valueForElement(parseAnswersValue(response.answers), element.id))
+        .map((_, index) => valueForElement(responseAnswers[index] ?? [], element.id))
         .filter((value) => !isEmptyAnswer(value));
 
       return {
@@ -112,18 +119,6 @@ function buildTextAnswers(element: FormElement, values: readonly FormAnswerValue
 
 function valueForElement(answers: readonly FormResponseAnswer[], elementId: string): FormAnswerValue {
   return answers.find((answer) => answer.elementId === elementId)?.value ?? null;
-}
-
-function parseAnswersValue(value: unknown): FormResponseAnswer[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  try {
-    return parseAnswersJson(JSON.stringify(value));
-  } catch {
-    return [];
-  }
 }
 
 function answerToCsvCell(element: FormElement, value: FormAnswerValue): string {

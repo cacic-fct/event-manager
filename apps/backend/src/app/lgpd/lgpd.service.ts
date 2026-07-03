@@ -220,6 +220,7 @@ export class LgpdService {
     }
 
     const receiptObjectKeys = await findReceiptObjectKeys(this.prisma, personIds);
+    await deleteReceiptObjects(this.s3, this.logger, receiptObjectKeys);
 
     const now = new Date();
     const result = await this.prisma.$transaction(async (tx) => {
@@ -279,8 +280,6 @@ export class LgpdService {
       };
     });
 
-    await deleteReceiptObjects(this.s3, this.logger, receiptObjectKeys);
-
     this.logger.log(
       `Scheduled LGPD deletion request=${input.requestId}, user=${input.userId}, people=${result.people.count}, related=${result.recordsUpdated}.`,
     );
@@ -296,6 +295,7 @@ export class LgpdService {
     }
 
     const receiptObjectKeys = await findReceiptObjectKeys(this.prisma, personIds);
+    await deleteReceiptObjects(this.s3, this.logger, receiptObjectKeys);
 
     const { anonymizedAuditEntryIds, ...result } = await this.prisma.$transaction(async (tx) => {
       const anonymizedSubjectId = buildAnonymizedAuditSubjectId(input.requestId);
@@ -367,7 +367,6 @@ export class LgpdService {
     });
 
     await synchronizeAnonymizedAuditEntries(this.prisma, this.typesenseSearch, this.logger, anonymizedAuditEntryIds);
-    await deleteReceiptObjects(this.s3, this.logger, receiptObjectKeys);
 
     this.logger.log(
       `Hard-deleted LGPD data request=${input.requestId}, user=${input.userId}, people=${result.peopleDeleted}, users=${result.usersDeleted}, related=${result.recordsDeleted}.`,

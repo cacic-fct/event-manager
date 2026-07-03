@@ -65,7 +65,7 @@ export class OfflineAttendanceSubmissions {
       entityId: submission.personId
         ? this.auditLog.buildCompositeEntityId([submission.personId, submission.eventId])
         : `offline:${submission.id}`,
-      entityLabel: submission.scannerCode ?? submission.id,
+      entityLabel: submission.id,
       operation: AuditLogOperation.CREATE,
       actor: getAuthenticatedUser(this.currentUserContext, context),
       after: {

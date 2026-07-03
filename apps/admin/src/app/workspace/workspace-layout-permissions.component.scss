@@ -20,14 +20,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   min-height: 1.75rem;
   padding: 0 0.625rem;
   border-radius: 999px;
-
   background: var(--mat-sys-error-container);
   color: var(--mat-sys-on-error-container);
-
   font-size: 0.8125rem;
   font-weight: 600;
 }
