@@ -7,17 +7,21 @@ import { applicationConfig } from '@storybook/angular';
 import { of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import {
-  PublicEventStoryControls,
-  MutableStoryContext,
   createPublicStoryEventFromControls,
+  createPublicStoryLecturerProfilesFromControls,
   createMutableStoryContext,
   publicEventStoryControlArgTypes,
   publicEventStoryDefaultControls,
+  publicLecturerStoryControlArgTypes,
+  publicLecturerStoryDefaultControls,
   renderMutableStory,
+  type MutableStoryContext,
+  type PublicEventStoryControls,
+  type PublicLecturerStoryControls,
 } from '../testing/public-event-story-fixtures';
 import { Event } from './event';
 
-interface EventStoryArgs extends PublicEventStoryControls {
+interface EventStoryArgs extends PublicEventStoryControls, PublicLecturerStoryControls {
   allowSubscription: boolean;
   hasAvailableSlots: boolean;
   isSubscribed: boolean;
@@ -26,6 +30,7 @@ interface EventStoryArgs extends PublicEventStoryControls {
 
 const defaultArgs: EventStoryArgs = {
   ...publicEventStoryDefaultControls,
+  ...publicLecturerStoryDefaultControls,
   allowSubscription: true,
   hasAvailableSlots: true,
   isSubscribed: false,
@@ -50,6 +55,7 @@ const meta: Meta<EventStoryArgs> = {
   args: defaultArgs,
   argTypes: {
     ...publicEventStoryControlArgTypes,
+    ...publicLecturerStoryControlArgTypes,
     allowSubscription: { control: 'boolean' },
     hasAvailableSlots: { control: 'boolean' },
     isSubscribed: { control: 'boolean' },
@@ -67,6 +73,13 @@ type Story = StoryObj<EventStoryArgs>;
 
 const previewContext = createStoryContext();
 const onlineContext = createStoryContext();
+const withoutLecturersContext = createStoryContext({ lecturerCount: 0 });
+const lecturerWithoutContactContext = createStoryContext({
+  lecturerCount: 1,
+  lecturerEmail: '',
+  lecturerWhatsapp: '',
+  publishGoogleUserPicture: false,
+});
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
@@ -88,6 +101,37 @@ export const Online: Story = {
   parameters: eventParameters(onlineContext),
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const WithoutLecturers: Story = {
+  args: {
+    lecturerCount: 0,
+  },
+  render: (args) => renderStory(args, withoutLecturersContext),
+  parameters: eventParameters(withoutLecturersContext),
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByText('Ministrantes')).toBeNull();
+  },
+};
+
+export const LecturerWithoutContact: Story = {
+  args: {
+    lecturerCount: 1,
+    lecturerEmail: '',
+    lecturerWhatsapp: '',
+    publishGoogleUserPicture: false,
+  },
+  render: (args) => renderStory(args, lecturerWithoutContactContext),
+  parameters: eventParameters(lecturerWithoutContactContext),
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Ministrantes')).toBeVisible();
+    await expect(canvas.queryByRole('link', { name: /ana@example.com/i })).toBeNull();
+    await expect(canvas.queryByRole('link', { name: /whatsapp/i })).toBeNull();
+  },
 };
 
 export const OfflineFallback: Story = {
@@ -163,6 +207,7 @@ function buildEvent(args: EventStoryArgs) {
   return createPublicStoryEventFromControls(args, {
     id: 'event-1',
     allowSubscription: args.allowSubscription,
+    lecturers: createPublicStoryLecturerProfilesFromControls(args),
   });
 }
 

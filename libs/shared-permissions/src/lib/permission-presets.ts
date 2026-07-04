@@ -53,7 +53,7 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
     id: 'form-manager',
     label: 'Gestor de formulários',
     description: 'Cria, vincula, publica, acompanha respostas e exporta formulários no escopo escolhido.',
-    icon: 'dynamic_form',
+    icon: 'list_alt',
     preferredScope: EventManagerPermissionGrantScope.MajorEvent,
     permissions: [
       Permission.EventForm.Read,

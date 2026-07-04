@@ -1,4 +1,11 @@
-import type { EventType, PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
+import type {
+  EventType,
+  PublicEvent,
+  PublicEventGroup,
+  PublicLecturerProfile,
+  PublicMajorEvent,
+} from '@cacic-fct/event-manager-public-contracts';
+import { createStoryPublicLecturerProfile } from '@cacic-fct/event-manager-public-testing';
 import { createPublicEvent, createPublicEventGroup, createPublicMajorEvent } from './public-entity-fixtures';
 
 export type PublicEventStoryContext = 'major-event' | 'event-group' | 'short-description';
@@ -37,6 +44,19 @@ export interface PublicEventStoryControls {
   queueCount: number;
 }
 
+export interface PublicLecturerProfileStoryControls {
+  lecturerDisplayName: string;
+  lecturerBiography: string;
+  lecturerEmail: string;
+  lecturerWhatsapp: string;
+  publishGoogleUserPicture: boolean;
+  googleUserPicture: string;
+}
+
+export interface PublicLecturerStoryControls extends PublicLecturerProfileStoryControls {
+  lecturerCount: number;
+}
+
 export interface MutableStoryContext<TArgs> {
   args: TArgs;
 }
@@ -68,6 +88,21 @@ export const publicEventStoryDefaultControls: PublicEventStoryControls = {
   queueCount: 3,
 };
 
+export const publicLecturerProfileStoryDefaultControls: PublicLecturerProfileStoryControls = {
+  lecturerDisplayName: 'Ana Clara Silva',
+  lecturerBiography:
+    'Pesquisa e desenvolve projetos de tecnologia educacional, com foco em experiências acessíveis para eventos acadêmicos.',
+  lecturerEmail: 'ana@example.com',
+  lecturerWhatsapp: '+5518999999999',
+  publishGoogleUserPicture: true,
+  googleUserPicture: 'https://lh3.googleusercontent.com/a/storybook-lecturer=s96-c',
+};
+
+export const publicLecturerStoryDefaultControls: PublicLecturerStoryControls = {
+  ...publicLecturerProfileStoryDefaultControls,
+  lecturerCount: 2,
+};
+
 export const publicEventStoryControlArgTypes = {
   name: { control: 'text' },
   emoji: { control: 'text' },
@@ -82,6 +117,20 @@ export const publicEventStoryControlArgTypes = {
   durationHours: { control: { type: 'range', min: 1, max: 8, step: 1 } },
   slotsAvailable: { control: { type: 'range', min: 0, max: 80, step: 1 } },
   queueCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
+} as const;
+
+export const publicLecturerProfileStoryControlArgTypes = {
+  lecturerDisplayName: { control: 'text' },
+  lecturerBiography: { control: 'text' },
+  lecturerEmail: { control: 'text' },
+  lecturerWhatsapp: { control: 'text' },
+  publishGoogleUserPicture: { control: 'boolean' },
+  googleUserPicture: { control: 'text' },
+} as const;
+
+export const publicLecturerStoryControlArgTypes = {
+  ...publicLecturerProfileStoryControlArgTypes,
+  lecturerCount: { control: { type: 'range', min: 0, max: 6, step: 1 } },
 } as const;
 
 export function publicStoryDate(dayOffset: number, hour = 14): string {
@@ -193,6 +242,48 @@ export function createPublicStoryEventFromControls(
   });
 }
 
+export function createPublicStoryLecturerProfileFromControls(
+  controls: Partial<PublicLecturerProfileStoryControls> = {},
+  index = 0,
+  overrides: Partial<PublicLecturerProfile> = {},
+): PublicLecturerProfile {
+  const merged = { ...publicLecturerProfileStoryDefaultControls, ...controls };
+  const fallback = createStoryPublicLecturerProfile(index);
+  const displayName = cleanStoryText(merged.lecturerDisplayName) ?? fallback.displayName;
+  const biography = cleanStoryText(merged.lecturerBiography);
+  const email = cleanStoryText(merged.lecturerEmail);
+  const whatsapp = cleanStoryText(merged.lecturerWhatsapp);
+  const googleUserPicture = cleanStoryText(merged.googleUserPicture);
+
+  return {
+    ...fallback,
+    id: `lecturer-story-${index + 1}`,
+    displayName: index === 0 ? displayName : fallback.displayName,
+    biography: index === 0 ? biography : fallback.biography,
+    publishGoogleUserPicture: merged.publishGoogleUserPicture,
+    googleUserPicture: merged.publishGoogleUserPicture
+      ? index === 0
+        ? googleUserPicture
+        : fallback.googleUserPicture
+      : null,
+    email: index === 0 ? email : fallback.email,
+    whatsapp: index === 0 ? whatsapp : fallback.whatsapp,
+    ...overrides,
+  };
+}
+
+export function createPublicStoryLecturerProfilesFromControls(
+  controls: Partial<PublicLecturerStoryControls> = {},
+  overrides: Partial<PublicLecturerProfile> = {},
+): PublicLecturerProfile[] {
+  const merged = { ...publicLecturerStoryDefaultControls, ...controls };
+  const count = Math.min(Math.max(Math.trunc(merged.lecturerCount), 0), 6);
+
+  return Array.from({ length: count }, (_, index) =>
+    createPublicStoryLecturerProfileFromControls(merged, index, overrides),
+  );
+}
+
 export function createPublicStoryEvents(controls: Partial<PublicEventStoryControls> = {}): PublicEvent[] {
   return [
     createPublicStoryEventFromControls(controls, { index: 0 }),
@@ -213,6 +304,11 @@ export function createPublicStoryEvents(controls: Partial<PublicEventStoryContro
       queueCount: 0,
     }),
   ];
+}
+
+function cleanStoryText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed ? trimmed : null;
 }
 
 export {

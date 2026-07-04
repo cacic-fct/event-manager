@@ -70,14 +70,12 @@
   <div class="actions form-actions" aria-label="Formulários vinculados">
     @for (formLink of currentState.formLinks; track formLink.formId + formLink.targetType + formLink.targetId) {
     <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
-      <mat-icon>dynamic_form</mat-icon>
+      <mat-icon>list_alt</mat-icon>
       {{ formLink.name }}
     </a>
     }
   </div>
-  }
-
-  @if (detail.description) {
+  } @if (detail.description) {
   <section class="detail-section">
     <h2>Sobre</h2>
     <p class="description">{{ detail.description }}</p>

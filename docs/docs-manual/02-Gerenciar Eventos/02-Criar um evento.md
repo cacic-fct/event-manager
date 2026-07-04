@@ -119,6 +119,14 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
 
 As pessoas cadastradas nessa seção terão acesso à página "informações do organizador" e serão consideradas na emissão automática de certificados para "Palestrantes/ministrantes".
 
+:::warning[Aviso]
+
+O ministrante de um evento não deve se inscrever na própria atividade.
+
+Oriente os ministrantes.
+
+:::
+
 ### Coletores de presença com permissões limitadas
 
 As pessoas cadastradas nessa seção poderão coletar presença usando a interface pública, a partir de 3 horas antes do início do evento e até 6 horas depois, mas não terão acesso à interface administrativa do sistema.

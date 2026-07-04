@@ -8,9 +8,9 @@ Se um participante alegar que esteve presente, mas não tiver a presença regist
 
 :::warning[Aviso]
 
-Não colete a presença de palestrantes ou ministrantes.
+**Não** colete a presença de palestrantes ou de ministrantes.
 
-Sim, colete a presença de pessoas que aleguem não ter se inscrevido ou não ter pagado, desde que elas possuam cadastro no sistema.
+Sim, colete a presença de pessoas que aleguem não ter se inscrevido ou não ter pagado, desde que elas possuam cadastro no sistema, para controle de público.
 
 :::
 

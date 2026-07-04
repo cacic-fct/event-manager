@@ -6,6 +6,13 @@ A inscrição em grande evento permite escolher as atividades que o participante
 
 Os eventos podem ter limite de vagas, limite por tipo de atividade, inscrição automática ou conflito de horário.
 
+
+:::warning[Aviso]
+
+O ministrante de um evento não deve se inscrever na própria atividade.
+
+:::
+
 ## Seleção de atividades
 
 Ao selecionar um evento pertencente a um grupo, todas as partes do grupo são selecionadas em conjunto.

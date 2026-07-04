@@ -1,26 +1,30 @@
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { createStoryPublicLecturerProfile } from '@cacic-fct/event-manager-public-testing';
 import { applicationConfig, type Decorator, type Meta, type StoryObj } from '@storybook/angular';
 import { NEVER, of, throwError } from 'rxjs';
 import { expect, screen, userEvent, within } from 'storybook/test';
+import {
+  createPublicStoryLecturerProfileFromControls,
+  publicLecturerProfileStoryControlArgTypes,
+  publicLecturerProfileStoryDefaultControls,
+  type PublicLecturerProfileStoryControls,
+} from '../../testing/public-event-story-fixtures';
 import { AttendancesApiService, type LecturerProfile, type LecturerProfileInput } from '../attendances/attendances-api.service';
 import { LecturerProfileComponent } from './lecturer-profile';
 
 type LecturerProfileStoryState = 'profile' | 'empty' | 'loading' | 'error';
 type SaveOutcome = 'success' | 'error';
 
-interface LecturerProfileStoryArgs {
+interface LecturerProfileStoryArgs extends PublicLecturerProfileStoryControls {
   state: LecturerProfileStoryState;
   saveOutcome: SaveOutcome;
-  publishGoogleUserPicture: boolean;
 }
 
 const defaultArgs: LecturerProfileStoryArgs = {
+  ...publicLecturerProfileStoryDefaultControls,
   state: 'profile',
   saveOutcome: 'success',
-  publishGoogleUserPicture: true,
 };
 
 const withLecturerProfileProviders: Decorator<LecturerProfileStoryArgs> = (story, context) =>
@@ -35,8 +39,8 @@ const withLecturerProfileProviders: Decorator<LecturerProfileStoryArgs> = (story
             sub: 'storybook-user',
             preferredUsername: 'storybook',
             claims: {
-              name: 'Ana Clara Silva',
-              picture: 'https://lh3.googleusercontent.com/a/storybook-user',
+              name: context.args.lecturerDisplayName,
+              picture: context.args.googleUserPicture,
             },
           }),
         },
@@ -62,7 +66,7 @@ const meta: Meta<LecturerProfileStoryArgs> = {
       control: 'select',
       options: ['success', 'error'],
     },
-    publishGoogleUserPicture: { control: 'boolean' },
+    ...publicLecturerProfileStoryControlArgTypes,
   },
   decorators: [withLecturerProfileProviders],
   parameters: {
@@ -94,6 +98,21 @@ export const EmptyProfile: Story = {
     await expect(await canvas.findByText(/ainda não criou seu perfil/i)).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: /^editar$/i }));
     await expect(await canvas.findByLabelText(/nome de exibição/i)).toHaveValue('Ana Clara Silva');
+  },
+};
+
+export const MinimalPublicData: Story = {
+  args: {
+    lecturerBiography: '',
+    lecturerEmail: '',
+    lecturerWhatsapp: '',
+    publishGoogleUserPicture: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Seu perfil público')).toBeVisible();
+    await expect(canvas.queryByRole('link', { name: /ana@example.com/i })).toBeNull();
+    await expect(canvas.queryByRole('link', { name: /whatsapp/i })).toBeNull();
   },
 };
 
@@ -159,7 +178,7 @@ function createAttendancesApiMock(args: LecturerProfileStoryArgs): Pick<
 }
 
 function buildLecturerProfile(args: LecturerProfileStoryArgs): LecturerProfile {
-  const profile = createStoryPublicLecturerProfile(0);
+  const profile = createPublicStoryLecturerProfileFromControls(args);
   return {
     id: profile.id,
     personId: 'person-lecturer-story',

@@ -77,7 +77,7 @@ describe('shared permissions contract', () => {
         }),
         expect.objectContaining({
           type: 'event-form',
-          resourceIcon: 'dynamic_form',
+          resourceIcon: 'list_alt',
           actions: [expect.objectContaining({ scope: 'publish', icon: 'campaign' })],
         }),
         expect.objectContaining({

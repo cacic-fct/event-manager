@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
-import { provideRouter, RouteReuseStrategy } from '@angular/router';
+import { provideRouter, RouteReuseStrategy, TitleStrategy } from '@angular/router';
 import { appRoutes } from './app.routes';
 import { provideClientHydration, withEventReplay, withNoIncrementalHydration } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -35,6 +35,7 @@ import { AppRouteReuseStrategy } from './tabs/reuse.strategy';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
 import { PUBLIC_FEATURE_FLAG_CONFIG, type PublicFeatureFlagConfig } from './feature-flags/public-feature-flag.config';
 import { TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS } from '@cacic-fct/shared-utils';
+import { PageTitleStrategy } from './shared/page-title-strategy';
 
 registerLocaleData(localePt);
 
@@ -118,6 +119,7 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(withEventReplay(), withNoIncrementalHydration()),
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
+    { provide: TitleStrategy, useClass: PageTitleStrategy },
     provideHttpClient(withInterceptors([authInterceptor])),
     provideCloudflareTurnstile({
       siteKey: turnstileSiteKey,

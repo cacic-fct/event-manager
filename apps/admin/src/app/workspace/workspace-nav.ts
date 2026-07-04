@@ -103,7 +103,7 @@ export const workspaceNavItems = [
     path: 'forms',
     label: 'Formulários',
     description: 'Crie formulários, vincule a eventos e acompanhe respostas.',
-    icon: 'dynamic_form',
+    icon: 'list_alt',
     group: 'Participação',
     helpLink: undefined,
   },
@@ -175,7 +175,8 @@ export const workspaceNavItems = [
     description: 'Consulte os acessos concedidos para este usuário.',
     icon: 'admin_panel_settings',
     group: 'Administração',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Permissões%20e%20recursos%20congelados',
+    helpLink:
+      'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Permissões%20e%20recursos%20congelados',
   },
   {
     kind: 'link',

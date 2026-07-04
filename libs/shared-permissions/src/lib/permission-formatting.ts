@@ -141,7 +141,7 @@ export function getPermissionResourceIcon(resource: string): string {
     case 'event-lecturer':
       return 'record_voice_over';
     case 'event-form':
-      return 'dynamic_form';
+      return 'list_alt';
     case 'frozen':
       return 'lock';
     case 'major-event':

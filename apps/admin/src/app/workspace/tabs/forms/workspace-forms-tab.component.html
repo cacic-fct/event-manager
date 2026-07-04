@@ -2,7 +2,10 @@
   <div class="tab-grid tab-grid-wide">
     <aside class="panel">
       <div class="panel-heading">
-        <form [formGroup]="workspace.filtersForm" class="filter-form" (submit)="$event.preventDefault(); workspace.loadForms()">
+        <form
+          [formGroup]="workspace.filtersForm"
+          class="filter-form"
+          (submit)="$event.preventDefault(); workspace.loadForms()">
           <mat-form-field>
             <mat-label>Buscar formulário</mat-label>
             <input matInput formControlName="query" />
@@ -29,7 +32,7 @@
             (click)="workspace.selectForm(form)"
             [class.selected-list-item]="workspace.selectedForm()?.id === form.id">
             <span matListItemTitle class="list-title">
-              <mat-icon>{{ form.publicationState === 'PUBLISHED' ? 'fact_check' : 'dynamic_form' }}</mat-icon>
+              <mat-icon>{{ form.publicationState === 'PUBLISHED' ? 'fact_check' : 'list_alt' }}</mat-icon>
               <span>{{ form.name }}</span>
             </span>
             <span matListItemLine>
@@ -218,7 +221,13 @@
                 @for (mode of responseModeOptions; track mode) {
                   <mat-option [value]="mode">
                     <span class="option-with-icon">
-                      <mat-icon>{{ mode === 'MULTIPLE_PER_TARGET' ? 'dynamic_feed' : mode === 'SINGLE_PER_FORM' ? 'done_all' : 'assignment_turned_in' }}</mat-icon>
+                      <mat-icon>{{
+                        mode === 'MULTIPLE_PER_TARGET'
+                          ? 'dynamic_feed'
+                          : mode === 'SINGLE_PER_FORM'
+                            ? 'done_all'
+                            : 'assignment_turned_in'
+                      }}</mat-icon>
                       <span>
                         <strong>{{ responseModeLabel(mode) }}</strong>
                         <small>{{ responseModeDescription(mode) }}</small>
@@ -272,7 +281,11 @@
               <article class="link-item">
                 <div class="link-item-heading">
                   <strong>{{ workspace.targetName(link) }}</strong>
-                  <button mat-icon-button type="button" matTooltip="Remover vínculo" (click)="workspace.removeLink(link.localId)">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Remover vínculo"
+                    (click)="workspace.removeLink(link.localId)">
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
@@ -280,7 +293,9 @@
                 <div class="field-grid">
                   <mat-form-field>
                     <mat-label>Tipo</mat-label>
-                    <mat-select [value]="link.targetType" (selectionChange)="workspace.updateLink(link.localId, { targetType: $event.value })">
+                    <mat-select
+                      [value]="link.targetType"
+                      (selectionChange)="workspace.updateLink(link.localId, { targetType: $event.value })">
                       <mat-option value="EVENT">Evento</mat-option>
                       <mat-option value="MAJOR_EVENT">Grande evento</mat-option>
                     </mat-select>
@@ -289,7 +304,9 @@
                   @if (link.targetType === 'EVENT') {
                     <mat-form-field>
                       <mat-label>Evento</mat-label>
-                      <mat-select [value]="link.eventId" (selectionChange)="workspace.updateLink(link.localId, { eventId: $event.value })">
+                      <mat-select
+                        [value]="link.eventId"
+                        (selectionChange)="workspace.updateLink(link.localId, { eventId: $event.value })">
                         @for (event of workspace.selectableEvents(); track event.id) {
                           <mat-option [value]="event.id">{{ event.name }}</mat-option>
                         }
@@ -310,7 +327,9 @@
 
                   <mat-form-field>
                     <mat-label>Quem pode responder</mat-label>
-                    <mat-select [value]="link.audience" (selectionChange)="workspace.updateLink(link.localId, { audience: $event.value })">
+                    <mat-select
+                      [value]="link.audience"
+                      (selectionChange)="workspace.updateLink(link.localId, { audience: $event.value })">
                       <mat-option value="SUBSCRIBERS">Inscritos</mat-option>
                       <mat-option value="ATTENDEES">Participantes com presença</mat-option>
                       <mat-option value="SUBSCRIBERS_OR_ATTENDEES">Inscritos ou presentes</mat-option>
@@ -399,9 +418,7 @@
         </mat-tab>
         <mat-tab label="Prévia">
           <div class="tab-panel">
-            <lib-event-form-renderer
-              [elements]="workspace.elements()"
-              submitLabel="Enviar respostas de teste" />
+            <lib-event-form-renderer [elements]="workspace.elements()" submitLabel="Enviar respostas de teste" />
           </div>
         </mat-tab>
         <mat-tab label="Resultados">

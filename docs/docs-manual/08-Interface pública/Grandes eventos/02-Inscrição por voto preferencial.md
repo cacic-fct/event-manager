@@ -6,6 +6,12 @@ A inscrição por voto preferencial é usada quando o sistema precisa alocar par
 
 Nesse modo, selecionar um evento não garante automaticamente a vaga naquele evento.
 
+:::warning[Aviso]
+
+O ministrante de um evento não deve se inscrever na própria atividade.
+
+:::
+
 ## Etapa de seleção
 
 Primeiro, o participante seleciona todos os eventos que gostaria de frequentar.
