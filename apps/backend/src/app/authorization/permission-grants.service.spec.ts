@@ -1,15 +1,52 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { EventManagerPermissionGrantScope } from '@prisma/client';
-import { Permission } from '@cacic-fct/shared-permissions';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  EventManagerPermissionGrantScope,
+} from '@prisma/client';
+import { EVENT_MANAGER_PERMISSION_CATALOG, Permission } from '@cacic-fct/shared-permissions';
 import { PermissionGrantsService } from './permission-grants.service';
 
 describe('PermissionGrantsService', () => {
   let prisma: ReturnType<typeof createPrisma>;
+  let auditLog: ReturnType<typeof createAuditLog>;
   let service: PermissionGrantsService;
 
   beforeEach(() => {
     prisma = createPrisma();
-    service = new PermissionGrantsService(prisma as never);
+    auditLog = createAuditLog();
+    service = new PermissionGrantsService(prisma as never, auditLog as never);
+  });
+
+  it('accepts every shared permission catalog entry as a global DB grant', async () => {
+    prisma.eventManagerPermissionGrant.create.mockImplementation(async (args: {
+      data: {
+        permission: Permission;
+        scope: EventManagerPermissionGrantScope;
+      };
+    }) => grantRecord({
+      permission: args.data.permission,
+      scope: args.data.scope,
+    }));
+
+    for (const permission of EVENT_MANAGER_PERMISSION_CATALOG) {
+      await expect(
+        service.createGrant({
+          userId: 'user-1',
+          permission,
+          scope: EventManagerPermissionGrantScope.GLOBAL,
+        }),
+      ).resolves.toEqual(
+        expect.objectContaining({
+          permission,
+          scope: EventManagerPermissionGrantScope.GLOBAL,
+        }),
+      );
+    }
+
+    expect(prisma.eventManagerPermissionGrant.create).toHaveBeenCalledTimes(
+      EVENT_MANAGER_PERMISSION_CATALOG.length,
+    );
   });
 
   it('creates a global grant from the shared catalog', async () => {
@@ -229,6 +266,27 @@ describe('PermissionGrantsService', () => {
     );
   });
 
+  it('returns an existing duplicate grant when the validity window matches', async () => {
+    const validUntil = new Date('2099-01-01T12:00:00.000Z');
+    prisma.eventManagerPermissionGrant.findFirst.mockResolvedValue(grantRecord({
+      permission: Permission.Person.Read,
+      scope: EventManagerPermissionGrantScope.GLOBAL,
+      validUntil,
+    }));
+
+    await expect(
+      service.createGrant({
+        userId: 'user-1',
+        permission: Permission.Person.Read,
+        scope: EventManagerPermissionGrantScope.GLOBAL,
+        validUntil,
+      }),
+    ).resolves.toEqual(expect.objectContaining({ validUntil }));
+
+    expect(prisma.eventManagerPermissionGrant.create).not.toHaveBeenCalled();
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
   it('rejects validity windows where the end is not after the start', async () => {
     await expect(
       service.createGrant({
@@ -256,6 +314,89 @@ describe('PermissionGrantsService', () => {
         validUntil: new Date('2099-02-01T12:00:00.000Z'),
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('records scoped audit metadata when creating a grant', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.eventManagerPermissionGrant.create.mockResolvedValue(
+      grantRecord({
+        permission: Permission.Receipt.Read,
+        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+        majorEventName: 'CACiC',
+      }),
+    );
+
+    await service.createGrant({
+      userId: 'user-1',
+      permission: Permission.Receipt.Read,
+      scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+      majorEventId: 'major-1',
+    }, 'actor-1');
+
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.PERMISSION_GRANT,
+        entityId: 'grant-1',
+        entityLabel: 'receipt#read · MAJOR_EVENT · CACiC',
+        operation: AuditLogOperation.CREATE,
+        actor: expect.objectContaining({
+          id: 'actor-1',
+          name: 'actor-1',
+        }),
+        scope: {
+          permission: Permission.PermissionGrant.Create,
+          eventId: null,
+          majorEventId: 'major-1',
+          eventGroupId: null,
+        },
+      }),
+      prisma,
+    );
+  });
+
+  it('lists major-event and event-group targets with bounded result sizes', async () => {
+    const firstStartDate = new Date('2026-07-01T12:00:00.000Z');
+    const lastEndDate = new Date('2026-07-03T12:00:00.000Z');
+    prisma.majorEvent.findMany.mockResolvedValue([
+      {
+        id: 'major-1',
+        name: 'SECOMPP',
+        emoji: 'rocket',
+        startDate: firstStartDate,
+        endDate: lastEndDate,
+      },
+    ]);
+    prisma.eventGroup.findMany.mockResolvedValue([
+      {
+        id: 'group-1',
+        name: 'Minicursos',
+        emoji: null,
+        events: [
+          { startDate: firstStartDate, endDate: new Date('2026-07-02T12:00:00.000Z') },
+          { startDate: new Date('2026-07-02T12:00:00.000Z'), endDate: lastEndDate },
+        ],
+      },
+    ]);
+
+    await expect(service.listGrantTargets(EventManagerPermissionGrantScope.MAJOR_EVENT, 9999)).resolves.toEqual([
+      expect.objectContaining({
+        id: 'major-1',
+        label: 'SECOMPP',
+        description: 'Grande evento',
+      }),
+    ]);
+    await expect(service.listGrantTargets(EventManagerPermissionGrantScope.EVENT_GROUP, 0)).resolves.toEqual([
+      expect.objectContaining({
+        id: 'group-1',
+        label: 'Minicursos',
+        startDate: firstStartDate,
+        endDate: lastEndDate,
+      }),
+    ]);
+
+    expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 500 }));
+    expect(prisma.eventGroup.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 1 }));
   });
 
   it('rejects scoped grants for deleted or missing targets', async () => {
@@ -434,6 +575,12 @@ function createPrisma() {
   };
   prisma.$transaction.mockImplementation(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation(prisma));
   return prisma;
+}
+
+function createAuditLog() {
+  return {
+    record: jest.fn().mockResolvedValue(undefined),
+  };
 }
 
 function grantRecord(input: {

@@ -1,6 +1,10 @@
 import { ForbiddenException } from '@nestjs/common';
 import { CertificateScope, EventManagerPermissionGrantScope } from '@prisma/client';
-import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
+import {
+  EVENT_MANAGER_PERMISSION_CATALOG,
+  EventManagerKeycloakRole,
+  Permission,
+} from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from './authorization-policy.service';
 
@@ -28,6 +32,13 @@ describe('AuthorizationPolicyService', () => {
     await expect(
       service.assertPermissions(user([EventManagerKeycloakRole.SuperAdmin]), [Permission.Event.Delete]),
     ).resolves.toBeUndefined();
+    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+  });
+
+  it('returns the full DB permission catalog for super admins without querying grants', async () => {
+    await expect(service.grantedPermissionSet(user([EventManagerKeycloakRole.SuperAdmin]))).resolves.toEqual(
+      new Set(EVENT_MANAGER_PERMISSION_CATALOG),
+    );
     expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
   });
 
@@ -102,6 +113,36 @@ describe('AuthorizationPolicyService', () => {
         Permission.PermissionGrant.Read,
       ]),
     ).resolves.toEqual([Permission.PermissionGrant.Read]);
+  });
+
+  it('builds the effective permission set from active DB grants only', async () => {
+    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+      grant({
+        permission: Permission.Event.Read,
+        scope: EventManagerPermissionGrantScope.EVENT,
+        eventId: 'event-1',
+      }),
+      grant({
+        permission: Permission.PermissionGrant.Update,
+        scope: EventManagerPermissionGrantScope.EVENT,
+        eventId: 'event-1',
+      }),
+      grant({
+        permission: Permission.PermissionGrant.Read,
+        scope: EventManagerPermissionGrantScope.GLOBAL,
+      }),
+      {
+        permission: 'unknown#permission',
+        scope: EventManagerPermissionGrantScope.GLOBAL,
+        eventId: null,
+        majorEventId: null,
+        eventGroupId: null,
+      },
+    ]);
+
+    await expect(service.grantedPermissionSet(user([EventManagerKeycloakRole.Access]))).resolves.toEqual(
+      new Set([Permission.Event.Read, Permission.PermissionGrant.Read]),
+    );
   });
 
   it('matches major-event scoped grants through an event context', async () => {

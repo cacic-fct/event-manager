@@ -1,13 +1,24 @@
 import axios from 'axios';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { EventManagerPermissionGrantScope, PrismaClient } from '@prisma/client';
 
 const describeKeycloak = process.env.KEYCLOAK_BACKED_E2E === 'true' ? describe : describe.skip;
 const keycloakRealmUrl = process.env.KEYCLOAK_REALM_URL ?? 'http://localhost:18080/realms/cacic-sso';
 const backendHost = process.env.HOST ?? 'localhost';
 const backendPort = process.env.PORT ?? '3000';
+const permissionGrantE2eActorId = 'backend-e2e-permission-evaluation';
 
 describeKeycloak('Keycloak-backed authentication', () => {
+  let prisma: PrismaClient;
+
   beforeAll(async () => {
     await waitForKeycloak();
+    prisma = createPrismaClient();
+  });
+
+  afterAll(async () => {
+    await prisma?.$disconnect();
   });
 
   it('redirects OAuth login to the imported test realm without a development IdP hint', async () => {
@@ -73,6 +84,88 @@ describeKeycloak('Keycloak-backed authentication', () => {
         roles: expect.arrayContaining(['access']),
       }),
     );
+  });
+
+  it('evaluates permissions from persisted Event Manager DB grants for session users', async () => {
+    const loginResponse = await axios.post(
+      '/api/auth/password-login',
+      {
+        email: 'aluno@unesp.br',
+        password: '1',
+      },
+      {
+        validateStatus: () => true,
+      },
+    );
+
+    expect(loginResponse.status).toBe(201);
+    const sessionCookie = readSessionCookie(loginResponse.headers['set-cookie']);
+    const userId = loginResponse.data?.user?.sub;
+    if (typeof userId !== 'string' || !userId) {
+      throw new Error('Expected password login to expose the Keycloak subject.');
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await prisma.user.upsert({
+      where: {
+        id: userId,
+      },
+      create: {
+        id: userId,
+        email: `${sanitizeEmailLocalPart(userId)}@permission-e2e.local`,
+        name: 'Permission E2E User',
+      },
+      update: {},
+    });
+    await cleanupPermissionEvaluationGrants(prisma, userId);
+
+    try {
+      await prisma.eventManagerPermissionGrant.create({
+        data: {
+          userId,
+          permission: Permission.Event.Create,
+          scope: EventManagerPermissionGrantScope.GLOBAL,
+          createdById: permissionGrantE2eActorId,
+          updatedById: permissionGrantE2eActorId,
+        },
+      });
+
+      const response = await axios.post(
+        '/api/auth/permissions/evaluate',
+        {
+          permissions: [
+            Permission.Event.Create,
+            Permission.Event.Delete,
+            Permission.Event.Create,
+            'not-a-permission',
+          ],
+        },
+        {
+          headers: {
+            Cookie: sessionCookie,
+          },
+          validateStatus: () => true,
+        },
+      );
+
+      expect([200, 201]).toContain(response.status);
+      expect(response.data).toEqual({
+        permissions: [Permission.Event.Create],
+      });
+    } finally {
+      await cleanupPermissionEvaluationGrants(prisma, userId);
+      if (!existingUser) {
+        await prisma.user.delete({ where: { id: userId } }).catch(() => undefined);
+      }
+    }
   });
 
   it('accepts imported Account Manager service-account tokens for Event Manager M2M roles only', async () => {
@@ -143,6 +236,30 @@ async function waitForKeycloak(): Promise<void> {
       lastError instanceof Error ? lastError.message : String(lastError)
     }`,
   );
+}
+
+function createPrismaClient(): PrismaClient {
+  const connectionString =
+    process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/postgres';
+  return new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString,
+    }),
+  });
+}
+
+async function cleanupPermissionEvaluationGrants(prisma: PrismaClient, userId: string): Promise<void> {
+  await prisma.eventManagerPermissionGrant.deleteMany({
+    where: {
+      userId,
+      createdById: permissionGrantE2eActorId,
+    },
+  });
+}
+
+function sanitizeEmailLocalPart(value: string): string {
+  const localPart = value.toLowerCase().replace(/[^a-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '');
+  return localPart || 'permission-e2e-user';
 }
 
 async function requestClientCredentialsToken(clientId: string, clientSecret: string): Promise<string> {
