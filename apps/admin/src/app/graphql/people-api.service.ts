@@ -20,6 +20,8 @@ type PeopleFilters = {
   identityDocument?: string;
   skip?: number;
   take?: number;
+  permissionGrantFilter?: 'ACTIVE' | 'ANY';
+  hasLecturerProfile?: boolean;
 };
 
 @Injectable({ providedIn: 'root' })
@@ -37,6 +39,8 @@ export class PeopleApiService {
           $identityDocument: String
           $skip: Int
           $take: Int
+          $permissionGrantFilter: String
+          $hasLecturerProfile: Boolean
         ) {
           people(
             query: $query
@@ -46,6 +50,8 @@ export class PeopleApiService {
             identityDocument: $identityDocument
             skip: $skip
             take: $take
+            permissionGrantFilter: $permissionGrantFilter
+            hasLecturerProfile: $hasLecturerProfile
           ) {
             ${PERSON_DETAIL_FIELDS}
           }
@@ -66,6 +72,8 @@ export class PeopleApiService {
           $identityDocument: String
           $skip: Int
           $take: Int
+          $permissionGrantFilter: String
+          $hasLecturerProfile: Boolean
         ) {
           people(
             query: $query
@@ -75,6 +83,8 @@ export class PeopleApiService {
             identityDocument: $identityDocument
             skip: $skip
             take: $take
+            permissionGrantFilter: $permissionGrantFilter
+            hasLecturerProfile: $hasLecturerProfile
           ) {
             ${PERSON_SEARCH_FIELDS}
           }

@@ -33,6 +33,19 @@ h1 {
   margin: 0;
 }
 
+h2,
+h3 {
+  margin: 0;
+}
+
+h2 {
+  font: var(--mat-sys-title-large);
+}
+
+h3 {
+  font: var(--mat-sys-title-medium);
+}
+
 .empty-section {
   align-items: center;
   color: var(--mat-sys-on-surface-variant);
@@ -41,4 +54,62 @@ h1 {
   justify-items: center;
   min-height: 180px;
   text-align: center;
+}
+
+.results-section {
+  display: grid;
+  gap: 16px;
+}
+
+.results-section > header {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding-top: 20px;
+}
+
+.results-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+article {
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+article header {
+  display: grid;
+  gap: 4px;
+}
+
+.bucket-list,
+.text-answers {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.bucket-list {
+  list-style: none;
+}
+
+.bucket-list li {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.text-answers {
+  padding-left: 20px;
+}
+
+.empty-text,
+article span {
+  color: var(--mat-sys-on-surface-variant);
 }

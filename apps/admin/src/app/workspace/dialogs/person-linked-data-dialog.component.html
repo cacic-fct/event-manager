@@ -30,7 +30,7 @@
   } @else if (summary()?.hasLinkedData) {
     <mat-accordion class="group-list" aria-label="Recursos vinculados" multi>
       @for (group of summary()?.groups; track group.type) {
-        <mat-expansion-panel class="resource-group" (opened)="ensureGroupLoaded(group.type)">
+        <mat-expansion-panel class="resource-group" (expandedChange)="onGroupExpanded(group, $event)">
           <mat-expansion-panel-header>
             <mat-panel-title>
               <span class="group-icon">
@@ -43,76 +43,78 @@
             </mat-panel-title>
           </mat-expansion-panel-header>
 
-          @let state = groupPage(group.type);
-          @if (state.loading) {
-            <mat-progress-bar mode="indeterminate" />
-          }
+          <div class="resource-group-body">
+            @let state = groupPage(group.type);
+            @if (state.loading) {
+              <mat-progress-bar mode="indeterminate" />
+            }
 
-          @if (state.error) {
-            <div class="panel-state" role="alert">
-              <mat-icon>error</mat-icon>
-              <span>{{ state.error }}</span>
-              <button mat-stroked-button type="button" (click)="loadGroup(group.type, state.skip)">
-                <mat-icon>refresh</mat-icon>
-                Tentar novamente
-              </button>
-            </div>
-          } @else if (state.page; as page) {
-            <div class="group-toolbar">
-              <strong>{{ rangeStart(page) }}-{{ rangeEnd(page) }} de {{ page.total }}</strong>
-              <div class="pagination-actions">
-                <button
-                  matIconButton
-                  type="button"
-                  aria-label="Página anterior"
-                  matTooltip="Página anterior"
-                  [disabled]="!canGoPrevious(group.type)"
-                  (click)="previousPage(group.type)">
-                  <mat-icon>chevron_left</mat-icon>
-                </button>
-                <button
-                  matIconButton
-                  type="button"
-                  aria-label="Próxima página"
-                  matTooltip="Próxima página"
-                  [disabled]="!canGoNext(group.type)"
-                  (click)="nextPage(group.type)">
-                  <mat-icon>chevron_right</mat-icon>
+            @if (state.error) {
+              <div class="panel-state" role="alert">
+                <mat-icon>error</mat-icon>
+                <span>{{ state.error }}</span>
+                <button mat-stroked-button type="button" (click)="loadGroup(group.type, state.skip)">
+                  <mat-icon>refresh</mat-icon>
+                  Tentar novamente
                 </button>
               </div>
-            </div>
-
-            <div class="resource-list">
-              @for (item of page.items; track item.id) {
-                <div class="resource-row">
-                  <div class="resource-copy">
-                    <strong>{{ item.label }}</strong>
-                    <span>{{ resourceDescription(item) }}</span>
-                  </div>
-
-                  <div class="resource-meta">
-                    @if (item.status) {
-                      <span class="status-chip">{{ item.status }}</span>
-                    }
-                    @if (item.occurredAt) {
-                      <time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'short' }}</time>
-                    }
-                    @if (item.route) {
-                      <a mat-stroked-button [routerLink]="item.route" [mat-dialog-close]="false">
-                        <mat-icon>open_in_new</mat-icon>
-                        Abrir
-                      </a>
-                    }
-                  </div>
+            } @else if (state.page; as page) {
+              <div class="group-toolbar">
+                <strong>{{ rangeStart(page) }}-{{ rangeEnd(page) }} de {{ page.total }}</strong>
+                <div class="pagination-actions">
+                  <button
+                    matIconButton
+                    type="button"
+                    aria-label="Página anterior"
+                    matTooltip="Página anterior"
+                    [disabled]="!canGoPrevious(group.type)"
+                    (click)="previousPage(group.type)">
+                    <mat-icon>chevron_left</mat-icon>
+                  </button>
+                  <button
+                    matIconButton
+                    type="button"
+                    aria-label="Próxima página"
+                    matTooltip="Próxima página"
+                    [disabled]="!canGoNext(group.type)"
+                    (click)="nextPage(group.type)">
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
                 </div>
-              } @empty {
-                <div class="panel-state">
-                  <mat-icon>link_off</mat-icon>
-                  <span>Nenhum registro nesta página.</span>
-                </div>
-              }
-            </div>
-          }
+              </div>
+
+              <div class="resource-list">
+                @for (item of page.items; track item.id) {
+                  <div class="resource-row">
+                    <div class="resource-copy">
+                      <strong>{{ item.label }}</strong>
+                      <span>{{ resourceDescription(item) }}</span>
+                    </div>
+
+                    <div class="resource-meta">
+                      @if (item.status) {
+                        <span class="status-chip">{{ item.status }}</span>
+                      }
+                      @if (item.occurredAt) {
+                        <time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'short' }}</time>
+                      }
+                      @if (item.route) {
+                        <a mat-stroked-button [routerLink]="item.route" [mat-dialog-close]="false">
+                          <mat-icon>open_in_new</mat-icon>
+                          Abrir
+                        </a>
+                      }
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="panel-state">
+                    <mat-icon>link_off</mat-icon>
+                    <span>Nenhum registro nesta página.</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
         </mat-expansion-panel>
       }
     </mat-accordion>

@@ -246,14 +246,14 @@
 
             <mat-checkbox
               formControlName="resultsPublic"
-              matTooltip="Visível para administradores, ministrantes do evento e pessoas inscritas ou presentes no evento vinculado.">
-              Resultados visíveis para público autorizado
+              matTooltip="Permite que o público autorizado veja resultados. Sem resultados ao vivo, eles aparecem só após o encerramento.">
+              Publicar resultados para público autorizado
             </mat-checkbox>
             <mat-checkbox
               formControlName="resultsLive"
               [disabled]="!workspace.form.controls.resultsPublic.value"
-              matTooltip="Mantém a tela de resultados aberta recebendo novas respostas sem atualizar a página.">
-              Atualizar resultados publicados automaticamente
+              matTooltip="Mostra os resultados antes do encerramento do formulário e mantém a página pública atualizada em tempo real.">
+              Resultados ao vivo
             </mat-checkbox>
           </div>
         </section>

@@ -8,6 +8,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import {
+  BadRequestException,
   ConflictException,
   Logger,
   NotFoundException,
@@ -34,6 +35,8 @@ type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
   request?: { user?: AuthenticatedUser };
 };
+
+type PermissionGrantFilter = 'ACTIVE' | 'ANY';
 
 const PERSON_AUDIT_SELECT = {
   id: true,
@@ -74,6 +77,9 @@ export class PeopleResolver {
     identityDocument?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('permissionGrantFilter', { type: () => String, nullable: true })
+    permissionGrantFilter?: string,
+    @Args('hasLecturerProfile', { type: () => Boolean, nullable: true }) hasLecturerProfile?: boolean,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.PeopleWhereInput = {
@@ -96,10 +102,37 @@ export class PeopleResolver {
       where.identityDocument = identityDocument;
     }
 
+    const normalizedPermissionGrantFilter = this.normalizePermissionGrantFilter(permissionGrantFilter);
+    if (normalizedPermissionGrantFilter) {
+      const permissionGrantWhere = this.buildPermissionGrantWhere(normalizedPermissionGrantFilter);
+      this.addPeopleWhereCondition(where, {
+        OR: [
+          {
+            eventManagerPermissionGrants: {
+              some: permissionGrantWhere,
+            },
+          },
+          {
+            user: {
+              is: {
+                eventManagerPermissionGrants: {
+                  some: permissionGrantWhere,
+                },
+              },
+            },
+          },
+        ],
+      });
+    }
+
+    if (hasLecturerProfile) {
+      where.lecturerProfile = { isNot: null };
+    }
+
     const normalizedQuery = query?.trim();
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled()) {
+      if (!normalizedPermissionGrantFilter && !hasLecturerProfile && this.typesenseSearch.isEnabled()) {
         const searchResult = await this.typesenseSearch.searchPeople(
           normalizedQuery,
           pagination.skip + pagination.take,
@@ -154,6 +187,37 @@ export class PeopleResolver {
           (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
       )
       .slice(pagination.skip, pagination.skip + pagination.take);
+  }
+
+  private buildPermissionGrantWhere(filter: PermissionGrantFilter): Prisma.EventManagerPermissionGrantWhereInput {
+    const where: Prisma.EventManagerPermissionGrantWhereInput = {
+      deletedAt: null,
+    };
+
+    if (filter === 'ACTIVE') {
+      const now = new Date();
+      where.OR = [{ validFrom: null }, { validFrom: { lte: now } }];
+      where.AND = [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }];
+    }
+
+    return where;
+  }
+
+  private normalizePermissionGrantFilter(filter: string | null | undefined): PermissionGrantFilter | null {
+    if (!filter) {
+      return null;
+    }
+
+    if (filter === 'ACTIVE' || filter === 'ANY') {
+      return filter;
+    }
+
+    throw new BadRequestException(`Invalid permission grant filter: ${filter}.`);
+  }
+
+  private addPeopleWhereCondition(where: Prisma.PeopleWhereInput, condition: Prisma.PeopleWhereInput): void {
+    const existingConditions = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
+    where.AND = [...existingConditions, condition];
   }
 
   @Query(() => Person, { name: 'person' })

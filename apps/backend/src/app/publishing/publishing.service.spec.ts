@@ -167,6 +167,68 @@ describe('PublicationService', () => {
     });
   });
 
+  it('nests searched child events under contextual parents', async () => {
+    const { prisma, service } = createService();
+    const event = {
+      id: 'event-1',
+      name: 'Angular avançado',
+      publiclyVisible: true,
+      publicationState: PublicationState.PUBLISHED,
+      scheduledPublishAt: null,
+      publishedAt: new Date('2026-06-25T10:00:00.000Z'),
+      unpublishedAt: null,
+      majorEventId: 'major-1',
+      eventGroupId: 'group-1',
+      majorEvent: {
+        id: 'major-1',
+        name: 'SECOMPP',
+      },
+      eventGroup: {
+        id: 'group-1',
+        name: 'Workshops',
+        deletedAt: null,
+      },
+    };
+    prisma.majorEvent.count.mockResolvedValue(0);
+    prisma.eventGroup.count.mockResolvedValue(0);
+    prisma.event.count.mockResolvedValue(1);
+    prisma.event.findMany
+      .mockResolvedValueOnce([event])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([event]);
+    prisma.majorEvent.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'major-1',
+          name: 'SECOMPP',
+          publicationState: PublicationState.PUBLISHED,
+          scheduledPublishAt: null,
+          publishedAt: new Date('2026-06-24T10:00:00.000Z'),
+          unpublishedAt: null,
+          _count: { events: 1 },
+        },
+      ]);
+
+    await expect(
+      service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never, { query: 'Angular' }),
+    ).resolves.toMatchObject({
+      totalCount: 1,
+      tree: [
+        {
+          id: 'major-1',
+          children: [
+            {
+              id: 'group-1',
+              children: [{ id: 'event-1' }],
+            },
+          ],
+        },
+      ],
+      items: [{ id: 'event-1' }],
+    });
+  });
+
   it('paginates publication workspace sections without loading every target', async () => {
     const { prisma, service } = createService();
     prisma.majorEvent.count.mockResolvedValue(60);

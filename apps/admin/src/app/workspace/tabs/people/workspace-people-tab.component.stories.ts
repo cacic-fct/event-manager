@@ -187,10 +187,32 @@ export const DeletablePersonWithoutLinks: Story = {
 function graphqlData(query: string, variables: Record<string, unknown>) {
   if (query.includes('ListPeople') || query.includes('ListPeopleSummaries')) {
     const search = typeof variables['query'] === 'string' ? variables['query'].toLocaleLowerCase('pt-BR') : '';
+    const permissionGrantFilter = variables['permissionGrantFilter'];
+    const hasLecturerProfile = variables['hasLecturerProfile'] === true;
+    const people = activeData.people.filter((person) => {
+      if (search && !person.name.toLocaleLowerCase('pt-BR').includes(search)) {
+        return false;
+      }
+
+      if (hasLecturerProfile && !person.lecturerProfile) {
+        return false;
+      }
+
+      if (permissionGrantFilter === 'ACTIVE') {
+        return activeData.permissionGrants.some(
+          (grantItem) => grantItem.personId === person.id && isActiveGrant(grantItem),
+        );
+      }
+
+      if (permissionGrantFilter === 'ANY') {
+        return activeData.permissionGrants.some((grantItem) => grantItem.personId === person.id);
+      }
+
+      return true;
+    });
+
     return {
-      people: search
-        ? activeData.people.filter((person) => person.name.toLocaleLowerCase('pt-BR').includes(search))
-        : activeData.people,
+      people,
     };
   }
 
@@ -428,7 +450,23 @@ function person(index: number): Person {
     createdById: 'storybook-admin',
     updatedAt: isoDaysFromNow(-1),
     updatedById: 'storybook-admin',
-    lecturerProfile: null,
+    lecturerProfile:
+      index === 0
+        ? {
+            id: 'lecturer-profile-1',
+            personId: id,
+            displayName: `${firstName} ${lastName}`,
+            biography: 'Ministrante convidada pela comunidade CACiC.',
+            publishGoogleUserPicture: false,
+            googleUserPicture: null,
+            email: null,
+            whatsapp: null,
+            createdAt: isoDaysFromNow(-20),
+            createdById: 'storybook-admin',
+            updatedAt: isoDaysFromNow(-2),
+            updatedById: 'storybook-admin',
+          }
+        : null,
   };
 }
 
@@ -555,6 +593,13 @@ function buildCreatedGrant(input: Record<string, unknown>): EventManagerPermissi
     updatedAt: now.toISOString(),
     updatedById: 'storybook-admin',
   };
+}
+
+function isActiveGrant(grantItem: EventManagerPermissionGrant): boolean {
+  const validFrom = grantItem.validFrom ? new Date(grantItem.validFrom) : null;
+  const validUntil = grantItem.validUntil ? new Date(grantItem.validUntil) : null;
+
+  return (!validFrom || validFrom <= now) && (!validUntil || validUntil > now);
 }
 
 function isoDaysFromNow(days: number, hour = 12): string {

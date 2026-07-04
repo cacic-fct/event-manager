@@ -19,6 +19,17 @@
           <mat-icon matPrefix>search</mat-icon>
           <input matInput formControlName="query" />
         </mat-form-field>
+        <mat-form-field>
+          <mat-label>Permissões</mat-label>
+          <mat-select formControlName="permissionFilter">
+            @for (option of workspace.peoplePermissionSearchFilterOptions; track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-checkbox class="search-filter-checkbox" formControlName="hasLecturerProfile">
+          Com perfil de ministrante
+        </mat-checkbox>
         <button
           mat-flat-button
           type="button"

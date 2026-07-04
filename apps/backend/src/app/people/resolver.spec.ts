@@ -1,8 +1,98 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { PeopleResolver } from './resolver';
 
 describe('PeopleResolver', () => {
+  it('filters people by active permission grants and lecturer profile presence', async () => {
+    const prisma = createPrisma();
+    const resolver = createResolver(prisma);
+
+    await resolver.people(undefined, undefined, undefined, undefined, undefined, 0, 10, 'ACTIVE', true);
+
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          lecturerProfile: { isNot: null },
+          AND: [
+            {
+              OR: [
+                {
+                  eventManagerPermissionGrants: {
+                    some: expect.objectContaining({
+                      deletedAt: null,
+                      OR: [{ validFrom: null }, { validFrom: { lte: expect.any(Date) } }],
+                      AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: expect.any(Date) } }] }],
+                    }),
+                  },
+                },
+                {
+                  user: {
+                    is: {
+                      eventManagerPermissionGrants: {
+                        some: expect.objectContaining({
+                          deletedAt: null,
+                          OR: [{ validFrom: null }, { validFrom: { lte: expect.any(Date) } }],
+                          AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: expect.any(Date) } }] }],
+                        }),
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it('filters people by any non-deleted permission grants without active validity constraints', async () => {
+    const prisma = createPrisma();
+    const resolver = createResolver(prisma);
+
+    await resolver.people(undefined, undefined, undefined, undefined, undefined, 0, 10, 'ANY', false);
+
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              OR: [
+                {
+                  eventManagerPermissionGrants: {
+                    some: {
+                      deletedAt: null,
+                    },
+                  },
+                },
+                {
+                  user: {
+                    is: {
+                      eventManagerPermissionGrants: {
+                        some: {
+                          deletedAt: null,
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it('rejects invalid permission grant filters', async () => {
+    const resolver = createResolver(createPrisma());
+
+    await expect(
+      resolver.people(undefined, undefined, undefined, undefined, undefined, 0, 10, 'INVALID', false),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('lists event lecturer links as person linked data', async () => {
     const prisma = createPrisma();
     const resolver = createResolver(prisma);

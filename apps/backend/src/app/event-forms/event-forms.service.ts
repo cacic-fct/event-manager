@@ -8,7 +8,7 @@ import {
   SubmitEventFormResponseInput,
 } from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
-import { Observable } from 'rxjs';
+import { defer, Observable, switchMap } from 'rxjs';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { GraphqlContext } from '../current-user/selects';
 import { EventFormEditorService } from './event-form-editor.service';
@@ -163,6 +163,19 @@ export class EventFormsService {
 
   watchResults(formId: string): Observable<MessageEvent> {
     return this.resultEvents.watchResults(formId);
+  }
+
+  watchCurrentUserResults(
+    context: GraphqlContext,
+    input: TargetInput & { formId: string },
+  ): Observable<MessageEvent> {
+    return defer(() => this.results.assertCurrentUserLiveResultsAccess(context, input)).pipe(
+      switchMap(() => this.resultEvents.watchResults(input.formId)),
+      switchMap(async (event) => {
+        await this.results.assertCurrentUserLiveResultsAccess(context, input);
+        return event;
+      }),
+    );
   }
 
   async exportResultsCsv(formId: string, viewer: ResultViewer = 'admin'): Promise<string> {

@@ -44,16 +44,25 @@ export async function assertPersonCanViewPublicResults(
   personId: string,
   link: EventFormLinkRecord,
 ): Promise<void> {
-  const linkModel = toLinkModel(link);
+  if (await canPersonViewPublicResults(prisma, personId, toLinkModel(link))) {
+    return;
+  }
+
+  throw new ForbiddenException('Você não pode visualizar os resultados deste formulário.');
+}
+
+export async function canPersonViewPublicResults(
+  prisma: PrismaService,
+  personId: string,
+  link: Pick<EventFormLinkModel, 'eventId' | 'majorEventId'>,
+): Promise<boolean> {
   const [isSubscriber, isAttendee, isLecturer] = await Promise.all([
-    isPersonSubscriber(prisma, personId, linkModel, {}),
-    isPersonAttendee(prisma, personId, linkModel),
-    isPersonLecturerForLink(prisma, personId, linkModel),
+    isPersonSubscriber(prisma, personId, link, {}),
+    isPersonAttendee(prisma, personId, link),
+    isPersonLecturerForLink(prisma, personId, link),
   ]);
 
-  if (!isSubscriber && !isAttendee && !isLecturer) {
-    throw new ForbiddenException('Você não pode visualizar os resultados deste formulário.');
-  }
+  return isSubscriber || isAttendee || isLecturer;
 }
 
 export async function assertPersonIsEventLecturer(

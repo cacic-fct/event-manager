@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 import {
   type EventFormTargetType,
   type GraphqlResponse,
@@ -84,6 +84,7 @@ const PUBLIC_EVENT_FORM_RESULTS_FIELDS = `
 @Injectable({ providedIn: 'root' })
 export class PublicEventFormApiService {
   private readonly http = inject(HttpClient);
+  private readonly zone = inject(NgZone);
 
   listCurrentUserForms(input: {
     targetType: EventFormTargetType;
@@ -170,6 +171,38 @@ export class PublicEventFormApiService {
       `,
       input,
     ).pipe(map((data) => data.currentUserEventFormResults));
+  }
+
+  watchCurrentUserResults(input: {
+    formId: string;
+    targetType: EventFormTargetType;
+    eventId?: string | null;
+    majorEventId?: string | null;
+  }): Observable<void> {
+    return new Observable<void>((subscriber) => {
+      const params = new URLSearchParams({ targetType: input.targetType });
+      if (input.eventId) {
+        params.set('eventId', input.eventId);
+      }
+      if (input.majorEventId) {
+        params.set('majorEventId', input.majorEventId);
+      }
+
+      const source = new EventSource(
+        `/api/event-forms/${encodeURIComponent(input.formId)}/current-user-results/events?${params.toString()}`,
+        { withCredentials: true },
+      );
+
+      source.onmessage = () => {
+        this.zone.run(() => subscriber.next());
+      };
+      source.onerror = () => {
+        this.zone.run(() => subscriber.error(new Error('Não foi possível acompanhar os resultados em tempo real.')));
+        source.close();
+      };
+
+      return () => source.close();
+    });
   }
 
   submit(input: SubmitPublicEventFormResponseInput): Observable<PublicEventFormResponse> {

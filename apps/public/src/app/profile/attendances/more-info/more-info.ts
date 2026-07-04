@@ -17,6 +17,7 @@ import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import { CertificateDialog, CertificateDialogData } from '../my-attendances/certificate-dialog/certificate-dialog';
 import { EmojiService } from '../../../shared/emoji.service';
+import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from '../../../forms/event-form-availability';
 import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
 
 type DetailFormLink = {
@@ -25,6 +26,7 @@ type DetailFormLink = {
   targetType: EventFormTargetType;
   targetId: string;
   targetName: string;
+  mode?: 'answer' | 'results';
 };
 
 type DetailState =
@@ -273,19 +275,42 @@ export class MoreInfo {
         majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
       })
       .pipe(
-        map((forms) => forms.map((form) => this.toDetailFormLink(form, target))),
+        map((forms) =>
+          forms.flatMap((form) => {
+            const link = this.findFormTargetLink(form, target);
+            return link ? [this.toDetailFormLink(form, target, link)] : [];
+          }),
+        ),
         catchError(() => of([])),
       );
   }
 
-  private toDetailFormLink(form: PublicEventForm, target: DetailFormLink): DetailFormLink {
+  private toDetailFormLink(
+    form: PublicEventForm,
+    target: DetailFormLink,
+    link: PublicEventForm['links'][number],
+  ): DetailFormLink {
+    const canAnswer = isPublicFormLinkAvailable(link);
+    const resultsReleased = arePublicFormResultsReleased(form, link);
     return {
       formId: form.id,
       name: form.name,
       targetType: target.targetType,
       targetId: target.targetId,
       targetName: target.targetName,
+      mode: !canAnswer && resultsReleased ? 'results' : 'answer',
     };
+  }
+
+  private findFormTargetLink(form: PublicEventForm, target: DetailFormLink): PublicEventForm['links'][number] | null {
+    return (
+      form.links.find(
+        (link) =>
+          link.targetType === target.targetType &&
+          (link.eventId ?? null) === (target.targetType === 'EVENT' ? target.targetId : null) &&
+          (link.majorEventId ?? null) === (target.targetType === 'MAJOR_EVENT' ? target.targetId : null),
+      ) ?? null
+    );
   }
 
   private buildCachedDetail(cachedDetail: OfflineAttendanceDetail): DetailViewModel | null {

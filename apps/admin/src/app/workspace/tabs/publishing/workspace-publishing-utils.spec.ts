@@ -53,6 +53,20 @@ describe('workspace publishing utils', () => {
     ]);
   });
 
+  it('does not render a root item again when the same target is already nested under a parent', () => {
+    const duplicatedGroup = node('group', 'EVENT_GROUP', [node('event', 'EVENT')]);
+    const items = flattenPublicationListItems([
+      node('major-event', 'MAJOR_EVENT', [duplicatedGroup]),
+      duplicatedGroup,
+    ]);
+
+    expect(items.map(({ level, node }) => ({ level, targetType: node.targetType, id: node.id }))).toEqual([
+      { level: 0, targetType: 'MAJOR_EVENT', id: 'major-event' },
+      { level: 1, targetType: 'EVENT_GROUP', id: 'group' },
+      { level: 2, targetType: 'EVENT', id: 'event' },
+    ]);
+  });
+
   it('formats target metadata and child counts for the Portuguese UI', () => {
     expect(publicationTargetIcon('EVENT')).toBe('event');
     expect(publicationTargetIcon('EVENT_GROUP')).toBe('folder');

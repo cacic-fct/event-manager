@@ -13,6 +13,7 @@ import {
   ResultViewer,
   TargetInput,
 } from './event-form-records';
+import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
 import { isSameTarget } from './event-form-targets';
 
 export function toEventFormModel(form: EventFormRecord): EventFormModel {
@@ -48,20 +49,19 @@ export function toEventFormModel(form: EventFormRecord): EventFormModel {
 
 export function toPublicEventFormModel(form: EventFormModel, target?: TargetInput): EventFormModel {
   const links = target ? form.links.filter((link) => isSameTarget(link, target)) : form.links;
-  if (form.resultsPublic) {
-    return {
-      ...form,
-      links,
-    };
-  }
+  const visibleLinks = links.map((link) =>
+    arePublicResultsReleasedForLink(form, link)
+      ? link
+      : {
+          ...link,
+          responseCount: 0,
+        },
+  );
 
   return {
     ...form,
-    responseCount: 0,
-    links: links.map((link) => ({
-      ...link,
-      responseCount: 0,
-    })),
+    responseCount: visibleLinks.reduce((total, link) => total + link.responseCount, 0),
+    links: visibleLinks,
   };
 }
 

@@ -148,11 +148,27 @@ describe('EventFormsService', () => {
     expect(prisma.eventFormResponse.findMany).not.toHaveBeenCalled();
   });
 
-  it('shows public results to eligible subscribers', async () => {
+  it('does not expose open public results before close when live updates are disabled', async () => {
+    authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.eventForm.findFirst.mockResolvedValue(formRecord({ resultsPublic: true, resultsLive: false }));
+
+    await expect(
+      service.getCurrentUserResults(context, {
+        formId: 'form-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.eventFormResponse.findMany).not.toHaveBeenCalled();
+  });
+
+  it('shows live public results to eligible subscribers before the form closes', async () => {
     authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
     prisma.eventForm.findFirst.mockResolvedValue(
       formRecord({
         resultsPublic: true,
+        resultsLive: true,
         sigilo: EventFormSigilo.PUBLIC,
         links: [
           linkRecord({ id: 'link-1', eventId: 'event-1' }),
@@ -179,6 +195,37 @@ describe('EventFormsService', () => {
       eventId: 'event-1',
     });
     expect(currentUserContext.requireCurrentPerson).toHaveBeenCalledWith(context);
+  });
+
+  it('shows public results after the selected link closes even without live updates', async () => {
+    authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        resultsPublic: true,
+        resultsLive: false,
+        sigilo: EventFormSigilo.PUBLIC,
+        links: [
+          linkRecord({
+            id: 'link-1',
+            eventId: 'event-1',
+            availableUntil: new Date('2026-06-01T12:00:00.000Z'),
+          }),
+        ],
+      }),
+    );
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    prisma.eventAttendance.findFirst.mockResolvedValue(null);
+    prisma.eventLecturer.findUnique.mockResolvedValue(null);
+    prisma.eventFormResponse.findMany.mockResolvedValue([]);
+
+    const results = await service.getCurrentUserResults(context, {
+      formId: 'form-1',
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+    });
+
+    expect(results.responseCount).toBe(0);
+    expect(results.answersReleased).toBe(true);
   });
 
   it('lets admins view results regardless of the public-results toggle', async () => {
@@ -416,7 +463,7 @@ describe('EventFormsService', () => {
     );
   });
 
-  it('redacts response counts from current-user form listings until results are public', async () => {
+  it('redacts response counts from current-user form listings until results are released', async () => {
     prisma.eventForm.findMany.mockResolvedValue([formRecord({ responseCount: 7, linkResponseCount: 3 })]);
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
     prisma.eventAttendance.findFirst.mockResolvedValue(null);
@@ -429,6 +476,35 @@ describe('EventFormsService', () => {
     expect(forms).toHaveLength(1);
     expect(forms[0].responseCount).toBe(0);
     expect(forms[0].links[0].responseCount).toBe(0);
+  });
+
+  it('lists released public results for attendees who cannot answer the form audience', async () => {
+    prisma.eventForm.findMany.mockResolvedValue([
+      formRecord({
+        resultsPublic: true,
+        responseCount: 7,
+        linkResponseCount: 3,
+        links: [
+          linkRecord({
+            audience: EventFormAudience.SUBSCRIBERS,
+            availableUntil: new Date('2020-06-01T12:00:00.000Z'),
+            responseCount: 3,
+          }),
+        ],
+      }),
+    ]);
+    prisma.eventSubscription.findFirst.mockResolvedValue(null);
+    prisma.eventAttendance.findFirst.mockResolvedValue({ eventId: 'event-1' });
+    prisma.eventLecturer.findUnique.mockResolvedValue(null);
+
+    const forms = await service.listCurrentUserForms(context, {
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+    });
+
+    expect(forms).toHaveLength(1);
+    expect(forms[0].responseCount).toBe(3);
+    expect(forms[0].links[0].responseCount).toBe(3);
   });
 
   it('only exposes the matching target link in current-user form listings', async () => {
@@ -682,7 +758,9 @@ describe('EventFormsService', () => {
 
   it('returns redacted identities for partially secret public results', async () => {
     authorizationPolicy.assertPermissions.mockRejectedValue(new ForbiddenException());
-    prisma.eventForm.findFirst.mockResolvedValue(formRecord({ resultsPublic: true, sigilo: EventFormSigilo.PARTIALLY_SECRET }));
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({ resultsPublic: true, resultsLive: true, sigilo: EventFormSigilo.PARTIALLY_SECRET }),
+    );
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
     prisma.eventAttendance.findFirst.mockResolvedValue(null);
     prisma.eventLecturer.findUnique.mockResolvedValue(null);
@@ -709,6 +787,7 @@ describe('EventFormsService', () => {
     prisma.eventForm.findFirst.mockResolvedValue(
       formRecord({
         resultsPublic: true,
+        resultsLive: true,
         sigilo: EventFormSigilo.PUBLIC,
         responseMode: EventFormResponseMode.SINGLE_PER_FORM,
       }),
@@ -716,7 +795,9 @@ describe('EventFormsService', () => {
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
     prisma.eventAttendance.findFirst.mockResolvedValue(null);
     prisma.eventLecturer.findUnique.mockResolvedValue(null);
-    prisma.eventFormResponse.findMany.mockResolvedValue([responseRecord({ targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-1' })]);
+    prisma.eventFormResponse.findMany.mockResolvedValue([
+      responseRecord({ targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-1' }),
+    ]);
 
     await service.getCurrentUserResults(context, {
       formId: 'form-1',
@@ -970,6 +1051,7 @@ function formRecord(
     ownerEventId?: string | null;
     ownerMajorEventId?: string | null;
     resultsPublic?: boolean;
+    resultsLive?: boolean;
     sigilo?: EventFormSigilo;
     responseMode?: EventFormResponseMode;
     responseCount?: number;
@@ -1010,7 +1092,7 @@ function formRecord(
     sigilo: options.sigilo ?? EventFormSigilo.SECRET,
     responseMode: options.responseMode ?? EventFormResponseMode.ONE_PER_TARGET,
     resultsPublic: options.resultsPublic ?? false,
-    resultsLive: false,
+    resultsLive: options.resultsLive ?? false,
     publicationState: PublicationState.PUBLISHED,
     scheduledPublishAt: null,
     publishedAt: now,
@@ -1040,6 +1122,8 @@ function linkRecord(
     requiredInSubscriptionFlow?: boolean;
     notifyOnPublish?: boolean;
     allowLecturerManualPublish?: boolean;
+    availableFrom?: Date | null;
+    availableUntil?: Date | null;
     responseCount?: number;
   } = {},
 ) {
@@ -1077,8 +1161,8 @@ function linkRecord(
     requiredInSubscriptionFlow: options.requiredInSubscriptionFlow ?? false,
     enforceRequiredAnswers: true,
     displayOrder: 0,
-    availableFrom: null,
-    availableUntil: null,
+    availableFrom: options.availableFrom === undefined ? null : options.availableFrom,
+    availableUntil: options.availableUntil === undefined ? null : options.availableUntil,
     notifyOnPublish: options.notifyOnPublish ?? false,
     allowLecturerManualPublish: options.allowLecturerManualPublish ?? false,
     lastNotifiedAt: null,

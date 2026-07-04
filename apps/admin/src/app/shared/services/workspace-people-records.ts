@@ -6,7 +6,12 @@ import {
 } from '../../workspace/dialogs/person-linked-data-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { WORKSPACE_LIST_PAGE_SIZE, applyPagedResult, resetPagination } from '../list-pagination';
-import { WorkspacePeopleState } from './workspace-people-state';
+import { WorkspacePeopleState, type PeoplePermissionSearchFilter } from './workspace-people-state';
+
+type PeopleSearchApiFilters = {
+  permissionGrantFilter?: 'ACTIVE' | 'ANY';
+  hasLecturerProfile?: boolean;
+};
 
 export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
   async searchPeople(query: string, options?: { preserveSelection?: boolean }): Promise<void> {
@@ -230,6 +235,7 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
         query: normalizedQuery || undefined,
         skip: this.peoplePagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
         take: WORKSPACE_LIST_PAGE_SIZE + 1,
+        ...this.buildPeopleSearchApiFilters(),
       }),
     );
     this.people.set(applyPagedResult(people, this.peoplePagination));
@@ -308,6 +314,24 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
     const normalized = hasPlus ? `+${digits}` : digits.length === 10 || digits.length === 11 ? `+55${digits}` : `+${digits}`;
 
     return /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : value;
+  }
+
+  private buildPeopleSearchApiFilters(): PeopleSearchApiFilters {
+    return {
+      ...this.getPermissionGrantApiFilter(this.peopleSearchForm.controls.permissionFilter.value),
+      ...(this.peopleSearchForm.controls.hasLecturerProfile.value ? { hasLecturerProfile: true } : {}),
+    };
+  }
+
+  private getPermissionGrantApiFilter(filter: PeoplePermissionSearchFilter): PeopleSearchApiFilters {
+    switch (filter) {
+      case 'ACTIVE_GRANTS':
+        return { permissionGrantFilter: 'ACTIVE' };
+      case 'ANY_GRANTS':
+        return { permissionGrantFilter: 'ANY' };
+      default:
+        return {};
+    }
   }
 
   protected abstract resetPermissionGrantForm(options?: { clearDrafts?: boolean }): void;

@@ -8,8 +8,9 @@ import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildAccessibleFormWhere, isEmptyAccessibleTargets } from './event-form-access';
-import { assertPersonIsEventLecturer, canPersonAnswerLink } from './event-form-eligibility';
+import { assertPersonIsEventLecturer, canPersonAnswerLink, canPersonViewPublicResults } from './event-form-eligibility';
 import { toEventFormModel, toPublicEventFormModel } from './event-form-model.mapper';
+import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
 import { eventFormInclude, TargetInput } from './event-form-records';
 import { requireEventForm } from './event-form-service-support';
 import { findLinkForTarget, normalizeTarget } from './event-form-targets';
@@ -83,24 +84,62 @@ export class EventFormListingsService {
     return toEventFormModel(await requireEventForm(this.prisma, formId));
   }
 
-  async listFormsForTarget(input: TargetInput, options: { subscriptionFlowOnly?: boolean } = {}): Promise<EventFormModel[]> {
+  async listFormsForTarget(
+    input: TargetInput,
+    options: { subscriptionFlowOnly?: boolean; includeReleasedResults?: boolean } = {},
+  ): Promise<EventFormModel[]> {
     const target = normalizeTarget(input);
     const now = new Date();
+    const targetWhere =
+      target.targetType === EventFormTargetType.EVENT
+        ? { eventId: target.eventId }
+        : { majorEventId: target.majorEventId };
+    const activeLinkWhere = {
+      deletedAt: null,
+      ...targetWhere,
+      ...(options.subscriptionFlowOnly ? { insertInSubscriptionFlow: true } : {}),
+      OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
+      AND: [{ OR: [{ availableUntil: null }, { availableUntil: { gt: now } }] }],
+    } satisfies Prisma.EventFormLinkWhereInput;
+    const targetLinkWhere = {
+      deletedAt: null,
+      ...targetWhere,
+      ...(options.subscriptionFlowOnly ? { insertInSubscriptionFlow: true } : {}),
+    } satisfies Prisma.EventFormLinkWhereInput;
+    const linkAvailabilityWhere: Prisma.EventFormWhereInput = options.includeReleasedResults
+      ? {
+          OR: [
+            { links: { some: activeLinkWhere } },
+            {
+              resultsPublic: true,
+              OR: [
+                {
+                  links: {
+                    some: {
+                      ...targetLinkWhere,
+                      availableUntil: { lte: now },
+                    },
+                  },
+                },
+                {
+                  resultsLive: true,
+                  links: {
+                    some: {
+                      ...targetLinkWhere,
+                      OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        }
+      : { links: { some: activeLinkWhere } };
     const forms = await this.prisma.eventForm.findMany({
       where: {
         deletedAt: null,
         publicationState: PublicationState.PUBLISHED,
-        links: {
-          some: {
-            deletedAt: null,
-            ...(target.targetType === EventFormTargetType.EVENT
-              ? { eventId: target.eventId }
-              : { majorEventId: target.majorEventId }),
-            ...(options.subscriptionFlowOnly ? { insertInSubscriptionFlow: true } : {}),
-            OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
-            AND: [{ OR: [{ availableUntil: null }, { availableUntil: { gt: now } }] }],
-          },
-        },
+        ...linkAvailabilityWhere,
       },
       include: eventFormInclude,
       orderBy: [{ updatedAt: 'desc' }],
@@ -120,21 +159,40 @@ export class EventFormListingsService {
       return [];
     }
 
-    const forms = await this.listFormsForTarget(input, options);
+    const forms = await this.listFormsForTarget(input, {
+      ...options,
+      includeReleasedResults: options.subscriptionFlowOnly !== true,
+    });
     const eligible: EventFormModel[] = [];
     for (const form of forms) {
       const link = findLinkForTarget(form, input);
-      if (
-        link &&
-        (await canPersonAnswerLink(this.prisma, person.id, link, {
-          allowFutureSubscriber: Boolean(options.subscriptionFlowOnly),
-        }))
-      ) {
+      if (link && (await this.canListCurrentUserForm(person.id, form, link, options))) {
         eligible.push(toPublicEventFormModel(form, input));
       }
     }
 
     return eligible;
+  }
+
+  private async canListCurrentUserForm(
+    personId: string,
+    form: EventFormModel,
+    link: EventFormModel['links'][number],
+    options: { subscriptionFlowOnly?: boolean },
+  ): Promise<boolean> {
+    if (
+      await canPersonAnswerLink(this.prisma, personId, link, {
+        allowFutureSubscriber: Boolean(options.subscriptionFlowOnly),
+      })
+    ) {
+      return true;
+    }
+
+    return (
+      options.subscriptionFlowOnly !== true &&
+      arePublicResultsReleasedForLink(form, link) &&
+      (await canPersonViewPublicResults(this.prisma, personId, link))
+    );
   }
 
   async listLecturerForms(

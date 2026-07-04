@@ -142,6 +142,56 @@ describe('WorkspaceFormsService integration', () => {
     expect(service.selectedResults()?.responseCount).toBe(1);
   });
 
+  it('reloads selected results from the live result stream', async () => {
+    const restoreEventSource = installFakeEventSource();
+    const liveForm = createAdminEventForm({
+      id: 'form-1',
+      ownerEventId: 'event-1',
+      resultsPublic: true,
+      resultsLive: true,
+    });
+    formApi.listForms.mockReturnValue(of([liveForm]));
+    formApi.getForm.mockReturnValue(of(liveForm));
+
+    try {
+      await service.initialize();
+      await service.selectForm(liveForm);
+
+      const source = FakeEventSource.instances[0] as FakeEventSource;
+      expect(source.url).toBe('/api/event-forms/form-1/results/events');
+      expect(source.init).toEqual({ withCredentials: true });
+
+      formApi.results.mockClear();
+      source.emitMessage();
+      await new Promise((resolve) => setTimeout(() => resolve(undefined)));
+
+      expect(formApi.results).toHaveBeenCalledWith('form-1');
+    } finally {
+      restoreEventSource();
+    }
+  });
+
+  it('does not open a live result stream when live results are disabled', async () => {
+    const restoreEventSource = installFakeEventSource();
+    const publicForm = createAdminEventForm({
+      id: 'form-1',
+      ownerEventId: 'event-1',
+      resultsPublic: true,
+      resultsLive: false,
+    });
+    formApi.listForms.mockReturnValue(of([publicForm]));
+    formApi.getForm.mockReturnValue(of(publicForm));
+
+    try {
+      await service.initialize();
+      await service.selectForm(publicForm);
+
+      expect(FakeEventSource.instances).toHaveLength(0);
+    } finally {
+      restoreEventSource();
+    }
+  });
+
   it('clears stale selected editor state when the selected form disappears', async () => {
     await service.initialize();
     await service.selectForm(service.forms()[0]);
@@ -230,3 +280,41 @@ describe('WorkspaceFormsService integration', () => {
     });
   });
 });
+
+class FakeEventSource {
+  static instances: FakeEventSource[] = [];
+
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  readonly close = vi.fn();
+
+  constructor(
+    readonly url: string,
+    readonly init?: EventSourceInit,
+  ) {
+    FakeEventSource.instances.push(this);
+  }
+
+  emitMessage(): void {
+    this.onmessage?.({} as MessageEvent);
+  }
+}
+
+function installFakeEventSource(): () => void {
+  const previous = globalThis.EventSource;
+  FakeEventSource.instances = [];
+  Object.defineProperty(globalThis, 'EventSource', {
+    configurable: true,
+    value: FakeEventSource,
+    writable: true,
+  });
+
+  return () => {
+    FakeEventSource.instances = [];
+    Object.defineProperty(globalThis, 'EventSource', {
+      configurable: true,
+      value: previous,
+      writable: true,
+    });
+  };
+}

@@ -70,8 +70,8 @@
   <div class="actions form-actions" aria-label="Formulários vinculados">
     @for (formLink of currentState.formLinks; track formLink.formId + formLink.targetType + formLink.targetId) {
     <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
-      <mat-icon>list_alt</mat-icon>
-      {{ formLink.name }}
+      <mat-icon>{{ formLink.mode === 'results' ? 'bar_chart' : 'list_alt' }}</mat-icon>
+      {{ formLink.mode === 'results' ? 'Resultados: ' + formLink.name : formLink.name }}
     </a>
     }
   </div>

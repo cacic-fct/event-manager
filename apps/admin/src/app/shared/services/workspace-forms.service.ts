@@ -419,7 +419,7 @@ export class WorkspaceFormsService {
       resultsLive: form.resultsLive,
       scheduledPublishAt: form.scheduledPublishAt ? this.toLocalInput(form.scheduledPublishAt) : '',
     });
-    this.openResultsStream(form);
+    this.syncLiveResultsStream(form);
   }
 
   private clearSelectedForm(): void {
@@ -653,13 +653,15 @@ export class WorkspaceFormsService {
     this.snackbar.open(getErrorMessage(error, fallback), 'Fechar', { duration: 6000 });
   }
 
-  private openResultsStream(form: EventForm): void {
+  private syncLiveResultsStream(form: EventForm): void {
     this.closeResultsStream();
-    if (!form.resultsLive || typeof EventSource === 'undefined') {
+    if (!this.shouldStreamLiveResults(form)) {
       return;
     }
 
-    const source = new EventSource(`/api/event-forms/${encodeURIComponent(form.id)}/results/events`);
+    const source = new EventSource(`/api/event-forms/${encodeURIComponent(form.id)}/results/events`, {
+      withCredentials: true,
+    });
     source.onmessage = () => {
       void this.loadResults();
     };
@@ -670,6 +672,10 @@ export class WorkspaceFormsService {
       }
     };
     this.resultsEventSource = source;
+  }
+
+  private shouldStreamLiveResults(form: EventForm): boolean {
+    return form.resultsPublic && form.resultsLive && typeof EventSource !== 'undefined';
   }
 
   closeResultsStream(): void {

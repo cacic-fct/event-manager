@@ -13,6 +13,7 @@ import { firstValueFrom } from 'rxjs';
 import {
   PersonLinkedDataSummary,
   PersonLinkedResource,
+  PersonLinkedResourceGroup,
   PersonLinkedResourcePage,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { PeopleApiService } from '../../graphql/people-api.service';
@@ -134,10 +135,31 @@ export class PersonLinkedDataDialogComponent {
     }
   }
 
-  async ensureGroupLoaded(type: string): Promise<void> {
-    if (!this.groupPage(type).page && !this.groupPage(type).loading) {
-      await this.loadGroup(type, 0);
+  async onGroupExpanded(group: PersonLinkedResourceGroup, expanded: boolean): Promise<void> {
+    if (!expanded) {
+      return;
     }
+
+    await this.ensureGroupLoaded(group);
+  }
+
+  async ensureGroupLoaded(group: PersonLinkedResourceGroup): Promise<void> {
+    const state = this.groupPage(group.type);
+    if (state.page || state.loading) {
+      return;
+    }
+
+    if (group.items?.length) {
+      this.setGroupPage(group.type, {
+        loading: false,
+        error: null,
+        page: this.pageFromSummaryGroup(group),
+        skip: 0,
+      });
+      return;
+    }
+
+    await this.loadGroup(group.type, 0);
   }
 
   async previousPage(type: string): Promise<void> {
@@ -199,6 +221,20 @@ export class PersonLinkedDataDialogComponent {
       error: null,
       page: null,
       skip: 0,
+    };
+  }
+
+  private pageFromSummaryGroup(group: PersonLinkedResourceGroup): PersonLinkedResourcePage {
+    const items = group.items ?? [];
+    return {
+      personId: this.data.personId,
+      type: group.type,
+      label: group.label,
+      icon: group.icon,
+      items,
+      total: group.totalCount,
+      skip: 0,
+      take: Math.max(items.length, LINKED_RESOURCE_PAGE_SIZE),
     };
   }
 

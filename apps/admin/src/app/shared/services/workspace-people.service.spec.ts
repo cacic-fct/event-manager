@@ -103,6 +103,33 @@ describe('WorkspacePeopleService', () => {
     expect(service.people()).toEqual([selectedPerson]);
   });
 
+  it('passes permission and lecturer profile filters to people search', async () => {
+    service.peopleSearchForm.controls.permissionFilter.setValue('ACTIVE_GRANTS', { emitEvent: false });
+    service.peopleSearchForm.controls.hasLecturerProfile.setValue(true, { emitEvent: false });
+
+    await service.searchPeople('ada');
+
+    expect(peopleApi.listPeopleSummaries).toHaveBeenCalledWith({
+      query: 'ada',
+      skip: 0,
+      take: 51,
+      permissionGrantFilter: 'ACTIVE',
+      hasLecturerProfile: true,
+    });
+
+    service.peopleSearchForm.controls.permissionFilter.setValue('ANY_GRANTS', { emitEvent: false });
+    service.peopleSearchForm.controls.hasLecturerProfile.setValue(false, { emitEvent: false });
+
+    await service.searchPeople('ada');
+
+    expect(peopleApi.listPeopleSummaries).toHaveBeenLastCalledWith({
+      query: 'ada',
+      skip: 0,
+      take: 51,
+      permissionGrantFilter: 'ANY',
+    });
+  });
+
   it('creates people with normalized form values and refreshes the selected record', async () => {
     const createdPerson = createAdminPerson({
       id: 'created-person',

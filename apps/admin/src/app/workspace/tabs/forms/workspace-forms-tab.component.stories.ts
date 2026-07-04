@@ -148,7 +148,8 @@ export const PublicResults: Story = {
   globals: { theme: 'light' },
     play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(/resultados visíveis para público autorizado/i)).toBeVisible();
+    await expect(canvas.getByText(/publicar resultados para público autorizado/i)).toBeVisible();
+    await expect(canvas.getByText(/resultados ao vivo/i)).toBeVisible();
   },
 };
 

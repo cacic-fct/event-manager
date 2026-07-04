@@ -27,6 +27,17 @@ import {
   normalizeSearchText,
 } from './workspace-people-permission-grants';
 
+export type PeoplePermissionSearchFilter = 'ALL' | 'ACTIVE_GRANTS' | 'ANY_GRANTS';
+
+export const PEOPLE_PERMISSION_SEARCH_FILTER_OPTIONS: readonly {
+  value: PeoplePermissionSearchFilter;
+  label: string;
+}[] = [
+  { value: 'ALL', label: 'Todas as pessoas' },
+  { value: 'ACTIVE_GRANTS', label: 'Com permissões ativas' },
+  { value: 'ANY_GRANTS', label: 'Com permissões ativas ou inativas' },
+];
+
 export abstract class WorkspacePeopleState {
   protected readonly api = inject(PeopleApiService);
   protected readonly permissionGrantsApi = inject(PermissionGrantsApiService);
@@ -152,6 +163,7 @@ export abstract class WorkspacePeopleState {
   readonly permissionGrantDraftCount = computed(() => this.permissionGrantDrafts().length);
 
   readonly permissionGrantScopes = PERMISSION_GRANT_SCOPES;
+  readonly peoplePermissionSearchFilterOptions = PEOPLE_PERMISSION_SEARCH_FILTER_OPTIONS;
 
   readonly personForm = this.formBuilder.nonNullable.group({
     id: [''],
@@ -167,6 +179,8 @@ export abstract class WorkspacePeopleState {
 
   readonly peopleSearchForm = this.formBuilder.nonNullable.group({
     query: [''],
+    permissionFilter: this.formBuilder.nonNullable.control<PeoplePermissionSearchFilter>('ALL'),
+    hasLecturerProfile: [false],
   });
 
   readonly lecturerProfileForm = this.formBuilder.nonNullable.group({
@@ -198,6 +212,16 @@ export abstract class WorkspacePeopleState {
       destroyRef: this.destroyRef,
       search: (query) => this.searchPeople(query),
     });
+    this.peopleSearchForm.controls.permissionFilter.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.searchPeople(this.peopleSearchForm.controls.query.value);
+      });
+    this.peopleSearchForm.controls.hasLecturerProfile.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.searchPeople(this.peopleSearchForm.controls.query.value);
+      });
     this.permissionGrantForm.controls.category.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((resource) => {

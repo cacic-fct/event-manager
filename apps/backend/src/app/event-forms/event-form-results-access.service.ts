@@ -18,13 +18,20 @@ import {
   toResponseModel,
 } from './event-form-model.mapper';
 import { buildFormResultSummary, eventFormResultsToCsv } from './event-form-results';
-import { NormalizedTarget, responseInclude, ResultViewer, TargetInput } from './event-form-records';
+import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
+import { EventFormRecord, NormalizedTarget, responseInclude, ResultViewer, TargetInput } from './event-form-records';
 import {
   canAdminViewEventFormResults,
   requireEventForm,
   requirePublishedEventForm,
 } from './event-form-service-support';
 import { findEventLinkRecord, findLinkRecordForTarget, normalizeTarget } from './event-form-targets';
+
+type CurrentUserResultsAccess = {
+  form: EventFormRecord;
+  target: NormalizedTarget;
+  viewer: 'admin' | 'public';
+};
 
 @Injectable()
 export class EventFormResultsAccessService {
@@ -38,17 +45,41 @@ export class EventFormResultsAccessService {
     context: GraphqlContext,
     input: TargetInput & { formId: string },
   ): Promise<EventFormResults> {
+    const access = await this.resolveCurrentUserResultsAccess(context, input);
+
+    if (access.viewer === 'admin') {
+      return this.getResults(access.form.id, 'admin', { target: access.target });
+    }
+
+    return this.getResults(access.form.id, 'public', { target: access.target });
+  }
+
+  async assertCurrentUserLiveResultsAccess(
+    context: GraphqlContext,
+    input: TargetInput & { formId: string },
+  ): Promise<void> {
+    await this.resolveCurrentUserResultsAccess(context, input, { requireLiveUpdates: true });
+  }
+
+  private async resolveCurrentUserResultsAccess(
+    context: GraphqlContext,
+    input: TargetInput & { formId: string },
+    options: { requireLiveUpdates?: boolean } = {},
+  ): Promise<CurrentUserResultsAccess> {
     const target = normalizeTarget(input);
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     const form = await requirePublishedEventForm(this.prisma, input.formId);
 
-    if (await canAdminViewEventFormResults(this.authorizationPolicy, authenticatedUser, form.id)) {
+    if (
+      !options.requireLiveUpdates &&
+      (await canAdminViewEventFormResults(this.authorizationPolicy, authenticatedUser, form.id))
+    ) {
       try {
         await this.authorizationPolicy.assertPermissions(authenticatedUser, [Permission.EventForm.Results], {
           eventId: target.eventId ?? undefined,
           majorEventId: target.majorEventId ?? undefined,
         });
-        return this.getResults(form.id, 'admin', { target });
+        return { form, target, viewer: 'admin' };
       } catch (error) {
         if (!(error instanceof ForbiddenException)) {
           throw error;
@@ -56,19 +87,18 @@ export class EventFormResultsAccessService {
       }
     }
 
-    if (!form.resultsPublic) {
-      throw new NotFoundException('Resultados do formulário não disponíveis.');
-    }
-
     const link = findLinkRecordForTarget(form, target);
     if (!link) {
       throw new NotFoundException('Formulário não vinculado a este evento ou grande evento.');
+    }
+    if (!arePublicResultsReleasedForLink(form, link) || (options.requireLiveUpdates && !form.resultsLive)) {
+      throw new NotFoundException('Resultados do formulário não disponíveis.');
     }
 
     const person = await this.currentUserContext.requireCurrentPerson(context);
     await assertPersonCanViewPublicResults(this.prisma, person.id, link);
 
-    return this.getResults(form.id, 'public', { target });
+    return { form, target, viewer: 'public' };
   }
 
   async getAdminResults(user: AuthenticatedUser | undefined, formId: string): Promise<EventFormResults> {
@@ -142,7 +172,7 @@ export class EventFormResultsAccessService {
     if (!link) {
       throw new NotFoundException('Formulário não vinculado a este evento.');
     }
-    if (!form.resultsPublic) {
+    if (!arePublicResultsReleasedForLink(form, link)) {
       throw new NotFoundException('Resultados do formulário não disponíveis.');
     }
 

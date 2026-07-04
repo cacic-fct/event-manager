@@ -23,10 +23,69 @@
       }
     </header>
 
-	    <lib-event-form-renderer
-	      [elements]="currentState.elements"
-	      [initialAnswers]="currentState.answers"
-	      submitLabel="Salvar respostas"
-	      (formSubmitted)="submit(currentState, $event)" />
+    @if (currentState.canAnswer) {
+      <lib-event-form-renderer
+        [elements]="currentState.elements"
+        [initialAnswers]="currentState.answers"
+        submitLabel="Salvar respostas"
+        (formSubmitted)="submit(currentState, $event)" />
+    } @else {
+      <section class="empty-section" aria-live="polite">
+        <mat-icon>lock_clock</mat-icon>
+        <p>Este formulário está encerrado.</p>
+      </section>
+    }
+
+    @if (resultsLoading()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    @if (results(); as currentResults) {
+      <section class="results-section" aria-live="polite">
+        <header>
+          <p>{{ resultVisibilityLabel(currentState) }}</p>
+          <h2>Resultados</h2>
+          <span>
+            {{ currentResults.responseCount }} resposta{{ currentResults.responseCount === 1 ? '' : 's' }}
+            ·
+            {{ sigiloLabel(currentResults) }}
+          </span>
+        </header>
+
+        @if (resultsSummary().questions.length === 0) {
+          <p class="empty-text">Ainda não há perguntas respondidas neste formulário.</p>
+        } @else {
+          <div class="results-grid">
+            @for (question of resultsSummary().questions; track question.elementId) {
+              <article>
+                <header>
+                  <h3>{{ question.title }}</h3>
+                  <span>{{ question.answeredCount }} resposta{{ question.answeredCount === 1 ? '' : 's' }}</span>
+                </header>
+
+                @if (question.buckets.length > 0) {
+                  <ul class="bucket-list">
+                    @for (bucket of question.buckets; track bucket.label) {
+                      <li>
+                        <span>{{ bucket.label }}</span>
+                        <strong>{{ bucket.value }}</strong>
+                      </li>
+                    }
+                  </ul>
+                } @else if (question.textAnswers.length > 0) {
+                  <ul class="text-answers">
+                    @for (answer of question.textAnswers; track $index) {
+                      <li>{{ answer }}</li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="empty-text">Sem respostas agregáveis.</p>
+                }
+              </article>
+            }
+          </div>
+        }
+      </section>
+    }
   }
 </main>

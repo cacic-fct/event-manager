@@ -16,14 +16,38 @@ export function flattenPublicationListItems(
   nodes: PublicContentNode[],
   level = 0,
   lineage = '',
+  nestedNodeKeys = collectNestedNodeKeys(nodes),
 ): PublicationListItem[] {
   return nodes.flatMap((node, index) => {
     const key = `${lineage}/${node.targetType}:${node.id}:${index}`;
+    if (level === 0 && nestedNodeKeys.has(publicationNodeKey(node))) {
+      return [];
+    }
+
     return [
       { key, level, node },
-      ...flattenPublicationListItems(node.children ?? [], level + 1, key),
+      ...flattenPublicationListItems(node.children ?? [], level + 1, key, nestedNodeKeys),
     ];
   });
+}
+
+function collectNestedNodeKeys(nodes: PublicContentNode[]): Set<string> {
+  const nestedNodeKeys = new Set<string>();
+  for (const node of nodes) {
+    collectChildNodeKeys(node.children ?? [], nestedNodeKeys);
+  }
+  return nestedNodeKeys;
+}
+
+function collectChildNodeKeys(nodes: PublicContentNode[], nestedNodeKeys: Set<string>): void {
+  for (const node of nodes) {
+    nestedNodeKeys.add(publicationNodeKey(node));
+    collectChildNodeKeys(node.children ?? [], nestedNodeKeys);
+  }
+}
+
+function publicationNodeKey(node: PublicContentNode): string {
+  return `${node.targetType}:${node.id}`;
 }
 
 export function publicationTargetIcon(targetType: PublicationTargetType): string {
