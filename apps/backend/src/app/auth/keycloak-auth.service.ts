@@ -282,7 +282,7 @@ export class KeycloakAuthService {
       accessTokenExpiresAt,
       sessionExpiresAt,
     });
-    await this.syncLoginClaims(tokens.access_token);
+    await this.syncLoginClaims(tokens.access_token, tokens.id_token);
 
     return {
       sessionId,
@@ -354,14 +354,14 @@ export class KeycloakAuthService {
     }
 
     try {
-      return await this.authenticateAccessToken(session.accessToken, requirements);
+      return await this.authenticateSessionAccessToken(session, requirements);
     } catch (error) {
       if (!session.refreshToken || !(error instanceof UnauthorizedException)) {
         throw error;
       }
 
       const refreshedSession = await this.refreshStoredSession(sessionId, session.refreshToken);
-      return this.authenticateAccessToken(refreshedSession.accessToken, requirements);
+      return this.authenticateSessionAccessToken(refreshedSession, requirements);
     }
   }
 
@@ -538,12 +538,54 @@ export class KeycloakAuthService {
     return principal;
   }
 
-  private async syncLoginClaims(accessToken: string): Promise<void> {
+  private async syncLoginClaims(accessToken: string, idTokenHint?: string): Promise<void> {
     const principal = await this.getOrCreatePrincipal(accessToken);
-    await this.userClaimSync?.syncLoginClaims(principal);
+    await this.userClaimSync?.syncLoginClaims(await this.withSessionIdentityClaims(principal, idTokenHint));
+  }
+
+  private async authenticateSessionAccessToken(
+    session: AuthSession,
+    requirements: AuthorizationRequirements,
+  ): Promise<AuthenticatedUser> {
+    const principal = await this.authenticateAccessToken(session.accessToken, requirements);
+    return this.withSessionIdentityClaims(principal, session.idTokenHint);
+  }
+
+  private async withSessionIdentityClaims(
+    principal: AuthenticatedUser,
+    idTokenHint?: string,
+  ): Promise<AuthenticatedUser> {
+    if (principal.sub || !idTokenHint) {
+      return principal;
+    }
+
+    const identityClaims = await this.verifyJwtClaims(idTokenHint);
+    const sub = readStringClaim(identityClaims, 'sub');
+    if (!sub) {
+      return principal;
+    }
+
+    return {
+      ...principal,
+      sub,
+      preferredUsername: principal.preferredUsername ?? readStringClaim(identityClaims, 'preferred_username'),
+      email: principal.email ?? readStringClaim(identityClaims, 'email'),
+      claims: {
+        ...identityClaims,
+        ...principal.claims,
+        sub,
+      },
+    };
   }
 
   private async verifyAccessTokenClaims(accessToken: string): Promise<TokenClaims> {
+    return {
+      ...(await this.verifyJwtClaims(accessToken)),
+      active: true,
+    };
+  }
+
+  private async verifyJwtClaims(accessToken: string): Promise<TokenClaims> {
     const segments = accessToken.split('.');
     if (
       segments.length !== 3 ||
@@ -570,10 +612,7 @@ export class KeycloakAuthService {
     this.assertJwtIssuer(claims);
     this.assertJwtTimeClaims(claims);
 
-    return {
-      ...claims,
-      active: true,
-    };
+    return claims;
   }
 
   private async assertJwtSignature(

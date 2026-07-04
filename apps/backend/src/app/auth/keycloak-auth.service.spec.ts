@@ -428,6 +428,62 @@ describe('KeycloakAuthService', () => {
     expect(sessions.delete).toHaveBeenCalledWith(sessionId);
   });
 
+  it('uses the session ID token identity when the access token omits the subject claim', async () => {
+    const accessToken = jwt({
+      exp: 1_800_000_000,
+      email: 'aluno@unesp.br',
+      resource_access: {
+        'event-manager': {
+          roles: ['access'],
+        },
+      },
+    });
+    const idToken = jwt({
+      exp: 1_800_000_000,
+      sub: '22222222-2222-2222-2222-222222222222',
+      email: 'aluno@unesp.br',
+      preferred_username: 'aluno@unesp.br',
+    });
+
+    await service.createSession({
+      access_token: accessToken,
+      id_token: idToken,
+      expires_in: 120,
+      refresh_expires_in: 300,
+    });
+
+    expect(userClaimSync.syncLoginClaims).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sub: '22222222-2222-2222-2222-222222222222',
+        email: 'aluno@unesp.br',
+        preferredUsername: 'aluno@unesp.br',
+        token: accessToken,
+        claims: expect.objectContaining({
+          sub: '22222222-2222-2222-2222-222222222222',
+        }),
+      }),
+    );
+
+    const sessionId = sessions.set.mock.calls[0][0] as string;
+    sessions.get.mockResolvedValue({
+      accessToken,
+      idTokenHint: idToken,
+      accessTokenExpiresAt: Date.now() + 120_000,
+      sessionExpiresAt: Date.now() + 300_000,
+    });
+
+    await expect(service.authenticateSession(sessionId, { roles: ['access'] })).resolves.toEqual(
+      expect.objectContaining({
+        sub: '22222222-2222-2222-2222-222222222222',
+        email: 'aluno@unesp.br',
+        preferredUsername: 'aluno@unesp.br',
+        claims: expect.objectContaining({
+          sub: '22222222-2222-2222-2222-222222222222',
+        }),
+      }),
+    );
+  });
+
   it('authenticates tokens and caches principals without Event Manager permissions', async () => {
     const accessToken = jwt({
       sub: 'user-1',
