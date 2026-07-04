@@ -51,6 +51,7 @@ describe('WorkspacePermissionsService', () => {
     expect(service.canReadTab(WorkspacePermissionTab.Events)).toBe(false);
     expect(service.canReadTab(WorkspacePermissionTab.Places)).toBe(false);
     expect(service.canReadTab(WorkspacePermissionTab.Attendances)).toBe(false);
+    expect(service.canReadTab(WorkspacePermissionTab.Dashboard)).toBe(true);
     expect(service.canReadTab(WorkspacePermissionTab.Preferences)).toBe(true);
     expect(service.missingReadForTab(WorkspacePermissionTab.Attendances)).toEqual([
       Permission.EventAttendance.Read,
@@ -58,6 +59,7 @@ describe('WorkspacePermissionsService', () => {
       Permission.MajorEvent.Read,
     ]);
     expect(service.missingReadForTab(WorkspacePermissionTab.Preferences)).toEqual([]);
+    expect(service.missingReadForTab(WorkspacePermissionTab.Dashboard)).toEqual([]);
     expect(service.missingReadForTab(WorkspacePermissionTab.Subscriptions)).not.toContain(Permission.Person.Read);
     expect(service.missingReadForTab(WorkspacePermissionTab.Certificates)).not.toContain(Permission.Person.Read);
   });

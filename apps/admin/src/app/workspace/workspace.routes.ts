@@ -55,7 +55,7 @@ export const workspaceRoutes: Route[] = [
     children: [
       {
         path: '',
-        loadComponent: () => import('./home/home').then((m) => m.Home),
+        loadChildren: () => import('./home/home.routes').then((m) => m.routes),
       },
 
       ...guardedWorkspaceTabRoute(eventsData.path, eventsData, () =>

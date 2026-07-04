@@ -1,6 +1,7 @@
 import { Permission, type PermissionRequirement } from './permission-types';
 
 export const WorkspacePermissionTab = {
+  Dashboard: 'dashboard',
   Events: 'events',
   MajorEvents: 'major-events',
   Groups: 'groups',
@@ -48,6 +49,13 @@ export const WORKSPACE_ENTRY_PERMISSIONS = [
 ] as const satisfies PermissionRequirement;
 
 export const WORKSPACE_TAB_PERMISSIONS = [
+  {
+    id: WorkspacePermissionTab.Dashboard,
+    label: 'Painel',
+    read: [],
+    edit: [],
+    delete: [],
+  },
   {
     id: WorkspacePermissionTab.Events,
     label: 'Eventos',

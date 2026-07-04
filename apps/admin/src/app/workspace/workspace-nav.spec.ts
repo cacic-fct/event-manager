@@ -5,6 +5,7 @@ import { findWorkspaceNavItemForUrl, workspaceNavItems } from './workspace-nav';
 
 describe('workspace nav', () => {
   it('does not match dividers as active nav items', () => {
+    expect(findWorkspaceNavItemForUrl('/').id).toBe('dashboard');
     expect(findWorkspaceNavItemForUrl('/workspace/subscriptions').id).toBe('subscriptions');
     expect(findWorkspaceNavItemForUrl('/workspace/attendances/event/event-1').id).toBe('attendances');
     expect(findWorkspaceNavItemForUrl('/workspace/permissions?tab=scopes').id).toBe('permissions');

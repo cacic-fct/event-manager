@@ -117,6 +117,7 @@ describe('shared permissions contract', () => {
 
   it('keeps workspace tabs and evaluation permissions aligned', () => {
     const permissionsTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.Permissions);
+    const dashboardTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.Dashboard);
     const preferencesTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.Preferences);
 
     expect(permissionsTab).toEqual(
@@ -126,6 +127,13 @@ describe('shared permissions contract', () => {
       }),
     );
     expect(preferencesTab).toEqual(
+      expect.objectContaining({
+        read: [],
+        edit: [],
+        delete: [],
+      }),
+    );
+    expect(dashboardTab).toEqual(
       expect.objectContaining({
         read: [],
         edit: [],

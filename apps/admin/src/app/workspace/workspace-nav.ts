@@ -24,6 +24,21 @@ export type WorkspaceNavItem = WorkspaceNavLink | WorkspaceNavDivider;
 export const workspaceNavItems = [
   {
     kind: 'link',
+    id: 'dashboard',
+    path: '',
+    label: 'Painel',
+    description: 'Acompanhe filas operacionais, eventos próximos e alertas do workspace.',
+    icon: 'dashboard',
+    group: 'Visão geral',
+    helpLink: undefined,
+  },
+  {
+    kind: 'divider',
+    id: 'divider-dashboard-events',
+    label: 'Estrutura do evento',
+  },
+  {
+    kind: 'link',
     id: 'events',
     path: 'events',
     label: 'Eventos',
@@ -213,5 +228,9 @@ export function findWorkspaceNavItemForUrl(rawUrl: string): WorkspaceNavLinkItem
   const url = rawUrl.split('?')[0].split('#')[0];
   const segments = url.split('/').filter(Boolean);
 
-  return workspaceNavLinkItems.find((item) => segments.includes(item.path)) ?? workspaceNavLinkItems[0];
+  return (
+    workspaceNavLinkItems.find((item) => item.path === '' && segments.length === 0) ??
+    workspaceNavLinkItems.find((item) => item.path !== '' && segments.includes(item.path)) ??
+    workspaceNavLinkItems[0]
+  );
 }
