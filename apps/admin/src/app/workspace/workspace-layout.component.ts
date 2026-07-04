@@ -43,7 +43,13 @@ const workspaceNavigationModes = ['icons', 'full', 'auto'] as const satisfies re
     NovuNotificationBadgeComponent,
   ],
   templateUrl: './workspace-layout.component.html',
-  styleUrl: './workspace-layout.component.scss',
+  styleUrls: [
+    './workspace-layout.component.scss',
+    './workspace-layout-navigation.component.scss',
+    './workspace-layout-navigation-items.component.scss',
+    './workspace-layout-permissions.component.scss',
+    './workspace-layout-responsive.component.scss',
+  ],
 })
 export class WorkspaceLayoutComponent {
   private readonly authService = inject(AuthService);

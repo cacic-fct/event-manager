@@ -5,40 +5,36 @@ import {
   EventAttendanceScannerCodeInput,
   EventAttendanceScannerFeedItem,
   OfflineEventAttendanceCommitResult,
-  OfflineEventAttendanceSubmission,
 } from '@cacic-fct/shared-data-types';
-import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, ConflictException, ForbiddenException, HttpException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import {
-  AttendanceCreationMethod,
-  AuditLogEntityType,
-  AuditLogOperation,
-  EventManagerPermissionGrantScope,
-  Prisma,
-  UserRole,
-} from '@prisma/client';
+import { AttendanceCreationMethod } from '@prisma/client';
 import { CurrentUserAttendanceCollectionEvent } from '../models';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PUBLIC_EVENT_SELECT } from '../../public-events/models';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { NovuNotificationsService } from '../../notifications/novu-notifications.service';
-import { endOfDay, startOfDay, subHours } from 'date-fns';
-
-const MAX_LOCATION_ACCURACY_METERS = 200;
-const MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE = 150;
-const ATTENDANCE_COLLECTION_PERMISSIONS = [
-  Permission.EventAttendance.Collect,
-  Permission.EventAttendance.Import,
-  Permission.EventAttendance.Update,
-] as const;
+import { recordAttendanceCreate } from './attendance-collection-audit';
+import {
+  findCurrentUserAttendanceCollectionEvents,
+  requireAttendanceCollector,
+} from './attendance-collection-events';
+import { getAttendanceScannerFeed } from './attendance-collection-feed';
+import { OfflineAttendanceCommitter } from './attendance-collection-offline-commit';
+import {
+  createAttendance,
+  findSinglePersonForManualInput,
+} from './attendance-collection-records';
+import {
+  getActorId,
+  getAuthenticatedUser,
+  parseUserAztecCode,
+} from './attendance-collection-context';
 
 @Resolver(() => CurrentUserAttendanceCollectionEvent)
 export class CurrentUserAttendanceCollectionResolver {
@@ -80,43 +76,7 @@ export class CurrentUserAttendanceCollectionResolver {
   async currentUserAttendanceCollectionEvents(
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserAttendanceCollectionEvent[]> {
-    const person = await this.currentUserContext.requireCurrentPerson(context);
-    const now = new Date();
-    const visibleFrom = subHours(startOfDay(now), 6);
-    const endOfToday = endOfDay(now);
-
-    const collectors = await this.prisma.eventAttendanceCollector.findMany({
-      where: {
-        personId: person.id,
-        event: {
-          deletedAt: null,
-          shouldCollectAttendance: true,
-          startDate: {
-            gte: visibleFrom,
-            lte: endOfToday,
-          },
-        },
-      },
-      select: {
-        eventId: true,
-        event: {
-          select: PUBLIC_EVENT_SELECT,
-        },
-      },
-      orderBy: {
-        event: {
-          startDate: 'asc',
-        },
-      },
-    });
-
-    const collectorEvents = collectors.map((collector) => ({
-      eventId: collector.eventId,
-      event: collector.event,
-    }));
-    const managerEvents = await this.findManagerCollectionEvents(context, visibleFrom, endOfToday);
-
-    return this.mergeCollectionEvents([...collectorEvents, ...managerEvents]);
+    return findCurrentUserAttendanceCollectionEvents(this.collectionDeps, context);
   }
 
   @Query(() => [EventAttendanceScannerFeedItem], { name: 'currentUserAttendanceCollectionFeed' })
@@ -125,7 +85,7 @@ export class CurrentUserAttendanceCollectionResolver {
     @Context() context: GraphqlContext,
   ): Promise<EventAttendanceScannerFeedItem[]> {
     await this.requireCollector(eventId, context, true);
-    return this.getScannerFeed(eventId);
+    return getAttendanceScannerFeed(this.prisma, eventId);
   }
 
   @Mutation(() => EventAttendance, { name: 'collectCurrentUserAttendanceFromScannerCode' })
@@ -135,9 +95,12 @@ export class CurrentUserAttendanceCollectionResolver {
     @Context() context: GraphqlContext,
   ) {
     const collector = await this.requireCollector(input.eventId, context, true);
-    const authenticatedUser = this.getAuthenticatedUser(context);
-    await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
-    const userId = this.parseUserAztecCode(input.code);
+    await this.frozenResources.assertEventMutable(
+      input.eventId,
+      getAuthenticatedUser(this.currentUserContext, context),
+      'edit',
+    );
+    const userId = parseUserAztecCode(input.code);
     if (!userId) {
       throw new BadRequestException('Código Aztec incompatível.');
     }
@@ -156,18 +119,27 @@ export class CurrentUserAttendanceCollectionResolver {
       throw new NotFoundException(`Person for user ${userId} was not found.`);
     }
 
-    return this.createAttendance(
-      {
+    return createAttendance({
+      prisma: this.prisma,
+      attendanceCategories: this.attendanceCategories,
+      input: {
         eventId: input.eventId,
         personId: person.id,
         createdByMethod: AttendanceCreationMethod.SCANNER,
-        createdById: this.getActorId(context) ?? collector.userId ?? undefined,
-        committedById: this.getActorId(context) ?? collector.userId ?? undefined,
+        createdById: getActorId(context) ?? collector.userId ?? undefined,
+        committedById: getActorId(context) ?? collector.userId ?? undefined,
         location: input.location,
       },
-      (attendance, tx) =>
-        this.recordAttendanceCreate(attendance, context, 'Presença registrada pelo coletor via scanner.', tx),
-    );
+      afterCreate: (attendance, tx) =>
+        recordAttendanceCreate({
+          auditLog: this.auditLog,
+          currentUserContext: this.currentUserContext,
+          context,
+          attendance,
+          summary: 'Presença registrada pelo coletor via scanner.',
+          prisma: tx,
+        }),
+    });
   }
 
   @Mutation(() => EventAttendance, { name: 'collectCurrentUserManualAttendance' })
@@ -177,21 +149,33 @@ export class CurrentUserAttendanceCollectionResolver {
     @Context() context: GraphqlContext,
   ) {
     const collector = await this.requireCollector(input.eventId, context, true);
-    const authenticatedUser = this.getAuthenticatedUser(context);
-    await this.frozenResources.assertEventMutable(input.eventId, authenticatedUser, 'edit');
-    const person = await this.findSinglePersonForManualInput(input.value);
-    return this.createAttendance(
-      {
+    await this.frozenResources.assertEventMutable(
+      input.eventId,
+      getAuthenticatedUser(this.currentUserContext, context),
+      'edit',
+    );
+    const person = await findSinglePersonForManualInput(this.prisma, input.value);
+    return createAttendance({
+      prisma: this.prisma,
+      attendanceCategories: this.attendanceCategories,
+      input: {
         eventId: input.eventId,
         personId: person.id,
         createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
-        createdById: this.getActorId(context) ?? collector.userId ?? undefined,
-        committedById: this.getActorId(context) ?? collector.userId ?? undefined,
+        createdById: getActorId(context) ?? collector.userId ?? undefined,
+        committedById: getActorId(context) ?? collector.userId ?? undefined,
         location: input.location,
       },
-      (attendance, tx) =>
-        this.recordAttendanceCreate(attendance, context, 'Presença registrada pelo coletor manualmente.', tx),
-    );
+      afterCreate: (attendance, tx) =>
+        recordAttendanceCreate({
+          auditLog: this.auditLog,
+          currentUserContext: this.currentUserContext,
+          context,
+          attendance,
+          summary: 'Presença registrada pelo coletor manualmente.',
+          prisma: tx,
+        }),
+    });
   }
 
   @Mutation(() => [OfflineEventAttendanceCommitResult], { name: 'commitCurrentUserOfflineAttendances' })
@@ -200,1033 +184,27 @@ export class CurrentUserAttendanceCollectionResolver {
     input: CommitOfflineEventAttendancesInput,
     @Context() context: GraphqlContext,
   ): Promise<OfflineEventAttendanceCommitResult[]> {
-    if (input.attendances.length > MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE) {
-      throw new BadRequestException(
-        `Envie no máximo ${MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE} presenças off-line por sincronização.`,
-      );
-    }
+    return new OfflineAttendanceCommitter({
+      prisma: this.prisma,
+      currentUserContext: this.currentUserContext,
+      attendanceCategories: this.attendanceCategories,
+      frozenResources: this.frozenResources,
+      authorizationPolicy: this.authorizationPolicy,
+      auditLog: this.auditLog,
+      dashboardInsights: this.dashboardInsights,
+      notifications: this.notifications,
+    }).commitBatch(input, context);
+  }
 
-    const results: OfflineEventAttendanceCommitResult[] = [];
-    for (const item of input.attendances) {
-      results.push(await this.commitOfflineAttendance(item, context));
-    }
-
-    return results;
+  private get collectionDeps() {
+    return {
+      prisma: this.prisma,
+      currentUserContext: this.currentUserContext,
+      authorizationPolicy: this.authorizationPolicy,
+    };
   }
 
   private async requireCollector(eventId: string, context: GraphqlContext, enforceCollectionWindow: boolean) {
-    const collectorPerson = await this.currentUserContext.requireCurrentPerson(context);
-    await this.authorizationPolicy.assertAttendanceCollectorForEvent(eventId, collectorPerson.id, {
-      enforceCollectionWindow,
-      user: this.getAuthenticatedUser(context),
-    });
-
-    return collectorPerson;
-  }
-
-  private async findManagerCollectionEvents(
-    context: GraphqlContext,
-    visibleFrom: Date,
-    endOfToday: Date,
-  ): Promise<CurrentUserAttendanceCollectionEvent[]> {
-    const user = this.getAuthenticatedUser(context);
-    const targets = await Promise.all(
-      ATTENDANCE_COLLECTION_PERMISSIONS.map((permission) =>
-        this.authorizationPolicy.accessibleEventTargets(user, permission),
-      ),
-    );
-
-    const hasGlobalAccess = targets.some((target) => target === null);
-    const eventIds = new Set<string>();
-    const majorEventIds = new Set<string>();
-    const eventGroupIds = new Set<string>();
-    for (const target of targets) {
-      if (!target) {
-        continue;
-      }
-      target.eventIds.forEach((id) => eventIds.add(id));
-      target.majorEventIds.forEach((id) => majorEventIds.add(id));
-      target.eventGroupIds.forEach((id) => eventGroupIds.add(id));
-    }
-
-    if (!hasGlobalAccess && eventIds.size === 0 && majorEventIds.size === 0 && eventGroupIds.size === 0) {
-      return [];
-    }
-
-    const scopeFilters: Prisma.EventWhereInput[] = [];
-    if (eventIds.size > 0) {
-      scopeFilters.push({ id: { in: [...eventIds] } });
-    }
-    if (majorEventIds.size > 0) {
-      scopeFilters.push({ majorEventId: { in: [...majorEventIds] } });
-    }
-    if (eventGroupIds.size > 0) {
-      scopeFilters.push({ eventGroupId: { in: [...eventGroupIds] } });
-    }
-
-    const events = await this.prisma.event.findMany({
-      where: {
-        deletedAt: null,
-        shouldCollectAttendance: true,
-        startDate: {
-          gte: visibleFrom,
-          lte: endOfToday,
-        },
-        ...(hasGlobalAccess ? {} : { OR: scopeFilters }),
-      },
-      select: PUBLIC_EVENT_SELECT,
-      orderBy: {
-        startDate: 'asc',
-      },
-    });
-
-    return events.map((event) => ({
-      eventId: event.id,
-      event,
-    }));
-  }
-
-  private mergeCollectionEvents(
-    events: CurrentUserAttendanceCollectionEvent[],
-  ): CurrentUserAttendanceCollectionEvent[] {
-    const byEventId = new Map<string, CurrentUserAttendanceCollectionEvent>();
-    for (const event of events) {
-      byEventId.set(event.eventId, event);
-    }
-
-    return [...byEventId.values()].sort((left, right) => {
-      const leftTime = left.event.startDate?.getTime?.() ?? 0;
-      const rightTime = right.event.startDate?.getTime?.() ?? 0;
-      return leftTime - rightTime;
-    });
-  }
-
-  private getAuthenticatedUser(context: GraphqlContext): AuthenticatedUser | undefined {
-    return (
-      this.currentUserContext.getAuthenticatedUser?.(context) ??
-      context.req?.user ??
-      context.request?.user
-    );
-  }
-
-  private async getScannerFeed(eventId: string): Promise<EventAttendanceScannerFeedItem[]> {
-    const attendances = await this.prisma.eventAttendance.findMany({
-      where: {
-        eventId,
-      },
-      select: {
-        personId: true,
-        eventId: true,
-        attendedAt: true,
-        createdById: true,
-        committedById: true,
-        createdByMethod: true,
-        person: {
-          select: {
-            name: true,
-            user: {
-              select: {
-                unespRole: true,
-              },
-            },
-          },
-        },
-        event: {
-          select: {
-            allowSubscription: true,
-            majorEventId: true,
-          },
-        },
-      },
-      orderBy: {
-        attendedAt: 'desc',
-      },
-      take: 80,
-    });
-
-    const majorEventId = attendances.find((attendance) => attendance.event.majorEventId)?.event.majorEventId;
-    const personIds = attendances.map((attendance) => attendance.personId);
-    const collectorIds = [
-      ...new Set(
-        attendances
-          .flatMap((attendance) => [attendance.createdById, attendance.committedById])
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
-
-    const standaloneEventIds = [
-      ...new Set(
-        attendances
-          .filter((attendance) => attendance.event.allowSubscription && !attendance.event.majorEventId)
-          .map((attendance) => attendance.eventId),
-      ),
-    ];
-
-    const [majorEventSubscriptions, standaloneEventSubscriptions, collectors] = await Promise.all([
-      majorEventId
-        ? this.prisma.majorEventSubscription.findMany({
-            where: {
-              majorEventId,
-              personId: {
-                in: personIds,
-              },
-              deletedAt: null,
-            },
-            select: {
-              personId: true,
-              subscriptionStatus: true,
-            },
-          })
-        : Promise.resolve([]),
-      standaloneEventIds.length
-        ? this.prisma.eventSubscription.findMany({
-            where: {
-              eventId: {
-                in: standaloneEventIds,
-              },
-              personId: {
-                in: personIds,
-              },
-              deletedAt: null,
-            },
-            select: {
-              eventId: true,
-              personId: true,
-            },
-          })
-        : Promise.resolve([]),
-      collectorIds.length
-        ? this.prisma.user.findMany({
-            where: {
-              id: {
-                in: collectorIds,
-              },
-            },
-            select: {
-              id: true,
-              name: true,
-            },
-          })
-        : Promise.resolve([]),
-    ]);
-
-    const majorEventSubscriptionStatusByPersonId = new Map(
-      majorEventSubscriptions.map((subscription) => [subscription.personId, subscription.subscriptionStatus]),
-    );
-    const standaloneEventSubscriptionKeys = new Set(
-      standaloneEventSubscriptions.map((subscription) => `${subscription.personId}:${subscription.eventId}`),
-    );
-    const collectorFirstNameById = new Map(
-      collectors.map((collector) => [collector.id, this.getFirstName(collector.name)]),
-    );
-
-    return attendances.map((attendance) => ({
-      personId: attendance.personId,
-      eventId: attendance.eventId,
-      fullName: attendance.person?.name ?? undefined,
-      unespRole: this.formatUnespRole(attendance.person?.user?.unespRole),
-      subscriptionStatus:
-        majorEventSubscriptionStatusByPersonId.get(attendance.personId) ??
-        (standaloneEventSubscriptionKeys.has(`${attendance.personId}:${attendance.eventId}`) ? 'CONFIRMED' : undefined),
-      attendedAt: attendance.attendedAt,
-      createdByMethod: attendance.createdByMethod,
-      collectedByFirstName: attendance.createdById
-        ? (collectorFirstNameById.get(attendance.createdById) ?? undefined)
-        : undefined,
-      committedByFirstName:
-        attendance.committedById && attendance.committedById !== attendance.createdById
-          ? (collectorFirstNameById.get(attendance.committedById) ?? undefined)
-          : undefined,
-    }));
-  }
-
-  private formatUnespRole(role: readonly string[] | null | undefined): string | undefined {
-    return role?.length ? role.join(', ') : undefined;
-  }
-
-  private async createAttendance(input: {
-    eventId: string;
-    personId: string;
-    createdByMethod: AttendanceCreationMethod;
-    createdById?: string;
-    committedById?: string;
-    attendedAt?: Date;
-    location?: { latitude: number; longitude: number; accuracyMeters: number };
-  }, afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>) {
-    const locationData = this.getRequiredLocationData(input.location);
-
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        await tx.eventAttendance.create({
-          data: {
-            eventId: input.eventId,
-            personId: input.personId,
-            attendedAt: input.attendedAt,
-            createdById: input.createdById,
-            committedById: input.committedById,
-            createdByMethod: input.createdByMethod,
-            ...locationData,
-          },
-        });
-        await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-        const attendance = await tx.eventAttendance.findUniqueOrThrow({
-          where: {
-            personId_eventId: {
-              eventId: input.eventId,
-              personId: input.personId,
-            },
-          },
-        });
-        await afterCreate?.(attendance, tx);
-        return attendance;
-      });
-    } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Presença já registrada para este evento.');
-      }
-
-      throw error;
-    }
-  }
-
-  private async recordAttendanceCreate(
-    attendance: {
-      personId: string;
-      eventId: string;
-    },
-    context: GraphqlContext,
-    summary: string,
-    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
-    metadata?: Record<string, unknown>,
-  ): Promise<void> {
-    await this.auditLog.record({
-      entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-      entityId: this.auditLog.buildCompositeEntityId([attendance.personId, attendance.eventId]),
-      entityLabel: attendance.personId,
-      operation: AuditLogOperation.USER_CREATE,
-      actor: this.getAuthenticatedUser(context),
-      after: attendance,
-      scope: {
-        permission: Permission.EventAttendance.Collect,
-        eventId: attendance.eventId,
-      },
-      summary,
-      metadata,
-    }, prisma);
-  }
-
-  private async commitOfflineAttendance(
-    item: CommitOfflineEventAttendancesInput['attendances'][number],
-    context: GraphqlContext,
-  ): Promise<OfflineEventAttendanceCommitResult> {
-    const sender = await this.currentUserContext.requireCurrentPerson(context);
-    const submittedById = this.getActorId(context) ?? sender.userId;
-    if (!submittedById) {
-      throw new BadRequestException('Usuário autenticado sem identificador de conta.');
-    }
-    const createdById = this.normalizeOptionalString(item.authorUserId) ?? submittedById;
-    const canCommitWithPermission = await this.canCommitOfflineAttendanceWithPermission(item.eventId, context);
-
-    try {
-      if (!canCommitWithPermission) {
-        await this.authorizationPolicy.assertAttendanceCollectorForEvent(item.eventId, sender.id, {
-          enforceCollectionWindow: true,
-          user: this.getAuthenticatedUser(context),
-        });
-      }
-      const authenticatedUser = this.getAuthenticatedUser(context);
-      await this.frozenResources.assertEventMutable(item.eventId, authenticatedUser, 'edit');
-
-      const person = await this.resolveOfflineAttendancePerson(item);
-      const attendance = await this.createAttendance(
-        {
-          eventId: item.eventId,
-          personId: person.id,
-          createdByMethod: item.createdByMethod,
-          createdById,
-          committedById: submittedById,
-          attendedAt: item.collectedAt,
-          location: item.location,
-        },
-        (attendance, tx) =>
-          this.recordAttendanceCreate(
-            attendance,
-            context,
-            'Presença coletada off-line e sincronizada depois.',
-            tx,
-            {
-              offlineClientId: item.clientId,
-              offlineAttendanceAuthor: {
-                userId: createdById ?? null,
-                name: this.normalizeOptionalString(item.authorName) ?? null,
-                email: this.normalizeOptionalString(item.authorEmail) ?? null,
-              },
-              submittedById,
-              committedById: submittedById,
-            },
-          ),
-      );
-
-      return {
-        clientId: item.clientId,
-        eventId: item.eventId,
-        status: 'CREATED',
-        attendance: this.toEventAttendance(attendance),
-      };
-    } catch (error: unknown) {
-      if (
-        !canCommitWithPermission &&
-        await this.shouldStageOfflineAttendance(item.eventId, sender.id, error, context)
-      ) {
-        let stagedSubmission: OfflineEventAttendanceSubmission;
-        try {
-          stagedSubmission = await this.stageOfflineAttendance(item, context, {
-            createdById,
-            submittedById,
-            stagedReason: this.errorMessage(error),
-          });
-        } catch (stageError: unknown) {
-          if (this.isRequiredLocationError(stageError)) {
-            return {
-              clientId: item.clientId,
-              eventId: item.eventId,
-              status: this.commitStatusForError(stageError),
-              message: this.errorMessage(stageError),
-            };
-          }
-
-          throw stageError;
-        }
-
-        return {
-          clientId: item.clientId,
-          eventId: item.eventId,
-          status: 'STAGED',
-          message: 'Presença off-line enviada para revisão administrativa.',
-          stagedSubmission,
-        };
-      }
-
-      return {
-        clientId: item.clientId,
-        eventId: item.eventId,
-        status: this.commitStatusForError(error),
-        message: this.errorMessage(error),
-      };
-    }
-  }
-
-  private async canCommitOfflineAttendanceWithPermission(eventId: string, context: GraphqlContext): Promise<boolean> {
-    const user = this.getAuthenticatedUser(context);
-    if (!user) {
-      return false;
-    }
-
-    try {
-      for (const permission of ATTENDANCE_COLLECTION_PERMISSIONS) {
-        try {
-          await this.authorizationPolicy.assertPermissions(user, [permission], {
-            eventId,
-          });
-          return true;
-        } catch (error: unknown) {
-          if (!(error instanceof ForbiddenException)) {
-            throw error;
-          }
-        }
-      }
-      return false;
-    } catch (error: unknown) {
-      if (error instanceof ForbiddenException) {
-        return false;
-      }
-
-      throw error;
-    }
-  }
-
-  private async shouldStageOfflineAttendance(
-    eventId: string,
-    senderPersonId: string,
-    error: unknown,
-    context: GraphqlContext,
-  ): Promise<boolean> {
-    if (!(error instanceof HttpException)) {
-      return false;
-    }
-
-    if (error instanceof ConflictException && this.errorMessage(error).includes('Presença já registrada')) {
-      return false;
-    }
-
-    if (![400, 403, 404].includes(error.getStatus())) {
-      return false;
-    }
-
-    const event = await this.prisma.event.findFirst({
-      where: {
-        id: eventId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-      },
-    });
-    if (!event) {
-      return false;
-    }
-
-    try {
-      await this.authorizationPolicy.assertAttendanceCollectorForEvent(eventId, senderPersonId, {
-        enforceCollectionWindow: false,
-        user: this.getAuthenticatedUser(context),
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  private async stageOfflineAttendance(
-    item: CommitOfflineEventAttendancesInput['attendances'][number],
-    context: GraphqlContext,
-    metadata: {
-      createdById: string;
-      submittedById: string;
-      stagedReason: string;
-    },
-  ) {
-    const resolvedPerson = await this.tryResolveOfflineAttendancePerson(item);
-    const locationData = this.getRequiredLocationData(item.location);
-    const submissionWrite = await this.writeOfflineAttendanceSubmission(item, metadata, resolvedPerson, locationData);
-    const submission = submissionWrite.submission;
-
-    if (!submissionWrite.changed) {
-      return this.toOfflineSubmission(submission);
-    }
-
-    await this.auditLog.record({
-      entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-      entityId: submission.personId
-        ? this.auditLog.buildCompositeEntityId([submission.personId, submission.eventId])
-        : `offline:${submission.id}`,
-      entityLabel: submission.manualValue ?? submission.scannerCode ?? submission.id,
-      operation: AuditLogOperation.CREATE,
-      actor: this.getAuthenticatedUser(context),
-      after: {
-        id: submission.id,
-        clientId: submission.clientId,
-        eventId: submission.eventId,
-        personId: submission.personId,
-        authorUserId: submission.authorUserId,
-        submittedById: submission.submittedById,
-        stagedReason: submission.stagedReason,
-        resolutionError: submission.resolutionError,
-      },
-      scope: {
-        permission: Permission.EventAttendance.Collect,
-        eventId: submission.eventId,
-      },
-      summary: 'Presença off-line enviada para revisão administrativa.',
-    });
-    await this.dashboardInsights.invalidateCachedInsights();
-    if (submissionWrite.queuedForReview) {
-      await this.notifyOfflineAttendanceReviewQueued(submission);
-    }
-
-    return this.toOfflineSubmission(submission);
-  }
-
-  private async writeOfflineAttendanceSubmission(
-    item: CommitOfflineEventAttendancesInput['attendances'][number],
-    metadata: {
-      createdById: string;
-      submittedById: string;
-      stagedReason: string;
-    },
-    resolvedPerson: { personId: string | null; errorMessage?: string },
-    locationData: {
-      collectedLatitude: number;
-      collectedLongitude: number;
-      collectedAccuracyMeters: number;
-    },
-  ) {
-    const where = this.offlineSubmissionWhere(metadata.submittedById, item.clientId);
-    const existing = await this.prisma.offlineEventAttendanceSubmission.findUnique({
-      where,
-      include: {
-        event: true,
-      },
-    });
-
-    if (existing) {
-      if (existing.status !== 'PENDING') {
-        return { submission: existing, changed: false, queuedForReview: false };
-      }
-
-      return this.updatePendingOfflineAttendanceSubmission(item, metadata, resolvedPerson, locationData);
-    }
-
-    try {
-      return {
-        submission: await this.prisma.offlineEventAttendanceSubmission.create({
-          data: {
-            clientId: item.clientId,
-            eventId: item.eventId,
-            personId: resolvedPerson.personId,
-            createdByMethod: item.createdByMethod,
-            scannerCode: this.normalizeOptionalString(item.code),
-            manualValue: this.normalizeOptionalString(item.value),
-            collectedAt: item.collectedAt,
-            authorUserId: metadata.createdById,
-            authorName: this.normalizeOptionalString(item.authorName),
-            authorEmail: this.normalizeOptionalString(item.authorEmail),
-            submittedById: metadata.submittedById,
-            stagedReason: metadata.stagedReason,
-            resolutionError: resolvedPerson.errorMessage,
-            ...locationData,
-          },
-          include: {
-            event: true,
-          },
-        }),
-        changed: true,
-        queuedForReview: true,
-      };
-    } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        return this.updatePendingOfflineAttendanceSubmission(item, metadata, resolvedPerson, locationData);
-      }
-
-      throw error;
-    }
-  }
-
-  private async updatePendingOfflineAttendanceSubmission(
-    item: CommitOfflineEventAttendancesInput['attendances'][number],
-    metadata: {
-      submittedById: string;
-      stagedReason: string;
-    },
-    resolvedPerson: { personId: string | null; errorMessage?: string },
-    locationData: {
-      collectedLatitude: number;
-      collectedLongitude: number;
-      collectedAccuracyMeters: number;
-    },
-  ) {
-    const update = await this.prisma.offlineEventAttendanceSubmission.updateMany({
-      where: {
-        submittedById: metadata.submittedById,
-        clientId: item.clientId,
-        status: 'PENDING',
-      },
-      data: {
-        stagedReason: metadata.stagedReason,
-        resolutionError: resolvedPerson.errorMessage,
-        personId: resolvedPerson.personId,
-        scannerCode: this.normalizeOptionalString(item.code),
-        manualValue: this.normalizeOptionalString(item.value),
-        collectedLatitude: locationData.collectedLatitude,
-        collectedLongitude: locationData.collectedLongitude,
-        collectedAccuracyMeters: locationData.collectedAccuracyMeters,
-      },
-    });
-    const submission = await this.prisma.offlineEventAttendanceSubmission.findUniqueOrThrow({
-      where: this.offlineSubmissionWhere(metadata.submittedById, item.clientId),
-      include: {
-        event: true,
-      },
-    });
-
-    return {
-      submission,
-      changed: update.count === 1,
-      queuedForReview: false,
-    };
-  }
-
-  private async notifyOfflineAttendanceReviewQueued(submission: {
-    id: string;
-    eventId: string;
-    event: {
-      name: string;
-      majorEventId?: string | null;
-      eventGroupId?: string | null;
-    };
-    submittedById: string;
-    submittedAt: Date;
-    authorName?: string | null;
-  }): Promise<void> {
-    const recipients = await this.findOfflineAttendanceReviewRecipients(submission.eventId, {
-      majorEventId: submission.event.majorEventId ?? null,
-      eventGroupId: submission.event.eventGroupId ?? null,
-    });
-
-    await this.notifications.notifyOfflineAttendanceReviewQueued({
-      submissionId: submission.id,
-      eventId: submission.eventId,
-      eventName: submission.event.name,
-      recipients,
-      submittedById: submission.submittedById,
-      submittedAt: submission.submittedAt,
-      authorName: submission.authorName,
-    });
-  }
-
-  private async findOfflineAttendanceReviewRecipients(
-    eventId: string,
-    event: { majorEventId: string | null; eventGroupId: string | null },
-  ) {
-    const now = new Date();
-    const scopedGrantMatches: Prisma.EventManagerPermissionGrantWhereInput[] = [
-      { scope: EventManagerPermissionGrantScope.GLOBAL },
-      { scope: EventManagerPermissionGrantScope.EVENT, eventId },
-    ];
-    if (event.majorEventId) {
-      scopedGrantMatches.push({
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
-        majorEventId: event.majorEventId,
-      });
-    }
-    if (event.eventGroupId) {
-      scopedGrantMatches.push({
-        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
-        eventGroupId: event.eventGroupId,
-      });
-    }
-
-    const users = await this.prisma.user.findMany({
-      where: {
-        OR: [
-          { role: UserRole.ADMIN },
-          {
-            eventManagerPermissionGrants: {
-              some: {
-                permission: Permission.EventAttendance.Update,
-                deletedAt: null,
-                OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-                AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }, { OR: scopedGrantMatches }],
-              },
-            },
-          },
-        ],
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
-    });
-
-    const recipientsBySubscriberId = new Map<
-      string,
-      {
-        subscriberId: string;
-        email?: string;
-        firstName?: string;
-        lastName?: string;
-        data?: Record<string, unknown>;
-      }
-    >();
-    for (const user of users) {
-      const recipient = this.notifications.mapUserToRecipient(user);
-      recipientsBySubscriberId.set(recipient.subscriberId, recipient);
-    }
-
-    return Array.from(recipientsBySubscriberId.values());
-  }
-
-  private offlineSubmissionWhere(submittedById: string, clientId: string) {
-    return {
-      submittedById_clientId: {
-        submittedById,
-        clientId,
-      },
-    };
-  }
-
-  private async tryResolveOfflineAttendancePerson(
-    item: CommitOfflineEventAttendancesInput['attendances'][number],
-  ): Promise<{ personId: string | null; errorMessage?: string }> {
-    try {
-      const person = await this.resolveOfflineAttendancePerson(item);
-      return { personId: person.id };
-    } catch (error: unknown) {
-      return { personId: null, errorMessage: this.errorMessage(error) };
-    }
-  }
-
-  private async resolveOfflineAttendancePerson(
-    item: CommitOfflineEventAttendancesInput['attendances'][number],
-  ): Promise<{ id: string }> {
-    switch (item.createdByMethod) {
-      case AttendanceCreationMethod.SCANNER: {
-        const userId = item.code ? this.parseUserAztecCode(item.code) : null;
-        if (!userId) {
-          throw new BadRequestException('Código Aztec incompatível.');
-        }
-
-        const person = await this.prisma.people.findFirst({
-          where: {
-            userId,
-            deletedAt: null,
-            mergedIntoId: null,
-          },
-          select: {
-            id: true,
-          },
-        });
-        if (!person) {
-          throw new NotFoundException(`Person for user ${userId} was not found.`);
-        }
-
-        return person;
-      }
-      case AttendanceCreationMethod.MANUAL_INPUT:
-        return this.findSinglePersonForManualInput(item.value ?? '');
-      default:
-        throw new BadRequestException('Origem da presença off-line incompatível.');
-    }
-  }
-
-  private toEventAttendance(attendance: {
-    personId: string;
-    eventId: string;
-    category: EventAttendance['category'];
-    attendedAt: Date;
-    createdAt: Date;
-    createdById: string | null;
-    committedById: string | null;
-    createdByMethod: EventAttendance['createdByMethod'];
-    collectedLatitude: number | null;
-    collectedLongitude: number | null;
-    collectedAccuracyMeters: number | null;
-  }): EventAttendance {
-    return {
-      ...attendance,
-      createdById: attendance.createdById ?? undefined,
-      committedById: attendance.committedById ?? undefined,
-      collectedLatitude: attendance.collectedLatitude ?? undefined,
-      collectedLongitude: attendance.collectedLongitude ?? undefined,
-      collectedAccuracyMeters: attendance.collectedAccuracyMeters ?? undefined,
-    };
-  }
-
-  private toOfflineSubmission(submission: {
-    id: string;
-    clientId: string;
-    eventId: string;
-    event?: OfflineEventAttendanceSubmission['event'] | null;
-    personId: string | null;
-    person?: OfflineEventAttendanceSubmission['person'] | null;
-    status: OfflineEventAttendanceSubmission['status'];
-    createdByMethod: EventAttendance['createdByMethod'];
-    scannerCode: string | null;
-    manualValue: string | null;
-    collectedAt: Date;
-    authorUserId: string | null;
-    authorName: string | null;
-    authorEmail: string | null;
-    submittedById: string;
-    submittedAt: Date;
-    stagedReason: string | null;
-    resolutionError: string | null;
-    collectedLatitude: number | null;
-    collectedLongitude: number | null;
-    collectedAccuracyMeters: number | null;
-    committedAt: Date | null;
-    committedById: string | null;
-    rejectedAt: Date | null;
-    rejectedById: string | null;
-    rejectionReason: string | null;
-  }): OfflineEventAttendanceSubmission {
-    return {
-      ...submission,
-      event: submission.event ?? undefined,
-      personId: submission.personId ?? undefined,
-      person: submission.person ?? undefined,
-      scannerCode: submission.scannerCode ?? undefined,
-      manualValue: submission.manualValue ?? undefined,
-      authorUserId: submission.authorUserId ?? undefined,
-      authorName: submission.authorName ?? undefined,
-      authorEmail: submission.authorEmail ?? undefined,
-      stagedReason: submission.stagedReason ?? undefined,
-      resolutionError: submission.resolutionError ?? undefined,
-      collectedLatitude: submission.collectedLatitude ?? undefined,
-      collectedLongitude: submission.collectedLongitude ?? undefined,
-      collectedAccuracyMeters: submission.collectedAccuracyMeters ?? undefined,
-      committedAt: submission.committedAt ?? undefined,
-      committedById: submission.committedById ?? undefined,
-      rejectedAt: submission.rejectedAt ?? undefined,
-      rejectedById: submission.rejectedById ?? undefined,
-      rejectionReason: submission.rejectionReason ?? undefined,
-    };
-  }
-
-  private commitStatusForError(error: unknown): OfflineEventAttendanceCommitResult['status'] {
-    if (error instanceof ConflictException) {
-      return this.errorMessage(error).includes('Presença já registrada') ? 'DUPLICATE' : 'CONFLICT';
-    }
-
-    if (error instanceof HttpException && [401, 403].includes(error.getStatus())) {
-      return 'FORBIDDEN';
-    }
-
-    return 'FAILED';
-  }
-
-  private isRequiredLocationError(error: unknown): boolean {
-    if (!(error instanceof BadRequestException)) {
-      return false;
-    }
-
-    return [
-      'Localização precisa é obrigatória para registrar presença.',
-      'Ative a localização precisa para registrar presença.',
-    ].includes(this.errorMessage(error));
-  }
-
-  private errorMessage(error: unknown): string {
-    if (error instanceof HttpException) {
-      const response = error.getResponse();
-      if (typeof response === 'string') {
-        return response;
-      }
-
-      if (typeof response === 'object' && response && 'message' in response) {
-        const message = (response as { message?: unknown }).message;
-        if (Array.isArray(message)) {
-          return message.filter((item): item is string => typeof item === 'string').join('\n');
-        }
-
-        if (typeof message === 'string') {
-          return message;
-        }
-      }
-    }
-
-    return error instanceof Error ? error.message : 'Não foi possível sincronizar a presença.';
-  }
-
-  private async findSinglePersonForManualInput(rawValue: string): Promise<{ id: string }> {
-    const value = rawValue.trim();
-    if (!value) {
-      throw new BadRequestException('Informe e-mail, telefone ou documento.');
-    }
-
-    const digits = value.replace(/\D/g, '');
-    const phoneCandidates = this.getBrazilianPhoneCandidates(digits);
-    const where: Prisma.PeopleWhereInput[] = [
-      {
-        email: {
-          equals: value,
-          mode: 'insensitive',
-        },
-      },
-      {
-        secondaryEmails: {
-          has: value.toLowerCase(),
-        },
-      },
-    ];
-
-    if (digits) {
-      where.push({
-        identityDocument: {
-          in: [value, digits],
-        },
-      });
-    }
-
-    if (phoneCandidates.length > 0) {
-      where.push({
-        phone: {
-          in: phoneCandidates,
-        },
-      });
-    }
-
-    const people = await this.prisma.people.findMany({
-      where: {
-        deletedAt: null,
-        OR: where,
-      },
-      select: {
-        id: true,
-        mergedIntoId: true,
-      },
-    });
-
-    const resolvedPersonIds = new Set(people.map((person) => person.mergedIntoId ?? person.id));
-    if (resolvedPersonIds.size > 1) {
-      throw new ConflictException(
-        `Pessoa tem registros duplicados no banco de dados com o dado ${value}. Tire uma captura dessa tela e envie para o administrador do sistema, para correção.`,
-      );
-    }
-
-    const [personId] = resolvedPersonIds;
-    if (!personId) {
-      throw new NotFoundException('Nenhuma pessoa encontrada para o dado informado.');
-    }
-
-    return { id: personId };
-  }
-
-  private getRequiredLocationData(
-    location: { latitude: number; longitude: number; accuracyMeters: number } | undefined,
-  ) {
-    if (
-      location?.latitude == null ||
-      location.longitude == null ||
-      location.accuracyMeters == null ||
-      !Number.isFinite(location.latitude) ||
-      !Number.isFinite(location.longitude) ||
-      !Number.isFinite(location.accuracyMeters)
-    ) {
-      throw new BadRequestException('Localização precisa é obrigatória para registrar presença.');
-    }
-
-    if (location.accuracyMeters > MAX_LOCATION_ACCURACY_METERS) {
-      throw new BadRequestException('Ative a localização precisa para registrar presença.');
-    }
-
-    return {
-      collectedLatitude: location.latitude,
-      collectedLongitude: location.longitude,
-      collectedAccuracyMeters: location.accuracyMeters,
-    };
-  }
-
-  private getBrazilianPhoneCandidates(digits: string): string[] {
-    if (!digits) {
-      return [];
-    }
-
-    const withoutCountry = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
-    const withCountry = withoutCountry.length >= 10 ? `55${withoutCountry}` : digits;
-    return [...new Set([digits, withoutCountry, withCountry, `+${withCountry}`])];
-  }
-
-  private parseUserAztecCode(code: string): string | null {
-    const [kind, userId, ...extraParts] = code.trim().split(':');
-    if (kind !== 'user' || !userId || extraParts.length > 0) {
-      return null;
-    }
-
-    return userId;
-  }
-
-  private getActorId(context: GraphqlContext): string | undefined {
-    return context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
-  }
-
-  private normalizeOptionalString(value: string | null | undefined): string | undefined {
-    const normalized = value?.trim();
-    return normalized || undefined;
-  }
-
-  private getFirstName(name: string): string {
-    return name.trim().split(/\s+/)[0] || name;
+    return requireAttendanceCollector(this.collectionDeps, eventId, context, enforceCollectionWindow);
   }
 }

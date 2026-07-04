@@ -14,6 +14,13 @@
         "tsConfig": "libs/shared-permissions/tsconfig.lib.json",
         "assets": ["libs/shared-permissions/*.md"]
       }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/libs/shared-permissions"],
+      "options": {
+        "command": "bunx vitest run --coverage --config libs/shared-permissions/vitest.config.ts"
+      }
     }
   }
 }

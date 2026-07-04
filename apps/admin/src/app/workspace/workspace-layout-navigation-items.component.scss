@@ -1,0 +1,142 @@
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: var(--workspace-nav-item-size);
+  min-width: 0;
+  height: var(--workspace-nav-item-size);
+  padding: 0;
+  border-radius: 999px;
+  color: var(--mat-sys-on-surface-variant);
+  text-decoration: none;
+
+  mat-icon {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  &.active {
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+  }
+}
+
+.nav-item.mat-mdc-button,
+.nav-mode-button.mat-mdc-button {
+  height: var(--workspace-nav-item-size);
+  min-height: var(--workspace-nav-item-size);
+}
+
+.sidenav.nav-mode-full .nav-item,
+.sidenav.nav-mode-auto:hover .nav-item,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-item {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  padding: 0 1rem;
+}
+
+:host ::ng-deep .nav-item .mdc-button__label,
+:host ::ng-deep .nav-mode-button .mdc-button__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  gap: 0;
+}
+
+:host ::ng-deep .sidenav.nav-mode-full .nav-item .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-auto:hover .nav-item .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-auto:has(:focus-visible) .nav-item .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-full .nav-mode-button .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-auto:hover .nav-mode-button .mdc-button__label,
+:host ::ng-deep .sidenav.nav-mode-auto:has(:focus-visible) .nav-mode-button .mdc-button__label {
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+.nav-label {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  visibility: hidden;
+  white-space: nowrap;
+  transition:
+    max-width var(--workspace-nav-transition),
+    opacity var(--workspace-nav-transition);
+}
+
+.sidenav.nav-mode-full .nav-label,
+.sidenav.nav-mode-auto:hover .nav-label,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-label {
+  max-width: 12rem;
+  opacity: 1;
+  visibility: visible;
+}
+
+.nav-warning {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--mat-sys-error);
+  color: var(--mat-sys-on-error);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sidenav.nav-mode-full .nav-warning,
+.sidenav.nav-mode-auto:hover .nav-warning,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-warning {
+  position: static;
+  margin-left: auto;
+}
+
+.nav-mode-control {
+  display: flex;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 0.5rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.sidenav.nav-mode-full .nav-mode-control,
+.sidenav.nav-mode-auto:hover .nav-mode-control,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-mode-control {
+  justify-content: stretch;
+}
+
+.nav-mode-button {
+  display: flex;
+  justify-content: center;
+  width: var(--workspace-nav-item-size);
+  min-width: 0;
+  height: var(--workspace-nav-item-size);
+  padding: 0;
+  border-radius: 999px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.sidenav.nav-mode-full .nav-mode-button,
+.sidenav.nav-mode-auto:hover .nav-mode-button,
+.sidenav.nav-mode-auto:has(:focus-visible) .nav-mode-button {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  padding: 0 1rem;
+}

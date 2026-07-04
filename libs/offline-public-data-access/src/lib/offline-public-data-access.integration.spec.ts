@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import '@angular/compiler';
-import { PLATFORM_ID, createEnvironmentInjector, runInInjectionContext, type EnvironmentInjector } from '@angular/core';
+import { EnvironmentInjector, PLATFORM_ID, createEnvironmentInjector, runInInjectionContext } from '@angular/core';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import Dexie from 'dexie';
 import { AttendanceOfflineQueueService } from './attendance-offline-queue.service';
@@ -15,6 +15,7 @@ import { UserOfflineDataService } from './user-offline-data.service';
 describe('offline public data access integration', () => {
   let database: OfflinePublicDataDatabase;
   let injector: EnvironmentInjector;
+  const rootEnvironmentInjector = null as unknown as EnvironmentInjector;
 
   beforeEach(async () => {
     await Dexie.delete('cacic-public-offline-data');
@@ -31,7 +32,7 @@ describe('offline public data access integration', () => {
       CalendarPreferencesStorageService,
       UserOfflineDataService,
       OfflinePublicDataAccessService,
-    ]);
+    ], rootEnvironmentInjector);
   });
 
   afterEach(async () => {
@@ -204,8 +205,8 @@ describe('offline public data access integration', () => {
   });
 
   it('keeps the database unavailable on the server and memoizes it in the browser', () => {
-    const serverInjector = createEnvironmentInjector([{ provide: PLATFORM_ID, useValue: 'server' }]);
-    const browserInjector = createEnvironmentInjector([{ provide: PLATFORM_ID, useValue: 'browser' }]);
+    const serverInjector = createEnvironmentInjector([{ provide: PLATFORM_ID, useValue: 'server' }], rootEnvironmentInjector);
+    const browserInjector = createEnvironmentInjector([{ provide: PLATFORM_ID, useValue: 'browser' }], rootEnvironmentInjector);
 
     try {
       const serverProvider = runInInjectionContext(serverInjector, () => new OfflinePublicDatabaseProvider());

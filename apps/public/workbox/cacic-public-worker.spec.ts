@@ -245,13 +245,20 @@ function createWorkerHarness(): WorkerHarness {
   };
 }
 
-function requestContext(url: string, request: Partial<Pick<Request, 'destination' | 'method' | 'mode'>> = {}) {
+function requestContext(
+  url: string,
+  request: Partial<Pick<Request, 'destination' | 'method' | 'mode'>> = {},
+): { request: Pick<Request, 'destination' | 'method' | 'mode'>; url: URL } {
+  const defaultRequest: Pick<Request, 'destination' | 'method' | 'mode'> = {
+    destination: '',
+    method: 'GET',
+    mode: 'same-origin',
+  };
+
   return {
     url: new URL(url, 'https://eventos.example'),
     request: {
-      destination: '',
-      method: 'GET',
-      mode: 'same-origin',
+      ...defaultRequest,
       ...request,
     },
   };
@@ -305,10 +312,11 @@ describe('cacic-public-worker', () => {
 
     expect(profileRoute?.handler).toBeInstanceOf(MockStaleWhileRevalidate);
     expect(profileRoute?.matcher(requestContext('https://lh3.googleusercontent.com/not-a-profile.jpg'))).toBe(false);
-    expect((profileRoute?.handler as MockStaleWhileRevalidate).options).toMatchObject({
+    const profileHandler = profileRoute?.handler as unknown as MockStaleWhileRevalidate;
+    expect(profileHandler.options).toMatchObject({
       cacheName: 'google-profile-pictures',
     });
-    expect(((profileRoute?.handler as MockStaleWhileRevalidate).options.plugins as Array<{ options?: unknown }>)[1].options).toMatchObject({
+    expect((profileHandler.options['plugins'] as Array<{ options?: unknown }>)[1].options).toMatchObject({
       maxEntries: 80,
       maxAgeSeconds: 60 * 60 * 24,
       purgeOnQuotaError: true,
@@ -330,10 +338,11 @@ describe('cacic-public-worker', () => {
     expect(twemojiRoute?.matcher(requestContext('https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/png/1f389.png'))).toBe(
       false,
     );
-    expect((twemojiRoute?.handler as MockCacheFirst).options).toMatchObject({
+    const twemojiHandler = twemojiRoute?.handler as unknown as MockCacheFirst;
+    expect(twemojiHandler.options).toMatchObject({
       cacheName: 'twemoji-svg',
     });
-    expect(((twemojiRoute?.handler as MockCacheFirst).options.plugins as Array<{ options?: unknown }>)[1].options).toMatchObject({
+    expect((twemojiHandler.options['plugins'] as Array<{ options?: unknown }>)[1].options).toMatchObject({
       maxEntries: 512,
       maxAgeSeconds: 60 * 60 * 24 * 365,
       purgeOnQuotaError: true,

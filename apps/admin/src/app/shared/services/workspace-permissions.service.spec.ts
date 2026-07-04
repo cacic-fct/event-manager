@@ -2,7 +2,15 @@ import { PLATFORM_ID } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { Permission, WorkspacePermissionTab, getPermissionIncludedDataSummary } from '@cacic-fct/shared-permissions';
+import {
+  EVENT_MANAGER_PERMISSION_CATALOG,
+  Permission,
+  WorkspacePermissionTab,
+  formatPermissionGroups,
+  getPermissionIncludedDataSummary,
+  parsePermission,
+  requiresGlobalPermissionGrantScope,
+} from '@cacic-fct/shared-permissions';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 describe('WorkspacePermissionsService', () => {
@@ -59,6 +67,40 @@ describe('WorkspacePermissionsService', () => {
     expect(getPermissionIncludedDataSummary(Permission.Subscription.Read)).toContain('Dados limitados da pessoa inscrita');
     expect(getPermissionIncludedDataSummary(Permission.Receipt.Read)).toContain('Dados limitados da pessoa inscrita');
     expect(getPermissionIncludedDataSummary(Permission.Certificate.Read)).toContain('Dados limitados da pessoa certificada');
+  });
+
+  it('keeps shared permission formatting and grant scope rules available to admin code', () => {
+    expect(parsePermission(Permission.EventAttendance.Collect)).toEqual({
+      resource: 'event-attendance',
+      scope: 'collect',
+    });
+    expect(requiresGlobalPermissionGrantScope(Permission.Person.Delete)).toBe(true);
+    expect(requiresGlobalPermissionGrantScope(Permission.EventAttendance.Collect)).toBe(false);
+
+    const groups = formatPermissionGroups([
+      Permission.EventAttendance.Read,
+      Permission.EventAttendance.Collect,
+      Permission.EventAttendance.Collect,
+      Permission.EventForm.Publish,
+    ]);
+
+    expect(groups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'event-attendance',
+          label: 'Presenças',
+          actions: [
+            expect.objectContaining({ scope: 'read', label: 'Visualizar' }),
+            expect.objectContaining({ scope: 'collect', label: 'Coletar' }),
+          ],
+        }),
+        expect.objectContaining({
+          type: 'event-form',
+          actions: [expect.objectContaining({ scope: 'publish', label: 'Publicar' })],
+        }),
+      ]),
+    );
+    expect(EVENT_MANAGER_PERMISSION_CATALOG).toContain(Permission.PermissionGrant.Update);
   });
 
   it('evaluates workspace permissions once from the backend authority', async () => {
