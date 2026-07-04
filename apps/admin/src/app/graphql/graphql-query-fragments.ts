@@ -286,6 +286,7 @@ export const OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS = `
   eventId
   personId
   status
+  resolutionIssue
   committedAt
   committedById
   committedByFullName
@@ -295,10 +296,43 @@ export const OFFLINE_EVENT_ATTENDANCE_REJECTION_FIELDS = `
   id
   eventId
   status
+  resolutionIssue
   rejectedAt
   rejectedById
   rejectedByFullName
   rejectionReason
+`;
+
+export const OFFLINE_EVENT_ATTENDANCE_SUBMISSION_FIELDS = `
+  id
+  clientId
+  eventId
+  status
+  createdByMethod
+  scannerCode
+  manualValue
+  collectedAt
+  authorUserId
+  authorName
+  authorEmail
+  submittedById
+  submittedByFullName
+  submittedAt
+  stagedReason
+  resolutionError
+  resolutionIssue
+  collectedLatitude
+  collectedLongitude
+  collectedAccuracyMeters
+  event {
+    id
+    name
+    emoji
+    startDate
+  }
+  person {
+    ${PERSON_EXPORT_FIELDS}
+  }
 `;
 
 export const DASHBOARD_INCONSISTENCY_FIELDS = `

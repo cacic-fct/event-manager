@@ -8,6 +8,7 @@ import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, GraphqlContext } from './event-attendances.shared';
+import { PersonMatch } from './shared/types';
 
 @Resolver(() => EventAttendance)
 export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBase {
@@ -53,7 +54,31 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
     const rawValues = rows.map((row) => row[input.selectedHeader]?.trim() ?? '').filter((value) => value.length > 0);
     const uniqueRawValues = Array.from(new Set(rawValues));
     const inferredMatchType = this.inferMatchType(uniqueRawValues);
-    const personByValue = await this.findPeopleByImportValues(uniqueRawValues, inferredMatchType);
+    const rawValueByNormalizedValue = new Map(
+      uniqueRawValues.map((value) => [this.normalizeImportValue(value, inferredMatchType), value]),
+    );
+    const { personByValue, ambiguousPeopleByValue } = await this.findPeopleByImportValues(
+      uniqueRawValues,
+      inferredMatchType,
+    );
+    const unresolvedAmbiguousValues = this.resolveImportAmbiguities({
+      ambiguousPeopleByValue,
+      personByValue,
+      rawValueByNormalizedValue,
+      resolutions: input.resolutions ?? [],
+      inferredMatchType,
+    });
+
+    if (unresolvedAmbiguousValues.length > 0) {
+      return {
+        createdCount: 0,
+        duplicateCount: 0,
+        failedCount: 0,
+        failedValues: [],
+        inferredMatchType,
+        ambiguousValues: unresolvedAmbiguousValues,
+      };
+    }
 
     const existingAttendances = await this.prisma.eventAttendance.findMany({
       where: {
@@ -113,6 +138,44 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
       failedCount: failedValues.length,
       failedValues,
       inferredMatchType,
+      ambiguousValues: [],
     };
+  }
+
+  private resolveImportAmbiguities(input: {
+    ambiguousPeopleByValue: Map<string, PersonMatch[]>;
+    personByValue: Map<string, PersonMatch>;
+    rawValueByNormalizedValue: Map<string, string>;
+    resolutions: EventAttendanceCsvImportInput['resolutions'];
+    inferredMatchType: EventAttendanceCsvImportResult['inferredMatchType'];
+  }): EventAttendanceCsvImportResult['ambiguousValues'] {
+    const resolutionByValue = new Map(
+      (input.resolutions ?? []).map((resolution) => [
+        this.normalizeImportValue(resolution.value, input.inferredMatchType),
+        resolution.personId,
+      ]),
+    );
+    const unresolvedAmbiguousValues: EventAttendanceCsvImportResult['ambiguousValues'] = [];
+
+    for (const [normalizedValue, candidates] of input.ambiguousPeopleByValue.entries()) {
+      const resolvedPersonId = resolutionByValue.get(normalizedValue);
+      if (resolvedPersonId) {
+        const candidate = candidates.find((person) => person.id === resolvedPersonId);
+        if (!candidate) {
+          throw new BadRequestException(
+            `Pessoa selecionada inválida para ${input.rawValueByNormalizedValue.get(normalizedValue) ?? normalizedValue}.`,
+          );
+        }
+        input.personByValue.set(normalizedValue, candidate);
+        continue;
+      }
+
+      unresolvedAmbiguousValues.push({
+        value: input.rawValueByNormalizedValue.get(normalizedValue) ?? normalizedValue,
+        candidates,
+      });
+    }
+
+    return unresolvedAmbiguousValues;
   }
 }

@@ -44,21 +44,50 @@ export function buildPeopleCandidateLookupFilters(query: string, take: number): 
     return [];
   }
 
-  const searches: PeopleFilters[] = [{ query: normalizedQuery, take }];
+  const searches: PeopleFilters[] = [];
+  const addSearch = (filters: PeopleFilters) => {
+    const key = JSON.stringify(filters);
+    if (!searches.some((search) => JSON.stringify(search) === key)) {
+      searches.push(filters);
+    }
+  };
+  const userId = parseUserAztecIdentifier(normalizedQuery);
   const identityDocumentDigits = normalizedQuery.replace(/\D/g, '');
 
+  if (userId) {
+    addSearch({ userId, take });
+  }
+
   if (normalizedQuery.includes('@')) {
-    searches.unshift({ email: normalizedQuery, take });
+    addSearch({ email: normalizedQuery, take });
   }
 
   if (identityDocumentDigits.length >= 8) {
-    searches.unshift({ identityDocument: normalizedQuery, take });
     if (identityDocumentDigits !== normalizedQuery) {
-      searches.unshift({ identityDocument: identityDocumentDigits, take });
+      addSearch({ identityDocument: identityDocumentDigits, take });
     }
+    addSearch({ identityDocument: normalizedQuery, take });
   }
 
+  if (identityDocumentDigits.length >= 10) {
+    if (identityDocumentDigits !== normalizedQuery) {
+      addSearch({ phone: identityDocumentDigits, take });
+    }
+    addSearch({ phone: normalizedQuery, take });
+  }
+
+  addSearch({ query: normalizedQuery, take });
+
   return searches;
+}
+
+function parseUserAztecIdentifier(query: string): string | null {
+  if (!query.startsWith('user:')) {
+    return null;
+  }
+
+  const userId = query.slice('user:'.length).trim();
+  return userId && !userId.includes(':') ? userId : null;
 }
 
 export function buildDuplicatePeopleLookupFilters(input: {

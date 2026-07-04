@@ -223,8 +223,9 @@
                   Coletada em {{ submission.collectedAt | date: 'short' }} · enviada por
                   {{ submission.submittedByFullName || submission.submittedById }}
                 </span>
-                <span matListItemLine class="attendance-item-line">
-                  {{ submission.stagedReason || submission.resolutionError || 'Aguardando revisão administrativa.' }}
+                <span matListItemLine class="attendance-item-line review-line">
+                  <span class="review-badge">{{ workspace.offlineSubmissionIssueLabel(submission.resolutionIssue) }}</span>
+                  <span>{{ submission.resolutionError || submission.stagedReason || 'Aguardando revisão administrativa.' }}</span>
                 </span>
                 <div matListItemMeta class="attendance-item-actions">
                   <button
@@ -239,9 +240,17 @@
                     <button
                       mat-icon-button
                       type="button"
+                      aria-label="Corrigir presença off-line"
+                      matTooltip="Corrigir"
+                      (click)="workspace.editOfflineAttendanceSubmission(submission)">
+                      <mat-icon>edit_note</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      type="button"
                       aria-label="Aprovar presença off-line"
                       matTooltip="Aprovar"
-                      [disabled]="!!submission.resolutionError"
+                      [disabled]="!workspace.canApproveOfflineAttendanceSubmission(submission)"
                       (click)="workspace.approveOfflineAttendanceSubmission(submission)">
                       <mat-icon>check</mat-icon>
                     </button>

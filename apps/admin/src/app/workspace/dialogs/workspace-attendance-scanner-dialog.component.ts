@@ -20,12 +20,16 @@ import { DuplicatePersonWarningDialogComponent } from '@cacic-fct/shared-angular
 import { formatUnespRole, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
+import { PeopleApiService } from '../../graphql/people-api.service';
+import { buildPeopleCandidateLookupFilters } from '../../shared/people-lookup';
 import {
   AttendanceCategory,
   AttendanceCreationMethod,
   EventAttendanceScannerFeedItem,
+  Person,
   SubscriptionStatus,
 } from '@cacic-fct/event-manager-admin-contracts';
+import { AttendancePersonResolutionDialogComponent } from './attendance-person-resolution-dialog.component';
 
 export interface WorkspaceAttendanceScannerDialogData {
   eventId: string;
@@ -187,6 +191,7 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(ScannerFeedbackService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly peopleApi = inject(PeopleApiService);
   private readonly snackbar = inject(MatSnackBar);
 
   readonly attendances = signal<EventAttendanceScannerFeedItem[]>([]);
@@ -218,7 +223,7 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
       });
       this.loadInitialFeed();
     } catch (error: unknown) {
-      this.handleRegistrationError(error);
+      await this.handleRegistrationError(error);
     }
   }
 
@@ -242,7 +247,7 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
       });
       this.loadInitialFeed();
     } catch (error: unknown) {
-      this.handleRegistrationError(error);
+      await this.handleManualRegistrationError(error, this.manualForm.controls.value.value);
     }
   }
 
@@ -277,25 +282,78 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
     }
   }
 
-  private handleRegistrationError(error: unknown): void {
-    const message =
-      error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
-        ? error.error.message
-        : error instanceof Error
-          ? error.message
-          : 'Não foi possível registrar a presença.';
+  private async handleManualRegistrationError(error: unknown, value: string): Promise<void> {
+    const message = this.registrationErrorMessage(error);
+    if (!message.startsWith('Pessoa tem registros duplicados')) {
+      await this.handleRegistrationError(error);
+      return;
+    }
 
+    this.feedback.show('duplicate');
+    let candidates: Person[];
+    try {
+      candidates = await this.findManualInputCandidates(value);
+    } catch {
+      this.openDuplicatePersonWarning(message);
+      return;
+    }
+
+    if (candidates.length <= 1) {
+      this.openDuplicatePersonWarning(message);
+      return;
+    }
+
+    const resolutions = await firstValueFrom(
+      this.dialog
+        .open(AttendancePersonResolutionDialogComponent, {
+          width: 'min(42rem, 96vw)',
+          maxWidth: '96vw',
+          maxHeight: '86vh',
+          data: {
+            title: 'Escolher pessoa da presença',
+            description:
+              'O dado informado encontrou mais de uma pessoa ativa. Selecione quem deve receber esta presença.',
+            confirmLabel: 'Registrar presença',
+            ambiguousValues: [
+              {
+                value,
+                candidates,
+              },
+            ],
+          },
+        })
+        .afterClosed(),
+    );
+    const selectedPersonId = resolutions?.[0]?.personId;
+    if (!selectedPersonId) {
+      return;
+    }
+
+    try {
+      const attendance = await firstValueFrom(
+        this.api.createEventAttendance({
+          eventId: this.data.eventId,
+          personId: selectedPersonId,
+        }),
+      );
+      this.feedback.show(this.feedbackKindForCategory(attendance.category));
+      this.manualForm.reset({ value: '' });
+      this.snackbar.open('Presença registrada manualmente.', 'Fechar', {
+        duration: 2500,
+      });
+      this.loadInitialFeed();
+    } catch (selectedPersonError: unknown) {
+      await this.handleRegistrationError(selectedPersonError);
+    }
+  }
+
+  private async handleRegistrationError(error: unknown): Promise<void> {
+    const message = this.registrationErrorMessage(error);
     if (message.includes('Presença já registrada')) {
       this.feedback.show('duplicate');
     } else if (message.startsWith('Pessoa tem registros duplicados')) {
       this.feedback.show('duplicate');
-      this.dialog.open(DuplicatePersonWarningDialogComponent, {
-        width: 'min(32rem, 94vw)',
-        disableClose: true,
-        data: {
-          message,
-        },
-      });
+      this.openDuplicatePersonWarning(message);
       return;
     } else {
       this.feedback.show('invalid');
@@ -303,6 +361,36 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
 
     this.snackbar.open(message, 'Fechar', {
       duration: 5000,
+    });
+  }
+
+  private async findManualInputCandidates(value: string): Promise<Person[]> {
+    const peopleById = new Map<string, Person>();
+    const searches = buildPeopleCandidateLookupFilters(value, 8);
+    for (const filters of searches) {
+      const people = await firstValueFrom(this.peopleApi.listPeopleSummaries(filters));
+      for (const person of people) {
+        peopleById.set(person.id, person);
+      }
+    }
+    return [...peopleById.values()];
+  }
+
+  private registrationErrorMessage(error: unknown): string {
+    return error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
+      ? error.error.message
+      : error instanceof Error
+        ? error.message
+        : 'Não foi possível registrar a presença.';
+  }
+
+  private openDuplicatePersonWarning(message: string): void {
+    this.dialog.open(DuplicatePersonWarningDialogComponent, {
+      width: 'min(32rem, 94vw)',
+      disableClose: true,
+      data: {
+        message,
+      },
     });
   }
 

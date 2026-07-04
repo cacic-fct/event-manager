@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { getBrazilianPhoneCandidates } from '../../../common/brazilian-phone';
 import { EventAttendancesScannerFeedSupport } from './scanner-feed-support';
 
 export abstract class EventAttendancesMutationSupport extends EventAttendancesScannerFeedSupport {
@@ -74,7 +75,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
     }
 
     const digits = value.replace(/\D/g, '');
-    const phoneCandidates = this.getBrazilianPhoneCandidates(digits);
+    const phoneCandidates = getBrazilianPhoneCandidates(value);
     const where: Prisma.PeopleWhereInput[] = [
       {
         email: {
@@ -130,15 +131,5 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
     }
 
     return { id: personId };
-  }
-
-  protected getBrazilianPhoneCandidates(digits: string): string[] {
-    if (!digits) {
-      return [];
-    }
-
-    const withoutCountry = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
-    const withCountry = withoutCountry.length >= 10 ? `55${withoutCountry}` : digits;
-    return [...new Set([digits, withoutCountry, withCountry, `+${withCountry}`])];
   }
 }

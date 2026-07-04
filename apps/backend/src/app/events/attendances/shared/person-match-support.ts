@@ -1,9 +1,9 @@
 import { AttendanceImportMatchType } from '@cacic-fct/shared-data-types';
 import { isValidCPF } from '@cacic-fct/shared-utils';
-import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { getBrazilianPhoneCandidates } from '../../../common/brazilian-phone';
 import { EventAttendancesCsvSupport } from './csv-support';
-import { PersonMatch } from './types';
+import { ImportValueMatchResult, PersonMatch } from './types';
 
 export abstract class EventAttendancesPersonMatchSupport extends EventAttendancesCsvSupport {
   protected inferMatchType(values: string[]): AttendanceImportMatchType {
@@ -26,7 +26,7 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
   }
 
   protected looksLikeIdentityDocument(value: string): boolean {
-    const compactValue = value.trim().replace(/[.\-/\s]/g, '');
+    const compactValue = value.trim().replace(/[^A-Za-z0-9]/g, '');
     if (isValidCPF(compactValue)) {
       return true;
     }
@@ -37,13 +37,16 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
   protected async findPeopleByImportValues(
     values: string[],
     matchType: AttendanceImportMatchType,
-  ): Promise<Map<string, PersonMatch>> {
-    const result = new Map<string, PersonMatch>();
+  ): Promise<ImportValueMatchResult> {
+    const personByValue = new Map<string, PersonMatch>();
+    const ambiguousPeopleByValue = new Map<string, PersonMatch[]>();
     const normalizedValues = Array.from(
       new Set(values.map((value) => this.normalizeImportValue(value, matchType)).filter((value) => value.length > 0)),
     );
 
     for (const chunk of this.chunk(normalizedValues, 500)) {
+      const requestedKeys = new Set(chunk);
+      const candidatesByKey = new Map<string, Map<string, PersonMatch>>();
       const people = await this.prisma.people.findMany({
         where: {
           deletedAt: null,
@@ -55,31 +58,45 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
           name: true,
           email: true,
           secondaryEmails: true,
+          phone: true,
           identityDocument: true,
           academicId: true,
+          userId: true,
           createdAt: true,
           updatedAt: true,
         },
+        orderBy: [
+          {
+            name: 'asc',
+          },
+          {
+            createdAt: 'asc',
+          },
+        ],
       });
 
       for (const person of people) {
         for (const key of this.getPersonMatchKeys(person, matchType)) {
-          const existingPerson = result.get(key);
-          if (!existingPerson) {
-            result.set(key, person);
+          if (!requestedKeys.has(key)) {
             continue;
           }
+          const candidates = candidatesByKey.get(key) ?? new Map<string, PersonMatch>();
+          candidates.set(person.id, person);
+          candidatesByKey.set(key, candidates);
+        }
+      }
 
-          if (existingPerson.id !== person.id) {
-            throw new ConflictException(
-              `Valor de importação ambíguo para ${key}. Existem múltiplas pessoas ativas com o mesmo dado.`,
-            );
-          }
+      for (const [key, candidates] of candidatesByKey.entries()) {
+        const peopleForKey = [...candidates.values()];
+        if (peopleForKey.length === 1) {
+          personByValue.set(key, peopleForKey[0]);
+        } else if (peopleForKey.length > 1) {
+          ambiguousPeopleByValue.set(key, peopleForKey);
         }
       }
     }
 
-    return result;
+    return { personByValue, ambiguousPeopleByValue };
   }
 
   protected buildPeopleMatchFilters(values: string[], matchType: AttendanceImportMatchType): Prisma.PeopleWhereInput[] {
@@ -89,11 +106,20 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
           OR: [{ email: { equals: value, mode: 'insensitive' } }, { secondaryEmails: { has: value } }],
         }));
       case AttendanceImportMatchType.IDENTITY_DOCUMENT:
-        return values.flatMap((value) =>
-          this.identityDocumentLookupValues(value).map((identityDocument) => ({
+        return values.flatMap((value) => {
+          const filters: Prisma.PeopleWhereInput[] = this.identityDocumentLookupValues(value).map((identityDocument) => ({
             identityDocument,
-          })),
-        );
+          }));
+          const phoneCandidates = getBrazilianPhoneCandidates(value);
+          if (phoneCandidates.length > 0) {
+            filters.push({
+              phone: {
+                in: phoneCandidates,
+              },
+            });
+          }
+          return filters;
+        });
       case AttendanceImportMatchType.FULL_NAME:
         return values.map((value) => ({
           name: { equals: value, mode: 'insensitive' },
@@ -108,7 +134,7 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
           .filter((value): value is string => Boolean(value))
           .map((value) => this.normalizeImportValue(value, matchType));
       case AttendanceImportMatchType.IDENTITY_DOCUMENT:
-        return person.identityDocument ? [this.normalizeImportValue(person.identityDocument, matchType)] : [];
+        return this.getPersonIdentityOrPhoneMatchKeys(person);
       case AttendanceImportMatchType.FULL_NAME:
         return [this.normalizeImportValue(person.name, matchType)];
     }
@@ -120,7 +146,7 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
       case AttendanceImportMatchType.EMAIL:
         return trimmedValue.toLowerCase();
       case AttendanceImportMatchType.IDENTITY_DOCUMENT:
-        return trimmedValue.replace(/[.\-/\s]/g, '').toUpperCase();
+        return trimmedValue.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
       case AttendanceImportMatchType.FULL_NAME:
         return trimmedValue.replace(/\s+/g, ' ').toLowerCase();
     }
@@ -140,6 +166,19 @@ export abstract class EventAttendancesPersonMatchSupport extends EventAttendance
     }
 
     return Array.from(lookupValues).filter((lookupValue) => lookupValue);
+  }
+
+  private getPersonIdentityOrPhoneMatchKeys(person: PersonMatch): string[] {
+    const keys = new Set<string>();
+    if (person.identityDocument) {
+      keys.add(this.normalizeImportValue(person.identityDocument, AttendanceImportMatchType.IDENTITY_DOCUMENT));
+    }
+    if (person.phone) {
+      for (const phoneCandidate of getBrazilianPhoneCandidates(person.phone)) {
+        keys.add(this.normalizeImportValue(phoneCandidate, AttendanceImportMatchType.IDENTITY_DOCUMENT));
+      }
+    }
+    return [...keys].filter((key) => key);
   }
 
   protected chunk<T>(items: T[], size: number): T[][] {

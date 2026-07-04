@@ -97,6 +97,30 @@
   gap: 0.25rem;
 }
 
+.review-line {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.review-badge {
+  background: var(--mat-sys-surface-container-high);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 999px;
+  color: var(--mat-sys-on-surface-variant);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0.2rem 0.45rem;
+}
+
+.review-line span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .categorized-list {
   display: grid;
   gap: 0.25rem;

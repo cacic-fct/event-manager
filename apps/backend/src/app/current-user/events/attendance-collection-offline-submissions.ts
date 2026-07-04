@@ -18,6 +18,7 @@ import {
   normalizeOptionalString,
   parseUserAztecCode,
 } from './attendance-collection-context';
+import { classifyOfflineAttendanceMessage } from '../../events/attendances/offline-attendance-resolution';
 import { findSinglePersonForManualInput, getRequiredAttendanceLocationData } from './attendance-collection-records';
 import { notifyOfflineAttendanceReviewQueued } from './attendance-collection-offline-notifications';
 
@@ -286,6 +287,7 @@ export class OfflineAttendanceSubmissions {
       authorEmail: submission.authorEmail ?? undefined,
       stagedReason: submission.stagedReason ?? undefined,
       resolutionError: submission.resolutionError ?? undefined,
+      resolutionIssue: classifyOfflineAttendanceMessage(submission.resolutionError ?? submission.stagedReason),
       collectedLatitude: submission.collectedLatitude ?? undefined,
       collectedLongitude: submission.collectedLongitude ?? undefined,
       collectedAccuracyMeters: submission.collectedAccuracyMeters ?? undefined,

@@ -4,7 +4,10 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
-import type { AttendanceCreationMethod } from '@cacic-fct/event-manager-admin-contracts';
+import type {
+  AttendanceCreationMethod,
+  OfflineEventAttendanceResolutionIssue,
+} from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspaceOfflineAttendanceSubmissionDialogComponent } from './workspace-offline-attendance-submission-dialog.component';
 
 type OfflineSubmissionStoryArgs = {
@@ -14,6 +17,7 @@ type OfflineSubmissionStoryArgs = {
   createdByMethod: Extract<AttendanceCreationMethod, 'SCANNER' | 'MANUAL_INPUT'>;
   hasResolutionError: boolean;
   hasLocation: boolean;
+  resolutionIssue: OfflineEventAttendanceResolutionIssue | null;
   stagedReason: string;
 };
 
@@ -24,6 +28,7 @@ const defaultArgs: OfflineSubmissionStoryArgs = {
   createdByMethod: 'SCANNER',
   hasResolutionError: false,
   hasLocation: true,
+  resolutionIssue: 'COLLECTION_WINDOW_EXPIRED',
   stagedReason: 'Coleta sincronizada após a janela de autorização.',
 };
 
@@ -49,6 +54,7 @@ class OfflineAttendanceSubmissionDialogStoryHostComponent {
   );
   readonly hasResolutionError = input(defaultArgs.hasResolutionError);
   readonly hasLocation = input(defaultArgs.hasLocation);
+  readonly resolutionIssue = input<OfflineEventAttendanceResolutionIssue | null>(defaultArgs.resolutionIssue);
   readonly stagedReason = input(defaultArgs.stagedReason);
 
   readonly storyInjector = computed(() =>
@@ -84,6 +90,7 @@ class OfflineAttendanceSubmissionDialogStoryHostComponent {
               resolutionError: this.hasResolutionError()
                 ? 'Não foi possível localizar uma pessoa única para o dado coletado.'
                 : null,
+              resolutionIssue: this.resolutionIssue(),
               collectedLatitude: this.hasLocation() ? -22.1211 : null,
               collectedLongitude: this.hasLocation() ? -51.4086 : null,
               collectedAccuracyMeters: this.hasLocation() ? 11 : null,
@@ -115,11 +122,23 @@ const meta: Meta<OfflineSubmissionStoryArgs> = {
     createdByMethod: { control: 'select', options: ['SCANNER', 'MANUAL_INPUT'] },
     hasResolutionError: { control: 'boolean' },
     hasLocation: { control: 'boolean' },
+    resolutionIssue: {
+      control: 'select',
+      options: [
+        null,
+        'COLLECTION_WINDOW_EXPIRED',
+        'DUPLICATE_PERSON',
+        'INVALID_SCANNER_CODE',
+        'PERSON_NOT_FOUND',
+        'EVENT_LOCKED',
+        'UNKNOWN',
+      ],
+    },
     stagedReason: { control: 'text' },
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -130,8 +149,11 @@ type Story = StoryObj<OfflineSubmissionStoryArgs>;
 export const Approvable: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Presença off-line em revisão')).toBeVisible();
-    await expect(await canvas.findByRole('button', { name: 'Aprovar' })).toBeEnabled();
+    await expect(await canvas.findByText('Revisar presença off-line')).toBeVisible();
+    await expect(await canvas.findByText('Pronta para aprovação')).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Aprovar presença' })).toBeEnabled();
+    await expect(await canvas.findByRole('button', { name: 'Corrigir dados' })).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Rejeitar' })).toBeVisible();
   },
 };
 
@@ -141,8 +163,9 @@ export const ReadOnly: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Presença off-line em revisão')).toBeVisible();
-    await expect(canvas.queryByRole('button', { name: 'Aprovar' })).not.toBeInTheDocument();
+    await expect(await canvas.findByText('Revisar presença off-line')).toBeVisible();
+    await expect(await canvas.findByText('Somente leitura')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Aprovar presença' })).not.toBeInTheDocument();
   },
 };
 
@@ -150,12 +173,14 @@ export const ResolutionError: Story = {
   args: {
     hasResolutionError: true,
     createdByMethod: 'MANUAL_INPUT',
+    resolutionIssue: 'DUPLICATE_PERSON',
     stagedReason: '',
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Erro de identificação')).toBeVisible();
-    await expect(await canvas.findByRole('button', { name: 'Aprovar' })).toBeDisabled();
+    await expect(await canvas.findByText('Corrija os dados da pessoa antes de aprovar esta presença off-line.')).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Aprovar presença' })).toBeDisabled();
   },
 };
 
@@ -163,5 +188,19 @@ export const WithoutLocation: Story = {
   args: {
     hasLocation: false,
     createdByMethod: 'MANUAL_INPUT',
+  },
+};
+
+export const LongContent: Story = {
+  args: {
+    eventName:
+      'Credenciamento geral com nome de evento muito longo para validar quebra de linha e leitura em telas estreitas',
+    personName:
+      'Participante com nome excepcionalmente longo da Silva Souza Pereira Albuquerque e Caracteres Especiais çãé',
+    createdByMethod: 'MANUAL_INPUT',
+    resolutionIssue: 'PERSON_NOT_FOUND',
+    hasResolutionError: true,
+    stagedReason:
+      'A presença foi sincronizada depois da janela e o dado manual contém texto longo, acentos e possíveis erros de digitação.',
   },
 };

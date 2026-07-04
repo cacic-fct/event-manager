@@ -14,17 +14,21 @@ import {
   AttendanceCategory,
   Event,
   EventAttendance,
+  EventAttendanceCsvImportResolution,
   MajorEventPriceTier,
   MajorEventUserAttendance,
   OfflineEventAttendanceSubmission,
+  OfflineEventAttendanceResolutionIssue,
   Person,
   SubscriptionStatus,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/attendance-csv-column-dialog.component';
 import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
+import { AttendancePersonResolutionDialogComponent } from '../../workspace/dialogs/attendance-person-resolution-dialog.component';
 import { SubscriberCsvExportDialogComponent } from '../../workspace/dialogs/subscriber-csv-export-dialog.component';
 import { WorkspaceAttendanceInfoDialogComponent } from '../../workspace/dialogs/workspace-attendance-info-dialog.component';
 import { WorkspaceAttendanceScannerDialogComponent } from '../../workspace/dialogs/workspace-attendance-scanner-dialog.component';
+import { WorkspaceOfflineAttendanceSubmissionEditDialogComponent } from '../../workspace/dialogs/workspace-offline-attendance-submission-edit-dialog.component';
 import { WorkspaceOfflineAttendanceSubmissionDialogComponent } from '../../workspace/dialogs/workspace-offline-attendance-submission-dialog.component';
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import { getErrorMessage } from '../error-message';
@@ -374,13 +378,44 @@ export class WorkspaceAttendancesService {
         return;
       }
 
-      const result = await firstValueFrom(
+      let resolutions: EventAttendanceCsvImportResolution[] = [];
+      let result = await firstValueFrom(
         this.api.importEventAttendancesFromCsv({
           eventId,
           csvContent,
           selectedHeader,
         }),
       );
+      while (result.ambiguousValues.length > 0) {
+        const selectedResolutions = await firstValueFrom(
+          this.dialog
+            .open(AttendancePersonResolutionDialogComponent, {
+              width: 'min(48rem, 96vw)',
+              maxWidth: '96vw',
+              maxHeight: '86vh',
+              data: {
+                title: 'Resolver dados ambíguos',
+                description:
+                  'Alguns dados do CSV podem ser CPF ou telefone de pessoas diferentes. Selecione a pessoa correta para continuar a importação.',
+                confirmLabel: 'Continuar importação',
+                ambiguousValues: result.ambiguousValues,
+              },
+            })
+            .afterClosed(),
+        );
+        if (!selectedResolutions) {
+          return;
+        }
+        resolutions = [...resolutions, ...selectedResolutions];
+        result = await firstValueFrom(
+          this.api.importEventAttendancesFromCsv({
+            eventId,
+            csvContent,
+            selectedHeader,
+            resolutions,
+          }),
+        );
+      }
 
       await this.loadAttendances(eventId);
       this.dialog.open(AttendanceCsvImportResultDialogComponent, {
@@ -569,6 +604,32 @@ export class WorkspaceAttendancesService {
     this.snackbar.open('Presenças off-line rejeitadas.', 'Fechar', { duration: 2500 });
   }
 
+  async editOfflineAttendanceSubmission(submission: OfflineAttendanceSubmissionListItem): Promise<void> {
+    const correction = await firstValueFrom(
+      this.dialog
+        .open(WorkspaceOfflineAttendanceSubmissionEditDialogComponent, {
+          width: 'min(42rem, 96vw)',
+          maxWidth: '96vw',
+          data: {
+            submission,
+            issueLabel: this.offlineSubmissionIssueLabel(submission.resolutionIssue),
+          },
+        })
+        .afterClosed(),
+    );
+    if (!correction) {
+      return;
+    }
+
+    const updated = await firstValueFrom(this.api.updateOfflineEventAttendanceSubmission(submission.id, correction));
+    await this.loadAttendances(submission.eventId);
+    this.snackbar.open(
+      updated.resolutionError ? 'Correção salva, mas a presença ainda precisa de ajuste.' : 'Presença off-line corrigida.',
+      'Fechar',
+      { duration: 3000 },
+    );
+  }
+
   async inspectOfflineAttendanceSubmission(
     submission: OfflineAttendanceSubmissionListItem,
     canReview: boolean,
@@ -591,6 +652,42 @@ export class WorkspaceAttendancesService {
     }
     if (action === 'reject') {
       await this.rejectOfflineAttendanceSubmission(submission);
+    }
+    if (action === 'edit') {
+      await this.editOfflineAttendanceSubmission(submission);
+    }
+  }
+
+  canApproveOfflineAttendanceSubmission(submission: OfflineAttendanceSubmissionListItem): boolean {
+    return !submission.resolutionError;
+  }
+
+  offlineSubmissionIssueLabel(issue: OfflineEventAttendanceResolutionIssue | null | undefined): string {
+    switch (issue) {
+      case 'COLLECTION_WINDOW_EXPIRED':
+        return 'Janela encerrada';
+      case 'DUPLICATE_ATTENDANCE':
+        return 'Presença duplicada';
+      case 'DUPLICATE_PERSON':
+        return 'Pessoa duplicada';
+      case 'EVENT_DELETED':
+        return 'Evento removido';
+      case 'EVENT_LOCKED':
+        return 'Evento bloqueado';
+      case 'INVALID_SCANNER_CODE':
+        return 'Código inválido';
+      case 'LOCATION_IMPRECISE':
+        return 'Localização imprecisa';
+      case 'LOCATION_MISSING':
+        return 'Sem localização';
+      case 'PERSON_NOT_FOUND':
+        return 'Pessoa não encontrada';
+      case 'UNSUPPORTED_METHOD':
+        return 'Origem incompatível';
+      case 'UNKNOWN':
+      case null:
+      case undefined:
+        return 'Revisão manual';
     }
   }
 

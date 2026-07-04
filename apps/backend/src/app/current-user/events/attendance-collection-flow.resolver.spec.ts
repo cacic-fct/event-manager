@@ -730,6 +730,96 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     expect(prisma.offlineEventAttendanceSubmission.create).not.toHaveBeenCalled();
   });
 
+  it('stages duplicate-person offline manual inputs for admin correction', async () => {
+    const { resolver, prisma } = createCollectionResolver({
+      collector: collectorPerson(),
+      people: [
+        { id: 'person-1', mergedIntoId: null },
+        { id: 'person-2', mergedIntoId: null },
+      ],
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-duplicate-person',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+              value: 'duplicate@example.com',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+              authorUserId: 'offline-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        clientId: 'queue-duplicate-person',
+        eventId: 'event-1',
+        status: 'STAGED',
+        stagedSubmission: expect.objectContaining({
+          personId: undefined,
+          resolutionIssue: 'DUPLICATE_PERSON',
+          resolutionError: expect.stringContaining('Pessoa tem registros duplicados'),
+        }),
+      }),
+    ]);
+    expect(prisma.offlineEventAttendanceSubmission.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          clientId: 'queue-duplicate-person',
+          personId: null,
+          manualValue: 'duplicate@example.com',
+          resolutionError: expect.stringContaining('Pessoa tem registros duplicados'),
+        }),
+      }),
+    );
+  });
+
+  it('stages offline identity conflicts for permissioned senders instead of returning terminal conflicts', async () => {
+    const { resolver, authorizationPolicy } = createCollectionResolver({
+      collector: null,
+      people: [
+        { id: 'person-1', mergedIntoId: null },
+        { id: 'person-2', mergedIntoId: null },
+      ],
+      grantsAttendancePermission: true,
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-admin-duplicate-person',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+              value: 'duplicate@example.com',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+              authorUserId: 'offline-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        clientId: 'queue-admin-duplicate-person',
+        eventId: 'event-1',
+        status: 'STAGED',
+        stagedSubmission: expect.objectContaining({
+          resolutionIssue: 'DUPLICATE_PERSON',
+        }),
+      }),
+    ]);
+    expect(authorizationPolicy.assertAttendanceCollectorForEvent).not.toHaveBeenCalled();
+  });
+
   it('finds manual input matches by normalized phone and resolves merged people', async () => {
     const { resolver, prisma } = createCollectionResolver({
       collector: collectorPerson({ userId: 'fallback-user' }),
@@ -748,7 +838,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
           OR: expect.arrayContaining([
             {
               phone: {
-                in: ['5518999990000', '18999990000', '+5518999990000'],
+                in: expect.arrayContaining(['5518999990000', '18999990000', '+5518999990000']),
               },
             },
           ]),

@@ -744,6 +744,7 @@ export function createAdminOfflineEventAttendanceSubmission(
     submittedAt: adminFixtureDate,
     stagedReason: null,
     resolutionError: null,
+    resolutionIssue: null,
     collectedLatitude: null,
     collectedLongitude: null,
     collectedAccuracyMeters: null,

@@ -1,10 +1,14 @@
 import {
   OfflineEventAttendanceCommitResult,
 } from '@cacic-fct/shared-data-types';
-import { BadRequestException, ConflictException, HttpException } from '@nestjs/common';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import {
+  classifyOfflineAttendanceError,
+  errorMessage,
+  isRequiredLocationIssue,
+} from '../../events/attendances/offline-attendance-resolution';
 
 export function getAuthenticatedUser(
   currentUserContext: CurrentUserContextService,
@@ -36,46 +40,11 @@ export function parseUserAztecCode(code: string): string | null {
 }
 
 export function commitStatusForError(error: unknown): OfflineEventAttendanceCommitResult['status'] {
-  if (error instanceof ConflictException) {
-    return errorMessage(error).includes('Presença já registrada') ? 'DUPLICATE' : 'CONFLICT';
-  }
-
-  if (error instanceof HttpException && [401, 403].includes(error.getStatus())) {
-    return 'FORBIDDEN';
-  }
-
-  return 'FAILED';
+  return classifyOfflineAttendanceError(error).status;
 }
 
 export function isRequiredLocationError(error: unknown): boolean {
-  if (!(error instanceof BadRequestException)) {
-    return false;
-  }
-
-  return [
-    'Localização precisa é obrigatória para registrar presença.',
-    'Ative a localização precisa para registrar presença.',
-  ].includes(errorMessage(error));
+  return isRequiredLocationIssue(classifyOfflineAttendanceError(error).issue);
 }
 
-export function errorMessage(error: unknown): string {
-  if (error instanceof HttpException) {
-    const response = error.getResponse();
-    if (typeof response === 'string') {
-      return response;
-    }
-
-    if (typeof response === 'object' && response && 'message' in response) {
-      const message = (response as { message?: unknown }).message;
-      if (Array.isArray(message)) {
-        return message.filter((item): item is string => typeof item === 'string').join('\n');
-      }
-
-      if (typeof message === 'string') {
-        return message;
-      }
-    }
-  }
-
-  return error instanceof Error ? error.message : 'Não foi possível sincronizar a presença.';
-}
+export { errorMessage };

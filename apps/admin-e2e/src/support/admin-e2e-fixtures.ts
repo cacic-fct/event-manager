@@ -503,6 +503,44 @@ export function createAdminE2EEventAttendance(overrides: Record<string, unknown>
   };
 }
 
+export function createAdminE2EOfflineEventAttendanceSubmission(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const event = createAdminE2EEvent();
+
+  return {
+    id: 'offline-attendance-1',
+    clientId: 'offline-client-1',
+    eventId: event.id,
+    event,
+    personId: null,
+    person: null,
+    status: 'PENDING',
+    createdByMethod: 'MANUAL_INPUT',
+    scannerCode: null,
+    manualValue: 'ada@exmaple.com',
+    collectedAt: '2026-05-21T17:20:00.000Z',
+    authorUserId: 'collector-user',
+    authorName: 'Coletora Offline',
+    authorEmail: 'coletora@example.edu',
+    submittedById: 'admin-1',
+    submittedByFullName: 'Admin Teste',
+    submittedAt: '2026-05-21T18:00:00.000Z',
+    stagedReason: 'Coleta enviada para revisão administrativa.',
+    resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+    resolutionIssue: 'PERSON_NOT_FOUND',
+    collectedLatitude: -22.1211,
+    collectedLongitude: -51.4086,
+    collectedAccuracyMeters: 12,
+    committedAt: null,
+    committedById: null,
+    committedByFullName: null,
+    rejectedAt: null,
+    rejectedById: null,
+    rejectedByFullName: null,
+    rejectionReason: null,
+    ...overrides,
+  };
+}
+
 export function createAdminE2EEventForm(overrides: Partial<AdminE2EEventFormFixture> = {}): AdminE2EEventFormFixture {
   const event = createAdminE2EEvent();
 
@@ -768,7 +806,20 @@ function graphqlData(body: unknown, dashboardInsights: AdminE2EDashboardInsights
   }
 
   if (query.includes('query OfflineEventAttendanceSubmissions')) {
-    return { offlineEventAttendanceSubmissions: [] };
+    return { offlineEventAttendanceSubmissions: [createAdminE2EOfflineEventAttendanceSubmission()] };
+  }
+
+  if (query.includes('mutation UpdateOfflineEventAttendanceSubmission')) {
+    const person = createAdminE2EPerson();
+    return {
+      updateOfflineEventAttendanceSubmission: createAdminE2EOfflineEventAttendanceSubmission({
+        personId: person.id,
+        person,
+        manualValue: 'ada@example.edu',
+        resolutionError: null,
+        resolutionIssue: null,
+      }),
+    };
   }
 
   if (query.includes('query ListMajorEventUserAttendances')) {

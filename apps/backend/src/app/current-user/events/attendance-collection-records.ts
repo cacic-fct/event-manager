@@ -1,6 +1,7 @@
 import { EventAttendance } from '@cacic-fct/shared-data-types';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { getBrazilianPhoneCandidates } from '../../common/brazilian-phone';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -74,7 +75,7 @@ export async function findSinglePersonForManualInput(
   }
 
   const digits = value.replace(/\D/g, '');
-  const phoneCandidates = getBrazilianPhoneCandidates(digits);
+  const phoneCandidates = getBrazilianPhoneCandidates(value);
   const where: Prisma.PeopleWhereInput[] = [
     {
       email: {
@@ -180,14 +181,4 @@ export function toEventAttendance(attendance: {
     collectedLongitude: attendance.collectedLongitude ?? undefined,
     collectedAccuracyMeters: attendance.collectedAccuracyMeters ?? undefined,
   };
-}
-
-function getBrazilianPhoneCandidates(digits: string): string[] {
-  if (!digits) {
-    return [];
-  }
-
-  const withoutCountry = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
-  const withCountry = withoutCountry.length >= 10 ? `55${withoutCountry}` : digits;
-  return [...new Set([digits, withoutCountry, withCountry, `+${withCountry}`])];
 }

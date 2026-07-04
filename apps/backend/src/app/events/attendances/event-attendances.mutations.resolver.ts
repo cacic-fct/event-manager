@@ -6,9 +6,10 @@ import {
   EventAttendanceScannerCodeInput,
   EventAttendanceUpdateInput,
   OfflineEventAttendanceSubmission,
+  OfflineEventAttendanceSubmissionUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
@@ -24,6 +25,7 @@ import {
   offlineSubmissionActorIds,
   offlineSubmissionActorNameMap,
 } from './offline-submission-response';
+import { errorMessage } from './offline-attendance-resolution';
 
 const EVENT_ATTENDANCE_AUDIT_SELECT = {
   personId: true,
@@ -490,6 +492,74 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     return this.getOfflineSubmissionForResponse(submission.id);
   }
 
+  @Mutation(() => OfflineEventAttendanceSubmission, { name: 'updateOfflineEventAttendanceSubmission' })
+  async updateOfflineEventAttendanceSubmission(
+    @Args('submissionId', { type: () => String }) submissionId: string,
+    @Args('input', { type: () => OfflineEventAttendanceSubmissionUpdateInput })
+    input: OfflineEventAttendanceSubmissionUpdateInput,
+    @Context() context: GraphqlContext,
+  ): Promise<OfflineEventAttendanceSubmission> {
+    const submission = await this.prisma.offlineEventAttendanceSubmission.findUnique({
+      where: {
+        id: submissionId,
+      },
+      include: {
+        event: true,
+        person: true,
+      },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Offline attendance submission ${submissionId} was not found.`);
+    }
+    if (submission.status !== 'PENDING') {
+      throw new ConflictException('Esta presença off-line já foi revisada.');
+    }
+
+    await this.assertCanReviewOfflineSubmission(submission.eventId, context);
+    await this.frozenResources.assertEventMutable(submission.eventId, this.getUser(context), 'edit');
+    const data = await this.buildOfflineSubmissionCorrectionData(submission, input);
+
+    await this.prisma.$transaction(async (tx) => {
+      const reviewUpdate = await tx.offlineEventAttendanceSubmission.updateMany({
+        where: {
+          id: submission.id,
+          status: 'PENDING',
+        },
+        data,
+      });
+      if (reviewUpdate.count !== 1) {
+        throw new ConflictException('Esta presença off-line já foi revisada.');
+      }
+
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+          entityId: `offline:${submission.id}`,
+          entityLabel: submission.id,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: {
+            personId: submission.personId,
+            createdByMethod: submission.createdByMethod,
+            scannerCode: submission.scannerCode,
+            manualValue: submission.manualValue,
+            resolutionError: submission.resolutionError,
+          },
+          after: data,
+          scope: {
+            permission: Permission.EventAttendance.Update,
+            eventId: submission.eventId,
+          },
+          summary: 'Presença off-line corrigida pelo painel administrativo.',
+        },
+        tx,
+      );
+    });
+
+    await this.dashboardInsights.invalidateCachedInsights();
+    return this.getOfflineSubmissionForResponse(submission.id);
+  }
+
   private normalizeSubmissionBatch(submissionIds: readonly string[]): string[] {
     const normalizedIds = [...new Set(submissionIds.map((id) => id.trim()).filter(Boolean))];
     if (normalizedIds.length === 0) {
@@ -621,6 +691,64 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     return this.resolveMergedPersonId(personId);
   }
 
+  private async buildOfflineSubmissionCorrectionData(
+    submission: {
+      personId: string | null;
+      createdByMethod: AttendanceCreationMethod;
+      scannerCode: string | null;
+      manualValue: string | null;
+    },
+    input: OfflineEventAttendanceSubmissionUpdateInput,
+  ): Promise<Prisma.OfflineEventAttendanceSubmissionUncheckedUpdateManyInput> {
+    const createdByMethod = (input.createdByMethod ?? submission.createdByMethod) as AttendanceCreationMethod;
+    const scannerCode =
+      createdByMethod === AttendanceCreationMethod.SCANNER
+        ? this.normalizeOptionalString(input.scannerCode ?? submission.scannerCode) ?? null
+        : null;
+    const manualValue =
+      createdByMethod === AttendanceCreationMethod.MANUAL_INPUT
+        ? this.normalizeOptionalString(input.manualValue ?? submission.manualValue) ?? null
+        : null;
+    const explicitPersonId = this.normalizeOptionalString(input.personId);
+
+    if (explicitPersonId) {
+      return {
+        createdByMethod,
+        scannerCode,
+        manualValue,
+        personId: await this.resolveMergedPersonId(explicitPersonId),
+        resolutionError: null,
+      };
+    }
+
+    try {
+      const personId = await this.resolveOfflineSubmissionPerson({
+        createdByMethod,
+        scannerCode,
+        manualValue,
+      });
+      return {
+        createdByMethod,
+        scannerCode,
+        manualValue,
+        personId: await this.resolveMergedPersonId(personId),
+        resolutionError: null,
+      };
+    } catch (error: unknown) {
+      if (!(error instanceof HttpException) || ![400, 404, 409].includes(error.getStatus())) {
+        throw error;
+      }
+
+      return {
+        createdByMethod,
+        scannerCode,
+        manualValue,
+        personId: null,
+        resolutionError: errorMessage(error),
+      };
+    }
+  }
+
   private async resolveOfflineSubmissionPerson(submission: {
     createdByMethod: AttendanceCreationMethod;
     scannerCode: string | null;
@@ -671,6 +799,11 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     }
 
     return person.mergedIntoId ?? person.id;
+  }
+
+  private normalizeOptionalString(value: string | null | undefined): string | undefined {
+    const normalized = value?.trim();
+    return normalized || undefined;
   }
 
   private async getOfflineSubmissionForResponse(submissionId: string): Promise<OfflineEventAttendanceSubmission> {
