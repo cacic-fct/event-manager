@@ -106,8 +106,8 @@ export class CacicAnalyticsService {
       return false;
     }
 
-    if (umami.isAvailable()) {
-      action(umami);
+    if (this.isUmamiAvailable(umami)) {
+      this.runOptionalAction(action, umami);
       return true;
     }
 
@@ -138,7 +138,7 @@ export class CacicAnalyticsService {
     }
 
     const umami = this.getUmami();
-    if (!umami || !umami.isAvailable()) {
+    if (!umami || !this.isUmamiAvailable(umami)) {
       if (this.flushAttempts >= MAX_FLUSH_ATTEMPTS) {
         this.pendingActions = [];
         this.clearFlushTimer();
@@ -148,9 +148,25 @@ export class CacicAnalyticsService {
 
     const actions = this.pendingActions.splice(0);
     for (const action of actions) {
-      action(umami);
+      this.runOptionalAction(action, umami);
     }
     this.clearFlushTimer();
+  }
+
+  private runOptionalAction(action: (umami: UmamiService) => void, umami: UmamiService): void {
+    try {
+      action(umami);
+    } catch {
+      return;
+    }
+  }
+
+  private isUmamiAvailable(umami: UmamiService): boolean {
+    try {
+      return umami.isAvailable();
+    } catch {
+      return false;
+    }
   }
 
   private clearFlushTimer(): void {
