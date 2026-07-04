@@ -18,23 +18,22 @@ Substitui o cartão de identificação (crachá) físico, mas pode ser impresso 
 ### Dados
 
 - Nome completo;
-- E-mail;
-- Celular;
 - Vínculo com a Unesp:
   - Curso;
   - Cargo;
   - Externo.
-- Código Aztec.
+- Código Aztec;
+- CPF.
 
 ### Código
 
 #### Dados do código
 
-O código de barras é gerado a partir da identificação única (uuid) do usuário do banco de dados e segue o seguinte formato:
+O código de barras é gerado a partir da identificação única (uuid) do usuário no Keycloak e segue o seguinte formato:
 
-- `uid:<uuid>` — Onde `<uuid>` é a identificação única do usuário sem `<>`.
+- `user:<uuid>` — Onde `<uuid>` é a identificação única do usuário sem `<>`.
 
-O prefixo `uid:` é utilizado para identificar o tipo de dado que está sendo lido.
+O prefixo `user:` é utilizado para identificar o tipo de dado que está sendo lido.
 
 #### Aztec Code
 
@@ -57,7 +56,7 @@ Isso permite a leitura de códigos em distâncias maiores e evita a formação d
 
 <img src={quietZoneAztec} alt="Demonstração do Quiet Zone do Aztec Code." width="200" />
 
-> É possível ler este Aztec Code
+> É possível ler este Aztec Code, mesmo não havendo uma margem em volta dele
 
 ###### Tamanho da tela
 
@@ -75,11 +74,14 @@ No Aztec Code, isso não é um problema.
 
 ###### Impressão
 
-<img src={damagedQR} alt="Uma representação gráfica de um QR Code com uma das Finder Patterns cobertas" width="200" />>
-Apesar de estar preservado, não é possível ler este QR Code, pois uma das Finder Patterns está incompleta.
+<img src={damagedQR} alt="Uma representação gráfica de um QR Code com uma das Finder Patterns cobertas" width="200" />
 
-<img src={damagedAztec} alt="Uma representação gráfica de um Aztec Code rasgado" width="200" />> É possível ler um Aztec
-code desde que o Finder Pattern (quadrado no centro) esteja preservado.
+> Apesar de estar preservado, não é possível ler este QR Code, pois uma das Finder Patterns está incompleta.
+
+<img src={damagedAztec} alt="Uma representação gráfica de um Aztec Code rasgado" width="200" />
+
+> É possível ler um Aztec
+> code desde que o Finder Pattern (quadrado no centro) esteja preservado.
 
 Caso os professores desejem a volta do crachá impresso, o Aztec Code também é a opção mais ideal, já que pode ser lido mesmo que o crachá esteja amassado, sujo ou rasgado.
 
