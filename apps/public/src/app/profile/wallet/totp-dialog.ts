@@ -47,7 +47,6 @@ type TotpDialogState =
           @if (seed) {
             <section class="code-panel" aria-live="polite">
               <div class="code-copy">
-                <span class="label">Código atual</span>
                 <strong class="code">{{ displayCode() }}</strong>
               </div>
               <mat-progress-spinner
