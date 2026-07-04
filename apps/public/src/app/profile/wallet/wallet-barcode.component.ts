@@ -79,6 +79,7 @@ export class WalletBarcodeComponent {
       'aria-hidden',
       'd',
       'fill',
+      'fill-rule',
       'height',
       'preserveaspectratio',
       'role',
