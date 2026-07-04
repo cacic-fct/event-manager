@@ -1,5 +1,4 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { toSVG } from '@bwip-js/browser';
 import { WalletBarcodeComponent } from './wallet-barcode.component';
 
 describe('WalletBarcodeComponent', () => {
@@ -13,44 +12,26 @@ describe('WalletBarcodeComponent', () => {
     fixture = TestBed.createComponent(WalletBarcodeComponent);
   });
 
-  it('renders SVG markup that only uses the barcode whitelist', () => {
-    fixture.componentRef.setInput(
-      'svg',
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0H10" stroke="#000"/></svg>',
-    );
+  it('renders an Aztec SVG for the wallet user id', () => {
+    fixture.componentRef.setInput('userId', 'test-user');
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('svg')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('path')).not.toBeNull();
   });
 
-  it('renders bwip-js Aztec SVG markup', () => {
-    fixture.componentRef.setInput(
-      'svg',
-      toSVG({
-        bcid: 'azteccode',
-        text: 'user:test-user',
-        height: 300,
-        width: 300,
-        includetext: false,
-        textxalign: 'center',
-        // @ts-expect-error - bwip-js supports eclevel for azteccode.
-        eclevel: '35',
-      }),
-    );
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('svg')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('path')).not.toBeNull();
-  });
-
-  it('rejects SVG markup with executable content', () => {
-    fixture.componentRef.setInput(
-      'svg',
-      '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(1)</script></svg>',
-    );
+  it('renders an empty barcode container when the user id is empty', () => {
+    fixture.componentRef.setInput('userId', '');
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.barcode-content')?.innerHTML).toBe('');
+  });
+
+  it('does not inject the user id as markup', () => {
+    fixture.componentRef.setInput('userId', '<script>alert(1)</script>');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('svg')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('script')).toBeNull();
   });
 });

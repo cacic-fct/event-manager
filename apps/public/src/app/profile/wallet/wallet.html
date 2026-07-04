@@ -43,13 +43,14 @@
     <app-wallet-barcode
       label="Código de barras"
       class="aztec-code margin-horizontal-auto barcode-screen"
-      [svg]="profileBarcode()" />
+      [userId]="user?.userId || ''" />
 
     <app-wallet-barcode
       label="Código de barras para impressão"
       class="aztec-code margin-horizontal-auto barcode-print"
       [ariaHidden]="true"
-      [svg]="printProfileBarcode()" />
+      [errorCorrectionLevel]="'60'"
+      [userId]="user?.userId || ''" />
 
     <h3 class="margin-horizontal-auto identity-document">{{ formatDocument(user?.identityDocument || '') }}</h3>
   </mat-card>

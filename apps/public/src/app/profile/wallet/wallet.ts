@@ -1,4 +1,4 @@
-import { Component, PLATFORM_ID, Signal, computed, effect, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -9,8 +9,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatToolbarModule } from '@angular/material/toolbar';
-
-import { toSVG } from '@bwip-js/browser';
 
 import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
 import { OfflineUserSnapshot } from '@cacic-fct/offline-public-data-access';
@@ -57,26 +55,6 @@ export class Wallet {
     return isPlatformBrowser(this.platformId);
   }
 
-  public readonly profileBarcode: Signal<string> = computed(() => {
-    const user = this.cardUser();
-
-    if (!user?.userId || !this.isBrowser) {
-      return '';
-    }
-
-    return this.renderAztecCode(user.userId, '35');
-  });
-
-  public readonly printProfileBarcode: Signal<string> = computed(() => {
-    const user = this.cardUser();
-
-    if (!user?.userId || !this.isBrowser) {
-      return '';
-    }
-
-    return this.renderAztecCode(user.userId, '60');
-  });
-
   public readonly cardUser = computed(() => {
     const user = this.authService.user();
     if (user?.sub) {
@@ -112,30 +90,6 @@ export class Wallet {
 
       void this.offlineUserData.getOfflineSnapshot().then((snapshot) => this.offlineSnapshot.set(snapshot));
     });
-  }
-
-  private renderAztecCode(userSub: string, errorCorrectionLevel: string): string {
-    if (!this.isBrowser) {
-      return '';
-    }
-
-    try {
-      // We use bwip here instead of zxing-wasm,
-      // because its compressed size is smaller, and it generates code instantly
-      return toSVG({
-        bcid: 'azteccode',
-        text: `user:${userSub}`,
-        height: 300,
-        width: 300,
-        includetext: false,
-        textxalign: 'center',
-        // @ts-expect-error - bwip-js supports eclevel for azteccode.
-        eclevel: errorCorrectionLevel || '90',
-      });
-    } catch (err) {
-      console.error('Failed to render Aztec code:', err);
-      return '';
-    }
   }
 
   public formatDocument(document: string): string {
