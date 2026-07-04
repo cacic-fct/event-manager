@@ -3,6 +3,7 @@ import type { DashboardInconsistency } from '@cacic-fct/shared-frontend-types';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
+import { DASHBOARD_INCONSISTENCY_FIELDS } from './graphql-query-fragments';
 
 export type PublicationBulkOperation = 'PUBLISH_MISSING_CHILDREN' | 'SCHEDULE_BUNDLE' | 'UNPUBLISH_BUNDLE';
 
@@ -124,15 +125,7 @@ export class PublicationApiService {
             hasMore
             query
             warnings {
-              type
-              action
-              targetId
-              severity
-              title
-              description
-              eventId
-              relatedEventId
-              personId
+              ${DASHBOARD_INCONSISTENCY_FIELDS}
             }
             tree {
               ${PUBLIC_CONTENT_NODE_FIELDS}

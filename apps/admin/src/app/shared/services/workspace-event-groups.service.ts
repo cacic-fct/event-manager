@@ -15,6 +15,8 @@ import { getErrorMessage } from '../error-message';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
   pageVariables,
 } from '../list-pagination';
 import { bindLiveSearch } from '../live-search';
@@ -122,16 +124,11 @@ export class WorkspaceEventGroupsService {
   }
 
   async previousEventGroupsPage(): Promise<void> {
-    this.eventGroupsPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadEventGroups();
+    await loadPreviousPage(this.eventGroupsPagination, () => this.loadEventGroups());
   }
 
   async nextEventGroupsPage(): Promise<void> {
-    if (!this.eventGroupsPagination.hasNextPage()) {
-      return;
-    }
-    this.eventGroupsPagination.pageIndex.update((page) => page + 1);
-    await this.loadEventGroups();
+    await loadNextPage(this.eventGroupsPagination, () => this.loadEventGroups());
   }
 
   private async refreshEventSummaries(): Promise<void> {

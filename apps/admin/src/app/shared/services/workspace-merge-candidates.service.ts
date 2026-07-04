@@ -7,7 +7,14 @@ import { MergeCandidateApiService } from '../../graphql/merge-candidate-api.serv
 import { MergeCandidate, MergeCandidateStatus } from '@cacic-fct/event-manager-admin-contracts';
 import { MergeCandidateDialogComponent } from '../../workspace/dialogs/merge-candidate-dialog.component';
 import { getErrorMessage } from '../error-message';
-import { applyPagedResult, createWorkspaceListPagination, pageVariables, resetPagination } from '../list-pagination';
+import {
+  applyPagedResult,
+  createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
+  pageVariables,
+  resetPagination,
+} from '../list-pagination';
 import { WorkspacePeopleService } from './workspace-people.service';
 
 @Injectable({
@@ -43,16 +50,11 @@ export class WorkspaceMergeCandidatesService {
   }
 
   async previousMergeCandidatesPage(): Promise<void> {
-    this.mergeCandidatesPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.refreshMergeCandidates();
+    await loadPreviousPage(this.mergeCandidatesPagination, () => this.refreshMergeCandidates());
   }
 
   async nextMergeCandidatesPage(): Promise<void> {
-    if (!this.mergeCandidatesPagination.hasNextPage()) {
-      return;
-    }
-    this.mergeCandidatesPagination.pageIndex.update((page) => page + 1);
-    await this.refreshMergeCandidates();
+    await loadNextPage(this.mergeCandidatesPagination, () => this.refreshMergeCandidates());
   }
 
   async scanMergeCandidates(showNotification = true): Promise<void> {

@@ -26,10 +26,13 @@ import { SubscriberCsvExportDialogComponent } from '../../workspace/dialogs/subs
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { bindLiveSearch } from '../live-search';
+import { buildPeopleLookupFilters } from '../people-lookup';
 import {
-  WORKSPACE_LIST_PAGE_SIZE,
   applyPagedResult,
   createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
+  pageVariables,
   resetPagination,
 } from '../list-pagination';
 import { buildSubscriberCsv } from '../subscriber-csv-export';
@@ -165,23 +168,18 @@ export class WorkspaceSubscriptionsService {
   }
 
   async previousEventResultsPage(): Promise<void> {
-    this.eventResultsPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadEventResultsPage();
+    await loadPreviousPage(this.eventResultsPagination, () => this.loadEventResultsPage());
   }
 
   async nextEventResultsPage(): Promise<void> {
-    if (!this.eventResultsPagination.hasNextPage()) {
-      return;
-    }
-    this.eventResultsPagination.pageIndex.update((page) => page + 1);
-    await this.loadEventResultsPage();
+    await loadNextPage(this.eventResultsPagination, () => this.loadEventResultsPage());
   }
 
   private async loadEventResultsPage(): Promise<void> {
     const events = await firstValueFrom(
       this.eventApi.listEvents({
-        ...buildEventListFilters(this.eventFiltersForm.value, WORKSPACE_LIST_PAGE_SIZE + 1),
-        skip: this.eventResultsPagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
+        ...buildEventListFilters(this.eventFiltersForm.value),
+        ...pageVariables(this.eventResultsPagination.pageIndex()),
       }),
     );
     this.eventResults.set(applyPagedResult(events, this.eventResultsPagination));
@@ -219,8 +217,7 @@ export class WorkspaceSubscriptionsService {
       applyPagedResult(
         await firstValueFrom(
           this.api.listEventSubscriptions(resolvedEventId, {
-            skip: this.eventSubscriptionsPagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
-            take: WORKSPACE_LIST_PAGE_SIZE + 1,
+            ...pageVariables(this.eventSubscriptionsPagination.pageIndex()),
           }),
         ),
         this.eventSubscriptionsPagination,
@@ -229,16 +226,11 @@ export class WorkspaceSubscriptionsService {
   }
 
   async previousEventSubscriptionsPage(): Promise<void> {
-    this.eventSubscriptionsPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadEventSubscriptions();
+    await loadPreviousPage(this.eventSubscriptionsPagination, () => this.loadEventSubscriptions());
   }
 
   async nextEventSubscriptionsPage(): Promise<void> {
-    if (!this.eventSubscriptionsPagination.hasNextPage()) {
-      return;
-    }
-    this.eventSubscriptionsPagination.pageIndex.update((page) => page + 1);
-    await this.loadEventSubscriptions();
+    await loadNextPage(this.eventSubscriptionsPagination, () => this.loadEventSubscriptions());
   }
 
   async findEventPerson(): Promise<void> {
@@ -283,8 +275,7 @@ export class WorkspaceSubscriptionsService {
     void this.router.navigate(['/subscriptions/major-event', majorEventId]);
     const subscriptions = await firstValueFrom(
       this.api.listMajorEventSubscriptions(majorEventId, {
-        skip: this.majorEventSubscriptionsPagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
-        take: WORKSPACE_LIST_PAGE_SIZE + 1,
+        ...pageVariables(this.majorEventSubscriptionsPagination.pageIndex()),
       }),
     );
     const events =
@@ -303,16 +294,11 @@ export class WorkspaceSubscriptionsService {
   }
 
   async previousMajorEventSubscriptionsPage(): Promise<void> {
-    this.majorEventSubscriptionsPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadMajorEventSubscriptions();
+    await loadPreviousPage(this.majorEventSubscriptionsPagination, () => this.loadMajorEventSubscriptions());
   }
 
   async nextMajorEventSubscriptionsPage(): Promise<void> {
-    if (!this.majorEventSubscriptionsPagination.hasNextPage()) {
-      return;
-    }
-    this.majorEventSubscriptionsPagination.pageIndex.update((page) => page + 1);
-    await this.loadMajorEventSubscriptions();
+    await loadNextPage(this.majorEventSubscriptionsPagination, () => this.loadMajorEventSubscriptions());
   }
 
   selectMajorEventSubscription(subscription: WorkspaceMajorEventSubscription | null): void {
@@ -457,20 +443,11 @@ export class WorkspaceSubscriptionsService {
   }
 
   private async findPeople(identifierType: string, identifierValue: string): Promise<Person[]> {
-    const identifier = identifierValue.trim();
-    if (!identifier) {
+    const filters = buildPeopleLookupFilters(identifierType, identifierValue, { take: 10 });
+    if (!filters) {
       return [];
     }
-    return firstValueFrom(
-      this.peopleApi.listPeopleSummaries({
-        ...(identifierType === 'userId' ? { userId: identifier } : {}),
-        ...(identifierType === 'identityDocument' ? { identityDocument: identifier } : {}),
-        ...(identifierType === 'email' ? { email: identifier } : {}),
-        ...(identifierType === 'phone' ? { phone: identifier } : {}),
-        ...(identifierType === 'query' ? { query: identifier } : {}),
-        take: 10,
-      }),
-    );
+    return firstValueFrom(this.peopleApi.listPeopleSummaries(filters));
   }
 
   private async refreshMajorEventAttendancesForEvent(eventId: string): Promise<void> {

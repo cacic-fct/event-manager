@@ -10,9 +10,6 @@ describe('MajorEventApiService', () => {
   beforeEach(() => {
     graphqlHttp = {
       request: vi.fn((query: string) => {
-        if (query.includes('ListMajorEventUserAttendances')) {
-          return of({ majorEventUserAttendances: [majorEventAttendanceFixture()] });
-        }
         if (query.includes('ListMajorEvents')) {
           return of({ majorEvents: [majorEventFixture()] });
         }
@@ -69,19 +66,6 @@ describe('MajorEventApiService', () => {
       input: { name: 'Editado' },
     });
   });
-
-  it('maps major-event attendance exports with filters', async () => {
-    await expect(
-      firstValueFrom(service.listMajorEventUserAttendances('major-1', { personId: 'person-1', skip: 5, take: 25 })),
-    ).resolves.toEqual([majorEventAttendanceFixture()]);
-
-    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('ListMajorEventUserAttendances'), {
-      majorEventId: 'major-1',
-      personId: 'person-1',
-      skip: 5,
-      take: 25,
-    });
-  });
 });
 
 function majorEventFixture(overrides: Record<string, unknown> = {}) {
@@ -91,34 +75,6 @@ function majorEventFixture(overrides: Record<string, unknown> = {}) {
     startDate: '2026-07-01T09:00:00.000Z',
     endDate: '2026-07-05T18:00:00.000Z',
     createdAt: '2026-06-01T12:00:00.000Z',
-    ...overrides,
-  };
-}
-
-function majorEventAttendanceFixture(overrides: Record<string, unknown> = {}) {
-  return {
-    majorEventId: 'major-1',
-    subscriptionId: 'subscription-1',
-    personId: 'person-1',
-    subscriptionStatus: 'CONFIRMED',
-    amountPaid: 0,
-    paymentDate: null,
-    paymentTier: null,
-    person: {
-      id: 'person-1',
-      name: 'Ada Lovelace',
-      email: 'ada@example.edu',
-    },
-    attendances: [
-      {
-        eventId: 'event-1',
-        eventName: 'Oficina de Angular',
-        eventStartDate: '2026-07-01T09:00:00.000Z',
-        attended: true,
-        attendedAt: '2026-07-01T10:00:00.000Z',
-        category: 'REGULAR',
-      },
-    ],
     ...overrides,
   };
 }

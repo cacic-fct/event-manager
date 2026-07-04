@@ -12,7 +12,14 @@ import {
 } from '../../workspace/dialogs/place-preset-merge-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { bindLiveSearch } from '../live-search';
-import { applyPagedResult, createWorkspaceListPagination, pageVariables, resetPagination } from '../list-pagination';
+import {
+  applyPagedResult,
+  createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
+  pageVariables,
+  resetPagination,
+} from '../list-pagination';
 
 @Injectable({
   providedIn: 'root',
@@ -76,16 +83,11 @@ export class WorkspacePlacePresetsService {
   }
 
   async previousPlacePresetsPage(): Promise<void> {
-    this.placePresetsPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadPlacePresets();
+    await loadPreviousPage(this.placePresetsPagination, () => this.loadPlacePresets());
   }
 
   async nextPlacePresetsPage(): Promise<void> {
-    if (!this.placePresetsPagination.hasNextPage()) {
-      return;
-    }
-    this.placePresetsPagination.pageIndex.update((page) => page + 1);
-    await this.loadPlacePresets();
+    await loadNextPage(this.placePresetsPagination, () => this.loadPlacePresets());
   }
 
   startNewPlacePreset(): void {

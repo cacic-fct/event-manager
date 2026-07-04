@@ -12,7 +12,14 @@ import {
   OfflineEventAttendanceSubmission,
   SubscriptionStatus,
 } from '@cacic-fct/event-manager-admin-contracts';
-import { PERSON_EXPORT_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
+import {
+  EVENT_ATTENDANCE_WRITE_FIELDS,
+  MAJOR_EVENT_USER_ATTENDANCE_FIELDS,
+  OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS,
+  OFFLINE_EVENT_ATTENDANCE_REJECTION_FIELDS,
+  PERSON_EXPORT_FIELDS,
+  PERSON_SEARCH_FIELDS,
+} from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
 export class AttendanceApiService {
@@ -25,11 +32,7 @@ export class AttendanceApiService {
       .request<{ createEventAttendance: EventAttendance }>(
         `mutation CreateEventAttendance($input: EventAttendanceCreateInput!) {
           createEventAttendance(input: $input) {
-            eventId
-            personId
-            attendedAt
-            category
-            createdByMethod
+            ${EVENT_ATTENDANCE_WRITE_FIELDS}
           }
         }`,
         { input },
@@ -42,11 +45,7 @@ export class AttendanceApiService {
       .request<{ createEventAttendanceFromAztecCode: EventAttendance }>(
         `mutation CreateEventAttendanceFromAztecCode($eventId: String!, $code: String!) {
           createEventAttendanceFromAztecCode(eventId: $eventId, code: $code) {
-            eventId
-            personId
-            attendedAt
-            category
-            createdByMethod
+            ${EVENT_ATTENDANCE_WRITE_FIELDS}
           }
         }`,
         input,
@@ -189,13 +188,7 @@ export class AttendanceApiService {
       .request<{ approveOfflineEventAttendanceSubmission: OfflineEventAttendanceSubmission }>(
         `mutation ApproveOfflineEventAttendanceSubmission($submissionId: String!) {
           approveOfflineEventAttendanceSubmission(submissionId: $submissionId) {
-            id
-            eventId
-            personId
-            status
-            committedAt
-            committedById
-            committedByFullName
+            ${OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS}
           }
         }`,
         { submissionId },
@@ -208,13 +201,7 @@ export class AttendanceApiService {
       .request<{ approveOfflineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(
         `mutation ApproveOfflineEventAttendanceSubmissions($submissionIds: [String!]!) {
           approveOfflineEventAttendanceSubmissions(submissionIds: $submissionIds) {
-            id
-            eventId
-            personId
-            status
-            committedAt
-            committedById
-            committedByFullName
+            ${OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS}
           }
         }`,
         { submissionIds },
@@ -227,13 +214,7 @@ export class AttendanceApiService {
       .request<{ rejectOfflineEventAttendanceSubmission: OfflineEventAttendanceSubmission }>(
         `mutation RejectOfflineEventAttendanceSubmission($submissionId: String!, $reason: String) {
           rejectOfflineEventAttendanceSubmission(submissionId: $submissionId, reason: $reason) {
-            id
-            eventId
-            status
-            rejectedAt
-            rejectedById
-            rejectedByFullName
-            rejectionReason
+            ${OFFLINE_EVENT_ATTENDANCE_REJECTION_FIELDS}
           }
         }`,
         { submissionId, reason },
@@ -246,13 +227,7 @@ export class AttendanceApiService {
       .request<{ rejectOfflineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(
         `mutation RejectOfflineEventAttendanceSubmissions($submissionIds: [String!]!, $reason: String) {
           rejectOfflineEventAttendanceSubmissions(submissionIds: $submissionIds, reason: $reason) {
-            id
-            eventId
-            status
-            rejectedAt
-            rejectedById
-            rejectedByFullName
-            rejectionReason
+            ${OFFLINE_EVENT_ATTENDANCE_REJECTION_FIELDS}
           }
         }`,
         { submissionIds, reason },
@@ -331,11 +306,7 @@ export class AttendanceApiService {
       .request<{ createEventAttendanceFromScannerCode: EventAttendance }>(
         `mutation CreateEventAttendanceFromScannerCode($input: EventAttendanceScannerCodeInput!) {
           createEventAttendanceFromScannerCode(input: $input) {
-            eventId
-            personId
-            attendedAt
-            category
-            createdByMethod
+            ${EVENT_ATTENDANCE_WRITE_FIELDS}
           }
         }`,
         { input },
@@ -348,11 +319,7 @@ export class AttendanceApiService {
       .request<{ createEventAttendanceFromManualInput: EventAttendance }>(
         `mutation CreateEventAttendanceFromManualInput($input: EventAttendanceManualInput!) {
           createEventAttendanceFromManualInput(input: $input) {
-            eventId
-            personId
-            attendedAt
-            category
-            createdByMethod
+            ${EVENT_ATTENDANCE_WRITE_FIELDS}
           }
         }`,
         { input },
@@ -382,24 +349,7 @@ export class AttendanceApiService {
             skip: $skip
             take: $take
           ) {
-            majorEventId
-            subscriptionId
-            personId
-            subscriptionStatus
-            amountPaid
-            paymentDate
-            paymentTier
-            person {
-              ${PERSON_EXPORT_FIELDS}
-            }
-            attendances {
-              eventId
-              eventName
-              eventStartDate
-              attended
-              attendedAt
-              category
-            }
+            ${MAJOR_EVENT_USER_ATTENDANCE_FIELDS}
           }
         }`,
         {

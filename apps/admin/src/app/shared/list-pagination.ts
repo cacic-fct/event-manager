@@ -45,3 +45,23 @@ export function resetPagination(pagination: WorkspaceListPagination): void {
   pagination.pageIndex.set(0);
   pagination.hasNextPage.set(false);
 }
+
+export async function loadPreviousPage(
+  pagination: WorkspaceListPagination,
+  loadPage: () => Promise<void>,
+): Promise<void> {
+  pagination.pageIndex.update((page) => Math.max(0, page - 1));
+  await loadPage();
+}
+
+export async function loadNextPage(
+  pagination: WorkspaceListPagination,
+  loadPage: () => Promise<void>,
+): Promise<void> {
+  if (!pagination.hasNextPage()) {
+    return;
+  }
+
+  pagination.pageIndex.update((page) => page + 1);
+  await loadPage();
+}

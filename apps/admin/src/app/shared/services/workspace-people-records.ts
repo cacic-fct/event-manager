@@ -5,7 +5,8 @@ import {
   PersonLinkedDataDialogData,
 } from '../../workspace/dialogs/person-linked-data-dialog.component';
 import { getErrorMessage } from '../error-message';
-import { WORKSPACE_LIST_PAGE_SIZE, applyPagedResult, resetPagination } from '../list-pagination';
+import { applyPagedResult, loadNextPage, loadPreviousPage, pageVariables, resetPagination } from '../list-pagination';
+import { buildPeopleSearchFilters } from '../people-lookup';
 import { WorkspacePeopleState, type PeoplePermissionSearchFilter } from './workspace-people-state';
 
 type PeopleSearchApiFilters = {
@@ -25,16 +26,11 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
   }
 
   async previousPeoplePage(): Promise<void> {
-    this.peoplePagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadPeoplePage(this.peopleSearchQuery());
+    await loadPreviousPage(this.peoplePagination, () => this.loadPeoplePage(this.peopleSearchQuery()));
   }
 
   async nextPeoplePage(): Promise<void> {
-    if (!this.peoplePagination.hasNextPage()) {
-      return;
-    }
-    this.peoplePagination.pageIndex.update((page) => page + 1);
-    await this.loadPeoplePage(this.peopleSearchQuery());
+    await loadNextPage(this.peoplePagination, () => this.loadPeoplePage(this.peopleSearchQuery()));
   }
 
   async selectPerson(person: Person): Promise<void> {
@@ -231,12 +227,12 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
 
   private async loadPeoplePage(normalizedQuery: string, options?: { preserveSelection?: boolean }): Promise<void> {
     const people = await firstValueFrom(
-      this.api.listPeopleSummaries({
-        query: normalizedQuery || undefined,
-        skip: this.peoplePagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
-        take: WORKSPACE_LIST_PAGE_SIZE + 1,
-        ...this.buildPeopleSearchApiFilters(),
-      }),
+      this.api.listPeopleSummaries(
+        buildPeopleSearchFilters(normalizedQuery, {
+          ...pageVariables(this.peoplePagination.pageIndex()),
+          ...this.buildPeopleSearchApiFilters(),
+        }),
+      ),
     );
     this.people.set(applyPagedResult(people, this.peoplePagination));
 

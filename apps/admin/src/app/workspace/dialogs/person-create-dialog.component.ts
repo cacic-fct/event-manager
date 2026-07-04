@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { firstValueFrom } from 'rxjs';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { Person } from '@cacic-fct/event-manager-admin-contracts';
+import { buildDuplicatePeopleLookupFilters } from '../../shared/people-lookup';
 
 @Component({
   selector: 'app-person-create-dialog',
@@ -99,12 +100,7 @@ export class PersonCreateDialogComponent {
     try {
       const rawValue = this.model();
       const duplicateCandidates = await firstValueFrom(
-        this.api.listPeopleSummaries({
-          query: rawValue.name,
-          email: rawValue.email || undefined,
-          identityDocument: rawValue.identityDocument || undefined,
-          take: 10,
-        }),
+        this.api.listPeopleSummaries(buildDuplicatePeopleLookupFilters({ ...rawValue, take: 10 })),
       );
 
       const normalizedName = rawValue.name.trim().toLowerCase();

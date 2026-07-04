@@ -3,6 +3,7 @@ import type { EventAttendanceCollector, EventLecturer, Person } from '@cacic-fct
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
+import { buildPeopleCandidateLookupFilters } from '../people-lookup';
 
 export interface WorkspaceEventPersonLink {
   personId: string;
@@ -55,20 +56,11 @@ export class WorkspaceEventPeopleService {
   }
 
   async searchCandidates(query: string, take: number): Promise<Person[]> {
-    const searches = [firstValueFrom(this.peopleApi.listPeopleSummaries({ query, take }))];
-    const identityDocumentDigits = query.replace(/\D/g, '');
-
-    if (query.includes('@')) {
-      searches.unshift(firstValueFrom(this.peopleApi.listPeopleSummaries({ email: query, take })));
-    }
-
-    if (identityDocumentDigits.length >= 8) {
-      searches.unshift(firstValueFrom(this.peopleApi.listPeopleSummaries({ identityDocument: query, take })));
-      if (identityDocumentDigits !== query) {
-        searches.unshift(
-          firstValueFrom(this.peopleApi.listPeopleSummaries({ identityDocument: identityDocumentDigits, take })),
-        );
-      }
+    const searches = buildPeopleCandidateLookupFilters(query, take).map((filters) =>
+      firstValueFrom(this.peopleApi.listPeopleSummaries(filters)),
+    );
+    if (searches.length === 0) {
+      return [];
     }
 
     const peopleById = new Map<string, Person>();

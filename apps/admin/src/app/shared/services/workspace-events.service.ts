@@ -40,9 +40,11 @@ import {
   toOptionalNumber,
 } from './workspace-event-form.helpers';
 import {
-  WORKSPACE_LIST_PAGE_SIZE,
   applyPagedResult,
   createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
+  pageVariables,
   resetPagination,
 } from '../list-pagination';
 import { bindLiveSearch } from '../live-search';
@@ -137,8 +139,8 @@ export class WorkspaceEventsService {
   async loadEvents(): Promise<void> {
     const items = await firstValueFrom(
       this.api.listEvents({
-        ...buildEventListFilters(this.eventFiltersForm.value, WORKSPACE_LIST_PAGE_SIZE + 1),
-        skip: this.eventsPagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
+        ...buildEventListFilters(this.eventFiltersForm.value),
+        ...pageVariables(this.eventsPagination.pageIndex()),
       }),
     );
     const events = applyPagedResult(items, this.eventsPagination);
@@ -158,16 +160,11 @@ export class WorkspaceEventsService {
   }
 
   async previousEventsPage(): Promise<void> {
-    this.eventsPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadEvents();
+    await loadPreviousPage(this.eventsPagination, () => this.loadEvents());
   }
 
   async nextEventsPage(): Promise<void> {
-    if (!this.eventsPagination.hasNextPage()) {
-      return;
-    }
-    this.eventsPagination.pageIndex.update((page) => page + 1);
-    await this.loadEvents();
+    await loadNextPage(this.eventsPagination, () => this.loadEvents());
   }
 
   async selectEvent(eventItem: Event): Promise<void> {

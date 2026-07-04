@@ -12,7 +12,7 @@ import {
 } from '@cacic-fct/event-manager-admin-contracts';
 import { PERSON_DETAIL_FIELDS, PERSON_SEARCH_FIELDS } from './graphql-query-fragments';
 
-type PeopleFilters = {
+export type PeopleFilters = {
   query?: string;
   userId?: string;
   email?: string;

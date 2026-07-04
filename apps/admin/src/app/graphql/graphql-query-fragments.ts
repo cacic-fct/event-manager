@@ -252,6 +252,67 @@ export const PERSON_EXPORT_FIELDS = `
   }
 `;
 
+export const MAJOR_EVENT_USER_ATTENDANCE_FIELDS = `
+  majorEventId
+  subscriptionId
+  personId
+  subscriptionStatus
+  amountPaid
+  paymentDate
+  paymentTier
+  person {
+    ${PERSON_EXPORT_FIELDS}
+  }
+  attendances {
+    eventId
+    eventName
+    eventStartDate
+    attended
+    attendedAt
+    category
+  }
+`;
+
+export const EVENT_ATTENDANCE_WRITE_FIELDS = `
+  eventId
+  personId
+  attendedAt
+  category
+  createdByMethod
+`;
+
+export const OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS = `
+  id
+  eventId
+  personId
+  status
+  committedAt
+  committedById
+  committedByFullName
+`;
+
+export const OFFLINE_EVENT_ATTENDANCE_REJECTION_FIELDS = `
+  id
+  eventId
+  status
+  rejectedAt
+  rejectedById
+  rejectedByFullName
+  rejectionReason
+`;
+
+export const DASHBOARD_INCONSISTENCY_FIELDS = `
+  type
+  action
+  targetId
+  severity
+  title
+  description
+  eventId
+  relatedEventId
+  personId
+`;
+
 export const PERSON_MERGE_FIELDS = `
   id
   name

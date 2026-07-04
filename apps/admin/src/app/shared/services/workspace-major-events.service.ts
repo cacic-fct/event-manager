@@ -13,7 +13,13 @@ import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { addDays, format, parseISO, subDays } from 'date-fns';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../../workspace/dialogs/clone-asset-dialog.component';
 import { getErrorMessage } from '../error-message';
-import { applyPagedResult, createWorkspaceListPagination, pageVariables } from '../list-pagination';
+import {
+  applyPagedResult,
+  createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
+  pageVariables,
+} from '../list-pagination';
 import { bindLiveSearch } from '../live-search';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspaceUiService } from './workspace-ui.service';
@@ -133,16 +139,11 @@ export class WorkspaceMajorEventsService {
   }
 
   async previousMajorEventsPage(): Promise<void> {
-    this.majorEventsPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadMajorEvents();
+    await loadPreviousPage(this.majorEventsPagination, () => this.loadMajorEvents());
   }
 
   async nextMajorEventsPage(): Promise<void> {
-    if (!this.majorEventsPagination.hasNextPage()) {
-      return;
-    }
-    this.majorEventsPagination.pageIndex.update((page) => page + 1);
-    await this.loadMajorEvents();
+    await loadNextPage(this.majorEventsPagination, () => this.loadMajorEvents());
   }
 
   async saveMajorEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {

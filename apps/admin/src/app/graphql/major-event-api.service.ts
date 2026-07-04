@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
-import { DeletionResult, MajorEvent, MajorEventCloneInput, MajorEventInput, MajorEventUserAttendance } from '@cacic-fct/event-manager-admin-contracts';
-import { MAJOR_EVENT_DETAIL_FIELDS, MAJOR_EVENT_LIST_FIELDS, PERSON_EXPORT_FIELDS } from './graphql-query-fragments';
+import { DeletionResult, MajorEvent, MajorEventCloneInput, MajorEventInput } from '@cacic-fct/event-manager-admin-contracts';
+import { MAJOR_EVENT_DETAIL_FIELDS, MAJOR_EVENT_LIST_FIELDS } from './graphql-query-fragments';
 
 @Injectable({ providedIn: 'root' })
 export class MajorEventApiService {
@@ -103,57 +103,5 @@ export class MajorEventApiService {
         { id },
       )
       .pipe(map((data) => data.deleteMajorEvent));
-  }
-
-  listMajorEventUserAttendances(
-    majorEventId: string,
-    filters?: {
-      personId?: string;
-      skip?: number;
-      take?: number;
-    },
-  ) {
-    return this.graphqlHttp
-      .request<{ majorEventUserAttendances: MajorEventUserAttendance[] }>(
-        `query ListMajorEventUserAttendances(
-          $majorEventId: String!
-          $personId: String
-          $skip: Int
-          $take: Int
-        ) {
-          majorEventUserAttendances(
-            majorEventId: $majorEventId
-            personId: $personId
-            skip: $skip
-            take: $take
-          ) {
-            majorEventId
-            subscriptionId
-            personId
-            subscriptionStatus
-            amountPaid
-            paymentDate
-            paymentTier
-            person {
-              ${PERSON_EXPORT_FIELDS}
-            }
-            attendances {
-              eventId
-              eventName
-              eventStartDate
-              attended
-              attendedAt
-              category
-            }
-          }
-        }`,
-        {
-          majorEventId,
-          personId: filters?.personId,
-          skip: filters?.skip,
-          take: filters?.take,
-        },
-      )
-      .pipe(map((data) => data.majorEventUserAttendances));
   }
 }

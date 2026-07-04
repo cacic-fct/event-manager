@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { WorkspaceDashboardInsights } from '@cacic-fct/shared-frontend-types';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
+import { DASHBOARD_INCONSISTENCY_FIELDS } from './graphql-query-fragments';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
@@ -74,15 +75,7 @@ export class DashboardApiService {
               pendingCount
             }
             inconsistencies {
-              type
-              action
-              targetId
-              severity
-              title
-              description
-              eventId
-              relatedEventId
-              personId
+              ${DASHBOARD_INCONSISTENCY_FIELDS}
             }
             duplicatePeopleCount
           }

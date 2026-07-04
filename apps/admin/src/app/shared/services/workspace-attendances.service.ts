@@ -30,10 +30,13 @@ import { ConfirmationDialogComponent } from '../components/confirmation-dialog.c
 import { getErrorMessage } from '../error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-list-filters';
 import { bindLiveSearch } from '../live-search';
+import { buildPeopleLookupFilters } from '../people-lookup';
 import {
-  WORKSPACE_LIST_PAGE_SIZE,
   applyPagedResult,
   createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
+  pageVariables,
   resetPagination,
 } from '../list-pagination';
 import { buildSubscriberCsv } from '../subscriber-csv-export';
@@ -214,23 +217,18 @@ export class WorkspaceAttendancesService {
   }
 
   async previousAttendanceEventResultsPage(): Promise<void> {
-    this.attendanceEventResultsPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadAttendanceEventResultsPage();
+    await loadPreviousPage(this.attendanceEventResultsPagination, () => this.loadAttendanceEventResultsPage());
   }
 
   async nextAttendanceEventResultsPage(): Promise<void> {
-    if (!this.attendanceEventResultsPagination.hasNextPage()) {
-      return;
-    }
-    this.attendanceEventResultsPagination.pageIndex.update((page) => page + 1);
-    await this.loadAttendanceEventResultsPage();
+    await loadNextPage(this.attendanceEventResultsPagination, () => this.loadAttendanceEventResultsPage());
   }
 
   private async loadAttendanceEventResultsPage(): Promise<void> {
     const events = await firstValueFrom(
       this.eventApi.listEvents({
-        ...buildEventListFilters(this.attendanceEventFiltersForm.value, WORKSPACE_LIST_PAGE_SIZE + 1),
-        skip: this.attendanceEventResultsPagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
+        ...buildEventListFilters(this.attendanceEventFiltersForm.value),
+        ...pageVariables(this.attendanceEventResultsPagination.pageIndex()),
       }),
     );
     this.attendanceEventResults.set(applyPagedResult(events, this.attendanceEventResultsPagination));
@@ -279,19 +277,12 @@ export class WorkspaceAttendancesService {
       return;
     }
 
-    const identifierType = this.attendanceForm.controls.identifierType.value;
-    const identifier = this.attendanceForm.controls.identifier.value.trim();
-
-    const people = await firstValueFrom(
-      this.peopleApi.listPeopleSummaries({
-        ...(identifierType === 'query' ? { query: identifier } : {}),
-        ...(identifierType === 'userId' ? { userId: identifier } : {}),
-        ...(identifierType === 'identityDocument' ? { identityDocument: identifier } : {}),
-        ...(identifierType === 'email' ? { email: identifier } : {}),
-        ...(identifierType === 'phone' ? { phone: identifier } : {}),
-        take: 10,
-      }),
+    const filters = buildPeopleLookupFilters(
+      this.attendanceForm.controls.identifierType.value,
+      this.attendanceForm.controls.identifier.value,
+      { take: 10 },
     );
+    const people = filters ? await firstValueFrom(this.peopleApi.listPeopleSummaries(filters)) : [];
     this.attendancePersonMatches.set(people);
   }
 
@@ -415,8 +406,7 @@ export class WorkspaceAttendancesService {
     const [data, submissions] = await Promise.all([
       firstValueFrom(
         this.api.listEventAttendances(eventId, {
-          skip: this.attendancesPagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
-          take: WORKSPACE_LIST_PAGE_SIZE + 1,
+          ...pageVariables(this.attendancesPagination.pageIndex()),
         }),
       ),
       firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
@@ -452,16 +442,15 @@ export class WorkspaceAttendancesService {
   }
 
   async previousAttendancesPage(): Promise<void> {
-    this.attendancesPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadAttendances(this.attendanceForm.controls.eventId.value);
+    await loadPreviousPage(this.attendancesPagination, () =>
+      this.loadAttendances(this.attendanceForm.controls.eventId.value),
+    );
   }
 
   async nextAttendancesPage(): Promise<void> {
-    if (!this.attendancesPagination.hasNextPage()) {
-      return;
-    }
-    this.attendancesPagination.pageIndex.update((page) => page + 1);
-    await this.loadAttendances(this.attendanceForm.controls.eventId.value);
+    await loadNextPage(this.attendancesPagination, () =>
+      this.loadAttendances(this.attendanceForm.controls.eventId.value),
+    );
   }
 
   showAttendanceInfo(attendance: AttendanceListItem): void {
@@ -625,8 +614,7 @@ export class WorkspaceAttendancesService {
 
     const attendances = await firstValueFrom(
       this.api.listMajorEventUserAttendances(majorEventId, {
-        skip: this.majorEventUserAttendancesPagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE,
-        take: WORKSPACE_LIST_PAGE_SIZE + 1,
+        ...pageVariables(this.majorEventUserAttendancesPagination.pageIndex()),
       }),
     );
     const visibleAttendances = applyPagedResult(attendances, this.majorEventUserAttendancesPagination);
@@ -652,16 +640,11 @@ export class WorkspaceAttendancesService {
   }
 
   async previousMajorEventUserAttendancesPage(): Promise<void> {
-    this.majorEventUserAttendancesPagination.pageIndex.update((page) => Math.max(0, page - 1));
-    await this.loadMajorEventUserAttendances();
+    await loadPreviousPage(this.majorEventUserAttendancesPagination, () => this.loadMajorEventUserAttendances());
   }
 
   async nextMajorEventUserAttendancesPage(): Promise<void> {
-    if (!this.majorEventUserAttendancesPagination.hasNextPage()) {
-      return;
-    }
-    this.majorEventUserAttendancesPagination.pageIndex.update((page) => page + 1);
-    await this.loadMajorEventUserAttendances();
+    await loadNextPage(this.majorEventUserAttendancesPagination, () => this.loadMajorEventUserAttendances());
   }
 
   async refreshMajorEventUserAttendancesFor(majorEventId: string): Promise<void> {
