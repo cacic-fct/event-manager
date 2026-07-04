@@ -23,6 +23,33 @@ Utilizamos a abordagem code first para o desenvolvimento da API GraphQL, o que s
 
 Dessa forma, não deve-se editar o esquema GraphQL manualmente.
 
+### Fronteiras
+
+As operações GraphQL estão divididas por contexto:
+
+| Contexto | Uso |
+| --- | --- |
+| Público | Consultas de calendário, eventos, grandes eventos, certificados públicos e dados visíveis sem administração. |
+| Usuário atual | Inscrições, presença, perfil, carteira, notificações, formulários e dados que dependem da pessoa autenticada. |
+| Administrativo | Painel de eventos, inscrições, presenças, certificados, formulários, pessoas, permissões, publicação e auditoria. |
+| Interno | Integrações M2M que não devem ser chamadas pelo navegador público. |
+
+### Autorização
+
+Handlers administrativos devem usar `RequirePermissions(Permission.Recurso.Acao)` ou regras mais específicas de domínio.
+
+Checks do frontend servem apenas para orientar a interface. O backend precisa validar novamente permissão, escopo, recurso congelado, visibilidade pública, janela de inscrição, janela de presença e demais regras aplicáveis.
+
+### Contratos compartilhados
+
+Quando uma operação pública ou M2M for consumida fora do monorepo, prefira evoluir os pacotes de contratos:
+
+- `libs/event-manager-public-contracts`;
+- `libs/event-manager-m2m-contracts`;
+- `libs/event-manager-admin-contracts`, quando a mudança for compartilhada com o painel.
+
+Atualize tipos, queries, fixtures e exemplos quando o payload mudar.
+
 ## REST
 
 Damos preferência ao REST para comunicações M2M simples e requisições simples, como o login.
@@ -34,3 +61,35 @@ Acesse a documentação em https://eventos.cacic.dev.br/api/docs para obter deta
 Utilizamos Server-Sent Events (SSE) para enviar notificações em tempo real aos clientes, como atualizações de presença ou mudanças de estado das vagas.
 
 O SSE é uma tecnologia de comunicação unidirecional do servidor para o cliente, ideal para casos onde o cliente precisa receber atualizações contínuas sem a necessidade de enviar dados de volta ao servidor. Por conta disso, preferimos ele ao WebSocket.
+
+Streams SSE devem ser opcionais para a experiência principal. A interface precisa continuar funcionando com atualização manual quando a transmissão de dados falhar.
+
+## Principais superfícies
+
+| Superfície | Ponto de entrada |
+| --- | --- |
+| Autenticação | `apps/backend/src/app/auth` |
+| Usuário atual | `apps/backend/src/app/current-user` |
+| Eventos e grandes eventos | `apps/backend/src/app/events`, `apps/backend/src/app/major-events` |
+| Inscrições e comprovantes | `apps/backend/src/app/events`, `apps/backend/src/app/major-event-receipts` |
+| Presenças | `apps/backend/src/app/events/attendances` |
+| Certificados | `apps/backend/src/app/certificate` |
+| Formulários | `apps/backend/src/app/event-forms` |
+| Pessoas e mesclagem | `apps/backend/src/app/people` |
+| Permissões | `apps/backend/src/app/authorization` |
+| Publicação | `apps/backend/src/app/publishing` |
+| Auditoria | `apps/backend/src/app/audit-log` |
+| LGPD | `apps/backend/src/app/lgpd` |
+| Busca | `apps/backend/src/app/search` |
+
+## Cuidados
+
+Ao adicionar uma operação:
+
+- Defina se ela é pública, de usuário atual, administrativa ou M2M;
+- Documente exemplos no Swagger quando for REST;
+- Use tipos code first no GraphQL;
+- Proteja o handler no backend;
+- Cubra paginação e limites de busca;
+- Adicione teste para autorização quando houver dado sensível;
+- Atualize contratos externos quando consumidores fora do monorepo dependerem da mudança.

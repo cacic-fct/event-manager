@@ -51,6 +51,7 @@ const audienceEntries: AudienceEntry[] = [
         to: '/Manual/Gerenciar%20Eventos/Entenda%20a%20estrutura%C3%A7%C3%A3o',
       },
       { label: 'Área administrativa', to: '/Manual/Interface%20administrativa/Vis%C3%A3o%20geral' },
+      { label: 'Formulários', to: '/Manual/Interface%20administrativa/Formul%C3%A1rios' },
     ],
   },
   {
@@ -76,6 +77,7 @@ const audienceEntries: AudienceEntry[] = [
     links: [
       { label: 'Perfis e níveis de acesso', to: '/Geral/Especifica%C3%A7%C3%B5es%20gerais/N%C3%ADveis%20de%20acesso' },
       { label: 'Autorização e permissões', to: '/Backend/Autoriza%C3%A7%C3%A3o%20e%20permiss%C3%B5es' },
+      { label: 'Auditoria administrativa', to: '/Manual/Interface%20administrativa/Auditoria' },
       {
         label: 'Servidor FCTDTIWEBXP01',
         to: 'https://cacic.dev.br/docs/Recursos/Servidores/FCTDTIWEBXP01',
@@ -89,8 +91,11 @@ const audienceEntries: AudienceEntry[] = [
     description: 'Convenções para alterar frontend, backend, pacotes e documentação sem quebrar fluxos reais.',
     links: [
       { label: 'Obrigações antes de contribuir', to: '/Geral/Antes%20de%20colaborar/Suas%20obriga%C3%A7%C3%B5es' },
-      { label: 'Frontend', to: '/Frontend/Introdu%C3%A7%C3%A3o' },
-      { label: 'Backend', to: '/Backend/Introdu%C3%A7%C3%A3o' },
+      {
+        label: 'Desenvolvimento local',
+        to: '/Geral/Antes%20de%20colaborar/Desenvolvimento%20local%20e%20valida%C3%A7%C3%A3o',
+      },
+      { label: 'Testes e validação', to: '/Frontend/C%C3%B3digo/Testes%20e%20valida%C3%A7%C3%A3o' },
     ],
   },
   {
@@ -142,6 +147,7 @@ const referenceGroups: ReferenceGroup[] = [
     links: [
       { label: 'Dados dos usuários', to: '/Geral/Especifica%C3%A7%C3%B5es%20gerais/Dados%20dos%20usu%C3%A1rios' },
       { label: 'Proteção contra abuso', to: '/Backend/Prote%C3%A7%C3%A3o%20contra%20abuso%20e%20privacidade' },
+      { label: 'Privacidade e LGPD', to: '/Backend/Privacidade%20e%20LGPD' },
       { label: 'Auditoria', to: '/Geral/Especifica%C3%A7%C3%B5es%20gerais/Auditing' },
     ],
   },
@@ -152,7 +158,8 @@ const referenceGroups: ReferenceGroup[] = [
     links: [
       { label: 'Tecnologias', to: '/Geral/Antes%20de%20colaborar/Tecnologias' },
       { label: 'API', to: '/Backend/API' },
-      { label: 'Rotas do frontend', to: '/Frontend/C%C3%B3digo/Rotas' },
+      { label: 'Formulários de eventos', to: '/Backend/Formul%C3%A1rios%20de%20eventos' },
+      { label: 'Offline e service worker', to: '/Frontend/C%C3%B3digo/Offline%20e%20service%20worker' },
     ],
   },
   {

@@ -8,6 +8,7 @@ Antes de começar a desenvolver, é importante que você entenda o contexto do p
 
 1. A [landing page do CACiC Event Manager ](https://eventos.cacic.dev.br/app/) (necessário estar deslogado);
 1. O [README](https://github.com/cacic-fct/event-manager/blob/main/README.md) do repositório do projeto;
+1. O guia de [desenvolvimento local e validação](./06-Desenvolvimento%20local%20e%20validação.md);
 1. A seção de [convenções gerais do CACiC](https://cacic.dev.br/docs/Projetos/Especifica%C3%A7%C3%B5es%20comuns/Conven%C3%A7%C3%B5es%20gerais/C%C3%B3digos);
 1. A seção de [especificações comuns para projetos web do CACiC](https://cacic.dev.br/docs/Projetos/Especifica%C3%A7%C3%B5es%20comuns/Projetos%20web/Efici%C3%AAncia%20de%20recursos)
 1. **Toda** a documentação geral;

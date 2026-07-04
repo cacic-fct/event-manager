@@ -17,3 +17,18 @@ Depois, inicie o servidor de desenvolvimento:
 ```bash
 bun run dev
 ```
+
+### Validação
+
+Para validar a documentação localmente, rode:
+
+```bash
+bun run typecheck
+bun run build
+```
+
+Para gerar o diagrama do banco de dados:
+
+```bash
+bun run build:with-database-diagram
+```

@@ -75,7 +75,7 @@ export const workspaceNavItems = [
     description: 'Orquestre rascunhos, agendamentos, publicação e pré-visualizações.',
     icon: 'campaign',
     group: 'Estrutura do evento',
-    helpLink: undefined,
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Publica%C3%A7%C3%A3o',
   },
   {
     kind: 'divider',
@@ -120,7 +120,7 @@ export const workspaceNavItems = [
     description: 'Crie formulários, vincule a eventos e acompanhe respostas.',
     icon: 'list_alt',
     group: 'Participação',
-    helpLink: undefined,
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Formul%C3%A1rios',
   },
   {
     kind: 'divider',
@@ -201,7 +201,7 @@ export const workspaceNavItems = [
     description: 'Explore logs de auditoria de todo o sistema.',
     icon: 'manage_search',
     group: 'Administração',
-    helpLink: undefined,
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Auditoria',
     visibleFor: 'super-admin',
     requiredRoleLabel: 'super-admin',
   },
@@ -213,7 +213,7 @@ export const workspaceNavItems = [
     description: 'Ajuste preferências administrativas da sua conta.',
     icon: 'settings',
     group: 'Administração',
-    helpLink: undefined,
+    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Prefer%C3%AAncias',
   },
 ] as const satisfies readonly WorkspaceNavItem[];
 

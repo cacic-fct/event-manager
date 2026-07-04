@@ -36,3 +36,28 @@ Links temporários de pré-visualização:
 - são registrados em auditoria.
 
 Não compartilhe links temporários como se fossem links públicos permanentes.
+
+## Agendamento
+
+O horário indica a partir de quando o conteúdo deve ficar elegível para publicação, mas não será a hora exata em que ele aparecerá no app público. 
+
+Publicações agendadas são processadas pelo backend em um regime de "melhor esforço". O horário de publicação pode ser atrasado por filas de tarefa longas ou falhas, mas o sistema tentará aplicar a publicação assim que possível.
+
+Se um agendamento não aparecer no app público no horário esperado, atualize a tela e confira:
+
+- Se o item ainda está agendado;
+- Se o backend está em execução;
+- Se o item tem alterações salvas depois do agendamento;
+- Se a busca pública foi sincronizada;
+- Se eventos filhos também precisavam ser publicados.
+
+## Despublicação
+
+Despublicar remove o conteúdo das consultas públicas, mas não apaga o cadastro administrativo.
+
+Use despublicação quando:
+
+- O conteúdo foi divulgado antes da hora;
+- Há erro grave em algum campo;
+- O evento foi cancelado;
+- A organização ainda precisa revisar dados antes de expor ao público.

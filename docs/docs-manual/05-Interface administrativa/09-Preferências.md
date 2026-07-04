@@ -19,3 +19,11 @@ Super administradores possuem um feed compartilhado próprio. Rotacionar esse fe
 Rotacione a chave quando o link for exposto indevidamente, compartilhado com a pessoa errada ou cadastrado em um dispositivo que não deve mais receber atualizações.
 
 A rotação invalida o link anterior. Clientes de calendário podem manter um cache permanentemente.
+
+### Quando rotacionar
+
+Rotacione a chave quando:
+
+- O link foi enviado para uma pessoa errada;
+- O link apareceu em print, transmissão ou documento compartilhado;
+- O usuário deixou de confiar em um aplicativo de calendário ou em um dispositivo em que ele foi usado.
