@@ -300,6 +300,7 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
     prisma.people.findMany.mockResolvedValue([{ id: 'person-1', mergedIntoId: null }]);
     prisma.people.findUnique.mockResolvedValue({ id: 'person-1', mergedIntoId: null });
+    prisma.people.findFirst.mockResolvedValue({ id: 'person-1' });
     prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
       ...submission,
       personId: 'person-1',
@@ -335,6 +336,50 @@ describe('EventAttendancesMutationsResolver', () => {
           scannerCode: null,
           personId: 'person-1',
           resolutionError: null,
+        }),
+      }),
+    );
+  });
+
+  it('keeps inferred offline corrections retryable when the merged person is deleted', async () => {
+    const submission = offlineSubmissionFixture({
+      personId: null,
+      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+      manualValue: 'ada@exmaple.com',
+      resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+    });
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findMany.mockResolvedValue([{ id: 'old-person', mergedIntoId: 'merged-person' }]);
+    prisma.people.findUnique.mockResolvedValue({ id: 'merged-person', mergedIntoId: null });
+    prisma.people.findFirst.mockResolvedValue(null);
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      personId: null,
+      manualValue: 'ada@example.com',
+      resolutionError: 'Person merged-person was not found.',
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.updateOfflineEventAttendanceSubmission(
+        'submission-1',
+        { createdByMethod: 'MANUAL_INPUT', manualValue: 'ada@example.com' },
+        { req: { user: { sub: 'admin-user' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'submission-1',
+        personId: undefined,
+        resolutionIssue: 'PERSON_NOT_FOUND',
+      }),
+    );
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personId: null,
+          resolutionError: 'Person merged-person was not found.',
         }),
       }),
     );

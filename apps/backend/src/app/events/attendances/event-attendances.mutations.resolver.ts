@@ -751,7 +751,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         createdByMethod,
         scannerCode,
         manualValue,
-        personId: await this.resolveMergedPersonId(personId),
+        personId: await this.resolveActiveMergedPersonId(personId),
         stagedReason: null,
         resolutionError: null,
       };

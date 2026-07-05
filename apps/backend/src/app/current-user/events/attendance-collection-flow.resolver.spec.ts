@@ -889,19 +889,36 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       { request: { user: { sub: undefined } } } as never,
     );
 
+    const expectedPhoneAliases = [
+      '5518999990000',
+      '18999990000',
+      '+5518999990000',
+      '(18) 99999-0000',
+      '(18)99999-0000',
+      '18 99999-0000',
+      '1899999-0000',
+      '55 18 99999-0000',
+      '+55 18 99999-0000',
+      '+55 (18) 99999-0000',
+    ];
     expect(prisma.people.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           OR: expect.arrayContaining([
             {
               phone: {
-                in: expect.arrayContaining(['5518999990000', '18999990000', '+5518999990000']),
+                in: expect.arrayContaining(expectedPhoneAliases),
               },
             },
           ]),
         }),
       }),
     );
+    const peopleFindManyArgs = prisma.people.findMany.mock.calls[0][0] as Prisma.PersonFindManyArgs;
+    const phoneFilter = peopleFindManyArgs.where?.OR?.find((filter) => 'phone' in filter) as
+      | { phone: { in: string[] } }
+      | undefined;
+    expect(phoneFilter?.phone.in).toHaveLength(expectedPhoneAliases.length);
   });
 
   it('rejects manual input with duplicate active people or missing precise location', async () => {
