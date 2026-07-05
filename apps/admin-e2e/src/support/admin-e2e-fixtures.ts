@@ -24,6 +24,13 @@ type AdminE2EGraphqlState = {
   permissionGrants: Record<string, unknown>[];
 };
 
+const relativeIsoDate = (daysFromNow: number, hours = 12, minutes = 0): string => {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromNow);
+  date.setHours(hours, minutes, 0, 0);
+  return date.toISOString();
+};
+
 export const adminE2EReadPermissions = [
   'event#read',
   'major-event#read',
@@ -319,8 +326,8 @@ export function createAdminE2EMajorEvent(overrides: Record<string, unknown> = {}
     id: 'major-event-1',
     name: 'Semana da Computação',
     emoji: 'festival',
-    startDate: '2026-05-20T12:00:00.000Z',
-    endDate: '2026-05-23T21:00:00.000Z',
+    startDate: relativeIsoDate(-2, 12),
+    endDate: relativeIsoDate(2, 21),
     description: 'Grande evento de tecnologia.',
     subscriptionStartDate: null,
     subscriptionEndDate: null,
@@ -346,12 +353,12 @@ export function createAdminE2EMajorEvent(overrides: Record<string, unknown> = {}
     ],
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
-    publishedAt: '2026-05-20T12:00:00.000Z',
+    publishedAt: relativeIsoDate(-7, 12),
     unpublishedAt: null,
     deletedAt: null,
-    createdAt: '2026-05-01T12:00:00.000Z',
+    createdAt: relativeIsoDate(-14, 12),
     createdById: 'admin-1',
-    updatedAt: '2026-05-01T12:00:00.000Z',
+    updatedAt: relativeIsoDate(-1, 12),
     updatedById: 'admin-1',
     ...overrides,
   };
@@ -384,8 +391,8 @@ export function createAdminE2EEvent(overrides: Record<string, unknown> = {}): Ad
     id: 'event-1',
     name: 'Oficina de Angular',
     creditMinutes: 120,
-    startDate: '2026-05-21T17:00:00.000Z',
-    endDate: '2026-05-21T19:00:00.000Z',
+    startDate: relativeIsoDate(-1, 17),
+    endDate: relativeIsoDate(-1, 19),
     emoji: 'computer',
     type: 'MINICURSO',
     description: 'Atividade prática.',
@@ -414,15 +421,15 @@ export function createAdminE2EEvent(overrides: Record<string, unknown> = {}): Ad
     publiclyVisible: true,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
-    publishedAt: '2026-05-20T12:00:00.000Z',
+    publishedAt: relativeIsoDate(-7, 12),
     unpublishedAt: null,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,
     deletedAt: null,
-    createdAt: '2026-05-01T12:00:00.000Z',
+    createdAt: relativeIsoDate(-14, 12),
     createdById: 'admin-1',
-    updatedAt: '2026-05-01T12:00:00.000Z',
+    updatedAt: relativeIsoDate(-1, 12),
     updatedById: 'admin-1',
     ...overrides,
   };
@@ -507,6 +514,7 @@ export function createAdminE2EEventSubscription(overrides: Record<string, unknow
 
 export function createAdminE2EMajorEventSubscription(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const majorEvent = createAdminE2EMajorEvent();
+  const event = createAdminE2EEvent();
   const person = createAdminE2EPerson();
 
   return {
@@ -517,16 +525,16 @@ export function createAdminE2EMajorEventSubscription(overrides: Record<string, u
     person,
     subscriptionStatus: 'CONFIRMED',
     amountPaid: 4000,
-    paymentDate: '2026-05-20T12:00:00.000Z',
+    paymentDate: relativeIsoDate(-2, 12),
     paymentTier: 'Aluno',
     createdAt: '2026-05-20T12:00:00.000Z',
     createdById: 'admin-1',
     createdByMethod: 'ADMIN_DASHBOARD',
     events: [
       {
-        eventId: 'event-1',
-        eventName: 'Oficina de Angular',
-        eventStartDate: '2026-05-21T17:00:00.000Z',
+        eventId: event.id,
+        eventName: event.name,
+        eventStartDate: event.startDate,
         subscribed: true,
         isLecturerSubscription: false,
       },
@@ -538,6 +546,7 @@ export function createAdminE2EMajorEventSubscription(overrides: Record<string, u
 export function createAdminE2EEventAttendance(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const event = createAdminE2EEvent();
   const person = createAdminE2EPerson();
+  const attendedAt = relativeIsoDate(-1, 17, 30);
 
   return {
     eventId: event.id,
@@ -545,8 +554,8 @@ export function createAdminE2EEventAttendance(overrides: Record<string, unknown>
     personId: person.id,
     person,
     category: 'REGULAR',
-    attendedAt: '2026-05-21T17:30:00.000Z',
-    createdAt: '2026-05-21T17:30:00.000Z',
+    attendedAt,
+    createdAt: attendedAt,
     createdById: 'admin-1',
     committedById: 'admin-1',
     createdByMethod: 'MANUAL_INPUT',
@@ -561,6 +570,8 @@ export function createAdminE2EEventAttendance(overrides: Record<string, unknown>
 
 export function createAdminE2EOfflineEventAttendanceSubmission(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const event = createAdminE2EEvent();
+  const collectedAt = relativeIsoDate(-1, 17, 20);
+  const submittedAt = relativeIsoDate(-1, 18);
 
   return {
     id: 'offline-attendance-1',
@@ -573,13 +584,13 @@ export function createAdminE2EOfflineEventAttendanceSubmission(overrides: Record
     createdByMethod: 'MANUAL_INPUT',
     scannerCode: null,
     manualValue: 'ada@exmaple.com',
-    collectedAt: '2026-05-21T17:20:00.000Z',
+    collectedAt,
     authorUserId: 'collector-user',
     authorName: 'Coletora Offline',
     authorEmail: 'coletora@example.edu',
     submittedById: 'admin-1',
     submittedByFullName: 'Admin Teste',
-    submittedAt: '2026-05-21T18:00:00.000Z',
+    submittedAt,
     stagedReason: 'Coleta enviada para revisão administrativa.',
     resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
     resolutionIssue: 'PERSON_NOT_FOUND',
@@ -673,7 +684,9 @@ export function createAdminE2EEventForm(overrides: Partial<AdminE2EEventFormFixt
 }
 
 export function createAdminE2EMajorEventUserAttendance(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const event = createAdminE2EEvent();
   const person = createAdminE2EPerson();
+  const attendedAt = relativeIsoDate(-1, 17, 30);
 
   return {
     majorEventId: 'major-event-1',
@@ -682,15 +695,15 @@ export function createAdminE2EMajorEventUserAttendance(overrides: Record<string,
     person,
     subscriptionStatus: 'CONFIRMED',
     amountPaid: 4000,
-    paymentDate: '2026-05-20T12:00:00.000Z',
+    paymentDate: relativeIsoDate(-2, 12),
     paymentTier: 'Aluno',
     attendances: [
       {
-        eventId: 'event-1',
-        eventName: 'Oficina de Angular',
-        eventStartDate: '2026-05-21T17:00:00.000Z',
+        eventId: event.id,
+        eventName: event.name,
+        eventStartDate: event.startDate,
         attended: true,
-        attendedAt: '2026-05-21T17:30:00.000Z',
+        attendedAt,
         category: 'REGULAR',
       },
     ],
@@ -741,6 +754,10 @@ function graphqlData(
   }
 
   if (query.includes('query ListEventDrafts')) {
+    const createdAt = relativeIsoDate(-1, 12);
+    const updatedAt = relativeIsoDate(0, 12, 30);
+    const expiresAt = relativeIsoDate(30, 12, 30);
+
     return {
       eventDrafts: [
         {
@@ -754,9 +771,9 @@ function graphqlData(
           updatedById: 'admin-1',
           updatedByName: 'Admin Teste',
           updatedByEmail: 'admin@example.edu',
-          createdAt: '2026-05-21T12:00:00.000Z',
-          updatedAt: '2026-05-21T12:30:00.000Z',
-          expiresAt: '2026-06-21T12:30:00.000Z',
+          createdAt,
+          updatedAt,
+          expiresAt,
         },
       ],
     };

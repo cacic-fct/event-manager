@@ -20,6 +20,7 @@ test('people workspace manages Event Manager permission grants', async ({ page }
   await page.getByLabel(/buscar pessoa/i).fill('Ada');
   await page.getByRole('button', { name: 'Buscar' }).click();
   await page.getByText('Ada Lovelace').first().click();
+  await page.getByRole('tab', { name: 'Permissões' }).click();
 
   await expect(page.getByText('Permissões do Event Manager')).toBeVisible();
   await expect(page.getByText('Evento · Visualizar')).toBeVisible();
