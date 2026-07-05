@@ -8,6 +8,10 @@
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
       rel="stylesheet" />
+
+    <link
+      href="http://127.0.0.1:5500/certificate-templates/cacic-unesp/lecturer/cacic-unesp-lecturer.template.css"
+      rel="stylesheet" />
   </head>
   <body>
     <section class="certificate-page page-1">
@@ -32,9 +36,9 @@
       </div>
       <div class="certificate-content">
         <p class="participant-name-inline">{{name}}</p>
-        <p>Documento: {{identityDocument}}</p>
-        <p>Tipo do certificado: {{certificateType}}</p>
-        <p><b>{{majorEvent or event name}}</b></p>
+        <p class="participant-document-inline">Documento: {{identityDocument}}</p>
+        <p class="event-name-inline">{{majorEvent or event name}}</p>
+        <p class="certificate-type-inline">{{certificateType}}</p>
         <p class="section-block">{{second_page_content}}</p>
       </div>
     </section>

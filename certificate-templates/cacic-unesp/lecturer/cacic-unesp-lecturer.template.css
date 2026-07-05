@@ -98,8 +98,25 @@ body {
 
 .participant-name-inline {
   margin-top: 0;
+  margin-bottom: 0;
   font-size: 16pt;
   font-weight: 700;
+}
+
+.participant-document-inline {
+  margin-top: 0;
+}
+
+.event-name-inline {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: 14pt;
+  font-weight: 600;
+}
+
+.certificate-type-inline {
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .section-title {
