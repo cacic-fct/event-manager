@@ -307,6 +307,7 @@ export const OFFLINE_EVENT_ATTENDANCE_SUBMISSION_FIELDS = `
   id
   clientId
   eventId
+  personId
   status
   createdByMethod
   scannerCode

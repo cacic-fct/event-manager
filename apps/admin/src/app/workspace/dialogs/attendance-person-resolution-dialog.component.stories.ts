@@ -3,8 +3,8 @@ import { ChangeDetectionStrategy, Component, Injector, computed, inject, input }
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import type { EventAttendanceCsvImportAmbiguousValue } from '@cacic-fct/event-manager-admin-contracts';
 import { AttendancePersonResolutionDialogComponent } from './attendance-person-resolution-dialog.component';
+import { attendanceResolutionStoryAmbiguousValues } from './attendance-person-story-fixtures';
 
 type ResolutionDialogStoryArgs = {
   longContent: boolean;
@@ -14,59 +14,6 @@ type ResolutionDialogStoryArgs = {
 const dialogRefMock = {
   close: () => undefined,
 };
-
-const ambiguousValues: EventAttendanceCsvImportAmbiguousValue[] = [
-  {
-    value: '11999999975',
-    candidates: [
-      {
-        id: 'document-person',
-        name: 'Ana Clara Silva',
-        email: 'ana.clara@example.com',
-        phone: null,
-        identityDocument: '119.999.999-75',
-        academicId: '123456',
-        createdAt: '2026-06-01T12:00:00.000Z',
-        updatedAt: '2026-06-01T12:00:00.000Z',
-      },
-      {
-        id: 'phone-person',
-        name: 'Bruno Pereira',
-        email: 'bruno.pereira@example.com',
-        phone: '+55 (11) 99999-9975',
-        identityDocument: '529.982.247-25',
-        academicId: '654321',
-        createdAt: '2026-06-01T12:00:00.000Z',
-        updatedAt: '2026-06-01T12:00:00.000Z',
-      },
-    ],
-  },
-  {
-    value: '21912345692',
-    candidates: [
-      {
-        id: 'long-document-person',
-        name: 'Carolina Mariana de Albuquerque Vasconcelos',
-        email: 'carolina.albuquerque.vasconcelos@example.com',
-        phone: '+55 (21) 91234-5692',
-        identityDocument: '219.123.456-92',
-        academicId: '202612345678',
-        createdAt: '2026-06-01T12:00:00.000Z',
-        updatedAt: '2026-06-01T12:00:00.000Z',
-      },
-      {
-        id: 'long-phone-person',
-        name: 'Daniel Henrique Souza Nascimento',
-        email: null,
-        phone: '+5521912345692',
-        identityDocument: null,
-        academicId: null,
-        createdAt: '2026-06-01T12:00:00.000Z',
-        updatedAt: '2026-06-01T12:00:00.000Z',
-      },
-    ],
-  },
-];
 
 @Component({
   selector: 'app-storybook-attendance-person-resolution-dialog-host',
@@ -92,7 +39,9 @@ class AttendancePersonResolutionDialogStoryHostComponent {
             description:
               'Alguns dados do CSV podem ser CPF ou telefone de pessoas diferentes. Selecione a pessoa correta para continuar.',
             confirmLabel: 'Continuar importação',
-            ambiguousValues: this.multipleValues() ? ambiguousValues : ambiguousValues.slice(0, 1),
+            ambiguousValues: this.multipleValues()
+              ? attendanceResolutionStoryAmbiguousValues
+              : attendanceResolutionStoryAmbiguousValues.slice(0, 1),
           },
         },
         { provide: MatDialogRef, useValue: dialogRefMock },
@@ -128,7 +77,7 @@ export const SingleValue: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Escolher pessoa correta')).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /continuar importação/i })).toBeDisabled();
-    await userEvent.click(await canvas.findByText('Bruno Pereira'));
+    await userEvent.click(await canvas.findByText(attendanceResolutionStoryAmbiguousValues[0].candidates[1].name));
     await expect(await canvas.findByRole('button', { name: /continuar importação/i })).toBeEnabled();
   },
 };

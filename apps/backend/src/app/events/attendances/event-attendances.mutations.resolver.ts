@@ -18,6 +18,7 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { normalizeOptionalString } from '../../current-user/events/attendance-collection-context';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT, GraphqlContext } from './event-attendances.shared';
 import {
@@ -250,11 +251,14 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
-    const person = await this.findSinglePersonForManualInput(input.value);
+    const explicitPersonId = normalizeOptionalString(input.personId);
+    const personId = explicitPersonId
+      ? await this.resolveActiveMergedPersonId(explicitPersonId)
+      : (await this.findSinglePersonForManualInput(input.value)).id;
     return this.createAttendanceWithMetadata(
       {
         eventId: input.eventId,
-        personId: person.id,
+        personId,
         createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
         createdById: this.getActorId(context),
         committedById: this.getActorId(context),
@@ -703,22 +707,37 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     const createdByMethod = (input.createdByMethod ?? submission.createdByMethod) as AttendanceCreationMethod;
     const scannerCode =
       createdByMethod === AttendanceCreationMethod.SCANNER
-        ? this.normalizeOptionalString(input.scannerCode ?? submission.scannerCode) ?? null
+        ? normalizeOptionalString(input.scannerCode ?? submission.scannerCode) ?? null
         : null;
     const manualValue =
       createdByMethod === AttendanceCreationMethod.MANUAL_INPUT
-        ? this.normalizeOptionalString(input.manualValue ?? submission.manualValue) ?? null
+        ? normalizeOptionalString(input.manualValue ?? submission.manualValue) ?? null
         : null;
-    const explicitPersonId = this.normalizeOptionalString(input.personId);
+    const explicitPersonId = normalizeOptionalString(input.personId);
 
     if (explicitPersonId) {
-      return {
-        createdByMethod,
-        scannerCode,
-        manualValue,
-        personId: await this.resolveMergedPersonId(explicitPersonId),
-        resolutionError: null,
-      };
+      try {
+        return {
+          createdByMethod,
+          scannerCode,
+          manualValue,
+          personId: await this.resolveActiveMergedPersonId(explicitPersonId),
+          stagedReason: null,
+          resolutionError: null,
+        };
+      } catch (error: unknown) {
+        if (!(error instanceof HttpException) || ![400, 404, 409].includes(error.getStatus())) {
+          throw error;
+        }
+
+        return {
+          createdByMethod,
+          scannerCode,
+          manualValue,
+          personId: null,
+          resolutionError: errorMessage(error),
+        };
+      }
     }
 
     try {
@@ -732,6 +751,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         scannerCode,
         manualValue,
         personId: await this.resolveMergedPersonId(personId),
+        stagedReason: null,
         resolutionError: null,
       };
     } catch (error: unknown) {
@@ -801,9 +821,22 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     return person.mergedIntoId ?? person.id;
   }
 
-  private normalizeOptionalString(value: string | null | undefined): string | undefined {
-    const normalized = value?.trim();
-    return normalized || undefined;
+  private async resolveActiveMergedPersonId(personId: string): Promise<string> {
+    const resolvedPersonId = await this.resolveMergedPersonId(personId);
+    const person = await this.prisma.people.findFirst({
+      where: {
+        id: resolvedPersonId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (!person) {
+      throw new NotFoundException(`Person ${personId} was not found.`);
+    }
+
+    return person.id;
   }
 
   private async getOfflineSubmissionForResponse(submissionId: string): Promise<OfflineEventAttendanceSubmission> {

@@ -100,6 +100,7 @@ export class AttendanceLocationMapComponent implements OnDestroy {
     const renderKey = [location.latitude, location.longitude, this.accuracyMeters() ?? '', this.markerLabel()].join('|');
 
     if (this.map && this.lastRenderKey === renderKey) {
+      ++this.renderVersion;
       requestAnimationFrame(() => this.map?.updateSize());
       return;
     }

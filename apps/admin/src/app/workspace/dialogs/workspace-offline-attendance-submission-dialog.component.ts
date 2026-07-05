@@ -377,12 +377,22 @@ export class WorkspaceOfflineAttendanceSubmissionDialogComponent {
     switch (this.data.submission.resolutionIssue) {
       case 'COLLECTION_WINDOW_EXPIRED':
         return 'Coleta sincronizada após a janela de autorização.';
+      case 'DUPLICATE_ATTENDANCE':
+        return 'Presença já registrada para este evento.';
       case 'DUPLICATE_PERSON':
         return 'Mais de uma pessoa corresponde ao dado coletado.';
+      case 'EVENT_DELETED':
+        return 'Evento removido.';
       case 'INVALID_SCANNER_CODE':
         return 'Código de crachá inválido.';
+      case 'LOCATION_IMPRECISE':
+        return 'Localização coletada sem precisão suficiente.';
+      case 'LOCATION_MISSING':
+        return 'Localização da coleta ausente.';
       case 'PERSON_NOT_FOUND':
         return 'Pessoa não encontrada para o dado coletado.';
+      case 'UNSUPPORTED_METHOD':
+        return 'Origem da presença off-line incompatível.';
       case 'EVENT_LOCKED':
         return 'Evento bloqueado para novas presenças.';
       case 'UNKNOWN':

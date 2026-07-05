@@ -12,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { firstValueFrom } from 'rxjs';
 import type { OfflineEventAttendanceSubmission, Person } from '@cacic-fct/event-manager-admin-contracts';
 import { PeopleApiService } from '../../graphql/people-api.service';
-import { buildPeopleCandidateLookupFilters } from '../../shared/people-lookup';
+import { buildPeopleCandidateLookupFilters, parseUserAztecIdentifier } from '../../shared/people-lookup';
 
 export interface WorkspaceOfflineAttendanceSubmissionEditDialogData {
   submission: OfflineEventAttendanceSubmission & {
@@ -311,9 +311,18 @@ export class WorkspaceOfflineAttendanceSubmissionEditDialogComponent {
       const searches = buildPeopleCandidateLookupFilters(query, 8).map((filters) =>
         firstValueFrom(this.peopleApi.listPeopleSummaries(filters)),
       );
+      const results = await Promise.allSettled(searches);
+      if (results.every((result) => result.status === 'rejected')) {
+        throw results[0]?.reason;
+      }
+
       const peopleById = new Map<string, Person>();
-      for (const person of (await Promise.all(searches)).flat()) {
-        peopleById.set(person.id, person);
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          for (const person of result.value) {
+            peopleById.set(person.id, person);
+          }
+        }
       }
       const people = [...peopleById.values()].slice(0, 8);
       this.candidatePeople.set(people);
@@ -388,7 +397,7 @@ export class WorkspaceOfflineAttendanceSubmissionEditDialogComponent {
       return 'Busca por nome, e-mail, telefone, documento, RA ou código de usuário';
     }
 
-    if (this.parseUserAztecIdentifier(query)) {
+    if (parseUserAztecIdentifier(query)) {
       return 'Código de usuário detectado';
     }
 
@@ -408,12 +417,4 @@ export class WorkspaceOfflineAttendanceSubmissionEditDialogComponent {
     return 'Busca por nome ou texto';
   }
 
-  private parseUserAztecIdentifier(query: string): string | null {
-    if (!query.startsWith('user:')) {
-      return null;
-    }
-
-    const userId = query.slice('user:'.length).trim();
-    return userId && !userId.includes(':') ? userId : null;
-  }
 }

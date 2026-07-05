@@ -115,6 +115,7 @@ export async function findSinglePersonForManualInput(
       id: true,
       mergedIntoId: true,
     },
+    take: 3,
   });
 
   const resolvedPersonIds = new Set(people.map((person) => person.mergedIntoId ?? person.id));

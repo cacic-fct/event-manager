@@ -19,6 +19,9 @@ type AdminE2EEventFormFixture = AdminE2ENamedFixture & {
   links: Record<string, unknown>[];
   elementsJson: string;
 };
+type AdminE2EGraphqlState = {
+  offlineEventAttendanceSubmission: Record<string, unknown> | null;
+};
 
 export const adminE2EReadPermissions = [
   'event#read',
@@ -77,6 +80,9 @@ export async function mockAdminApi(
 ): Promise<void> {
   let currentUser = options.user;
   const permissions = options.permissions ?? adminE2EReadPermissions;
+  const graphqlState: AdminE2EGraphqlState = {
+    offlineEventAttendanceSubmission: createAdminE2EOfflineEventAttendanceSubmission(),
+  };
 
   await page.route('https://unleash.cacic.dev.br/api/frontend/**', (route) =>
     route.fulfill({
@@ -139,7 +145,7 @@ export async function mockAdminApi(
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: graphqlData(route.request().postDataJSON() as unknown, options.dashboardInsights),
+          data: graphqlData(route.request().postDataJSON() as unknown, options.dashboardInsights, graphqlState),
         }),
       });
       return;
@@ -642,7 +648,11 @@ export function createAdminE2EMajorEventUserAttendance(overrides: Record<string,
   };
 }
 
-function graphqlData(body: unknown, dashboardInsights: AdminE2EDashboardInsights | undefined): Record<string, unknown> {
+function graphqlData(
+  body: unknown,
+  dashboardInsights: AdminE2EDashboardInsights | undefined,
+  state: AdminE2EGraphqlState,
+): Record<string, unknown> {
   const query = isRecord(body) && typeof body['query'] === 'string' ? body['query'] : '';
   const variables = isRecord(body) && isRecord(body['variables']) ? body['variables'] : {};
   const event = createAdminE2EEvent({ id: 'event-1' });
@@ -707,6 +717,10 @@ function graphqlData(body: unknown, dashboardInsights: AdminE2EDashboardInsights
 
   if (query.includes('query ListEventAttendanceCollectors')) {
     return { eventAttendanceCollectors: [] };
+  }
+
+  if (query.includes('query ListPeopleSummaries')) {
+    return { people: [createAdminE2EPerson()] };
   }
 
   if (query.includes('query ListMajorEvents')) {
@@ -806,19 +820,25 @@ function graphqlData(body: unknown, dashboardInsights: AdminE2EDashboardInsights
   }
 
   if (query.includes('query OfflineEventAttendanceSubmissions')) {
-    return { offlineEventAttendanceSubmissions: [createAdminE2EOfflineEventAttendanceSubmission()] };
+    return {
+      offlineEventAttendanceSubmissions: state.offlineEventAttendanceSubmission
+        ? [state.offlineEventAttendanceSubmission]
+        : [],
+    };
   }
 
   if (query.includes('mutation UpdateOfflineEventAttendanceSubmission')) {
     const person = createAdminE2EPerson();
+    const updatedSubmission = createAdminE2EOfflineEventAttendanceSubmission({
+      personId: person.id,
+      person,
+      manualValue: 'ada@example.edu',
+      resolutionError: null,
+      resolutionIssue: null,
+    });
+    state.offlineEventAttendanceSubmission = null;
     return {
-      updateOfflineEventAttendanceSubmission: createAdminE2EOfflineEventAttendanceSubmission({
-        personId: person.id,
-        person,
-        manualValue: 'ada@example.edu',
-        resolutionError: null,
-        resolutionIssue: null,
-      }),
+      updateOfflineEventAttendanceSubmission: updatedSubmission,
     };
   }
 

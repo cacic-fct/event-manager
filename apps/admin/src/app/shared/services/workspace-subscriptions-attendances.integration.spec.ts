@@ -250,6 +250,41 @@ describe('workspace subscription and attendance management integration', () => {
     expect(snackbar.open).toHaveBeenCalledWith('Presença off-line corrigida.', 'Fechar', { duration: 3000 });
   });
 
+  it('shows a pending-adjustment message when the offline correction still has a resolution error', async () => {
+    const submission = createAdminOfflineEventAttendanceSubmission({
+      eventId: 'event-1',
+      personId: null,
+      person: null,
+      manualValue: 'ada@exmaple.com',
+      resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+      resolutionIssue: 'PERSON_NOT_FOUND',
+    });
+    const updated = createAdminOfflineEventAttendanceSubmission({
+      ...submission,
+      resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+      resolutionIssue: 'PERSON_NOT_FOUND',
+    });
+    dialog.open.mockReturnValue({
+      afterClosed: () =>
+        of({
+          personId: 'missing-person',
+        }),
+    });
+    attendanceApi.updateOfflineEventAttendanceSubmission.mockReturnValue(of(updated));
+
+    await attendancesService.editOfflineAttendanceSubmission({
+      ...submission,
+      eventName: 'Credenciamento',
+      personName: 'Pessoa não resolvida',
+    });
+
+    expect(snackbar.open).toHaveBeenCalledWith(
+      'Correção salva, mas a presença ainda precisa de ajuste.',
+      'Fechar',
+      { duration: 3000 },
+    );
+  });
+
   it('resolves ambiguous CSV attendance values before retrying the import', async () => {
     const documentPerson = createAdminPerson({
       id: 'document-person',

@@ -10,7 +10,7 @@ export function getBrazilianPhoneCandidates(value: string): string[] {
     return [];
   }
 
-  const withCountry = withoutCountry.length >= 10 ? `55${withoutCountry}` : digits;
+  const withCountry = `55${withoutCountry}`;
   for (const candidate of [digits, withoutCountry, withCountry, `+${withCountry}`]) {
     candidates.add(candidate);
   }

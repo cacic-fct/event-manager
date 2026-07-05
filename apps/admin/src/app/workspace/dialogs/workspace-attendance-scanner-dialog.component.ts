@@ -35,6 +35,8 @@ export interface WorkspaceAttendanceScannerDialogData {
   eventId: string;
 }
 
+const DUPLICATE_PERSON_ERROR_PREFIX = 'Pessoa tem registros duplicados';
+
 @Component({
   selector: 'app-workspace-attendance-scanner-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -284,7 +286,7 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
 
   private async handleManualRegistrationError(error: unknown, value: string): Promise<void> {
     const message = this.registrationErrorMessage(error);
-    if (!message.startsWith('Pessoa tem registros duplicados')) {
+    if (!message.startsWith(DUPLICATE_PERSON_ERROR_PREFIX)) {
       await this.handleRegistrationError(error);
       return;
     }
@@ -331,8 +333,9 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
 
     try {
       const attendance = await firstValueFrom(
-        this.api.createEventAttendance({
+        this.api.createEventAttendanceFromManualInput({
           eventId: this.data.eventId,
+          value,
           personId: selectedPersonId,
         }),
       );
@@ -351,7 +354,7 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
     const message = this.registrationErrorMessage(error);
     if (message.includes('Presença já registrada')) {
       this.feedback.show('duplicate');
-    } else if (message.startsWith('Pessoa tem registros duplicados')) {
+    } else if (message.startsWith(DUPLICATE_PERSON_ERROR_PREFIX)) {
       this.feedback.show('duplicate');
       this.openDuplicatePersonWarning(message);
       return;
@@ -367,8 +370,10 @@ export class WorkspaceAttendanceScannerDialogComponent implements OnInit {
   private async findManualInputCandidates(value: string): Promise<Person[]> {
     const peopleById = new Map<string, Person>();
     const searches = buildPeopleCandidateLookupFilters(value, 8);
-    for (const filters of searches) {
-      const people = await firstValueFrom(this.peopleApi.listPeopleSummaries(filters));
+    const results = await Promise.all(
+      searches.map((filters) => firstValueFrom(this.peopleApi.listPeopleSummaries(filters))),
+    );
+    for (const people of results) {
       for (const person of people) {
         peopleById.set(person.id, person);
       }

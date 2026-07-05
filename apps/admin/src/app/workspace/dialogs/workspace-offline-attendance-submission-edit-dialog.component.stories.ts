@@ -7,9 +7,9 @@ import { of } from 'rxjs';
 import type {
   AttendanceCreationMethod,
   OfflineEventAttendanceResolutionIssue,
-  Person,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { PeopleApiService } from '../../graphql/people-api.service';
+import { attendanceResolutionStoryPeople } from './attendance-person-story-fixtures';
 import { WorkspaceOfflineAttendanceSubmissionEditDialogComponent } from './workspace-offline-attendance-submission-edit-dialog.component';
 
 type EditDialogStoryArgs = {
@@ -24,28 +24,7 @@ type EditDialogStoryArgs = {
   longContent: boolean;
 };
 
-const candidatePeople: Person[] = [
-  {
-    id: 'person-1',
-    name: 'Ana Clara Silva',
-    email: 'ana.clara@example.com',
-    phone: '+5518999999999',
-    identityDocument: '12345678900',
-    academicId: '123456',
-    createdAt: '2026-06-01T12:00:00.000Z',
-    updatedAt: '2026-06-01T12:00:00.000Z',
-  },
-  {
-    id: 'person-2',
-    name: 'Bruno Pereira de Albuquerque',
-    email: 'bruno.albuquerque@example.com',
-    phone: null,
-    identityDocument: '98765432100',
-    academicId: '654321',
-    createdAt: '2026-06-01T12:00:00.000Z',
-    updatedAt: '2026-06-01T12:00:00.000Z',
-  },
-];
+const candidatePeople = attendanceResolutionStoryPeople.slice(0, 2);
 
 const defaultArgs: EditDialogStoryArgs = {
   eventName: 'Credenciamento geral',
@@ -210,7 +189,7 @@ export const SelectedPerson: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Ana Clara Silva')).toBeVisible();
+    await expect(await canvas.findByText(candidatePeople[0].name)).toBeVisible();
     await expect(await canvas.findByRole('button', { name: 'Salvar correção' })).toBeEnabled();
   },
 };
@@ -222,7 +201,7 @@ export const CandidateSearch: Story = {
     await userEvent.clear(input);
     await userEvent.type(input, 'Ana');
     await userEvent.click(await canvas.findByRole('button', { name: 'Executar busca de pessoa' }));
-    await expect(await canvas.findByText('Bruno Pereira de Albuquerque')).toBeVisible();
+    await expect(await canvas.findByText(candidatePeople[1].name)).toBeVisible();
   },
 };
 

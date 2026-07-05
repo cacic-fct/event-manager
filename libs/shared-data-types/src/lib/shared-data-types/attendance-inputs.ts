@@ -35,6 +35,9 @@ export class EventAttendanceManualInput {
   @Field(() => String)
   value!: string;
 
+  @Field(() => String, { nullable: true })
+  personId?: string;
+
   @Field(() => AttendanceCollectionLocationInput, { nullable: true })
   location?: AttendanceCollectionLocationInput;
 }

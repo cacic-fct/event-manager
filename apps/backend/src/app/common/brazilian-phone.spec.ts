@@ -13,6 +13,10 @@ describe('getBrazilianPhoneCandidates', () => {
     );
   });
 
+  it('preserves DDD 55 numbers instead of stripping them as a country code', () => {
+    expect(getBrazilianPhoneCandidates('55999990000')).toEqual(expect.arrayContaining(['55999990000']));
+  });
+
   it('ignores digit strings that cannot be Brazilian phones', () => {
     expect(getBrazilianPhoneCandidates('ABC123')).toEqual([]);
     expect(getBrazilianPhoneCandidates('123456789')).toEqual([]);

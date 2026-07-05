@@ -81,7 +81,7 @@ export function buildPeopleCandidateLookupFilters(query: string, take: number): 
   return searches;
 }
 
-function parseUserAztecIdentifier(query: string): string | null {
+export function parseUserAztecIdentifier(query: string): string | null {
   if (!query.startsWith('user:')) {
     return null;
   }

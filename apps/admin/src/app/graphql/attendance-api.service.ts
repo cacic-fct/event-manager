@@ -324,7 +324,7 @@ export class AttendanceApiService {
       .pipe(map((data) => data.createEventAttendanceFromScannerCode));
   }
 
-  createEventAttendanceFromManualInput(input: { eventId: string; value: string }) {
+  createEventAttendanceFromManualInput(input: { eventId: string; value: string; personId?: string }) {
     return this.graphqlHttp
       .request<{ createEventAttendanceFromManualInput: EventAttendance }>(
         `mutation CreateEventAttendanceFromManualInput($input: EventAttendanceManualInput!) {
