@@ -5,7 +5,6 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import type { Request, Response } from 'express';
-import Redis from 'ioredis';
 import { AppController } from './app.controller';
 import { AccountMergeController } from './account-merge/account-merge.controller';
 import { AccountMergeService } from './account-merge/account-merge.service';
@@ -140,6 +139,7 @@ import { TurnstileService } from './turnstile/turnstile.service';
 import { RateLimitGuard } from './rate-limit/rate-limit.guard';
 import { RateLimitService } from './rate-limit/rate-limit.service';
 import { validateBackendEnvironment } from './config/environment.validation';
+import { redisProvider } from './redis/redis.provider';
 
 @Module({
   imports: [
@@ -320,10 +320,7 @@ import { validateBackendEnvironment } from './config/environment.validation';
     TurnstileService,
     RateLimitGuard,
     RateLimitService,
-    {
-      provide: Redis,
-      useFactory: () => new Redis(getRedisConnectionOptions()),
-    },
+    redisProvider,
     {
       provide: APP_GUARD,
       useClass: KeycloakScopeGuard,

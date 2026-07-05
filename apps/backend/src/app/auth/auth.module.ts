@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import Redis from 'ioredis';
 import { AuthController } from './auth.controller';
 import { AuthResolver } from './auth.resolver';
 import { AuthSessionStoreService } from './auth-session-store.service';
@@ -7,8 +6,8 @@ import { AuthorizationStateService } from './authorization-state.service';
 import { KeycloakAuthService } from './keycloak-auth.service';
 import { KeycloakM2mTokenService } from './keycloak-m2m-token.service';
 import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
-import { getRedisConnectionOptions } from '../weather/redis-connection';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
+import { redisProvider } from '../redis/redis.provider';
 
 @Module({
   controllers: [AuthController],
@@ -20,10 +19,7 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
     AuthSessionStoreService,
     AuthorizationStateService,
     AuthResolver,
-    {
-      provide: Redis,
-      useFactory: () => new Redis(getRedisConnectionOptions()),
-    },
+    redisProvider,
   ],
   exports: [KeycloakAuthService, KeycloakM2mTokenService, AuthenticatedUserSyncService, AuthorizationPolicyService],
 })

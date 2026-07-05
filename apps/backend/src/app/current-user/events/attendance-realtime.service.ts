@@ -1,7 +1,7 @@
-import { Controller, Injectable, Logger, MessageEvent, Query, Req, Sse } from '@nestjs/common';
+import { Controller, Injectable, Logger, MessageEvent, OnModuleDestroy, Query, Req, Sse } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import type { Request } from 'express';
-import { Observable, Subject, interval, map, merge } from 'rxjs';
+import { Observable, Subject, interval, map, merge, takeUntil } from 'rxjs';
 import {
   ApiBearerAuth,
   ApiExtraModels,
@@ -73,12 +73,14 @@ type RealtimeServerMessage =
   | EventSubscriptionChangedMessage;
 
 @Injectable()
-export class CurrentUserOnlineAttendanceRealtimeService {
+export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestroy {
   private readonly logger = new Logger(CurrentUserOnlineAttendanceRealtimeService.name);
   private readonly clients = new Set<RealtimeClient>();
+  private readonly destroy$ = new Subject<void>();
   private readonly majorEventSubscriptionSnapshots = new Map<string, string>();
   private readonly eventSubscriptionSnapshots = new Map<string, string>();
   private readonly heartbeat$ = interval(25_000).pipe(
+    takeUntil(this.destroy$),
     map(() => ({
       data: {
         type: 'heartbeat',
@@ -96,6 +98,21 @@ export class CurrentUserOnlineAttendanceRealtimeService {
     private readonly prisma: PrismaService,
     private readonly publicEvents: PublicEventsResolver,
   ) {}
+
+  onModuleDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+
+    if (this.majorEventSubscriptionInterval) {
+      clearInterval(this.majorEventSubscriptionInterval);
+      this.majorEventSubscriptionInterval = null;
+    }
+
+    for (const client of this.clients) {
+      client.events.complete();
+    }
+    this.clients.clear();
+  }
 
   stream(
     request: Request,
