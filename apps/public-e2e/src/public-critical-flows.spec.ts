@@ -1,9 +1,11 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
+import { expect, test } from './support/e2e-test';
 import {
   createPublicEvent,
   createPublicEventGroup,
   createPublicMajorEvent,
 } from '@cacic-fct/event-manager-public-testing';
+import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts/types';
 
 test.beforeEach(async ({ page }) => {
   await preventSilentSso(page);
@@ -321,7 +323,9 @@ async function fulfillGraphql(
       upsertCurrentUserMajorEventSubscription: majorEventSubscriptionFixture(
         'ranked-major',
         rankedMajorEventSubscriptionFixture(),
-        selectedEventIds.map((eventId) => rankedSubscriptionEventsFixture().find((event) => event.id === eventId)).filter(isRecord),
+        selectedEventIds
+          .map((eventId) => rankedSubscriptionEventsFixture().find((event) => event.id === eventId))
+          .filter(isPublicEvent),
       ),
     });
     return;
@@ -337,7 +341,9 @@ async function fulfillGraphql(
       upsertCurrentUserMajorEventSubscription: majorEventSubscriptionFixture(
         'standard-major',
         standardMajorEventSubscriptionFixture(),
-        selectedEventIds.map((eventId) => standardSubscriptionEventsFixture().find((event) => event.id === eventId)).filter(isRecord),
+        selectedEventIds
+          .map((eventId) => standardSubscriptionEventsFixture().find((event) => event.id === eventId))
+          .filter(isPublicEvent),
       ),
     });
     return;
@@ -387,7 +393,7 @@ function authenticatedUserFixture(): Record<string, unknown> {
   };
 }
 
-function standaloneEventFixture(): Record<string, unknown> {
+function standaloneEventFixture(): PublicEvent {
   return createPublicEvent({
     id: 'standalone-event',
     name: 'Oficina pública de TypeScript',
@@ -406,7 +412,7 @@ function standaloneEventFixture(): Record<string, unknown> {
   });
 }
 
-function standardMajorEventFixture(): Record<string, unknown> {
+function standardMajorEventFixture(): PublicMajorEvent {
   return createPublicMajorEvent({
     id: 'standard-major',
     name: 'SECOMPP Integração',
@@ -422,7 +428,7 @@ function standardMajorEventFixture(): Record<string, unknown> {
   });
 }
 
-function rankedMajorEventFixture(): Record<string, unknown> {
+function rankedMajorEventFixture(): PublicMajorEvent {
   return createPublicMajorEvent({
     id: 'ranked-major',
     name: 'SECOMPP Preferencial',
@@ -438,7 +444,7 @@ function rankedMajorEventFixture(): Record<string, unknown> {
   });
 }
 
-function standardMajorEventSubscriptionFixture(): Record<string, unknown> {
+function standardMajorEventSubscriptionFixture(): PublicMajorEvent {
   return createPublicMajorEvent({
     ...standardMajorEventFixture(),
     maxCoursesPerAttendee: 2,
@@ -447,7 +453,7 @@ function standardMajorEventSubscriptionFixture(): Record<string, unknown> {
   });
 }
 
-function rankedMajorEventSubscriptionFixture(): Record<string, unknown> {
+function rankedMajorEventSubscriptionFixture(): PublicMajorEvent {
   return createPublicMajorEvent({
     ...rankedMajorEventFixture(),
     maxCoursesPerAttendee: 2,
@@ -456,7 +462,7 @@ function rankedMajorEventSubscriptionFixture(): Record<string, unknown> {
   });
 }
 
-function standardSubscriptionEventsFixture(): Array<Record<string, unknown>> {
+function standardSubscriptionEventsFixture(): PublicEvent[] {
   const group = createPublicEventGroup({
     id: 'standard-group',
     name: 'Trilha de Integração',
@@ -493,7 +499,7 @@ function standardSubscriptionEventsFixture(): Array<Record<string, unknown>> {
   ];
 }
 
-function rankedSubscriptionEventsFixture(): Array<Record<string, unknown>> {
+function rankedSubscriptionEventsFixture(): PublicEvent[] {
   const group = createPublicEventGroup({
     id: 'ranked-group',
     name: 'Trilha Backend',
@@ -545,8 +551,8 @@ function rankedSubscriptionEventsFixture(): Array<Record<string, unknown>> {
 
 function majorEventSubscriptionFixture(
   majorEventId: string,
-  majorEvent: Record<string, unknown>,
-  selectedEvents: Array<Record<string, unknown>>,
+  majorEvent: PublicMajorEvent,
+  selectedEvents: PublicEvent[],
 ): Record<string, unknown> {
   return {
     id: `${majorEventId}-subscription`,
@@ -578,4 +584,8 @@ function nullableNumberVariable(variables: Record<string, unknown>, key: string)
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function isPublicEvent(value: PublicEvent | undefined): value is PublicEvent {
+  return value !== undefined;
 }

@@ -1,10 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 import { nxE2EPreset } from '@nx/playwright/preset';
 import { workspaceRoot } from '@nx/devkit';
+import { isAbsolute, resolve } from 'node:path';
 
 // For CI, you may want to set BASE_URL to the deployed application.
 const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
 const startServer = process.env['E2E_START_SERVER'] === 'true';
+const collectCoverage = process.env['E2E_COVERAGE'] === 'true';
+const coverageOutputPath = process.env['E2E_COVERAGE_OUTPUT_DIR'] || 'coverage/admin-e2e';
+const coverageOutputDir = isAbsolute(coverageOutputPath)
+  ? coverageOutputPath
+  : resolve(workspaceRoot, coverageOutputPath);
 
 /**
  * Read environment variables from file.
@@ -17,6 +23,27 @@ const startServer = process.env['E2E_START_SERVER'] === 'true';
  */
 export default defineConfig({
   ...nxE2EPreset(__filename, { testDir: './src' }),
+  ...(collectCoverage
+    ? {
+        reporter: [
+          ['list'],
+          [
+            'monocart-reporter',
+            {
+              name: 'Admin E2E coverage',
+              outputFile: `${coverageOutputDir}/index.html`,
+              coverage: {
+                reports: ['lcovonly'],
+                outputDir: coverageOutputDir,
+                sourceFilter: (sourcePath: string) =>
+                  /(^|\/)apps\/admin\/src\/.+\.ts$/.test(sourcePath) &&
+                  !/(\.spec|\.test|\.stories|\.ngtypecheck)\.ts$/.test(sourcePath),
+              },
+            },
+          ],
+        ],
+      }
+    : {}),
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,

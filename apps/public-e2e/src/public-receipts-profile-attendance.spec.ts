@@ -1,10 +1,12 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
+import { expect, test } from './support/e2e-test';
 import {
   createPublicEvent,
   createPublicMajorEvent,
   createPublicMajorEventPrice,
   createPublicPaymentInfo,
 } from '@cacic-fct/event-manager-public-testing';
+import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts/types';
 
 test.beforeEach(async ({ page }) => {
   await preventSilentSso(page);
@@ -395,7 +397,7 @@ function authenticatedUserFixture(): Record<string, unknown> {
   };
 }
 
-function paidMajorEventFixture(): Record<string, unknown> {
+function paidMajorEventFixture(): PublicMajorEvent {
   return createPublicMajorEvent({
     id: 'paid-major',
     name: 'SECOMPP Pago',
@@ -558,7 +560,7 @@ function publicEventFormFixture(): Record<string, unknown> {
   };
 }
 
-function onlineAttendanceEventFixture(): Record<string, unknown> {
+function onlineAttendanceEventFixture(): PublicEvent {
   return createPublicEvent({
     id: 'online-event',
     name: 'Presença on-line',

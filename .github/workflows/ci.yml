@@ -150,12 +150,40 @@ jobs:
         id: coverage
         shell: bash
         run: |
-          if [ ! -d coverage ]; then
+          case '${{ matrix.project }}' in
+            admin)
+              coverage_roots=(coverage/apps/admin coverage/admin)
+              ;;
+            backend)
+              coverage_roots=(coverage/apps/backend)
+              ;;
+            offline-public-data-access)
+              coverage_roots=(coverage/libs/offline-public-data-access)
+              ;;
+            public)
+              coverage_roots=(coverage/apps/public coverage/public)
+              ;;
+            shared-utils)
+              coverage_roots=(coverage/libs/shared-utils)
+              ;;
+            *)
+              coverage_roots=(coverage/${{ matrix.project }})
+              ;;
+          esac
+
+          existing_roots=()
+          for root in "${coverage_roots[@]}"; do
+            if [ -d "$root" ]; then
+              existing_roots+=("$root")
+            fi
+          done
+
+          if [ "${#existing_roots[@]}" -eq 0 ]; then
             echo "has_reports=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          mapfile -t reports < <(find coverage -type f \( -name 'lcov.info' -o -name 'coverage-final.json' -o -name 'coverage.xml' -o -name 'clover.xml' \) | sort)
+          mapfile -t reports < <(find "${existing_roots[@]}" -type f \( -name 'lcov.info' -o -name 'coverage-final.json' -o -name 'coverage.xml' -o -name 'clover.xml' \) | sort)
 
           if [ "${#reports[@]}" -eq 0 ]; then
             echo "has_reports=false" >> "$GITHUB_OUTPUT"
@@ -165,6 +193,16 @@ jobs:
           reports_csv="$(IFS=,; echo "${reports[*]}")"
           echo "has_reports=true" >> "$GITHUB_OUTPUT"
           echo "files=$reports_csv" >> "$GITHUB_OUTPUT"
+
+      - name: Show coverage reports
+        if: always()
+        shell: bash
+        run: |
+          if [ -d coverage ]; then
+            find coverage -maxdepth 4 -type f \( -name 'lcov.info' -o -name 'coverage-final.json' -o -name 'coverage.xml' -o -name 'clover.xml' \) | sort
+          else
+            echo "coverage directory not found"
+          fi
 
       - name: Upload coverage to Codecov
         if: steps.coverage.outputs.has_reports == 'true'
@@ -186,9 +224,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project:
-          - admin-e2e
-          - public-e2e
+        include:
+          - project: admin-e2e
+            coverage_flag: e2e-admin
+          - project: public-e2e
+            coverage_flag: e2e-public
 
     if: >
       github.event_name == 'push' ||
@@ -228,7 +268,39 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       - name: Run frontend e2e tests
-        run: E2E_START_SERVER=true bunx nx e2e ${{ matrix.project }} -- --project=chromium
+        run: E2E_START_SERVER=true E2E_COVERAGE=true E2E_COVERAGE_OUTPUT_DIR=coverage/${{ matrix.project }} bunx nx e2e ${{ matrix.project }} -- --project=chromium
+
+      - name: Collect frontend e2e coverage reports
+        id: coverage
+        shell: bash
+        run: |
+          if [ ! -f coverage/${{ matrix.project }}/lcov.info ]; then
+            echo "has_reports=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_reports=true" >> "$GITHUB_OUTPUT"
+          echo "files=coverage/${{ matrix.project }}/lcov.info" >> "$GITHUB_OUTPUT"
+
+      - name: Show frontend e2e coverage reports
+        if: always()
+        shell: bash
+        run: |
+          if [ -d coverage/${{ matrix.project }} ]; then
+            find coverage/${{ matrix.project }} -maxdepth 3 -type f | sort
+          else
+            echo "coverage/${{ matrix.project }} directory not found"
+          fi
+
+      - name: Upload frontend e2e coverage to Codecov
+        if: steps.coverage.outputs.has_reports == 'true'
+        uses: codecov/codecov-action@v6
+        with:
+          flags: ${{ matrix.coverage_flag }}
+          files: ${{ steps.coverage.outputs.files }}
+          disable_search: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
   backend-e2e:
     name: Backend E2E
@@ -305,21 +377,23 @@ jobs:
         id: coverage
         shell: bash
         run: |
-          if [ ! -d coverage/backend-e2e ]; then
+          if [ ! -f coverage/backend-e2e/lcov.info ]; then
             echo "has_reports=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          mapfile -t reports < <(find coverage/backend-e2e -type f \( -name 'lcov.info' -o -name 'coverage-final.json' -o -name 'coverage.xml' -o -name 'clover.xml' \) | sort)
-
-          if [ "${#reports[@]}" -eq 0 ]; then
-            echo "has_reports=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          reports_csv="$(IFS=,; echo "${reports[*]}")"
           echo "has_reports=true" >> "$GITHUB_OUTPUT"
-          echo "files=$reports_csv" >> "$GITHUB_OUTPUT"
+          echo "files=coverage/backend-e2e/lcov.info" >> "$GITHUB_OUTPUT"
+
+      - name: Show backend e2e coverage reports
+        if: always()
+        shell: bash
+        run: |
+          if [ -d coverage/backend-e2e ]; then
+            find coverage/backend-e2e -maxdepth 3 -type f | sort
+          else
+            echo "coverage/backend-e2e directory not found"
+          fi
 
       - name: Upload backend e2e coverage to Codecov
         if: steps.coverage.outputs.has_reports == 'true'

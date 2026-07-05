@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/e2e-test';
 import {
   adminE2ECriticalFlowPermissions,
   authenticatedAdminUserFixture,
