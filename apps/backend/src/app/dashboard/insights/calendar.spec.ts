@@ -18,6 +18,10 @@ describe('mapCalendarEvent', () => {
           attendances: 3,
           subscriptions: 8,
         },
+        allowSubscription: true,
+        subscriptionStartDate: new Date('2026-05-01T12:00:00.000Z'),
+        subscriptionEndDate: new Date('2026-05-20T21:00:00.000Z'),
+        slots: 30,
       }),
       new Date('2026-05-21T12:00:00.000Z'),
     );
@@ -34,6 +38,10 @@ describe('mapCalendarEvent', () => {
       eventGroupName: 'Track A',
       attendancesCount: 3,
       subscriptionsCount: 8,
+      allowSubscription: true,
+      subscriptionStartDate: new Date('2026-05-01T12:00:00.000Z'),
+      subscriptionEndDate: new Date('2026-05-20T21:00:00.000Z'),
+      slots: 30,
       shouldCollectAttendance: true,
       canCollectAttendanceNow: true,
     });

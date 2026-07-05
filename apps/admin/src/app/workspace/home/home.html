@@ -186,23 +186,12 @@
     </div>
 
     @if (upcomingEvents().length > 0) {
-    <h3>Próximos dias</h3>
-    <mat-list class="event-list">
+    <div class="subsection-title">
+      <h3>Próximos 7 dias</h3>
+    </div>
+    <mat-list class="event-list upcoming-events-list" aria-label="Eventos dos próximos 7 dias">
       @for (event of upcomingEvents(); track event.id) {
       <ng-container [ngTemplateOutlet]="eventItem" [ngTemplateOutletContext]="{ event: event }" />
-      }
-    </mat-list>
-    } @if (dashboard.weatherAlerts.length > 0) {
-    <h3>Clima</h3>
-    <mat-list class="compact-list">
-      @for (alert of dashboard.weatherAlerts; track alert.eventId) {
-      <mat-list-item>
-        <mat-icon matListItemIcon>{{ alert.materialIcon }}</mat-icon>
-        <span matListItemTitle>{{ alert.eventName }}</span>
-        <span matListItemLine>
-          {{ alert.summary }} · {{ alert.temperature }}°C · {{ alert.forecastTime | date: 'EEE, HH:mm' }}
-        </span>
-      </mat-list-item>
       }
     </mat-list>
     }
@@ -212,7 +201,6 @@
     <div class="section-title">
       <div>
         <h2>Saúde do sistema</h2>
-        <p>Pendências importantes, mas menos urgentes que a operação de hoje.</p>
       </div>
     </div>
 
@@ -306,10 +294,20 @@
         </span>
         <span matListItemLine>
           {{ event.startDate | date: 'short' }} · {{ describeEventType(event.type) }} @if (event.majorEventName) { · {{
-          event.majorEventName }} } @if (event.eventGroupName) { · {{ event.eventGroupName }} }
+          event.majorEventName }} }
         </span>
         @if (event.locationDescription) {
         <span matListItemLine>{{ event.locationDescription }}</span>
+        } @if (weatherAlertForEvent(event); as alert) {
+        <span matListItemLine class="weather-line">
+          <mat-icon inline aria-hidden="true">{{ alert.materialIcon }}</mat-icon>
+          <span>{{ alert.summary }} · {{ alert.temperature }}°C</span>
+        </span>
+        } @if (!isToday(event) && event.allowSubscription && (event.subscriptionEndDate || event.subscriptionStartDate)) {
+        <span matListItemLine>
+          @if (event.subscriptionEndDate) { Inscrições até {{ event.subscriptionEndDate | date: 'short' }} } @else {
+          Inscrições a partir de {{ event.subscriptionStartDate | date: 'short' }} }
+        </span>
         }
       </div>
       @if (event.canCollectAttendanceNow) {
@@ -322,6 +320,16 @@
           <mat-icon>fact_check</mat-icon>
           Presença
         </a>
+      </div>
+      } @else if (!isToday(event)) {
+      <div class="future-event-meta">
+        <mat-chip-set aria-label="Informações do evento futuro">
+          @if (event.allowSubscription) {
+          <mat-chip>{{ eventSubscriptionSummary(event) }}</mat-chip>
+          } @if (event.shouldCollectAttendance) {
+          <mat-chip>Presença planejada</mat-chip>
+          }
+        </mat-chip-set>
       </div>
       }
     </div>

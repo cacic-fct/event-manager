@@ -38,6 +38,10 @@ export class DashboardApiService {
               eventGroupName
               attendancesCount
               subscriptionsCount
+              allowSubscription
+              subscriptionStartDate
+              subscriptionEndDate
+              slots
               shouldCollectAttendance
               canCollectAttendanceNow
             }

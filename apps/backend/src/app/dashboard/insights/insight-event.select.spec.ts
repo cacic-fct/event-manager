@@ -46,6 +46,7 @@ describe('EVENT_INSIGHT_SELECT', () => {
       allowSubscription: true,
       subscriptionStartDate: true,
       subscriptionEndDate: true,
+      slots: true,
       lecturers: {
         select: {
           personId: true,

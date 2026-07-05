@@ -15,6 +15,10 @@ export function mapCalendarEvent(event: InsightEvent, now: Date): DashboardCalen
     eventGroupName: event.eventGroup?.name ?? null,
     attendancesCount: event._count.attendances,
     subscriptionsCount: event._count.subscriptions,
+    allowSubscription: event.allowSubscription,
+    subscriptionStartDate: event.subscriptionStartDate,
+    subscriptionEndDate: event.subscriptionEndDate,
+    slots: event.slots,
     shouldCollectAttendance: event.shouldCollectAttendance,
     canCollectAttendanceNow:
       event.shouldCollectAttendance &&

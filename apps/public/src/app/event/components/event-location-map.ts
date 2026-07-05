@@ -125,7 +125,7 @@ export class EventLocationMap implements OnDestroy {
       ],
       view: new View({
         center,
-        zoom: 17,
+        zoom: 18,
         maxZoom: 19,
       }),
       controls: [],

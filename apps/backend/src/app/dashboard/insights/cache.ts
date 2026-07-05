@@ -14,9 +14,14 @@ const logger = new Logger('DashboardInsightsCache');
 
 type CachedDashboardInsights = Omit<WorkspaceDashboardInsights, 'generatedAt'> & {
   generatedAt: string;
-  calendarEvents: (Omit<DashboardCalendarEvent, 'startDate' | 'endDate'> & {
+  calendarEvents: (Omit<
+    DashboardCalendarEvent,
+    'startDate' | 'endDate' | 'subscriptionStartDate' | 'subscriptionEndDate'
+  > & {
     startDate: string;
     endDate: string;
+    subscriptionStartDate?: string | null;
+    subscriptionEndDate?: string | null;
   })[];
   weatherAlerts: (Omit<DashboardWeatherAlert, 'forecastTime'> & {
     forecastTime: string;
@@ -49,6 +54,8 @@ export async function getCachedInsights(redis: Redis, cacheKey: string): Promise
         ...event,
         startDate: new Date(event.startDate),
         endDate: new Date(event.endDate),
+        subscriptionStartDate: event.subscriptionStartDate ? new Date(event.subscriptionStartDate) : null,
+        subscriptionEndDate: event.subscriptionEndDate ? new Date(event.subscriptionEndDate) : null,
       })),
       weatherAlerts: parsed.weatherAlerts.map((alert) => ({
         ...alert,

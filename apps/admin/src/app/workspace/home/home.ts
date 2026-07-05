@@ -17,13 +17,13 @@ import type {
   DashboardInsightAction,
   DashboardPendingOfflineAttendanceEvent,
   DashboardPendingReceiptMajorEvent,
+  DashboardWeatherAlert,
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
 import { DashboardApiService } from '../../graphql/dashboard-api.service';
 import { TwemojiComponent } from '../../shared/components/twemoji.component';
 import { workspaceNavLinkItems } from '../workspace-nav';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
@@ -38,7 +38,6 @@ type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissi
     MatIconModule,
     MatListModule,
     MatProgressSpinnerModule,
-    MatProgressBarModule,
     MatTooltip,
     RouterLink,
     TwemojiComponent,
@@ -65,8 +64,12 @@ export class Home implements OnInit, OnDestroy {
   readonly todayEvents = computed(() => this.insights()?.calendarEvents.filter((event) => this.isToday(event)) ?? []);
   readonly todayAttendanceEvents = computed(() => this.todayEvents().filter((event) => event.canCollectAttendanceNow));
   readonly upcomingEvents = computed(
-    () => this.insights()?.calendarEvents.filter((event) => !this.isToday(event)) ?? [],
+    () => this.insights()?.calendarEvents.filter((event) => this.isUpcomingNextWeek(event)) ?? [],
   );
+  readonly weatherAlertsByEventId = computed(() => {
+    const alerts = this.insights()?.weatherAlerts ?? [];
+    return new Map(alerts.map((alert) => [alert.eventId, alert]));
+  });
   readonly criticalInconsistencies = computed(
     () => this.insights()?.inconsistencies.filter((issue) => issue.severity === 'CRITICAL') ?? [],
   );
@@ -83,8 +86,7 @@ export class Home implements OnInit, OnDestroy {
     );
   });
   readonly hasMonitoring = computed(() => {
-    const dashboard = this.insights();
-    return Boolean(dashboard && (this.upcomingEvents().length > 0 || dashboard.weatherAlerts.length > 0));
+    return this.upcomingEvents().length > 0;
   });
   readonly hasSystemHealth = computed(() => {
     const dashboard = this.insights();
@@ -101,8 +103,17 @@ export class Home implements OnInit, OnDestroy {
       return '';
     }
 
-    return `${count} ${count === 1 ? 'evento acontecerá' : 'eventos acontecerão'} esta semana.`;
+    return `${count} ${count === 1 ? 'evento no radar' : 'eventos no radar'} dos próximos dias.`;
   });
+  readonly upcomingEventsHeadline = computed(() => {
+    const count = this.upcomingEvents().length;
+    if (count === 0) {
+      return 'Nenhum evento entre amanhã e os próximos 7 dias.';
+    }
+
+    return `${count} ${count === 1 ? 'evento acontece' : 'eventos acontecem'} entre amanhã e os próximos 7 dias.`;
+  });
+
   readonly eventDayHeadline = computed(() => {
     const count = this.todayEvents().length;
     if (count === 0) {
@@ -224,6 +235,22 @@ export class Home implements OnInit, OnDestroy {
     return `${count} ${count === 1 ? 'presença pendente' : 'presenças pendentes'}`;
   }
 
+  eventSubscriptionSummary(event: DashboardCalendarEvent): string {
+    if (!event.allowSubscription) {
+      return 'Inscrições desativadas';
+    }
+
+    if (event.slots == null) {
+      return `${event.subscriptionsCount} ${event.subscriptionsCount === 1 ? 'inscrição' : 'inscrições'}`;
+    }
+
+    return `${event.subscriptionsCount} de ${event.slots} vagas preenchidas`;
+  }
+
+  weatherAlertForEvent(event: DashboardCalendarEvent): DashboardWeatherAlert | null {
+    return this.weatherAlertsByEventId().get(event.id) ?? null;
+  }
+
   describeEventType(type: string): string {
     switch (type) {
       case 'MINICURSO':
@@ -276,7 +303,7 @@ export class Home implements OnInit, OnDestroy {
     return name ? `${greeting}, ${name}!` : `${greeting}!`;
   }
 
-  private isToday(event: DashboardCalendarEvent): boolean {
+  isToday(event: DashboardCalendarEvent): boolean {
     const eventDate = new Date(event.startDate);
     const today = this.currentDate();
     return (
@@ -284,5 +311,21 @@ export class Home implements OnInit, OnDestroy {
       eventDate.getMonth() === today.getMonth() &&
       eventDate.getDate() === today.getDate()
     );
+  }
+
+  private isUpcomingNextWeek(event: DashboardCalendarEvent): boolean {
+    const eventDate = new Date(event.startDate);
+    const tomorrow = this.startOfLocalDay(this.currentDate());
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeekEnd = new Date(tomorrow);
+    nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
+
+    return eventDate >= tomorrow && eventDate < nextWeekEnd;
+  }
+
+  private startOfLocalDay(date: Date): Date {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    return start;
   }
 }

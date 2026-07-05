@@ -99,6 +99,7 @@ export function insightEvent(overrides: Partial<InsightEvent> = {}): InsightEven
     allowSubscription: false,
     subscriptionStartDate: null,
     subscriptionEndDate: null,
+    slots: null,
     certificateConfigs: [],
     lecturers: [],
     subscriptions: [],

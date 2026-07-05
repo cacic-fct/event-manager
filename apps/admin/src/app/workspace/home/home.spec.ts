@@ -92,6 +92,13 @@ describe('Home', () => {
             startDate: '2026-05-22T17:00:00.000Z',
             canCollectAttendanceNow: false,
           }),
+          createAdminDashboardCalendarEvent({
+            id: 'event-3',
+            name: 'Fora da próxima semana',
+            startDate: '2026-05-29T17:00:00.000Z',
+            endDate: '2026-05-29T18:00:00.000Z',
+            canCollectAttendanceNow: false,
+          }),
         ],
       }),
     );
@@ -101,7 +108,18 @@ describe('Home', () => {
     expect(component.upcomingEvents().map((event) => event.id)).toEqual(['event-2']);
     expect(component.eventDayHeadline()).toBe('1 evento acontece hoje.');
     expect(component.eventDayActionSummary()).toBe('1 atividade precisa de atenção agora.');
-    expect(component.calendarHeadline()).toBe('2 eventos acontecerão esta semana.');
+    expect(component.calendarHeadline()).toBe('3 eventos no radar dos próximos dias.');
+    expect(component.upcomingEventsHeadline()).toBe('1 evento acontece entre amanhã e os próximos 7 dias.');
+    expect(component.eventSubscriptionSummary(component.upcomingEvents()[0])).toBe('40 de 60 vagas preenchidas');
+    expect(
+      component.eventSubscriptionSummary(
+        createAdminDashboardCalendarEvent({
+          allowSubscription: true,
+          subscriptionsCount: 12,
+          slots: null,
+        }),
+      ),
+    ).toBe('12 inscrições');
     expect(component.hasActionQueue()).toBe(true);
     expect(component.hasSystemHealth()).toBe(true);
   });
@@ -117,6 +135,43 @@ describe('Home', () => {
   });
 
   it('renders loaded dashboard queues and creation shortcuts', async () => {
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValueOnce(
+      of(
+        createAdminWorkspaceDashboardInsights({
+          calendarEvents: [
+            createAdminDashboardCalendarEvent(),
+            createAdminDashboardCalendarEvent({
+              id: 'event-2',
+              name: 'Palestra de encerramento',
+              startDate: '2026-05-22T17:00:00.000Z',
+              endDate: '2026-05-22T18:00:00.000Z',
+              subscriptionsCount: 42,
+              slots: 50,
+              canCollectAttendanceNow: false,
+            }),
+          ],
+          weatherAlerts: [
+            {
+              eventId: 'event-1',
+              eventName: 'Credenciamento',
+              summary: 'Calor intenso',
+              materialIcon: 'thermostat',
+              forecastTime: '2026-05-21T15:00:00.000Z',
+              temperature: 31,
+            },
+            {
+              eventId: 'event-2',
+              eventName: 'Palestra de encerramento',
+              summary: 'Chuva moderada',
+              materialIcon: 'rainy',
+              forecastTime: '2026-05-22T18:00:00.000Z',
+              temperature: 22,
+            },
+          ],
+        }),
+      ),
+    );
+
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -127,6 +182,17 @@ describe('Home', () => {
     expect(text).toContain('Novo grupo de eventos');
     expect(text).toContain('Novo evento');
     expect(text).toContain('Hoje');
+    expect(text).toContain('Próximos 7 dias');
+    expect(text).toContain('42 de 50 vagas preenchidas');
+    expect(text).toContain('Calor intenso');
+    expect(text).toContain('31°C');
+    expect(text).toContain('Chuva moderada');
+    expect(text).toContain('22°C');
+    expect(text).not.toContain('Clima');
+    expect(text).not.toContain('qui.,');
+    expect(text).not.toContain('sex.,');
+    expect(text).not.toContain('40 de 60 vagas preenchidas');
+    expect(fixture.nativeElement.querySelectorAll('.weather-line')).toHaveLength(2);
     expect(text).toContain('Presenças off-line pendentes');
     expect(text).toContain('Comprovantes pendentes');
     expect(text).toContain('Inconsistências críticas');

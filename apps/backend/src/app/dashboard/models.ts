@@ -127,6 +127,18 @@ export class DashboardCalendarEvent {
   subscriptionsCount!: number;
 
   @Field(() => Boolean)
+  allowSubscription!: boolean;
+
+  @Field(() => Date, { nullable: true })
+  subscriptionStartDate?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  subscriptionEndDate?: Date | null;
+
+  @Field(() => Int, { nullable: true })
+  slots?: number | null;
+
+  @Field(() => Boolean)
   shouldCollectAttendance!: boolean;
 
   @Field(() => Boolean)

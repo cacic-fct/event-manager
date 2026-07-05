@@ -84,6 +84,7 @@ export const EVENT_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
   publishedAt: true,

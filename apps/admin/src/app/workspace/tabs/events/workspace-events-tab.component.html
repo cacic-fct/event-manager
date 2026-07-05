@@ -456,10 +456,7 @@
 
             <mat-form-field class="span-2">
               <mat-label>Nome e descrição exibidos aos usuários</mat-label>
-              <input
-                matInput
-                formControlName="locationDescription"
-                [matAutocomplete]="placePresetAutocomplete" />
+              <input matInput formControlName="locationDescription" [matAutocomplete]="placePresetAutocomplete" />
               <mat-autocomplete
                 #placePresetAutocomplete="matAutocomplete"
                 [displayWith]="displayPlacePresetSuggestion"
@@ -558,6 +555,12 @@
               <input matInput type="datetime-local" formControlName="onlineAttendanceEndDate" />
             </mat-form-field>
           </div>
+
+          <p>É possível coletar presenças mesmo que "Permitir inscrição" esteja desmarcado.</p>
+          <p>
+            Não é necessário definir datas de início e de fim das inscrições para Eventos que fazem parte de um Grande
+            Evento
+          </p>
         </section>
       </form>
 

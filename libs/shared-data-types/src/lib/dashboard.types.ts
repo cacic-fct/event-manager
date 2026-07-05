@@ -61,6 +61,10 @@ export interface DashboardCalendarEvent {
   eventGroupName?: string | null;
   attendancesCount: number;
   subscriptionsCount: number;
+  allowSubscription: boolean;
+  subscriptionStartDate?: string | null;
+  subscriptionEndDate?: string | null;
+  slots?: number | null;
   shouldCollectAttendance: boolean;
   canCollectAttendanceNow: boolean;
 }

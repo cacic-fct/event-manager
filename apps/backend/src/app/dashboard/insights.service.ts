@@ -122,8 +122,8 @@ export class DashboardInsightsService {
   ): Promise<WorkspaceDashboardInsights> {
     const now = new Date();
     const today = startOfDay(now);
-    const sevenDaysFromToday = addDays(today, 7);
     const tomorrow = addDays(today, 1);
+    const sevenDaysFromTomorrow = addDays(tomorrow, 7);
     const inconsistencyWindowStart = subDays(now, 14);
 
     const grantedPermissionSet = new Set(permissions);
@@ -280,7 +280,7 @@ export class DashboardInsightsService {
               deletedAt: null,
               startDate: {
                 gte: today,
-                lt: tomorrow,
+                lt: sevenDaysFromTomorrow,
               },
             },
             select: EVENT_INSIGHT_SELECT,
@@ -293,7 +293,7 @@ export class DashboardInsightsService {
               deletedAt: null,
               startDate: {
                 gte: today,
-                lt: sevenDaysFromToday,
+                lt: sevenDaysFromTomorrow,
               },
             },
           })

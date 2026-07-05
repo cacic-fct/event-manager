@@ -6,8 +6,8 @@ describe('dashboard insights cache helpers', () => {
       get: jest.fn().mockResolvedValue(null),
     };
 
-    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v5:none')).resolves.toBeNull();
-    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v5:none');
+    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v6:none')).resolves.toBeNull();
+    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v6:none');
   });
 
   it('restores cached date strings to Date instances', async () => {
@@ -34,6 +34,10 @@ describe('dashboard insights cache helpers', () => {
               eventGroupName: 'Group',
               attendancesCount: 4,
               subscriptionsCount: 5,
+              allowSubscription: true,
+              subscriptionStartDate: '2026-05-01T12:00:00.000Z',
+              subscriptionEndDate: '2026-05-20T21:00:00.000Z',
+              slots: 40,
               shouldCollectAttendance: true,
               canCollectAttendanceNow: false,
             },
@@ -91,6 +95,8 @@ describe('dashboard insights cache helpers', () => {
     expect(result?.generatedAt).toEqual(new Date('2026-05-21T12:00:00.000Z'));
     expect(result?.calendarEvents[0].startDate).toEqual(new Date('2026-05-22T12:00:00.000Z'));
     expect(result?.calendarEvents[0].endDate).toEqual(new Date('2026-05-22T13:00:00.000Z'));
+    expect(result?.calendarEvents[0].subscriptionStartDate).toEqual(new Date('2026-05-01T12:00:00.000Z'));
+    expect(result?.calendarEvents[0].subscriptionEndDate).toEqual(new Date('2026-05-20T21:00:00.000Z'));
     expect(result?.weatherAlerts[0].forecastTime).toEqual(new Date('2026-05-22T12:00:00.000Z'));
     expect(result?.pendingCertificates[0].finishedAt).toEqual(new Date('2026-05-20T12:00:00.000Z'));
     expect(result?.pendingReceiptMajorEvents[0].startDate).toEqual(new Date('2026-05-24T12:00:00.000Z'));
@@ -108,12 +114,12 @@ describe('dashboard insights cache helpers', () => {
   });
 
   it('builds permission-aware cache keys', () => {
-    expect(getCacheKey([])).toBe('dashboard:workspace:v5:none');
+    expect(getCacheKey([])).toBe('dashboard:workspace:v6:none');
     expect(getCacheKey(['event#update', 'certificate#issue', 'event#update'])).toBe(
-      'dashboard:workspace:v5:certificate#issue,event#update',
+      'dashboard:workspace:v6:certificate#issue,event#update',
     );
     expect(getCacheKey(['certificate#issue', 'event#update'])).toBe(
-      'dashboard:workspace:v5:certificate#issue,event#update',
+      'dashboard:workspace:v6:certificate#issue,event#update',
     );
   });
 });

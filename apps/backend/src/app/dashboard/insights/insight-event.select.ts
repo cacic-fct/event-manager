@@ -44,6 +44,7 @@ export const EVENT_INSIGHT_SELECT = {
   allowSubscription: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
+  slots: true,
   certificateConfigs: {
     where: { deletedAt: null, isActive: true },
     select: { id: true },

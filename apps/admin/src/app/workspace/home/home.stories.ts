@@ -28,6 +28,7 @@ registerLocaleData(localePt);
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
 type DashboardStoryState = 'loaded' | 'empty' | 'loading' | 'error';
+type FutureRegistrationMode = 'mixed' | 'with-slots' | 'unlimited' | 'disabled';
 
 interface HomeStoryArgs {
   state: DashboardStoryState;
@@ -39,6 +40,7 @@ interface HomeStoryArgs {
   todayEvents: number;
   upcomingEvents: number;
   attendanceActions: boolean;
+  futureRegistrationMode: FutureRegistrationMode;
   suggestions: DashboardInsightAction[];
   weatherAlerts: number;
   pendingCertificates: number;
@@ -63,6 +65,7 @@ const defaultArgs: HomeStoryArgs = {
   todayEvents: 2,
   upcomingEvents: 3,
   attendanceActions: true,
+  futureRegistrationMode: 'mixed',
   suggestions: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT'],
   weatherAlerts: 1,
   pendingCertificates: 2,
@@ -115,6 +118,10 @@ const meta: Meta<HomeStoryArgs> = {
     todayEvents: { control: { type: 'range', min: 0, max: 8, step: 1 } },
     upcomingEvents: { control: { type: 'range', min: 0, max: 12, step: 1 } },
     attendanceActions: { control: 'boolean' },
+    futureRegistrationMode: {
+      control: 'select',
+      options: ['mixed', 'with-slots', 'unlimited', 'disabled'],
+    },
     suggestions: {
       control: 'check',
       options: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT'],
@@ -220,6 +227,87 @@ export const EmptyDashboard: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
+export const UpcomingEventsWithRegistration: Story = {
+  args: {
+    showTodayEvents: false,
+    showActionQueue: false,
+    showMonitoring: true,
+    showSystemHealth: false,
+    todayEvents: 0,
+    upcomingEvents: 4,
+    futureRegistrationMode: 'mixed',
+    weatherAlerts: 0,
+    pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    duplicatePeopleCount: 0,
+    inconsistencies: 0,
+  },
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Próximos 7 dias')).toBeVisible();
+    await expect(canvas.queryByText('Hoje')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Clima')).not.toBeInTheDocument();
+    const capacityLabels = await canvas.findAllByText(/vagas preenchidas/);
+    const subscriptionLabels = await canvas.findAllByText(/\d+ inscrições/);
+    await expect(capacityLabels[0]).toBeVisible();
+    await expect(subscriptionLabels[0]).toBeVisible();
+  },
+};
+
+export const UpcomingEventsWithoutRegistration: Story = {
+  args: {
+    showTodayEvents: false,
+    showActionQueue: false,
+    showMonitoring: true,
+    showSystemHealth: false,
+    todayEvents: 0,
+    upcomingEvents: 3,
+    futureRegistrationMode: 'disabled',
+    weatherAlerts: 0,
+    pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    duplicatePeopleCount: 0,
+    inconsistencies: 0,
+  },
+  globals: { theme: 'dark' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Próximos 7 dias')).toBeVisible();
+    await expect(await canvas.findAllByText('Presença planejada')).toHaveLength(3);
+  },
+};
+
+export const WeatherAlertsInEventRows: Story = {
+  args: {
+    showTodayEvents: true,
+    showActionQueue: false,
+    showMonitoring: true,
+    showSystemHealth: false,
+    todayEvents: 1,
+    upcomingEvents: 2,
+    attendanceActions: false,
+    futureRegistrationMode: 'mixed',
+    weatherAlerts: 2,
+    pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    duplicatePeopleCount: 0,
+    inconsistencies: 0,
+  },
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Hoje')).toBeVisible();
+    await expect(await canvas.findByText('Próximos 7 dias')).toBeVisible();
+    await expect(canvas.queryByText('Clima')).not.toBeInTheDocument();
+    const weatherRows = await canvas.findAllByText(/°C/);
+    await expect(weatherRows).toHaveLength(2);
+  },
+};
+
 export const Loading: Story = {
   args: {
     state: 'loading',
@@ -242,7 +330,7 @@ function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsi
   const empty = args.state === 'empty';
   const todayEventsCount = empty || !args.showTodayEvents ? 0 : args.todayEvents;
   const upcomingEventsCount = empty || !args.showMonitoring ? 0 : args.upcomingEvents;
-  const weatherAlertsCount = empty || !args.showMonitoring ? 0 : args.weatherAlerts;
+  const weatherAlertsCount = empty || (!args.showTodayEvents && !args.showMonitoring) ? 0 : args.weatherAlerts;
   const pendingCertificatesCount = empty || !args.showSystemHealth ? 0 : args.pendingCertificates;
   const pendingOfflineAttendancesCount = empty || !args.showActionQueue ? 0 : args.pendingOfflineAttendancesCount;
   const pendingReceiptValidationsCount = empty || !args.showActionQueue ? 0 : args.pendingReceiptValidationsCount;
@@ -262,7 +350,9 @@ function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsi
           ...Array.from({ length: todayEventsCount }, (_, index) => buildCalendarEvent(index, 0, args)),
           ...Array.from({ length: upcomingEventsCount }, (_, index) => buildCalendarEvent(index, index + 1, args)),
         ],
-    weatherAlerts: Array.from({ length: weatherAlertsCount }, (_, index) => buildWeatherAlert(index)),
+    weatherAlerts: Array.from({ length: weatherAlertsCount }, (_, index) =>
+      buildWeatherAlert(index, todayEventsCount, upcomingEventsCount),
+    ),
     pendingCertificates: pendingCertificatesCount === 0
       ? []
       : Array.from({ length: pendingCertificatesCount }, (_, index) => buildPendingCertificate(index)),
@@ -302,6 +392,11 @@ function buildSuggestions(actions: DashboardInsightAction[]): DashboardActionLin
 function buildCalendarEvent(index: number, daysFromNow: number, args: HomeStoryArgs): DashboardCalendarEvent {
   const startDate = dateFromNow(daysFromNow, 9 + (index % 8));
   const type = faker.helpers.arrayElement(['MINICURSO', 'PALESTRA', 'OTHER']);
+  const allowSubscription = daysFromNow === 0 ? true : shouldAllowFutureSubscription(index, args.futureRegistrationMode);
+  const slots = allowSubscription ? futureSlots(index, args.futureRegistrationMode) : null;
+  const subscriptionsCount = allowSubscription
+    ? faker.number.int({ min: 12, max: slots ?? 160 })
+    : faker.number.int({ min: 0, max: 20 });
 
   return {
     id: `event-${daysFromNow}-${index}`,
@@ -321,17 +416,52 @@ function buildCalendarEvent(index: number, daysFromNow: number, args: HomeStoryA
     majorEventName: index % 2 === 0 ? 'Semana da Computação' : null,
     eventGroupName: index % 3 === 0 ? 'Trilha de Desenvolvimento' : null,
     attendancesCount: faker.number.int({ min: 8, max: 120 }),
-    subscriptionsCount: faker.number.int({ min: 12, max: 160 }),
+    subscriptionsCount,
+    allowSubscription,
+    subscriptionStartDate: allowSubscription ? dateFromNow(-10, 8).toISOString() : null,
+    subscriptionEndDate: allowSubscription ? dateFromNow(daysFromNow - 1, 23).toISOString() : null,
+    slots,
     shouldCollectAttendance: true,
     canCollectAttendanceNow: args.attendanceActions && daysFromNow === 0 && index < 2,
   };
 }
 
-function buildWeatherAlert(index: number): DashboardWeatherAlert {
+function shouldAllowFutureSubscription(index: number, mode: FutureRegistrationMode): boolean {
+  switch (mode) {
+    case 'with-slots':
+    case 'unlimited':
+      return true;
+    case 'disabled':
+      return false;
+    case 'mixed':
+      return index !== 2;
+  }
+}
+
+function futureSlots(index: number, mode: FutureRegistrationMode): number | null {
+  switch (mode) {
+    case 'with-slots':
+      return 80;
+    case 'unlimited':
+      return null;
+    case 'disabled':
+      return null;
+    case 'mixed':
+      return index === 1 ? null : 60;
+  }
+}
+
+function buildWeatherAlert(
+  index: number,
+  todayEventsCount = activeArgs?.todayEvents ?? defaultArgs.todayEvents,
+  upcomingEventsCount = activeArgs?.upcomingEvents ?? defaultArgs.upcomingEvents,
+): DashboardWeatherAlert {
   const forecastTime = dateFromNow(index, 14);
+  const targetsToday = todayEventsCount > 0 && index === 0;
+  const upcomingIndex = Math.max(0, index - (todayEventsCount > 0 ? 1 : 0)) % Math.max(1, upcomingEventsCount);
 
   return {
-    eventId: `weather-event-${index}`,
+    eventId: targetsToday ? 'event-0-0' : `event-${upcomingIndex + 1}-${upcomingIndex}`,
     eventName: faker.helpers.arrayElement(['Minicurso de Angular', 'Palestra de Segurança', 'Workshop de Dados']),
     summary: faker.helpers.arrayElement(['Chuva moderada', 'Calor intenso', 'Tempo instável']),
     materialIcon: faker.helpers.arrayElement(['rainy', 'thermostat', 'cloud']),

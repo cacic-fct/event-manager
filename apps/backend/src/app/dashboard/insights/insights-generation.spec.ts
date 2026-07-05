@@ -38,7 +38,21 @@ describe('DashboardInsightsService generation', () => {
           _count: { offlineAttendanceSubmissions: 7 },
         },
       ])
-      .mockResolvedValueOnce([insightEvent({ id: 'calendar-1', latitude: -22.1, longitude: -51.4 })])
+      .mockResolvedValueOnce([
+        insightEvent({
+          id: 'calendar-1',
+          latitude: -22.1,
+          longitude: -51.4,
+          allowSubscription: true,
+          subscriptionStartDate: new Date('2026-05-01T12:00:00.000Z'),
+          subscriptionEndDate: new Date('2026-05-28T21:00:00.000Z'),
+          slots: 50,
+          _count: {
+            attendances: 0,
+            subscriptions: 12,
+          },
+        }),
+      ])
       .mockResolvedValueOnce([
         insightEvent({
           id: 'bad-event',
@@ -175,9 +189,19 @@ describe('DashboardInsightsService generation', () => {
     expect(result.calendarEvents).toEqual([
       expect.objectContaining({
         id: 'calendar-1',
+        allowSubscription: true,
+        subscriptionEndDate: new Date('2026-05-28T21:00:00.000Z'),
+        slots: 50,
+        subscriptionsCount: 12,
         canCollectAttendanceNow: false,
       }),
     ]);
+    const calendarRange = prisma.event.findMany.mock.calls[1]?.[0].where.startDate;
+    expect(calendarRange?.gte).toBeInstanceOf(Date);
+    expect(calendarRange?.lt).toBeInstanceOf(Date);
+    const calendarRangeStart = calendarRange?.gte as Date;
+    const calendarRangeEnd = calendarRange?.lt as Date;
+    expect(calendarRangeEnd.getTime() - calendarRangeStart.getTime()).toBe(8 * 24 * 60 * 60 * 1000);
     expect(result.weatherAlerts).toEqual([
       expect.objectContaining({
         eventId: 'calendar-1',
@@ -267,7 +291,7 @@ describe('DashboardInsightsService generation', () => {
       ]),
     );
     expect(redis.set).toHaveBeenCalledWith(
-      'dashboard:workspace:v5:certificate#issue,event#update,event-attendance#update,major-event#update,merge-candidate#read,person#update,receipt#read',
+      'dashboard:workspace:v6:certificate#issue,event#update,event-attendance#update,major-event#update,merge-candidate#read,person#update,receipt#read',
       expect.stringContaining('"eventsCount":10'),
       'EX',
       300,
