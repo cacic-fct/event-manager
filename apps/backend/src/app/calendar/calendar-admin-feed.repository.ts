@@ -4,6 +4,7 @@ import {
   ADMIN_CALENDAR_EVENT_PERMISSION_SET,
   ADMIN_CALENDAR_FEED_PERMISSIONS,
   ADMIN_CALENDAR_MAJOR_EVENT_PERMISSION_SET,
+  CALENDAR_FEED_ENTRY_LIMIT,
 } from './calendar-feed.constants';
 import {
   buildAdminEventGroupSelect,
@@ -87,7 +88,10 @@ async function getAdminCalendarEntriesFromPlan(
       .map((eventGroup) => mapEventGroupToCalendarEntry(eventGroup, publicAppOrigin))
       .filter((entry): entry is CalendarEntry => Boolean(entry)),
     ...majorEvents.map((majorEvent) => mapMajorEventToCalendarEntry(majorEvent, publicAppOrigin)),
-  ].sort((left, right) => left.start.getTime() - right.start.getTime() || left.summary.localeCompare(right.summary));
+  ]
+    .sort((left, right) => right.start.getTime() - left.start.getTime() || left.summary.localeCompare(right.summary))
+    .slice(0, CALENDAR_FEED_ENTRY_LIMIT)
+    .sort((left, right) => left.start.getTime() - right.start.getTime() || left.summary.localeCompare(right.summary));
 }
 
 async function getAdminFeedEvents(
@@ -104,7 +108,7 @@ async function getAdminFeedEvents(
     where,
     select: CALENDAR_EVENT_SELECT,
     orderBy: {
-      startDate: 'asc',
+      startDate: 'desc',
     },
     take,
   });
@@ -144,7 +148,7 @@ async function getAdminFeedMajorEvents(
     where,
     select: ADMIN_MAJOR_EVENT_SELECT,
     orderBy: {
-      startDate: 'asc',
+      startDate: 'desc',
     },
     take,
   });

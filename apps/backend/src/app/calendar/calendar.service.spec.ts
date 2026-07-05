@@ -471,6 +471,52 @@ describe('CalendarService', () => {
     expect(download.content).toContain('TRANSP:OPAQUE');
   });
 
+  it('limits private user feeds to the latest 1000 events', async () => {
+    const feedEvents = Array.from({ length: 1001 }, (_, index) => ({
+      ...publicEvent,
+      id: `private-feed-event-${index}`,
+      name: `Atividade privada ${index}`,
+      startDate: new Date(Date.UTC(2026, 0, index + 1, 13)),
+      endDate: new Date(Date.UTC(2026, 0, index + 1, 15)),
+    }));
+    const prisma = createPrismaMock({
+      userCalendarFeedSettings: {
+        findUnique: jest.fn().mockResolvedValue({
+          userId: 'user-1',
+          enabled: true,
+          feedKeyHash: 'hashed-private-key',
+          lastFetchedAt: null,
+          user: {
+            name: 'Student',
+            lastLoginAt: now,
+            people: [{ id: 'person-1' }],
+          },
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValue(feedEvents.map((event) => ({ event }))),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    const download = await service.buildPrivateUserCalendarFeed('private-key', 'https://eventos.cacic.dev.br');
+
+    expect(download.content.match(/BEGIN:VEVENT/g) ?? []).toHaveLength(1000);
+    expect(download.content).not.toContain('SUMMARY:Atividade privada 0');
+    expect(download.content).toContain('SUMMARY:Atividade privada 1000');
+    expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: {
+          event: {
+            startDate: 'desc',
+          },
+        },
+        take: 1000,
+      }),
+    );
+  });
+
   it('maps missing current admin feed settings to a disabled state', async () => {
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
@@ -910,6 +956,7 @@ describe('CalendarService', () => {
             name: 'Admin User',
           },
         }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       eventManagerPermissionGrant: {
         findMany: jest.fn().mockResolvedValue([
@@ -949,6 +996,60 @@ describe('CalendarService', () => {
     expect(prisma.eventGroup.findMany).not.toHaveBeenCalled();
     expect(download.content).toContain('SUMMARY:Oficina de TypeScript');
     expect(download.content).not.toContain('SUMMARY:Trilha de oficinas');
+  });
+
+  it('limits private admin feeds to the latest 1000 entries', async () => {
+    const adminEvents = Array.from({ length: 1001 }, (_, index) => ({
+      ...publicEvent,
+      id: `admin-feed-event-${index}`,
+      name: `Atividade administrativa ${index}`,
+      startDate: new Date(Date.UTC(2026, 0, index + 1, 13)),
+      endDate: new Date(Date.UTC(2026, 0, index + 1, 15)),
+    }));
+    const prisma = createPrismaMock({
+      userAdminCalendarFeedSettings: {
+        findUnique: jest.fn().mockResolvedValue({
+          userId: 'admin-user',
+          enabled: true,
+          feedKeyHash: 'hashed-admin-key',
+          lastFetchedAt: null,
+          lastCheckedAt: now,
+          user: {
+            name: 'Admin User',
+          },
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      eventManagerPermissionGrant: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            permission: Permission.Event.Read,
+            scope: EventManagerPermissionGrantScope.GLOBAL,
+            eventId: null,
+            majorEventId: null,
+            eventGroupId: null,
+          },
+        ]),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue(adminEvents),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    const download = await service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.dev.br');
+
+    expect(download.content.match(/BEGIN:VEVENT/g) ?? []).toHaveLength(1000);
+    expect(download.content).not.toContain('SUMMARY:Atividade administrativa 0');
+    expect(download.content).toContain('SUMMARY:Atividade administrativa 1000');
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: {
+          startDate: 'desc',
+        },
+        take: 1000,
+      }),
+    );
   });
 
   it('disables private admin feeds when authenticated admin access was not checked recently', async () => {
@@ -1245,6 +1346,45 @@ describe('CalendarService', () => {
     expect(download.content).toContain('CLASS:PUBLIC');
     expect(download.content).toContain('TRANSP:TRANSPARENT');
     expect(prisma.superAdminCalendarFeedSettings.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('limits shared super-admin feeds to the latest 1000 entries', async () => {
+    const superAdminEvents = Array.from({ length: 1001 }, (_, index) => ({
+      ...publicEvent,
+      id: `super-admin-feed-event-${index}`,
+      name: `Atividade super-admin ${index}`,
+      startDate: new Date(Date.UTC(2026, 0, index + 1, 13)),
+      endDate: new Date(Date.UTC(2026, 0, index + 1, 15)),
+    }));
+    const prisma = createPrismaMock({
+      superAdminCalendarFeedSettings: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: SUPER_ADMIN_CALENDAR_FEED_ID,
+          enabled: true,
+          feedKeyHash: 'hashed-super-key',
+          lastFetchedAt: null,
+        }),
+        updateMany: jest.fn(),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue(superAdminEvents),
+      },
+    });
+    const service = new CalendarService(prisma as never);
+
+    const download = await service.buildSuperAdminCalendarFeed('super-key', 'https://eventos.cacic.dev.br');
+
+    expect(download.content.match(/BEGIN:VEVENT/g) ?? []).toHaveLength(1000);
+    expect(download.content).not.toContain('SUMMARY:Atividade super-admin 0');
+    expect(download.content).toContain('SUMMARY:Atividade super-admin 1000');
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: {
+          startDate: 'desc',
+        },
+        take: 1000,
+      }),
+    );
   });
 
   it('samples shared super-admin feed fetches when the previous fetch is stale', async () => {

@@ -30,4 +30,6 @@ Usuários autenticados também podem habilitar um feed privado com suas atividad
 
 O sistema mostra o link privado somente ao habilitar ou rotacionar a chave. Se o link vazar, rotacione a chave nas preferências. O feed anterior deixa de funcionar, embora aplicativos de calendário possam manter os dados em cache permanente.
 
+Feeds privados exibem no máximo os 1000 eventos mais recentes do usuário. Esse limite evita que aplicativos de calendário truncem o arquivo em pontos imprevisíveis.
+
 Feeds privados são desativados automaticamente quando a conta fica muito tempo sem uma sessão válida.

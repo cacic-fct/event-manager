@@ -1,5 +1,5 @@
 import { Prisma, SubscriptionStatus } from '@prisma/client';
-import { PRIVATE_FEED_EVENT_TAKE } from './calendar-feed.constants';
+import { CALENDAR_FEED_ENTRY_LIMIT, PRIVATE_FEED_EVENT_TAKE } from './calendar-feed.constants';
 import { CALENDAR_EVENT_SELECT, CalendarEventRecord } from './calendar-records';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
@@ -31,7 +31,7 @@ export async function getPrivateFeedEvents(
         },
         orderBy: {
           event: {
-            startDate: 'asc',
+            startDate: 'desc',
           },
         },
         take: PRIVATE_FEED_EVENT_TAKE,
@@ -61,7 +61,7 @@ export async function getPrivateFeedEvents(
         },
         orderBy: {
           event: {
-            startDate: 'asc',
+            startDate: 'desc',
           },
         },
         take: PRIVATE_FEED_EVENT_TAKE,
@@ -80,7 +80,7 @@ export async function getPrivateFeedEvents(
         },
         orderBy: {
           event: {
-            startDate: 'asc',
+            startDate: 'desc',
           },
         },
         take: PRIVATE_FEED_EVENT_TAKE,
@@ -99,7 +99,7 @@ export async function getPrivateFeedEvents(
         },
         orderBy: {
           event: {
-            startDate: 'asc',
+            startDate: 'desc',
           },
         },
         take: PRIVATE_FEED_EVENT_TAKE,
@@ -125,7 +125,11 @@ export async function getPrivateFeedEvents(
           },
         },
         orderBy: {
-          issuedAt: 'desc',
+          config: {
+            event: {
+              startDate: 'desc',
+            },
+          },
         },
         take: PRIVATE_FEED_EVENT_TAKE,
       }),
@@ -142,9 +146,10 @@ export async function getPrivateFeedEvents(
     eventsById.set(event.id, event);
   }
 
-  return [...eventsById.values()].sort(
-    (left, right) => left.startDate.getTime() - right.startDate.getTime() || left.name.localeCompare(right.name),
-  );
+  return [...eventsById.values()]
+    .sort((left, right) => right.startDate.getTime() - left.startDate.getTime() || left.name.localeCompare(right.name))
+    .slice(0, CALENDAR_FEED_ENTRY_LIMIT)
+    .sort((left, right) => left.startDate.getTime() - right.startDate.getTime() || left.name.localeCompare(right.name));
 }
 
 function privateFeedEventWhere(): Prisma.EventWhereInput {

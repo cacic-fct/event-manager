@@ -14,6 +14,8 @@ O feed pode ser desativado automaticamente quando o usuário perde acesso aos al
 
 Super administradores possuem um feed compartilhado próprio. Rotacionar esse feed invalida o link para todos que o utilizam.
 
+Feeds administrativos exibem no máximo os 1000 eventos, grupos ou grandes eventos mais recentes. O feed compartilhado de super administradores usa o mesmo limite geral de 1000 itens.
+
 ## Rotação de chave
 
 Rotacione a chave quando o link for exposto indevidamente, compartilhado com a pessoa errada ou cadastrado em um dispositivo que não deve mais receber atualizações.
