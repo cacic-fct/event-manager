@@ -159,7 +159,7 @@ const referenceGroups: ReferenceGroup[] = [
       { label: 'Tecnologias', to: '/Geral/Antes%20de%20colaborar/Tecnologias' },
       { label: 'API', to: '/Backend/API' },
       { label: 'Formulários de eventos', to: '/Backend/Formul%C3%A1rios%20de%20eventos' },
-      { label: 'Offline e service worker', to: '/Frontend/C%C3%B3digo/Offline%20e%20service%20worker' },
+      { label: 'Offline e service worker', to: '/Frontend/C%C3%B3digo/Off-line%20e%20service%20worker' },
     ],
   },
   {
