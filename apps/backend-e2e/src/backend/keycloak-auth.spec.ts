@@ -23,6 +23,10 @@ describeKeycloak('Keycloak-backed authentication', () => {
 
   it('redirects OAuth login to the imported test realm without a development IdP hint', async () => {
     const response = await axios.get('/api/auth/login/redirect', {
+      headers: {
+        'x-forwarded-host': `${backendHost}:${backendPort}`,
+        'x-forwarded-proto': 'http',
+      },
       maxRedirects: 0,
       params: {
         returnTo: '/admin/',
