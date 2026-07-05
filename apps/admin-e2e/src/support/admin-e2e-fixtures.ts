@@ -828,9 +828,11 @@ function graphqlData(
   }
 
   if (query.includes('mutation UpdateOfflineEventAttendanceSubmission')) {
-    const person = createAdminE2EPerson();
+    const input = isRecord(variables['input']) ? variables['input'] : {};
+    const personId = typeof input['personId'] === 'string' ? input['personId'] : 'person-1';
+    const person = createAdminE2EPerson({ id: personId });
     const updatedSubmission = createAdminE2EOfflineEventAttendanceSubmission({
-      personId: person.id,
+      personId,
       person,
       manualValue: 'ada@example.edu',
       resolutionError: null,

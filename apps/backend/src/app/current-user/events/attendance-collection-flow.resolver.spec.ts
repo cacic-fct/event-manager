@@ -382,6 +382,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
           clientId: 'queue-1',
           eventId: 'event-1',
           personId: 'person-1',
+          scannerCode: 'user-1',
           authorUserId: 'collector-user',
           submittedById: 'collector-user',
           collectedLatitude: -22.12,
@@ -397,6 +398,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
           clientId: 'queue-1',
           eventId: 'event-1',
           personId: 'person-1',
+          scannerCode: 'user-1',
           authorUserId: 'collector-user',
           submittedById: 'collector-user',
           collectedAt: new Date('2026-05-20T12:30:00.000Z'),
@@ -493,6 +495,13 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     ]);
 
     expect(prisma.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scannerCode: 'user-1',
+        }),
+      }),
+    );
     expect(notifications.notifyOfflineAttendanceReviewQueued).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
@@ -607,6 +616,54 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     ]);
 
     expect(prisma.offlineEventAttendanceSubmission.create).not.toHaveBeenCalled();
+  });
+
+  it('stages unprefixed offline scanner payloads as invalid without storing them as user IDs', async () => {
+    const { resolver, prisma } = createCollectionResolver({
+      collector: collectorPerson(),
+      people: [{ id: 'person-1' }],
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-invalid-scanner',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.SCANNER,
+              code: 'user-1',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+              authorUserId: 'offline-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        clientId: 'queue-invalid-scanner',
+        eventId: 'event-1',
+        status: 'STAGED',
+        stagedSubmission: expect.objectContaining({
+          scannerCode: undefined,
+          resolutionIssue: 'INVALID_SCANNER_CODE',
+          resolutionError: 'Código Aztec incompatível.',
+        }),
+      }),
+    ]);
+
+    expect(prisma.offlineEventAttendanceSubmission.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          clientId: 'queue-invalid-scanner',
+          personId: null,
+          scannerCode: null,
+          resolutionError: 'Código Aztec incompatível.',
+        }),
+      }),
+    );
   });
 
   it('commits expired offline attendances directly for users with attendance collection permission', async () => {

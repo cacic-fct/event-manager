@@ -27,6 +27,7 @@ import {
   offlineSubmissionActorNameMap,
 } from './offline-submission-response';
 import { errorMessage } from './offline-attendance-resolution';
+import { parseStoredScannerUserId, scannerUserIdForStorage } from './user-scanner-code';
 
 const EVENT_ATTENDANCE_AUDIT_SELECT = {
   personId: true,
@@ -707,7 +708,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     const createdByMethod = (input.createdByMethod ?? submission.createdByMethod) as AttendanceCreationMethod;
     const scannerCode =
       createdByMethod === AttendanceCreationMethod.SCANNER
-        ? normalizeOptionalString(input.scannerCode ?? submission.scannerCode) ?? null
+        ? this.scannerCodeForOfflineCorrection(input.scannerCode, submission.scannerCode)
         : null;
     const manualValue =
       createdByMethod === AttendanceCreationMethod.MANUAL_INPUT
@@ -776,7 +777,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   }): Promise<string> {
     switch (submission.createdByMethod) {
       case AttendanceCreationMethod.SCANNER: {
-        const userId = submission.scannerCode ? this.parseUserAztecCode(submission.scannerCode) : null;
+        const userId = submission.scannerCode ? parseStoredScannerUserId(submission.scannerCode) : null;
         if (!userId) {
           throw new BadRequestException('Código Aztec incompatível.');
         }
@@ -802,6 +803,17 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       default:
         throw new BadRequestException('Origem da presença off-line incompatível.');
     }
+  }
+
+  private scannerCodeForOfflineCorrection(
+    inputScannerCode: string | null | undefined,
+    storedScannerCode: string | null,
+  ): string | null {
+    if (inputScannerCode !== undefined) {
+      return scannerUserIdForStorage(inputScannerCode);
+    }
+
+    return storedScannerCode ? parseStoredScannerUserId(storedScannerCode) : null;
   }
 
   private async resolveMergedPersonId(personId: string): Promise<string> {

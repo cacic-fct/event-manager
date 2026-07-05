@@ -30,14 +30,11 @@ export function normalizeOptionalString(value: string | null | undefined): strin
   return normalized || undefined;
 }
 
-export function parseUserAztecCode(code: string): string | null {
-  const [kind, userId, ...extraParts] = code.trim().split(':');
-  if (kind !== 'user' || !userId || extraParts.length > 0) {
-    return null;
-  }
-
-  return userId;
-}
+export {
+  parseStoredScannerUserId,
+  parseUserAztecCode,
+  scannerUserIdForStorage,
+} from '../../events/attendances/user-scanner-code';
 
 export function commitStatusForError(error: unknown): OfflineEventAttendanceCommitResult['status'] {
   return classifyOfflineAttendanceError(error).status;

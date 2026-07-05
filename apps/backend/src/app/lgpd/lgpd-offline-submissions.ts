@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { getBrazilianPhoneCandidates } from '../common/brazilian-phone';
+import { parseStoredScannerUserId } from '../events/attendances/user-scanner-code';
 import { ANONYMIZED_AUDIT_VALUE } from './lgpd-audit-anonymization';
 import { DataSubjectResolution } from './lgpd-records';
 
@@ -15,7 +16,7 @@ export function buildOfflineSubmissionSubjectWhere(
     conditions.push({ submittedById: { in: dataSubject.userIds } });
     conditions.push({ committedById: { in: dataSubject.userIds } });
     conditions.push({ rejectedById: { in: dataSubject.userIds } });
-    conditions.push({ scannerCode: { in: dataSubject.userIds.map((userId) => `user:${userId}`) } });
+    conditions.push({ scannerCode: { in: scannerSubjectValues(dataSubject.userIds) } });
   }
   for (const email of dataSubject.emails) {
     conditions.push({ authorEmail: { equals: email, mode: 'insensitive' } });
@@ -29,8 +30,7 @@ export function buildOfflineSubmissionSubjectWhere(
 }
 
 export function parseScannerUserId(scannerCode: string): string | null {
-  const [kind, userId, ...extraParts] = scannerCode.split(':');
-  return kind === 'user' && userId && extraParts.length === 0 ? userId : null;
+  return parseStoredScannerUserId(scannerCode);
 }
 
 export function getOfflineManualSubjectValueCandidates(dataSubject: DataSubjectResolution): string[] {
@@ -143,6 +143,10 @@ export async function anonymizeOfflineAttendanceSubmissions(
 
 export function caseInsensitiveKey(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function scannerSubjectValues(userIds: readonly string[]): string[] {
+  return [...new Set(userIds.flatMap((userId) => [userId, `user:${userId}`]))];
 }
 
 function addPhoneManualValueCandidates(values: Map<string, string>, phone?: string | null): void {

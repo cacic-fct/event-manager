@@ -236,6 +236,60 @@ describe('EventAttendancesMutationsResolver', () => {
     );
   });
 
+  it('approves scanner offline submissions that store the raw keycloak user id', async () => {
+    const submission = offlineSubmissionFixture({
+      personId: null,
+      scannerCode: 'user-1',
+      resolutionError: 'Person for user user-1 was not found.',
+    });
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findFirst.mockResolvedValue({ id: 'person-1' });
+    prisma.people.findUnique.mockResolvedValue({ id: 'person-1', mergedIntoId: null });
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      personId: 'person-1',
+      status: 'COMMITTED',
+      committedAt: new Date('2026-05-21T13:00:00.000Z'),
+      committedById: 'admin-user',
+      rejectedAt: null,
+      rejectedById: null,
+      rejectionReason: null,
+      stagedReason: null,
+      resolutionError: null,
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    tx.eventAttendance.findUnique.mockResolvedValue(null);
+    tx.eventAttendance.findUniqueOrThrow.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await resolver.approveOfflineEventAttendanceSubmission('submission-1', { req: { user: { sub: 'admin-user' } } } as never);
+
+    expect(prisma.people.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: 'user-1',
+        }),
+      }),
+    );
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personId: 'person-1',
+        }),
+      }),
+    );
+    expect(tx.eventAttendance.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventId: 'event-1',
+          personId: 'person-1',
+          createdByMethod: AttendanceCreationMethod.SCANNER,
+        }),
+      }),
+    );
+  });
+
   it('updates pending offline submissions with corrected manual data', async () => {
     const submission = offlineSubmissionFixture({
       personId: null,
@@ -404,7 +458,7 @@ describe('EventAttendancesMutationsResolver', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           createdByMethod: AttendanceCreationMethod.SCANNER,
-          scannerCode: 'user:typo',
+          scannerCode: 'typo',
           manualValue: null,
           personId: 'person-2',
           resolutionError: null,

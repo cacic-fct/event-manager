@@ -17,7 +17,9 @@ import {
   getAuthenticatedUser,
   isRequiredLocationError,
   normalizeOptionalString,
+  parseStoredScannerUserId,
   parseUserAztecCode,
+  scannerUserIdForStorage,
 } from './attendance-collection-context';
 import { notifyOfflineAttendanceReviewQueued } from './attendance-collection-offline-notifications';
 import {
@@ -46,6 +48,12 @@ describe('attendance collection helpers', () => {
     expect(normalizeOptionalString('   ')).toBeUndefined();
     expect(parseUserAztecCode(' user:account-1 ')).toBe('account-1');
     expect(parseUserAztecCode('user:account-1:extra')).toBeNull();
+    expect(parseUserAztecCode('account-1')).toBeNull();
+    expect(scannerUserIdForStorage('user:account-1')).toBe('account-1');
+    expect(scannerUserIdForStorage('account-1')).toBeNull();
+    expect(parseStoredScannerUserId('account-1')).toBe('account-1');
+    expect(parseStoredScannerUserId('user:account-1')).toBe('account-1');
+    expect(parseStoredScannerUserId('anonymized:request-1')).toBeNull();
     expect(commitStatusForError(new ConflictException('Presença já registrada para este evento.'))).toBe('DUPLICATE');
     expect(commitStatusForError(new ConflictException('Coleta fora da janela.'))).toBe('CONFLICT');
     expect(commitStatusForError(new ForbiddenException('Sem permissão.'))).toBe('FORBIDDEN');

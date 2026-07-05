@@ -1,5 +1,6 @@
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../attendance-category.service';
+import { parseUserAztecCode } from '../user-scanner-code';
 import { GraphqlContext } from './types';
 
 export abstract class EventAttendancesCoreSupport {
@@ -17,12 +18,6 @@ export abstract class EventAttendancesCoreSupport {
   }
 
   protected parseUserAztecCode(code: string): string | null {
-    const trimmedCode = code.trim();
-    if (!trimmedCode.startsWith('user:')) {
-      return null;
-    }
-
-    const userId = trimmedCode.slice('user:'.length).trim();
-    return userId.length > 0 ? userId : null;
+    return parseUserAztecCode(code);
   }
 }
